@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { X } from 'lucide-react';
 import { StarInput } from '@/components/ui';
 import {
-  STATUS_OPTIONS, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, ITEMLIST_CATEGORIES, terminology,
+  STATUS_OPTIONS, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
 } from '@/lib/constants';
 import { visibleOrderedItems, parseListingText } from '@/lib/matching';
 
@@ -43,14 +43,20 @@ export default function HomeModal({ initial, priorities, onSave, onClose }) {
   return (
     <div className="hh-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="hh-modal hh-corner">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 18 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: initial.address ? 18 : 6 }}>
           <h2 className="hh-serif" style={{ fontSize: 20, margin: 0, fontWeight: 600 }}>{initial.address ? 'Edit home' : 'Add a home'}</h2>
           <button className="hh-btn hh-btn-ghost" style={{ padding: 6 }} onClick={onClose}><X size={16} /></button>
         </div>
 
+        {!initial.address && (
+          <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: '0 0 18px' }}>
+            Add a home you're considering — not the one you live in now. Enter whatever you know today; you can come back after a showing to add ratings, notes, and anything else you learn.
+          </p>
+        )}
+
         <details open={!initial.address} className="hh-details">
-          <summary>Paste from a listing</summary>
-          <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '8px 0' }}>Paste the listing description and we'll try to pull out price, beds/baths, sqft, and more. We only fill in blank fields.</p>
+          <summary>Paste listing details</summary>
+          <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '8px 0' }}>Copy the listing description or details here and we'll try to fill in anything we recognize — price, beds/baths, square footage, and more. You can review everything before saving.</p>
           <textarea className="hh-textarea" style={{ minHeight: 90 }} value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Paste the full listing text here..." />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, gap: 10, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 11.5, color: parseMsg.startsWith("Couldn't") ? 'var(--brick)' : 'var(--moss)' }}>{parseMsg}</span>
@@ -117,7 +123,7 @@ export default function HomeModal({ initial, priorities, onSave, onClose }) {
           </div>
         ))}
 
-        {ITEMLIST_CATEGORIES.map((def) => {
+        {getItemlistCategories(priorities.searchType).map((def) => {
           const visible = visibleOrderedItems(def, priorities);
           if (!visible.length) return null;
           const ratingItems = visible.filter((i) => i.kind === 'rating');
@@ -127,14 +133,17 @@ export default function HomeModal({ initial, priorities, onSave, onClose }) {
             <details key={def.key} open={mustCount > 0 || def.key === 'location' || def.key === 'homeFeel'} className="hh-details">
               <summary>{def.title}{mustCount > 0 && <span className="hh-must-badge">{mustCount} MUST</span>}</summary>
               {ratingItems.length > 0 && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', rowGap: 10, columnGap: 16, margin: '12px 0' }}>
-                  {ratingItems.map((item) => (
-                    <div key={item.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <span style={{ fontSize: 13 }}>{item.label}{priorities[def.key]?.tiers?.[item.label] === 'must' && <span className="hh-must-badge">MUST</span>}</span>
-                      <StarInput value={form.ratings[nsKey(def.key, item.label)] || 0} onChange={(v) => setRatingItem(def.key, item.label, v)} />
-                    </div>
-                  ))}
-                </div>
+                <>
+                  <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '10px 0 0', fontStyle: 'italic' }}>Rate what you can now — the rest can wait until after you've seen it in person.</p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', rowGap: 10, columnGap: 16, margin: '10px 0 12px' }}>
+                    {ratingItems.map((item) => (
+                      <div key={item.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <span style={{ fontSize: 13 }}>{item.label}{priorities[def.key]?.tiers?.[item.label] === 'must' && <span className="hh-must-badge">MUST</span>}</span>
+                        <StarInput value={form.ratings[nsKey(def.key, item.label)] || 0} onChange={(v) => setRatingItem(def.key, item.label, v)} />
+                      </div>
+                    ))}
+                  </div>
+                </>
               )}
               {checkItems.length > 0 && (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: ratingItems.length ? 4 : 12 }}>

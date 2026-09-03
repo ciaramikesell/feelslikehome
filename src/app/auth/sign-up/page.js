@@ -21,7 +21,7 @@ export default function SignUpPage() {
     setError('');
     if (!email.trim() || !password.trim() || !confirm.trim()) { setError('Please fill in every field.'); return; }
     if (password !== confirm) { setError("Passwords don't match."); return; }
-    if (password.length < 6) { setError('Password should be at least 6 characters.'); return; }
+    if (password.length < 6) { setError('Password needs to be at least 6 characters.'); return; }
     setStatus('loading');
     const supabase = createClient();
     const { data, error: signUpError } = await supabase.auth.signUp({
@@ -31,7 +31,12 @@ export default function SignUpPage() {
     });
     if (signUpError) {
       setStatus(null);
-      setError(signUpError.message || 'Could not create your account.');
+      const msg = signUpError.message || '';
+      if (/already registered|already exists|already in use/i.test(msg)) {
+        setError('An account with that email already exists — try signing in instead.');
+      } else {
+        setError(msg || 'Could not create your account. Please try again.');
+      }
       return;
     }
     if (data.session) {
@@ -72,9 +77,15 @@ export default function SignUpPage() {
           <input className="afh-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" />
         </div>
         <PasswordField label="Password" value={password} onChange={setPassword} placeholder="Create a password" autoComplete="new-password" />
+        <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '-10px 0 0' }}>At least 6 characters.</p>
         <PasswordField label="Confirm password" value={confirm} onChange={setConfirm} placeholder="Re-enter your password" autoComplete="new-password" />
 
-        {error && <Banner kind="error">{error}</Banner>}
+        {error && (
+          <Banner kind="error">
+            {error}
+            {/already exists/i.test(error) && <> <Link href="/auth/sign-in" style={{ color: 'inherit', fontWeight: 700 }}>Sign in →</Link></>}
+          </Banner>
+        )}
 
         <button type="submit" className="afh-btn" disabled={status === 'loading'}>
           {status === 'loading' ? <><Spinner /> Creating account...</> : 'Start your home search'}

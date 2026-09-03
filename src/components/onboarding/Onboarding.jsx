@@ -1,37 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, Plus } from 'lucide-react';
-import { BrandMark, TierPicker } from '@/components/ui';
+import { BrandMark } from '@/components/ui';
+import CriteriaPicker from '@/components/CriteriaPicker';
 import {
-  SEARCH_TYPE_OPTIONS, LAYOUT_OPTIONS, INVESTMENT_PROPERTY_TYPES, ITEMLIST_CATEGORIES, TIER_META,
-  isSimpleRentalType, terminology, nextInvestmentTypes, searchTypeLabel,
+  SEARCH_TYPE_OPTIONS, LAYOUT_OPTIONS, INVESTMENT_PROPERTY_TYPES, INVESTMENT_LIVING_PLAN_OPTIONS,
+  TIER_META, isSimpleRentalType, showsHomeLayout, terminology, nextInvestmentTypes, getItemlistCategories,
 } from '@/lib/constants';
-import { parseNum } from '@/lib/matching';
 import { createClient } from '@/lib/supabase/client';
 import { updateSearchPriorities, completeOnboarding } from '@/lib/supabase/data';
 
-const TIER_EXPLAIN = [
+const TIER_LEGEND = [
   { key: 'must', title: 'Must have', desc: "A dealbreaker if it's missing." },
   { key: 'important', title: 'Important', desc: 'This should weigh heavily in your match.' },
   { key: 'nice', title: 'Nice to have', desc: 'A bonus, but not a dealbreaker.' },
-  { key: 'dontcare', title: "Don't care", desc: 'Leave it out of my home ratings.' },
 ];
-
-const ONBOARDING_CATEGORY_BLURBS = {
-  location: "Neighborhood, schools, walkability, commute & what's nearby",
-  homeFeel: 'Layout, natural light, condition, character & how the home feels',
-  exterior: 'Yard, privacy, garage, parking & outdoor space',
-  features: "Basement, fireplace, home office & other specific features",
-};
-
-function fmtShort(v) {
-  const n = parseNum(v);
-  if (n === null) return null;
-  if (n >= 1000) return `$${Math.round(n / 1000)}k`;
-  return `$${n}`;
-}
 
 function OnboardingProgress({ step }) {
   const steps = [{ n: 1, label: 'The basics' }, { n: 2, label: 'What matters' }, { n: 3, label: "You're ready" }];
@@ -58,10 +43,10 @@ function OnboardingProgress({ step }) {
   );
 }
 
-function OnboardingShell({ children }) {
+function OnboardingShell({ children, maxWidth = 640 }) {
   return (
     <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
-      <div className="hh-corner" style={{ width: '100%', maxWidth: 640 }}>
+      <div className="hh-corner" style={{ width: '100%', maxWidth }}>
         <div style={{ background: 'var(--paper-raised)', border: '1px solid var(--line)', borderRadius: 20, padding: '32px 32px 30px', display: 'flex', flexDirection: 'column', gap: 22 }}>
           {children}
         </div>
@@ -72,8 +57,9 @@ function OnboardingShell({ children }) {
 
 function OnboardingStep1({ priorities, patch, onNext }) {
   const term = terminology(priorities.searchType);
-  const showLayoutAndLot = priorities.searchType && !isSimpleRentalType(priorities.searchType);
-  const showInvestmentTypes = priorities.searchType === 'investment';
+  const showLot = priorities.searchType && !isSimpleRentalType(priorities.searchType);
+  const showLayout = showsHomeLayout(priorities.searchType);
+  const showInvestmentExtras = priorities.searchType === 'investment';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -93,18 +79,31 @@ function OnboardingStep1({ priorities, patch, onNext }) {
 
       {priorities.searchType && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 6, borderTop: '1px solid var(--line)' }}>
-          {showInvestmentTypes && (
-            <div>
-              <label className="hh-label">What type of investment property are you looking for?</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {INVESTMENT_PROPERTY_TYPES.map((opt) => (
-                  <span key={opt} className={`hh-chip ${(priorities.investmentPropertyTypes || []).includes(opt) ? 'on' : ''}`}
-                    onClick={() => patch((n) => { n.investmentPropertyTypes = nextInvestmentTypes(n.investmentPropertyTypes || [], opt); return n; })}>
-                    {opt}
-                  </span>
-                ))}
+          {showInvestmentExtras && (
+            <>
+              <div>
+                <label className="hh-label">What type of investment property are you looking for?</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {INVESTMENT_PROPERTY_TYPES.map((opt) => (
+                    <span key={opt} className={`hh-chip ${(priorities.investmentPropertyTypes || []).includes(opt) ? 'on' : ''}`}
+                      onClick={() => patch((n) => { n.investmentPropertyTypes = nextInvestmentTypes(n.investmentPropertyTypes || [], opt); return n; })}>
+                      {opt}
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
+              <div>
+                <label className="hh-label">Planning to live in the property?</label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {INVESTMENT_LIVING_PLAN_OPTIONS.map((o) => (
+                    <span key={o.key} className={`hh-chip ${priorities.planningToLiveIn === o.key ? 'on' : ''}`}
+                      onClick={() => patch((n) => { n.planningToLiveIn = n.planningToLiveIn === o.key ? '' : o.key; return n; })}>
+                      {o.label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -126,24 +125,25 @@ function OnboardingStep1({ priorities, patch, onNext }) {
             </div>
           </div>
 
-          {showLayoutAndLot && (
-            <>
-              <div>
-                <label className="hh-label">Preferred Home Layout</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {LAYOUT_OPTIONS.map((o) => (
-                    <span key={o} className={`hh-chip ${priorities.homeLayout.values.includes(o) ? 'on' : ''}`}
-                      onClick={() => patch((n) => { const cur = n.homeLayout.values; n.homeLayout = { ...n.homeLayout, values: cur.includes(o) ? cur.filter((x) => x !== o) : [...cur, o] }; return n; })}>
-                      {o}
-                    </span>
-                  ))}
-                </div>
+          {showLayout && (
+            <div>
+              <label className="hh-label">Preferred Home Layout</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {LAYOUT_OPTIONS.map((o) => (
+                  <span key={o} className={`hh-chip ${priorities.homeLayout.values.includes(o) ? 'on' : ''}`}
+                    onClick={() => patch((n) => { const cur = n.homeLayout.values; n.homeLayout = { ...n.homeLayout, values: cur.includes(o) ? cur.filter((x) => x !== o) : [...cur, o] }; return n; })}>
+                    {o}
+                  </span>
+                ))}
               </div>
-              <div>
-                <label className="hh-label">Minimum Lot Size <span style={{ fontWeight: 400, color: 'var(--ink-soft)' }}>(if desired)</span></label>
-                <input className="hh-input" style={{ maxWidth: 180 }} value={priorities.lotSizeTarget.value} onChange={(e) => patch((n) => { n.lotSizeTarget = { ...n.lotSizeTarget, value: e.target.value }; return n; })} placeholder="0.25 acres" />
-              </div>
-            </>
+            </div>
+          )}
+
+          {showLot && (
+            <div>
+              <label className="hh-label">Minimum Lot Size <span style={{ fontWeight: 400, color: 'var(--ink-soft)' }}>(if desired)</span></label>
+              <input className="hh-input" style={{ maxWidth: 180 }} value={priorities.lotSizeTarget.value} onChange={(e) => patch((n) => { n.lotSizeTarget = { ...n.lotSizeTarget, value: e.target.value }; return n; })} placeholder="0.25 acres" />
+            </div>
           )}
         </div>
       )}
@@ -157,15 +157,19 @@ function OnboardingStep1({ priorities, patch, onNext }) {
 }
 
 function OnboardingStep2({ priorities, patch, onNext, onBack }) {
+  const categories = getItemlistCategories(priorities.searchType);
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div>
         <h2 className="hh-serif" style={{ fontSize: 24, margin: 0, fontWeight: 600, color: 'var(--ink)' }}>What matters most to you?</h2>
-        <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '6px 0 0', lineHeight: 1.5 }}>Every home has tradeoffs. Tell us what's non-negotiable — and where you're willing to bend.</p>
+        <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '6px 0 0', lineHeight: 1.5 }}>
+          Every home has tradeoffs. Pick the things you care about, then tell us how much they matter. You can choose a few or get as detailed as you'd like.
+        </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        {TIER_EXPLAIN.map((t) => (
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+        {TIER_LEGEND.map((t) => (
           <div key={t.key} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '8px 10px' }}>
             <div style={{ fontSize: 11.5, fontWeight: 700, color: TIER_META[t.key].color }}>{t.title}</div>
             <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginTop: 2 }}>{t.desc}</div>
@@ -173,21 +177,9 @@ function OnboardingStep2({ priorities, patch, onNext, onBack }) {
         ))}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-        {ITEMLIST_CATEGORIES.map((def) => (
-          <div key={def.key}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--ink)' }}>{def.title}</div>
-            <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '2px 0 8px' }}>{ONBOARDING_CATEGORY_BLURBS[def.key]}</div>
-            {def.coreItems.map((item) => (
-              <div className="hh-priority-row" key={item.label}>
-                <span style={{ fontSize: 13 }}>{item.label}</span>
-                <TierPicker
-                  value={priorities[def.key]?.tiers?.[item.label] || 'dontcare'}
-                  onChange={(t) => patch((n) => { n[def.key] = { ...n[def.key], tiers: { ...n[def.key].tiers, [item.label]: t } }; return n; })}
-                />
-              </div>
-            ))}
-          </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        {categories.map((def) => (
+          <CriteriaPicker key={def.key} def={def} priorities={priorities} patch={patch} draggable={false} />
         ))}
       </div>
 
@@ -201,58 +193,50 @@ function OnboardingStep2({ priorities, patch, onNext, onBack }) {
   );
 }
 
-function OnboardingStep3({ priorities, onFinish, onBack }) {
-  const basics = [
-    priorities.budget.value && `${fmtShort(priorities.budget.value)} max`,
-    priorities.bedsMin.value && `${priorities.bedsMin.value}+ bedrooms`,
-    priorities.bathsMin.value && `${priorities.bathsMin.value}+ bathrooms`,
-  ].filter(Boolean);
+const CONFETTI_COLORS = ['#C1592F', '#74804F', '#C69245', '#3E6B6F'];
 
-  const musts = [];
-  const importants = [];
-  ITEMLIST_CATEGORIES.forEach((def) => {
-    def.coreItems.forEach((item) => {
-      const tier = priorities[def.key]?.tiers?.[item.label];
-      if (tier === 'must') musts.push(item.label);
-      if (tier === 'important') importants.push(item.label);
-    });
-  });
+function Confetti() {
+  const pieces = Array.from({ length: 18 }, (_, i) => ({
+    id: i,
+    left: 4 + Math.random() * 92,
+    delay: Math.random() * 0.35,
+    duration: 1.1 + Math.random() * 0.6,
+    color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+    size: 5 + Math.random() * 5,
+    rotate: Math.random() * 360,
+  }));
+  return (
+    <div aria-hidden="true" style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', borderRadius: 20 }}>
+      <style>{`@keyframes hh-confetti-fall { 0% { transform: translateY(-10px) rotate(0deg); opacity: 1; } 100% { transform: translateY(160px) rotate(280deg); opacity: 0; } }`}</style>
+      {pieces.map((p) => (
+        <span key={p.id} style={{
+          position: 'absolute', top: 0, left: `${p.left}%`, width: p.size, height: p.size * 0.6,
+          background: p.color, borderRadius: 2, transform: `rotate(${p.rotate}deg)`,
+          animation: `hh-confetti-fall ${p.duration}s ease-in ${p.delay}s both`,
+        }} />
+      ))}
+    </div>
+  );
+}
+
+function OnboardingStep3({ onFinish }) {
+  useEffect(() => {
+    const t = setTimeout(() => onFinish('add-home'), 1500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+    <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 22, alignItems: 'center', textAlign: 'center', padding: '12px 0' }}>
+      <Confetti />
+      <BrandMark size={44} />
       <div>
-        <h2 className="hh-serif" style={{ fontSize: 24, margin: 0, fontWeight: 600, color: 'var(--ink)' }}>Your search is ready.</h2>
-        <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '6px 0 0', lineHeight: 1.5 }}>We'll compare every home you add against what matters to you. You can change your priorities anytime.</p>
+        <h2 className="hh-serif" style={{ fontSize: 25, margin: 0, fontWeight: 600, color: 'var(--ink)' }}>Your search is ready.</h2>
+        <p style={{ fontSize: 14, color: 'var(--ink-soft)', margin: '8px 0 0', lineHeight: 1.55, maxWidth: 380 }}>
+          Now comes the fun part. Add the homes you're considering and we'll help you see how each one measures up to what matters to you.
+        </p>
       </div>
-
-      <div style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 14, padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)' }}>{searchTypeLabel(priorities.searchType) || 'Your search'}</div>
-          {basics.length > 0 && <div className="hh-mono" style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 3 }}>{basics.join(' · ')}</div>}
-        </div>
-        {musts.length > 0 && (
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--brick)', textTransform: 'uppercase', letterSpacing: '.02em' }}>Your must-haves</div>
-            <div style={{ fontSize: 13, color: 'var(--ink)', marginTop: 3 }}>{musts.join(' · ')}</div>
-          </div>
-        )}
-        {importants.length > 0 && (
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '.02em' }}>Most important</div>
-            <div style={{ fontSize: 13, color: 'var(--ink)', marginTop: 3 }}>{importants.join(' · ')}</div>
-          </div>
-        )}
-        {musts.length === 0 && importants.length === 0 && basics.length === 0 && (
-          <div style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>You skipped ahead — that's fine, you can set all of this in My Search whenever you're ready.</div>
-        )}
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <button type="button" className="hh-btn" onClick={() => onFinish('add-home')}><Plus size={15} /> Add my first home</button>
-        <button type="button" className="hh-btn hh-btn-ghost" onClick={() => onFinish('search')}>Fine-tune My Search</button>
-      </div>
-
-      <button type="button" onClick={onBack} style={{ alignSelf: 'flex-start', background: 'none', border: 'none', color: 'var(--ink-soft)', fontSize: 12, fontWeight: 500, cursor: 'pointer', padding: 0 }}>← Back to what matters</button>
+      <button type="button" className="hh-btn" onClick={() => onFinish('add-home')}><Plus size={15} /> Add my first home</button>
     </div>
   );
 }
@@ -273,29 +257,26 @@ export default function Onboarding({ userId, searchId, initialPriorities }) {
 
   const onFinish = async (action) => {
     const supabase = createClient();
-    try {
-      await completeOnboarding(supabase, userId);
-    } catch (e) {
-      console.error('Could not mark onboarding complete', e);
-    }
+    try { await completeOnboarding(supabase, userId); } catch (e) { console.error('Could not mark onboarding complete', e); }
     router.push(action === 'add-home' ? '/homes?add=1' : '/search');
-    router.refresh();
   };
 
   return (
     <div className="hh-root">
-      <OnboardingShell>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <BrandMark size={30} />
-          <span className="hh-serif" style={{ fontSize: 18, letterSpacing: '-0.01em' }}>
-            <span style={{ color: 'var(--ink)', fontWeight: 500 }}>Feels Like </span>
-            <span style={{ color: 'var(--brick)', fontWeight: 700 }}>Home</span>
-          </span>
-        </div>
-        <OnboardingProgress step={step} />
+      <OnboardingShell maxWidth={step === 3 ? 480 : 640}>
+        {step !== 3 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <BrandMark size={30} />
+            <span className="hh-serif" style={{ fontSize: 18, letterSpacing: '-0.01em' }}>
+              <span style={{ color: 'var(--ink)', fontWeight: 500 }}>Feels Like </span>
+              <span style={{ color: 'var(--brick)', fontWeight: 700 }}>Home</span>
+            </span>
+          </div>
+        )}
+        {step !== 3 && <OnboardingProgress step={step} />}
         {step === 1 && <OnboardingStep1 priorities={priorities} patch={patch} onNext={() => setStep(2)} />}
         {step === 2 && <OnboardingStep2 priorities={priorities} patch={patch} onNext={() => setStep(3)} onBack={() => setStep(1)} />}
-        {step === 3 && <OnboardingStep3 priorities={priorities} onFinish={onFinish} onBack={() => setStep(2)} />}
+        {step === 3 && <OnboardingStep3 onFinish={onFinish} />}
       </OnboardingShell>
     </div>
   );

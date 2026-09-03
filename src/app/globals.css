@@ -90,6 +90,8 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-drag-handle { color: var(--ink-soft); transition: color .12s ease, transform .12s ease; }
 .hh-priority-row.draggable:hover .hh-drag-handle { color: var(--brick); }
 .hh-priority-row.dragging .hh-drag-handle { color: var(--brick); transform: scale(1.15); }
+.hh-compare-notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+@media (max-width: 640px) { .hh-compare-notes { grid-template-columns: 1fr; } }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 640px) { .hh-root { padding: 18px 12px 48px; } }
 

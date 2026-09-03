@@ -2,10 +2,18 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut } from 'lucide-react';
+import { LogOut, SlidersHorizontal, Home as HomeIcon, Heart, Archive as ArchiveIcon, Columns } from 'lucide-react';
 import { BrandMark, Wordmark } from '@/components/ui';
 import { TABS } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
+
+const TAB_ICONS = {
+  search: SlidersHorizontal,
+  homes: HomeIcon,
+  favorites: Heart,
+  archive: ArchiveIcon,
+  compare: Columns,
+};
 
 export default function AppShell({ children, userEmail }) {
   const pathname = usePathname();
@@ -35,11 +43,14 @@ export default function AppShell({ children, userEmail }) {
         </div>
 
         <div className="hh-tabs">
-          {TABS.map(({ key, label, href, icon: Icon }) => (
-            <Link key={key} href={href} className={`hh-tab ${pathname === href ? 'active' : ''}`}>
-              <Icon size={14} /> {label}
-            </Link>
-          ))}
+          {TABS.map(({ key, label, href }) => {
+            const Icon = TAB_ICONS[key];
+            return (
+              <Link key={key} href={href} className={`hh-tab ${pathname === href ? 'active' : ''}`}>
+                <Icon size={14} /> {label}
+              </Link>
+            );
+          })}
         </div>
 
         {children}

@@ -1,4 +1,4 @@
-import { TIER_META, ITEMLIST_CATEGORIES, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES } from './constants';
+import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories } from './constants';
 
 export function parseNum(v) {
   if (v === '' || v === null || v === undefined) return null;
@@ -46,12 +46,16 @@ export function applyOrder(items, order) {
   return [...known, ...unknown];
 }
 
-// The ordered set of a category's items that are NOT set to "Don't care" — what actually shows on the home form.
-export function visibleOrderedItems(def, priorities) {
+// The ordered set of a category's items the user has actually selected (tier !== 'dontcare') —
+// this is both what shows in "Your priorities" on My Search, and what the home form asks about.
+export function selectedOrderedItems(def, priorities) {
   const { catState, core, custom } = splitCategoryItems(def, priorities);
   const ordered = applyOrder([...core, ...custom], catState.order || []);
   return ordered.filter((item) => (catState.tiers?.[item.label] || 'dontcare') !== 'dontcare');
 }
+
+// Backwards-compatible alias.
+export const visibleOrderedItems = selectedOrderedItems;
 
 /* ----------------------------- listing text parser ----------------------------- */
 
@@ -100,22 +104,32 @@ export function parseListingText(text) {
   return out;
 }
 
-/* -------------------------------- match scoring -------------------------------- */
+/* -------------------------------- match scoring --------------------------------
+ * Only criteria the user has actually selected (tier !== 'dontcare') ever affect the
+ * score — unselected criteria are worth zero weight and never appear in the summary.
+ *
+ * Every criterion is tagged "objective" (a plain yes/no or numeric threshold — beds,
+ * budget, a feature checkbox) or not (a 1-5 star rating). The "Must-haves X/Y" count
+ * and the Missing/Satisfied callouts only ever include objective criteria, since a
+ * missing objective must-have is a clean pass/fail, but a 3-star rating on a subjective
+ * must-have isn't a "failure" — it still pulls the score down proportionally to how
+ * important it was marked, without being flagged as a binary miss.
+ * ---------------------------------------------------------------------------------- */
 
 export function computeMatch(home, priorities) {
   if (!priorities) return null;
   const criteria = [];
-  const push = (key, label, tier, score, met, detail) => {
+  const push = (key, label, tier, score, met, detail, objective) => {
     if (!tier || tier === 'dontcare' || score === null) return;
-    criteria.push({ key, label, tier, score, met, detail });
+    criteria.push({ key, label, tier, score, met, detail, objective });
   };
 
   if (priorities.budget?.value) {
     const target = parseNum(priorities.budget.value);
     const price = parseNum(home.price);
     if (target && price !== null) {
-      if (price <= target) push('budget', 'Within budget', priorities.budget.tier, 1, true, `$${(target - price).toLocaleString()} under budget`);
-      else { const over = price - target; push('budget', 'Within budget', priorities.budget.tier, Math.max(0, 1 - over / target), false, `$${over.toLocaleString()} over budget`); }
+      if (price <= target) push('budget', 'Within budget', priorities.budget.tier, 1, true, `$${(target - price).toLocaleString()} under budget`, true);
+      else { const over = price - target; push('budget', 'Within budget', priorities.budget.tier, Math.max(0, 1 - over / target), false, `$${over.toLocaleString()} over budget`, true); }
     }
   }
   if (priorities.sqftTarget?.value) {
@@ -123,7 +137,7 @@ export function computeMatch(home, priorities) {
     const actual = parseNum(home.sqft);
     if (target && actual !== null) {
       const met = actual >= target;
-      push('sqft', 'Target square footage', priorities.sqftTarget.tier, met ? 1 : Math.max(0, actual / target), met, met ? `${(actual - target).toLocaleString()} sqft over target` : `${(target - actual).toLocaleString()} sqft under target`);
+      push('sqft', 'Target square footage', priorities.sqftTarget.tier, met ? 1 : Math.max(0, actual / target), met, met ? `${(actual - target).toLocaleString()} sqft over target` : `${(target - actual).toLocaleString()} sqft under target`, true);
     }
   }
   if (priorities.lotSizeTarget?.value) {
@@ -131,18 +145,18 @@ export function computeMatch(home, priorities) {
     const actual = parseNum(home.lotSize);
     if (target && actual !== null) {
       const met = actual >= target;
-      push('lotSize', 'Lot size', priorities.lotSizeTarget.tier, met ? 1 : Math.max(0, actual / target), met, met ? `${actual} (wanted ${target}+)` : `${actual} below target ${target}`);
+      push('lotSize', 'Lot size', priorities.lotSizeTarget.tier, met ? 1 : Math.max(0, actual / target), met, met ? `${actual} (wanted ${target}+)` : `${actual} below target ${target}`, true);
     }
   }
   if (priorities.bedsMin?.value) {
     const min = parseNum(priorities.bedsMin.value);
     const actual = parseNum(home.beds);
-    if (min && actual !== null) { const met = actual >= min; push('beds', 'Minimum bedrooms', priorities.bedsMin.tier, met ? 1 : actual / min, met, met ? `${actual} bed(s)` : `${actual} of ${min} desired beds`); }
+    if (min && actual !== null) { const met = actual >= min; push('beds', 'Minimum bedrooms', priorities.bedsMin.tier, met ? 1 : actual / min, met, met ? `${actual} bed(s)` : `${actual} of ${min} desired beds`, true); }
   }
   if (priorities.bathsMin?.value) {
     const min = parseNum(priorities.bathsMin.value);
     const actual = parseNum(home.baths);
-    if (min && actual !== null) { const met = actual >= min; push('baths', 'Minimum bathrooms', priorities.bathsMin.tier, met ? 1 : actual / min, met, met ? `${actual} bath(s)` : `${actual} of ${min} desired baths`); }
+    if (min && actual !== null) { const met = actual >= min; push('baths', 'Minimum bathrooms', priorities.bathsMin.tier, met ? 1 : actual / min, met, met ? `${actual} bath(s)` : `${actual} of ${min} desired baths`, true); }
   }
 
   MULTISELECT_CATEGORIES.forEach(({ key, title }) => {
@@ -150,7 +164,7 @@ export function computeMatch(home, priorities) {
     if (!pref || pref.tier === 'dontcare' || !pref.values?.length) return;
     const homeVals = home[key] || [];
     const overlap = homeVals.filter((v) => pref.values.includes(v));
-    push(key, title, pref.tier, overlap.length ? 1 : 0, overlap.length > 0, overlap.length ? overlap.join(', ') : 'No match on your list');
+    push(key, title, pref.tier, overlap.length ? 1 : 0, overlap.length > 0, overlap.length ? overlap.join(', ') : 'No match on your list', true);
   });
 
   SINGLESELECT_CATEGORIES.forEach(({ key, title }) => {
@@ -158,10 +172,10 @@ export function computeMatch(home, priorities) {
     if (!pref || pref.tier === 'dontcare' || !pref.value) return;
     const actual = home[key];
     const met = !!actual && actual === pref.value;
-    push(key, title, pref.tier, met ? 1 : 0, met, met ? pref.value : (actual ? `${actual} (wanted ${pref.value})` : 'Not set'));
+    push(key, title, pref.tier, met ? 1 : 0, met, met ? pref.value : (actual ? `${actual} (wanted ${pref.value})` : 'Not set'), true);
   });
 
-  ITEMLIST_CATEGORIES.forEach((def) => {
+  getItemlistCategories(priorities.searchType).forEach((def) => {
     const { catState, core, custom } = splitCategoryItems(def, priorities);
     [...core, ...custom].forEach((item) => {
       const tier = catState.tiers?.[item.label];
@@ -169,10 +183,10 @@ export function computeMatch(home, priorities) {
       const ns = `${def.key}:${item.label}`;
       if (item.kind === 'rating') {
         const val = home.ratings?.[ns] || 0;
-        if (val > 0) push(ns, item.label, tier, val / 5, val >= 3, `${val}/5`);
+        if (val > 0) push(ns, item.label, tier, val / 5, val >= 3, `${val}/5`, false);
       } else if (item.kind === 'check') {
         const met = !!home.checks?.[ns];
-        push(ns, item.label, tier, met ? 1 : 0, met, met ? 'Present' : 'Missing');
+        push(ns, item.label, tier, met ? 1 : 0, met, met ? 'Present' : 'Missing', true);
       }
     });
   });
@@ -182,12 +196,13 @@ export function computeMatch(home, priorities) {
   const totalWeight = criteria.reduce((s, c) => s + TIER_META[c.tier].weight, 0);
   const weightedSum = criteria.reduce((s, c) => s + c.score * TIER_META[c.tier].weight, 0);
   const pct = totalWeight > 0 ? Math.round((weightedSum / totalWeight) * 100) : null;
-  const musts = criteria.filter((c) => c.tier === 'must');
-  const mustMet = musts.filter((c) => c.met).length;
-  const missing = criteria.filter((c) => c.met === false && (c.tier === 'must' || c.tier === 'important')).sort((a, b) => TIER_META[b.tier].weight - TIER_META[a.tier].weight);
-  const satisfied = criteria.filter((c) => c.met === true && (c.tier === 'must' || c.tier === 'important')).sort((a, b) => TIER_META[b.tier].weight - TIER_META[a.tier].weight);
 
-  return { pct, mustTotal: musts.length, mustMet, missing, satisfied, criteria };
+  const objectiveMusts = criteria.filter((c) => c.tier === 'must' && c.objective);
+  const mustMet = objectiveMusts.filter((c) => c.met).length;
+  const missing = criteria.filter((c) => c.objective && c.met === false && (c.tier === 'must' || c.tier === 'important')).sort((a, b) => TIER_META[b.tier].weight - TIER_META[a.tier].weight);
+  const satisfied = criteria.filter((c) => c.objective && c.met === true && (c.tier === 'must' || c.tier === 'important')).sort((a, b) => TIER_META[b.tier].weight - TIER_META[a.tier].weight);
+
+  return { pct, mustTotal: objectiveMusts.length, mustMet, missing, satisfied, criteria };
 }
 
 export function matchColor(pct) {
