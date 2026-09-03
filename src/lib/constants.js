@@ -2,12 +2,13 @@
 // server code without pulling in any UI dependencies.
 
 export const LAYOUT_OPTIONS = ['Ranch / Single Story', 'Two Story', 'Split Level', 'Other', 'No Preference'];
+export const HOME_CONDITION_OPTIONS = ['New Construction', 'Move-In Ready', 'Some Updates Needed', 'Renovation Potential', 'No Preference'];
 
 export const LOCATION_CORE = ['Schools', 'Commute', 'Neighborhood'].map((label) => ({ label, kind: 'rating' }));
 export const LOCATION_SUGGESTED = ['Walkability', 'Immediate Street / Surroundings', 'Overall Location', 'Parks Nearby', 'Proximity to Family / Friends', 'Dog Parks Nearby', 'Groceries Nearby', 'Restaurants / Coffee / Shopping Nearby'].map((label) => ({ label, kind: 'rating' }));
 
 export const HOME_FEEL_CORE = ['Overall Condition', 'Layout / Flow'].map((label) => ({ label, kind: 'rating' }));
-export const HOME_FEEL_SUGGESTED = ['Natural Light', 'Character / Charm', 'Room Sizes', 'Openness / Ceiling Height', 'Privacy', 'Move-In Ready', 'Renovation Potential'].map((label) => ({ label, kind: 'rating' }));
+export const HOME_FEEL_SUGGESTED = ['Natural Light', 'Character / Charm', 'Room Sizes', 'Openness / Ceiling Height', 'Privacy'].map((label) => ({ label, kind: 'rating' }));
 
 export const EXTERIOR_CORE = [{ label: 'Yard', kind: 'rating' }, { label: 'Garage', kind: 'check' }, { label: 'Privacy', kind: 'rating' }];
 export const EXTERIOR_SUGGESTED = [
@@ -30,11 +31,14 @@ const APARTMENT_FEATURES_SUGGESTED = ['Pet Rent / Fees', 'Building Amenities', '
 
 export const MULTISELECT_CATEGORIES = [
   { key: 'homeLayout', title: 'Home Layout', options: LAYOUT_OPTIONS },
+  { key: 'homeCondition', title: 'Home Condition', options: HOME_CONDITION_OPTIONS },
 ];
 
+// These are presented as sub-preferences nested under Home Layout, not their own major
+// section — kept as separate priority entries under the hood, just visually subordinate.
 export const SINGLESELECT_CATEGORIES = [
-  { key: 'primaryBedroomLocation', title: 'Primary Bedroom Location', options: ['Main Floor', 'Upstairs', 'Either / No Preference'] },
-  { key: 'secondaryBedroomLocation', title: 'Secondary Bedroom Placement', options: ['All Upstairs', 'All on Main Floor', 'Split Between Floors', 'Either / No Preference'] },
+  { key: 'primaryBedroomLocation', title: 'Primary bedroom', options: ['Main Floor', 'Upstairs', 'No Preference'] },
+  { key: 'secondaryBedroomLocation', title: 'Secondary bedrooms', options: ['Same Floor', 'Split Between Floors', 'No Preference'] },
 ];
 
 // Category order per product spec: Location, Home Features, Exterior & Property, Home Feel (last).
@@ -103,8 +107,23 @@ export function getItemlistCategories(searchType) {
   return [location, features, exterior, homeFeel];
 }
 
-export const STATUS_OPTIONS = ['Considering', 'Touring', 'Offer made', 'Under contract', 'Passed'];
-export const STATUS_COLOR = { 'Considering': '#A08868', 'Touring': '#3E6B6F', 'Offer made': '#C1592F', 'Under contract': '#74804F', 'Passed': '#B3A696' };
+// Lifecycle as of V1.1: Saved -> Want to Tour -> Toured -> Archived. Favorites are a
+// separate heart flag (home.reaction), not part of this lifecycle.
+export const STATUS_OPTIONS = ['Saved', 'Want to Tour', 'Toured', 'Archived'];
+// Legacy values (from before V1.1) are kept here purely so existing homes still render
+// with a sensible color instead of falling back to gray — they're not offered as choices.
+export const STATUS_COLOR = {
+  'Saved': '#A08868', 'Want to Tour': '#3E6B6F', 'Toured': '#74804F', 'Archived': '#B3A696',
+  'Considering': '#A08868', 'Touring': '#3E6B6F', 'Offer made': '#C1592F', 'Under contract': '#74804F', 'Passed': '#B3A696',
+};
+
+// Treats the legacy 'Passed' value as equivalent to the new 'Archived' status, so existing
+// production homes keep working without a data migration.
+export function isArchivedStatus(status) {
+  return status === 'Archived' || status === 'Passed';
+}
+
+export const TOUR_RATING_KEY = 'tour:overall';
 
 export const TIER_ORDER = ['must', 'important', 'nice', 'dontcare'];
 export const TIER_META = {
@@ -146,9 +165,18 @@ export function showsHomeLayout(searchType) {
   return searchType === 'buy' || searchType === 'rent_home';
 }
 
+// Per-key visibility for MULTISELECT_CATEGORIES entries — Home Condition is a fundamental
+// preference for every search type; Home Layout is not (see showsHomeLayout above).
+export function showsMultiselectCategory(key, searchType) {
+  if (key === 'homeLayout') return showsHomeLayout(searchType);
+  return true;
+}
+
 export const INVESTMENT_PROPERTY_TYPES = ['Single-Family', 'Duplex', 'Triplex', 'Fourplex', '5+ Units', 'No Preference'];
 
-export function nextInvestmentTypes(cur, opt) {
+// Toggles an option in a multi-select array where "No Preference" is exclusive with
+// everything else — used for both investment property types and Home Condition.
+export function toggleWithNoPreference(cur, opt) {
   if (opt === 'No Preference') return cur.includes('No Preference') && cur.length === 1 ? [] : ['No Preference'];
   const withoutNoPref = cur.filter((x) => x !== 'No Preference');
   return withoutNoPref.includes(opt) ? withoutNoPref.filter((x) => x !== opt) : [...withoutNoPref, opt];
@@ -181,8 +209,8 @@ export function emptyHome() {
     id: null,
     address: '', crossroads: '', listingUrl: '', photoUrl: '',
     price: '', estMonthly: '', sqft: '', beds: '', baths: '', lotSize: '', garageSpaces: '', yearBuilt: '', daysOnMarket: '',
-    homeLayout: [], primaryBedroomLocation: '', secondaryBedroomLocation: '',
-    status: 'Considering', reaction: null, rejectionReason: '',
+    homeLayout: [], homeCondition: [], primaryBedroomLocation: '', secondaryBedroomLocation: '',
+    status: 'Saved', reaction: null, rejectionReason: '',
     ratings: {}, checks: {},
     notes: '', pros: '', cons: '',
   };
@@ -199,6 +227,7 @@ export function defaultPriorities() {
     bedsMin: { value: '', tier: 'important' },
     bathsMin: { value: '', tier: 'nice' },
     homeLayout: { values: [], tier: 'dontcare' },
+    homeCondition: { values: [], tier: 'dontcare' },
     primaryBedroomLocation: { value: '', tier: 'dontcare' },
     secondaryBedroomLocation: { value: '', tier: 'dontcare' },
     location: { customItems: [], tiers: {}, order: [], hiddenCore: [] },

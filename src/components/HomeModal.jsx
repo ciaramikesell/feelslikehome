@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import { StarInput } from '@/components/ui';
 import {
   STATUS_OPTIONS, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
+  isArchivedStatus, TOUR_RATING_KEY,
 } from '@/lib/constants';
 import { visibleOrderedItems, parseListingText } from '@/lib/matching';
 
@@ -49,8 +50,8 @@ export default function HomeModal({ initial, priorities, onSave, onClose }) {
         </div>
 
         {!initial.address && (
-          <p style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.5, margin: '0 0 18px' }}>
-            Add a home you're considering — not the one you live in now. Enter whatever you know today; you can come back after a showing to add ratings, notes, and anything else you learn.
+          <p style={{ fontSize: 14, color: 'var(--ink-soft)', lineHeight: 1.55, margin: '0 0 18px' }}>
+            Found something you like on Zillow, Realtor.com, Homes.com, Trulia, a builder site, or somewhere else? Add it here and we'll compare it against your search. Enter whatever you know today — you can come back after a showing to add ratings, notes, and anything else you learn.
           </p>
         )}
 
@@ -68,7 +69,7 @@ export default function HomeModal({ initial, priorities, onSave, onClose }) {
           <div><label className="hh-label">Address *</label><input className="hh-input" value={form.address} onChange={(e) => set('address', e.target.value)} placeholder="123 Maple St, Ann Arbor, MI" /></div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div><label className="hh-label">Nearby cross streets</label><input className="hh-input" value={form.crossroads} onChange={(e) => set('crossroads', e.target.value)} placeholder="Main & 5th" /></div>
-            <div><label className="hh-label">Listing URL</label><input className="hh-input" value={form.listingUrl} onChange={(e) => set('listingUrl', e.target.value)} placeholder="https://..." /></div>
+            <div><label className="hh-label">Listing URL</label><input className="hh-input" value={form.listingUrl} onChange={(e) => set('listingUrl', e.target.value)} placeholder="https://..." /><p style={{ fontSize: 11, color: 'var(--ink-soft)', margin: '4px 0 0' }}>Just a link back to the listing for now — pasting a URL alone can't fill in details yet.</p></div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: form.photoUrl ? '1fr 64px' : '1fr', gap: 12, alignItems: 'end' }}>
             <div><label className="hh-label">Photo URL</label><input className="hh-input" value={form.photoUrl} onChange={(e) => set('photoUrl', e.target.value)} placeholder="https://.../photo.jpg" /></div>
@@ -82,14 +83,23 @@ export default function HomeModal({ initial, priorities, onSave, onClose }) {
           <div><label className="hh-label">Status</label>
             <select className="hh-select" value={form.status} onChange={(e) => set('status', e.target.value)}>
               {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+              {!STATUS_OPTIONS.includes(form.status) && <option value={form.status}>{form.status} (legacy)</option>}
             </select>
           </div>
         </div>
 
-        {form.status === 'Passed' && (
+        {isArchivedStatus(form.status) && (
           <div style={{ marginBottom: 14 }}>
-            <label className="hh-label">Why did you pass on this one?</label>
+            <label className="hh-label">Why did you rule this one out?</label>
             <input className="hh-input" value={form.rejectionReason} onChange={(e) => set('rejectionReason', e.target.value)} placeholder="e.g. Busy road, no basement, taxes too high" />
+          </div>
+        )}
+
+        {(form.status === 'Toured' || isArchivedStatus(form.status)) && (
+          <div style={{ marginBottom: 18, background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px' }}>
+            <label className="hh-label" style={{ marginBottom: 6 }}>How did this home feel?</label>
+            <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '0 0 8px' }}>Your own reaction after seeing it in person — separate from the calculated match score. Optional.</p>
+            <StarInput value={form.ratings[TOUR_RATING_KEY] || 0} onChange={(v) => setRatingItem('tour', 'overall', v)} size={20} />
           </div>
         )}
 
@@ -109,17 +119,20 @@ export default function HomeModal({ initial, priorities, onSave, onClose }) {
           <div key={def.key} style={{ marginBottom: 16 }}>
             <label className="hh-label">{def.title}{priorities[def.key]?.tier === 'must' && <span className="hh-must-badge">MUST</span>}</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {def.options.map((o) => <span key={o} className={`hh-chip ${form[def.key]?.includes(o) ? 'on' : ''}`} onClick={() => toggleMulti(def.key, o)}>{o}</span>)}
+              {def.options.filter((o) => o !== 'No Preference').map((o) => <span key={o} className={`hh-chip ${form[def.key]?.includes(o) ? 'on' : ''}`} onClick={() => toggleMulti(def.key, o)}>{o}</span>)}
             </div>
-          </div>
-        ))}
-
-        {SINGLESELECT_CATEGORIES.filter((def) => priorities[def.key]?.tier !== 'dontcare').map((def) => (
-          <div key={def.key} style={{ marginBottom: 16 }}>
-            <label className="hh-label">{def.title}{priorities[def.key]?.tier === 'must' && <span className="hh-must-badge">MUST</span>}</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {def.options.filter((o) => o !== 'Either / No Preference').map((o) => <span key={o} className={`hh-chip ${form[def.key] === o ? 'on' : ''}`} onClick={() => setForm((f) => ({ ...f, [def.key]: f[def.key] === o ? '' : o }))}>{o}</span>)}
-            </div>
+            {def.key === 'homeLayout' && SINGLESELECT_CATEGORIES.some((d) => priorities[d.key]?.tier !== 'dontcare') && (
+              <div style={{ marginTop: 12, paddingLeft: 14, borderLeft: '2px solid var(--line)' }}>
+                {SINGLESELECT_CATEGORIES.filter((d) => priorities[d.key]?.tier !== 'dontcare').map((d) => (
+                  <div key={d.key} style={{ marginBottom: 10 }}>
+                    <label className="hh-label">{d.title}{priorities[d.key]?.tier === 'must' && <span className="hh-must-badge">MUST</span>}</label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {d.options.filter((o) => o !== 'No Preference').map((o) => <span key={o} className={`hh-chip ${form[d.key] === o ? 'on' : ''}`} onClick={() => setForm((f) => ({ ...f, [d.key]: f[d.key] === o ? '' : o }))}>{o}</span>)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ))}
 

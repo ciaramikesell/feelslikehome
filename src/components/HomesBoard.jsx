@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { StarInput, MatchSummary } from '@/components/ui';
 import HomeModal from '@/components/HomeModal';
-import { STATUS_OPTIONS, STATUS_COLOR, emptyHome, isRentalType } from '@/lib/constants';
+import { STATUS_OPTIONS, STATUS_COLOR, emptyHome, isRentalType, isArchivedStatus, TOUR_RATING_KEY } from '@/lib/constants';
 import { parseNum, fmtMoney, avgRating, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint } from '@/lib/matching';
 import { createClient } from '@/lib/supabase/client';
 import { saveHome as saveHomeQuery, deleteHome as deleteHomeQuery } from '@/lib/supabase/data';
@@ -103,6 +103,14 @@ function HomeCard({ home, priorities, onEdit, onArchiveRequest, onToggleFavorite
             <div style={{ fontSize: 11.5, color: 'var(--ink-soft)' }}>Set your priorities in <em>My Search</em> to see a match score.</div>
           )}
 
+          {home.ratings?.[TOUR_RATING_KEY] > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--ink)' }}>
+              <span style={{ color: 'var(--ink-soft)' }}>Your tour rating:</span>
+              <StarInput value={home.ratings[TOUR_RATING_KEY]} readOnly size={13} />
+              <span className="hh-mono" style={{ color: 'var(--ink-soft)' }}>{home.ratings[TOUR_RATING_KEY]}/5</span>
+            </div>
+          )}
+
           {statLine.length > 0 && (
             <div className="hh-mono" style={{ fontSize: 12.5, color: 'var(--ink-soft)', display: 'flex', flexWrap: 'wrap', alignItems: 'center' }}>
               {statLine.map((item, i) => (
@@ -167,7 +175,7 @@ function ArchiveRow({ home, onEdit, onRestore, onRequestDelete }) {
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '14px 18px', border: '1px solid var(--line)', borderRadius: 14, background: 'var(--paper-raised)', flexWrap: 'wrap' }}>
       <div>
         <div style={{ fontWeight: 500, fontSize: 14 }}>{home.address}</div>
-        <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 2 }}>{fmtMoney(home.price)}{home.rejectionReason ? ` — Passed because: ${home.rejectionReason}` : ' — no reason logged'}</div>
+        <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 2 }}>{fmtMoney(home.price)}{home.rejectionReason ? ` — Ruled out because: ${home.rejectionReason}` : ' — no reason logged'}</div>
       </div>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
         <button className="hh-btn hh-btn-ghost" style={{ fontSize: 12, padding: '6px 10px' }} onClick={() => onEdit(home)}>Edit</button>
@@ -229,11 +237,11 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
 
   const confirmArchive = useCallback(() => {
     if (!archiveTarget) return;
-    saveHome({ ...archiveTarget, status: 'Passed' });
+    saveHome({ ...archiveTarget, status: 'Archived' });
     setArchiveTarget(null);
   }, [archiveTarget, saveHome]);
 
-  const restoreHome = useCallback((home) => { saveHome({ ...home, status: 'Considering', rejectionReason: '' }); }, [saveHome]);
+  const restoreHome = useCallback((home) => { saveHome({ ...home, status: 'Saved', rejectionReason: '' }); }, [saveHome]);
 
   const confirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
@@ -244,8 +252,8 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     try { await deleteHomeQuery(supabase, id); } catch (e) { /* already removed locally */ }
   }, [deleteTarget]);
 
-  const activeHomes = useMemo(() => homes.filter((h) => h.status !== 'Passed'), [homes]);
-  const archivedHomes = useMemo(() => homes.filter((h) => h.status === 'Passed'), [homes]);
+  const activeHomes = useMemo(() => homes.filter((h) => !isArchivedStatus(h.status)), [homes]);
+  const archivedHomes = useMemo(() => homes.filter((h) => isArchivedStatus(h.status)), [homes]);
   const favoriteHomes = useMemo(() => activeHomes.filter((h) => h.reaction === 'love'), [activeHomes]);
 
   const baseList = mode === 'archive' ? archivedHomes : mode === 'favorites' ? favoriteHomes : activeHomes;
@@ -297,7 +305,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
           </div>
           <select className="hh-select" style={{ width: 'auto' }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
             <option value="All">All statuses</option>
-            {STATUS_OPTIONS.filter((s) => s !== 'Passed').map((s) => <option key={s} value={s}>{s}</option>)}
+            {STATUS_OPTIONS.filter((s) => s !== 'Archived').map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
       )}

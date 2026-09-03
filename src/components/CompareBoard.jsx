@@ -110,17 +110,17 @@ export default function CompareBoard({ homes, priorities }) {
               <div style={{ display: 'grid', gridTemplateColumns: `140px repeat(${selected.length}, minmax(110px, 1fr))`, minWidth: 140 + selected.length * 110 }}>
                 <div />
                 {selected.map((h) => (
-                  <div key={h.id} style={{ padding: '10px 12px', fontSize: 12.5, fontWeight: 600, color: 'var(--ink)', borderBottom: '1px solid var(--ink)' }}>{h.address || 'Untitled'}</div>
+                  <div key={h.id} style={{ padding: '10px 12px', fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', borderBottom: '1px solid var(--ink)' }}>{h.address || 'Untitled'}</div>
                 ))}
                 {QUICK_FACT_ROWS.map((row) => {
                   const values = selected.map((h) => row.get(h, priorities));
                   const winner = bestIndex(values, row.betterHigh);
                   return (
                     <Fragment key={row.key}>
-                      <div style={{ padding: '10px 12px', fontSize: 12, color: 'var(--ink-soft)', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center' }}>{row.label}</div>
+                      <div style={{ padding: '10px 12px', fontSize: 13, color: 'var(--ink-soft)', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center' }}>{row.label}</div>
                       {values.map((v, i) => (
                         <div key={row.key + '-' + i} className="hh-mono" style={{
-                          padding: '10px 12px', fontSize: 13, borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center',
+                          padding: '10px 12px', fontSize: 13.5, borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center',
                           color: i === winner ? 'var(--moss)' : 'var(--ink)', fontWeight: i === winner ? 700 : 500,
                         }}>
                           {row.fmt(v)}
@@ -141,12 +141,12 @@ export default function CompareBoard({ homes, priorities }) {
                 <div style={{ display: 'grid', gridTemplateColumns: `200px repeat(${selected.length}, minmax(90px, 1fr))`, minWidth: 200 + selected.length * 90 }}>
                   <div />
                   {selected.map((h) => (
-                    <div key={h.id} style={{ padding: '10px 12px', fontSize: 12.5, fontWeight: 600, color: 'var(--ink)', borderBottom: '1px solid var(--ink)' }}>{h.address || 'Untitled'}</div>
+                    <div key={h.id} style={{ padding: '10px 12px', fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', borderBottom: '1px solid var(--ink)' }}>{h.address || 'Untitled'}</div>
                   ))}
                   {priorityRows.map((row) => (
                     <Fragment key={row.ns}>
-                      <div style={{ padding: '10px 12px', fontSize: 12, color: 'var(--ink-soft)', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center' }}>
-                        {row.label} <span style={{ marginLeft: 6, fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '.02em', color: 'var(--ink-soft)' }}>· {row.tier === 'must' ? 'Must have' : row.tier === 'important' ? 'Important' : 'Nice to have'}</span>
+                      <div style={{ padding: '10px 12px', fontSize: 13, color: 'var(--ink-soft)', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center' }}>
+                        {row.label} <span style={{ marginLeft: 6, fontSize: 11, textTransform: 'uppercase', letterSpacing: '.02em', color: 'var(--ink-soft)' }}>· {row.tier === 'must' ? 'Must have' : row.tier === 'important' ? 'Important' : 'Nice to have'}</span>
                       </div>
                       {selected.map((h) => (
                         <div key={row.ns + '-' + h.id} style={{ padding: '10px 12px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center' }}>

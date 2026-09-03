@@ -5,7 +5,7 @@ import { TierPicker } from '@/components/ui';
 import CriteriaPicker from '@/components/CriteriaPicker';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, INVESTMENT_PROPERTY_TYPES, INVESTMENT_LIVING_PLAN_OPTIONS,
-  isSimpleRentalType, showsHomeLayout, terminology, nextInvestmentTypes, getItemlistCategories,
+  isSimpleRentalType, showsMultiselectCategory, terminology, toggleWithNoPreference, getItemlistCategories,
 } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { updateSearchPriorities } from '@/lib/supabase/data';
@@ -18,7 +18,7 @@ function ObjectiveRow({ label, value, onValueChange, tier, onTierChange, placeho
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
           {prefix && <span className="hh-mono" style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>{prefix}</span>}
           <input className="hh-mono hh-value-input" value={value} onChange={(e) => onValueChange(e.target.value)} placeholder={placeholder} />
-          {suffix && <span style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{suffix}</span>}
+          {suffix && <span style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>{suffix}</span>}
         </div>
       </div>
       <TierPicker value={tier} onChange={onTierChange} />
@@ -26,39 +26,24 @@ function ObjectiveRow({ label, value, onValueChange, tier, onTierChange, placeho
   );
 }
 
-function MultiselectSection({ def, priorities, patch }) {
-  const { key, title, options } = def;
-  const catState = priorities[key] || { values: [], tier: 'dontcare' };
-  const toggle = (opt) => patch((next) => { const cur = next[key].values; next[key] = { ...next[key], values: cur.includes(opt) ? cur.filter((x) => x !== opt) : [...cur, opt] }; return next; });
+// Primary/Secondary bedroom pickers, rendered as a visually subordinate block — used only
+// nested beneath Home Layout, never as its own top-level section.
+function BedroomSubPreferences({ priorities, patch }) {
   return (
-    <section>
-      <h3 className="hh-serif" style={{ fontSize: 17, fontWeight: 600, marginBottom: 4 }}>{title}</h3>
-      <div className="hh-priority-row" style={{ alignItems: 'flex-start' }}>
-        <div style={{ flex: '1 1 220px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {options.map((o) => <span key={o} className={`hh-chip ${catState.values.includes(o) ? 'on' : ''}`} onClick={() => toggle(o)}>{o}</span>)}
-        </div>
-        <TierPicker value={catState.tier} onChange={(t) => patch((next) => { next[key] = { ...next[key], tier: t }; return next; })} />
-      </div>
-    </section>
-  );
-}
-
-function BedroomPreferencesSection({ priorities, patch }) {
-  return (
-    <section>
-      <h3 className="hh-serif" style={{ fontSize: 17, fontWeight: 600, marginBottom: 4 }}>Bedroom Preferences</h3>
+    <div style={{ marginTop: 14, paddingLeft: 14, borderLeft: '2px solid var(--line)' }}>
+      <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink-soft)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.03em' }}>Bedroom Preferences</div>
       {SINGLESELECT_CATEGORIES.map((def) => {
         const catState = priorities[def.key] || { value: '', tier: 'dontcare' };
         return (
           <div className="hh-priority-row" key={def.key} style={{ alignItems: 'flex-start' }}>
-            <div style={{ flex: '1 1 220px' }}>
+            <div style={{ flex: '1 1 200px' }}>
               <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 6 }}>{def.title}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {def.options.map((o) => (
                   <span key={o} className={`hh-chip ${catState.value === o ? 'on' : ''}`} onClick={() => patch((next) => {
                     const wasSelected = next[def.key].value === o;
                     const newValue = wasSelected ? '' : o;
-                    const newTier = !wasSelected && o === 'Either / No Preference' ? 'dontcare' : next[def.key].tier;
+                    const newTier = !wasSelected && o === 'No Preference' ? 'dontcare' : next[def.key].tier;
                     next[def.key] = { ...next[def.key], value: newValue, tier: newTier };
                     return next;
                   })}>{o}</span>
@@ -69,6 +54,29 @@ function BedroomPreferencesSection({ priorities, patch }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function MultiselectSection({ def, priorities, patch, children }) {
+  const { key, title, options } = def;
+  const catState = priorities[key] || { values: [], tier: 'dontcare' };
+  const toggle = (opt) => patch((next) => {
+    const cur = next[key].values;
+    const nextValues = options.includes('No Preference') ? toggleWithNoPreference(cur, opt) : (cur.includes(opt) ? cur.filter((x) => x !== opt) : [...cur, opt]);
+    next[key] = { ...next[key], values: nextValues };
+    return next;
+  });
+  return (
+    <section>
+      <h3 className="hh-serif" style={{ fontSize: 17, fontWeight: 600, marginBottom: 4 }}>{title}</h3>
+      <div className="hh-priority-row" style={{ alignItems: 'flex-start' }}>
+        <div style={{ flex: '1 1 220px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {options.map((o) => <span key={o} className={`hh-chip ${catState.values.includes(o) ? 'on' : ''}`} onClick={() => toggle(o)}>{o}</span>)}
+        </div>
+        <TierPicker value={catState.tier} onChange={(t) => patch((next) => { next[key] = { ...next[key], tier: t }; return next; })} />
+      </div>
+      {children}
     </section>
   );
 }
@@ -90,7 +98,7 @@ export default function MySearchPanel({ searchId, initialPriorities }) {
 
   return (
     <div style={{ display: 'grid', gap: 28, maxWidth: 760 }}>
-      <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: 0 }}>
+      <p style={{ fontSize: 14, color: 'var(--ink-soft)', margin: 0, lineHeight: 1.5 }}>
         Selected = you care about it. Everything else stays out of your matches. Change importance, remove something, or add more anytime.
       </p>
 
@@ -109,7 +117,7 @@ export default function MySearchPanel({ searchId, initialPriorities }) {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 16 }}>
             {INVESTMENT_PROPERTY_TYPES.map((opt) => (
               <span key={opt} className={`hh-chip ${(p.investmentPropertyTypes || []).includes(opt) ? 'on' : ''}`}
-                onClick={() => patch((n) => { n.investmentPropertyTypes = nextInvestmentTypes(n.investmentPropertyTypes || [], opt); return n; })}>
+                onClick={() => patch((n) => { n.investmentPropertyTypes = toggleWithNoPreference(n.investmentPropertyTypes || [], opt); return n; })}>
                 {opt}
               </span>
             ))}
@@ -126,8 +134,12 @@ export default function MySearchPanel({ searchId, initialPriorities }) {
         </section>
       )}
 
-      {showsHomeLayout(p.searchType) && MULTISELECT_CATEGORIES.map((def) => <MultiselectSection key={def.key} def={def} priorities={p} patch={patch} />)}
-      <BedroomPreferencesSection priorities={p} patch={patch} />
+      {MULTISELECT_CATEGORIES.filter((def) => showsMultiselectCategory(def.key, p.searchType)).map((def) => (
+        <MultiselectSection key={def.key} def={def} priorities={p} patch={patch}>
+          {def.key === 'homeLayout' && <BedroomSubPreferences priorities={p} patch={patch} />}
+        </MultiselectSection>
+      ))}
+
       {categories.map((def) => <CriteriaPicker key={def.key} def={def} priorities={p} patch={patch} draggable />)}
     </div>
   );

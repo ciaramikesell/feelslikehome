@@ -58,7 +58,7 @@ export default function CriteriaPicker({ def, priorities, patch, draggable = fal
   return (
     <section>
       <h3 className="hh-serif" style={{ fontSize: 17, fontWeight: 600, marginBottom: 4 }}>{title}</h3>
-      {blurb && <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 10px' }}>{blurb}</p>}
+      {blurb && <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '0 0 10px' }}>{blurb}</p>}
 
       {selected.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
@@ -83,7 +83,7 @@ export default function CriteriaPicker({ def, priorities, patch, draggable = fal
                     <button
                       key={t} type="button" onClick={() => setTier(item.label, t)}
                       style={{
-                        fontSize: 10.5, padding: '4px 8px', borderRadius: 999, cursor: 'pointer', fontWeight: tierOf(item.label) === t ? 600 : 400,
+                        fontSize: 11.5, padding: '4px 9px', borderRadius: 999, cursor: 'pointer', fontWeight: tierOf(item.label) === t ? 600 : 400,
                         border: '1px solid ' + (tierOf(item.label) === t ? TIER_META[t].color : 'var(--line)'),
                         background: tierOf(item.label) === t ? TIER_META[t].color : 'transparent',
                         color: tierOf(item.label) === t ? '#fff' : 'var(--ink-soft)',

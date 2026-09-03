@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, Plus } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
 import CriteriaPicker from '@/components/CriteriaPicker';
 import {
-  SEARCH_TYPE_OPTIONS, LAYOUT_OPTIONS, INVESTMENT_PROPERTY_TYPES, INVESTMENT_LIVING_PLAN_OPTIONS,
-  TIER_META, isSimpleRentalType, showsHomeLayout, terminology, nextInvestmentTypes, getItemlistCategories,
+  SEARCH_TYPE_OPTIONS, LAYOUT_OPTIONS, HOME_CONDITION_OPTIONS, INVESTMENT_PROPERTY_TYPES, INVESTMENT_LIVING_PLAN_OPTIONS,
+  TIER_META, isSimpleRentalType, showsHomeLayout, terminology, toggleWithNoPreference, getItemlistCategories,
 } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { updateSearchPriorities, completeOnboarding } from '@/lib/supabase/data';
@@ -86,7 +86,7 @@ function OnboardingStep1({ priorities, patch, onNext }) {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {INVESTMENT_PROPERTY_TYPES.map((opt) => (
                     <span key={opt} className={`hh-chip ${(priorities.investmentPropertyTypes || []).includes(opt) ? 'on' : ''}`}
-                      onClick={() => patch((n) => { n.investmentPropertyTypes = nextInvestmentTypes(n.investmentPropertyTypes || [], opt); return n; })}>
+                      onClick={() => patch((n) => { n.investmentPropertyTypes = toggleWithNoPreference(n.investmentPropertyTypes || [], opt); return n; })}>
                       {opt}
                     </span>
                   ))}
@@ -125,13 +125,25 @@ function OnboardingStep1({ priorities, patch, onNext }) {
             </div>
           </div>
 
+          <div>
+            <label className="hh-label">Home Condition</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {HOME_CONDITION_OPTIONS.map((o) => (
+                <span key={o} className={`hh-chip ${priorities.homeCondition.values.includes(o) ? 'on' : ''}`}
+                  onClick={() => patch((n) => { n.homeCondition = { ...n.homeCondition, values: toggleWithNoPreference(n.homeCondition.values, o) }; return n; })}>
+                  {o}
+                </span>
+              ))}
+            </div>
+          </div>
+
           {showLayout && (
             <div>
               <label className="hh-label">Preferred Home Layout</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {LAYOUT_OPTIONS.map((o) => (
                   <span key={o} className={`hh-chip ${priorities.homeLayout.values.includes(o) ? 'on' : ''}`}
-                    onClick={() => patch((n) => { const cur = n.homeLayout.values; n.homeLayout = { ...n.homeLayout, values: cur.includes(o) ? cur.filter((x) => x !== o) : [...cur, o] }; return n; })}>
+                    onClick={() => patch((n) => { n.homeLayout = { ...n.homeLayout, values: toggleWithNoPreference(n.homeLayout.values, o) }; return n; })}>
                     {o}
                   </span>
                 ))}
@@ -220,23 +232,18 @@ function Confetti() {
 }
 
 function OnboardingStep3({ onFinish }) {
-  useEffect(() => {
-    const t = setTimeout(() => onFinish('add-home'), 1500);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   return (
     <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 22, alignItems: 'center', textAlign: 'center', padding: '12px 0' }}>
       <Confetti />
       <BrandMark size={44} />
       <div>
-        <h2 className="hh-serif" style={{ fontSize: 25, margin: 0, fontWeight: 600, color: 'var(--ink)' }}>Your search is ready.</h2>
-        <p style={{ fontSize: 14, color: 'var(--ink-soft)', margin: '8px 0 0', lineHeight: 1.55, maxWidth: 380 }}>
-          Now comes the fun part. Add the homes you're considering and we'll help you see how each one measures up to what matters to you.
+        <h2 className="hh-serif" style={{ fontSize: 25, margin: 0, fontWeight: 600, color: 'var(--ink)' }}>Your search is ready!</h2>
+        <p style={{ fontSize: 14.5, color: 'var(--ink-soft)', margin: '10px 0 0', lineHeight: 1.6, maxWidth: 400 }}>
+          Now comes the fun part. Find homes you like on Zillow, Realtor.com, Homes.com, Trulia, builder websites, or anywhere else you browse. Add them here and Feels Like Home will help you see how each one measures up to what matters to you.
         </p>
       </div>
       <button type="button" className="hh-btn" onClick={() => onFinish('add-home')}><Plus size={15} /> Add my first home</button>
+      <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: 0, fontStyle: 'italic' }}>Already have a listing open? Grab the link — you can add it next.</p>
     </div>
   );
 }
