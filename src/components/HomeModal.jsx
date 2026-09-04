@@ -1,15 +1,15 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { X, Upload, Link2 } from 'lucide-react';
+import { X, Upload, Link2, Footprints, Archive as ArchiveIcon, ExternalLink, Check } from 'lucide-react';
 import { StarInput } from '@/components/ui';
 import {
-  STATUS_OPTIONS, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
+  MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
   isArchivedStatus, isRentalType, TOUR_RATING_KEY,
 } from '@/lib/constants';
 import { visibleOrderedItems, parseListingText, selectedSubjectiveCriteria } from '@/lib/matching';
 import { extractAddressFromListingUrl } from '@/lib/listingUrl';
-import { splitAddressLines, formatFoundCardFacts, countFoundFacts } from '@/lib/homeDisplay';
+import { splitAddressLines, formatFoundCardFacts, countFoundFacts, formatCurrencyDisplay, digitsOnly, formatLotSizeDisplay } from '@/lib/homeDisplay';
 import { createClient } from '@/lib/supabase/client';
 
 const PHOTO_BUCKET = 'home-photos';
@@ -28,7 +28,102 @@ function storagePathFromPublicUrl(url) {
   return url.slice(idx + marker.length);
 }
 
-export default function HomeModal({ initial, priorities, onSave, onClose, userId }) {
+// A single compact fact input. Filled values look settled (solid border, dark
+// text); empty ones look like an understated invitation to add something (dashed
+// border, muted "Add ___" placeholder) — never alarming, never a blank form field.
+function CompactField({ label, value, onChange, isCurrency, placeholder, must }) {
+  const filled = !!value;
+  const shown = isCurrency ? (filled ? formatCurrencyDisplay(value) : '') : (value || '');
+  return (
+    <div>
+      <label className="hh-label" style={{ fontSize: 10.5, marginBottom: 3 }}>{label}{must && <span className="hh-must-badge">MUST</span>}</label>
+      <input
+        className="hh-input"
+        style={{
+          fontSize: 12.5,
+          padding: '6px 9px',
+          borderStyle: filled ? 'solid' : 'dashed',
+          borderColor: filled ? 'var(--line)' : 'var(--ink-soft)',
+          color: filled ? 'var(--ink)' : 'var(--ink-soft)',
+          background: filled ? 'var(--paper-raised)' : 'transparent',
+        }}
+        value={shown}
+        onChange={(e) => onChange(isCurrency ? digitsOnly(e.target.value) : e.target.value)}
+        placeholder={placeholder}
+      />
+    </div>
+  );
+}
+
+// The compact "Property details" area: a settled, scannable summary of what's
+// known by default, with an explicit toggle to reveal small editable fields —
+// replacing what used to be nine equally-prominent form boxes. Filled vs. empty
+// fields are visually distinct so it's obvious at a glance what's known vs. what's
+// merely optional to add.
+function PropertyFacts({ form, set, priorities }) {
+  const [editOpen, setEditOpen] = useState(() => !(form.price || form.beds || form.baths || form.sqft));
+  const priceLabel = terminology(priorities.searchType).priceFieldLabel;
+
+  const facts = formatFoundCardFacts({
+    price: form.price, beds: form.beds, baths: form.baths, sqft: form.sqft,
+    yearBuilt: form.yearBuilt, garageSpaces: form.garageSpaces,
+    lotSize: form.lotSize, daysOnMarket: form.daysOnMarket,
+  });
+  const hasAnyFacts = !!(facts.priceLine || facts.bedsBathsSqft || facts.secondaryFacts);
+
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <label className="hh-label" style={{ marginBottom: 8 }}>Property details</label>
+
+      {!editOpen && hasAnyFacts && (
+        <div style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px' }}>
+          {facts.priceLine && <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>{facts.priceLine}</div>}
+          {facts.bedsBathsSqft && <div style={{ fontSize: 13.5, color: 'var(--ink)', marginTop: 2 }}>{facts.bedsBathsSqft}</div>}
+          {facts.secondaryFacts && <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 4 }}>{facts.secondaryFacts}</div>}
+          {!form.estMonthly && (
+            <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 6, fontStyle: 'italic' }}>Estimated monthly payment not added</div>
+          )}
+          <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px', marginTop: 10 }} onClick={() => setEditOpen(true)}>
+            Edit these details
+          </button>
+        </div>
+      )}
+
+      {(editOpen || !hasAnyFacts) && (
+        <div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 10 }}>
+            {priorities.budget?.tier !== 'dontcare' && (
+              <CompactField label={priceLabel} value={form.price} isCurrency onChange={(v) => set('price', v)} placeholder={`Add ${priceLabel.toLowerCase()}`} must={priorities.budget?.tier === 'must'} />
+            )}
+            <CompactField label="Est. monthly pmt" value={form.estMonthly} isCurrency onChange={(v) => set('estMonthly', v)} placeholder="Add est. payment" />
+            {priorities.bedsMin?.tier !== 'dontcare' && (
+              <CompactField label="Beds" value={form.beds} onChange={(v) => set('beds', v)} placeholder="Add beds" must={priorities.bedsMin?.tier === 'must'} />
+            )}
+            {priorities.bathsMin?.tier !== 'dontcare' && (
+              <CompactField label="Baths" value={form.baths} onChange={(v) => set('baths', v)} placeholder="Add baths" must={priorities.bathsMin?.tier === 'must'} />
+            )}
+            {priorities.sqftTarget?.tier !== 'dontcare' && (
+              <CompactField label="Sq ft" value={form.sqft} onChange={(v) => set('sqft', v)} placeholder="Add sq ft" must={priorities.sqftTarget?.tier === 'must'} />
+            )}
+            {priorities.lotSizeTarget?.tier !== 'dontcare' && (
+              <CompactField label="Lot size" value={form.lotSize} onChange={(v) => set('lotSize', v)} placeholder="0.25 acres" must={priorities.lotSizeTarget?.tier === 'must'} />
+            )}
+            <CompactField label="Garage" value={form.garageSpaces} onChange={(v) => set('garageSpaces', v)} placeholder="Add garage" />
+            <CompactField label="Year built" value={form.yearBuilt} onChange={(v) => set('yearBuilt', v)} placeholder="Add year" />
+            <CompactField label="Days on mkt" value={form.daysOnMarket} onChange={(v) => set('daysOnMarket', v)} placeholder="Add DOM" />
+          </div>
+          {hasAnyFacts && (
+            <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px' }} onClick={() => setEditOpen(false)}>
+              Show summary
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function HomeModal({ initial, priorities, onSave, onClose, userId, onWantToTour, onArchiveRequest }) {
   const [form, setForm] = useState(initial);
   const [pasteText, setPasteText] = useState('');
   const [parseMsg, setParseMsg] = useState('');
@@ -408,19 +503,6 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
               </details>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, margin: '14px 0' }}>
-              {priorities.budget?.tier !== 'dontcare' && <div><label className="hh-label">{terminology(priorities.searchType).priceFieldLabel}{priorities.budget?.tier === 'must' && <span className="hh-must-badge">MUST</span>}</label><input className="hh-input" value={form.price} onChange={(e) => set('price', e.target.value)} placeholder={terminology(priorities.searchType).pricePlaceholder} /></div>}
-              <div><label className="hh-label">Est. monthly pmt</label><input className="hh-input" value={form.estMonthly} onChange={(e) => set('estMonthly', e.target.value)} placeholder="2800" /></div>
-              {!isNewHome && (
-                <div><label className="hh-label">Status</label>
-                  <select className="hh-select" value={form.status} onChange={(e) => set('status', e.target.value)}>
-                    {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
-                    {!STATUS_OPTIONS.includes(form.status) && <option value={form.status}>{form.status} (legacy)</option>}
-                  </select>
-                </div>
-              )}
-            </div>
-
             {isArchivedStatus(form.status) && (
               <div style={{ marginBottom: 14 }}>
                 <label className="hh-label">Why did you rule this one out?</label>
@@ -428,17 +510,7 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
               </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 12 }}>
-              {priorities.bedsMin?.tier !== 'dontcare' && <div><label className="hh-label">Beds{priorities.bedsMin?.tier === 'must' && <span className="hh-must-badge">MUST</span>}</label><input className="hh-input" value={form.beds} onChange={(e) => set('beds', e.target.value)} placeholder="3" /></div>}
-              {priorities.bathsMin?.tier !== 'dontcare' && <div><label className="hh-label">Baths{priorities.bathsMin?.tier === 'must' && <span className="hh-must-badge">MUST</span>}</label><input className="hh-input" value={form.baths} onChange={(e) => set('baths', e.target.value)} placeholder="2" /></div>}
-              {priorities.sqftTarget?.tier !== 'dontcare' && <div><label className="hh-label">Sq ft{priorities.sqftTarget?.tier === 'must' && <span className="hh-must-badge">MUST</span>}</label><input className="hh-input" value={form.sqft} onChange={(e) => set('sqft', e.target.value)} placeholder="1800" /></div>}
-              {priorities.lotSizeTarget?.tier !== 'dontcare' && <div><label className="hh-label">Lot size{priorities.lotSizeTarget?.tier === 'must' && <span className="hh-must-badge">MUST</span>}</label><input className="hh-input" value={form.lotSize} onChange={(e) => set('lotSize', e.target.value)} placeholder="0.25 acres" /></div>}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 18 }}>
-              <div><label className="hh-label">Garage spaces</label><input className="hh-input" value={form.garageSpaces} onChange={(e) => set('garageSpaces', e.target.value)} placeholder="2" /></div>
-              <div><label className="hh-label">Year built</label><input className="hh-input" value={form.yearBuilt} onChange={(e) => set('yearBuilt', e.target.value)} placeholder="1965" /></div>
-              <div><label className="hh-label">Days on market</label><input className="hh-input" value={form.daysOnMarket} onChange={(e) => set('daysOnMarket', e.target.value)} placeholder="14" /></div>
-            </div>
+            <PropertyFacts form={form} set={set} priorities={priorities} />
           </div>
         )}
 
@@ -559,11 +631,17 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
         <div style={{ marginTop: 20, marginBottom: 8 }}>
           <button
             type="button"
-            className="hh-btn hh-btn-ghost"
-            style={{ fontSize: 13 }}
             onClick={() => setMoreDetailsOpen((v) => !v)}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+              background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 12,
+              padding: '12px 14px', cursor: 'pointer', textAlign: 'left',
+            }}
           >
-            {moreDetailsOpen ? '− Hide more details' : '+ Add more details'}
+            <div>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>{moreDetailsOpen ? '− Hide more details' : '+ Add more details'}</div>
+              <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', marginTop: 2 }}>Layout, condition, features, notes & more</div>
+            </div>
           </button>
 
           {moreDetailsOpen && (
@@ -640,6 +718,42 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
             </div>
           )}
         </div>
+
+        {!isNewHome && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
+            {form.listingUrl && (
+              <a href={form.listingUrl} target="_blank" rel="noreferrer" className="hh-btn hh-btn-ghost" style={{ padding: '5px 8px' }} title="Open listing">
+                <ExternalLink size={13} />
+              </a>
+            )}
+            {onArchiveRequest && !isArchivedStatus(form.status) && (
+              <button
+                type="button"
+                className="hh-btn hh-btn-ghost"
+                style={{ padding: '5px 8px' }}
+                onClick={() => { onArchiveRequest(form); onClose(); }}
+                title="Archive"
+              >
+                <ArchiveIcon size={13} />
+              </button>
+            )}
+            {onWantToTour && form.status !== 'Want to Tour' && form.status !== 'Toured' && !isArchivedStatus(form.status) && (
+              <button
+                type="button"
+                className="hh-btn"
+                style={{ fontSize: 12.5, padding: '6px 12px' }}
+                onClick={() => onWantToTour(form)}
+              >
+                <Footprints size={13} /> Want to tour
+              </button>
+            )}
+            {form.status === 'Want to Tour' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 600, color: 'var(--ink-soft)' }}>
+                <Check size={13} color="var(--moss)" /> Want to tour
+              </div>
+            )}
+          </div>
+        )}
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
           <button className="hh-btn hh-btn-ghost" onClick={onClose}>Cancel</button>

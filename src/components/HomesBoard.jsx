@@ -167,42 +167,51 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
             </div>
           )}
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 4, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
-            <div style={{ display: 'flex', gap: 4 }}>
-              {home.listingUrl && (
-                <a href={home.listingUrl} target="_blank" rel="noreferrer" className="hh-btn hh-btn-ghost" style={{ padding: '5px 8px' }} title="Open listing">
-                  <ExternalLink size={13} />
-                </a>
-              )}
-              <button className="hh-btn hh-btn-ghost" style={{ padding: '5px 8px' }} onClick={() => onArchiveRequest(home)} title="Archive">
-                <ArchiveIcon size={13} />
+          <div style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: 6, marginTop: 4, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+            {home.listingUrl && (
+              <a href={home.listingUrl} target="_blank" rel="noreferrer" className="hh-btn hh-btn-ghost" style={{ padding: '5px 7px', flexShrink: 0 }} title="Open listing">
+                <ExternalLink size={13} />
+              </a>
+            )}
+            <button className="hh-btn hh-btn-ghost" style={{ padding: '5px 7px', flexShrink: 0 }} onClick={() => onArchiveRequest(home)} title="Archive">
+              <ArchiveIcon size={13} />
+            </button>
+            {showQuickFavorite && (
+              <button
+                type="button"
+                className="hh-btn hh-btn-ghost"
+                style={{ padding: '5px 7px', flexShrink: 0 }}
+                onClick={() => onToggleFavorite(home)}
+                title={isFavorite ? 'Remove from favorites' : 'Love it / Favorite'}
+                aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+              >
+                <Heart size={13} color={isFavorite ? 'var(--brick)' : undefined} fill={isFavorite ? 'var(--brick)' : 'none'} />
               </button>
-              {showQuickFavorite && (
-                <button
-                  type="button"
-                  className="hh-btn hh-btn-ghost"
-                  style={{ padding: '5px 8px' }}
-                  onClick={() => onToggleFavorite(home)}
-                  title={isFavorite ? 'Remove from favorites' : 'Love it / Favorite'}
-                  aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-                >
-                  <Heart size={13} color={isFavorite ? 'var(--brick)' : undefined} fill={isFavorite ? 'var(--brick)' : 'none'} />
-                </button>
-              )}
-            </div>
+            )}
+
+            <div style={{ flex: 1 }} />
 
             {isPreTour && (
               <button
                 type="button"
                 className="hh-btn"
-                style={{ fontSize: 12.5, padding: '7px 14px', flex: '1 1 auto', maxWidth: 180, justifyContent: 'center' }}
+                style={{ fontSize: 11.5, padding: '6px 10px', flexShrink: 0 }}
                 onClick={() => onWantToTour(home)}
               >
-                <Footprints size={13} /> Want to tour
+                <Footprints size={12} /> Want to tour
               </button>
             )}
 
-            <button className="hh-btn hh-btn-ghost" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => onEdit(home)}>Edit</button>
+            <button
+              className="hh-btn"
+              style={{
+                padding: '6px 11px', fontSize: 11.5, flexShrink: 0,
+                background: 'var(--paper)', border: '1px solid var(--ink-soft)', color: 'var(--ink)', fontWeight: 700,
+              }}
+              onClick={() => onEdit(home)}
+            >
+              Edit
+            </button>
           </div>
         </div>
       </div>
@@ -233,7 +242,13 @@ function ArchiveRow({ home, onEdit, onRestore, onRequestDelete }) {
         <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 2 }}>{fmtMoney(home.price)}{home.rejectionReason ? ` — Ruled out because: ${home.rejectionReason}` : ' — no reason logged'}</div>
       </div>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-        <button className="hh-btn hh-btn-ghost" style={{ fontSize: 12, padding: '6px 10px' }} onClick={() => onEdit(home)}>Edit</button>
+        <button
+          className="hh-btn"
+          style={{ fontSize: 12, padding: '6px 11px', background: 'var(--paper)', border: '1px solid var(--ink-soft)', color: 'var(--ink)', fontWeight: 700 }}
+          onClick={() => onEdit(home)}
+        >
+          Edit
+        </button>
         <button className="hh-btn hh-btn-ghost" style={{ fontSize: 12, padding: '6px 10px' }} onClick={() => onRestore(home)}><Undo2 size={13} /> Restore</button>
         <button type="button" onClick={() => onRequestDelete(home)} style={{ background: 'none', border: 'none', color: 'var(--ink-soft)', fontSize: 11.5, cursor: 'pointer', padding: '6px 4px', textDecoration: 'underline' }}>
           Delete permanently
@@ -365,7 +380,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     return (
       <>
         <ArchiveList homes={archivedHomes} onEdit={setModalHome} onRestore={restoreHome} onRequestDelete={setDeleteTarget} />
-        {modalHome && <HomeModal initial={modalHome} priorities={priorities} userId={userId} onSave={saveHome} onClose={() => setModalHome(null)} />}
+        {modalHome && <HomeModal initial={modalHome} priorities={priorities} userId={userId} onSave={saveHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget} />}
         {deleteTarget && (
           <ConfirmModal
             title="Delete this home permanently?"
@@ -425,7 +440,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         />
       )}
 
-      {modalHome && <HomeModal initial={modalHome} priorities={priorities} userId={userId} onSave={saveHome} onClose={() => setModalHome(null)} />}
+      {modalHome && <HomeModal initial={modalHome} priorities={priorities} userId={userId} onSave={saveHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget} />}
 
       {postTourTarget && (
         <PostTourModal
