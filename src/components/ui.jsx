@@ -111,6 +111,17 @@ export function ReactionButtons({ home, onReact }) {
   );
 }
 
+// Small, consistent "what is this page for" supporting copy, used near the top of
+// each main logged-in page — not a redesign of page headers, just one subtle line.
+export function PageIntro({ title, subtitle }) {
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <h2 className="hh-serif" style={{ fontSize: 20, fontWeight: 600, margin: '0 0 4px', color: 'var(--ink)' }}>{title}</h2>
+      {subtitle && <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: 0, lineHeight: 1.5 }}>{subtitle}</p>}
+    </div>
+  );
+}
+
 export function MatchSummary({ match, compact }) {
   if (!match) return null;
   return (

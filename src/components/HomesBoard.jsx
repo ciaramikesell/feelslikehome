@@ -315,9 +315,9 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
           <div style={{ fontSize: 13.5, color: 'var(--ink-soft)', padding: '30px 0' }}>Nothing favorited yet. Tap the heart on a home to add it here.</div>
         ) : (
           <div className="hh-corner" style={{ border: '1px dashed var(--line)', borderRadius: 16, padding: '48px 24px', textAlign: 'center', color: 'var(--ink-soft)' }}>
-            <p className="hh-serif" style={{ fontSize: 17, color: 'var(--ink)', marginBottom: 6 }}>{activeHomes.length === 0 ? 'No homes yet' : 'Nothing matches that search'}</p>
-            <p style={{ fontSize: 13, marginBottom: 18 }}>{activeHomes.length === 0 ? "Add the first listing you're considering to start comparing." : 'Try a different search or status filter.'}</p>
-            {activeHomes.length === 0 && <button className="hh-btn" onClick={() => setModalHome(emptyHome())}><Plus size={15} /> Add your first home</button>}
+            <p className="hh-serif" style={{ fontSize: 17, color: 'var(--ink)', marginBottom: 6 }}>{activeHomes.length === 0 ? 'Ready to start?' : 'Nothing matches that search'}</p>
+            <p style={{ fontSize: 13, marginBottom: 18 }}>{activeHomes.length === 0 ? 'Find a home on your favorite listing site, copy the link, then click + Add home.' : 'Try a different search or status filter.'}</p>
+            {activeHomes.length === 0 && <button className="hh-btn" onClick={() => setModalHome(emptyHome())}><Plus size={15} /> Add home</button>}
           </div>
         )
       ) : (

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Upload, Link2 } from 'lucide-react';
 import { StarInput } from '@/components/ui';
 import {
   STATUS_OPTIONS, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
@@ -443,12 +443,14 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
                 background: 'rgba(198,146,69,0.08)',
                 border: '1px solid rgba(198,146,69,0.28)',
                 borderRadius: 16,
-                padding: '18px 20px 20px',
-                margin: '16px 0',
+                padding: '14px 16px 16px',
+                margin: '14px 0',
               }}
             >
-              <h3 className="hh-serif" style={{ fontSize: 15, fontWeight: 600, margin: '0 0 2px' }}>Add a photo</h3>
-              <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 14px' }}>Give this home a face so it's easy to spot later.</p>
+              <h3 className="hh-serif" style={{ fontSize: 15, fontWeight: 600, margin: '0 0 3px' }}>Add a photo</h3>
+              <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 12px', lineHeight: 1.45 }}>
+                Give this home a face so it's easy to spot later — you can always add or change it.
+              </p>
 
               <input
                 ref={photoInputRef}
@@ -470,22 +472,34 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
                   </div>
                 </div>
               ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                  <button type="button" className="hh-btn" onClick={() => photoInputRef.current?.click()}>+ Upload photo</button>
-                  <button type="button" className="hh-suggest-chip" onClick={() => setShowPhotoUrlInput((v) => !v)}>or paste a photo URL</button>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="hh-btn"
+                    style={{ flex: '1 1 160px', justifyContent: 'center' }}
+                    onClick={() => photoInputRef.current?.click()}
+                  >
+                    <Upload size={14} /> Upload photo
+                  </button>
+                  <button
+                    type="button"
+                    className="hh-btn hh-btn-ghost"
+                    style={{ flex: '1 1 160px', justifyContent: 'center' }}
+                    onClick={() => setShowPhotoUrlInput((v) => !v)}
+                  >
+                    <Link2 size={14} /> Paste a photo URL
+                  </button>
                 </div>
               )}
 
               {photoError && <p style={{ fontSize: 12, color: 'var(--brick)', margin: '8px 0 0' }}>{photoError}</p>}
 
               {urlInputVisible && (
-                <div style={{ marginTop: 12 }}>
+                <div style={{ marginTop: 10 }}>
                   <label className="hh-label">Photo URL</label>
                   <input className="hh-input" style={{ background: 'var(--paper-raised)' }} value={form.photoUrl} onChange={(e) => set('photoUrl', e.target.value)} placeholder="https://.../photo.jpg" />
                 </div>
               )}
-
-              <p style={{ fontSize: 11, color: 'var(--ink-soft)', margin: '10px 0 0' }}>You can always add or change this later.</p>
             </div>
           );
         })()}
