@@ -4,6 +4,7 @@ import { useState, useMemo, Fragment } from 'react';
 import { Columns, Star } from 'lucide-react';
 import { getItemlistCategories } from '@/lib/constants';
 import { parseNum, fmtMoney, computeMatch, matchColor, splitCategoryItems } from '@/lib/matching';
+import { formatLotSizeDisplay } from '@/lib/homeDisplay';
 
 const MAX_COMPARE = 4;
 
@@ -15,7 +16,7 @@ const QUICK_FACT_ROWS = [
   { key: 'baths', label: 'Baths', betterHigh: true, get: (h) => parseNum(h.baths), fmt: (v) => (v === null ? '—' : v) },
   { key: 'sqft', label: 'Sq ft', betterHigh: true, get: (h) => parseNum(h.sqft), fmt: (v) => (v === null ? '—' : v.toLocaleString()) },
   { key: 'pps', label: '$/sq ft', betterHigh: false, get: (h) => (parseNum(h.price) && parseNum(h.sqft) ? Math.round(parseNum(h.price) / parseNum(h.sqft)) : null), fmt: (v) => (v === null ? '—' : '$' + v) },
-  { key: 'lot', label: 'Lot', betterHigh: null, get: (h) => h.lotSize || null, fmt: (v) => v || '—' },
+  { key: 'lot', label: 'Lot', betterHigh: null, get: (h) => h.lotSize || null, fmt: (v) => (v ? formatLotSizeDisplay(v) : '—') },
   { key: 'garage', label: 'Garage', betterHigh: true, get: (h) => parseNum(h.garageSpaces), fmt: (v) => (v === null ? '—' : v) },
   { key: 'year', label: 'Year', betterHigh: null, get: (h) => h.yearBuilt || null, fmt: (v) => v || '—' },
   { key: 'dom', label: 'Days on market', betterHigh: false, get: (h) => parseNum(h.daysOnMarket), fmt: (v) => (v === null ? '—' : v) },

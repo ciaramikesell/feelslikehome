@@ -10,8 +10,9 @@ import {
 import { StarInput, MatchSummary } from '@/components/ui';
 import HomeModal from '@/components/HomeModal';
 import PostTourModal from '@/components/PostTourModal';
-import { STATUS_OPTIONS, STATUS_COLOR, emptyHome, isRentalType, isArchivedStatus, TOUR_RATING_KEY } from '@/lib/constants';
+import { STATUS_COLOR, emptyHome, isRentalType, isArchivedStatus, TOUR_RATING_KEY } from '@/lib/constants';
 import { parseNum, fmtMoney, avgRating, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint } from '@/lib/matching';
+import { formatLotSizeDisplay } from '@/lib/homeDisplay';
 import { createClient } from '@/lib/supabase/client';
 import { saveHome as saveHomeQuery, deleteHome as deleteHomeQuery } from '@/lib/supabase/data';
 
@@ -65,7 +66,7 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
     home.baths && `${home.baths} ba`,
     home.sqft && `${parseNum(home.sqft)?.toLocaleString()} sqft`,
     pps && `$${pps}/sqft`,
-    home.lotSize && `${home.lotSize} lot`,
+    home.lotSize && `${formatLotSizeDisplay(home.lotSize)} lot`,
     home.garageSpaces && `${home.garageSpaces}-car garage`,
     styleSummary || null,
   ].filter(Boolean);
@@ -275,7 +276,6 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   const [homes, setHomes] = useState(initialHomes);
   const [priorities] = useState(initialPriorities);
   const [query, setQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
   const [modalHome, setModalHome] = useState(null);
   const [postTourTarget, setPostTourTarget] = useState(null);
   const [archiveTarget, setArchiveTarget] = useState(null);
@@ -366,7 +366,6 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   const filtered = useMemo(() => {
     if (mode !== 'homes') return baseList;
     return baseList.filter((h) => {
-      if (statusFilter !== 'All' && h.status !== statusFilter) return false;
       if (query.trim()) {
         const q = query.toLowerCase();
         const hay = [h.address, h.crossroads, ...(h.homeLayout || []), h.primaryBedroomLocation, h.secondaryBedroomLocation, ...trueCheckLabels(h)].join(' ').toLowerCase();
@@ -374,7 +373,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
       }
       return true;
     });
-  }, [baseList, query, statusFilter, mode]);
+  }, [baseList, query, mode]);
 
   if (mode === 'archive') {
     return (
@@ -410,10 +409,6 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
             <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: 'var(--ink-soft)' }} />
             <input className="hh-input" style={{ paddingLeft: 30 }} placeholder="Search address, layout, feature..." value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
-          <select className="hh-select" style={{ width: 'auto' }} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <option value="All">All statuses</option>
-            {STATUS_OPTIONS.filter((s) => s !== 'Archived').map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
         </div>
       )}
 
