@@ -4,12 +4,13 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Plus, Search, MapPin, Link2, Archive as ArchiveIcon, ExternalLink,
-  Heart, Home as HomeIcon, Undo2, Trash2,
+  Heart, Home as HomeIcon, Undo2, Trash2, Footprints, MessageCircle,
 } from 'lucide-react';
 import { StarInput, MatchSummary } from '@/components/ui';
 import HomeModal from '@/components/HomeModal';
+import PostTourModal from '@/components/PostTourModal';
 import { STATUS_OPTIONS, STATUS_COLOR, emptyHome, isRentalType, isArchivedStatus, TOUR_RATING_KEY } from '@/lib/constants';
-import { parseNum, fmtMoney, avgRating, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint, hasSelectedSubjectiveCriteria } from '@/lib/matching';
+import { parseNum, fmtMoney, avgRating, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint } from '@/lib/matching';
 import { createClient } from '@/lib/supabase/client';
 import { saveHome as saveHomeQuery, deleteHome as deleteHomeQuery } from '@/lib/supabase/data';
 
@@ -38,7 +39,7 @@ function ConfirmModal({ title, body, cancelLabel = 'Cancel', confirmLabel, confi
 
 /* --------------------------------- card view --------------------------------- */
 
-function HomeCard({ home, priorities, onEdit, onArchiveRequest, onToggleFavorite }) {
+function HomeCard({ home, priorities, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour }) {
   const [imgError, setImgError] = useState(false);
   const avg = avgRating(home.ratings);
   const pps = parseNum(home.price) && parseNum(home.sqft) ? Math.round(parseNum(home.price) / parseNum(home.sqft)) : null;
@@ -127,15 +128,28 @@ function HomeCard({ home, priorities, onEdit, onArchiveRequest, onToggleFavorite
               <StarInput value={Math.round(avg)} readOnly size={14} />
               <span style={{ fontSize: 11.5, color: 'var(--ink-soft)' }}>{avg.toFixed(1)} avg</span>
             </div>
-          ) : (home.status === 'Toured' || isArchivedStatus(home.status)) && hasSelectedSubjectiveCriteria(priorities) ? (
+          ) : null}
+
+          {home.status === 'Saved' && (
+            <button type="button" className="hh-btn" style={{ fontSize: 12.5, padding: '7px 12px', justifyContent: 'center' }} onClick={() => onWantToTour(home)}>
+              <Footprints size={13} /> Want to tour
+            </button>
+          )}
+          {home.status === 'Want to Tour' && (
+            <button type="button" className="hh-btn" style={{ fontSize: 12.5, padding: '7px 12px', justifyContent: 'center' }} onClick={() => onOpenPostTour(home)}>
+              <MessageCircle size={13} /> I toured this home
+            </button>
+          )}
+          {home.status === 'Toured' && (
             <button
               type="button"
-              onClick={() => onEdit(home)}
-              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5, fontWeight: 600, color: 'var(--brick)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', alignSelf: 'flex-start' }}
+              className="hh-btn hh-btn-ghost"
+              style={{ fontSize: 12.5, padding: '7px 12px', justifyContent: 'center', borderColor: 'rgba(193,89,47,0.4)', color: 'var(--brick)' }}
+              onClick={() => onOpenPostTour(home)}
             >
-              How did it feel? →
+              <MessageCircle size={13} /> Edit my thoughts
             </button>
-          ) : null}
+          )}
 
           {visibleChecks.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
@@ -170,10 +184,15 @@ function HomeCard({ home, priorities, onEdit, onArchiveRequest, onToggleFavorite
   );
 }
 
-function CardGrid({ homes, priorities, onEdit, onArchiveRequest, onToggleFavorite }) {
+function CardGrid({ homes, priorities, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
-      {homes.map((h) => <HomeCard key={h.id} home={h} priorities={priorities} onEdit={onEdit} onArchiveRequest={onArchiveRequest} onToggleFavorite={onToggleFavorite} />)}
+      {homes.map((h) => (
+        <HomeCard
+          key={h.id} home={h} priorities={priorities} onEdit={onEdit} onArchiveRequest={onArchiveRequest}
+          onToggleFavorite={onToggleFavorite} onWantToTour={onWantToTour} onOpenPostTour={onOpenPostTour}
+        />
+      ))}
     </div>
   );
 }
@@ -217,6 +236,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [modalHome, setModalHome] = useState(null);
+  const [postTourTarget, setPostTourTarget] = useState(null);
   const [archiveTarget, setArchiveTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saveError, setSaveError] = useState('');
@@ -236,14 +256,41 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     setHomes((prev) => (prev.some((h) => h.id === saved.id) ? prev.map((h) => (h.id === saved.id ? saved : h)) : [...prev, saved]));
     setModalHome(null);
     setSaveError('');
-  }, [userId, searchId]);
+    // Favorites/Archive nav visibility is computed server-side in the layout — refresh
+    // it so a first favorite/archive (or the last one being undone) updates the nav
+    // right away instead of only after a manual reload.
+    router.refresh();
+  }, [userId, searchId, router]);
 
   const toggleFavorite = useCallback((home) => {
     const next = { ...home, reaction: home.reaction === 'love' ? null : 'love' };
     setHomes((prev) => prev.map((h) => (h.id === home.id ? next : h)));
     const supabase = createClient();
-    saveHomeQuery(supabase, next, userId, searchId).catch(() => {});
-  }, [userId, searchId]);
+    saveHomeQuery(supabase, next, userId, searchId).then(() => router.refresh()).catch(() => {});
+  }, [userId, searchId, router]);
+
+  // "This one is worth seeing." One tap, no modal, no confirmation — reuses the
+  // existing status field, just moving it to a value it already supports.
+  const wantToTour = useCallback((home) => {
+    saveHome({ ...home, status: 'Want to Tour' });
+  }, [saveHome]);
+
+  // What the post-tour verdict means, conceptually:
+  //   Love it          -> Toured + Favorite (reaction: 'love')
+  //   Still considering -> Toured only, reaction left as-is
+  //   Not for me        -> NOT saved immediately — routed into the existing
+  //                        archive-confirmation flow so the destructive step still
+  //                        gets a confirm, with all the collected ratings/notes/
+  //                        impressions carried along so nothing is lost.
+  const handleVerdict = useCallback((home, verdict, patch) => {
+    if (verdict === 'not_for_me') {
+      setPostTourTarget(null);
+      setArchiveTarget({ ...home, ...patch });
+      return;
+    }
+    setPostTourTarget(null);
+    saveHome({ ...home, ...patch, status: 'Toured', reaction: verdict === 'love' ? 'love' : home.reaction });
+  }, [saveHome]);
 
   const confirmArchive = useCallback(() => {
     if (!archiveTarget) return;
@@ -259,14 +306,15 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     setHomes((prev) => prev.filter((h) => h.id !== id));
     setDeleteTarget(null);
     const supabase = createClient();
-    try { await deleteHomeQuery(supabase, id); } catch (e) { /* already removed locally */ }
-  }, [deleteTarget]);
+    try { await deleteHomeQuery(supabase, id); router.refresh(); } catch (e) { /* already removed locally */ }
+  }, [deleteTarget, router]);
 
   const activeHomes = useMemo(() => homes.filter((h) => !isArchivedStatus(h.status)), [homes]);
   const archivedHomes = useMemo(() => homes.filter((h) => isArchivedStatus(h.status)), [homes]);
   const favoriteHomes = useMemo(() => activeHomes.filter((h) => h.reaction === 'love'), [activeHomes]);
+  const tourHomes = useMemo(() => activeHomes.filter((h) => h.status === 'Want to Tour'), [activeHomes]);
 
-  const baseList = mode === 'archive' ? archivedHomes : mode === 'favorites' ? favoriteHomes : activeHomes;
+  const baseList = mode === 'archive' ? archivedHomes : mode === 'favorites' ? favoriteHomes : mode === 'tour' ? tourHomes : activeHomes;
 
   const filtered = useMemo(() => {
     if (mode !== 'homes') return baseList;
@@ -322,7 +370,9 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
 
       {filtered.length === 0 ? (
         mode === 'favorites' ? (
-          <div style={{ fontSize: 13.5, color: 'var(--ink-soft)', padding: '30px 0' }}>Nothing favorited yet. Tap the heart on a home to add it here.</div>
+          <div style={{ fontSize: 13.5, color: 'var(--ink-soft)', padding: '30px 0' }}>Nothing favorited yet. Tap the heart on a home, or choose Love it after a tour.</div>
+        ) : mode === 'tour' ? (
+          <div style={{ fontSize: 13.5, color: 'var(--ink-soft)', padding: '30px 0' }}>Nothing here yet. When a home in Homes is worth seeing in person, tap <em>Want to tour</em> on it.</div>
         ) : (
           <div className="hh-corner" style={{ border: '1px dashed var(--line)', borderRadius: 16, padding: '48px 24px', textAlign: 'center', color: 'var(--ink-soft)' }}>
             <p className="hh-serif" style={{ fontSize: 17, color: 'var(--ink)', marginBottom: 6 }}>{activeHomes.length === 0 ? 'Ready to start?' : 'Nothing matches that search'}</p>
@@ -331,10 +381,22 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
           </div>
         )
       ) : (
-        <CardGrid homes={filtered} priorities={priorities} onEdit={setModalHome} onArchiveRequest={setArchiveTarget} onToggleFavorite={toggleFavorite} />
+        <CardGrid
+          homes={filtered} priorities={priorities} onEdit={setModalHome} onArchiveRequest={setArchiveTarget}
+          onToggleFavorite={toggleFavorite} onWantToTour={wantToTour} onOpenPostTour={setPostTourTarget}
+        />
       )}
 
       {modalHome && <HomeModal initial={modalHome} priorities={priorities} userId={userId} onSave={saveHome} onClose={() => setModalHome(null)} />}
+
+      {postTourTarget && (
+        <PostTourModal
+          home={postTourTarget}
+          priorities={priorities}
+          onVerdict={handleVerdict}
+          onClose={() => setPostTourTarget(null)}
+        />
+      )}
 
       {archiveTarget && (
         <ConfirmModal

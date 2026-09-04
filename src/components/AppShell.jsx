@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, SlidersHorizontal, Home as HomeIcon, Heart, Archive as ArchiveIcon, Columns, HelpCircle, X } from 'lucide-react';
+import { LogOut, SlidersHorizontal, Home as HomeIcon, Heart, Archive as ArchiveIcon, Columns, HelpCircle, X, Footprints } from 'lucide-react';
 import { BrandMark, Wordmark } from '@/components/ui';
 import { TABS } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client';
 const TAB_ICONS = {
   search: SlidersHorizontal,
   homes: HomeIcon,
+  tour: Footprints,
   favorites: Heart,
   archive: ArchiveIcon,
   compare: Columns,
@@ -23,9 +24,10 @@ const HOW_TO_STEPS = [
   { title: "Find homes wherever you normally search", body: 'Use Zillow, Realtor.com, Homes.com, Redfin, a builder website, or anywhere else you like to look for homes.' },
   { title: "Add the homes you're considering", body: "Copy the listing link and paste it into Feels Like Home, or enter the home's address. We'll fill in whatever property details we can." },
   { title: 'Add what you already know', body: "Add a photo and anything else you know about the home. You can also keep notes, pros, and cons so you don't have to remember everything yourself." },
-  { title: 'Tour the home', body: "After you see a home in person, come back and rate the things a listing can't really tell you — how the home feels, how the layout works for you, the neighborhood, privacy, natural light, and other personal impressions." },
-  { title: 'Favorite the homes you really like', body: 'Use the heart to keep your strongest contenders together.' },
-  { title: "Archive homes you've ruled out", body: "Archive homes you no longer want to consider. We'll keep your notes and ratings so you can remember why you passed — and you can restore the home later if you change your mind." },
+  { title: 'Want to tour a home', body: "When one's worth seeing in person, tap Want to tour. It'll show up on your Want to Tour page." },
+  { title: 'Tell us how it felt', body: "After you've seen it, tap I toured this home and choose Love it, Still considering, or Not for me — then optionally rate the things a listing can't tell you, like how it felt, the light, the layout." },
+  { title: 'Your favorites collect themselves', body: 'Choosing Love it after a tour automatically favorites a home — or tap the heart on any home yourself.' },
+  { title: "Archive homes you've ruled out", body: "Choosing Not for me (or archiving anytime) keeps your notes and ratings so you can remember why you passed — and you can restore the home later if you change your mind." },
   { title: 'Compare your finalists', body: "When you've narrowed it down, use Compare to put your top homes side by side and see how they measure up to what matters most to you." },
 ];
 
@@ -76,10 +78,19 @@ function HowToUseModal({ onClose }) {
   );
 }
 
-export default function AppShell({ children, userEmail }) {
+export default function AppShell({ children, userEmail, hasFavorites, hasArchived }) {
   const pathname = usePathname();
   const router = useRouter();
   const [howToOpen, setHowToOpen] = useState(false);
+
+  // Progressive nav: Favorites/Archive only appear once there's something in them.
+  // My Search, Homes, Want to Tour, and Compare are always available — a home-shopper
+  // may want to compare or plan tours before anything's been favorited or ruled out.
+  const visibleTabs = TABS.filter((t) => {
+    if (t.key === 'favorites') return hasFavorites;
+    if (t.key === 'archive') return hasArchived;
+    return true;
+  });
 
   const signOut = async () => {
     const supabase = createClient();
@@ -110,7 +121,7 @@ export default function AppShell({ children, userEmail }) {
         </div>
 
         <div className="hh-tabs">
-          {TABS.map(({ key, label, href }) => {
+          {visibleTabs.map(({ key, label, href }) => {
             const Icon = TAB_ICONS[key];
             return (
               <Link key={key} href={href} className={`hh-tab ${pathname === href ? 'active' : ''}`}>

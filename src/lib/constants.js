@@ -199,6 +199,7 @@ export function terminology(searchType) {
 export const TABS = [
   { key: 'search', label: 'My Search', href: '/search' },
   { key: 'homes', label: 'Homes', href: '/homes' },
+  { key: 'tour', label: 'Want to Tour', href: '/tour' },
   { key: 'favorites', label: 'Favorites', href: '/favorites' },
   { key: 'archive', label: 'Archive', href: '/archive' },
   { key: 'compare', label: 'Compare', href: '/compare' },
