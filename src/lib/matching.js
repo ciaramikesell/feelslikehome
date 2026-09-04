@@ -57,6 +57,34 @@ export function selectedOrderedItems(def, priorities) {
 // Backwards-compatible alias.
 export const visibleOrderedItems = selectedOrderedItems;
 
+// A criterion's `kind` already distinguishes "objectively observable from a listing"
+// (check — Garage, Basement, Fireplace...) from "can only really be judged in person"
+// (rating — Natural Light, Privacy, Layout/Flow...). These two helpers reuse that
+// existing distinction to drive *when* a selected subjective criterion is surfaced —
+// they don't change what's selected, how it's scored, or any stored data.
+
+// True if the user has selected (tier !== 'dontcare') at least one subjective
+// (star-rating) criterion anywhere — used to decide whether a Toured home has
+// anything worth a "How did it feel?" prompt.
+export function hasSelectedSubjectiveCriteria(priorities) {
+  if (!priorities) return false;
+  return getItemlistCategories(priorities.searchType).some((def) =>
+    selectedOrderedItems(def, priorities).some((item) => item.kind === 'rating')
+  );
+}
+
+// The flat, ordered list of the user's selected subjective (star-rating) criteria
+// across every category — this is exactly what the post-tour "How did it feel?"
+// flow asks about, since these are the ones that can't be reliably judged pre-tour.
+export function selectedSubjectiveCriteria(priorities) {
+  if (!priorities) return [];
+  return getItemlistCategories(priorities.searchType).flatMap((def) =>
+    selectedOrderedItems(def, priorities)
+      .filter((item) => item.kind === 'rating')
+      .map((item) => ({ ...item, categoryKey: def.key }))
+  );
+}
+
 /* ----------------------------- listing text parser ----------------------------- */
 
 export function parseListingText(text) {

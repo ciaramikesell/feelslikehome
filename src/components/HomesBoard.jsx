@@ -9,7 +9,7 @@ import {
 import { StarInput, MatchSummary } from '@/components/ui';
 import HomeModal from '@/components/HomeModal';
 import { STATUS_OPTIONS, STATUS_COLOR, emptyHome, isRentalType, isArchivedStatus, TOUR_RATING_KEY } from '@/lib/constants';
-import { parseNum, fmtMoney, avgRating, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint } from '@/lib/matching';
+import { parseNum, fmtMoney, avgRating, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint, hasSelectedSubjectiveCriteria } from '@/lib/matching';
 import { createClient } from '@/lib/supabase/client';
 import { saveHome as saveHomeQuery, deleteHome as deleteHomeQuery } from '@/lib/supabase/data';
 
@@ -122,10 +122,20 @@ function HomeCard({ home, priorities, onEdit, onArchiveRequest, onToggleFavorite
             </div>
           )}
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <StarInput value={Math.round(avg || 0)} readOnly size={14} />
-            <span style={{ fontSize: 11.5, color: 'var(--ink-soft)' }}>{avg ? avg.toFixed(1) : '—'} avg</span>
-          </div>
+          {avg ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <StarInput value={Math.round(avg)} readOnly size={14} />
+              <span style={{ fontSize: 11.5, color: 'var(--ink-soft)' }}>{avg.toFixed(1)} avg</span>
+            </div>
+          ) : (home.status === 'Toured' || isArchivedStatus(home.status)) && hasSelectedSubjectiveCriteria(priorities) ? (
+            <button
+              type="button"
+              onClick={() => onEdit(home)}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12.5, fontWeight: 600, color: 'var(--brick)', background: 'none', border: 'none', padding: 0, cursor: 'pointer', alignSelf: 'flex-start' }}
+            >
+              How did it feel? →
+            </button>
+          ) : null}
 
           {visibleChecks.length > 0 && (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>

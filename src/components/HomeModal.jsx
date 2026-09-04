@@ -7,7 +7,7 @@ import {
   STATUS_OPTIONS, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
   isArchivedStatus, isRentalType, TOUR_RATING_KEY,
 } from '@/lib/constants';
-import { visibleOrderedItems, parseListingText } from '@/lib/matching';
+import { visibleOrderedItems, parseListingText, selectedSubjectiveCriteria } from '@/lib/matching';
 import { extractAddressFromListingUrl } from '@/lib/listingUrl';
 import { splitAddressLines, formatFoundCardFacts, countFoundFacts } from '@/lib/homeDisplay';
 import { createClient } from '@/lib/supabase/client';
@@ -43,6 +43,23 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
   const [fallbackAddressInput, setFallbackAddressInput] = useState('');
   const [editDetailsOpen, setEditDetailsOpen] = useState(false);
   const [lastLookupAddress, setLastLookupAddress] = useState('');
+
+  // "+ Add more details" starts collapsed for a blank home (the whole point of this
+  // pass), but starts open if the home already has data in there — editing shouldn't
+  // feel like your own answers vanished behind a click.
+  const [moreDetailsOpen, setMoreDetailsOpen] = useState(() => {
+    const i = initial;
+    return !!(
+      i.homeLayout?.length || i.homeCondition?.length || i.primaryBedroomLocation || i.secondaryBedroomLocation
+      || i.pros || i.cons || i.notes || Object.values(i.checks || {}).some(Boolean)
+    );
+  });
+  // "How did it feel?" is the post-tour subjective-impressions panel — same idea:
+  // collapsed until there's a tour to reflect on, open by default if already answered.
+  const [tourFeelOpen, setTourFeelOpen] = useState(() => {
+    if ((initial.ratings?.[TOUR_RATING_KEY] || 0) > 0) return true;
+    return selectedSubjectiveCriteria(priorities).some((item) => (initial.ratings?.[`${item.categoryKey}:${item.label}`] || 0) > 0);
+  });
 
   // Photo: the file is only staged locally (with an in-browser preview) until Save
   // actually runs — nothing is uploaded to Storage at selection time, so Cancel never
@@ -411,14 +428,6 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
               </div>
             )}
 
-            {(form.status === 'Toured' || isArchivedStatus(form.status)) && (
-              <div style={{ marginBottom: 18, background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px' }}>
-                <label className="hh-label" style={{ marginBottom: 6 }}>How did this home feel?</label>
-                <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '0 0 8px' }}>Your own reaction after seeing it in person — separate from the calculated match score. Optional.</p>
-                <StarInput value={form.ratings[TOUR_RATING_KEY] || 0} onChange={(v) => setRatingItem('tour', 'overall', v)} size={20} />
-              </div>
-            )}
-
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 12 }}>
               {priorities.bedsMin?.tier !== 'dontcare' && <div><label className="hh-label">Beds{priorities.bedsMin?.tier === 'must' && <span className="hh-must-badge">MUST</span>}</label><input className="hh-input" value={form.beds} onChange={(e) => set('beds', e.target.value)} placeholder="3" /></div>}
               {priorities.bathsMin?.tier !== 'dontcare' && <div><label className="hh-label">Baths{priorities.bathsMin?.tier === 'must' && <span className="hh-must-badge">MUST</span>}</label><input className="hh-input" value={form.baths} onChange={(e) => set('baths', e.target.value)} placeholder="2" /></div>}
@@ -504,105 +513,135 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
           );
         })()}
 
-        {/* -------------------------- Still needed from the user -------------------------- */}
-        {visibleMultiselect.length > 0 && (
-          <div style={{ marginTop: 20 }}>
-            <h3 className="hh-serif" style={{ fontSize: 15, fontWeight: 600, margin: '0 0 2px' }}>Add what you know</h3>
-            <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 12px' }}>Add what you know now — you can always come back later.</p>
-
-            {visibleMultiselect.map((def) => (
-              <div key={def.key} style={{ marginBottom: 16 }}>
-                <label className="hh-label">{def.title}{priorities[def.key]?.tier === 'must' && <span className="hh-must-badge">MUST</span>}</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {def.options.filter((o) => o !== 'No Preference').map((o) => <span key={o} className={`hh-chip ${form[def.key]?.includes(o) ? 'on' : ''}`} onClick={() => toggleMulti(def.key, o)}>{o}</span>)}
-                </div>
-                {def.key === 'homeLayout' && visibleSingleselect.length > 0 && (
-                  <div style={{ marginTop: 12, paddingLeft: 14, borderLeft: '2px solid var(--line)' }}>
-                    {visibleSingleselect.map((d) => (
-                      <div key={d.key} style={{ marginBottom: 10 }}>
-                        <label className="hh-label">{d.title}{priorities[d.key]?.tier === 'must' && <span className="hh-must-badge">MUST</span>}</label>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                          {d.options.filter((o) => o !== 'No Preference').map((o) => <span key={o} className={`hh-chip ${form[d.key] === o ? 'on' : ''}`} onClick={() => setForm((f) => ({ ...f, [d.key]: f[d.key] === o ? '' : o }))}>{o}</span>)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* -------------------------- Subjective impressions -------------------------- */}
-        <div style={{ marginTop: 26 }}>
-          <h3 className="hh-serif" style={{ fontSize: 15, fontWeight: 600, margin: '0 0 2px' }}>What do you know about this home?</h3>
-          <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 12px', fontStyle: 'italic' }}>Skip anything you won't know until after a showing.</p>
-
-          {getItemlistCategories(priorities.searchType).map((def) => {
-            const visible = visibleOrderedItems(def, priorities);
-            if (!visible.length) return null;
-            const ratingItems = visible.filter((i) => i.kind === 'rating');
-            const checkItems = visible.filter((i) => i.kind === 'check');
-            const mustCount = visible.filter((i) => priorities[def.key]?.tiers?.[i.label] === 'must').length;
-            const isMustItem = (item) => priorities[def.key]?.tiers?.[item.label] === 'must';
-            return (
-              <details
-                key={def.key}
-                open={isNewHome ? false : (mustCount > 0 || def.key === 'location' || def.key === 'homeFeel')}
-                className="hh-details"
+        {/* -------------------------- How did it feel? (post-tour, optional) -------------------------- */}
+        {(form.status === 'Toured' || isArchivedStatus(form.status)) && (() => {
+          const subjectiveItems = selectedSubjectiveCriteria(priorities);
+          return (
+            <div style={{ marginTop: 20 }}>
+              <button
+                type="button"
+                className="hh-btn hh-btn-ghost"
+                style={{ fontSize: 13, borderColor: 'rgba(193,89,47,0.4)', color: 'var(--brick)' }}
+                onClick={() => setTourFeelOpen((v) => !v)}
               >
-                <summary>{def.title}</summary>
-                {mustCount > 0 && (
-                  <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--brick)', margin: '10px 0 4px' }}>
-                    Your Must-Have {mustCount === 1 ? 'Feature' : 'Features'}
-                  </p>
-                )}
-                {ratingItems.length > 0 && (
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', rowGap: 10, columnGap: 16, margin: '10px 0 12px' }}>
-                    {ratingItems.map((item) => {
-                      const must = isMustItem(item);
-                      return (
-                        <div key={item.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <span style={{ fontSize: 13, color: must ? 'var(--brick)' : 'var(--ink)', fontWeight: must ? 700 : 400 }}>{item.label}</span>
-                          <StarInput value={form.ratings[nsKey(def.key, item.label)] || 0} onChange={(v) => setRatingItem(def.key, item.label, v)} />
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                {checkItems.length > 0 && (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: ratingItems.length ? 4 : 12 }}>
-                    {checkItems.map((item) => {
-                      const must = isMustItem(item);
-                      const checked = form.checks[nsKey(def.key, item.label)];
-                      return (
-                        <span
-                          key={item.label}
-                          className={`hh-chip ${checked ? 'on' : ''}`}
-                          onClick={() => toggleCheckItem(def.key, item.label)}
-                          style={must ? { fontWeight: 700, color: checked ? undefined : 'var(--brick)' } : undefined}
-                        >
-                          {item.label}
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
-              </details>
-            );
-          })}
+                {tourFeelOpen ? '− Hide' : 'How did it feel? →'}
+              </button>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16, marginBottom: 20 }}>
-            <div><label className="hh-label">Pros</label><textarea className="hh-textarea" value={form.pros} onChange={(e) => set('pros', e.target.value)} /></div>
-            <div><label className="hh-label">Cons</label><textarea className="hh-textarea" value={form.cons} onChange={(e) => set('cons', e.target.value)} /></div>
-          </div>
-          <div style={{ marginBottom: 24 }}>
-            <label className="hh-label">Notes</label>
-            <textarea className="hh-textarea" value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Anything else worth remembering..." />
-          </div>
+              {tourFeelOpen && (
+                <div style={{ marginTop: 12, background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 12, padding: '14px 16px' }}>
+                  <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '0 0 12px' }}>Things you can only really know after seeing it in person. Optional — skip anything you're not sure about.</p>
+
+                  <div style={{ marginBottom: subjectiveItems.length ? 14 : 0 }}>
+                    <label className="hh-label" style={{ marginBottom: 6 }}>Overall, how did this home feel?</label>
+                    <StarInput value={form.ratings[TOUR_RATING_KEY] || 0} onChange={(v) => setRatingItem('tour', 'overall', v)} size={20} />
+                  </div>
+
+                  {subjectiveItems.length > 0 && (
+                    <div style={{ display: 'grid', gap: 10 }}>
+                      {subjectiveItems.map((item) => {
+                        const must = priorities[item.categoryKey]?.tiers?.[item.label] === 'must';
+                        return (
+                          <div key={`${item.categoryKey}:${item.label}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: 13, color: must ? 'var(--brick)' : 'var(--ink)', fontWeight: must ? 700 : 400 }}>{item.label}</span>
+                            <StarInput value={form.ratings[nsKey(item.categoryKey, item.label)] || 0} onChange={(v) => setRatingItem(item.categoryKey, item.label, v)} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* -------------------------- Add more details (optional, collapsed by default) -------------------------- */}
+        <div style={{ marginTop: 20, marginBottom: 8 }}>
+          <button
+            type="button"
+            className="hh-btn hh-btn-ghost"
+            style={{ fontSize: 13 }}
+            onClick={() => setMoreDetailsOpen((v) => !v)}
+          >
+            {moreDetailsOpen ? '− Hide more details' : '+ Add more details'}
+          </button>
+
+          {moreDetailsOpen && (
+            <div style={{ marginTop: 14 }}>
+              <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 14px' }}>Optional — add anything else you already know. You can always come back to this later.</p>
+
+              {visibleMultiselect.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  {visibleMultiselect.map((def) => (
+                    <div key={def.key} style={{ marginBottom: 16 }}>
+                      <label className="hh-label">{def.title}{priorities[def.key]?.tier === 'must' && <span className="hh-must-badge">MUST</span>}</label>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                        {def.options.filter((o) => o !== 'No Preference').map((o) => <span key={o} className={`hh-chip ${form[def.key]?.includes(o) ? 'on' : ''}`} onClick={() => toggleMulti(def.key, o)}>{o}</span>)}
+                      </div>
+                      {def.key === 'homeLayout' && visibleSingleselect.length > 0 && (
+                        <div style={{ marginTop: 12, paddingLeft: 14, borderLeft: '2px solid var(--line)' }}>
+                          {visibleSingleselect.map((d) => (
+                            <div key={d.key} style={{ marginBottom: 10 }}>
+                              <label className="hh-label">{d.title}{priorities[d.key]?.tier === 'must' && <span className="hh-must-badge">MUST</span>}</label>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                                {d.options.filter((o) => o !== 'No Preference').map((o) => <span key={o} className={`hh-chip ${form[d.key] === o ? 'on' : ''}`} onClick={() => setForm((f) => ({ ...f, [d.key]: f[d.key] === o ? '' : o }))}>{o}</span>)}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Only the objectively-observable (check-kind) items show here — things you
+                  can only judge in person (star ratings) live in "How did it feel?" instead. */}
+              {getItemlistCategories(priorities.searchType).map((def) => {
+                const visible = visibleOrderedItems(def, priorities).filter((i) => i.kind === 'check');
+                if (!visible.length) return null;
+                const mustCount = visible.filter((i) => priorities[def.key]?.tiers?.[i.label] === 'must').length;
+                return (
+                  <details key={def.key} open={mustCount > 0} className="hh-details" style={{ marginBottom: 10 }}>
+                    <summary>{def.title}</summary>
+                    {mustCount > 0 && (
+                      <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--brick)', margin: '10px 0 4px' }}>
+                        Your Must-Have {mustCount === 1 ? 'Feature' : 'Features'}
+                      </p>
+                    )}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+                      {visible.map((item) => {
+                        const must = priorities[def.key]?.tiers?.[item.label] === 'must';
+                        const checked = form.checks[nsKey(def.key, item.label)];
+                        return (
+                          <span
+                            key={item.label}
+                            className={`hh-chip ${checked ? 'on' : ''}`}
+                            onClick={() => toggleCheckItem(def.key, item.label)}
+                            style={must ? { fontWeight: 700, color: checked ? undefined : 'var(--brick)' } : undefined}
+                          >
+                            {item.label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </details>
+                );
+              })}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16, marginBottom: 12 }}>
+                <div><label className="hh-label">Pros</label><textarea className="hh-textarea" value={form.pros} onChange={(e) => set('pros', e.target.value)} /></div>
+                <div><label className="hh-label">Cons</label><textarea className="hh-textarea" value={form.cons} onChange={(e) => set('cons', e.target.value)} /></div>
+              </div>
+              <div>
+                <label className="hh-label">Notes</label>
+                <textarea className="hh-textarea" value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Anything else worth remembering..." />
+              </div>
+            </div>
+          )}
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
           <button className="hh-btn hh-btn-ghost" onClick={onClose}>Cancel</button>
           <button className="hh-btn" onClick={submit} disabled={!form.address.trim() || saving}>{saving ? 'Saving...' : 'Save home'}</button>
         </div>
