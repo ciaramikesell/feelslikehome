@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { StarInput } from '@/components/ui';
 import {
@@ -10,8 +10,25 @@ import {
 import { visibleOrderedItems, parseListingText } from '@/lib/matching';
 import { extractAddressFromListingUrl } from '@/lib/listingUrl';
 import { splitAddressLines, formatFoundCardFacts, countFoundFacts } from '@/lib/homeDisplay';
+import { createClient } from '@/lib/supabase/client';
 
-export default function HomeModal({ initial, priorities, onSave, onClose }) {
+const PHOTO_BUCKET = 'home-photos';
+const ALLOWED_PHOTO_TYPES = { 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB — approved limit: covers a full-resolution phone photo/screenshot without bloating page loads or storage cost.
+
+// Pure — no network. Returns the object path within PHOTO_BUCKET if this URL is one
+// of our own public Storage URLs, or null for any externally-pasted Photo URL. Used
+// so Save can best-effort clean up a replaced/removed *uploaded* photo without ever
+// touching a URL the user pasted in manually.
+function storagePathFromPublicUrl(url) {
+  if (!url) return null;
+  const marker = `/storage/v1/object/public/${PHOTO_BUCKET}/`;
+  const idx = url.indexOf(marker);
+  if (idx === -1) return null;
+  return url.slice(idx + marker.length);
+}
+
+export default function HomeModal({ initial, priorities, onSave, onClose, userId }) {
   const [form, setForm] = useState(initial);
   const [pasteText, setPasteText] = useState('');
   const [parseMsg, setParseMsg] = useState('');
@@ -27,12 +44,80 @@ export default function HomeModal({ initial, priorities, onSave, onClose }) {
   const [editDetailsOpen, setEditDetailsOpen] = useState(false);
   const [lastLookupAddress, setLastLookupAddress] = useState('');
 
+  // Photo: the file is only staged locally (with an in-browser preview) until Save
+  // actually runs — nothing is uploaded to Storage at selection time, so Cancel never
+  // leaves an orphaned upload behind.
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState(null);
+  const [photoError, setPhotoError] = useState('');
+  const [showPhotoUrlInput, setShowPhotoUrlInput] = useState(false);
+  const photoInputRef = useRef(null);
+
+  useEffect(() => () => {
+    if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+  }, [photoPreviewUrl]);
+
+  const handlePhotoFileChange = (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file after Remove
+    if (!file) return;
+    if (!ALLOWED_PHOTO_TYPES[file.type]) {
+      setPhotoError('Please choose a JPEG, PNG, or WebP image.');
+      return;
+    }
+    if (file.size > MAX_PHOTO_BYTES) {
+      setPhotoError('That image is larger than 5MB — please choose a smaller one.');
+      return;
+    }
+    setPhotoError('');
+    if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+    setPhotoFile(file);
+    setPhotoPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const handleRemovePhoto = () => {
+    if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
+    setPhotoFile(null);
+    setPhotoPreviewUrl(null);
+    setPhotoError('');
+    set('photoUrl', '');
+  };
+
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const submit = async () => {
     if (!form.address.trim()) return;
     setSaving(true);
+    setPhotoError('');
     try {
-      await onSave(form);
+      let finalPhotoUrl = form.photoUrl;
+
+      if (photoFile) {
+        const supabase = createClient();
+        const ext = ALLOWED_PHOTO_TYPES[photoFile.type] || 'jpg';
+        const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from(PHOTO_BUCKET)
+          .upload(path, photoFile, { contentType: photoFile.type, upsert: false });
+        if (uploadError) {
+          setPhotoError("We couldn't upload that photo — please try again, or save without it.");
+          setSaving(false);
+          return;
+        }
+        const { data: publicUrlData } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path);
+        finalPhotoUrl = publicUrlData?.publicUrl || '';
+      }
+
+      await onSave({ ...form, photoUrl: finalPhotoUrl });
+
+      // Best-effort cleanup: if a photo we previously uploaded to our own bucket was
+      // just replaced or removed, delete the old object so it doesn't linger as an
+      // orphan. Never touches an externally-pasted Photo URL, and never blocks Save.
+      if (initial.photoUrl && initial.photoUrl !== finalPhotoUrl) {
+        const oldPath = storagePathFromPublicUrl(initial.photoUrl);
+        if (oldPath) {
+          createClient().storage.from(PHOTO_BUCKET).remove([oldPath]).catch(() => {});
+        }
+      }
     } finally {
       setSaving(false);
     }
@@ -304,12 +389,6 @@ export default function HomeModal({ initial, priorities, onSave, onClose }) {
                   <input className="hh-input" value={form.crossroads} onChange={(e) => set('crossroads', e.target.value)} placeholder="Main & 5th" />
                 </div>
               </details>
-              {!isNewHome && (
-                <div style={{ display: 'grid', gridTemplateColumns: form.photoUrl ? '1fr 64px' : '1fr', gap: 12, alignItems: 'end' }}>
-                  <div><label className="hh-label">Photo URL</label><input className="hh-input" value={form.photoUrl} onChange={(e) => set('photoUrl', e.target.value)} placeholder="https://.../photo.jpg" /></div>
-                  {form.photoUrl && <img src={form.photoUrl} alt="" style={{ width: 64, height: 48, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--line)' }} onError={(e) => { e.target.style.opacity = 0.15; }} />}
-                </div>
-              )}
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, margin: '14px 0' }}>
@@ -353,6 +432,63 @@ export default function HomeModal({ initial, priorities, onSave, onClose }) {
             </div>
           </div>
         )}
+
+        {/* -------------------------- Photo -------------------------- */}
+        {(() => {
+          const currentPreviewSrc = photoFile ? photoPreviewUrl : (form.photoUrl || null);
+          const urlInputVisible = !photoFile && (showPhotoUrlInput || !!form.photoUrl);
+          return (
+            <div
+              style={{
+                background: 'rgba(198,146,69,0.08)',
+                border: '1px solid rgba(198,146,69,0.28)',
+                borderRadius: 16,
+                padding: '18px 20px 20px',
+                margin: '16px 0',
+              }}
+            >
+              <h3 className="hh-serif" style={{ fontSize: 15, fontWeight: 600, margin: '0 0 2px' }}>Add a photo</h3>
+              <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 14px' }}>Give this home a face so it's easy to spot later.</p>
+
+              <input
+                ref={photoInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handlePhotoFileChange}
+                style={{ display: 'none' }}
+              />
+
+              {currentPreviewSrc ? (
+                <div>
+                  <div style={{ width: '100%', aspectRatio: '16 / 9', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--line)', background: 'var(--line)' }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={currentPreviewSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
+                    <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 12.5, padding: '6px 12px' }} onClick={() => photoInputRef.current?.click()}>Change photo</button>
+                    <button type="button" className="hh-btn hh-btn-danger" style={{ fontSize: 12.5 }} onClick={handleRemovePhoto}>Remove</button>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <button type="button" className="hh-btn" onClick={() => photoInputRef.current?.click()}>+ Upload photo</button>
+                  <button type="button" className="hh-suggest-chip" onClick={() => setShowPhotoUrlInput((v) => !v)}>or paste a photo URL</button>
+                </div>
+              )}
+
+              {photoError && <p style={{ fontSize: 12, color: 'var(--brick)', margin: '8px 0 0' }}>{photoError}</p>}
+
+              {urlInputVisible && (
+                <div style={{ marginTop: 12 }}>
+                  <label className="hh-label">Photo URL</label>
+                  <input className="hh-input" style={{ background: 'var(--paper-raised)' }} value={form.photoUrl} onChange={(e) => set('photoUrl', e.target.value)} placeholder="https://.../photo.jpg" />
+                </div>
+              )}
+
+              <p style={{ fontSize: 11, color: 'var(--ink-soft)', margin: '10px 0 0' }}>You can always add or change this later.</p>
+            </div>
+          );
+        })()}
 
         {/* -------------------------- Still needed from the user -------------------------- */}
         {visibleMultiselect.length > 0 && (

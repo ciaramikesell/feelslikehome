@@ -275,7 +275,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     return (
       <>
         <ArchiveList homes={archivedHomes} onEdit={setModalHome} onRestore={restoreHome} onRequestDelete={setDeleteTarget} />
-        {modalHome && <HomeModal initial={modalHome} priorities={priorities} onSave={saveHome} onClose={() => setModalHome(null)} />}
+        {modalHome && <HomeModal initial={modalHome} priorities={priorities} userId={userId} onSave={saveHome} onClose={() => setModalHome(null)} />}
         {deleteTarget && (
           <ConfirmModal
             title="Delete this home permanently?"
@@ -324,7 +324,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         <CardGrid homes={filtered} priorities={priorities} onEdit={setModalHome} onArchiveRequest={setArchiveTarget} onToggleFavorite={toggleFavorite} />
       )}
 
-      {modalHome && <HomeModal initial={modalHome} priorities={priorities} onSave={saveHome} onClose={() => setModalHome(null)} />}
+      {modalHome && <HomeModal initial={modalHome} priorities={priorities} userId={userId} onSave={saveHome} onClose={() => setModalHome(null)} />}
 
       {archiveTarget && (
         <ConfirmModal
