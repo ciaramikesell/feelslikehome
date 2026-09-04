@@ -7,11 +7,11 @@ import { TOUR_RATING_KEY } from '@/lib/constants';
 import { selectedSubjectiveCriteria, curatedAdditionalSubjectiveCriteria } from '@/lib/matching';
 
 // A small, curated set of things people commonly notice on a tour — deliberately NOT
-// an exhaustive list of every criterion the app supports. These just quick-add a word
-// to the existing Pros/Cons text fields; there's no new data model behind them, so
-// this list isn't limited to items that also exist as formal rating criteria.
+// an exhaustive list of every criterion the app supports. These just toggle a word in
+// the existing Pros/Cons text fields; there's no new data model behind them, so this
+// list isn't limited to items that also exist as formal rating criteria.
 const IMPRESSION_CHIPS = [
-  'Natural light', 'Layout', 'Kitchen', 'Yard', 'Privacy', 'Street', 'Room sizes', 'Condition', 'Storage', 'Character',
+  'Natural light', 'Layout', 'Kitchen', 'Yard', 'Privacy', 'Street', 'Room sizes', 'Condition', 'Storage', 'Character', 'Noise',
 ];
 
 const VERDICTS = [
@@ -20,8 +20,22 @@ const VERDICTS = [
   { key: 'not_for_me', emoji: '', title: 'Not for me', body: 'I can rule this one out.' },
 ];
 
+// Pros/Cons stay a plain comma-separated string — these three helpers are the only
+// thing that knows that convention, so both preset chips (toggle on/off) and custom
+// "+ Add your own" entries (always add, never silently remove something you typed)
+// can share it without a new tagging model.
+function isInList(text, word) {
+  return (text || '').split(',').map((s) => s.trim().toLowerCase()).includes(word.toLowerCase());
+}
+function toggleInList(text, word) {
+  const items = (text || '').split(',').map((s) => s.trim()).filter(Boolean);
+  const idx = items.findIndex((i) => i.toLowerCase() === word.toLowerCase());
+  if (idx === -1) return [...items, word].join(', ');
+  items.splice(idx, 1);
+  return items.join(', ');
+}
 function addToList(text, word) {
-  const items = text.split(',').map((s) => s.trim()).filter(Boolean);
+  const items = (text || '').split(',').map((s) => s.trim()).filter(Boolean);
   if (items.some((i) => i.toLowerCase() === word.toLowerCase())) return text;
   return [...items, word].join(', ');
 }
@@ -31,6 +45,59 @@ function RatingRow({ label, must, value, onChange }) {
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 34 }}>
       <span style={{ fontSize: 13.5, color: must ? 'var(--brick)' : 'var(--ink)', fontWeight: must ? 700 : 400 }}>{label}</span>
       <StarInput value={value || 0} onChange={onChange} size={19} />
+    </div>
+  );
+}
+
+// One "Liked" or "Didn't like" group: independently-toggleable preset chips, plus a
+// small "+ Add your own" reveal for a custom thought not covered by the presets.
+// Both read/write the same Pros or Cons string the rest of the app already uses.
+function StandOutGroup({ title, color, value, onChange }) {
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customValue, setCustomValue] = useState('');
+
+  const submitCustom = () => {
+    const v = customValue.trim();
+    if (v) onChange(addToList(value, v));
+    setCustomValue('');
+    setCustomOpen(false);
+  };
+
+  return (
+    <div>
+      <div style={{ fontSize: 11.5, fontWeight: 600, color, marginBottom: 6 }}>{title}</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
+        {IMPRESSION_CHIPS.map((c) => {
+          const on = isInList(value, c);
+          return (
+            <span key={c} className={`hh-chip ${on ? 'on' : ''}`} style={{ fontSize: 11 }} onClick={() => onChange(toggleInList(value, c))}>
+              {c}
+            </span>
+          );
+        })}
+      </div>
+      {customOpen ? (
+        <div style={{ display: 'flex', gap: 6 }}>
+          <input
+            className="hh-input"
+            style={{ fontSize: 11.5, padding: '5px 8px' }}
+            value={customValue}
+            onChange={(e) => setCustomValue(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && submitCustom()}
+            placeholder="Type your own..."
+            autoFocus
+          />
+          <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11, padding: '5px 10px', whiteSpace: 'nowrap' }} onClick={submitCustom}>Add</button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setCustomOpen(true)}
+          style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: 'var(--ink-soft)', cursor: 'pointer', textDecoration: 'underline' }}
+        >
+          + Add your own
+        </button>
+      )}
     </div>
   );
 }
@@ -165,26 +232,11 @@ export default function PostTourModal({ home, priorities, onVerdict, onClose }) 
               )}
 
               <div>
-                <label className="hh-label" style={{ marginBottom: 6 }}>What stood out?</label>
+                <label className="hh-label" style={{ marginBottom: 4 }}>What stood out?</label>
+                <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '0 0 10px' }}>Tap anything you want to remember.</p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-                  <div>
-                    <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--moss)', marginBottom: 6 }}>Liked</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
-                      {IMPRESSION_CHIPS.map((c) => (
-                        <span key={c} className="hh-chip" style={{ fontSize: 11 }} onClick={() => setPros((p) => addToList(p, c))}>{c}</span>
-                      ))}
-                    </div>
-                    <textarea className="hh-textarea" style={{ minHeight: 60 }} value={pros} onChange={(e) => setPros(e.target.value)} placeholder="What stood out..." />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11.5, fontWeight: 600, color: 'var(--brick)', marginBottom: 6 }}>Didn't like</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
-                      {IMPRESSION_CHIPS.map((c) => (
-                        <span key={c} className="hh-chip" style={{ fontSize: 11 }} onClick={() => setCons((p) => addToList(p, c))}>{c}</span>
-                      ))}
-                    </div>
-                    <textarea className="hh-textarea" style={{ minHeight: 60 }} value={cons} onChange={(e) => setCons(e.target.value)} placeholder="What gave you pause..." />
-                  </div>
+                  <StandOutGroup title="Liked" color="var(--moss)" value={pros} onChange={setPros} />
+                  <StandOutGroup title="Didn't like" color="var(--brick)" value={cons} onChange={setCons} />
                 </div>
               </div>
             </div>
