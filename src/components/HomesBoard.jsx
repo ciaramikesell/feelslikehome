@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   Plus, Search, MapPin, Link2, Archive as ArchiveIcon, ExternalLink,
-  Heart, Home as HomeIcon, Undo2, Trash2, Footprints, MessageCircle,
+  Heart, Home as HomeIcon, Undo2, Trash2, Footprints, MessageCircle, Check,
 } from 'lucide-react';
 import { StarInput, MatchSummary } from '@/components/ui';
 import HomeModal from '@/components/HomeModal';
@@ -51,6 +51,11 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
   const styleSummary = homeStyleSummary(home);
   const showPhoto = home.photoUrl && !imgError;
   const isFavorite = home.reaction === 'love';
+  // Normalize lifecycle presentation without touching stored data: any status that
+  // isn't 'Want to Tour' or 'Toured' is treated as pre-tour, whether it's the current
+  // 'Saved' value or a legacy string like 'Considering' left over from before this
+  // lifecycle existed (see rowToHome's 'Considering' fallback in supabase/data.js).
+  const isPreTour = home.status !== 'Want to Tour' && home.status !== 'Toured';
   // Heart/Archive as quick one-tap controls only make sense once a home has actually
   // been toured (or we're already inside a decision-workspace view) — not as a
   // pre-tour decision prompt on Homes.
@@ -77,7 +82,9 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
               <HomeIcon size={34} color="rgba(46,38,33,0.22)" strokeWidth={1.5} />
             </div>
           )}
-          <span className="hh-mono" style={{ position: 'absolute', top: 10, left: 10, fontSize: 10.5, fontWeight: 700, color: '#fff', background: STATUS_COLOR[home.status] || 'var(--ink-soft)', padding: '4px 9px', borderRadius: 999, boxShadow: '0 2px 8px rgba(46,38,33,0.2)' }}>{home.status}</span>
+          {!isPreTour && (
+            <span className="hh-mono" style={{ position: 'absolute', top: 10, left: 10, fontSize: 10.5, fontWeight: 700, color: '#fff', background: STATUS_COLOR[home.status] || 'var(--ink-soft)', padding: '4px 9px', borderRadius: 999, boxShadow: '0 2px 8px rgba(46,38,33,0.2)' }}>{home.status}</span>
+          )}
         </div>
 
         <div style={{ padding: '16px 18px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -125,12 +132,17 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
             </div>
           ) : null}
 
-          {home.status === 'Saved' && (
+          {isPreTour && (
             <button type="button" className="hh-btn" style={{ fontSize: 12.5, padding: '7px 12px', justifyContent: 'center' }} onClick={() => onWantToTour(home)}>
               <Footprints size={13} /> Want to tour
             </button>
           )}
-          {home.status === 'Want to Tour' && (
+          {!isPreTour && home.status === 'Want to Tour' && mode === 'homes' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, color: 'var(--ink-soft)' }}>
+              <Check size={14} color="var(--moss)" /> Want to tour
+            </div>
+          )}
+          {!isPreTour && home.status === 'Want to Tour' && mode !== 'homes' && (
             <button type="button" className="hh-btn" style={{ fontSize: 12.5, padding: '7px 12px', justifyContent: 'center' }} onClick={() => onOpenPostTour(home)}>
               <MessageCircle size={13} /> I toured this home
             </button>
