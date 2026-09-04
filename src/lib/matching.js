@@ -85,6 +85,36 @@ export function selectedSubjectiveCriteria(priorities) {
   );
 }
 
+// A short, curated set of rating-kind criteria worth offering a meticulous post-tour
+// user even when they weren't selected as a search priority. Pulled only from labels
+// that already exist somewhere in the app's own criterion set for this search type —
+// never invented — and always excludes anything already shown as a selected priority
+// so nothing is offered twice. Rating something here that isn't a selected priority
+// has zero effect on Match (computeMatch only scores items with a set, non-'dontcare'
+// tier), so this is purely a memory aid, not a hidden scoring input.
+const CURATED_TOUR_LABELS = [
+  'Natural Light', 'Privacy', 'Layout / Flow', 'Room Sizes', 'Immediate Street / Surroundings',
+  'Character / Charm', 'Openness / Ceiling Height', 'Overall Condition', 'Exterior Condition',
+  'Neighborhood', 'Noise Level',
+];
+
+export function curatedAdditionalSubjectiveCriteria(priorities) {
+  if (!priorities) return [];
+  const selectedKeys = new Set(selectedSubjectiveCriteria(priorities).map((i) => `${i.categoryKey}:${i.label}`));
+  const seen = new Set();
+  const out = [];
+  getItemlistCategories(priorities.searchType).forEach((def) => {
+    [...def.coreItems, ...def.suggestedItems].forEach((item) => {
+      if (item.kind !== 'rating' || !CURATED_TOUR_LABELS.includes(item.label)) return;
+      const key = `${def.key}:${item.label}`;
+      if (selectedKeys.has(key) || seen.has(key)) return;
+      seen.add(key);
+      out.push({ ...item, categoryKey: def.key });
+    });
+  });
+  return out;
+}
+
 /* ----------------------------- listing text parser ----------------------------- */
 
 export function parseListingText(text) {
