@@ -5,15 +5,19 @@ import { X } from 'lucide-react';
 import { StarInput } from '@/components/ui';
 import {
   STATUS_OPTIONS, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
-  isArchivedStatus, TOUR_RATING_KEY,
+  isArchivedStatus, isRentalType, TOUR_RATING_KEY,
 } from '@/lib/constants';
 import { visibleOrderedItems, parseListingText } from '@/lib/matching';
+import { extractAddressFromListingUrl } from '@/lib/listingUrl';
 
 export default function HomeModal({ initial, priorities, onSave, onClose }) {
   const [form, setForm] = useState(initial);
   const [pasteText, setPasteText] = useState('');
   const [parseMsg, setParseMsg] = useState('');
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState('');
+  const [lastImportedAddress, setLastImportedAddress] = useState('');
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const submit = async () => {
@@ -41,6 +45,59 @@ export default function HomeModal({ initial, priorities, onSave, onClose }) {
     setParseMsg(count > 0 ? `Filled in ${count} field${count === 1 ? '' : 's'} from what you pasted — double-check before saving.` : `Couldn't find anything usable in that text — try filling fields in manually.`);
   };
 
+  // Reads the address straight out of the URL string (no fetching the listing page).
+  // Only offers to fill the Address field if it's still empty, so this never clobbers
+  // something the user already typed or corrected.
+  const tryFillAddressFromUrl = () => {
+    if (form.address.trim()) return;
+    const result = extractAddressFromListingUrl(form.listingUrl);
+    if (result?.address) {
+      set('address', result.address);
+      setImportMsg('Filled in the address from your listing link — check it, then look up property details below.');
+    }
+  };
+
+  // Looks up objective property data for the current Address value via our own
+  // server route (which holds the RentCast key) and merges any results into
+  // fields that are still empty. Never overwrites anything the user already
+  // entered, and never saves — the user still reviews and clicks Save home.
+  const runImport = async () => {
+    const address = form.address.trim();
+    if (!address || importing || address === lastImportedAddress) return;
+    setImporting(true);
+    setImportMsg('');
+    try {
+      const res = await fetch('/api/import-listing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address, mode: isRentalType(priorities.searchType) ? 'rental' : 'sale' }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setImportMsg(data.error || "Couldn't look up that address — you can enter details manually.");
+        return;
+      }
+      setLastImportedAddress(address);
+      if (!data.found) {
+        setImportMsg(data.message || 'No property data was found for that address — you can enter details manually.');
+        return;
+      }
+      let count = 0;
+      setForm((f) => {
+        const next = { ...f };
+        Object.entries(data.fields || {}).forEach(([k, v]) => { if (v && !next[k]) { next[k] = v; count += 1; } });
+        return next;
+      });
+      setImportMsg(count > 0
+        ? `Filled in ${count} field${count === 1 ? '' : 's'} from property data — double-check before saving.`
+        : 'Found the property, but every matching field was already filled in.');
+    } catch {
+      setImportMsg("Couldn't reach the property data provider — you can enter details manually.");
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="hh-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="hh-modal hh-corner">
@@ -66,10 +123,29 @@ export default function HomeModal({ initial, priorities, onSave, onClose }) {
         </details>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12, marginBottom: 6 }}>
-          <div><label className="hh-label">Address *</label><input className="hh-input" value={form.address} onChange={(e) => set('address', e.target.value)} placeholder="123 Maple St, Ann Arbor, MI" /></div>
+          <div>
+            <label className="hh-label">Address *</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input className="hh-input" style={{ flex: 1 }} value={form.address} onChange={(e) => set('address', e.target.value)} placeholder="123 Maple St, Ann Arbor, MI" />
+              <button
+                type="button"
+                className="hh-btn hh-btn-ghost"
+                style={{ whiteSpace: 'nowrap' }}
+                onClick={runImport}
+                disabled={!form.address.trim() || importing || form.address.trim() === lastImportedAddress}
+              >
+                {importing ? 'Looking up...' : 'Look up property details'}
+              </button>
+            </div>
+            {importMsg && <p style={{ fontSize: 11.5, color: importMsg.startsWith("Couldn't") || importMsg.startsWith('No property') ? 'var(--brick)' : 'var(--moss)', margin: '4px 0 0' }}>{importMsg}</p>}
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div><label className="hh-label">Nearby cross streets</label><input className="hh-input" value={form.crossroads} onChange={(e) => set('crossroads', e.target.value)} placeholder="Main & 5th" /></div>
-            <div><label className="hh-label">Listing URL</label><input className="hh-input" value={form.listingUrl} onChange={(e) => set('listingUrl', e.target.value)} placeholder="https://..." /><p style={{ fontSize: 11, color: 'var(--ink-soft)', margin: '4px 0 0' }}>Just a link back to the listing for now — pasting a URL alone can't fill in details yet.</p></div>
+            <div>
+              <label className="hh-label">Listing URL</label>
+              <input className="hh-input" value={form.listingUrl} onChange={(e) => set('listingUrl', e.target.value)} onBlur={tryFillAddressFromUrl} placeholder="https://..." />
+              <p style={{ fontSize: 11, color: 'var(--ink-soft)', margin: '4px 0 0' }}>A link back to the listing. If the address field above is empty, we'll try to read it from this link — then you can look up property details.</p>
+            </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: form.photoUrl ? '1fr 64px' : '1fr', gap: 12, alignItems: 'end' }}>
             <div><label className="hh-label">Photo URL</label><input className="hh-input" value={form.photoUrl} onChange={(e) => set('photoUrl', e.target.value)} placeholder="https://.../photo.jpg" /></div>
