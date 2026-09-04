@@ -166,37 +166,44 @@ export default function HomeModal({ initial, priorities, onSave, onClose }) {
         </div>
 
         {isNewHome && (
-          <p style={{ fontSize: 14, color: 'var(--ink-soft)', lineHeight: 1.5, margin: '0 0 16px' }}>
-            Paste a listing link or enter an address. We'll fill in what we can.
-          </p>
+          <div
+            style={{
+              background: 'rgba(193,89,47,0.07)',
+              border: '1px solid rgba(193,89,47,0.25)',
+              borderRadius: 16,
+              padding: '18px 20px 20px',
+              marginBottom: 16,
+            }}
+          >
+            <p style={{ fontSize: 14, color: 'var(--ink-soft)', lineHeight: 1.5, margin: '0 0 14px' }}>
+              Paste a listing link or enter an address. We'll fill in what we can.
+            </p>
+            <label className="hh-label">Listing link or address</label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input
+                className="hh-input"
+                style={{ flex: 1, fontSize: 15, background: 'var(--paper-raised)' }}
+                value={findInput}
+                onChange={(e) => setFindInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleFind()}
+                placeholder="Paste a listing link, or type an address"
+              />
+              <button
+                type="button"
+                className="hh-btn"
+                style={{ whiteSpace: 'nowrap' }}
+                onClick={handleFind}
+                disabled={!findInput.trim() || importPhase === 'loading'}
+              >
+                {importPhase === 'loading' ? 'Finding...' : 'Find this home'}
+              </button>
+            </div>
+          </div>
         )}
 
-        {/* -------------------------- Find a home (Add Home only) -------------------------- */}
+        {/* -------------------------- Find feedback (Add Home only) -------------------------- */}
         {showFindUI && (
           <>
-            <div style={{ marginBottom: 4 }}>
-              <label className="hh-label">Listing link or address</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input
-                  className="hh-input"
-                  style={{ flex: 1, fontSize: 15 }}
-                  value={findInput}
-                  onChange={(e) => setFindInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleFind()}
-                  placeholder="Paste a listing link, or type an address"
-                />
-                <button
-                  type="button"
-                  className="hh-btn"
-                  style={{ whiteSpace: 'nowrap' }}
-                  onClick={handleFind}
-                  disabled={!findInput.trim() || importPhase === 'loading'}
-                >
-                  {importPhase === 'loading' ? 'Finding...' : 'Find this home'}
-                </button>
-              </div>
-            </div>
-
             {importPhase === 'success' && importResult && (
               <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--moss)', margin: '10px 0 4px' }}>
                 ✓ We found {foundFactsCount} property detail{foundFactsCount === 1 ? '' : 's'}. Review them below.
@@ -212,7 +219,7 @@ export default function HomeModal({ initial, priorities, onSave, onClose }) {
             )}
 
             {urlFallbackMsg && (
-              <div style={{ marginTop: 8, padding: '12px 14px', border: '1px solid var(--line)', borderRadius: 12, background: 'var(--paper)' }}>
+              <div style={{ marginTop: 8, padding: '12px 14px', border: '1px solid var(--line)', borderRadius: 12, background: 'var(--paper-raised)' }}>
                 <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '0 0 8px' }}>{urlFallbackMsg}</p>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <input
@@ -350,8 +357,8 @@ export default function HomeModal({ initial, priorities, onSave, onClose }) {
         {/* -------------------------- Still needed from the user -------------------------- */}
         {visibleMultiselect.length > 0 && (
           <div style={{ marginTop: 20 }}>
-            <h3 className="hh-serif" style={{ fontSize: 15, fontWeight: 600, margin: '0 0 2px' }}>A few things we still need from you</h3>
-            <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 12px' }}>These are details you'll need to confirm from the listing or in person.</p>
+            <h3 className="hh-serif" style={{ fontSize: 15, fontWeight: 600, margin: '0 0 2px' }}>Add what you know</h3>
+            <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 12px' }}>Add what you know now — you can always come back later.</p>
 
             {visibleMultiselect.map((def) => (
               <div key={def.key} style={{ marginBottom: 16 }}>
@@ -387,26 +394,48 @@ export default function HomeModal({ initial, priorities, onSave, onClose }) {
             const ratingItems = visible.filter((i) => i.kind === 'rating');
             const checkItems = visible.filter((i) => i.kind === 'check');
             const mustCount = visible.filter((i) => priorities[def.key]?.tiers?.[i.label] === 'must').length;
+            const isMustItem = (item) => priorities[def.key]?.tiers?.[item.label] === 'must';
             return (
-              <details key={def.key} open={mustCount > 0 || def.key === 'location' || def.key === 'homeFeel'} className="hh-details">
-                <summary>{def.title}{mustCount > 0 && <span className="hh-must-badge">{mustCount} MUST</span>}</summary>
+              <details
+                key={def.key}
+                open={isNewHome ? false : (mustCount > 0 || def.key === 'location' || def.key === 'homeFeel')}
+                className="hh-details"
+              >
+                <summary>{def.title}</summary>
+                {mustCount > 0 && (
+                  <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--brick)', margin: '10px 0 4px' }}>
+                    Your Must-Have {mustCount === 1 ? 'Feature' : 'Features'}
+                  </p>
+                )}
                 {ratingItems.length > 0 && (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', rowGap: 10, columnGap: 16, margin: '10px 0 12px' }}>
-                    {ratingItems.map((item) => (
-                      <div key={item.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ fontSize: 13 }}>{item.label}{priorities[def.key]?.tiers?.[item.label] === 'must' && <span className="hh-must-badge">MUST</span>}</span>
-                        <StarInput value={form.ratings[nsKey(def.key, item.label)] || 0} onChange={(v) => setRatingItem(def.key, item.label, v)} />
-                      </div>
-                    ))}
+                    {ratingItems.map((item) => {
+                      const must = isMustItem(item);
+                      return (
+                        <div key={item.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: 13, color: must ? 'var(--brick)' : 'var(--ink)', fontWeight: must ? 700 : 400 }}>{item.label}</span>
+                          <StarInput value={form.ratings[nsKey(def.key, item.label)] || 0} onChange={(v) => setRatingItem(def.key, item.label, v)} />
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
                 {checkItems.length > 0 && (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: ratingItems.length ? 4 : 12 }}>
-                    {checkItems.map((item) => (
-                      <span key={item.label} className={`hh-chip ${form.checks[nsKey(def.key, item.label)] ? 'on' : ''}`} onClick={() => toggleCheckItem(def.key, item.label)}>
-                        {item.label}{priorities[def.key]?.tiers?.[item.label] === 'must' && <span className="hh-must-badge">MUST</span>}
-                      </span>
-                    ))}
+                    {checkItems.map((item) => {
+                      const must = isMustItem(item);
+                      const checked = form.checks[nsKey(def.key, item.label)];
+                      return (
+                        <span
+                          key={item.label}
+                          className={`hh-chip ${checked ? 'on' : ''}`}
+                          onClick={() => toggleCheckItem(def.key, item.label)}
+                          style={must ? { fontWeight: 700, color: checked ? undefined : 'var(--brick)' } : undefined}
+                        >
+                          {item.label}
+                        </span>
+                      );
+                    })}
                   </div>
                 )}
               </details>
