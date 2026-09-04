@@ -3,17 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, SlidersHorizontal, Home as HomeIcon, Heart, Archive as ArchiveIcon, Columns, HelpCircle, X, Footprints } from 'lucide-react';
+import { LogOut, Home as HomeIcon, Columns, HelpCircle, X, Footprints, SlidersHorizontal } from 'lucide-react';
 import { BrandMark, Wordmark } from '@/components/ui';
-import { TABS } from '@/lib/constants';
+import { PRIMARY_TABS } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 
 const TAB_ICONS = {
-  search: SlidersHorizontal,
   homes: HomeIcon,
   tour: Footprints,
-  favorites: Heart,
-  archive: ArchiveIcon,
   compare: Columns,
 };
 
@@ -78,19 +75,10 @@ function HowToUseModal({ onClose }) {
   );
 }
 
-export default function AppShell({ children, userEmail, hasFavorites, hasArchived }) {
+export default function AppShell({ children, userEmail }) {
   const pathname = usePathname();
   const router = useRouter();
   const [howToOpen, setHowToOpen] = useState(false);
-
-  // Progressive nav: Favorites/Archive only appear once there's something in them.
-  // My Search, Homes, Want to Tour, and Compare are always available — a home-shopper
-  // may want to compare or plan tours before anything's been favorited or ruled out.
-  const visibleTabs = TABS.filter((t) => {
-    if (t.key === 'favorites') return hasFavorites;
-    if (t.key === 'archive') return hasArchived;
-    return true;
-  });
 
   const signOut = async () => {
     const supabase = createClient();
@@ -110,7 +98,14 @@ export default function AppShell({ children, userEmail, hasFavorites, hasArchive
               {userEmail && <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '4px 0 0' }}>{userEmail}</p>}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <Link
+              href="/search"
+              className="hh-btn hh-btn-ghost"
+              style={{ fontSize: 12.5, color: pathname === '/search' ? 'var(--brick)' : undefined }}
+            >
+              <SlidersHorizontal size={14} /> My Search
+            </Link>
             <button className="hh-btn hh-btn-ghost" onClick={() => setHowToOpen(true)} style={{ fontSize: 12.5 }}>
               <HelpCircle size={14} /> How to use
             </button>
@@ -121,7 +116,7 @@ export default function AppShell({ children, userEmail, hasFavorites, hasArchive
         </div>
 
         <div className="hh-tabs">
-          {visibleTabs.map(({ key, label, href }) => {
+          {PRIMARY_TABS.map(({ key, label, href }) => {
             const Icon = TAB_ICONS[key];
             return (
               <Link key={key} href={href} className={`hh-tab ${pathname === href ? 'active' : ''}`}>

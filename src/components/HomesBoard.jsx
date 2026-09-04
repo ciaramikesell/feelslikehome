@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import {
   Plus, Search, MapPin, Link2, Archive as ArchiveIcon, ExternalLink,
   Heart, Home as HomeIcon, Undo2, Trash2, Footprints, MessageCircle,
@@ -39,7 +40,7 @@ function ConfirmModal({ title, body, cancelLabel = 'Cancel', confirmLabel, confi
 
 /* --------------------------------- card view --------------------------------- */
 
-function HomeCard({ home, priorities, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour }) {
+function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour }) {
   const [imgError, setImgError] = useState(false);
   const avg = avgRating(home.ratings);
   const pps = parseNum(home.price) && parseNum(home.sqft) ? Math.round(parseNum(home.price) / parseNum(home.sqft)) : null;
@@ -50,6 +51,10 @@ function HomeCard({ home, priorities, onEdit, onArchiveRequest, onToggleFavorite
   const styleSummary = homeStyleSummary(home);
   const showPhoto = home.photoUrl && !imgError;
   const isFavorite = home.reaction === 'love';
+  // Heart/Archive as quick one-tap controls only make sense once a home has actually
+  // been toured (or we're already inside a decision-workspace view) — not as a
+  // pre-tour decision prompt on Homes.
+  const showQuickFavorite = mode === 'favorites' || mode === 'archive' || (mode === 'tour' && home.status === 'Toured');
   const statLine = [
     home.beds && `${home.beds} bd`,
     home.baths && `${home.baths} ba`,
@@ -73,16 +78,6 @@ function HomeCard({ home, priorities, onEdit, onArchiveRequest, onToggleFavorite
             </div>
           )}
           <span className="hh-mono" style={{ position: 'absolute', top: 10, left: 10, fontSize: 10.5, fontWeight: 700, color: '#fff', background: STATUS_COLOR[home.status] || 'var(--ink-soft)', padding: '4px 9px', borderRadius: 999, boxShadow: '0 2px 8px rgba(46,38,33,0.2)' }}>{home.status}</span>
-          <button
-            type="button" onClick={() => onToggleFavorite(home)} aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-            style={{
-              position: 'absolute', top: 8, right: 8, width: 30, height: 30, borderRadius: '50%', border: 'none', cursor: 'pointer',
-              background: isFavorite ? 'var(--brick)' : 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(46,38,33,0.2)',
-            }}
-          >
-            <Heart size={15} color={isFavorite ? '#fff' : 'var(--brick)'} fill={isFavorite ? '#fff' : 'none'} />
-          </button>
         </div>
 
         <div style={{ padding: '16px 18px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -175,6 +170,18 @@ function HomeCard({ home, priorities, onEdit, onArchiveRequest, onToggleFavorite
               <button className="hh-btn hh-btn-ghost" style={{ padding: '5px 8px' }} onClick={() => onArchiveRequest(home)} title="Archive">
                 <ArchiveIcon size={13} />
               </button>
+              {showQuickFavorite && (
+                <button
+                  type="button"
+                  className="hh-btn hh-btn-ghost"
+                  style={{ padding: '5px 8px' }}
+                  onClick={() => onToggleFavorite(home)}
+                  title={isFavorite ? 'Remove from favorites' : 'Love it / Favorite'}
+                  aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+                >
+                  <Heart size={13} color={isFavorite ? 'var(--brick)' : undefined} fill={isFavorite ? 'var(--brick)' : 'none'} />
+                </button>
+              )}
             </div>
             <button className="hh-btn hh-btn-ghost" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => onEdit(home)}>Edit</button>
           </div>
@@ -184,12 +191,12 @@ function HomeCard({ home, priorities, onEdit, onArchiveRequest, onToggleFavorite
   );
 }
 
-function CardGrid({ homes, priorities, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour }) {
+function CardGrid({ homes, priorities, mode, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
       {homes.map((h) => (
         <HomeCard
-          key={h.id} home={h} priorities={priorities} onEdit={onEdit} onArchiveRequest={onArchiveRequest}
+          key={h.id} home={h} priorities={priorities} mode={mode} onEdit={onEdit} onArchiveRequest={onArchiveRequest}
           onToggleFavorite={onToggleFavorite} onWantToTour={onWantToTour} onOpenPostTour={onOpenPostTour}
         />
       ))}
@@ -312,7 +319,13 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   const activeHomes = useMemo(() => homes.filter((h) => !isArchivedStatus(h.status)), [homes]);
   const archivedHomes = useMemo(() => homes.filter((h) => isArchivedStatus(h.status)), [homes]);
   const favoriteHomes = useMemo(() => activeHomes.filter((h) => h.reaction === 'love'), [activeHomes]);
-  const tourHomes = useMemo(() => activeHomes.filter((h) => h.status === 'Want to Tour'), [activeHomes]);
+  // The Want to Tour workspace holds homes not yet toured, PLUS toured homes still
+  // actively "considering" (not yet loved) — once a home is loved it graduates fully
+  // to Favorites rather than cluttering both lists.
+  const tourHomes = useMemo(
+    () => activeHomes.filter((h) => h.status === 'Want to Tour' || (h.status === 'Toured' && h.reaction !== 'love')),
+    [activeHomes]
+  );
 
   const baseList = mode === 'archive' ? archivedHomes : mode === 'favorites' ? favoriteHomes : mode === 'tour' ? tourHomes : activeHomes;
 
@@ -349,9 +362,11 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
 
   return (
     <>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '4px 0 14px' }}>
-        <button className="hh-btn" onClick={() => setModalHome(emptyHome())}><Plus size={15} /> Add home</button>
-      </div>
+      {mode === 'homes' && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '4px 0 14px' }}>
+          <button className="hh-btn" onClick={() => setModalHome(emptyHome())}><Plus size={15} /> Add home</button>
+        </div>
+      )}
 
       {saveError && <div style={{ background: 'rgba(193,89,47,0.09)', border: '1px solid var(--brick)', color: 'var(--brick)', fontSize: 12.5, padding: '9px 14px', borderRadius: 12, marginBottom: 14 }}>{saveError}</div>}
 
@@ -372,7 +387,11 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         mode === 'favorites' ? (
           <div style={{ fontSize: 13.5, color: 'var(--ink-soft)', padding: '30px 0' }}>Nothing favorited yet. Tap the heart on a home, or choose Love it after a tour.</div>
         ) : mode === 'tour' ? (
-          <div style={{ fontSize: 13.5, color: 'var(--ink-soft)', padding: '30px 0' }}>Nothing here yet. When a home in Homes is worth seeing in person, tap <em>Want to tour</em> on it.</div>
+          <div className="hh-corner" style={{ border: '1px dashed var(--line)', borderRadius: 16, padding: '48px 24px', textAlign: 'center', color: 'var(--ink-soft)' }}>
+            <p className="hh-serif" style={{ fontSize: 17, color: 'var(--ink)', marginBottom: 6 }}>No homes to tour yet</p>
+            <p style={{ fontSize: 13, marginBottom: 18 }}>When you find a home you'd like to see in person, mark it Want to tour from Homes.</p>
+            <Link href="/homes" className="hh-btn hh-btn-ghost">View my homes →</Link>
+          </div>
         ) : (
           <div className="hh-corner" style={{ border: '1px dashed var(--line)', borderRadius: 16, padding: '48px 24px', textAlign: 'center', color: 'var(--ink-soft)' }}>
             <p className="hh-serif" style={{ fontSize: 17, color: 'var(--ink)', marginBottom: 6 }}>{activeHomes.length === 0 ? 'Ready to start?' : 'Nothing matches that search'}</p>
@@ -382,7 +401,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         )
       ) : (
         <CardGrid
-          homes={filtered} priorities={priorities} onEdit={setModalHome} onArchiveRequest={setArchiveTarget}
+          homes={filtered} priorities={priorities} mode={mode} onEdit={setModalHome} onArchiveRequest={setArchiveTarget}
           onToggleFavorite={toggleFavorite} onWantToTour={wantToTour} onOpenPostTour={setPostTourTarget}
         />
       )}

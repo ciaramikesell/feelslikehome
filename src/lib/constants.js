@@ -196,12 +196,14 @@ export function terminology(searchType) {
   };
 }
 
-export const TABS = [
-  { key: 'search', label: 'My Search', href: '/search' },
+// Primary navigation is now deliberately short and workflow-shaped: Homes is where
+// everything starts, Want to Tour is the decision workspace (which itself contains
+// Favorites/Archived as a progressive secondary nav — see DecisionNav.jsx), and
+// Compare is available regardless of tour status. My Search moved to the top utility
+// row since it's preferences, not a stage of the shopping workflow.
+export const PRIMARY_TABS = [
   { key: 'homes', label: 'Homes', href: '/homes' },
   { key: 'tour', label: 'Want to Tour', href: '/tour' },
-  { key: 'favorites', label: 'Favorites', href: '/favorites' },
-  { key: 'archive', label: 'Archive', href: '/archive' },
   { key: 'compare', label: 'Compare', href: '/compare' },
 ];
 

@@ -115,9 +115,9 @@ export function ReactionButtons({ home, onReact }) {
 // each main logged-in page — not a redesign of page headers, just one subtle line.
 export function PageIntro({ title, subtitle }) {
   return (
-    <div style={{ marginBottom: 18 }}>
-      <h2 className="hh-serif" style={{ fontSize: 20, fontWeight: 600, margin: '0 0 4px', color: 'var(--ink)' }}>{title}</h2>
-      {subtitle && <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: 0, lineHeight: 1.5 }}>{subtitle}</p>}
+    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 12, rowGap: 3, marginBottom: 20 }}>
+      <h2 className="hh-serif" style={{ fontSize: 24, fontWeight: 700, color: 'var(--brick)', margin: 0, letterSpacing: '-0.01em' }}>{title}</h2>
+      {subtitle && <p style={{ fontSize: 14, fontWeight: 400, color: 'var(--ink-soft)', margin: 0, lineHeight: 1.5 }}>{subtitle}</p>}
     </div>
   );
 }

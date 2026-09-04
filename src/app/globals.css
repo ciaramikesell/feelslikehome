@@ -141,3 +141,21 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   .afh-benefits { gap: 12px; margin-top: 22px; }
   .afh-benefit-icon { width: 30px; height: 30px; }
 }
+
+/* -------------------------- decision workspace (Want to Tour / Favorites / Archived) -------------------------- */
+.hh-decision-layout { display: flex; gap: 26px; align-items: flex-start; }
+.hh-decision-rail { display: flex; flex-direction: column; gap: 3px; width: 168px; flex-shrink: 0; }
+.hh-decision-item {
+  display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 10px;
+  font-size: 13.5px; font-weight: 500; color: var(--ink-soft); text-decoration: none;
+  font-family: 'Plus Jakarta Sans', sans-serif; border: 1px solid transparent;
+}
+.hh-decision-item:hover { background: var(--paper-raised); color: var(--ink); }
+.hh-decision-item.active { background: var(--paper-raised); color: var(--brick); font-weight: 700; border-color: var(--line); }
+.hh-decision-content { flex: 1; min-width: 0; }
+
+@media (max-width: 720px) {
+  .hh-decision-layout { flex-direction: column; gap: 14px; }
+  .hh-decision-rail { flex-direction: row; width: 100%; overflow-x: auto; gap: 6px; padding-bottom: 2px; }
+  .hh-decision-item { flex-shrink: 0; }
+}
