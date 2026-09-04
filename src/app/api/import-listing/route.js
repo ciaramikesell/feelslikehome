@@ -20,14 +20,14 @@ async function fetchRentCast(path, address, apiKey) {
     const res = await fetch(url, { headers: { 'X-Api-Key': apiKey, Accept: 'application/json' } });
 
     if (res.status === 404) return { status: 'empty', data: null };
-    if (!res.ok) return { status: 'error', data: null, rateLimited: res.status === 429 };
+    if (!res.ok) return { status: 'error', data: null, rateLimited: res.status === 429, upstreamStatus: res.status };
 
     const json = await res.json();
     const first = Array.isArray(json) ? json[0] : json;
     return { status: first ? 'ok' : 'empty', data: first || null };
   } catch (err) {
     console.error(`RentCast request failed for ${path}`, err);
-    return { status: 'error', data: null, rateLimited: false };
+    return { status: 'error', data: null, rateLimited: false, upstreamStatus: null };
   }
 }
 
@@ -74,11 +74,22 @@ export async function POST(request) {
     if (propertyResult.status === 'error' && listingResult.status === 'error') {
       if (propertyResult.rateLimited || listingResult.rateLimited) {
         return NextResponse.json(
-          { error: "We've hit the property data provider's rate limit. Try again in a bit." },
+          {
+            error: "We've hit the property data provider's rate limit. Try again in a bit.",
+            // Temporary diagnostics — safe: HTTP status codes only, never the API key,
+            // request headers, or the provider's response body.
+            diagnostics: { propertyStatus: propertyResult.upstreamStatus, listingStatus: listingResult.upstreamStatus },
+          },
           { status: 429 }
         );
       }
-      return NextResponse.json({ error: 'Property lookup is temporarily unavailable.' }, { status: 502 });
+      return NextResponse.json(
+        {
+          error: 'Property lookup is temporarily unavailable.',
+          diagnostics: { propertyStatus: propertyResult.upstreamStatus, listingStatus: listingResult.upstreamStatus },
+        },
+        { status: 502 }
+      );
     }
 
     const { fields, foundAny } = normalizeRentCastFields(propertyResult.data, listingResult.data);

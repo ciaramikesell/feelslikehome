@@ -74,7 +74,14 @@ export default function HomeModal({ initial, priorities, onSave, onClose }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setImportMsg(data.error || "Couldn't look up that address — you can enter details manually.");
+        // Temporary diagnostic patch: surface upstream HTTP status codes when present,
+        // so failures can be identified without deeper log access. Remove this branch
+        // once the RentCast integration is confirmed working.
+        if (data.diagnostics) {
+          setImportMsg(`Property lookup failed (property: ${data.diagnostics.propertyStatus}, listing: ${data.diagnostics.listingStatus}).`);
+        } else {
+          setImportMsg(data.error || "Couldn't look up that address — you can enter details manually.");
+        }
         return;
       }
       setLastImportedAddress(address);
@@ -137,7 +144,7 @@ export default function HomeModal({ initial, priorities, onSave, onClose }) {
                 {importing ? 'Looking up...' : 'Look up property details'}
               </button>
             </div>
-            {importMsg && <p style={{ fontSize: 11.5, color: importMsg.startsWith("Couldn't") || importMsg.startsWith('No property') ? 'var(--brick)' : 'var(--moss)', margin: '4px 0 0' }}>{importMsg}</p>}
+            {importMsg && <p style={{ fontSize: 11.5, color: importMsg.startsWith("Couldn't") || importMsg.startsWith('No property') || importMsg.startsWith('Property lookup failed') ? 'var(--brick)' : 'var(--moss)', margin: '4px 0 0' }}>{importMsg}</p>}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div><label className="hh-label">Nearby cross streets</label><input className="hh-input" value={form.crossroads} onChange={(e) => set('crossroads', e.target.value)} placeholder="Main & 5th" /></div>
