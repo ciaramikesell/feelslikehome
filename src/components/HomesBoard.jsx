@@ -132,11 +132,6 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
             </div>
           ) : null}
 
-          {isPreTour && (
-            <button type="button" className="hh-btn" style={{ fontSize: 12.5, padding: '7px 12px', justifyContent: 'center' }} onClick={() => onWantToTour(home)}>
-              <Footprints size={13} /> Want to tour
-            </button>
-          )}
           {!isPreTour && home.status === 'Want to Tour' && mode === 'homes' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, color: 'var(--ink-soft)' }}>
               <Check size={14} color="var(--moss)" /> Want to tour
@@ -172,7 +167,7 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
             </div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginTop: 4, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
             <div style={{ display: 'flex', gap: 4 }}>
               {home.listingUrl && (
                 <a href={home.listingUrl} target="_blank" rel="noreferrer" className="hh-btn hh-btn-ghost" style={{ padding: '5px 8px' }} title="Open listing">
@@ -195,6 +190,18 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
                 </button>
               )}
             </div>
+
+            {isPreTour && (
+              <button
+                type="button"
+                className="hh-btn"
+                style={{ fontSize: 12.5, padding: '7px 14px', flex: '1 1 auto', maxWidth: 180, justifyContent: 'center' }}
+                onClick={() => onWantToTour(home)}
+              >
+                <Footprints size={13} /> Want to tour
+              </button>
+            )}
+
             <button className="hh-btn hh-btn-ghost" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => onEdit(home)}>Edit</button>
           </div>
         </div>
