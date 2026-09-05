@@ -77,8 +77,8 @@ export default function CriteriaPicker({ def, priorities, patch, draggable = fal
                 {draggable && <GripVertical size={14} className="hh-drag-handle" style={{ flexShrink: 0 }} />}
                 {criterionDisplayLabel(key, item.label)}
               </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ display: 'flex', gap: 3 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
                   {SELECTABLE_TIERS.map((t) => (
                     <button
                       key={t} type="button" onClick={() => setTier(item.label, t)}
