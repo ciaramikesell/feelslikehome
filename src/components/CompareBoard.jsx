@@ -31,6 +31,12 @@ const HOME_FACT_ROWS = [
   { key: 'garage', label: 'Garage', betterHigh: true, get: (h) => parseNum(h.garageSpaces), fmt: (v) => (v === null ? '—' : v) },
   { key: 'year', label: 'Year built', betterHigh: null, get: (h) => h.yearBuilt || null, fmt: (v) => v || '—' },
   { key: 'dom', label: 'Days on market', betterHigh: false, get: (h) => parseNum(h.daysOnMarket), fmt: (v) => (v === null ? '—' : v) },
+  // Auto Enrichment facts — plain figures/facts only, never a rating or a claim about
+  // whether a school district "satisfies" anything. A real financial or factual
+  // difference worth seeing side-by-side; not shown at all when a home doesn't have it.
+  { key: 'hoa', label: 'HOA', betterHigh: false, get: (h) => (typeof h.hoaFeeMonthly === 'number' ? h.hoaFeeMonthly : null), fmt: (v) => (v === null ? '—' : `$${v.toLocaleString()}/mo`) },
+  { key: 'tax', label: 'Property tax', betterHigh: false, get: (h) => (typeof h.propertyTaxAnnual === 'number' ? h.propertyTaxAnnual : null), fmt: (v, h) => (v === null ? '—' : `$${v.toLocaleString()}/yr${h?.propertyTaxYear ? ` · ${h.propertyTaxYear}` : ''}`) },
+  { key: 'school', label: 'School district', betterHigh: null, get: (h) => h.schoolDistrict || null, fmt: (v) => v || '—' },
 ];
 
 function bestIndex(values, betterHigh) {
@@ -61,12 +67,15 @@ function CriteriaValue({ c }) {
   if (!c || !c.evaluated) {
     return <span style={{ fontSize: 12.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>Not evaluated yet</span>;
   }
-  if (!c.objective) {
-    return <MiniStars value={Math.round((c.score || 0) * 5)} />;
-  }
+  // Subjective/experiential criteria are captured in Post-Tour as Liked/Didn't Like,
+  // not a star scale — showing stars here would be a stale artifact of a UI that no
+  // longer exists. c.met is already exactly "value >= 3" from the shared Match
+  // calculation, so a historical fine-grained star rating (e.g. an old 4/5) still
+  // displays correctly as "Liked" through this same threshold, with nothing rewritten.
+  const text = c.objective ? c.detail : (c.met ? 'Liked' : "Didn't like");
   return (
     <span style={{ fontSize: 12.5, color: c.met ? 'var(--moss)' : 'var(--brick)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-      <span style={{ fontWeight: 700 }}>{c.met ? '✓' : '✕'}</span> {c.detail}
+      <span style={{ fontWeight: 700 }}>{c.met ? '✓' : '✕'}</span> {text}
     </span>
   );
 }
@@ -303,7 +312,7 @@ export default function CompareBoard({ homes, priorities }) {
                           padding: '8px 12px', fontSize: 12.5, borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center',
                           color: i === winner ? 'var(--moss)' : 'var(--ink)', fontWeight: i === winner ? 700 : 500,
                         }}>
-                          {row.fmt(v)}
+                          {row.fmt(v, selected[i])}
                         </div>
                       ))}
                     </Fragment>
