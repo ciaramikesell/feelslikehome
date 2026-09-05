@@ -5,7 +5,7 @@ import { TierPicker } from '@/components/ui';
 import CriteriaPicker from '@/components/CriteriaPicker';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, INVESTMENT_PROPERTY_TYPES, INVESTMENT_LIVING_PLAN_OPTIONS,
-  isSimpleRentalType, showsMultiselectCategory, terminology, toggleWithNoPreference, getItemlistCategories,
+  isSimpleRentalType, showsMultiselectCategory, terminology, toggleWithNoPreference, getItemlistCategories, normalizePriorities,
 } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { updateSearchPriorities } from '@/lib/supabase/data';
@@ -82,7 +82,7 @@ function MultiselectSection({ def, priorities, patch, children }) {
 }
 
 export default function MySearchPanel({ searchId, initialPriorities }) {
-  const [priorities, setPriorities] = useState(initialPriorities);
+  const [priorities, setPriorities] = useState(() => normalizePriorities(initialPriorities));
 
   const patch = (updater) => {
     setPriorities((prev) => {

@@ -41,7 +41,7 @@ function ConfirmModal({ title, body, cancelLabel = 'Cancel', confirmLabel, confi
 
 /* --------------------------------- card view --------------------------------- */
 
-function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour }) {
+function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour, onRemoveFromTour }) {
   const [imgError, setImgError] = useState(false);
   const avg = avgRating(home.ratings);
   const pps = parseNum(home.price) && parseNum(home.sqft) ? Math.round(parseNum(home.price) / parseNum(home.sqft)) : null;
@@ -177,6 +177,18 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
             <button className="hh-btn hh-btn-ghost" style={{ padding: '5px 7px', flexShrink: 0 }} onClick={() => onArchiveRequest(home)} title="Archive">
               <ArchiveIcon size={13} />
             </button>
+            {mode === 'tour' && home.status === 'Want to Tour' && (
+              <button
+                type="button"
+                className="hh-btn hh-btn-ghost"
+                style={{ padding: '5px 7px', flexShrink: 0 }}
+                onClick={() => onRemoveFromTour(home)}
+                title="Remove from Want to Tour"
+                aria-label="Remove from Want to Tour"
+              >
+                <Undo2 size={13} />
+              </button>
+            )}
             {showQuickFavorite && (
               <button
                 type="button"
@@ -220,13 +232,13 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
   );
 }
 
-function CardGrid({ homes, priorities, mode, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour }) {
+function CardGrid({ homes, priorities, mode, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour, onRemoveFromTour }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
       {homes.map((h) => (
         <HomeCard
           key={h.id} home={h} priorities={priorities} mode={mode} onEdit={onEdit} onArchiveRequest={onArchiveRequest}
-          onToggleFavorite={onToggleFavorite} onWantToTour={onWantToTour} onOpenPostTour={onOpenPostTour}
+          onToggleFavorite={onToggleFavorite} onWantToTour={onWantToTour} onOpenPostTour={onOpenPostTour} onRemoveFromTour={onRemoveFromTour}
         />
       ))}
     </div>
@@ -314,6 +326,13 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   // existing status field, just moving it to a value it already supports.
   const wantToTour = useCallback((home) => {
     saveHome({ ...home, status: 'Want to Tour' });
+  }, [saveHome]);
+
+  // "I'm still considering this home, but not on my tour list." Reverses Want to
+  // Tour back to the normal active status — not Archive, not deletion, no
+  // confirmation, and every other field (ratings, notes, Match inputs) untouched.
+  const removeFromTour = useCallback((home) => {
+    saveHome({ ...home, status: 'Saved' });
   }, [saveHome]);
 
   // What the post-tour verdict means, conceptually:
@@ -431,7 +450,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
       ) : (
         <CardGrid
           homes={filtered} priorities={priorities} mode={mode} onEdit={setModalHome} onArchiveRequest={setArchiveTarget}
-          onToggleFavorite={toggleFavorite} onWantToTour={wantToTour} onOpenPostTour={setPostTourTarget}
+          onToggleFavorite={toggleFavorite} onWantToTour={wantToTour} onOpenPostTour={setPostTourTarget} onRemoveFromTour={removeFromTour}
         />
       )}
 

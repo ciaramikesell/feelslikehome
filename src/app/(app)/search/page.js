@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getSearch } from '@/lib/supabase/data';
 import MySearchPanel from '@/components/MySearchPanel';
 import { PageIntro } from '@/components/ui';
+import { normalizePriorities } from '@/lib/constants';
 
 export default async function SearchPage() {
   const supabase = await createClient();
@@ -11,7 +12,7 @@ export default async function SearchPage() {
   return (
     <>
       <PageIntro title="My Search" subtitle="Review what you're looking for and what matters most to you." />
-      <MySearchPanel searchId={search.id} initialPriorities={search.priorities} />
+      <MySearchPanel searchId={search.id} initialPriorities={normalizePriorities(search.priorities)} />
     </>
   );
 }

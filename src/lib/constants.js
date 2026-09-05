@@ -239,3 +239,25 @@ export function defaultPriorities() {
     features: { customItems: [], tiers: {}, order: [], hiddenCore: [] },
   };
 }
+
+// Guarantees every key MySearchPanel/CriteriaPicker directly read (e.g. `p.budget.value`,
+// not `p.budget?.value`) actually exists, without ever discarding real stored data. Handles:
+// `raw` being null/undefined entirely (e.g. a search row whose `priorities` column was
+// never populated), and `raw` being a real but partial/older-shaped object (e.g. missing a
+// key added after that record was first created). Only fills gaps — any value present in
+// `raw`, at any depth, is always preserved as-is.
+export function normalizePriorities(raw) {
+  const base = defaultPriorities();
+  if (!raw || typeof raw !== 'object') return base;
+
+  const merged = { ...base, ...raw };
+  const shapedKeys = [
+    'budget', 'sqftTarget', 'lotSizeTarget', 'bedsMin', 'bathsMin',
+    'homeLayout', 'homeCondition', 'primaryBedroomLocation', 'secondaryBedroomLocation',
+    'location', 'homeFeel', 'exterior', 'features',
+  ];
+  shapedKeys.forEach((key) => {
+    merged[key] = { ...base[key], ...(raw[key] && typeof raw[key] === 'object' ? raw[key] : {}) };
+  });
+  return merged;
+}
