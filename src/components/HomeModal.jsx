@@ -229,9 +229,16 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
         // Previously this threw uncaught: the modal never closed, nothing was shown,
         // and Cancel was the only way out. Now the failure is visible, the form's
         // entered values are preserved (the modal simply stays open), and the
-        // button re-enables so the user can retry without losing anything.
+        // button re-enables so the user can retry without losing anything. The raw
+        // message is shown too (small, secondary) so a real failure — e.g. a
+        // database column that doesn't exist yet — is immediately diagnosable
+        // without needing to open the browser console.
         console.error('Save home failed', saveErr);
-        setSaveErrorMsg("We couldn't save this home. Please try again — your changes here haven't been lost.");
+        const detail = saveErr?.message || saveErr?.code || '';
+        setSaveErrorMsg(
+          "We couldn't save this home. Please try again — your changes here haven't been lost."
+          + (detail ? ` (${detail})` : '')
+        );
         setSaving(false);
         return;
       }

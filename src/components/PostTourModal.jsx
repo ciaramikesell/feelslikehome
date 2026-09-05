@@ -1,23 +1,28 @@
 'use client';
 
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Heart, CircleDashed, XCircle } from 'lucide-react';
 import { StarInput } from '@/components/ui';
 import { TOUR_RATING_KEY, criterionDisplayLabel } from '@/lib/constants';
 import { selectedSubjectiveCriteria, curatedAdditionalSubjectiveCriteria } from '@/lib/matching';
 
-// A small, curated set of things people commonly notice on a tour — deliberately NOT
-// an exhaustive list of every criterion the app supports. These just toggle a word in
-// the existing Pros/Cons text fields; there's no new data model behind them, so this
-// list isn't limited to items that also exist as formal rating criteria.
-const IMPRESSION_CHIPS = [
-  'Natural light', 'Layout', 'Kitchen', 'Yard', 'Privacy', 'Street', 'Room sizes', 'Condition', 'Storage', 'Character', 'Noise',
-];
+// A small set of things people commonly notice on a tour that DON'T correspond to a
+// formal rating criterion at all — deliberately short. Anything that maps onto a real
+// criterion (Natural Light, Layout / Flow, Yard, Privacy, Room Sizes, Character / Charm,
+// Condition, Street, Noise) is now handled exactly and unambiguously via LikeDislikeRow
+// above instead, since several of those names are genuinely ambiguous on their own
+// (e.g. "Privacy" and "Condition" each refer to two different real criteria) or don't
+// match the stored label closely enough to safely tie back to Match. These just toggle
+// a word in the existing Pros/Cons text fields; there's no criterion behind them.
+const IMPRESSION_CHIPS = ['Kitchen', 'Storage'];
 
+// Equivalent structural treatment for all three verdicts (same icon size/position),
+// each semantically distinct: a filled heart for Love it, a neutral dashed circle for
+// genuine ambivalence, and a clear X for ruling a home out.
 const VERDICTS = [
-  { key: 'love', emoji: '❤️', title: 'Love it', body: 'This is a real contender.' },
-  { key: 'considering', emoji: '', title: 'Still considering', body: "I'm not sure yet." },
-  { key: 'not_for_me', emoji: '', title: 'Not for me', body: 'I can rule this one out.' },
+  { key: 'love', icon: Heart, filled: true, title: 'Love it', body: 'This is a real contender.' },
+  { key: 'considering', icon: CircleDashed, filled: false, title: 'Still considering', body: "I'm not sure yet." },
+  { key: 'not_for_me', icon: XCircle, filled: false, title: 'Not for me', body: 'I can rule this one out.' },
 ];
 
 // Pros/Cons stay a plain comma-separated string — these three helpers are the only
@@ -40,11 +45,45 @@ function addToList(text, word) {
   return [...items, word].join(', ');
 }
 
-function RatingRow({ label, must, value, onChange }) {
+// Liked/Didn't Like for a specific, exactly-identified criterion (never a loosely-worded
+// guess) — writes the SAME ratings[key] storage Match 2.0 already reads, using sentinel
+// values (5=Liked, 2=Didn't like) that land on the correct side of the existing
+// met = value >= 3 threshold. This is why no change to matching.js was needed: Match
+// already treats a coarse 5/2 exactly the same way it always treated a fine-grained
+// star rating. A historical 1-5 star value from before this UI existed still displays
+// correctly here (>=3 shows as Liked, <3 as Didn't Like) WITHOUT being rewritten unless
+// the user actually taps something — old data is read, never silently reinterpreted in
+// storage.
+function LikeDislikeRow({ label, must, value, onChange }) {
+  const liked = value >= 3;
+  const disliked = value > 0 && value < 3;
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 34 }}>
-      <span style={{ fontSize: 13.5, color: must ? 'var(--brick)' : 'var(--ink)', fontWeight: must ? 700 : 400 }}>{label}</span>
-      <StarInput value={value || 0} onChange={onChange} size={19} />
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 34, gap: 10 }}>
+      <span style={{ fontSize: 13.5, color: must ? 'var(--brick)' : 'var(--ink)', fontWeight: must ? 700 : 400, flex: 1 }}>{label}</span>
+      <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+        <button
+          type="button"
+          onClick={() => onChange(liked ? 0 : 5)}
+          className="hh-chip"
+          style={{
+            fontSize: 11.5, padding: '4px 10px', borderColor: 'var(--moss)',
+            background: liked ? 'var(--moss)' : 'transparent', color: liked ? '#fff' : 'var(--moss)',
+          }}
+        >
+          Liked
+        </button>
+        <button
+          type="button"
+          onClick={() => onChange(disliked ? 0 : 2)}
+          className="hh-chip"
+          style={{
+            fontSize: 11.5, padding: '4px 10px', borderColor: 'var(--brick)',
+            background: disliked ? 'var(--brick)' : 'transparent', color: disliked ? '#fff' : 'var(--brick)',
+          }}
+        >
+          Didn't like
+        </button>
+      </div>
     </div>
   );
 }
@@ -168,6 +207,7 @@ export default function PostTourModal({ home, priorities, onVerdict, onClose }) 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 22 }}>
           {VERDICTS.map((v) => {
             const selected = verdict === v.key;
+            const Icon = v.icon;
             return (
               <button
                 key={v.key}
@@ -179,7 +219,7 @@ export default function PostTourModal({ home, priorities, onVerdict, onClose }) 
                   background: selected ? 'rgba(193,89,47,0.08)' : 'var(--paper-raised)',
                 }}
               >
-                {v.emoji && <div style={{ fontSize: 22, marginBottom: 4 }}>{v.emoji}</div>}
+                <Icon size={20} style={{ marginBottom: 4 }} color={selected ? 'var(--brick)' : 'var(--ink-soft)'} fill={selected && v.filled ? 'var(--brick)' : 'none'} />
                 <div style={{ fontSize: 14, fontWeight: 700, color: selected ? 'var(--brick)' : 'var(--ink)' }}>{v.title}</div>
                 <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginTop: 2, lineHeight: 1.35 }}>{v.body}</div>
               </button>
@@ -200,7 +240,7 @@ export default function PostTourModal({ home, priorities, onVerdict, onClose }) 
           >
             <div>
               <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>{detailsOpen ? '− Hide tour details' : '+ Add tour details'}</div>
-              <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', marginTop: 2 }}>Rate the things you could only really know after seeing the home in person.</div>
+              <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', marginTop: 2 }}>Tell us what stood out about the things you said matter to you.</div>
             </div>
           </button>
 
@@ -213,7 +253,7 @@ export default function PostTourModal({ home, priorities, onVerdict, onClose }) 
                     {subjectiveItems.map((item) => {
                       const key = `${item.categoryKey}:${item.label}`;
                       const must = priorities[item.categoryKey]?.tiers?.[item.label] === 'must';
-                      return <RatingRow key={key} label={criterionDisplayLabel(item.categoryKey, item.label)} must={must} value={ratings[key]} onChange={(v) => setRating(key, v)} />;
+                      return <LikeDislikeRow key={key} label={criterionDisplayLabel(item.categoryKey, item.label)} must={must} value={ratings[key] || 0} onChange={(v) => setRating(key, v)} />;
                     })}
                   </div>
                 </div>
@@ -225,15 +265,15 @@ export default function PostTourModal({ home, priorities, onVerdict, onClose }) 
                   <div style={{ display: 'grid', gap: 4 }}>
                     {additionalItems.map((item) => {
                       const key = `${item.categoryKey}:${item.label}`;
-                      return <RatingRow key={key} label={criterionDisplayLabel(item.categoryKey, item.label)} value={ratings[key]} onChange={(v) => setRating(key, v)} />;
+                      return <LikeDislikeRow key={key} label={criterionDisplayLabel(item.categoryKey, item.label)} value={ratings[key] || 0} onChange={(v) => setRating(key, v)} />;
                     })}
                   </div>
                 </div>
               )}
 
               <div>
-                <label className="hh-label" style={{ marginBottom: 4 }}>What stood out?</label>
-                <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '0 0 10px' }}>Tap anything you want to remember.</p>
+                <label className="hh-label" style={{ marginBottom: 4 }}>Anything else worth remembering?</label>
+                <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '0 0 10px' }}>For things that aren't in the list above — the kitchen, the neighbors, anything.</p>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                   <StandOutGroup title="Liked" color="var(--moss)" value={pros} onChange={setPros} />
                   <StandOutGroup title="Didn't like" color="var(--brick)" value={cons} onChange={setCons} />

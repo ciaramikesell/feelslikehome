@@ -174,6 +174,10 @@ function OnboardingStep1({ priorities, patch, onNext }) {
 
 function OnboardingStep2({ priorities, patch, onNext, onBack }) {
   const categories = getItemlistCategories(priorities.searchType);
+  const hasAnySelection = categories.some((def) => {
+    const tiers = priorities[def.key]?.tiers || {};
+    return Object.values(tiers).some((t) => t && t !== 'dontcare');
+  });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -199,11 +203,13 @@ function OnboardingStep2({ priorities, patch, onNext, onBack }) {
         ))}
       </div>
 
-      <p style={{ fontSize: 12, color: 'var(--ink-soft)', fontStyle: 'italic', margin: 0 }}>You can fine-tune all of this anytime in My Search.</p>
+      <p style={{ fontSize: 12, color: 'var(--ink-soft)', fontStyle: 'italic', margin: 0 }}>
+        You don't have to pick anything right now — you can always add or change what matters in My Search later.
+      </p>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <button type="button" className="hh-btn hh-btn-ghost" onClick={onBack}>Back</button>
-        <button type="button" className="hh-btn" onClick={onNext}>Continue</button>
+        <button type="button" className="hh-btn" onClick={onNext}>{hasAnySelection ? 'Continue' : 'Skip for now'}</button>
       </div>
     </div>
   );

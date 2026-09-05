@@ -6,7 +6,7 @@ import CriteriaPicker from '@/components/CriteriaPicker';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, INVESTMENT_PROPERTY_TYPES, INVESTMENT_LIVING_PLAN_OPTIONS,
   isSimpleRentalType, showsMultiselectCategory, terminology, toggleWithNoPreference, getItemlistCategories,
-  normalizePriorities, searchTypeLabel, TIER_META, criterionDisplayLabel,
+  normalizePriorities, searchTypeLabel, TIER_META, TIER_ORDER, criterionDisplayLabel, isExperientialCriterion,
 } from '@/lib/constants';
 import { selectedOrderedItems } from '@/lib/matching';
 import { createClient } from '@/lib/supabase/client';
@@ -198,42 +198,65 @@ function BasicsCard({ p, patch }) {
   );
 }
 
-// One "What matters to me" category — a settled list of what's already selected by
-// default, with importance shown as restrained text (not a wall of pills), and the
-// full existing CriteriaPicker (tiers, tray, custom add, reordering) tucked behind
-// "Edit priorities" for anyone who wants to change something.
-function PriorityCard({ def, priorities, patch }) {
-  const selected = selectedOrderedItems(def, priorities);
-  const [editOpen, setEditOpen] = useState(selected.length === 0);
+// The default review lens: pooled across every category, organized by importance —
+// "is that REALLY a Must Have?" is easiest to notice when Must Haves from every
+// category sit together, not scattered one category-card at a time. Category
+// organization remains available, but only inside Edit (below), where it helps
+// with DISCOVERING new criteria rather than reviewing what's already chosen.
+function WhatMattersCard({ categories, priorities, patch }) {
+  const [editOpen, setEditOpen] = useState(false);
+
+  const pooled = categories.flatMap((def) =>
+    selectedOrderedItems(def, priorities).map((item) => ({
+      ...item,
+      categoryKey: def.key,
+      tier: priorities[def.key]?.tiers?.[item.label] || 'dontcare',
+    }))
+  );
+  const hasAny = pooled.length > 0;
+  const buckets = TIER_ORDER.filter((t) => t !== 'dontcare').map((tier) => ({
+    tier, items: pooled.filter((i) => i.tier === tier),
+  })).filter((b) => b.items.length > 0);
 
   return (
-    <SearchCard title={def.title} subtitle={def.blurb} showHeader={!editOpen}>
+    <SearchCard title="What matters most to me" showHeader={!editOpen}>
       {!editOpen ? (
         <div>
-          {selected.length > 0 ? (
-            <div style={{ display: 'grid' }}>
-              {selected.map((item) => {
-                const tier = priorities[def.key]?.tiers?.[item.label] || 'dontcare';
-                const must = tier === 'must';
-                return (
-                  <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: '1px solid var(--line)' }}>
-                    <span style={{ fontSize: 13.5, color: 'var(--ink)' }}>{criterionDisplayLabel(def.key, item.label)}</span>
-                    <span style={{ fontSize: 11.5, fontWeight: must ? 700 : 500, color: must ? 'var(--brick)' : 'var(--ink-soft)' }}>{TIER_META[tier]?.label}</span>
+          {hasAny ? (
+            <div style={{ display: 'grid', gap: 18 }}>
+              {buckets.map(({ tier, items }) => (
+                <div key={tier}>
+                  <div style={{ fontSize: 11.5, fontWeight: 700, color: TIER_META[tier].color, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 8 }}>
+                    {TIER_META[tier].label}
                   </div>
-                );
-              })}
+                  <div style={{ display: 'grid', gap: 3 }}>
+                    {items.map((item) => (
+                      <div key={`${item.categoryKey}:${item.label}`} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 6, fontSize: 13.5, color: 'var(--ink)', padding: '4px 0' }}>
+                        <span>{criterionDisplayLabel(item.categoryKey, item.label)}</span>
+                        {isExperientialCriterion(item.categoryKey, item.label) && (
+                          <span style={{ fontSize: 10.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>We'll ask after you tour</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           ) : (
-            <div style={{ fontSize: 13, color: 'var(--ink-soft)', fontStyle: 'italic' }}>Nothing selected yet.</div>
+            <div style={{ fontSize: 13, color: 'var(--ink-soft)', fontStyle: 'italic' }}>Nothing selected yet — add what matters to you anytime.</div>
           )}
-          <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px', marginTop: 12 }} onClick={() => setEditOpen(true)}>
-            {selected.length > 0 ? 'Edit priorities' : '+ Add a priority'}
+          <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px', marginTop: hasAny ? 16 : 12 }} onClick={() => setEditOpen(true)}>
+            {hasAny ? 'Edit priorities' : '+ Add priorities'}
           </button>
         </div>
       ) : (
         <div>
-          <CriteriaPicker def={def} priorities={priorities} patch={patch} draggable />
-          <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px', marginTop: 4 }} onClick={() => setEditOpen(false)}>
+          <div style={{ display: 'grid', gap: 22 }}>
+            {categories.map((def) => (
+              <CriteriaPicker key={def.key} def={def} priorities={priorities} patch={patch} draggable />
+            ))}
+          </div>
+          <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px', marginTop: 16 }} onClick={() => setEditOpen(false)}>
             Done
           </button>
         </div>
@@ -265,7 +288,7 @@ export default function MySearchPanel({ searchId, initialPriorities }) {
 
       <BasicsCard p={p} patch={patch} />
 
-      {categories.map((def) => <PriorityCard key={def.key} def={def} priorities={p} patch={patch} />)}
+      <WhatMattersCard categories={categories} priorities={p} patch={patch} />
     </div>
   );
 }

@@ -43,6 +43,25 @@ export function criterionDisplayLabel(categoryKey, label) {
   return CRITERION_DISPLAY_LABEL_OVERRIDES[`${categoryKey}:${label}`] || label;
 }
 
+// Which selected criteria are genuinely experiential — things a person can only really
+// judge by being in the home, as opposed to a fact the property already has (Garage),
+// a category preference (Home Condition), or a context/lifestyle priority that simply
+// isn't automatable yet (Schools, Commute, Walkability, Parks, etc.). This is the ONE
+// place this classification lives — Onboarding, My Search, and Post-Tour all read from
+// here rather than each keeping their own list, so a change here never goes stale in
+// one surface while being fixed in another.
+const EXPERIENTIAL_CRITERIA = new Set([
+  'homeFeel:Overall Condition', 'homeFeel:Layout / Flow', 'homeFeel:Natural Light',
+  'homeFeel:Character / Charm', 'homeFeel:Room Sizes', 'homeFeel:Openness / Ceiling Height', 'homeFeel:Privacy',
+  'location:Neighborhood', 'location:Immediate Street / Surroundings',
+  'exterior:Yard', 'exterior:Privacy', 'exterior:Exterior Condition', 'exterior:Landscaping',
+  'exterior:Outdoor Space', 'exterior:Noise Level',
+]);
+
+export function isExperientialCriterion(categoryKey, label) {
+  return EXPERIENTIAL_CRITERIA.has(`${categoryKey}:${label}`);
+}
+
 // Apartment-specific replacements — structurally different from a house, so it gets its
 // own core/suggested sets for Exterior & Property and Home Features rather than reusing
 // the house-oriented ones above.
@@ -116,7 +135,7 @@ export function getItemlistCategories(searchType) {
 
   const homeFeel = {
     key: 'homeFeel', title: 'Home Feel',
-    blurb: "Subjective qualities about what it's actually like to live there.",
+    blurb: "Some things can't really be known from a listing — we'll remind you to weigh in on these after you tour.",
     coreItems: HOME_FEEL_CORE,
     suggestedItems: [
       ...HOME_FEEL_SUGGESTED,
