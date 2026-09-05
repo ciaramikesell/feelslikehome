@@ -7,7 +7,8 @@ import { BrandMark } from '@/components/ui';
 import CriteriaPicker from '@/components/CriteriaPicker';
 import {
   SEARCH_TYPE_OPTIONS, LAYOUT_OPTIONS, HOME_CONDITION_OPTIONS, INVESTMENT_PROPERTY_TYPES, INVESTMENT_LIVING_PLAN_OPTIONS,
-  TIER_META, isSimpleRentalType, showsHomeLayout, terminology, toggleWithNoPreference, getItemlistCategories,
+  TIER_META, isSimpleRentalType, showsHomeLayout, showsMultiselectCategory, terminology, toggleWithNoPreference, getItemlistCategories,
+  normalizePriorities,
 } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { updateSearchPriorities, completeOnboarding } from '@/lib/supabase/data';
@@ -59,6 +60,7 @@ function OnboardingStep1({ priorities, patch, onNext }) {
   const term = terminology(priorities.searchType);
   const showLot = priorities.searchType && !isSimpleRentalType(priorities.searchType);
   const showLayout = showsHomeLayout(priorities.searchType);
+  const showCondition = showsMultiselectCategory('homeCondition', priorities.searchType);
   const showInvestmentExtras = priorities.searchType === 'investment';
 
   return (
@@ -125,17 +127,19 @@ function OnboardingStep1({ priorities, patch, onNext }) {
             </div>
           </div>
 
-          <div>
-            <label className="hh-label">Home Condition</label>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              {HOME_CONDITION_OPTIONS.map((o) => (
-                <span key={o} className={`hh-chip ${priorities.homeCondition.values.includes(o) ? 'on' : ''}`}
-                  onClick={() => patch((n) => { n.homeCondition = { ...n.homeCondition, values: toggleWithNoPreference(n.homeCondition.values, o) }; return n; })}>
-                  {o}
-                </span>
-              ))}
+          {showCondition && (
+            <div>
+              <label className="hh-label">Home Condition</label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {HOME_CONDITION_OPTIONS.map((o) => (
+                  <span key={o} className={`hh-chip ${priorities.homeCondition.values.includes(o) ? 'on' : ''}`}
+                    onClick={() => patch((n) => { n.homeCondition = { ...n.homeCondition, values: toggleWithNoPreference(n.homeCondition.values, o) }; return n; })}>
+                    {o}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {showLayout && (
             <div>
@@ -250,7 +254,7 @@ function OnboardingStep3({ onFinish }) {
 
 export default function Onboarding({ userId, searchId, initialPriorities }) {
   const router = useRouter();
-  const [priorities, setPriorities] = useState(initialPriorities);
+  const [priorities, setPriorities] = useState(() => normalizePriorities(initialPriorities));
   const [step, setStep] = useState(1);
 
   const patch = (updater) => {

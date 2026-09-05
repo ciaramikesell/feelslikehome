@@ -187,10 +187,13 @@ export function showsHomeLayout(searchType) {
   return searchType === 'buy' || searchType === 'rent_home';
 }
 
-// Per-key visibility for MULTISELECT_CATEGORIES entries — Home Condition is a fundamental
-// preference for every search type; Home Layout is not (see showsHomeLayout above).
+// Per-key visibility for MULTISELECT_CATEGORIES entries — Home Layout doesn't apply to
+// apartments (see showsHomeLayout above). Home Condition's options ("Renovation
+// Potential," "Some Updates Needed," etc.) are homeownership-oriented language that
+// doesn't fit a rental unit a landlord maintains, so it's hidden for apartments too.
 export function showsMultiselectCategory(key, searchType) {
   if (key === 'homeLayout') return showsHomeLayout(searchType);
+  if (key === 'homeCondition') return !isSimpleRentalType(searchType);
   return true;
 }
 
