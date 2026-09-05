@@ -40,6 +40,38 @@ function ConfirmModal({ title, body, cancelLabel = 'Cancel', confirmLabel, confi
   );
 }
 
+// Archiving is the one confirmation that also wants a piece of information — why —
+// without turning into a second step. The reason is optional and pre-filled from
+// any reason the home already has, so re-confirming an already-archived home (or
+// re-archiving a restored one) never silently blanks out an existing note.
+function ArchiveConfirmModal({ home, onCancel, onConfirm }) {
+  const [reason, setReason] = useState(home.rejectionReason || '');
+  return (
+    <div className="hh-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onCancel()}>
+      <div className="hh-modal hh-corner" style={{ maxWidth: 440, padding: 26 }}>
+        <h3 className="hh-serif" style={{ fontSize: 18, margin: 0, fontWeight: 600, color: 'var(--ink)' }}>Archive this home?</h3>
+        <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', lineHeight: 1.55, margin: '10px 0 16px' }}>
+          {home.address || 'This home'} will be removed from your active homes, but we'll keep your ratings and notes. You can restore it anytime from Archive.
+        </p>
+        <label className="hh-label" style={{ marginBottom: 6, display: 'block' }}>Why are you ruling it out? (optional)</label>
+        <textarea
+          className="hh-textarea"
+          style={{ minHeight: 70, width: '100%' }}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+          placeholder="e.g. Busy road, no basement, taxes too high"
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
+          <button className="hh-btn hh-btn-ghost" onClick={onCancel}>Cancel</button>
+          <button className="hh-btn" style={{ background: 'var(--brick)', borderColor: 'var(--brick)' }} onClick={() => onConfirm(reason.trim())}>
+            Archive home
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* --------------------------------- card view --------------------------------- */
 
 function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour, onRemoveFromTour }) {
@@ -54,10 +86,11 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
   // 'Saved' value or a legacy string like 'Considering' left over from before this
   // lifecycle existed (see rowToHome's 'Considering' fallback in supabase/data.js).
   const isPreTour = home.status !== 'Want to Tour' && home.status !== 'Toured';
-  // Heart/Archive as quick one-tap controls only make sense once a home has actually
-  // been toured (or we're already inside a decision-workspace view) — not as a
-  // pre-tour decision prompt on Homes.
-  const showQuickFavorite = mode === 'favorites' || mode === 'archive' || (mode === 'tour' && home.status === 'Toured');
+  // Heart/Archive as quick one-tap controls only make sense once favoriting is
+  // itself the primary job of the view. In Want to Tour, "Love it" is reached only
+  // through the Post-Tour reflection ("Edit my thoughts") — never a shortcut that
+  // bypasses recording ratings/notes for a toured home.
+  const showQuickFavorite = mode === 'favorites' || mode === 'archive';
 
   // Core property facts — beds/baths/sqft/lot only. Garage is deliberately not
   // repeated here: when it's actually a priority the user selected, it already
@@ -265,7 +298,8 @@ function ArchiveRow({ home, onEdit, onRestore, onRequestDelete }) {
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '14px 18px', border: '1px solid var(--line)', borderRadius: 14, background: 'var(--paper-raised)', flexWrap: 'wrap' }}>
       <div>
         <div style={{ fontWeight: 500, fontSize: 14 }}>{home.address}</div>
-        <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 2 }}>{fmtMoney(home.price)}{home.rejectionReason ? ` — Ruled out because: ${home.rejectionReason}` : ' — no reason logged'}</div>
+        <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 2 }}>{fmtMoney(home.price)}</div>
+        {home.rejectionReason && <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 3, fontStyle: 'italic' }}>Passed because: {home.rejectionReason}</div>}
       </div>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
         <button
@@ -379,9 +413,9 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     saveHome({ ...home, ...patch, status: 'Toured', reaction: verdict === 'love' ? 'love' : home.reaction });
   }, [saveHome]);
 
-  const confirmArchive = useCallback(() => {
+  const confirmArchive = useCallback((reason) => {
     if (!archiveTarget) return;
-    saveHome({ ...archiveTarget, status: 'Archived' });
+    saveHome({ ...archiveTarget, status: 'Archived', rejectionReason: reason });
     setArchiveTarget(null);
   }, [archiveTarget, saveHome]);
 
@@ -502,10 +536,8 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
       )}
 
       {archiveTarget && (
-        <ConfirmModal
-          title="Archive this home?"
-          body={`${archiveTarget.address || 'This home'} will be removed from your active homes, but we'll keep your ratings and notes. You can restore it anytime from Archive.`}
-          confirmLabel="Archive home"
+        <ArchiveConfirmModal
+          home={archiveTarget}
           onCancel={() => setArchiveTarget(null)}
           onConfirm={confirmArchive}
         />
