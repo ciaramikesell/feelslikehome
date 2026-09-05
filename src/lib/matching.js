@@ -163,74 +163,119 @@ export function parseListingText(text) {
 }
 
 /* -------------------------------- match scoring --------------------------------
- * Only criteria the user has actually selected (tier !== 'dontcare') ever affect the
- * score — unselected criteria are worth zero weight and never appear in the summary.
+ * MATCH 2.0 — "unknown is not failure."
  *
- * Every criterion is tagged "objective" (a plain yes/no or numeric threshold — beds,
- * budget, a feature checkbox) or not (a 1-5 star rating). The "Must-haves X/Y" count
- * and the Missing/Satisfied callouts only ever include objective criteria, since a
- * missing objective must-have is a clean pass/fail, but a 3-star rating on a subjective
- * must-have isn't a "failure" — it still pulls the score down proportionally to how
- * important it was marked, without being flagged as a binary miss.
+ * Every criterion the user selected (tier !== 'dontcare') is tracked as one of three
+ * states: evaluated-and-satisfied, evaluated-and-missed, or not yet evaluated. The
+ * percentage is computed only from evaluated criteria — unknowns are excluded from
+ * both the numerator and denominator, never counted against the home. Must-Have
+ * counts follow the same rule and are reported honestly (e.g. "2/3 met, 1 not
+ * evaluated") rather than silently treating an unknown Must-Have as missing.
+ *
+ * A criterion is "evaluated" only when we have a real, non-inferred answer:
+ *   - threshold/objective fields (budget, beds, baths, sqft, lot size): evaluated
+ *     once both a target AND the home's actual value are known.
+ *   - Home Layout / Home Condition / bedroom location: evaluated once the home has
+ *     a non-empty value — an empty value can only mean "not indicated yet," since
+ *     there's no way to affirmatively record "this home has no layout."
+ *   - check-kind criteria (Garage, Basement, Fireplace, etc.): evaluated only when
+ *     explicitly `true`. See the Garage special-case and the note below for why.
+ *   - star-rating criteria: evaluated only when rated (> 0); an unrated criterion
+ *     is excluded entirely, never scored as a 0.
+ *
+ * KNOWN LIMITATION (reported, not silently patched): for check-kind criteria other
+ * than Garage, the `checks` object only ever distinguishes "confirmed present"
+ * (`true`) from "not indicated" (missing key, or `false` from a misclick undo) —
+ * the UI has no affordance for a user to deliberately assert "confirmed absent."
+ * Treating an untouched/toggled-off chip as "confirmed absent" would be wrong far
+ * more often than right (most `false` values are just an undone accidental click),
+ * so those stay "not evaluated" until a future UI adds a real three-state control.
+ * This needs no database migration — `checks` is already a flexible JSON column
+ * that can represent true/false/absent; the gap is a missing UI affordance, not a
+ * schema limitation.
+ *
+ * Garage is the one exception: `home.garageSpaces` is a separate, reliable numeric
+ * field already populated by RentCast import or manual entry, so we use it directly
+ * to evaluate the "Garage" criterion (a `garageSpaces` of "0" is a real, distinct,
+ * known answer from an empty/unknown value) — this is exactly the "objective
+ * auto-data should feed Match when reliable" case, with no extra question asked.
  * ---------------------------------------------------------------------------------- */
 
 export function computeMatch(home, priorities) {
   if (!priorities) return null;
-  const criteria = [];
-  const push = (key, label, tier, score, met, detail, objective) => {
-    if (!tier || tier === 'dontcare' || score === null) return;
-    criteria.push({ key, label, tier, score, met, detail, objective });
+  const all = []; // every priority the user actually selected, evaluated or not
+  const push = (key, label, tier, evaluated, score, met, detail, objective) => {
+    all.push({ key, label, tier, evaluated, score, met, detail, objective });
   };
+  const notEvaluated = (key, label, tier, objective) => push(key, label, tier, false, null, null, 'Not evaluated yet', objective);
 
-  if (priorities.budget?.value) {
+  if (priorities.budget?.value && priorities.budget.tier !== 'dontcare') {
     const target = parseNum(priorities.budget.value);
     const price = parseNum(home.price);
     if (target && price !== null) {
-      if (price <= target) push('budget', 'Within budget', priorities.budget.tier, 1, true, `$${(target - price).toLocaleString()} under budget`, true);
-      else { const over = price - target; push('budget', 'Within budget', priorities.budget.tier, Math.max(0, 1 - over / target), false, `$${over.toLocaleString()} over budget`, true); }
+      if (price <= target) push('budget', 'Within budget', priorities.budget.tier, true, 1, true, `$${(target - price).toLocaleString()} under budget`, true);
+      else { const over = price - target; push('budget', 'Within budget', priorities.budget.tier, true, Math.max(0, 1 - over / target), false, `$${over.toLocaleString()} over budget`, true); }
+    } else {
+      notEvaluated('budget', 'Within budget', priorities.budget.tier, true);
     }
   }
-  if (priorities.sqftTarget?.value) {
+  if (priorities.sqftTarget?.value && priorities.sqftTarget.tier !== 'dontcare') {
     const target = parseNum(priorities.sqftTarget.value);
     const actual = parseNum(home.sqft);
     if (target && actual !== null) {
       const met = actual >= target;
-      push('sqft', 'Target square footage', priorities.sqftTarget.tier, met ? 1 : Math.max(0, actual / target), met, met ? `${(actual - target).toLocaleString()} sqft over target` : `${(target - actual).toLocaleString()} sqft under target`, true);
+      push('sqft', 'Target square footage', priorities.sqftTarget.tier, true, met ? 1 : Math.max(0, actual / target), met, met ? `${(actual - target).toLocaleString()} sqft over target` : `${(target - actual).toLocaleString()} sqft under target`, true);
+    } else {
+      notEvaluated('sqft', 'Target square footage', priorities.sqftTarget.tier, true);
     }
   }
-  if (priorities.lotSizeTarget?.value) {
+  if (priorities.lotSizeTarget?.value && priorities.lotSizeTarget.tier !== 'dontcare') {
     const target = parseNum(priorities.lotSizeTarget.value);
     const actual = parseNum(home.lotSize);
     if (target && actual !== null) {
       const met = actual >= target;
-      push('lotSize', 'Lot size', priorities.lotSizeTarget.tier, met ? 1 : Math.max(0, actual / target), met, met ? `${actual} (wanted ${target}+)` : `${actual} below target ${target}`, true);
+      push('lotSize', 'Lot size', priorities.lotSizeTarget.tier, true, met ? 1 : Math.max(0, actual / target), met, met ? `${actual} (wanted ${target}+)` : `${actual} below target ${target}`, true);
+    } else {
+      notEvaluated('lotSize', 'Lot size', priorities.lotSizeTarget.tier, true);
     }
   }
-  if (priorities.bedsMin?.value) {
+  if (priorities.bedsMin?.value && priorities.bedsMin.tier !== 'dontcare') {
     const min = parseNum(priorities.bedsMin.value);
     const actual = parseNum(home.beds);
-    if (min && actual !== null) { const met = actual >= min; push('beds', 'Minimum bedrooms', priorities.bedsMin.tier, met ? 1 : actual / min, met, met ? `${actual} bed(s)` : `${actual} of ${min} desired beds`, true); }
+    if (min && actual !== null) {
+      const met = actual >= min;
+      push('beds', 'Minimum bedrooms', priorities.bedsMin.tier, true, met ? 1 : actual / min, met, met ? `${actual} bed(s)` : `${actual} of ${min} desired beds`, true);
+    } else {
+      notEvaluated('beds', 'Minimum bedrooms', priorities.bedsMin.tier, true);
+    }
   }
-  if (priorities.bathsMin?.value) {
+  if (priorities.bathsMin?.value && priorities.bathsMin.tier !== 'dontcare') {
     const min = parseNum(priorities.bathsMin.value);
     const actual = parseNum(home.baths);
-    if (min && actual !== null) { const met = actual >= min; push('baths', 'Minimum bathrooms', priorities.bathsMin.tier, met ? 1 : actual / min, met, met ? `${actual} bath(s)` : `${actual} of ${min} desired baths`, true); }
+    if (min && actual !== null) {
+      const met = actual >= min;
+      push('baths', 'Minimum bathrooms', priorities.bathsMin.tier, true, met ? 1 : actual / min, met, met ? `${actual} bath(s)` : `${actual} of ${min} desired baths`, true);
+    } else {
+      notEvaluated('baths', 'Minimum bathrooms', priorities.bathsMin.tier, true);
+    }
   }
 
   MULTISELECT_CATEGORIES.forEach(({ key, title }) => {
     const pref = priorities[key];
     if (!pref || pref.tier === 'dontcare' || !pref.values?.length) return;
     const homeVals = home[key] || [];
+    if (!homeVals.length) { notEvaluated(key, title, pref.tier, true); return; }
     const overlap = homeVals.filter((v) => pref.values.includes(v));
-    push(key, title, pref.tier, overlap.length ? 1 : 0, overlap.length > 0, overlap.length ? overlap.join(', ') : 'No match on your list', true);
+    push(key, title, pref.tier, true, overlap.length ? 1 : 0, overlap.length > 0, overlap.length ? overlap.join(', ') : 'No match on your list', true);
   });
 
   SINGLESELECT_CATEGORIES.forEach(({ key, title }) => {
     const pref = priorities[key];
     if (!pref || pref.tier === 'dontcare' || !pref.value) return;
     const actual = home[key];
-    const met = !!actual && actual === pref.value;
-    push(key, title, pref.tier, met ? 1 : 0, met, met ? pref.value : (actual ? `${actual} (wanted ${pref.value})` : 'Not set'), true);
+    if (!actual) { notEvaluated(key, title, pref.tier, true); return; }
+    const met = actual === pref.value;
+    push(key, title, pref.tier, true, met ? 1 : 0, met, met ? pref.value : `${actual} (wanted ${pref.value})`, true);
   });
 
   getItemlistCategories(priorities.searchType).forEach((def) => {
@@ -239,28 +284,67 @@ export function computeMatch(home, priorities) {
       const tier = catState.tiers?.[item.label];
       if (!tier || tier === 'dontcare') return;
       const ns = `${def.key}:${item.label}`;
+
       if (item.kind === 'rating') {
         const val = home.ratings?.[ns] || 0;
-        if (val > 0) push(ns, item.label, tier, val / 5, val >= 3, `${val}/5`, false);
-      } else if (item.kind === 'check') {
-        const met = !!home.checks?.[ns];
-        push(ns, item.label, tier, met ? 1 : 0, met, met ? 'Present' : 'Missing', true);
+        if (val > 0) push(ns, item.label, tier, true, val / 5, val >= 3, `${val}/5`, false);
+        else notEvaluated(ns, item.label, tier, false);
+        return;
       }
+
+      // Garage: a reliable numeric field already exists (garageSpaces), so use it
+      // directly instead of the separate manual checkbox — see comment above.
+      if (def.key === 'exterior' && item.label === 'Garage') {
+        const spaces = parseNum(home.garageSpaces);
+        if (spaces !== null) {
+          const met = spaces > 0;
+          push(ns, item.label, tier, true, met ? 1 : 0, met, met ? `${spaces}-car garage` : 'No garage', true);
+        } else {
+          notEvaluated(ns, item.label, tier, true);
+        }
+        return;
+      }
+
+      // Other check-kind criteria: only an explicit `true` counts as evaluated —
+      // see the KNOWN LIMITATION note above.
+      const raw = home.checks?.[ns];
+      if (raw === true) push(ns, item.label, tier, true, 1, true, 'Present', true);
+      else notEvaluated(ns, item.label, tier, true);
     });
   });
 
-  if (!criteria.length) return null;
+  if (!all.length) return null; // nothing selected at all — genuinely nothing to show
 
-  const totalWeight = criteria.reduce((s, c) => s + TIER_META[c.tier].weight, 0);
-  const weightedSum = criteria.reduce((s, c) => s + c.score * TIER_META[c.tier].weight, 0);
-  const pct = totalWeight > 0 ? Math.round((weightedSum / totalWeight) * 100) : null;
+  const evaluated = all.filter((c) => c.evaluated);
+  const selectedCount = all.length;
+  const evaluatedCount = evaluated.length;
 
-  const objectiveMusts = criteria.filter((c) => c.tier === 'must' && c.objective);
-  const mustMet = objectiveMusts.filter((c) => c.met).length;
-  const missing = criteria.filter((c) => c.objective && c.met === false && (c.tier === 'must' || c.tier === 'important')).sort((a, b) => TIER_META[b.tier].weight - TIER_META[a.tier].weight);
-  const satisfied = criteria.filter((c) => c.objective && c.met === true && (c.tier === 'must' || c.tier === 'important')).sort((a, b) => TIER_META[b.tier].weight - TIER_META[a.tier].weight);
+  const totalWeight = evaluated.reduce((s, c) => s + TIER_META[c.tier].weight, 0);
+  const weightedSum = evaluated.reduce((s, c) => s + c.score * TIER_META[c.tier].weight, 0);
+  const pct = evaluatedCount > 0 && totalWeight > 0 ? Math.round((weightedSum / totalWeight) * 100) : null;
 
-  return { pct, mustTotal: objectiveMusts.length, mustMet, missing, satisfied, criteria };
+  const mustAll = all.filter((c) => c.tier === 'must');
+  const mustEvaluated = mustAll.filter((c) => c.evaluated);
+
+  const missing = evaluated.filter((c) => c.objective && c.met === false && (c.tier === 'must' || c.tier === 'important')).sort((a, b) => TIER_META[b.tier].weight - TIER_META[a.tier].weight);
+  const satisfied = evaluated.filter((c) => c.objective && c.met === true && (c.tier === 'must' || c.tier === 'important')).sort((a, b) => TIER_META[b.tier].weight - TIER_META[a.tier].weight);
+
+  return {
+    pct,
+    selectedCount,
+    evaluatedCount,
+    mustTotal: mustAll.length,
+    mustEvaluated: mustEvaluated.length,
+    mustMet: mustEvaluated.filter((c) => c.met).length,
+    missing,
+    satisfied,
+    criteria: evaluated,
+    // Every selected priority, evaluated or not — additive, for consumers (like
+    // Compare) that need to show "Not evaluated yet" rows rather than only the
+    // evaluated subset `criteria` exposes. Never a second scoring path — same `all`
+    // array the percentage itself is derived from.
+    allSelected: all,
+  };
 }
 
 export function matchColor(pct) {
