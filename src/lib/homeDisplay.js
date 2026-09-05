@@ -93,7 +93,11 @@ export function formatFoundCardFacts(fields) {
     f.propertyTaxAnnual ? `Property tax: $${withCommas(f.propertyTaxAnnual)}/yr${f.propertyTaxYear ? ` · ${f.propertyTaxYear}` : ''}` : '',
   ].filter(Boolean).join(' · ');
 
-  return { priceLine, bedsBathsSqft, secondaryFacts, hoaTaxLine };
+  // School district — a plain district name only, never a rating/quality label.
+  // Omitted entirely (not "Unknown") when no district was resolved.
+  const schoolLine = f.schoolDistrict || '';
+
+  return { priceLine, bedsBathsSqft, secondaryFacts, hoaTaxLine, schoolLine };
 }
 
 // Count of "property details" found, for the "We found N property details" message.

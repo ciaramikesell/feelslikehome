@@ -247,6 +247,10 @@ export function emptyHome() {
     // informational only and never contribute to Match.
     latitude: null, longitude: null,
     hoaFeeMonthly: null, propertyTaxAnnual: null, propertyTaxYear: null,
+    // Auto Enrichment — School District: captured from Geocodio (a plain district
+    // name string, never a rating/score). Informational only — never contributes to
+    // Match, never appears in onboarding/My Search.
+    schoolDistrict: null,
   };
 }
 

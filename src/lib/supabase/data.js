@@ -30,6 +30,13 @@ function rowToHome(row) {
     notes: row.notes || '',
     pros: row.pros || '',
     cons: row.cons || '',
+    // Auto Enrichment 1.0 — nullable, informational only, never contribute to Match.
+    latitude: row.latitude ?? null,
+    longitude: row.longitude ?? null,
+    hoaFeeMonthly: row.hoa_fee_monthly ?? null,
+    propertyTaxAnnual: row.property_tax_annual ?? null,
+    propertyTaxYear: row.property_tax_year ?? null,
+    schoolDistrict: row.school_district || null,
   };
 }
 
@@ -62,6 +69,13 @@ function homeToRow(home, userId, searchId) {
     notes: home.notes || '',
     pros: home.pros || '',
     cons: home.cons || '',
+    // Auto Enrichment 1.0 — plain nullable numerics, mirrors rowToHome above.
+    latitude: home.latitude ?? null,
+    longitude: home.longitude ?? null,
+    hoa_fee_monthly: home.hoaFeeMonthly ?? null,
+    property_tax_annual: home.propertyTaxAnnual ?? null,
+    property_tax_year: home.propertyTaxYear ?? null,
+    school_district: home.schoolDistrict || null,
     updated_at: new Date().toISOString(),
   };
 }
