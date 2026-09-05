@@ -3,7 +3,7 @@ import { getSearch, getHomes } from '@/lib/supabase/data';
 import HomesBoard from '@/components/HomesBoard';
 import DecisionNav from '@/components/DecisionNav';
 import { PageIntro } from '@/components/ui';
-import { isArchivedStatus } from '@/lib/constants';
+import { isArchivedStatus, normalizePriorities } from '@/lib/constants';
 
 export default async function FavoritesPage() {
   const supabase = await createClient();
@@ -17,7 +17,7 @@ export default async function FavoritesPage() {
   return (
     <DecisionNav active="favorites" hasFavorites={hasFavorites} hasArchived={hasArchived}>
       <PageIntro title="Favorites" subtitle="The homes you toured and loved." />
-      <HomesBoard mode="favorites" userId={user.id} searchId={search.id} initialHomes={homes} initialPriorities={search.priorities} />
+      <HomesBoard mode="favorites" userId={user.id} searchId={search.id} initialHomes={homes} initialPriorities={normalizePriorities(search.priorities)} />
     </DecisionNav>
   );
 }

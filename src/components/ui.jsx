@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Star, ChevronDown, Heart, ThumbsUp, HelpCircle, AlertTriangle, CheckCircle2, Check } from 'lucide-react';
+import { Star, ChevronDown, Heart, AlertTriangle, CheckCircle2, Check } from 'lucide-react';
 import { TIER_ORDER, TIER_META } from '@/lib/constants';
 import { matchColor } from '@/lib/matching';
 
@@ -97,20 +97,6 @@ export function TierPicker({ value, onChange }) {
   );
 }
 
-export function ReactionButtons({ home, onReact }) {
-  const opts = [{ key: 'love', icon: Heart, color: '#C1592F' }, { key: 'like', icon: ThumbsUp, color: '#3E6B6F' }, { key: 'unsure', icon: HelpCircle, color: '#C69245' }];
-  return (
-    <div style={{ display: 'flex', gap: 4 }}>
-      {opts.map(({ key, icon: Icon, color }) => (
-        <button key={key} type="button" onClick={() => onReact(home.id, home.reaction === key ? null : key)}
-          style={{ border: '1px solid ' + (home.reaction === key ? color : 'var(--line)'), background: home.reaction === key ? color : 'transparent', borderRadius: 8, padding: '4px 6px', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title={key}>
-          <Icon size={13} color={home.reaction === key ? '#fff' : 'var(--ink-soft)'} fill={home.reaction === key && key !== 'unsure' ? '#fff' : 'none'} />
-        </button>
-      ))}
-    </div>
-  );
-}
-
 // Small, consistent "what is this page for" supporting copy, used near the top of
 // each main logged-in page — not a redesign of page headers, just one subtle line.
 export function PageIntro({ title, subtitle }) {
@@ -124,13 +110,41 @@ export function PageIntro({ title, subtitle }) {
 
 export function MatchSummary({ match, compact }) {
   if (!match) return null;
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+
+  // Priorities exist, but none of them can be evaluated yet — never show a raw 0%,
+  // since that would falsely imply a poor fit rather than an absence of information.
+  if (match.pct === null) {
+    return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <BrandMark size={compact ? 18 : 20} />
-        <span className="hh-mono" style={{ fontSize: compact ? 15 : 18, fontWeight: 600, color: matchColor(match.pct) }}>{match.pct}% match</span>
-        {match.mustTotal > 0 && <span style={{ fontSize: 11, color: 'var(--ink-soft)' }}>Must-haves: {match.mustMet}/{match.mustTotal}</span>}
+        <span style={{ fontSize: compact ? 12.5 : 13.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>Not enough information yet</span>
       </div>
+    );
+  }
+
+  let mustLabel = null;
+  let mustSubLabel = null;
+  if (match.mustTotal > 0) {
+    if (match.mustEvaluated === 0) mustLabel = 'Must-haves not evaluated yet';
+    else if (match.mustEvaluated === match.mustTotal) mustLabel = `Must-haves: ${match.mustMet}/${match.mustTotal}`;
+    else {
+      mustLabel = `Must-haves: ${match.mustMet}/${match.mustEvaluated} met`;
+      mustSubLabel = `${match.mustTotal - match.mustEvaluated} not evaluated`;
+    }
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <BrandMark size={compact ? 18 : 20} />
+        <span className="hh-mono" style={{ fontSize: compact ? 15 : 18, fontWeight: 600, color: matchColor(match.pct) }}>{match.pct}% match</span>
+        {mustLabel && <span style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{mustLabel}{mustSubLabel ? ` (${mustSubLabel})` : ''}</span>}
+      </div>
+      {!compact && match.evaluatedCount < match.selectedCount && (
+        <div style={{ fontSize: 10.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>
+          Based on {match.evaluatedCount} of {match.selectedCount} priorities evaluated
+        </div>
+      )}
       {!compact && (match.missing.length > 0 || match.satisfied.length > 0) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           {match.missing.slice(0, 3).map((c) => <div key={c.key} style={{ fontSize: 11.5, color: 'var(--brick)', display: 'flex', alignItems: 'center', gap: 5 }}><AlertTriangle size={11} /> Missing: {c.label}</div>)}

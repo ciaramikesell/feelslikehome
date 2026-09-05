@@ -3,7 +3,7 @@ import { getSearch, getHomes } from '@/lib/supabase/data';
 import HomesBoard from '@/components/HomesBoard';
 import DecisionNav from '@/components/DecisionNav';
 import { PageIntro } from '@/components/ui';
-import { isArchivedStatus } from '@/lib/constants';
+import { isArchivedStatus, normalizePriorities } from '@/lib/constants';
 
 export default async function ArchivePage() {
   const supabase = await createClient();
@@ -17,7 +17,7 @@ export default async function ArchivePage() {
   return (
     <DecisionNav active="archive" hasFavorites={hasFavorites} hasArchived={hasArchived}>
       <PageIntro title="Archived" subtitle="Homes you've ruled out, with your thoughts saved in case you change your mind." />
-      <HomesBoard mode="archive" userId={user.id} searchId={search.id} initialHomes={homes} initialPriorities={search.priorities} />
+      <HomesBoard mode="archive" userId={user.id} searchId={search.id} initialHomes={homes} initialPriorities={normalizePriorities(search.priorities)} />
     </DecisionNav>
   );
 }

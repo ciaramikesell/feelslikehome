@@ -358,7 +358,16 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     setArchiveTarget(null);
   }, [archiveTarget, saveHome]);
 
-  const restoreHome = useCallback((home) => { saveHome({ ...home, status: 'Saved', rejectionReason: '' }); }, [saveHome]);
+  // Restoring should return the home to where it actually was, not always the very
+  // beginning. All star ratings are exclusively captured post-tour (pre-tour "Add
+  // more details" only has check/multiselect fields, never stars), so any rating
+  // present is a reliable signal this home was genuinely toured before being
+  // archived — restoring it should preserve that history rather than silently
+  // asking the user to "Want to tour" it again.
+  const restoreHome = useCallback((home) => {
+    const wasToured = Object.values(home.ratings || {}).some((v) => v > 0);
+    saveHome({ ...home, status: wasToured ? 'Toured' : 'Saved', rejectionReason: '' });
+  }, [saveHome]);
 
   const confirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
@@ -433,7 +442,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
 
       {filtered.length === 0 ? (
         mode === 'favorites' ? (
-          <div style={{ fontSize: 13.5, color: 'var(--ink-soft)', padding: '30px 0' }}>Nothing favorited yet. Tap the heart on a home, or choose Love it after a tour.</div>
+          <div style={{ fontSize: 13.5, color: 'var(--ink-soft)', padding: '30px 0' }}>Nothing favorited yet. Tour a home and choose Love it to see it here.</div>
         ) : mode === 'tour' ? (
           <div className="hh-corner" style={{ border: '1px dashed var(--line)', borderRadius: 16, padding: '48px 24px', textAlign: 'center', color: 'var(--ink-soft)' }}>
             <p className="hh-serif" style={{ fontSize: 17, color: 'var(--ink)', marginBottom: 6 }}>No homes to tour yet</p>
