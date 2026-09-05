@@ -2,11 +2,20 @@
 
 import { useState, useMemo, Fragment } from 'react';
 import { Columns, Star, Heart, Home as HomeIcon } from 'lucide-react';
-import { TOUR_RATING_KEY } from '@/lib/constants';
+import { TOUR_RATING_KEY, criterionDisplayLabel } from '@/lib/constants';
 import { parseNum, computeMatch, matchColor } from '@/lib/matching';
 import { formatLotSizeDisplay, formatCurrencyDisplay } from '@/lib/homeDisplay';
 
 const MAX_COMPARE = 4;
+
+// Compare's rows come from computeMatch's `allSelected`, whose `key` is either a plain
+// field key (e.g. "budget") or a "categoryKey:label" pair for itemlist criteria (e.g.
+// "exterior:Privacy"). Only the latter ever has a display-label override to apply.
+function rowDisplayLabel(row) {
+  const idx = row.key.indexOf(':');
+  if (idx === -1) return row.label;
+  return criterionDisplayLabel(row.key.slice(0, idx), row.label);
+}
 
 // Purely quantitative reference facts — kept separate from Match/Must-Haves/priorities,
 // which use the qualitative satisfied/missed/unknown language instead. A quiet "—" for
@@ -236,7 +245,7 @@ export default function CompareBoard({ homes, priorities }) {
                   ))}
                   {mustRows.map((row) => (
                     <Fragment key={row.key}>
-                      <div style={{ padding: '10px 12px', fontSize: 13, color: 'var(--ink)', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center' }}>{row.label}</div>
+                      <div style={{ padding: '10px 12px', fontSize: 13, color: 'var(--ink)', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center' }}>{rowDisplayLabel(row)}</div>
                       {row.perHome.map((c, i) => (
                         <div key={row.key + '-' + i} style={{ padding: '10px 12px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center' }}>
                           <CriteriaValue c={c} />
@@ -261,7 +270,7 @@ export default function CompareBoard({ homes, priorities }) {
                   ))}
                   {otherRows.map((row) => (
                     <Fragment key={row.key}>
-                      <div style={{ padding: '10px 12px', fontSize: 13, color: 'var(--ink)', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center' }}>{row.label}</div>
+                      <div style={{ padding: '10px 12px', fontSize: 13, color: 'var(--ink)', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center' }}>{rowDisplayLabel(row)}</div>
                       {row.perHome.map((c, i) => (
                         <div key={row.key + '-' + i} style={{ padding: '10px 12px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center' }}>
                           <CriteriaValue c={c} />

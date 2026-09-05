@@ -6,7 +6,7 @@ import CriteriaPicker from '@/components/CriteriaPicker';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, INVESTMENT_PROPERTY_TYPES, INVESTMENT_LIVING_PLAN_OPTIONS,
   isSimpleRentalType, showsMultiselectCategory, terminology, toggleWithNoPreference, getItemlistCategories,
-  normalizePriorities, searchTypeLabel, TIER_META,
+  normalizePriorities, searchTypeLabel, TIER_META, criterionDisplayLabel,
 } from '@/lib/constants';
 import { selectedOrderedItems } from '@/lib/matching';
 import { createClient } from '@/lib/supabase/client';
@@ -217,7 +217,7 @@ function PriorityCard({ def, priorities, patch }) {
                 const must = tier === 'must';
                 return (
                   <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 0', borderBottom: '1px solid var(--line)' }}>
-                    <span style={{ fontSize: 13.5, color: 'var(--ink)' }}>{item.label}</span>
+                    <span style={{ fontSize: 13.5, color: 'var(--ink)' }}>{criterionDisplayLabel(def.key, item.label)}</span>
                     <span style={{ fontSize: 11.5, fontWeight: must ? 700 : 500, color: must ? 'var(--brick)' : 'var(--ink-soft)' }}>{TIER_META[tier]?.label}</span>
                   </div>
                 );

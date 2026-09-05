@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import { StarInput } from '@/components/ui';
-import { TOUR_RATING_KEY } from '@/lib/constants';
+import { TOUR_RATING_KEY, criterionDisplayLabel } from '@/lib/constants';
 import { selectedSubjectiveCriteria, curatedAdditionalSubjectiveCriteria } from '@/lib/matching';
 
 // A small, curated set of things people commonly notice on a tour — deliberately NOT
@@ -213,7 +213,7 @@ export default function PostTourModal({ home, priorities, onVerdict, onClose }) 
                     {subjectiveItems.map((item) => {
                       const key = `${item.categoryKey}:${item.label}`;
                       const must = priorities[item.categoryKey]?.tiers?.[item.label] === 'must';
-                      return <RatingRow key={key} label={item.label} must={must} value={ratings[key]} onChange={(v) => setRating(key, v)} />;
+                      return <RatingRow key={key} label={criterionDisplayLabel(item.categoryKey, item.label)} must={must} value={ratings[key]} onChange={(v) => setRating(key, v)} />;
                     })}
                   </div>
                 </div>
@@ -225,7 +225,7 @@ export default function PostTourModal({ home, priorities, onVerdict, onClose }) 
                   <div style={{ display: 'grid', gap: 4 }}>
                     {additionalItems.map((item) => {
                       const key = `${item.categoryKey}:${item.label}`;
-                      return <RatingRow key={key} label={item.label} value={ratings[key]} onChange={(v) => setRating(key, v)} />;
+                      return <RatingRow key={key} label={criterionDisplayLabel(item.categoryKey, item.label)} value={ratings[key]} onChange={(v) => setRating(key, v)} />;
                     })}
                   </div>
                 </div>

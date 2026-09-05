@@ -5,7 +5,13 @@ export const LAYOUT_OPTIONS = ['Ranch / Single Story', 'Two Story', 'Split Level
 export const HOME_CONDITION_OPTIONS = ['New Construction', 'Move-In Ready', 'Some Updates Needed', 'Renovation Potential', 'No Preference'];
 
 export const LOCATION_CORE = ['Schools', 'Commute', 'Neighborhood'].map((label) => ({ label, kind: 'rating' }));
-export const LOCATION_SUGGESTED = ['Walkability', 'Immediate Street / Surroundings', 'Overall Location', 'Parks Nearby', 'Proximity to Family / Friends', 'Dog Parks Nearby', 'Groceries Nearby', 'Restaurants / Coffee / Shopping Nearby'].map((label) => ({ label, kind: 'rating' }));
+// "Overall Location" is intentionally retired from future selection (2026 criteria
+// audit: no meaningfully distinct job from "Neighborhood" was found in how either is
+// used). Existing users who already selected it keep it — splitCategoryItems reads a
+// user's already-selected suggested items from their own stored `customItems`, never
+// from this list, so removing it here only stops it being *offered* to new selections;
+// nothing is deleted, renamed, or migrated.
+export const LOCATION_SUGGESTED = ['Walkability', 'Immediate Street / Surroundings', 'Parks Nearby', 'Proximity to Family / Friends', 'Dog Parks Nearby', 'Groceries Nearby', 'Restaurants / Coffee / Shopping Nearby'].map((label) => ({ label, kind: 'rating' }));
 
 export const HOME_FEEL_CORE = ['Overall Condition', 'Layout / Flow'].map((label) => ({ label, kind: 'rating' }));
 export const HOME_FEEL_SUGGESTED = ['Natural Light', 'Character / Charm', 'Room Sizes', 'Openness / Ceiling Height', 'Privacy'].map((label) => ({ label, kind: 'rating' }));
@@ -20,6 +26,22 @@ export const EXTERIOR_SUGGESTED = [
 
 export const FEATURES_CORE = ['Basement', 'Fireplace', 'Primary Ensuite'].map((label) => ({ label, kind: 'check' }));
 export const FEATURES_SUGGESTED = ['Central Air', 'Home Office', 'Finished Basement', 'Walkout Basement', 'First-Floor Laundry', 'Mudroom', 'Pantry', 'Storage', 'Updated Kitchen', 'Updated Bathrooms', 'Walk-In Closet', 'Additional Living Space', 'Guest / In-Law Suite', 'Basement Bedroom'].map((label) => ({ label, kind: 'check' }));
+
+// "Privacy" exists as two independent criteria (Exterior & Property, and Home Feel) —
+// a legitimate distinction (outdoor/yard privacy vs. privacy from neighbors' sightlines
+// into the home), but the identical label was confusing. The stored label/key ("Privacy"
+// under each category) is intentionally UNCHANGED — renaming it would orphan every
+// existing user's already-stored ratings and tiers under the old key. This is a
+// display-only override, looked up by "categoryKey:label" wherever a criterion is
+// rendered, so it applies uniformly to both new selections and old stored data alike.
+const CRITERION_DISPLAY_LABEL_OVERRIDES = {
+  'exterior:Privacy': 'Yard Privacy',
+  'homeFeel:Privacy': 'Privacy from Neighbors',
+};
+
+export function criterionDisplayLabel(categoryKey, label) {
+  return CRITERION_DISPLAY_LABEL_OVERRIDES[`${categoryKey}:${label}`] || label;
+}
 
 // Apartment-specific replacements — structurally different from a house, so it gets its
 // own core/suggested sets for Exterior & Property and Home Features rather than reusing

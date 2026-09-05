@@ -5,7 +5,7 @@ import { X, Upload, Link2, Footprints, Archive as ArchiveIcon, ExternalLink, Che
 import { StarInput } from '@/components/ui';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
-  isArchivedStatus, isRentalType, TOUR_RATING_KEY,
+  isArchivedStatus, isRentalType, TOUR_RATING_KEY, criterionDisplayLabel,
 } from '@/lib/constants';
 import { visibleOrderedItems, parseListingText, selectedSubjectiveCriteria } from '@/lib/matching';
 import { extractAddressFromListingUrl } from '@/lib/listingUrl';
@@ -617,7 +617,7 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
                         const must = priorities[item.categoryKey]?.tiers?.[item.label] === 'must';
                         return (
                           <div key={`${item.categoryKey}:${item.label}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ fontSize: 13, color: must ? 'var(--brick)' : 'var(--ink)', fontWeight: must ? 700 : 400 }}>{item.label}</span>
+                            <span style={{ fontSize: 13, color: must ? 'var(--brick)' : 'var(--ink)', fontWeight: must ? 700 : 400 }}>{criterionDisplayLabel(item.categoryKey, item.label)}</span>
                             <StarInput value={form.ratings[nsKey(item.categoryKey, item.label)] || 0} onChange={(v) => setRatingItem(item.categoryKey, item.label, v)} />
                           </div>
                         );
@@ -701,7 +701,7 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
                             onClick={() => toggleCheckItem(def.key, item.label)}
                             style={must ? { fontWeight: 700, color: checked ? undefined : 'var(--brick)' } : undefined}
                           >
-                            {item.label}
+                            {criterionDisplayLabel(def.key, item.label)}
                           </span>
                         );
                       })}

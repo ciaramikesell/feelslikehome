@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { X, GripVertical, Plus } from 'lucide-react';
-import { TIER_META, SELECTABLE_TIERS, DEFAULT_SELECTED_TIER } from '@/lib/constants';
+import { TIER_META, SELECTABLE_TIERS, DEFAULT_SELECTED_TIER, criterionDisplayLabel } from '@/lib/constants';
 import { splitCategoryItems, applyOrder } from '@/lib/matching';
 
 export default function CriteriaPicker({ def, priorities, patch, draggable = false }) {
@@ -75,7 +75,7 @@ export default function CriteriaPicker({ def, priorities, patch, draggable = fal
             >
               <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5 }}>
                 {draggable && <GripVertical size={14} className="hh-drag-handle" style={{ flexShrink: 0 }} />}
-                {item.label}
+                {criterionDisplayLabel(key, item.label)}
               </span>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <div style={{ display: 'flex', gap: 3 }}>
@@ -93,7 +93,7 @@ export default function CriteriaPicker({ def, priorities, patch, draggable = fal
                     </button>
                   ))}
                 </div>
-                <button type="button" onClick={() => deselectItem(item.label)} aria-label={`Remove ${item.label}`} title="Remove" style={{ background: 'none', border: 'none', color: 'var(--ink-soft)', cursor: 'pointer', padding: 4, display: 'flex' }}>
+                <button type="button" onClick={() => deselectItem(item.label)} aria-label={`Remove ${criterionDisplayLabel(key, item.label)}`} title="Remove" style={{ background: 'none', border: 'none', color: 'var(--ink-soft)', cursor: 'pointer', padding: 4, display: 'flex' }}>
                   <X size={13} />
                 </button>
               </div>
@@ -105,7 +105,7 @@ export default function CriteriaPicker({ def, priorities, patch, draggable = fal
       {tray.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
           {tray.map((item) => (
-            <button key={item.label} type="button" className="hh-chip" onClick={() => selectItem(item)}>{item.label}</button>
+            <button key={item.label} type="button" className="hh-chip" onClick={() => selectItem(item)}>{criterionDisplayLabel(key, item.label)}</button>
           ))}
         </div>
       )}
