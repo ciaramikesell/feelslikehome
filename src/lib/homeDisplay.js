@@ -66,8 +66,9 @@ export function formatLotSizeDisplay(raw) {
   return str;
 }
 
-// Builds the two fact lines for the compact confirmation card from whichever
-// fields were actually returned — never invents a field that wasn't found.
+// Builds the fact lines for the compact confirmation card from whichever fields
+// were actually returned — never invents a field that wasn't found, and never
+// shows an empty placeholder for something unavailable.
 export function formatFoundCardFacts(fields) {
   const f = fields || {};
   const priceLine = f.price ? `$${withCommas(f.price)}` : '';
@@ -85,12 +86,21 @@ export function formatFoundCardFacts(fields) {
     f.daysOnMarket ? `${f.daysOnMarket} day${f.daysOnMarket === '1' ? '' : 's'} on market` : '',
   ].filter(Boolean).join(' · ');
 
-  return { priceLine, bedsBathsSqft, secondaryFacts };
+  // HOA/property tax — plain factual amounts only, each omitted entirely (not
+  // shown as "Not available") when RentCast didn't return it for this property.
+  const hoaTaxLine = [
+    f.hoaFeeMonthly ? `HOA: $${withCommas(f.hoaFeeMonthly)}/mo` : '',
+    f.propertyTaxAnnual ? `Property tax: $${withCommas(f.propertyTaxAnnual)}/yr${f.propertyTaxYear ? ` · ${f.propertyTaxYear}` : ''}` : '',
+  ].filter(Boolean).join(' · ');
+
+  return { priceLine, bedsBathsSqft, secondaryFacts, hoaTaxLine };
 }
 
 // Count of "property details" found, for the "We found N property details" message.
-// Address identifies the home rather than describing a fact about it, so it's excluded.
+// Address identifies the home rather than describing a fact about it, and latitude/
+// longitude are invisible infrastructure fields, never shown in the UI — both kinds
+// are excluded so the count only reflects what the user can actually see.
 export function countFoundFacts(fields) {
   if (!fields) return 0;
-  return Object.keys(fields).filter((k) => k !== 'address' && fields[k]).length;
+  return Object.keys(fields).filter((k) => k !== 'address' && k !== 'latitude' && k !== 'longitude' && fields[k]).length;
 }

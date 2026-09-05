@@ -216,6 +216,12 @@ export function emptyHome() {
     status: 'Saved', reaction: null, rejectionReason: '',
     ratings: {}, checks: {},
     notes: '', pros: '', cons: '',
+    // Auto Enrichment 1.0 — captured from RentCast when available, never user-entered.
+    // latitude/longitude are infrastructure for future location features and are not
+    // shown anywhere in the UI. hoaFeeMonthly/propertyTaxAnnual/propertyTaxYear are
+    // informational only and never contribute to Match.
+    latitude: null, longitude: null,
+    hoaFeeMonthly: null, propertyTaxAnnual: null, propertyTaxYear: null,
   };
 }
 

@@ -68,6 +68,7 @@ function PropertyFacts({ form, set, priorities }) {
     price: form.price, beds: form.beds, baths: form.baths, sqft: form.sqft,
     yearBuilt: form.yearBuilt, garageSpaces: form.garageSpaces,
     lotSize: form.lotSize, daysOnMarket: form.daysOnMarket,
+    hoaFeeMonthly: form.hoaFeeMonthly, propertyTaxAnnual: form.propertyTaxAnnual, propertyTaxYear: form.propertyTaxYear,
   });
   const hasAnyFacts = !!(facts.priceLine || facts.bedsBathsSqft || facts.secondaryFacts);
 
@@ -80,6 +81,7 @@ function PropertyFacts({ form, set, priorities }) {
           {facts.priceLine && <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>{facts.priceLine}</div>}
           {facts.bedsBathsSqft && <div style={{ fontSize: 13.5, color: 'var(--ink)', marginTop: 2 }}>{facts.bedsBathsSqft}</div>}
           {facts.secondaryFacts && <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 4 }}>{facts.secondaryFacts}</div>}
+          {facts.hoaTaxLine && <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 4 }}>{facts.hoaTaxLine}</div>}
           {!form.estMonthly && (
             <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 6, fontStyle: 'italic' }}>Estimated monthly payment not added</div>
           )}
@@ -462,6 +464,7 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
             {cardFacts.priceLine && <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', margin: '10px 0 2px' }}>{cardFacts.priceLine}</div>}
             {cardFacts.bedsBathsSqft && <div style={{ fontSize: 13.5, color: 'var(--ink)', margin: '2px 0' }}>{cardFacts.bedsBathsSqft}</div>}
             {cardFacts.secondaryFacts && <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 6 }}>{cardFacts.secondaryFacts}</div>}
+            {cardFacts.hoaTaxLine && <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 4 }}>{cardFacts.hoaTaxLine}</div>}
             <button type="button" className="hh-btn hh-btn-ghost" style={{ marginTop: 12, fontSize: 12.5, padding: '6px 12px' }} onClick={() => setEditDetailsOpen(true)}>Edit details</button>
           </div>
         )}
