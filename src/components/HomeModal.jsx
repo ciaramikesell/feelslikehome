@@ -164,6 +164,7 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState(null);
   const [photoError, setPhotoError] = useState('');
+  const [saveErrorMsg, setSaveErrorMsg] = useState('');
   const [showPhotoUrlInput, setShowPhotoUrlInput] = useState(false);
   const photoInputRef = useRef(null);
 
@@ -202,6 +203,7 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
     if (!form.address.trim()) return;
     setSaving(true);
     setPhotoError('');
+    setSaveErrorMsg('');
     try {
       let finalPhotoUrl = form.photoUrl;
 
@@ -221,7 +223,18 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
         finalPhotoUrl = publicUrlData?.publicUrl || '';
       }
 
-      await onSave({ ...form, photoUrl: finalPhotoUrl });
+      try {
+        await onSave({ ...form, photoUrl: finalPhotoUrl });
+      } catch (saveErr) {
+        // Previously this threw uncaught: the modal never closed, nothing was shown,
+        // and Cancel was the only way out. Now the failure is visible, the form's
+        // entered values are preserved (the modal simply stays open), and the
+        // button re-enables so the user can retry without losing anything.
+        console.error('Save home failed', saveErr);
+        setSaveErrorMsg("We couldn't save this home. Please try again — your changes here haven't been lost.");
+        setSaving(false);
+        return;
+      }
 
       // Best-effort cleanup: if a photo we previously uploaded to our own bucket was
       // just replaced or removed, delete the old object so it doesn't linger as an
@@ -755,6 +768,12 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
                 <Check size={13} color="var(--moss)" /> Want to tour
               </div>
             )}
+          </div>
+        )}
+
+        {saveErrorMsg && (
+          <div style={{ background: 'rgba(193,89,47,0.09)', border: '1px solid var(--brick)', color: 'var(--brick)', fontSize: 12.5, padding: '9px 14px', borderRadius: 12, marginTop: 16 }}>
+            {saveErrorMsg}
           </div>
         )}
 

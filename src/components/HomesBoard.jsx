@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   Plus, Search, MapPin, Link2, Archive as ArchiveIcon, ExternalLink,
   Heart, Home as HomeIcon, Undo2, Trash2, Footprints, MessageCircle, Check,
-  GraduationCap, Building2, StickyNote,
+  GraduationCap, Building2, StickyNote, Minus,
 } from 'lucide-react';
 import { MatchSummary } from '@/components/ui';
 import HomeModal from '@/components/HomeModal';
@@ -161,18 +161,16 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
           )}
 
           {pros.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-              {pros.map((p, i) => (
-                <span key={i} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 999, background: 'rgba(116,128,79,0.12)', color: 'var(--moss)', fontWeight: 500 }}>{p}</span>
-              ))}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12.5, color: 'var(--ink)' }}>
+              <Plus size={13} color="var(--moss)" strokeWidth={2.5} style={{ flexShrink: 0, marginTop: 2 }} />
+              <span>{pros.join(', ')}</span>
             </div>
           )}
 
           {cons.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-              {cons.map((c, i) => (
-                <span key={i} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 999, background: 'rgba(193,89,47,0.1)', color: 'var(--brick)', fontWeight: 500 }}>{c}</span>
-              ))}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12.5, color: 'var(--ink)' }}>
+              <Minus size={13} color="var(--brick)" strokeWidth={2.5} style={{ flexShrink: 0, marginTop: 2 }} />
+              <span>{cons.join(', ')}</span>
             </div>
           )}
 
@@ -320,7 +318,21 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
 
   const saveHome = useCallback(async (home) => {
     const supabase = createClient();
-    const saved = await saveHomeQuery(supabase, home, userId, searchId);
+    let saved;
+    try {
+      saved = await saveHomeQuery(supabase, home, userId, searchId);
+    } catch (err) {
+      // Previously uncaught: any Supabase error here (a missing column from a
+      // migration that hasn't been applied yet, a network hiccup, etc.) threw
+      // straight past setModalHome(null) below, leaving Edit Home permanently
+      // stuck open with no explanation and Cancel as the only way out. Now it's
+      // logged, surfaced here (visible once the modal closes), and re-thrown so
+      // HomeModal's own catch can show it immediately, right where the user is
+      // looking, without losing anything they'd entered.
+      console.error('saveHome failed', err);
+      setSaveError("We couldn't save that home. Please try again.");
+      throw err;
+    }
     setHomes((prev) => (prev.some((h) => h.id === saved.id) ? prev.map((h) => (h.id === saved.id ? saved : h)) : [...prev, saved]));
     setModalHome(null);
     setSaveError('');
