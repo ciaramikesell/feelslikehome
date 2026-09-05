@@ -100,6 +100,13 @@ export function formatFoundCardFacts(fields) {
   return { priceLine, bedsBathsSqft, secondaryFacts, hoaTaxLine, schoolLine };
 }
 
+// Splits a comma-separated freeform string (how Pros/Cons/impression chips are
+// stored) into a clean list of trimmed, non-empty entries. Shared by any card/
+// view that needs to render Pros/Cons as individual chips instead of raw text.
+export function parseCommaList(text) {
+  return (text || '').split(',').map((s) => s.trim()).filter(Boolean);
+}
+
 // Count of "property details" found, for the "We found N property details" message.
 // Address identifies the home rather than describing a fact about it, and latitude/
 // longitude are invisible infrastructure fields, never shown in the UI — both kinds

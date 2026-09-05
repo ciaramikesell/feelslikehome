@@ -6,13 +6,14 @@ import Link from 'next/link';
 import {
   Plus, Search, MapPin, Link2, Archive as ArchiveIcon, ExternalLink,
   Heart, Home as HomeIcon, Undo2, Trash2, Footprints, MessageCircle, Check,
+  GraduationCap, Building2, StickyNote,
 } from 'lucide-react';
-import { StarInput, MatchSummary } from '@/components/ui';
+import { MatchSummary } from '@/components/ui';
 import HomeModal from '@/components/HomeModal';
 import PostTourModal from '@/components/PostTourModal';
-import { STATUS_COLOR, emptyHome, isRentalType, isArchivedStatus, TOUR_RATING_KEY } from '@/lib/constants';
-import { parseNum, fmtMoney, avgRating, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint } from '@/lib/matching';
-import { formatLotSizeDisplay } from '@/lib/homeDisplay';
+import { STATUS_COLOR, emptyHome, isRentalType, isArchivedStatus } from '@/lib/constants';
+import { parseNum, fmtMoney, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint } from '@/lib/matching';
+import { formatLotSizeDisplay, splitAddressLines, parseCommaList } from '@/lib/homeDisplay';
 import { createClient } from '@/lib/supabase/client';
 import { saveHome as saveHomeQuery, deleteHome as deleteHomeQuery } from '@/lib/supabase/data';
 
@@ -43,15 +44,11 @@ function ConfirmModal({ title, body, cancelLabel = 'Cancel', confirmLabel, confi
 
 function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour, onRemoveFromTour }) {
   const [imgError, setImgError] = useState(false);
-  const avg = avgRating(home.ratings);
-  const pps = parseNum(home.price) && parseNum(home.sqft) ? Math.round(parseNum(home.price) / parseNum(home.sqft)) : null;
   const match = computeMatch(home, priorities);
-  const checks = trueCheckLabels(home);
-  const visibleChecks = checks.slice(0, 4);
-  const extraChecks = checks.length - visibleChecks.length;
   const styleSummary = homeStyleSummary(home);
   const showPhoto = home.photoUrl && !imgError;
   const isFavorite = home.reaction === 'love';
+  const { line1: addressLine1, line2: addressLine2 } = splitAddressLines(home.address);
   // Normalize lifecycle presentation without touching stored data: any status that
   // isn't 'Want to Tour' or 'Toured' is treated as pre-tour, whether it's the current
   // 'Saved' value or a legacy string like 'Considering' left over from before this
@@ -61,15 +58,29 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
   // been toured (or we're already inside a decision-workspace view) — not as a
   // pre-tour decision prompt on Homes.
   const showQuickFavorite = mode === 'favorites' || mode === 'archive' || (mode === 'tour' && home.status === 'Toured');
-  const statLine = [
+
+  // Core property facts — beds/baths/sqft/lot only. Garage is deliberately not
+  // repeated here: when it's actually a priority the user selected, it already
+  // surfaces through the Match box's fulfilled-criteria line below, rather than
+  // being shown twice regardless of whether the user cares about it.
+  const factLine = [
     home.beds && `${home.beds} bd`,
     home.baths && `${home.baths} ba`,
-    home.sqft && `${parseNum(home.sqft)?.toLocaleString()} sqft`,
-    pps && `$${pps}/sqft`,
-    home.lotSize && `${formatLotSizeDisplay(home.lotSize)} lot`,
-    home.garageSpaces && `${home.garageSpaces}-car garage`,
-    styleSummary || null,
+    home.sqft && `${parseNum(home.sqft)?.toLocaleString()} sq ft`,
+    home.lotSize && formatLotSizeDisplay(home.lotSize),
   ].filter(Boolean);
+
+  // Objective context rows — only ever built from data that already exists; no new
+  // lookups happen here. Crossroads and Home Style come from the home's own stored
+  // fields; School District comes from the already-approved Geocodio enrichment.
+  const objectiveFacts = [
+    home.crossroads && { icon: MapPin, text: home.crossroads },
+    home.schoolDistrict && { icon: GraduationCap, text: home.schoolDistrict },
+    styleSummary && { icon: Building2, text: styleSummary },
+  ].filter(Boolean);
+
+  const pros = parseCommaList(home.pros);
+  const cons = parseCommaList(home.cons);
 
   return (
     <div className="hh-corner">
@@ -90,8 +101,8 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
 
         <div style={{ padding: '16px 18px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div>
-            <div className="hh-address" style={{ fontSize: 19, fontWeight: 600, lineHeight: 1.28, color: 'var(--ink)' }}>{home.address || 'Untitled'}</div>
-            {home.crossroads && <div style={{ fontSize: 12, color: 'var(--ink-soft)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 4 }}><MapPin size={11} /> {home.crossroads}</div>}
+            <div className="hh-address" style={{ fontSize: 19, fontWeight: 600, lineHeight: 1.28, color: 'var(--ink)' }}>{addressLine1 || 'Untitled'}</div>
+            {addressLine2 && <div style={{ fontSize: 13.5, color: 'var(--ink-soft)', marginTop: 1 }}>{addressLine2}</div>}
           </div>
 
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
@@ -99,25 +110,9 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
             {home.estMonthly && <span className="hh-mono" style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>{fmtMoney(home.estMonthly)}/mo est.</span>}
           </div>
 
-          {match ? (
-            <div className="hh-match-panel" style={{ background: matchTint(match.pct), borderLeft: `3px solid ${matchColor(match.pct)}` }}>
-              <MatchSummary match={match} />
-            </div>
-          ) : (
-            <div style={{ fontSize: 11.5, color: 'var(--ink-soft)' }}>Set your priorities in <em>My Search</em> to see a match score.</div>
-          )}
-
-          {home.ratings?.[TOUR_RATING_KEY] > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--ink)' }}>
-              <span style={{ color: 'var(--ink-soft)' }}>Your tour rating:</span>
-              <StarInput value={home.ratings[TOUR_RATING_KEY]} readOnly size={13} />
-              <span className="hh-mono" style={{ color: 'var(--ink-soft)' }}>{home.ratings[TOUR_RATING_KEY]}/5</span>
-            </div>
-          )}
-
-          {statLine.length > 0 && (
+          {factLine.length > 0 && (
             <div className="hh-mono" style={{ fontSize: 12.5, color: 'var(--ink-soft)', display: 'flex', flexWrap: 'wrap', alignItems: 'center' }}>
-              {statLine.map((item, i) => (
+              {factLine.map((item, i) => (
                 <span key={i} style={{ display: 'flex', alignItems: 'center' }}>
                   {i > 0 && <span style={{ color: 'var(--line)', margin: '0 7px' }}>•</span>}
                   {item}
@@ -126,12 +121,13 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
             </div>
           )}
 
-          {avg ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <StarInput value={Math.round(avg)} readOnly size={14} />
-              <span style={{ fontSize: 11.5, color: 'var(--ink-soft)' }}>{avg.toFixed(1)} avg</span>
+          {match ? (
+            <div className="hh-match-panel" style={{ background: matchTint(match.pct), borderLeft: `3px solid ${matchColor(match.pct)}` }}>
+              <MatchSummary match={match} />
             </div>
-          ) : null}
+          ) : (
+            <div style={{ fontSize: 11.5, color: 'var(--ink-soft)' }}>Set your priorities in <em>My Search</em> to see a match score.</div>
+          )}
 
           {!isPreTour && home.status === 'Want to Tour' && mode === 'homes' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, color: 'var(--ink-soft)' }}>
@@ -154,17 +150,36 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
             </button>
           )}
 
-          {visibleChecks.length > 0 && (
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-              {visibleChecks.map((t) => <span key={t} className="hh-chip static on" style={{ fontSize: 11, padding: '3px 8px' }}>{t}</span>)}
-              {extraChecks > 0 && <span className="hh-chip static" style={{ fontSize: 11, padding: '3px 8px' }}>+{extraChecks} more</span>}
+          {objectiveFacts.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              {objectiveFacts.map(({ icon: Icon, text }, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--ink-soft)' }}>
+                  <Icon size={13} style={{ flexShrink: 0 }} /> <span>{text}</span>
+                </div>
+              ))}
             </div>
           )}
 
-          {(home.pros || home.cons) && (
-            <div style={{ fontSize: 12, color: 'var(--ink-soft)', display: 'grid', gap: 3 }}>
-              {home.pros && <div><strong style={{ color: 'var(--moss)' }}>+ </strong>{home.pros}</div>}
-              {home.cons && <div><strong style={{ color: 'var(--brick)' }}>− </strong>{home.cons}</div>}
+          {pros.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+              {pros.map((p, i) => (
+                <span key={i} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 999, background: 'rgba(116,128,79,0.12)', color: 'var(--moss)', fontWeight: 500 }}>{p}</span>
+              ))}
+            </div>
+          )}
+
+          {cons.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+              {cons.map((c, i) => (
+                <span key={i} style={{ fontSize: 11, padding: '3px 9px', borderRadius: 999, background: 'rgba(193,89,47,0.1)', color: 'var(--brick)', fontWeight: 500 }}>{c}</span>
+              ))}
+            </div>
+          )}
+
+          {home.notes && (
+            <div style={{ display: 'flex', gap: 6, fontSize: 12, color: 'var(--ink-soft)', background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 10px' }}>
+              <StickyNote size={13} style={{ flexShrink: 0, marginTop: 1 }} />
+              <span style={{ whiteSpace: 'pre-wrap' }}>{home.notes}</span>
             </div>
           )}
 

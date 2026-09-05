@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Star, ChevronDown, Heart, AlertTriangle, CheckCircle2, Check } from 'lucide-react';
+import { Star, ChevronDown, Heart, CheckCircle2, Check } from 'lucide-react';
 import { TIER_ORDER, TIER_META } from '@/lib/constants';
 import { matchColor } from '@/lib/matching';
 
@@ -108,7 +108,7 @@ export function PageIntro({ title, subtitle }) {
   );
 }
 
-export function MatchSummary({ match, compact }) {
+export function MatchSummary({ match }) {
   if (!match) return null;
 
   // Priorities exist, but none of them can be evaluated yet — never show a raw 0%,
@@ -116,8 +116,8 @@ export function MatchSummary({ match, compact }) {
   if (match.pct === null) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <BrandMark size={compact ? 18 : 20} />
-        <span style={{ fontSize: compact ? 12.5 : 13.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>Not enough information yet</span>
+        <BrandMark size={20} />
+        <span style={{ fontSize: 13.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>Not enough information yet</span>
       </div>
     );
   }
@@ -126,29 +126,36 @@ export function MatchSummary({ match, compact }) {
   let mustSubLabel = null;
   if (match.mustTotal > 0) {
     if (match.mustEvaluated === 0) mustLabel = 'Must-haves not evaluated yet';
-    else if (match.mustEvaluated === match.mustTotal) mustLabel = `Must-haves: ${match.mustMet}/${match.mustTotal}`;
+    else if (match.mustEvaluated === match.mustTotal) mustLabel = `Must-haves: ${match.mustMet}/${match.mustTotal} met`;
     else {
       mustLabel = `Must-haves: ${match.mustMet}/${match.mustEvaluated} met`;
       mustSubLabel = `${match.mustTotal - match.mustEvaluated} not evaluated`;
     }
   }
 
+  // Reuses the same evaluated/objective/must-or-important "satisfied" list Match 2.0
+  // already computes — never a separate satisfaction check. Only actually-confirmed
+  // fulfilled criteria appear here; unknown and missed criteria are never listed.
+  const fulfilledList = match.satisfied.map((c) => c.label).join(', ');
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <BrandMark size={compact ? 18 : 20} />
-        <span className="hh-mono" style={{ fontSize: compact ? 15 : 18, fontWeight: 600, color: matchColor(match.pct) }}>{match.pct}% match</span>
-        {mustLabel && <span style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{mustLabel}{mustSubLabel ? ` (${mustSubLabel})` : ''}</span>}
+        <BrandMark size={20} />
+        <span className="hh-mono" style={{ fontSize: 17, fontWeight: 700, color: matchColor(match.pct) }}>{match.pct}% Match</span>
       </div>
-      {!compact && match.evaluatedCount < match.selectedCount && (
+      {mustLabel && (
+        <div style={{ fontSize: 11.5, color: 'var(--ink)' }}>{mustLabel}{mustSubLabel ? ` · ${mustSubLabel}` : ''}</div>
+      )}
+      {match.evaluatedCount < match.selectedCount && (
         <div style={{ fontSize: 10.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>
           Based on {match.evaluatedCount} of {match.selectedCount} priorities evaluated
         </div>
       )}
-      {!compact && (match.missing.length > 0 || match.satisfied.length > 0) && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {match.missing.slice(0, 3).map((c) => <div key={c.key} style={{ fontSize: 11.5, color: 'var(--brick)', display: 'flex', alignItems: 'center', gap: 5 }}><AlertTriangle size={11} /> Missing: {c.label}</div>)}
-          {match.satisfied.slice(0, Math.max(0, 4 - match.missing.length)).map((c) => <div key={c.key} style={{ fontSize: 11.5, color: 'var(--moss)', display: 'flex', alignItems: 'center', gap: 5 }}><CheckCircle2 size={11} /> {c.label}{c.detail ? ` — ${c.detail}` : ''}</div>)}
+      {fulfilledList && (
+        <div style={{ fontSize: 11.5, color: 'var(--moss)', display: 'flex', alignItems: 'flex-start', gap: 5 }}>
+          <CheckCircle2 size={12} style={{ marginTop: 2, flexShrink: 0 }} />
+          <span>{fulfilledList}</span>
         </div>
       )}
     </div>

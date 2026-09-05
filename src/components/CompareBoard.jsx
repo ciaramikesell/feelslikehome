@@ -4,7 +4,7 @@ import { useState, useMemo, Fragment } from 'react';
 import { Columns, Star, Heart, Home as HomeIcon } from 'lucide-react';
 import { TOUR_RATING_KEY, criterionDisplayLabel } from '@/lib/constants';
 import { parseNum, computeMatch, matchColor } from '@/lib/matching';
-import { formatLotSizeDisplay, formatCurrencyDisplay } from '@/lib/homeDisplay';
+import { formatLotSizeDisplay, formatCurrencyDisplay, parseCommaList } from '@/lib/homeDisplay';
 
 const MAX_COMPARE = 4;
 
@@ -77,10 +77,6 @@ function rowSignature(c) {
   if (!c || !c.evaluated) return 'unevaluated';
   if (!c.objective) return `r${Math.round((c.score || 0) * 5)}`;
   return c.met ? 'met' : 'missed';
-}
-
-function parseList(text) {
-  return (text || '').split(',').map((s) => s.trim()).filter(Boolean);
 }
 
 function HomeHeaderCard({ home, match, isFavorite }) {
@@ -321,8 +317,8 @@ export default function CompareBoard({ homes, priorities }) {
             <summary>What stood out</summary>
             <div className="hh-compare-notes" style={{ marginTop: 10 }}>
               {selected.map((h) => {
-                const liked = parseList(h.pros);
-                const disliked = parseList(h.cons);
+                const liked = parseCommaList(h.pros);
+                const disliked = parseCommaList(h.cons);
                 return (
                   <div key={h.id} style={{ border: '1px solid var(--line)', borderRadius: 14, padding: 14, background: 'var(--paper-raised)' }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 8 }}>{h.address || 'Untitled'}</div>
