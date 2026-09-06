@@ -180,20 +180,37 @@ export async function getHomesForUser(supabase, userId, searchId) {
 }
 
 // Saves personal fields to home_member_state (or the legacy homes columns for
-// an untouched owner row), and shared/objective fields to homes directly —
-// in one call, so callers never need to know which field lives in which table.
+// a genuinely non-collaborative search), and shared/objective fields to homes
+// directly — in one call, so callers never need to know which field lives in
+// which table.
+//
+// CRITICAL: whether this is a "legacy" save is determined by whether the
+// SEARCH has any accepted members — never by who happened to add this
+// specific home. An earlier version of this function used "did I add this
+// home" as the test, which meant a co-buyer adding a brand-new home to an
+// already-shared search would have had their own personal opinion written
+// straight onto the shared row (exactly the outcome this whole architecture
+// exists to prevent). Fixed: once a search is collaborative, EVERY
+// participant's personal writes — including the original owner's — go to
+// home_member_state from that point forward. The flat legacy columns remain
+// exactly as they are for any home no one has touched since collaboration
+// began (the read side in resolvePersonalState already prefers a
+// home_member_state row over the flat columns whenever one exists), but no
+// NEW write ever lands there once a search has a member.
 export async function saveHomePersonalAndShared(supabase, home, userId, searchId) {
-  const isLegacyOwnerSave = !home.id || (home.userId ?? userId) === userId;
+  const { count: memberCount, error: memberCountError } = await supabase
+    .from('search_members').select('id', { count: 'exact', head: true }).eq('search_id', searchId);
+  if (memberCountError) throw memberCountError;
+  const isCollaborative = (memberCount || 0) > 0;
 
   // IMPORTANT: status/reaction/rejection_reason/ratings/checks on the shared
-  // `homes` row represent the ORIGINAL OWNER's personal data specifically
-  // (kept there only for backward compatibility, never as a generic "shared"
-  // value). A co-buyer saving their own personal state must NEVER write these
-  // columns — doing so would silently overwrite the owner's legacy-fallback
-  // data with the co-buyer's own values. Only the legacy owner's save
-  // includes them; everyone else's save touches only genuinely shared/
-  // objective fields (bug found and fixed during review, before this was
-  // ever wired into a page).
+  // `homes` row represent ONE specific person's legacy personal data (kept
+  // there only for pre-collaboration backward compatibility, never as a
+  // generic "shared" value). This path is only ever taken at all when the
+  // search has no members — i.e., a genuinely single-user account, exactly
+  // today's behavior, unchanged.
+  const isLegacyOwnerSave = !isCollaborative;
+
   const sharedRow = homeToSharedRow(home, userId, searchId, isLegacyOwnerSave);
   const { data: savedShared, error: sharedError } = await supabase
     .from('homes').upsert(sharedRow).select().single();
@@ -214,13 +231,58 @@ export async function saveHomePersonalAndShared(supabase, home, userId, searchId
     }, { onConflict: 'home_id,user_id' });
     if (error) throw error;
   }
-  // Legacy owner path: status/reaction/ratings/checks were already written as
-  // part of the shared-row upsert above — nothing further to do.
+  // Non-collaborative path: status/reaction/ratings/checks were already
+  // written as part of the shared-row upsert above — nothing further to do.
 
   return { ...savedHome, ...personal };
 }
 
 /* -------------------------------- archive -------------------------------- */
+
+// Every accepted participant in a search: the owner plus every active member.
+export async function getSearchParticipantIds(supabase, search) {
+  const { data, error } = await supabase.from('search_members').select('user_id').eq('search_id', search.id);
+  if (error) throw error;
+  return [search.user_id, ...(data || []).map((m) => m.user_id)];
+}
+
+// For a set of homes in a search, resolves every participant's personal
+// status per home — the data needed for global archive aggregation and the
+// "Archived by Co-Buyer" signal. Returns Map<homeId, Array<{userId, status}>>.
+// A participant who has never touched a given home (no home_member_state row,
+// and not the home's original legacy adder) resolves to status: null — never
+// counted as "active" or "archived," simply "hasn't looked at this yet."
+export async function getParticipantStatusesForHomes(supabase, search, homes) {
+  const homeIds = homes.map((h) => h.id);
+  if (!homeIds.length) return new Map();
+
+  const participantIds = await getSearchParticipantIds(supabase, search);
+  if (participantIds.length <= 1) {
+    // Not collaborative — every home's only participant is the current
+    // account itself, whose status is already on the home object.
+    const result = new Map();
+    homes.forEach((home) => result.set(home.id, [{ userId: home.userId, status: home.status }]));
+    return result;
+  }
+
+  const { data: stateRows, error } = await supabase
+    .from('home_member_state').select('home_id, user_id, status').in('home_id', homeIds).in('user_id', participantIds);
+  if (error) throw error;
+
+  const stateByHomeAndUser = new Map((stateRows || []).map((r) => [`${r.home_id}:${r.user_id}`, r.status]));
+
+  const result = new Map();
+  homes.forEach((home) => {
+    const perParticipant = participantIds.map((pid) => {
+      const stateStatus = stateByHomeAndUser.get(`${home.id}:${pid}`);
+      if (stateStatus !== undefined) return { userId: pid, status: stateStatus };
+      if (home.userId === pid) return { userId: pid, status: home.status }; // legacy fallback, adder only
+      return { userId: pid, status: null }; // hasn't touched this home at all
+    });
+    result.set(home.id, perParticipant);
+  });
+  return result;
+}
 
 // A shared home is archived only when EVERY active participant (owner + all
 // accepted members) has personally archived it. One shared definition, used
@@ -236,6 +298,37 @@ export function coBuyerArchivedSignal(currentUserStatus, otherParticipantStatuse
   if (currentUserStatus === 'Archived') return null;
   const archivedOthers = otherParticipantStatuses.filter((s) => s === 'Archived').length;
   return archivedOthers > 0 ? archivedOthers : null;
+}
+
+/* -------------------------------- invitations -------------------------------- */
+
+// Invite creation needs no RPC — the owner already has direct INSERT rights
+// via the existing Phase A policy. Email is normalized so a later
+// case-difference doesn't accidentally block acceptance.
+export async function createInvitation(supabase, searchId, invitedBy, invitedEmail) {
+  const { data, error } = await supabase.from('search_invitations').insert({
+    search_id: searchId,
+    invited_by: invitedBy,
+    invited_email: invitedEmail.trim().toLowerCase(),
+  }).select().single();
+  if (error) throw error;
+  return data;
+}
+
+// The invitee has zero RLS access to search_invitations before accepting —
+// preview/accept go through the two Phase D SECURITY DEFINER RPCs instead,
+// which expose only a validity boolean and (on failure) a reason code, never
+// the search's contents or any other invitation.
+export async function previewInvitation(supabase, token) {
+  const { data, error } = await supabase.rpc('preview_invitation', { p_token: token });
+  if (error) throw error;
+  return data?.[0] || { valid: false, reason: 'not_found' };
+}
+
+export async function acceptInvitation(supabase, token) {
+  const { data, error } = await supabase.rpc('accept_invitation', { p_token: token });
+  if (error) throw error;
+  return data?.[0] || { success: false, reason: 'unknown', search_id: null };
 }
 
 /* -------------------------------- internal -------------------------------- */

@@ -7,6 +7,7 @@ import { LogOut, Home as HomeIcon, Columns, HelpCircle, X, Footprints, SlidersHo
 import { BrandMark, Wordmark } from '@/components/ui';
 import { PRIMARY_TABS } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
+import SearchSwitcher from '@/components/SearchSwitcher';
 
 const TAB_ICONS = {
   homes: HomeIcon,
@@ -23,7 +24,7 @@ const HOW_TO_STEPS = [
   { title: 'Add what you already know', body: "Add a photo and anything else you know about the home. You can also keep notes, pros, and cons so you don't have to remember everything yourself." },
   { title: 'Want to tour a home', body: "When one's worth seeing in person, tap Want to tour. It'll show up on your Want to Tour page." },
   { title: 'Tell us how it felt', body: "After you've seen it, tap I toured this home and choose Love it, Still considering, or Not for me — then optionally rate the things a listing can't tell you, like how it felt, the light, the layout." },
-  { title: 'Your favorites collect themselves', body: 'Choosing Love it after a tour automatically favorites a home — or tap the heart on any home yourself.' },
+  { title: 'Your favorites collect themselves', body: 'Choosing Love it after a tour automatically favorites a home — you can also tap the heart on a toured home to change your mind later.' },
   { title: "Archive homes you've ruled out", body: "Choosing Not for me (or archiving anytime) keeps your notes and ratings so you can remember why you passed — and you can restore the home later if you change your mind." },
   { title: 'Compare your finalists', body: "When you've narrowed it down, use Compare to put your top homes side by side and see how they measure up to what matters most to you." },
 ];
@@ -75,7 +76,7 @@ function HowToUseModal({ onClose }) {
   );
 }
 
-export default function AppShell({ children, userEmail }) {
+export default function AppShell({ children, userEmail, userId, accessibleSearches, activeSearchId, isShared }) {
   const pathname = usePathname();
   const router = useRouter();
   const [howToOpen, setHowToOpen] = useState(false);
@@ -96,9 +97,13 @@ export default function AppShell({ children, userEmail }) {
             <div>
               <Wordmark size={31} />
               {userEmail && <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '4px 0 0' }}>{userEmail}</p>}
+              {isShared && <p style={{ fontSize: 11.5, color: 'var(--brick)', fontWeight: 600, margin: '2px 0 0' }}>Shared search</p>}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {accessibleSearches && accessibleSearches.length > 1 && (
+              <SearchSwitcher userId={userId} searches={accessibleSearches} activeSearchId={activeSearchId} />
+            )}
             <Link
               href="/search"
               className="hh-btn hh-btn-ghost"

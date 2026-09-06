@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getProfile } from '@/lib/supabase/data';
+import { resolveActiveSearch, getAccessibleSearches, getSearchParticipantIds } from '@/lib/supabase/collaboration';
 import AppShell from '@/components/AppShell';
 
 export default async function AppGroupLayout({ children }) {
@@ -11,5 +12,16 @@ export default async function AppGroupLayout({ children }) {
   const profile = await getProfile(supabase, user.id);
   if (!profile?.onboarding_complete) redirect('/onboarding');
 
-  return <AppShell userEmail={user.email}>{children}</AppShell>;
+  const { search } = await resolveActiveSearch(supabase, user.id);
+  const [accessibleSearches, participantIds] = await Promise.all([
+    getAccessibleSearches(supabase, user.id),
+    getSearchParticipantIds(supabase, search),
+  ]);
+  const isShared = participantIds.length > 1;
+
+  return (
+    <AppShell userEmail={user.email} userId={user.id} accessibleSearches={accessibleSearches} activeSearchId={search.id} isShared={isShared}>
+      {children}
+    </AppShell>
+  );
 }

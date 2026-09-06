@@ -2,13 +2,15 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import AuthShell from '@/components/auth/AuthShell';
 import { PasswordField, Banner, Spinner } from '@/components/auth/AuthHelpers';
 import { createClient } from '@/lib/supabase/client';
 
 export default function SignInPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [status, setStatus] = useState(null);
@@ -26,7 +28,7 @@ export default function SignInPage() {
       setError(signInError.message || 'Invalid login credentials.');
       return;
     }
-    router.push('/');
+    router.push(redirectTo);
     router.refresh();
   };
 
@@ -58,7 +60,13 @@ export default function SignInPage() {
 
         <div className="afh-divider"><span>or</span></div>
 
-        <Link href="/auth/sign-up" className="afh-btn afh-btn-ghost" style={{ textDecoration: 'none', textAlign: 'center' }}>Start your home search</Link>
+        <Link
+          href={redirectTo !== '/' ? `/auth/sign-up?redirect=${encodeURIComponent(redirectTo)}` : '/auth/sign-up'}
+          className="afh-btn afh-btn-ghost"
+          style={{ textDecoration: 'none', textAlign: 'center' }}
+        >
+          Start your home search
+        </Link>
       </form>
     </AuthShell>
   );

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import AuthShell from '@/components/auth/AuthShell';
 import { PasswordField, Banner, Spinner } from '@/components/auth/AuthHelpers';
@@ -10,6 +10,8 @@ import { createClient } from '@/lib/supabase/client';
 
 export default function SignUpPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get('redirect') || '/';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -27,7 +29,7 @@ export default function SignUpPage() {
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=/` },
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}` },
     });
     if (signUpError) {
       setStatus(null);
@@ -41,11 +43,12 @@ export default function SignUpPage() {
     }
     if (data.session) {
       // This project has email confirmation turned off, so signUp already returned a
-      // live session — take the new user straight into onboarding.
-      router.push('/');
+      // live session — take the new user straight to their destination.
+      router.push(redirectTo);
       router.refresh();
     } else {
-      // Email confirmation is required — Supabase already sent the confirmation link.
+      // Email confirmation is required — Supabase already sent the confirmation link,
+      // which carries the same redirect destination via the callback route above.
       setStatus('check-email');
     }
   };
@@ -65,7 +68,13 @@ export default function SignUpPage() {
   return (
     <AuthShell>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <Link href="/auth/sign-in" className="afh-back-link" style={{ textDecoration: 'none' }}><ArrowLeft size={13} /> Back to sign in</Link>
+        <Link
+          href={redirectTo !== '/' ? `/auth/sign-in?redirect=${encodeURIComponent(redirectTo)}` : '/auth/sign-in'}
+          className="afh-back-link"
+          style={{ textDecoration: 'none' }}
+        >
+          <ArrowLeft size={13} /> Back to sign in
+        </Link>
 
         <div>
           <h2 className="afh-serif" style={{ fontSize: 24, margin: 0, fontWeight: 600, color: 'var(--ink)' }}>Start your home search</h2>

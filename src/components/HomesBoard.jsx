@@ -131,6 +131,11 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
           {!isPreTour && (
             <span className="hh-mono" style={{ position: 'absolute', top: 10, left: 10, fontSize: 10.5, fontWeight: 700, color: '#fff', background: STATUS_COLOR[home.status] || 'var(--ink-soft)', padding: '4px 9px', borderRadius: 999, boxShadow: '0 2px 8px rgba(46,38,33,0.2)' }}>{home.status}</span>
           )}
+          {home.coBuyerArchivedCount > 0 && (
+            <span style={{ position: 'absolute', top: 10, right: 10, fontSize: 10.5, fontWeight: 600, color: 'var(--ink)', background: 'rgba(255,255,255,0.92)', padding: '4px 9px', borderRadius: 999, boxShadow: '0 2px 8px rgba(46,38,33,0.15)' }}>
+              Archived by Co-Buyer
+            </span>
+          )}
         </div>
 
         <div style={{ padding: '16px 18px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
