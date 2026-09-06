@@ -76,7 +76,7 @@ function HowToUseModal({ onClose }) {
   );
 }
 
-export default function AppShell({ children, userEmail, userId, accessibleSearches, activeSearchId, isShared }) {
+export default function AppShell({ children, userEmail, userId, accessibleSearches, activeSearchId }) {
   const pathname = usePathname();
   const router = useRouter();
   const [howToOpen, setHowToOpen] = useState(false);
@@ -97,7 +97,6 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
             <div>
               <Wordmark size={31} />
               {userEmail && <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '4px 0 0' }}>{userEmail}</p>}
-              {isShared && <p style={{ fontSize: 11.5, color: 'var(--brick)', fontWeight: 600, margin: '2px 0 0' }}>Shared search</p>}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>

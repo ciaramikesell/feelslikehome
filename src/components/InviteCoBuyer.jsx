@@ -4,13 +4,18 @@ import { useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { createInvitation } from '@/lib/supabase/collaboration';
 
-export default function InviteCoBuyer({ searchId, userId }) {
-  const [open, setOpen] = useState(false);
+export default function InviteCoBuyer({ searchId, userId, embedded = false, onClose }) {
+  const [open, setOpen] = useState(embedded);
   const [email, setEmail] = useState('');
   const [inviteLink, setInviteLink] = useState('');
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  const close = () => {
+    if (embedded && onClose) onClose();
+    else setOpen(false);
+  };
 
   const submit = async () => {
     if (!email.trim()) return;
@@ -41,6 +46,7 @@ export default function InviteCoBuyer({ searchId, userId }) {
   };
 
   if (!open) {
+    if (embedded) return null;
     return (
       <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px' }} onClick={() => setOpen(true)}>
         Invite co-buyer
@@ -63,7 +69,7 @@ export default function InviteCoBuyer({ searchId, userId }) {
           />
           {error && <p style={{ fontSize: 12, color: 'var(--brick)', margin: '8px 0 0' }}>{error}</p>}
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-            <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 12 }} onClick={() => setOpen(false)}>Cancel</button>
+            <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 12 }} onClick={close}>Cancel</button>
             <button type="button" className="hh-btn" style={{ fontSize: 12 }} onClick={submit} disabled={!email.trim() || sending}>
               {sending ? 'Creating...' : 'Create invite'}
             </button>
@@ -79,6 +85,7 @@ export default function InviteCoBuyer({ searchId, userId }) {
             </button>
           </div>
           <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '8px 0 0' }}>Expires in 7 days. Send this link to your co-buyer however you like.</p>
+          <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, marginTop: 10 }} onClick={close}>Done</button>
         </>
       )}
     </div>
