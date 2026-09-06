@@ -101,6 +101,26 @@ create table if not exists public.homes (
   pros text not null default '',
   cons text not null default '',
 
+  -- Auto Enrichment 1.0 — already-returned RentCast facts we previously discarded.
+  -- All nullable: existing homes simply have null here until their next successful
+  -- lookup. Never contribute to Match, never shown as onboarding/My Search criteria.
+  -- latitude/longitude are infrastructure for future location features and are
+  -- never surfaced in the UI. hoa_fee_monthly/property_tax_annual are plain
+  -- informational facts; property_tax_year records which year that amount applies
+  -- to, since RentCast returns a multi-year tax history and we only keep the most
+  -- recent entry (selected by its own `year` field, never by array/object order).
+  latitude numeric,
+  longitude numeric,
+  hoa_fee_monthly numeric,
+  property_tax_annual numeric,
+  property_tax_year integer,
+
+  -- Auto Enrichment — School District: a plain district name from Geocodio's school
+  -- data append, resolved from the property's coordinates (or address as a fallback).
+  -- Never a rating/score. Informational only — never contributes to Match, never
+  -- appears in onboarding/My Search.
+  school_district text,
+
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -198,3 +218,243 @@ drop trigger if exists homes_set_updated_at on public.homes;
 create trigger homes_set_updated_at
   before update on public.homes
   for each row execute function public.set_updated_at();
+
+
+-- =============================================================================
+-- Co-Buyer V1 — Phase A foundation (see supabase/migrations/2026-09-05-cobuyer-
+-- phase-a-foundation.sql for the full reasoning, including why this design
+-- uses SECURITY DEFINER helper functions instead of direct cross-table
+-- subqueries — a naive version of this schema was found during review to
+-- create recursive RLS between searches and search_members, and was corrected
+-- before ever being run). searches.user_id and its unique(user_id) constraint
+-- above are NOT touched — every user still owns exactly one search.
+-- =============================================================================
+
+create or replace function public.is_search_owner(p_search_id uuid, p_user_id uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.searches s
+    where s.id = p_search_id and s.user_id = p_user_id
+  );
+$$;
+
+create or replace function public.is_search_member(p_search_id uuid, p_user_id uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.search_members sm
+    where sm.search_id = p_search_id and sm.user_id = p_user_id
+  );
+$$;
+
+create or replace function public.can_access_search(p_search_id uuid, p_user_id uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select public.is_search_owner(p_search_id, p_user_id) or public.is_search_member(p_search_id, p_user_id);
+$$;
+
+create or replace function public.can_access_home(p_home_id uuid, p_user_id uuid)
+returns boolean
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.homes h
+    where h.id = p_home_id and public.can_access_search(h.search_id, p_user_id)
+  );
+$$;
+
+revoke all on function public.is_search_owner(uuid, uuid) from public;
+revoke all on function public.is_search_member(uuid, uuid) from public;
+revoke all on function public.can_access_search(uuid, uuid) from public;
+revoke all on function public.can_access_home(uuid, uuid) from public;
+grant execute on function public.is_search_owner(uuid, uuid) to authenticated;
+grant execute on function public.is_search_member(uuid, uuid) to authenticated;
+grant execute on function public.can_access_search(uuid, uuid) to authenticated;
+grant execute on function public.can_access_home(uuid, uuid) to authenticated;
+
+alter table public.profiles
+  add column if not exists active_search_id uuid references public.searches(id) on delete set null;
+
+create table if not exists public.search_members (
+  id uuid primary key default gen_random_uuid(),
+  search_id uuid not null references public.searches(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  role text not null default 'member' check (role in ('member')),
+  joined_at timestamptz not null default now(),
+  unique (search_id, user_id)
+);
+
+alter table public.search_members enable row level security;
+
+drop policy if exists "search_members_select" on public.search_members;
+create policy "search_members_select" on public.search_members
+  for select using (
+    auth.uid() = user_id
+    or public.is_search_owner(search_id, auth.uid())
+  );
+
+drop policy if exists "search_members_owner_insert" on public.search_members;
+create policy "search_members_owner_insert" on public.search_members
+  for insert with check (
+    public.is_search_owner(search_id, auth.uid())
+  );
+
+drop policy if exists "search_members_owner_delete" on public.search_members;
+create policy "search_members_owner_delete" on public.search_members
+  for delete using (
+    public.is_search_owner(search_id, auth.uid())
+    or auth.uid() = user_id
+  );
+
+create table if not exists public.search_member_priorities (
+  id uuid primary key default gen_random_uuid(),
+  search_id uuid not null references public.searches(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  priorities jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (search_id, user_id)
+);
+
+alter table public.search_member_priorities enable row level security;
+
+drop policy if exists "smp_own_select" on public.search_member_priorities;
+create policy "smp_own_select" on public.search_member_priorities
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "smp_own_insert" on public.search_member_priorities;
+create policy "smp_own_insert" on public.search_member_priorities
+  for insert with check (
+    auth.uid() = user_id
+    and public.can_access_search(search_id, auth.uid())
+  );
+
+drop policy if exists "smp_own_update" on public.search_member_priorities;
+create policy "smp_own_update" on public.search_member_priorities
+  for update using (auth.uid() = user_id)
+  with check (
+    auth.uid() = user_id
+    and public.can_access_search(search_id, auth.uid())
+  );
+
+drop trigger if exists smp_set_updated_at on public.search_member_priorities;
+create trigger smp_set_updated_at
+  before update on public.search_member_priorities
+  for each row execute function public.set_updated_at();
+
+create table if not exists public.home_member_state (
+  id uuid primary key default gen_random_uuid(),
+  home_id uuid not null references public.homes(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  status text,
+  reaction text,
+  rejection_reason text not null default '',
+  ratings jsonb not null default '{}'::jsonb,
+  checks jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (home_id, user_id)
+);
+
+alter table public.home_member_state enable row level security;
+
+drop policy if exists "hms_select_members" on public.home_member_state;
+create policy "hms_select_members" on public.home_member_state
+  for select using (
+    auth.uid() = user_id
+    or public.can_access_home(home_id, auth.uid())
+  );
+
+drop policy if exists "hms_own_insert" on public.home_member_state;
+create policy "hms_own_insert" on public.home_member_state
+  for insert with check (
+    auth.uid() = user_id
+    and public.can_access_home(home_id, auth.uid())
+  );
+
+drop policy if exists "hms_own_update" on public.home_member_state;
+create policy "hms_own_update" on public.home_member_state
+  for update using (auth.uid() = user_id)
+  with check (
+    auth.uid() = user_id
+    and public.can_access_home(home_id, auth.uid())
+  );
+
+drop trigger if exists hms_set_updated_at on public.home_member_state;
+create trigger hms_set_updated_at
+  before update on public.home_member_state
+  for each row execute function public.set_updated_at();
+
+create table if not exists public.search_invitations (
+  id uuid primary key default gen_random_uuid(),
+  search_id uuid not null references public.searches(id) on delete cascade,
+  invited_by uuid not null references auth.users(id) on delete cascade,
+  invited_email text not null,
+  token uuid not null default gen_random_uuid() unique,
+  status text not null default 'pending' check (status in ('pending', 'accepted', 'expired', 'revoked')),
+  expires_at timestamptz not null default (now() + interval '7 days'),
+  responded_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+alter table public.search_invitations enable row level security;
+
+drop policy if exists "search_invitations_owner_select" on public.search_invitations;
+create policy "search_invitations_owner_select" on public.search_invitations
+  for select using (
+    public.is_search_owner(search_id, auth.uid())
+  );
+
+drop policy if exists "search_invitations_owner_insert" on public.search_invitations;
+create policy "search_invitations_owner_insert" on public.search_invitations
+  for insert with check (
+    public.is_search_owner(search_id, auth.uid())
+    and invited_by = auth.uid()
+  );
+
+drop policy if exists "searches_select_member" on public.searches;
+create policy "searches_select_member" on public.searches
+  for select using (
+    public.is_search_member(id, auth.uid())
+  );
+
+drop policy if exists "homes_select_member" on public.homes;
+create policy "homes_select_member" on public.homes
+  for select using (
+    public.can_access_search(search_id, auth.uid())
+  );
+
+drop policy if exists "homes_insert_member" on public.homes;
+create policy "homes_insert_member" on public.homes
+  for insert with check (
+    public.can_access_search(search_id, auth.uid())
+  );
+
+drop policy if exists "homes_update_member" on public.homes;
+create policy "homes_update_member" on public.homes
+  for update using (
+    public.can_access_search(search_id, auth.uid())
+  ) with check (
+    public.can_access_search(search_id, auth.uid())
+  );
+
+create index if not exists search_members_user_id_idx on public.search_members(user_id);
+create index if not exists search_member_priorities_user_id_idx on public.search_member_priorities(user_id);
+create index if not exists home_member_state_user_id_idx on public.home_member_state(user_id);
+create index if not exists search_invitations_token_idx on public.search_invitations(token);
