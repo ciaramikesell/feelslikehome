@@ -13,7 +13,7 @@ export default function CoBuyerHomesLine({ searchId, userId, isOwner, isCollabor
 
   if (isCollaborative) {
     return (
-      <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--brick)', margin: '-12px 0 20px' }}>
+      <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--brick)', margin: '0 0 20px' }}>
         You're searching with a co-buyer.
       </p>
     );
@@ -23,14 +23,14 @@ export default function CoBuyerHomesLine({ searchId, userId, isOwner, isCollabor
 
   if (inviteOpen) {
     return (
-      <div style={{ margin: '-12px 0 20px' }}>
+      <div style={{ marginBottom: 20 }}>
         <InviteCoBuyer searchId={searchId} userId={userId} embedded onClose={() => setInviteOpen(false)} />
       </div>
     );
   }
 
   return (
-    <p style={{ margin: '-12px 0 20px' }}>
+    <p style={{ margin: '0 0 20px' }}>
       <button
         type="button"
         onClick={() => setInviteOpen(true)}
