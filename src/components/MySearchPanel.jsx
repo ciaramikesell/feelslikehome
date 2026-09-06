@@ -10,7 +10,7 @@ import {
 } from '@/lib/constants';
 import { selectedOrderedItems } from '@/lib/matching';
 import { createClient } from '@/lib/supabase/client';
-import { updateSearchPriorities } from '@/lib/supabase/data';
+import { savePriorities } from '@/lib/supabase/collaboration';
 
 // A soft, warm card shell — the same visual language established in Add/Edit Home's
 // Property Details and Add More Details areas — reused here instead of inventing a
@@ -265,14 +265,14 @@ function WhatMattersCard({ categories, priorities, patch }) {
   );
 }
 
-export default function MySearchPanel({ searchId, initialPriorities }) {
+export default function MySearchPanel({ search, userId, initialPriorities }) {
   const [priorities, setPriorities] = useState(() => normalizePriorities(initialPriorities));
 
   const patch = (updater) => {
     setPriorities((prev) => {
       const next = updater({ ...prev });
       const supabase = createClient();
-      updateSearchPriorities(supabase, searchId, next).catch((e) => console.error('Could not save priorities', e));
+      savePriorities(supabase, search, userId, next).catch((e) => console.error('Could not save priorities', e));
       return next;
     });
   };

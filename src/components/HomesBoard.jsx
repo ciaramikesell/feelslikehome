@@ -15,7 +15,8 @@ import { STATUS_COLOR, emptyHome, isRentalType, isArchivedStatus } from '@/lib/c
 import { parseNum, fmtMoney, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint } from '@/lib/matching';
 import { formatLotSizeDisplay, splitAddressLines, parseCommaList } from '@/lib/homeDisplay';
 import { createClient } from '@/lib/supabase/client';
-import { saveHome as saveHomeQuery, deleteHome as deleteHomeQuery } from '@/lib/supabase/data';
+import { deleteHome as deleteHomeQuery } from '@/lib/supabase/data';
+import { saveHomePersonalAndShared } from '@/lib/supabase/collaboration';
 
 /* -------------------------------- confirm modal -------------------------------- */
 
@@ -354,7 +355,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     const supabase = createClient();
     let saved;
     try {
-      saved = await saveHomeQuery(supabase, home, userId, searchId);
+      saved = await saveHomePersonalAndShared(supabase, home, userId, searchId);
     } catch (err) {
       // Previously uncaught: any Supabase error here (a missing column from a
       // migration that hasn't been applied yet, a network hiccup, etc.) threw
@@ -380,7 +381,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     const next = { ...home, reaction: home.reaction === 'love' ? null : 'love' };
     setHomes((prev) => prev.map((h) => (h.id === home.id ? next : h)));
     const supabase = createClient();
-    saveHomeQuery(supabase, next, userId, searchId).then(() => router.refresh()).catch(() => {});
+    saveHomePersonalAndShared(supabase, next, userId, searchId).then(() => router.refresh()).catch(() => {});
   }, [userId, searchId, router]);
 
   // "This one is worth seeing." One tap, no modal, no confirmation — reuses the
