@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
@@ -8,7 +8,7 @@ import AuthShell from '@/components/auth/AuthShell';
 import { PasswordField, Banner, Spinner } from '@/components/auth/AuthHelpers';
 import { createClient } from '@/lib/supabase/client';
 
-export default function SignUpPage() {
+function SignUpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirect') || '/';
@@ -101,5 +101,16 @@ export default function SignUpPage() {
         </button>
       </form>
     </AuthShell>
+  );
+}
+
+// Same fix as sign-in: useSearchParams() requires a Suspense boundary for any
+// route eligible for static prerendering, and this page (no dynamic ancestor)
+// is exactly that. Without this wrapper, `next build` fails outright.
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignUpForm />
+    </Suspense>
   );
 }

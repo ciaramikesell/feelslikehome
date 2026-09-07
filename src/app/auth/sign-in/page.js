@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AuthShell from '@/components/auth/AuthShell';
 import { PasswordField, Banner, Spinner } from '@/components/auth/AuthHelpers';
 import { createClient } from '@/lib/supabase/client';
 
-export default function SignInPage() {
+function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirect') || '/';
@@ -69,5 +69,19 @@ export default function SignInPage() {
         </Link>
       </form>
     </AuthShell>
+  );
+}
+
+// useSearchParams() requires a Suspense boundary for any route Next.js could
+// otherwise statically prerender at build time — this page has no dynamic
+// data-fetching ancestor (unlike the (app) routes, which are forced dynamic by
+// their layout reading auth cookies), so without this wrapper `next build`
+// fails outright with "useSearchParams() should be wrapped in a suspense
+// boundary." This is the fix for that build failure, not a new feature.
+export default function SignInPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignInForm />
+    </Suspense>
   );
 }
