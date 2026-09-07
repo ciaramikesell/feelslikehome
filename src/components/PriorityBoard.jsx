@@ -67,6 +67,11 @@ export default function PriorityBoard({ priorities, patch }) {
     setNewItem('');
   };
 
+  const setSchoolsNote = (note) => patch((n) => {
+    n.location = { ...n.location, notes: { ...n.location?.notes, Schools: note } };
+    return n;
+  });
+
   return (
     <div>
       {/* Selected criteria, grouped by importance — the primary board. */}
@@ -79,28 +84,42 @@ export default function PriorityBoard({ priorities, patch }) {
               </div>
               <div style={{ display: 'grid', gap: 2 }}>
                 {items.map((item) => (
-                  <div key={`${item.categoryKey}:${item.label}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 13.5, color: 'var(--ink)' }}>{criterionDisplayLabel(item.categoryKey, item.label)}</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                      <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                        {SELECTABLE_TIERS.map((t) => (
-                          <button
-                            key={t} type="button" onClick={() => setTier(item.categoryKey, item.label, t)}
-                            style={{
-                              fontSize: 11, padding: '4px 9px', borderRadius: 999, cursor: 'pointer', fontWeight: item.tier === t ? 600 : 400,
-                              border: '1px solid ' + (item.tier === t ? TIER_META[t].color : 'var(--line)'),
-                              background: item.tier === t ? TIER_META[t].color : 'transparent',
-                              color: item.tier === t ? '#fff' : 'var(--ink-soft)',
-                            }}
-                          >
-                            {TIER_META[t].label}
-                          </button>
-                        ))}
+                  <div key={`${item.categoryKey}:${item.label}`} style={{ padding: '7px 0', borderBottom: '1px solid var(--line)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: 13.5, color: 'var(--ink)' }}>{criterionDisplayLabel(item.categoryKey, item.label)}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                          {SELECTABLE_TIERS.map((t) => (
+                            <button
+                              key={t} type="button" onClick={() => setTier(item.categoryKey, item.label, t)}
+                              style={{
+                                fontSize: 11, padding: '4px 9px', borderRadius: 999, cursor: 'pointer', fontWeight: item.tier === t ? 600 : 400,
+                                border: '1px solid ' + (item.tier === t ? TIER_META[t].color : 'var(--line)'),
+                                background: item.tier === t ? TIER_META[t].color : 'transparent',
+                                color: item.tier === t ? '#fff' : 'var(--ink-soft)',
+                              }}
+                            >
+                              {TIER_META[t].label}
+                            </button>
+                          ))}
+                        </div>
+                        <button type="button" onClick={() => removeItem(item.categoryKey, item.label)} aria-label={`Remove ${criterionDisplayLabel(item.categoryKey, item.label)}`} style={{ background: 'none', border: 'none', color: 'var(--ink-soft)', cursor: 'pointer', padding: 4, display: 'flex' }}>
+                          <X size={13} />
+                        </button>
                       </div>
-                      <button type="button" onClick={() => removeItem(item.categoryKey, item.label)} aria-label={`Remove ${criterionDisplayLabel(item.categoryKey, item.label)}`} style={{ background: 'none', border: 'none', color: 'var(--ink-soft)', cursor: 'pointer', padding: 4, display: 'flex' }}>
-                        <X size={13} />
-                      </button>
                     </div>
+                    {/* Schools gets one, narrowly-scoped exception: a personal preference
+                        note, since "matters to me" alone doesn't say WHAT matters. This is
+                        deliberately not a generic pattern — only Schools currently needs it. */}
+                    {item.categoryKey === 'location' && item.label === 'Schools' && (
+                      <input
+                        className="hh-input"
+                        placeholder="What matters to you about schools? e.g. a district, a specific school, a rating..."
+                        value={priorities.location?.notes?.Schools || ''}
+                        onChange={(e) => setSchoolsNote(e.target.value)}
+                        style={{ fontSize: 12.5, marginTop: 6, width: '100%' }}
+                      />
+                    )}
                   </div>
                 ))}
               </div>

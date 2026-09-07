@@ -347,6 +347,25 @@ export function computeMatch(home, priorities) {
   };
 }
 
+// Phase 3 Home Card summary: matches/missing/not-confirmed across ALL tiers
+// (Must Have, Important, and Nice to Have), sorted by importance, for the
+// dedicated card tradeoff display. Distinct from the existing `missing`/
+// `satisfied` arrays on the Match result (deliberately restricted to must/
+// important for the compact "fulfilled criteria" line elsewhere) — this
+// reuses the exact same `allSelected` computation underneath; there is no
+// second scoring path. UNKNOWN criteria always land in notConfirmed, never
+// missing — this only ever reads computeMatch's own evaluated/met flags.
+export function summarizeForCard(match) {
+  if (!match) return { matches: [], missing: [], notConfirmed: [] };
+  const tierRank = { must: 0, important: 1, nice: 2, dontcare: 3 };
+  const byTier = (a, b) => (tierRank[a.tier] ?? 3) - (tierRank[b.tier] ?? 3);
+  return {
+    matches: match.allSelected.filter((c) => c.evaluated && c.met).sort(byTier),
+    missing: match.allSelected.filter((c) => c.evaluated && c.met === false).sort(byTier),
+    notConfirmed: match.allSelected.filter((c) => !c.evaluated).sort(byTier),
+  };
+}
+
 export function matchColor(pct) {
   if (pct === null || pct === undefined) return 'var(--ink-soft)';
   if (pct >= 80) return 'var(--moss)';

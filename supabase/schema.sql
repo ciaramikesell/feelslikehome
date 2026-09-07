@@ -626,3 +626,9 @@ revoke all on function public.accept_invitation(uuid) from public;
 revoke execute on function public.accept_invitation(uuid) from anon;
 revoke execute on function public.accept_invitation(uuid) from service_role;
 grant execute on function public.accept_invitation(uuid) to authenticated;
+
+-- Phase 3 refinement: property-details descriptive text fields.
+alter table public.homes
+  add column if not exists basement_notes text,
+  add column if not exists schools_notes text,
+  add column if not exists condition_notes text;

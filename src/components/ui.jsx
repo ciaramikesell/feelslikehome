@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Star, ChevronDown, Heart, CheckCircle2, Check } from 'lucide-react';
+import { Star, ChevronDown, Heart, CheckCircle2, Check, XCircle, HelpCircle } from 'lucide-react';
 import { TIER_ORDER, TIER_META } from '@/lib/constants';
-import { matchColor } from '@/lib/matching';
+import { matchColor, summarizeForCard } from '@/lib/matching';
 
 export function BrandMark({ size = 34 }) {
   return (
@@ -158,6 +158,66 @@ export function MatchSummary({ match }) {
           <span>{fulfilledList}</span>
         </div>
       )}
+    </div>
+  );
+}
+
+// Phase 3: makes tradeoffs visible on the collapsed card — "what am I giving
+// up, what still needs verifying" — without listing every selected criterion.
+// Shows actual criteria (not just counts), Must-Have first, with a small
+// overflow cap so a card with many gaps still stays scannable across 30+ homes.
+const CARD_ROW_CAP = 3;
+
+function MissingRow({ items }) {
+  if (!items.length) return null;
+  const shown = items.slice(0, CARD_ROW_CAP);
+  const overflow = items.length - shown.length;
+  return (
+    <div style={{ fontSize: 11.5, color: 'var(--brick)', display: 'flex', alignItems: 'flex-start', gap: 5 }}>
+      <XCircle size={12} style={{ marginTop: 2, flexShrink: 0 }} />
+      <span>
+        <strong>Missing:</strong>{' '}
+        {shown.map((c, i) => (
+          <span key={c.key}>
+            {c.label}{c.tier === 'must' ? ' · Must Have' : c.tier === 'important' ? ' · Important' : ''}
+            {i < shown.length - 1 ? ', ' : ''}
+          </span>
+        ))}
+        {overflow > 0 && ` +${overflow} more`}
+      </span>
+    </div>
+  );
+}
+
+function NotConfirmedRow({ items }) {
+  if (!items.length) return null;
+  const shown = items.slice(0, CARD_ROW_CAP);
+  const overflow = items.length - shown.length;
+  return (
+    <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', display: 'flex', alignItems: 'flex-start', gap: 5 }}>
+      <HelpCircle size={12} style={{ marginTop: 2, flexShrink: 0 }} />
+      <span>
+        <strong>Not confirmed:</strong>{' '}
+        {shown.map((c, i) => (
+          <span key={c.key}>
+            {c.label}{c.tier === 'must' ? ' · Must Have' : c.tier === 'important' ? ' · Important' : ''}
+            {i < shown.length - 1 ? ', ' : ''}
+          </span>
+        ))}
+        {overflow > 0 && ` +${overflow} more`}
+      </span>
+    </div>
+  );
+}
+
+export function MatchTradeoffs({ match }) {
+  if (!match) return null;
+  const { missing, notConfirmed } = summarizeForCard(match);
+  if (!missing.length && !notConfirmed.length) return null;
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 2 }}>
+      <MissingRow items={missing} />
+      <NotConfirmedRow items={notConfirmed} />
     </div>
   );
 }

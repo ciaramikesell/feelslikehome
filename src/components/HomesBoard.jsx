@@ -8,7 +8,7 @@ import {
   Heart, Home as HomeIcon, Undo2, Trash2, Footprints, MessageCircle, Check,
   GraduationCap, Building2, StickyNote, Minus,
 } from 'lucide-react';
-import { MatchSummary } from '@/components/ui';
+import { MatchSummary, MatchTradeoffs } from '@/components/ui';
 import HomeModal from '@/components/HomeModal';
 import PostTourModal from '@/components/PostTourModal';
 import { STATUS_COLOR, emptyHome, isRentalType, isArchivedStatus } from '@/lib/constants';
@@ -163,6 +163,7 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
           {match ? (
             <div className="hh-match-panel" style={{ background: matchTint(match.pct), borderLeft: `3px solid ${matchColor(match.pct)}` }}>
               <MatchSummary match={match} />
+              <MatchTradeoffs match={match} />
             </div>
           ) : (
             <div style={{ fontSize: 11.5, color: 'var(--ink-soft)' }}>Set your priorities in <em>My Search</em> to see a match score.</div>

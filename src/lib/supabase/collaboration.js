@@ -367,6 +367,9 @@ function rowToHomeWithOwner(row) {
     propertyTaxAnnual: row.property_tax_annual ?? null,
     propertyTaxYear: row.property_tax_year ?? null,
     schoolDistrict: row.school_district || null,
+    basementNotes: row.basement_notes || '',
+    schoolsNotes: row.schools_notes || '',
+    conditionNotes: row.condition_notes || '',
   };
 }
 
@@ -411,6 +414,9 @@ function homeToSharedRow(home, userId, searchId, includeLegacyPersonalFields) {
     property_tax_annual: home.propertyTaxAnnual ?? null,
     property_tax_year: home.propertyTaxYear ?? null,
     school_district: home.schoolDistrict || null,
+    basement_notes: home.basementNotes || '',
+    schools_notes: home.schoolsNotes || '',
+    condition_notes: home.conditionNotes || '',
     updated_at: new Date().toISOString(),
   };
 }

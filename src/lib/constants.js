@@ -2,9 +2,18 @@
 // server code without pulling in any UI dependencies.
 
 export const LAYOUT_OPTIONS = ['Ranch / Single Story', 'Two Story', 'Split Level', 'Other', 'No Preference'];
-export const HOME_CONDITION_OPTIONS = ['New Construction', 'Move-In Ready', 'Some Updates Needed', 'Renovation Potential', 'No Preference'];
+export const HOME_CONDITION_OPTIONS = ['New Construction', 'Move-In Ready', 'Renovation Potential', 'No Preference'];
 
-export const LOCATION_CORE = ['Schools', 'Commute', 'Neighborhood'].map((label) => ({ label, kind: 'rating' }));
+// Schools is deliberately check-kind (Yes/No), not rating-kind — it answers
+// "does this home satisfy what I said matters about schools," a personal
+// yes/no evaluation set in Add/Edit Home, not something learned by touring.
+// Being check-kind means it automatically routes through home_member_state
+// for Co-Buyer isolation via the same mechanism every other check-kind
+// criterion already uses — no new architecture needed for this change.
+export const LOCATION_CORE = [
+  { label: 'Schools', kind: 'check' },
+  ...['Commute', 'Neighborhood'].map((label) => ({ label, kind: 'rating' })),
+];
 // "Overall Location" is intentionally retired from future selection (2026 criteria
 // audit: no meaningfully distinct job from "Neighborhood" was found in how either is
 // used). Existing users who already selected it keep it — splitCategoryItems reads a
@@ -270,6 +279,12 @@ export function emptyHome() {
     // name string, never a rating/score). Informational only — never contributes to
     // Match, never appears in onboarding/My Search.
     schoolDistrict: null,
+    // Property Details free-text — shared, descriptive, user-editable. Distinct
+    // from schoolDistrict (auto-imported, less trusted per beta feedback) and
+    // distinct from the check-kind Basement criteria (Has/Finished/Walkout/
+    // Bedroom, which are personal Yes/No evaluations). These three fields are
+    // just "what do I know about this" context, never Match inputs.
+    basementNotes: '', schoolsNotes: '', conditionNotes: '',
   };
 }
 
