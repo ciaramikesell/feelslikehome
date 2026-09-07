@@ -32,6 +32,11 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
       const supabase = createClient();
       const result = await acceptInvitation(supabase, token);
       if (!result.success) {
+        // Safe to log: `reason` is either a known short code (e.g.
+        // 'wrong_account') or, for an unexpected failure, a sanitized
+        // 'error_<stage>_<sqlstate>' string with no token/email/user id/
+        // search id in it — see accept_invitation's exception handler.
+        console.error('Invitation not accepted, reason:', result.reason);
         setState('invalid');
         setReason(result.reason);
         return;
