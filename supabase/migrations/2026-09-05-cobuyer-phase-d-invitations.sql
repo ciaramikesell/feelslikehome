@@ -68,16 +68,24 @@ grant execute on function public.preview_invitation(uuid) to authenticated;
 -- search_members is a second, database-level backstop against duplicates
 -- even if this function's own logic ever had a bug.
 --
--- DIAGNOSTIC WRAPPER (added after a live failure investigation): every
--- validation branch below is UNCHANGED from the original logic. The only
--- addition is an outer BEGIN/EXCEPTION block with a `stage` marker updated
--- immediately before each risky operation. If anything throws an uncaught
--- Postgres error (rather than returning one of the normal reason codes
--- above), the caller now gets back a sanitized `error_<stage>_<sqlstate>`
--- reason instead of a bare exception the client collapses into a generic
--- "something went wrong" — this identifies exactly where and what kind of
--- failure occurred (e.g. a permission error on the auth.users lookup)
--- without ever including the token, email, user id, or search id.
+-- IDENTIFIER-AMBIGUITY FIX (found from a live 42702 error): this function's
+-- own `returns table (success boolean, reason text, search_id uuid)` clause
+-- implicitly declares `search_id` as a PL/pgSQL variable inside the function
+-- body. Every bare (unqualified) reference to the real search_id COLUMN on
+-- search_members collided with that output variable, and Postgres correctly
+-- refused to guess which one was meant. Fixed by explicitly aliasing every
+-- table reference (sm for search_members, si for search_invitations, u for
+-- auth.users) so no query ever reads a table column without a qualifier that
+-- disambiguates it. The output column name itself is UNCHANGED — renaming it
+-- would require also changing collaboration.js/AcceptInvitationClient.jsx,
+-- which read `result.search_id` by that exact name, and that is out of scope
+-- for this fix. No business logic, check ordering, or return values changed.
+--
+-- DIAGNOSTIC WRAPPER (kept from the prior investigation pass): every
+-- validation branch is otherwise identical to the original logic. The outer
+-- BEGIN/EXCEPTION block with a `stage` marker remains, so any future
+-- uncaught error still returns a sanitized `error_<stage>_<sqlstate>` reason
+-- instead of a bare exception — never the token, email, user id, or search id.
 create or replace function public.accept_invitation(p_token uuid)
 returns table (success boolean, reason text, search_id uuid)
 language plpgsql
@@ -97,7 +105,7 @@ begin
 
   begin
     stage := 'lookup_invitation';
-    select * into inv from public.search_invitations where token = p_token for update;
+    select si.* into inv from public.search_invitations si where si.token = p_token for update;
 
     if inv is null then
       return query select false, 'not_found', null::uuid;
@@ -108,7 +116,7 @@ begin
       -- invitation created, treat a repeat accept as a harmless success
       -- rather than an error (e.g. a double-click, or returning to the link).
       stage := 'check_existing_membership_accepted';
-      if exists (select 1 from public.search_members where search_id = inv.search_id and user_id = caller) then
+      if exists (select 1 from public.search_members sm where sm.search_id = inv.search_id and sm.user_id = caller) then
         return query select true, 'already_member', inv.search_id;
         return;
       end if;
@@ -131,25 +139,29 @@ begin
     -- Email-binding: only the invited address may accept. Reads ONLY the
     -- caller's own email (auth.uid() = caller), never any other user's row.
     stage := 'lookup_email';
-    select email into caller_email from auth.users where id = caller;
+    select u.email into caller_email from auth.users u where u.id = caller;
     if caller_email is null or lower(caller_email) is distinct from lower(inv.invited_email) then
       return query select false, 'wrong_account', null::uuid;
       return;
     end if;
 
     stage := 'check_existing_membership';
-    if exists (select 1 from public.search_members where search_id = inv.search_id and user_id = caller) then
+    if exists (select 1 from public.search_members sm where sm.search_id = inv.search_id and sm.user_id = caller) then
       stage := 'update_invitation_existing_member';
-      update public.search_invitations set status = 'accepted', responded_at = now() where id = inv.id;
+      update public.search_invitations si set status = 'accepted', responded_at = now() where si.id = inv.id;
       return query select true, 'already_member', inv.search_id;
       return;
     end if;
 
+    -- Note: this INSERT's column list (search_id, user_id, role) is a target
+    -- column list, not a value expression — PostgreSQL always resolves those
+    -- as columns of the named table regardless of any same-named variable, so
+    -- this specific line was never actually ambiguous and needs no alias.
     stage := 'insert_member';
     insert into public.search_members (search_id, user_id, role) values (inv.search_id, caller, 'member');
 
     stage := 'update_invitation';
-    update public.search_invitations set status = 'accepted', responded_at = now() where id = inv.id;
+    update public.search_invitations si set status = 'accepted', responded_at = now() where si.id = inv.id;
 
     return query select true, null::text, inv.search_id;
   exception when others then
