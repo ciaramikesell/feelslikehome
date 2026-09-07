@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { previewInvitation, acceptInvitation, setActiveSearch } from '@/lib/supabase/collaboration';
+import { acceptInvitation, setActiveSearch } from '@/lib/supabase/collaboration';
 import { BrandMark, Wordmark } from '@/components/ui';
 
 const REASON_COPY = {
@@ -17,27 +17,14 @@ const REASON_COPY = {
   unknown: 'Something went wrong. Please try again.',
 };
 
-export default function AcceptInvitationClient({ token }) {
+// The preview result now arrives already resolved from the server (see
+// page.js) — no client-side fetch, no loading state needed for it, and no
+// exposure to the session-propagation race that caused this to fail right
+// after a fresh sign-up.
+export default function AcceptInvitationClient({ token, initialPreview }) {
   const router = useRouter();
-  const [state, setState] = useState('loading'); // loading | valid | invalid | accepting | done
-  const [reason, setReason] = useState('');
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const supabase = createClient();
-        const result = await previewInvitation(supabase, token);
-        if (cancelled) return;
-        if (result.valid) setState('valid');
-        else { setState('invalid'); setReason(result.reason); }
-      } catch (err) {
-        console.error('Invitation preview failed', err);
-        if (!cancelled) { setState('invalid'); setReason('unknown'); }
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [token]);
+  const [state, setState] = useState(initialPreview.valid ? 'valid' : 'invalid'); // valid | invalid | accepting | done
+  const [reason, setReason] = useState(initialPreview.reason || '');
 
   const accept = async () => {
     setState('accepting');
@@ -68,8 +55,6 @@ export default function AcceptInvitationClient({ token }) {
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 18 }}>
           <BrandMark size={38} />
         </div>
-
-        {state === 'loading' && <p style={{ fontSize: 14, color: 'var(--ink-soft)' }}>Checking your invite...</p>}
 
         {state === 'valid' && (
           <>
