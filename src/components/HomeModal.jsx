@@ -229,15 +229,16 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
       try {
         await onSave({ ...form, photoUrl: finalPhotoUrl });
       } catch (saveErr) {
-        // Previously this threw uncaught: the modal never closed, nothing was shown,
-        // and Cancel was the only way out. Now the failure is visible, the form's
-        // entered values are preserved (the modal simply stays open), and the
-        // button re-enables so the user can retry without losing anything. The raw
-        // technical detail (e.g. a missing database column) is logged to the console
-        // for diagnosis, but never shown in the UI — a normal user should never see
-        // Postgres/schema internals.
+        // TEMPORARY DIAGNOSTIC (requested explicitly) — surfaces the raw error
+        // to confirm/rule out a PostgREST schema-cache staleness hypothesis
+        // for the new Property Details columns. Revert to the friendly-only
+        // message once confirmed — do not ship this to real users long-term.
         console.error('Save home failed', saveErr);
-        setSaveErrorMsg("We couldn't save this home. Please try again — your changes here haven't been lost.");
+        const detail = saveErr?.message || saveErr?.code || '';
+        setSaveErrorMsg(
+          "We couldn't save this home. Please try again — your changes here haven't been lost."
+          + (detail ? ` (${detail})` : '')
+        );
         setSaving(false);
         return;
       }
@@ -728,29 +729,44 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
                         const value = form.checks[nsKey(def.key, item.label)];
                         const isYes = value === true;
                         const isNo = value === 'no';
+                        // Schools gets one narrowly-scoped exception: showing the
+                        // user's own saved preference note as context so "Yes"/"No"
+                        // actually means something while deciding. This note comes
+                        // from priorities (personal, per-user) — never from the
+                        // shared homes.schools_notes field, and never duplicated
+                        // into it.
+                        const schoolsNote = def.key === 'location' && item.label === 'Schools'
+                          ? priorities.location?.notes?.Schools : null;
                         return (
-                          <div key={item.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '6px 0' }}>
-                            <span style={{ fontSize: 13.5, fontWeight: must ? 700 : 400, color: must ? 'var(--brick)' : 'var(--ink)' }}>
-                              {criterionDisplayLabel(def.key, item.label)}
-                            </span>
-                            <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-                              <button
-                                type="button"
-                                onClick={() => setCheckItem(def.key, item.label, isYes ? undefined : true)}
-                                className="hh-chip"
-                                style={{ fontSize: 11.5, padding: '4px 10px', borderColor: 'var(--moss)', background: isYes ? 'var(--moss)' : 'transparent', color: isYes ? '#fff' : 'var(--moss)' }}
-                              >
-                                Yes
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setCheckItem(def.key, item.label, isNo ? undefined : 'no')}
-                                className="hh-chip"
-                                style={{ fontSize: 11.5, padding: '4px 10px', borderColor: 'var(--brick)', background: isNo ? 'var(--brick)' : 'transparent', color: isNo ? '#fff' : 'var(--brick)' }}
-                              >
-                                No
-                              </button>
+                          <div key={item.label} style={{ padding: '6px 0' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                              <span style={{ fontSize: 13.5, fontWeight: must ? 700 : 400, color: must ? 'var(--brick)' : 'var(--ink)' }}>
+                                {criterionDisplayLabel(def.key, item.label)}
+                              </span>
+                              <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+                                <button
+                                  type="button"
+                                  onClick={() => setCheckItem(def.key, item.label, isYes ? undefined : true)}
+                                  className="hh-chip"
+                                  style={{ fontSize: 11.5, padding: '4px 10px', borderColor: 'var(--moss)', background: isYes ? 'var(--moss)' : 'transparent', color: isYes ? '#fff' : 'var(--moss)' }}
+                                >
+                                  Yes
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setCheckItem(def.key, item.label, isNo ? undefined : 'no')}
+                                  className="hh-chip"
+                                  style={{ fontSize: 11.5, padding: '4px 10px', borderColor: 'var(--brick)', background: isNo ? 'var(--brick)' : 'transparent', color: isNo ? '#fff' : 'var(--brick)' }}
+                                >
+                                  No
+                                </button>
+                              </div>
                             </div>
+                            {schoolsNote && (
+                              <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', fontStyle: 'italic', margin: '2px 0 0' }}>
+                                &ldquo;{schoolsNote}&rdquo;
+                              </p>
+                            )}
                           </div>
                         );
                       })}
