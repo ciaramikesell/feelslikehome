@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { TierPicker } from '@/components/ui';
-import CriteriaPicker from '@/components/CriteriaPicker';
+import PriorityBoard from '@/components/PriorityBoard';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, INVESTMENT_PROPERTY_TYPES, INVESTMENT_LIVING_PLAN_OPTIONS,
   isSimpleRentalType, showsMultiselectCategory, terminology, toggleWithNoPreference, getItemlistCategories,
@@ -251,11 +251,7 @@ function WhatMattersCard({ categories, priorities, patch }) {
         </div>
       ) : (
         <div>
-          <div style={{ display: 'grid', gap: 22 }}>
-            {categories.map((def) => (
-              <CriteriaPicker key={def.key} def={def} priorities={priorities} patch={patch} draggable />
-            ))}
-          </div>
+          <PriorityBoard priorities={priorities} patch={patch} />
           <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px', marginTop: 16 }} onClick={() => setEditOpen(false)}>
             Done
           </button>

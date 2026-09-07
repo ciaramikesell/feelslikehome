@@ -178,21 +178,12 @@ export function parseListingText(text) {
  *   - Home Layout / Home Condition / bedroom location: evaluated once the home has
  *     a non-empty value — an empty value can only mean "not indicated yet," since
  *     there's no way to affirmatively record "this home has no layout."
- *   - check-kind criteria (Garage, Basement, Fireplace, etc.): evaluated only when
- *     explicitly `true`. See the Garage special-case and the note below for why.
+ *   - check-kind criteria (Garage, Basement, Fireplace, etc.): a genuine three-state
+ *     model — Yes (`true`), No (`'no'`), or Unknown (absent, or historical `false`).
+ *     See the note just above the check-kind branch below for why `false` and `'no'`
+ *     are deliberately NOT the same value.
  *   - star-rating criteria: evaluated only when rated (> 0); an unrated criterion
  *     is excluded entirely, never scored as a 0.
- *
- * KNOWN LIMITATION (reported, not silently patched): for check-kind criteria other
- * than Garage, the `checks` object only ever distinguishes "confirmed present"
- * (`true`) from "not indicated" (missing key, or `false` from a misclick undo) —
- * the UI has no affordance for a user to deliberately assert "confirmed absent."
- * Treating an untouched/toggled-off chip as "confirmed absent" would be wrong far
- * more often than right (most `false` values are just an undone accidental click),
- * so those stay "not evaluated" until a future UI adds a real three-state control.
- * This needs no database migration — `checks` is already a flexible JSON column
- * that can represent true/false/absent; the gap is a missing UI affordance, not a
- * schema limitation.
  *
  * Garage is the one exception: `home.garageSpaces` is a separate, reliable numeric
  * field already populated by RentCast import or manual entry, so we use it directly
@@ -305,11 +296,20 @@ export function computeMatch(home, priorities) {
         return;
       }
 
-      // Other check-kind criteria: only an explicit `true` counts as evaluated —
-      // see the KNOWN LIMITATION note above.
+      // Other check-kind criteria: three real states now. `true` continues to
+      // mean Yes exactly as it always has (zero behavior change for existing
+      // data). The string 'no' is the ONLY value that produces a confirmed
+      // Missing — it can only ever be written by the new explicit Yes/No
+      // control (see HomeModal's YesNoRow), never by historical data.
+      // Historical boolean `false` (an artifact of the old blind-toggle chip,
+      // which never let a user distinguish "confirmed absent" from "never
+      // touched" — both rendered identically) is deliberately still treated
+      // as Unknown here, preserving today's exact Match behavior for every
+      // home that predates this UI. UNKNOWN MUST NOT PRODUCE MISSING.
       const raw = home.checks?.[ns];
-      if (raw === true) push(ns, item.label, tier, true, 1, true, 'Present', true);
-      else notEvaluated(ns, item.label, tier, true);
+      if (raw === true) { push(ns, item.label, tier, true, 1, true, 'Yes', true); return; }
+      if (raw === 'no') { push(ns, item.label, tier, true, 0, false, 'No', true); return; }
+      notEvaluated(ns, item.label, tier, true);
     });
   });
 

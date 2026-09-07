@@ -1,0 +1,154 @@
+'use client';
+
+import { useState } from 'react';
+import { X, Plus } from 'lucide-react';
+import { TIER_META, SELECTABLE_TIERS, DEFAULT_SELECTED_TIER, TIER_ORDER, criterionDisplayLabel, getItemlistCategories } from '@/lib/constants';
+import { splitCategoryItems } from '@/lib/matching';
+
+// Phase 1 — My Search Priority Board. Importance is now the primary
+// organizing lens for SELECTED criteria (pooled across every category), per
+// the beta finding that category-first organization made sense early on but
+// importance is what actually helps someone decide. The old per-category
+// drag-to-reorder system is intentionally not carried over here — once
+// importance is the primary hierarchy, order-within-a-tier no longer serves
+// the purpose it used to, and removing it also removes mobile's biggest
+// accessibility gap (drag-only interaction). Every action here is tap/click;
+// there is no drag anywhere in this component.
+//
+// The suggestion BANK (for items not yet selected) still groups by the old
+// category taxonomy — Home / Property / Location / Space & Layout / How It
+// Feels — since that grouping is genuinely useful for *discovering* new
+// criteria, even though it's no longer how *selected* criteria are shown.
+export default function PriorityBoard({ priorities, patch }) {
+  const categories = getItemlistCategories(priorities.searchType);
+  const [newItem, setNewItem] = useState('');
+  const [newItemCategory, setNewItemCategory] = useState(categories[0]?.key || '');
+
+  // Pool every category's known+custom items, tagging each with which
+  // category it actually lives in (needed since `patch` still writes into
+  // one category's slice of priorities at a time).
+  const pools = categories.map((def) => ({ def, ...splitCategoryItems(def, priorities) }));
+
+  const tierOf = (def, label) => priorities[def.key]?.tiers?.[label] || 'dontcare';
+
+  const selectedPooled = pools.flatMap(({ def, core, custom }) =>
+    [...core, ...custom]
+      .filter((item) => tierOf(def, item.label) !== 'dontcare')
+      .map((item) => ({ ...item, categoryKey: def.key, tier: tierOf(def, item.label) }))
+  );
+
+  const buckets = TIER_ORDER.filter((t) => t !== 'dontcare').map((tier) => ({
+    tier, items: selectedPooled.filter((i) => i.tier === tier),
+  })).filter((b) => b.items.length > 0);
+
+  const setTier = (categoryKey, label, tier) => patch((n) => {
+    n[categoryKey] = { ...n[categoryKey], tiers: { ...n[categoryKey].tiers, [label]: tier } };
+    return n;
+  });
+
+  const selectKnownItem = (categoryKey, label) => setTier(categoryKey, label, DEFAULT_SELECTED_TIER);
+
+  const addCustomItem = (categoryKey, item) => patch((n) => {
+    n[categoryKey] = {
+      ...n[categoryKey],
+      customItems: [...(n[categoryKey].customItems || []), item],
+      tiers: { ...n[categoryKey].tiers, [item.label]: DEFAULT_SELECTED_TIER },
+    };
+    return n;
+  });
+
+  const removeItem = (categoryKey, label) => setTier(categoryKey, label, 'dontcare');
+
+  const addTyped = () => {
+    const label = newItem.trim();
+    if (!label || !newItemCategory) return;
+    const def = categories.find((c) => c.key === newItemCategory);
+    addCustomItem(newItemCategory, { label, kind: def?.defaultCustomKind || 'check' });
+    setNewItem('');
+  };
+
+  return (
+    <div>
+      {/* Selected criteria, grouped by importance — the primary board. */}
+      {buckets.length > 0 ? (
+        <div style={{ display: 'grid', gap: 18, marginBottom: 22 }}>
+          {buckets.map(({ tier, items }) => (
+            <div key={tier}>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: TIER_META[tier].color, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 8 }}>
+                {TIER_META[tier].label}
+              </div>
+              <div style={{ display: 'grid', gap: 2 }}>
+                {items.map((item) => (
+                  <div key={`${item.categoryKey}:${item.label}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 13.5, color: 'var(--ink)' }}>{criterionDisplayLabel(item.categoryKey, item.label)}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                        {SELECTABLE_TIERS.map((t) => (
+                          <button
+                            key={t} type="button" onClick={() => setTier(item.categoryKey, item.label, t)}
+                            style={{
+                              fontSize: 11, padding: '4px 9px', borderRadius: 999, cursor: 'pointer', fontWeight: item.tier === t ? 600 : 400,
+                              border: '1px solid ' + (item.tier === t ? TIER_META[t].color : 'var(--line)'),
+                              background: item.tier === t ? TIER_META[t].color : 'transparent',
+                              color: item.tier === t ? '#fff' : 'var(--ink-soft)',
+                            }}
+                          >
+                            {TIER_META[t].label}
+                          </button>
+                        ))}
+                      </div>
+                      <button type="button" onClick={() => removeItem(item.categoryKey, item.label)} aria-label={`Remove ${criterionDisplayLabel(item.categoryKey, item.label)}`} style={{ background: 'none', border: 'none', color: 'var(--ink-soft)', cursor: 'pointer', padding: 4, display: 'flex' }}>
+                        <X size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p style={{ fontSize: 13, color: 'var(--ink-soft)', fontStyle: 'italic', marginBottom: 18 }}>Nothing selected yet — tap anything below that matters to you.</p>
+      )}
+
+      {/* Suggestion bank — grouped by category for discovery, tap to add. */}
+      <div style={{ display: 'grid', gap: 16 }}>
+        {pools.map(({ def, core, custom, suggestions }) => {
+          const known = [...core, ...custom];
+          const unselectedKnown = known.filter((item) => tierOf(def, item.label) === 'dontcare');
+          const customLabels = new Set(custom.map((i) => i.label));
+          const traySuggestions = suggestions.filter((item) => !customLabels.has(item.label));
+          const tray = [...unselectedKnown, ...traySuggestions];
+          if (!tray.length) return null;
+          return (
+            <div key={def.key}>
+              <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: '.03em', marginBottom: 8 }}>
+                {def.title}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {tray.map((item) => (
+                  <button key={item.label} type="button" className="hh-chip" onClick={() => selectKnownItem(def.key, item.label)}>
+                    {criterionDisplayLabel(def.key, item.label)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div style={{ display: 'flex', gap: 6, marginTop: 16, flexWrap: 'wrap' }}>
+        <select className="hh-input" value={newItemCategory} onChange={(e) => setNewItemCategory(e.target.value)} style={{ flex: '0 0 auto', minWidth: 140 }}>
+          {categories.map((c) => <option key={c.key} value={c.key}>{c.title}</option>)}
+        </select>
+        <input
+          className="hh-input" placeholder="Add your own..." value={newItem}
+          onChange={(e) => setNewItem(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTyped())}
+          style={{ flex: '1 1 160px' }}
+        />
+        <button type="button" className="hh-btn hh-btn-ghost" onClick={addTyped}><Plus size={14} /></button>
+      </div>
+    </div>
+  );
+}

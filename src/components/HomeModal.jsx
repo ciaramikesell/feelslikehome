@@ -5,7 +5,7 @@ import { X, Upload, Link2, Footprints, Archive as ArchiveIcon, ExternalLink, Che
 import { StarInput } from '@/components/ui';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
-  isArchivedStatus, isRentalType, TOUR_RATING_KEY, criterionDisplayLabel,
+  isArchivedStatus, isRentalType, TOUR_RATING_KEY, criterionDisplayLabel, TIER_ORDER,
 } from '@/lib/constants';
 import { visibleOrderedItems, parseListingText, selectedSubjectiveCriteria } from '@/lib/matching';
 import { extractAddressFromListingUrl } from '@/lib/listingUrl';
@@ -254,7 +254,18 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
   };
   const nsKey = (cat, label) => `${cat}:${label}`;
   const setRatingItem = (cat, label, v) => setForm((f) => ({ ...f, ratings: { ...f.ratings, [nsKey(cat, label)]: v } }));
-  const toggleCheckItem = (cat, label) => setForm((f) => { const k = nsKey(cat, label); return { ...f, checks: { ...f.checks, [k]: !f.checks[k] } }; });
+  // Explicit three-state setter: true = Yes, 'no' = No, undefined = clear back
+  // to Unknown. Setting a key to `undefined` here is intentional and safe —
+  // JSON serialization naturally drops undefined-valued keys, so this cleanly
+  // returns the criterion to "absent" (Unknown) without needing a separate
+  // delete path.
+  const setCheckItem = (cat, label, value) => setForm((f) => {
+    const k = nsKey(cat, label);
+    const next = { ...f.checks };
+    if (value === undefined) delete next[k];
+    else next[k] = value;
+    return { ...f, checks: next };
+  });
   const toggleMulti = (catKey, opt) => setForm((f) => ({ ...f, [catKey]: f[catKey].includes(opt) ? f[catKey].filter((x) => x !== opt) : [...f[catKey], opt] }));
 
   const runAutofill = () => {
@@ -697,7 +708,9 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
               {getItemlistCategories(priorities.searchType).map((def) => {
                 const visible = visibleOrderedItems(def, priorities).filter((i) => i.kind === 'check');
                 if (!visible.length) return null;
-                const mustCount = visible.filter((i) => priorities[def.key]?.tiers?.[i.label] === 'must').length;
+                const tierOf = (item) => priorities[def.key]?.tiers?.[item.label] || 'dontcare';
+                const sorted = [...visible].sort((a, b) => TIER_ORDER.indexOf(tierOf(a)) - TIER_ORDER.indexOf(tierOf(b)));
+                const mustCount = visible.filter((i) => tierOf(i) === 'must').length;
                 return (
                   <details key={def.key} open={mustCount > 0} className="hh-details" style={{ marginBottom: 10 }}>
                     <summary>{def.title}</summary>
@@ -706,19 +719,36 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
                         Your Must-Have {mustCount === 1 ? 'Feature' : 'Features'}
                       </p>
                     )}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
-                      {visible.map((item) => {
+                    <div style={{ display: 'grid', gap: 2, marginTop: 10 }}>
+                      {sorted.map((item) => {
                         const must = priorities[def.key]?.tiers?.[item.label] === 'must';
-                        const checked = form.checks[nsKey(def.key, item.label)];
+                        const value = form.checks[nsKey(def.key, item.label)];
+                        const isYes = value === true;
+                        const isNo = value === 'no';
                         return (
-                          <span
-                            key={item.label}
-                            className={`hh-chip ${checked ? 'on' : ''}`}
-                            onClick={() => toggleCheckItem(def.key, item.label)}
-                            style={must ? { fontWeight: 700, color: checked ? undefined : 'var(--brick)' } : undefined}
-                          >
-                            {criterionDisplayLabel(def.key, item.label)}
-                          </span>
+                          <div key={item.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '6px 0' }}>
+                            <span style={{ fontSize: 13.5, fontWeight: must ? 700 : 400, color: must ? 'var(--brick)' : 'var(--ink)' }}>
+                              {criterionDisplayLabel(def.key, item.label)}
+                            </span>
+                            <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
+                              <button
+                                type="button"
+                                onClick={() => setCheckItem(def.key, item.label, isYes ? undefined : true)}
+                                className="hh-chip"
+                                style={{ fontSize: 11.5, padding: '4px 10px', borderColor: 'var(--moss)', background: isYes ? 'var(--moss)' : 'transparent', color: isYes ? '#fff' : 'var(--moss)' }}
+                              >
+                                Yes
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setCheckItem(def.key, item.label, isNo ? undefined : 'no')}
+                                className="hh-chip"
+                                style={{ fontSize: 11.5, padding: '4px 10px', borderColor: 'var(--brick)', background: isNo ? 'var(--brick)' : 'transparent', color: isNo ? '#fff' : 'var(--brick)' }}
+                              >
+                                No
+                              </button>
+                            </div>
+                          </div>
                         );
                       })}
                     </div>
