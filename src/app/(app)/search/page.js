@@ -19,7 +19,7 @@ export default async function SearchPage() {
 
   return (
     <>
-      <PageIntro title="My Search" subtitle="Review what you're looking for and what matters most to you." />
+      <PageIntro title="My Search" subtitle="Describe the home you want. Only what you choose here shapes your Match." />
       <MySearchPanel
         search={search}
         userId={user.id}

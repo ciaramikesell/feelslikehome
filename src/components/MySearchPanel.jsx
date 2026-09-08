@@ -20,7 +20,7 @@ import { savePriorities } from '@/lib/supabase/collaboration';
 // second design system for My Search.
 function SearchCard({ title, subtitle, showHeader = true, children }) {
   return (
-    <section style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 16, padding: '18px 20px' }}>
+    <section className="hh-search-card">
       {showHeader && (
         <>
           <h3 className="hh-serif" style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', margin: 0 }}>{title}</h3>
@@ -213,7 +213,7 @@ function BasicsCard({ p, patch }) {
 // category sit together, not scattered one category-card at a time. Category
 // organization remains available, but only inside Edit (below), where it helps
 // with DISCOVERING new criteria rather than reviewing what's already chosen.
-function WhatMattersCard({ categories, priorities, patch, searchId, userId, commuteDestinations, setCommuteDestinations }) {
+function WhatMattersCard({ categories, priorities, patch }) {
   const [editOpen, setEditOpen] = useState(false);
 
   const pooled = categories.flatMap((def) =>
@@ -235,11 +235,11 @@ function WhatMattersCard({ categories, priorities, patch, searchId, userId, comm
           {hasAny ? (
             <div style={{ display: 'grid', gap: 18 }}>
               {buckets.map(({ tier, items }) => (
-                <div key={tier}>
-                  <div style={{ fontSize: 11.5, fontWeight: 700, color: TIER_META[tier].color, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 8 }}>
+                <div key={tier} className={`hh-tier-group hh-tier-${tier}`}>
+                  <div className="hh-tier-heading" style={{ color: TIER_META[tier].color }}>
                     {TIER_META[tier].label}
                   </div>
-                  <div style={{ display: 'grid', gap: 3 }}>
+                  <div className="hh-selected-priorities">
                     {items.map((item) => (
                       <div key={`${item.categoryKey}:${item.label}`} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 6, fontSize: 13.5, color: 'var(--ink)', padding: '4px 0' }}>
                         <span>{criterionDisplayLabel(item.categoryKey, item.label)}</span>
@@ -255,16 +255,8 @@ function WhatMattersCard({ categories, priorities, patch, searchId, userId, comm
           ) : (
             <div style={{ fontSize: 13, color: 'var(--ink-soft)', fontStyle: 'italic' }}>Nothing selected yet — add what matters to you anytime.</div>
           )}
-          {commuteDestinations.length > 0 && (
-            <div style={{ marginTop: hasAny ? 18 : 12, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
-              <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 6 }}>Places you travel to</div>
-              <div style={{ fontSize: 13, color: 'var(--ink)' }}>
-                {commuteDestinations.map((d) => d.label).join(', ')}
-              </div>
-            </div>
-          )}
           <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px', marginTop: hasAny ? 16 : 12 }} onClick={() => setEditOpen(true)}>
-            {hasAny ? 'Edit priorities' : '+ Add priorities'}
+            {hasAny ? '+ Add another priority' : '+ Add a priority'}
           </button>
         </div>
       ) : (
@@ -273,9 +265,6 @@ function WhatMattersCard({ categories, priorities, patch, searchId, userId, comm
             <SchoolsRelevanceGate priorities={priorities} patch={patch} />
           </div>
           <PriorityBoard priorities={priorities} patch={patch} />
-          <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--line)' }}>
-            <CommuteDestinations searchId={searchId} userId={userId} destinations={commuteDestinations} onChange={setCommuteDestinations} />
-          </div>
           <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px', marginTop: 16 }} onClick={() => setEditOpen(false)}>
             Done
           </button>
@@ -302,14 +291,14 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
   const categories = getItemlistCategories(p.searchType);
 
   return (
-    <div style={{ display: 'grid', gap: 16, maxWidth: 760 }}>
-      <p style={{ fontSize: 14, color: 'var(--ink-soft)', margin: '0 0 4px', lineHeight: 1.55 }}>
-        Describe the home you want. Only the things you choose here shape your Match.
-      </p>
-
+    <div className="hh-search-layout">
       <BasicsCard p={p} patch={patch} />
 
-      <WhatMattersCard categories={categories} priorities={p} patch={patch} searchId={search.id} userId={userId} commuteDestinations={commuteDestinations} setCommuteDestinations={setCommuteDestinations} />
+      <WhatMattersCard categories={categories} priorities={p} patch={patch} />
+
+      <SearchCard title="Places you travel to often" subtitle="Private to you. Add a drive-time limit only when it should shape your Commute match.">
+        <CommuteDestinations searchId={search.id} userId={userId} destinations={commuteDestinations} onChange={setCommuteDestinations} hideHeader />
+      </SearchCard>
 
       <CoBuyerManagement
         userId={userId}
