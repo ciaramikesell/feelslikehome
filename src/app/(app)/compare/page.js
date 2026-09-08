@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import CompareBoard from '@/components/CompareBoard';
 import { PageIntro } from '@/components/ui';
 import { isArchivedStatus, normalizePriorities } from '@/lib/constants';
-import { resolveActiveSearch, resolvePriorities, getHomesForUser } from '@/lib/supabase/collaboration';
+import { resolveActiveSearch, resolvePriorities, getHomesForUser, getCoBuyerComparePerspectives } from '@/lib/supabase/collaboration';
 
 export default async function ComparePage() {
   const supabase = await createClient();
@@ -13,11 +13,12 @@ export default async function ComparePage() {
     getHomesForUser(supabase, user.id, search.id),
   ]);
   const activeHomes = homes.filter((h) => !isArchivedStatus(h.status));
+  const coBuyerPerspective = await getCoBuyerComparePerspectives(supabase, search, activeHomes, user.id);
 
   return (
     <>
       <PageIntro title="Compare" subtitle="Put your top homes side by side and see which one fits you best." />
-      <CompareBoard homes={activeHomes} priorities={normalizePriorities(priorities)} />
+      <CompareBoard homes={activeHomes} priorities={normalizePriorities(priorities)} coBuyerPerspective={coBuyerPerspective} />
     </>
   );
 }
