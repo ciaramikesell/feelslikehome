@@ -33,6 +33,9 @@ function rowToHome(row) {
     // Auto Enrichment 1.0 — nullable, informational only, never contribute to Match.
     latitude: row.latitude ?? null,
     longitude: row.longitude ?? null,
+    coordinateStatus: row.coordinate_status || 'unresolved',
+    coordinateSource: row.coordinate_source || null,
+    coordinateAddress: row.coordinate_address || null,
     hoaFeeMonthly: row.hoa_fee_monthly ?? null,
     propertyTaxAnnual: row.property_tax_annual ?? null,
     propertyTaxYear: row.property_tax_year ?? null,
@@ -72,6 +75,9 @@ function homeToRow(home, userId, searchId) {
     // Auto Enrichment 1.0 — plain nullable numerics, mirrors rowToHome above.
     latitude: home.latitude ?? null,
     longitude: home.longitude ?? null,
+    coordinate_status: home.coordinateStatus || 'unresolved',
+    coordinate_source: home.coordinateSource || null,
+    coordinate_address: home.coordinateAddress || null,
     hoa_fee_monthly: home.hoaFeeMonthly ?? null,
     property_tax_annual: home.propertyTaxAnnual ?? null,
     property_tax_year: home.propertyTaxYear ?? null,
