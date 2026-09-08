@@ -241,3 +241,14 @@ actually run `npm install` or connect to a live Supabase project from where I'm 
 first real end-to-end test happens when *you* run Part 3. If anything errors out, that's
 expected to be possible on a first pass of a project this size — send me the exact error text
 or a screenshot, and I'll fix it.
+
+## Saved homes map configuration
+
+The saved-homes Map uses the browser-only Google Maps JavaScript API and cloud styling. Set:
+
+```bash
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_referrer_restricted_browser_key
+NEXT_PUBLIC_GOOGLE_MAP_ID=your_google_map_id
+```
+
+Use a dedicated browser key restricted to the **Maps JavaScript API** and approved HTTP referrers. Never use `GOOGLE_ROUTES_API_KEY` or `GOOGLE_GEOCODING_API_KEY` here; those credentials remain server-only. Attach the warm, low-POI Feels Like Home cloud style to the Map ID in Google Cloud.

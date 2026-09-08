@@ -108,6 +108,40 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 640px) { .hh-root { padding: 18px 12px 48px; } }
 
+/* Saved-homes map. The basemap palette lives in Google Cloud via the Map ID;
+   these styles cover only our controls, markers, and resilient fallback UI. */
+.hh-map-layout { display: grid; gap: 20px; }
+.hh-map-stage { height: min(64vh, 620px); min-height: 430px; position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 18px; background: #eee7db; }
+.hh-map-canvas { width: 100%; height: 100%; }
+.hh-map-message { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 30px; text-align: center; color: var(--ink-soft); background: linear-gradient(145deg, #f4eddf, #e3e8db); }
+.hh-map-message strong { color: var(--ink); font-family: 'Fraunces', serif; font-size: 20px; }
+.hh-map-marker { width: 34px; height: 34px; border: 3px solid #fff; border-radius: 50% 50% 50% 12%; transform: rotate(-45deg); background: var(--brick); color: #fff; box-shadow: 0 3px 9px rgba(46,38,33,.28); cursor: pointer; }
+.hh-map-marker span { display: block; transform: rotate(45deg); font-size: 18px; line-height: 24px; }
+.hh-map-marker.selected { width: 40px; height: 40px; background: var(--moss); border-color: #fff7eb; box-shadow: 0 0 0 3px var(--brick), 0 5px 12px rgba(46,38,33,.3); }
+.hh-map-preview { position: absolute; z-index: 2; left: 16px; bottom: 16px; width: min(390px, calc(100% - 32px)); display: grid; grid-template-columns: auto 1fr; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.96); box-shadow: 0 10px 28px rgba(46,38,33,.2); }
+.hh-map-preview img { width: 92px; height: 82px; object-fit: cover; border-radius: 10px; }
+.hh-map-preview strong { display: block; font-size: 15px; }
+.hh-map-preview small { display: block; color: var(--ink-soft); margin: 3px 0 7px; }
+.hh-map-preview a { color: var(--brick); font-size: 13px; font-weight: 700; }
+.hh-map-match { display: inline-block; margin-right: 10px; padding: 3px 7px; border-radius: 999px; background: rgba(116,128,79,.14); color: var(--moss); font-size: 11px; font-weight: 700; }
+.hh-map-layout section h2 { margin: 0 0 10px; font-size: 18px; }
+.hh-map-home-list { display: flex; flex-wrap: wrap; gap: 8px; }
+.hh-map-home-list button { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; background: var(--paper-raised); color: var(--ink); font: 600 12.5px 'Plus Jakarta Sans', sans-serif; cursor: pointer; }
+.hh-map-home-list button.selected { border-color: var(--moss); color: var(--moss); background: rgba(116,128,79,.09); }
+.hh-map-unresolved { display: grid; margin-top: 10px; }
+.hh-map-unresolved a { display: flex; justify-content: space-between; gap: 12px; padding: 9px 0; border-top: 1px solid var(--line); color: var(--ink); text-decoration: none; font-size: 13px; }
+.hh-map-unresolved a span { color: var(--brick); font-weight: 700; }
+.hh-map-empty { display: flex; min-height: 360px; flex-direction: column; align-items: center; justify-content: center; text-align: center; border: 1px dashed var(--line); border-radius: 18px; background: var(--paper-raised); color: var(--ink-soft); }
+.hh-map-empty h2 { margin: 12px 0 2px; color: var(--ink); font: 600 22px 'Fraunces', serif; }
+.hh-map-empty p { margin: 4px 0 18px; }
+@media (max-width: 640px) {
+  .hh-map-stage { height: 58vh; min-height: 430px; }
+  .hh-map-preview { left: 10px; bottom: 10px; width: calc(100% - 20px); }
+  .hh-map-preview img { width: 76px; height: 76px; }
+  .hh-map-home-list { display: grid; }
+  .hh-map-home-list button { width: 100%; }
+}
+
 /* ------------------------------ auth (afh-) ------------------------------ */
 
 .afh-root { min-height: 100vh; }

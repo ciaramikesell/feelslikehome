@@ -440,6 +440,16 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     }
   }, [mode, searchParams, router]);
 
+  useEffect(() => {
+    const requestedId = searchParams.get('home');
+    if (mode !== 'homes' || !requestedId || autoOpenedRef.current) return;
+    const requestedHome = homes.find((home) => String(home.id) === requestedId);
+    if (!requestedHome) return;
+    autoOpenedRef.current = true;
+    setModalHome(requestedHome);
+    router.replace('/homes');
+  }, [mode, searchParams, router, homes]);
+
   const saveHome = useCallback(async (home, { shared = true } = {}) => {
     const supabase = createClient();
     let saved;
