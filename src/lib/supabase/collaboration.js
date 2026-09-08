@@ -331,6 +331,44 @@ export async function acceptInvitation(supabase, token) {
   return data?.[0] || { success: false, reason: 'unknown', search_id: null };
 }
 
+/* -------------------------------- membership lifecycle -------------------------------- */
+
+// Both of these are plain authenticated DELETE calls — no RPC needed. The
+// existing search_members_owner_delete RLS policy (from Phase A) already
+// enforces every rule required here: the owner may delete any member row on
+// their own search, a user may delete only their own row (self = leave), and
+// nobody else can delete anything. The owner structurally can never have a
+// row in this table at all (see the foundation migration), so there is no
+// way for this action to accidentally remove the owner.
+//
+// Neither of these touches search_member_priorities or home_member_state —
+// confirmed by inspecting the schema: neither table has a foreign key
+// referencing search_members, so deleting a membership row cannot cascade
+// into personal data. That data simply becomes dormant (still owned by the
+// same user_id, still subject to the same per-user RLS) until/unless that
+// person is invited back, at which point it naturally reactivates — no
+// rejoin-specific logic is needed for this to work correctly.
+
+export async function leaveSearch(supabase, userId, searchId) {
+  const { error } = await supabase.from('search_members').delete().eq('search_id', searchId).eq('user_id', userId);
+  if (error) throw error;
+  // Immediately clear this session's active_search_id back to their own
+  // owned search, so they're not left pointed at a search they can no
+  // longer read even before the next full page load's fallback would catch it.
+  const { data: ownedSearch } = await supabase.from('searches').select('id').eq('user_id', userId).maybeSingle();
+  if (ownedSearch) await setActiveSearch(supabase, userId, ownedSearch.id);
+}
+
+export async function removeMember(supabase, searchId, memberUserId) {
+  const { error } = await supabase.from('search_members').delete().eq('search_id', searchId).eq('user_id', memberUserId);
+  if (error) throw error;
+  // The removed member's own active_search_id cannot be touched from here —
+  // that's a different user's row, and RLS correctly prevents writing it.
+  // resolveActiveSearch's existing fallback (search comes back null via RLS
+  // -> fall back to their own owned search) already handles this safely the
+  // next time they load the app — this is not new behavior, just relied upon.
+}
+
 /* -------------------------------- internal -------------------------------- */
 
 function rowToHomeWithOwner(row) {

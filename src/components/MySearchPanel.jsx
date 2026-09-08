@@ -5,6 +5,7 @@ import { TierPicker } from '@/components/ui';
 import PriorityBoard from '@/components/PriorityBoard';
 import CommuteDestinations from '@/components/CommuteDestinations';
 import SchoolsRelevanceGate from '@/components/SchoolsRelevanceGate';
+import CoBuyerManagement from '@/components/CoBuyerManagement';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, INVESTMENT_PROPERTY_TYPES, INVESTMENT_LIVING_PLAN_OPTIONS,
   isSimpleRentalType, showsMultiselectCategory, terminology, toggleWithNoPreference, getItemlistCategories,
@@ -289,7 +290,7 @@ function WhatMattersCard({ categories, priorities, patch }) {
   );
 }
 
-export default function MySearchPanel({ search, userId, initialPriorities }) {
+export default function MySearchPanel({ search, userId, isOwner, participantCount, memberUserId, initialPriorities }) {
   const [priorities, setPriorities] = useState(() => normalizePriorities(initialPriorities));
 
   const patch = (updater) => {
@@ -313,6 +314,14 @@ export default function MySearchPanel({ search, userId, initialPriorities }) {
       <BasicsCard p={p} patch={patch} />
 
       <WhatMattersCard categories={categories} priorities={p} patch={patch} />
+
+      <CoBuyerManagement
+        userId={userId}
+        search={search}
+        isOwner={isOwner}
+        participantCount={participantCount}
+        memberUserId={memberUserId}
+      />
     </div>
   );
 }
