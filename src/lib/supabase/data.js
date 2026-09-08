@@ -36,7 +36,6 @@ function rowToHome(row) {
     hoaFeeMonthly: row.hoa_fee_monthly ?? null,
     propertyTaxAnnual: row.property_tax_annual ?? null,
     propertyTaxYear: row.property_tax_year ?? null,
-    schoolDistrict: row.school_district || null,
   };
 }
 
@@ -75,7 +74,6 @@ function homeToRow(home, userId, searchId) {
     hoa_fee_monthly: home.hoaFeeMonthly ?? null,
     property_tax_annual: home.propertyTaxAnnual ?? null,
     property_tax_year: home.propertyTaxYear ?? null,
-    school_district: home.schoolDistrict || null,
     updated_at: new Date().toISOString(),
   };
 }

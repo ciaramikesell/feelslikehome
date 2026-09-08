@@ -115,10 +115,8 @@ create table if not exists public.homes (
   property_tax_annual numeric,
   property_tax_year integer,
 
-  -- Auto Enrichment — School District: a plain district name from Geocodio's school
-  -- data append, resolved from the property's coordinates (or address as a fallback).
-  -- Never a rating/score. Informational only — never contributes to Match, never
-  -- appears in onboarding/My Search.
+  -- Legacy school-district enrichment. Retained only for backward compatibility;
+  -- the application no longer reads, writes, displays, or matches against it.
   school_district text,
 
   created_at timestamptz not null default now(),

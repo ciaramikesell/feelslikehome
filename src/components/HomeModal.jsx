@@ -114,7 +114,7 @@ function PropertyFacts({ form, set, priorities }) {
             <CompactField label="Year built" value={form.yearBuilt} onChange={(v) => set('yearBuilt', v)} placeholder="Add year" />
             <CompactField label="Days on mkt" value={form.daysOnMarket} onChange={(v) => set('daysOnMarket', v)} placeholder="Add DOM" />
             <CompactField label="Basement" value={form.basementNotes} onChange={(v) => set('basementNotes', v)} placeholder="e.g. Finished walkout with bedroom" />
-            <CompactField label="Schools" value={form.schoolsNotes} onChange={(v) => set('schoolsNotes', v)} placeholder="e.g. Defer Elementary 8/10, Pierce Middle" />
+            <CompactField label="School details" value={form.schoolsNotes} onChange={(v) => set('schoolsNotes', v)} placeholder="What you know about this home (optional)" />
             <CompactField label="Condition notes" value={form.conditionNotes} onChange={(v) => set('conditionNotes', v)} placeholder="e.g. Roof 3 years old" />
           </div>
           {hasAnyFacts && (

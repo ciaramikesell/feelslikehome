@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   Plus, Search, MapPin, Link2, Archive as ArchiveIcon, ExternalLink,
   Heart, Home as HomeIcon, Undo2, Trash2, Footprints, MessageCircle, Check,
-  GraduationCap, Building2, StickyNote, Minus,
+  Building2, StickyNote, Minus,
 } from 'lucide-react';
 import { MatchSummary, MatchTradeoffs } from '@/components/ui';
 import { useCommuteObserver } from '@/lib/useCommuteObserver';
@@ -131,15 +131,15 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
   const propertyFacts = [
     home.garageSpaces && { label: 'Garage', text: home.garageSpaces },
     home.basementNotes && { label: 'Basement', text: home.basementNotes },
-    home.schoolsNotes && { label: 'Schools', text: home.schoolsNotes },
+    home.schoolsNotes && { label: 'School details', text: home.schoolsNotes },
   ].filter(Boolean);
 
   // Objective context rows — only ever built from data that already exists; no new
   // lookups happen here. Crossroads and Home Style come from the home's own stored
-  // fields; School District comes from the already-approved Geocodio enrichment.
+  // fields. School preference results belong in the personal Match evaluation above,
+  // not in this shared property-facts strip.
   const objectiveFacts = [
     home.crossroads && { icon: MapPin, text: home.crossroads },
-    home.schoolDistrict && { icon: GraduationCap, text: home.schoolDistrict },
     styleSummary && { icon: Building2, text: styleSummary },
   ].filter(Boolean);
 

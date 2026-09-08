@@ -130,7 +130,7 @@ const SHARED_FIELDS = [
   'beds', 'baths', 'lotSize', 'garageSpaces', 'yearBuilt', 'daysOnMarket',
   'homeLayout', 'homeCondition', 'primaryBedroomLocation', 'secondaryBedroomLocation',
   'notes', 'pros', 'cons', 'latitude', 'longitude', 'hoaFeeMonthly',
-  'propertyTaxAnnual', 'propertyTaxYear', 'schoolDistrict', 'basementNotes',
+  'propertyTaxAnnual', 'propertyTaxYear', 'basementNotes',
   'schoolsNotes', 'conditionNotes',
 ];
 
@@ -510,7 +510,6 @@ function rowToHomeWithOwner(row) {
     hoaFeeMonthly: row.hoa_fee_monthly ?? null,
     propertyTaxAnnual: row.property_tax_annual ?? null,
     propertyTaxYear: row.property_tax_year ?? null,
-    schoolDistrict: row.school_district || null,
     basementNotes: row.basement_notes || '',
     schoolsNotes: row.schools_notes || '',
     conditionNotes: row.condition_notes || '',
@@ -558,7 +557,6 @@ function homeToSharedRow(home, userId, searchId, includeLegacyPersonalFields) {
     hoa_fee_monthly: home.hoaFeeMonthly ?? null,
     property_tax_annual: home.propertyTaxAnnual ?? null,
     property_tax_year: home.propertyTaxYear ?? null,
-    school_district: home.schoolDistrict || null,
     basement_notes: home.basementNotes || '',
     schools_notes: home.schoolsNotes || '',
     condition_notes: home.conditionNotes || '',

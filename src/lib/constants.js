@@ -298,13 +298,9 @@ export function emptyHome() {
     // informational only and never contribute to Match.
     latitude: null, longitude: null,
     hoaFeeMonthly: null, propertyTaxAnnual: null, propertyTaxYear: null,
-    // Auto Enrichment — School District: captured from Geocodio (a plain district
-    // name string, never a rating/score). Informational only — never contributes to
-    // Match, never appears in onboarding/My Search.
-    schoolDistrict: null,
     // Property Details free-text — shared, descriptive, user-editable. Distinct
-    // from schoolDistrict (auto-imported, less trusted per beta feedback) and
-    // distinct from the check-kind Basement criteria (Has/Finished/Walkout/
+    // from the personal Schools preference and the check-kind Basement criteria
+    // (Has/Finished/Walkout/
     // Bedroom, which are personal Yes/No evaluations). These three fields are
     // just "what do I know about this" context, never Match inputs.
     basementNotes: '', schoolsNotes: '', conditionNotes: '',

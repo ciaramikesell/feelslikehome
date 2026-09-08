@@ -62,13 +62,13 @@ export default function SchoolsRelevanceGate({ priorities, patch }) {
         <div style={{ marginTop: 10 }}>
           <label className="hh-label" style={{ marginBottom: 4 }}>What matters to you about schools?</label>
           <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '0 0 6px' }}>
-            District, a specific school, ratings, or anything else that matters to you. Optional.
+            A specific school, district, school area, or zone description. Optional and entirely yours.
           </p>
           <input
             className="hh-input"
             value={note}
             onChange={(e) => setNote(e.target.value)}
-            placeholder="e.g. Grosse Pointe South; ideally Defer Elementary; elementary rating 8+"
+            placeholder="e.g. Adams High School; Rochester Community Schools; preferred school zone"
             style={{ width: '100%' }}
           />
         </div>
