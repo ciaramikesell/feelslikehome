@@ -96,47 +96,6 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 640px) { .hh-root { padding: 18px 12px 48px; } }
 
-/* ------------------------------ saved homes map ------------------------------ */
-.hh-map-layout { display: grid; gap: 18px; min-width: 0; }
-.hh-map-stage { position: relative; height: min(64vh, 650px); min-height: 470px; overflow: hidden; background: #eee6da; border: 1px solid var(--line); }
-.hh-map-canvas { width: 100%; height: 100%; }
-.hh-map-message { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; padding: 28px; text-align: center; color: var(--ink-soft); background: #eee6da; font-size: 14px; }
-.hh-home-marker { width: 42px; height: 42px; border-radius: 50% 50% 50% 8px; transform: rotate(-45deg); display: grid; place-items: center; background: var(--brick); border: 3px solid #fff; box-shadow: 0 3px 12px rgba(46,38,33,.35); transition: transform .15s, background .15s; }
-.hh-home-marker span { width: 13px; height: 13px; border-radius: 50%; background: #fff; }
-.hh-home-marker.selected { background: var(--moss); transform: rotate(-45deg) scale(1.18); box-shadow: 0 4px 16px rgba(46,38,33,.45); }
-.hh-map-preview { position: absolute; z-index: 3; left: 18px; bottom: 18px; width: min(390px, calc(100% - 36px)); display: grid; grid-template-columns: 126px 1fr; overflow: hidden; border-radius: 16px; background: rgba(255,255,255,.97); border: 1px solid var(--line); box-shadow: 0 12px 32px rgba(46,38,33,.24); }
-.hh-map-preview-photo { min-height: 190px; background: linear-gradient(135deg,#f2e6d6,#e8d8c1); display: grid; place-items: center; color: rgba(46,38,33,.28); }
-.hh-map-preview-photo img { width: 100%; height: 100%; object-fit: cover; }
-.hh-map-preview-body { padding: 15px; min-width: 0; }
-.hh-map-price { color: var(--brick); font-size: 18px; }
-.hh-map-address { margin-top: 4px; font-size: 17px; font-weight: 600; line-height: 1.2; }
-.hh-map-city,.hh-map-facts { color: var(--ink-soft); font-size: 12px; margin-top: 3px; }
-.hh-map-signals { display: flex; gap: 6px 10px; flex-wrap: wrap; align-items: center; margin-top: 9px; font-size: 11.5px; color: var(--ink-soft); }
-.hh-map-signals strong { color: var(--moss); }
-.hh-map-signals span { display: inline-flex; align-items: center; gap: 3px; }
-.hh-map-view-home { margin-top: 11px; padding: 7px 12px; font-size: 12px; text-decoration: none; }
-.hh-map-unresolved { padding: 12px 15px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper-raised); color: var(--ink-soft); font-size: 13px; }
-.hh-map-unresolved summary { cursor: pointer; font-weight: 600; color: var(--ink); }
-.hh-map-unresolved ul { margin: 9px 0 0; padding-left: 20px; }
-.hh-map-unresolved a { color: var(--brick); }
-.hh-map-list h2 { margin: 0 0 9px; font-size: 17px; }
-.hh-map-list-items { display: flex; gap: 8px; overflow-x: auto; padding: 2px 2px 8px; }
-.hh-map-list-items button { flex: 0 0 auto; max-width: 360px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper-raised); color: var(--ink); padding: 10px 12px; font: 500 12.5px 'Plus Jakarta Sans',sans-serif; cursor: pointer; text-align: left; }
-.hh-map-list-items button.selected { border-color: var(--moss); box-shadow: 0 0 0 2px rgba(116,128,79,.15); }
-.hh-map-list-items button:focus-visible { outline: 3px solid rgba(193,89,47,.3); outline-offset: 2px; }
-.hh-map-empty { min-height: 330px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px; text-align: center; background: var(--paper-raised); border: 1px solid var(--line); color: var(--ink-soft); }
-.hh-map-empty h2 { margin: 12px 0 4px; color: var(--ink); font-size: 22px; }
-.hh-map-empty p { margin: 0 0 18px; }
-@media (max-width: 640px) {
-  .hh-map-stage { height: 62vh; min-height: 480px; border-radius: 14px; }
-  .hh-map-preview { left: 10px; bottom: 10px; width: calc(100% - 20px); grid-template-columns: 94px 1fr; }
-  .hh-map-preview-photo { min-height: 172px; }
-  .hh-map-preview-body { padding: 12px; }
-  .hh-map-address { font-size: 15px; }
-  .hh-map-list-items { flex-direction: column; overflow: visible; }
-  .hh-map-list-items button { width: 100%; max-width: none; flex-basis: auto; }
-}
-
 /* ------------------------------ auth (afh-) ------------------------------ */
 
 .afh-root { min-height: 100vh; }

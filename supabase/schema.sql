@@ -111,9 +111,6 @@ create table if not exists public.homes (
   -- recent entry (selected by its own `year` field, never by array/object order).
   latitude numeric,
   longitude numeric,
-  coordinate_status text not null default 'unresolved' check (coordinate_status in ('unresolved', 'resolved')),
-  coordinate_source text,
-  coordinate_address text,
   hoa_fee_monthly numeric,
   property_tax_annual numeric,
   property_tax_year integer,
