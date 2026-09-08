@@ -14,6 +14,18 @@ export default function CoBuyerManagement({ userId, search, isOwner, participant
   const [error, setError] = useState('');
 
   const isCollaborative = participantCount > 1;
+
+  // TEMPORARY DIAGNOSTIC — Phase 7 runtime trace, remove after root cause confirmed.
+  console.log('[Phase7 CoBuyerManagement]', {
+    userId,
+    searchId: search?.id,
+    searchOwnerId: search?.user_id,
+    isOwner,
+    participantCount,
+    memberUserId,
+    willRender: isCollaborative,
+  });
+
   if (!isCollaborative) return null;
 
   const act = async () => {
@@ -36,6 +48,8 @@ export default function CoBuyerManagement({ userId, search, isOwner, participant
 
   return (
     <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--line)' }}>
+      {/* TEMPORARY DIAGNOSTIC — remove after root cause confirmed. */}
+      <p style={{ fontSize: 12, color: 'red', fontWeight: 700 }}>Phase 7 diagnostic loaded</p>
       <div className="hh-serif" style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>Searching together</div>
       {!confirming ? (
         <button

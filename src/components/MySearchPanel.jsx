@@ -315,6 +315,16 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
 
       <WhatMattersCard categories={categories} priorities={p} patch={patch} />
 
+      {/* TEMPORARY DIAGNOSTIC — Phase 7 runtime trace, remove after root cause confirmed. */}
+      {console.log('[Phase7 MySearchPanel]', {
+        userId,
+        searchId: search?.id,
+        searchOwnerId: search?.user_id,
+        isOwner,
+        participantCount,
+        memberUserId,
+      })}
+
       <CoBuyerManagement
         userId={userId}
         search={search}
