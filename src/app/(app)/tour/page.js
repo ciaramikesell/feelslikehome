@@ -7,14 +7,16 @@ import {
   resolveActiveSearch, resolvePriorities, getHomesForUser, getParticipantStatusesForHomes,
   coBuyerArchivedSignal, deriveWantToTourState,
 } from '@/lib/supabase/collaboration';
+import { getCommuteDestinations } from '@/lib/commute/data';
 
 export default async function TourPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { search } = await resolveActiveSearch(supabase, user.id);
-  const [priorities, homes] = await Promise.all([
+  const [priorities, homes, commuteDestinations] = await Promise.all([
     resolvePriorities(supabase, search, user.id),
     getHomesForUser(supabase, user.id, search.id),
+    getCommuteDestinations(supabase, search.id, user.id),
   ]);
 
   const statusesByHome = await getParticipantStatusesForHomes(supabase, search, homes);
@@ -36,7 +38,7 @@ export default async function TourPage() {
   return (
     <DecisionNav active="tour" hasFavorites={hasFavorites} hasArchived={hasArchived}>
       <PageIntro title="Want to Tour" subtitle="Homes you're interested enough to see in person." />
-      <HomesBoard mode="tour" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizePriorities(priorities)} />
+      <HomesBoard mode="tour" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizePriorities(priorities)} initialCommuteDestinations={commuteDestinations} />
     </DecisionNav>
   );
 }

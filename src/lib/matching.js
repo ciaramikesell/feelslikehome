@@ -1,4 +1,5 @@
 import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier } from './constants';
+import { evaluateCommute } from './commute/match.mjs';
 
 export function parseNum(v) {
   if (v === '' || v === null || v === undefined) return null;
@@ -192,7 +193,7 @@ export function parseListingText(text) {
  * auto-data should feed Match when reliable" case, with no extra question asked.
  * ---------------------------------------------------------------------------------- */
 
-export function computeMatch(home, priorities) {
+export function computeMatch(home, priorities, { commuteDestinations = [], commuteResults = {} } = {}) {
   if (!priorities) return null;
   const all = []; // every priority the user actually selected, evaluated or not
   const push = (key, label, tier, evaluated, score, met, detail, objective) => {
@@ -275,6 +276,19 @@ export function computeMatch(home, priorities) {
       const tier = effectiveTier(def.key, item.label, priorities, catState.tiers?.[item.label]);
       if (tier === 'dontcare') return;
       const ns = `${def.key}:${item.label}`;
+
+      if (item.kind === 'commute') {
+        const commute = evaluateCommute(commuteDestinations, commuteResults);
+        // A selected Commute criterion with no maximums remains useful information,
+        // but is not a scorable requirement and therefore is not in the denominator.
+        if (!commute) return;
+        if (!commute.evaluated) {
+          push(ns, item.label, tier, false, null, null, commute.detail, true);
+        } else {
+          push(ns, item.label, tier, true, commute.score, commute.met, commute.detail, true);
+        }
+        return;
+      }
 
       if (item.kind === 'rating') {
         const val = home.ratings?.[ns] || 0;

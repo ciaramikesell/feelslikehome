@@ -12,7 +12,8 @@ export const HOME_CONDITION_OPTIONS = ['New Construction', 'Move-In Ready', 'Ren
 // criterion already uses — no new architecture needed for this change.
 export const LOCATION_CORE = [
   { label: 'Schools', kind: 'check' },
-  ...['Commute', 'Neighborhood'].map((label) => ({ label, kind: 'rating' })),
+  { label: 'Commute', kind: 'commute' },
+  { label: 'Neighborhood', kind: 'rating' },
 ];
 // "Overall Location" is intentionally retired from future selection (2026 criteria
 // audit: no meaningfully distinct job from "Neighborhood" was found in how either is
@@ -297,10 +298,11 @@ export function emptyHome() {
     // shown anywhere in the UI. hoaFeeMonthly/propertyTaxAnnual/propertyTaxYear are
     // informational only and never contribute to Match.
     latitude: null, longitude: null,
+    coordinateAddressFingerprint: null, geocodeStatus: 'pending', geocodeProvider: null,
+    normalizedAddress: null, geocodedAt: null,
     hoaFeeMonthly: null, propertyTaxAnnual: null, propertyTaxYear: null,
-    // Auto Enrichment — School District: captured from Geocodio (a plain district
-    // name string, never a rating/score). Informational only — never contributes to
-    // Match, never appears in onboarding/My Search.
+    // Legacy School District enrichment is retained for existing saved facts only.
+    // Commute V1 removes the active school API lookup and never adds school data.
     schoolDistrict: null,
     // Property Details free-text — shared, descriptive, user-editable. Distinct
     // from schoolDistrict (auto-imported, less trusted per beta feedback) and
@@ -325,7 +327,7 @@ export function defaultPriorities() {
     homeCondition: { values: [], tier: 'dontcare' },
     primaryBedroomLocation: { value: '', tier: 'dontcare' },
     secondaryBedroomLocation: { value: '', tier: 'dontcare' },
-    location: { customItems: [], tiers: {}, order: [], hiddenCore: [], commuteDestinations: [] },
+    location: { customItems: [], tiers: {}, order: [], hiddenCore: [] },
     homeFeel: { customItems: [], tiers: {}, order: [], hiddenCore: [] },
     exterior: { customItems: [], tiers: {}, order: [], hiddenCore: [] },
     features: { customItems: [], tiers: {}, order: [], hiddenCore: [] },

@@ -140,6 +140,9 @@ Keep this browser tab open — you'll copy these two values into Codespaces next
    ```
    NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxxxxxxxxxxxxxxxxxxxxxxx
+   RENTCAST_API_KEY=your_rentcast_key
+   GOOGLE_GEOCODING_API_KEY=your_server_only_google_geocoding_key
+   GOOGLE_ROUTES_API_KEY=your_server_only_google_routes_key
    ```
 
 4. Save the file (Ctrl+S). This file is already listed in `.gitignore`, so it will never be
@@ -189,6 +192,9 @@ screenshot of any error is very helpful.
 5. Expand **Environment Variables** and add the same two values from Part 2:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+   Add `RENTCAST_API_KEY`, `GOOGLE_GEOCODING_API_KEY`, and
+   `GOOGLE_ROUTES_API_KEY` as server-only variables when enabling property and
+   commute enrichment. Never prefix these secret provider keys with `NEXT_PUBLIC_`.
 6. Click **Deploy**. This takes a minute or two.
 7. When it finishes, Vercel gives you a live URL (something like
    `feels-like-home-yourname.vercel.app`). Click it to see your real, live site.

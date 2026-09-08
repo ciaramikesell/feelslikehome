@@ -33,6 +33,11 @@ function rowToHome(row) {
     // Auto Enrichment 1.0 — nullable, informational only, never contribute to Match.
     latitude: row.latitude ?? null,
     longitude: row.longitude ?? null,
+    coordinateAddressFingerprint: row.coordinate_address_fingerprint || null,
+    geocodeStatus: row.geocode_status || 'pending',
+    geocodeProvider: row.geocode_provider || null,
+    normalizedAddress: row.normalized_address || null,
+    geocodedAt: row.geocoded_at || null,
     hoaFeeMonthly: row.hoa_fee_monthly ?? null,
     propertyTaxAnnual: row.property_tax_annual ?? null,
     propertyTaxYear: row.property_tax_year ?? null,
@@ -72,6 +77,11 @@ function homeToRow(home, userId, searchId) {
     // Auto Enrichment 1.0 — plain nullable numerics, mirrors rowToHome above.
     latitude: home.latitude ?? null,
     longitude: home.longitude ?? null,
+    coordinate_address_fingerprint: home.coordinateAddressFingerprint || null,
+    geocode_status: home.geocodeStatus || 'pending',
+    geocode_provider: home.geocodeProvider || (home.latitude != null && home.longitude != null ? 'rentcast' : null),
+    normalized_address: home.normalizedAddress || null,
+    geocoded_at: home.geocodedAt || (home.latitude != null && home.longitude != null ? new Date().toISOString() : null),
     hoa_fee_monthly: home.hoaFeeMonthly ?? null,
     property_tax_annual: home.propertyTaxAnnual ?? null,
     property_tax_year: home.propertyTaxYear ?? null,

@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { normalizeRentCastFields } from '@/lib/rentcast';
-import { normalizeSchoolDistrict } from '@/lib/schoolDistrict';
 
 // Server-only: this file runs in a Next.js Route Handler (a Vercel serverless
-// function), never in the browser, so RENTCAST_API_KEY/GEOCODIO_API_KEY are safe
-// to read from process.env here — neither is ever sent to the client.
+// function), never in the browser, so RENTCAST_API_KEY is safe to read from
+// process.env here and is never sent to the client.
 //
 // This route does exactly one property lookup per request: one call to
 // /v1/properties (structural facts) and one call to the matching listings
@@ -13,14 +12,7 @@ import { normalizeSchoolDistrict } from '@/lib/schoolDistrict';
 // It doesn't loop, batch, or cache — that's what "limited to the exact lookup
 // needed" means for V1. Duplicate-call prevention lives in the UI instead.
 //
-// A third, independent call resolves the school district name via Geocodio,
-// preferring the coordinates RentCast just returned (more accurate for a
-// boundary lookup) and falling back to the plain searched address otherwise.
-// This step can never fail the request — a school-district lookup failure
-// only means that one fact is omitted, exactly like a missing RentCast field.
-
 const RENTCAST_BASE = 'https://api.rentcast.io';
-const GEOCODIO_BASE = 'https://api.geocod.io/v2';
 
 async function fetchRentCast(path, address, apiKey) {
   try {
@@ -36,24 +28,6 @@ async function fetchRentCast(path, address, apiKey) {
   } catch (err) {
     console.error(`RentCast request failed for ${path}`, err);
     return { status: 'error', data: null, rateLimited: false, upstreamStatus: null };
-  }
-}
-
-async function fetchSchoolDistrict(address, latitude, longitude, apiKey) {
-  if (!apiKey) return null;
-  try {
-    const q = (typeof latitude === 'number' && typeof longitude === 'number') ? `${latitude},${longitude}` : address;
-    const url = `${GEOCODIO_BASE}/geocode?q=${encodeURIComponent(q)}&fields=school&api_key=${apiKey}`;
-    const res = await fetch(url, { headers: { Accept: 'application/json' } });
-    if (!res.ok) {
-      console.error(`Geocodio school-district lookup failed with status ${res.status}`);
-      return null;
-    }
-    const json = await res.json();
-    return normalizeSchoolDistrict(json);
-  } catch (err) {
-    console.error('School district lookup failed', err);
-    return null;
   }
 }
 
@@ -120,17 +94,10 @@ export async function POST(request) {
 
     const { fields, foundAny } = normalizeRentCastFields(propertyResult.data, listingResult.data);
 
-    // Independent of RentCast's outcome — even a fully-populated property record
-    // has no school field at all (confirmed against RentCast's own documented
-    // schema), so this is always a separate lookup, never a re-use of RentCast data.
-    const schoolDistrict = await fetchSchoolDistrict(address, fields.latitude, fields.longitude, process.env.GEOCODIO_API_KEY);
-    if (schoolDistrict) fields.schoolDistrict = schoolDistrict;
-
-    const anyFound = foundAny || !!schoolDistrict;
     return NextResponse.json({
-      found: anyFound,
+      found: foundAny,
       fields,
-      message: anyFound ? undefined : 'No property data was found for that address — you can enter details manually.',
+      message: foundAny ? undefined : 'No property data was found for that address — you can enter details manually.',
     });
   } catch (err) {
     console.error('import-listing failed', err);

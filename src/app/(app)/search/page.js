@@ -3,14 +3,16 @@ import MySearchPanel from '@/components/MySearchPanel';
 import { PageIntro } from '@/components/ui';
 import { normalizePriorities } from '@/lib/constants';
 import { resolveActiveSearch, resolvePriorities, getSearchParticipantIds } from '@/lib/supabase/collaboration';
+import { getCommuteDestinations } from '@/lib/commute/data';
 
 export default async function SearchPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { search, isOwner } = await resolveActiveSearch(supabase, user.id);
-  const [priorities, participantIds] = await Promise.all([
+  const [priorities, participantIds, commuteDestinations] = await Promise.all([
     resolvePriorities(supabase, search, user.id),
     getSearchParticipantIds(supabase, search),
+    getCommuteDestinations(supabase, search.id, user.id),
   ]);
   // V1 is one owner + at most one member — the first non-owner participant,
   // if any, is the co-buyer this page's Remove action would target.
@@ -26,6 +28,7 @@ export default async function SearchPage() {
         participantCount={participantIds.length}
         memberUserId={memberUserId}
         initialPriorities={normalizePriorities(priorities)}
+        initialCommuteDestinations={commuteDestinations}
       />
     </>
   );

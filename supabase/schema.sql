@@ -5,6 +5,11 @@
 
 create extension if not exists "pgcrypto";
 
+create or replace function public.address_fingerprint(value text)
+returns text language sql immutable strict set search_path = '' as $$
+  select encode(public.digest(lower(regexp_replace(trim(value), '\s+', ' ', 'g')), 'sha256'), 'hex');
+$$;
+
 -- =============================================================================
 -- profiles — one row per user, tracks onboarding status
 -- =============================================================================
@@ -111,14 +116,18 @@ create table if not exists public.homes (
   -- recent entry (selected by its own `year` field, never by array/object order).
   latitude numeric,
   longitude numeric,
+  coordinate_address_fingerprint text,
+  geocode_status text not null default 'pending'
+    check (geocode_status in ('pending', 'resolved', 'invalid', 'ambiguous', 'unavailable')),
+  geocode_provider text,
+  normalized_address text,
+  geocoded_at timestamptz,
   hoa_fee_monthly numeric,
   property_tax_annual numeric,
   property_tax_year integer,
 
-  -- Auto Enrichment — School District: a plain district name from Geocodio's school
-  -- data append, resolved from the property's coordinates (or address as a fallback).
-  -- Never a rating/score. Informational only — never contributes to Match, never
-  -- appears in onboarding/My Search.
+  -- Legacy School District enrichment. Existing saved values remain informational;
+  -- the active school lookup has been removed and Commute never writes this field.
   school_district text,
 
   created_at timestamptz not null default now(),
@@ -126,6 +135,32 @@ create table if not exists public.homes (
 );
 
 alter table public.homes enable row level security;
+
+create or replace function public.protect_home_coordinate_provenance()
+returns trigger language plpgsql set search_path = '' as $$
+begin
+  if tg_op = 'UPDATE' and new.address is distinct from old.address then
+    new.latitude := null; new.longitude := null;
+    new.coordinate_address_fingerprint := null;
+    new.geocode_status := 'pending'; new.geocode_provider := null;
+    new.normalized_address := null; new.geocoded_at := null;
+    return new;
+  end if;
+  if new.latitude is not null and new.longitude is not null then
+    new.coordinate_address_fingerprint := public.address_fingerprint(new.address);
+    new.geocode_status := 'resolved';
+  else
+    new.latitude := null; new.longitude := null;
+    if new.geocode_status = 'resolved' then new.geocode_status := 'pending'; end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists homes_protect_coordinate_provenance on public.homes;
+create trigger homes_protect_coordinate_provenance
+  before insert or update of address, latitude, longitude on public.homes
+  for each row execute function public.protect_home_coordinate_provenance();
 
 drop policy if exists "homes_select_own" on public.homes;
 create policy "homes_select_own" on public.homes
@@ -331,6 +366,53 @@ create table if not exists public.search_member_priorities (
   updated_at timestamptz not null default now(),
   unique (search_id, user_id)
 );
+
+-- Commute V1 — structured, participant-owned destinations. The single Commute
+-- importance tier remains in that participant's priorities JSON document.
+create table if not exists public.commute_destinations (
+  id text not null,
+  search_id uuid not null references public.searches(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  label text not null check (char_length(trim(label)) between 1 and 80),
+  address text not null check (char_length(trim(address)) between 1 and 200),
+  maximum_minutes integer check (maximum_minutes between 1 and 600),
+  latitude numeric,
+  longitude numeric,
+  normalized_address text,
+  geocode_status text not null default 'pending'
+    check (geocode_status in ('pending', 'resolved', 'invalid', 'ambiguous', 'unavailable')),
+  geocode_provider text,
+  address_fingerprint text not null,
+  geocoded_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (search_id, user_id, id),
+  check ((latitude is null and longitude is null) or (latitude is not null and longitude is not null)),
+  check (geocode_status <> 'resolved' or (latitude is not null and longitude is not null))
+);
+
+alter table public.commute_destinations enable row level security;
+
+drop policy if exists "commute_destinations_own_select" on public.commute_destinations;
+create policy "commute_destinations_own_select" on public.commute_destinations
+  for select using (auth.uid() = user_id and public.can_access_search(search_id, auth.uid()));
+drop policy if exists "commute_destinations_own_insert" on public.commute_destinations;
+create policy "commute_destinations_own_insert" on public.commute_destinations
+  for insert with check (auth.uid() = user_id and public.can_access_search(search_id, auth.uid()));
+drop policy if exists "commute_destinations_own_update" on public.commute_destinations;
+create policy "commute_destinations_own_update" on public.commute_destinations
+  for update using (auth.uid() = user_id and public.can_access_search(search_id, auth.uid()))
+  with check (auth.uid() = user_id and public.can_access_search(search_id, auth.uid()));
+drop policy if exists "commute_destinations_own_delete" on public.commute_destinations;
+create policy "commute_destinations_own_delete" on public.commute_destinations
+  for delete using (auth.uid() = user_id and public.can_access_search(search_id, auth.uid()));
+
+drop trigger if exists commute_destinations_set_updated_at on public.commute_destinations;
+create trigger commute_destinations_set_updated_at
+  before update on public.commute_destinations
+  for each row execute function public.set_updated_at();
+create index if not exists commute_destinations_search_user_idx
+  on public.commute_destinations(search_id, user_id, created_at);
 
 alter table public.search_member_priorities enable row level security;
 

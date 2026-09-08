@@ -34,21 +34,28 @@ async function flushBatch() {
   const destinationIds = Array.from(batch.destinationIds);
 
   try {
-    const res = await fetch('/api/commute', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ homeIds, destinationIds }),
-    });
-    const data = res.ok ? await res.json() : { results: {} };
-    const results = data.results || {};
+    const chunks = (values, size) => Array.from({ length: Math.ceil(values.length / size) }, (_, index) => values.slice(index * size, (index + 1) * size));
+    const requests = [];
+    chunks(homeIds, 20).forEach((homeChunk) => chunks(destinationIds, 5).forEach((destinationChunk) => {
+      requests.push(fetch('/api/commute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ homeIds: homeChunk, destinationIds: destinationChunk }),
+      }).then(async (res) => res.ok ? (await res.json()).results || {} : {}));
+    }));
+    const resultSets = await Promise.all(requests);
+    const results = {};
+    resultSets.forEach((set) => Object.entries(set).forEach(([homeId, byDestination]) => {
+      results[homeId] = { ...(results[homeId] || {}), ...byDestination };
+    }));
     // Write every requested pair into the cache, even on failure/omission —
     // an "unavailable" result is still cached for the session so a card
     // scrolling back into view doesn't refire the same failed pair.
     for (const [pairKey, meta] of batch.keyToPair.entries()) {
       const { home, destination } = meta;
       const homeResult = results[home.id]?.[destination.id];
-      resultCache.set(pairKey, homeResult && homeResult.status === 'ok'
-        ? { minutes: homeResult.minutes, status: 'ok' }
+      resultCache.set(pairKey, homeResult
+        ? { minutes: homeResult.minutes ?? null, status: homeResult.status || 'unavailable' }
         : { minutes: null, status: 'unavailable' });
       inFlightKeys.delete(pairKey);
     }

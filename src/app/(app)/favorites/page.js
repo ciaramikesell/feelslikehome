@@ -4,14 +4,16 @@ import DecisionNav from '@/components/DecisionNav';
 import { PageIntro } from '@/components/ui';
 import { isArchivedStatus, normalizePriorities } from '@/lib/constants';
 import { resolveActiveSearch, resolvePriorities, getHomesForUser, getParticipantStatusesForHomes, coBuyerArchivedSignal } from '@/lib/supabase/collaboration';
+import { getCommuteDestinations } from '@/lib/commute/data';
 
 export default async function FavoritesPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { search } = await resolveActiveSearch(supabase, user.id);
-  const [priorities, homes] = await Promise.all([
+  const [priorities, homes, commuteDestinations] = await Promise.all([
     resolvePriorities(supabase, search, user.id),
     getHomesForUser(supabase, user.id, search.id),
+    getCommuteDestinations(supabase, search.id, user.id),
   ]);
 
   const statusesByHome = await getParticipantStatusesForHomes(supabase, search, homes);
@@ -27,7 +29,7 @@ export default async function FavoritesPage() {
   return (
     <DecisionNav active="favorites" hasFavorites={hasFavorites} hasArchived={hasArchived}>
       <PageIntro title="Favorites" subtitle="The homes you toured and loved." />
-      <HomesBoard mode="favorites" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizePriorities(priorities)} />
+      <HomesBoard mode="favorites" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizePriorities(priorities)} initialCommuteDestinations={commuteDestinations} />
     </DecisionNav>
   );
 }
