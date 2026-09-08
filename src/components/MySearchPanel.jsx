@@ -120,16 +120,11 @@ function MultiselectSection({ def, priorities, patch, children }) {
 function buildBasicsSummary(p) {
   const lines = [];
   const rental = terminology(p.searchType).priceFieldLabel.toLowerCase().includes('rent');
-  if (p.budget?.value) lines.push(`Up to $${Number(p.budget.value).toLocaleString()}${rental ? '/mo' : ''}`);
-
-  const thresholds = [
-    p.bedsMin?.value ? `${p.bedsMin.value}+ beds` : null,
-    p.bathsMin?.value ? `${p.bathsMin.value}+ baths` : null,
-    p.sqftTarget?.value ? `${Number(p.sqftTarget.value).toLocaleString()}+ sq ft` : null,
-  ].filter(Boolean);
-  if (thresholds.length) lines.push(thresholds.join(' · '));
-
-  if (!isSimpleRentalType(p.searchType) && p.lotSizeTarget?.value) lines.push(`${p.lotSizeTarget.value}+ acre lot`);
+  if (p.budget?.value) lines.push(`Price · Up to $${Number(p.budget.value).toLocaleString()}${rental ? '/mo' : ''}`);
+  if (p.bedsMin?.value) lines.push(`Bedrooms · At least ${p.bedsMin.value}`);
+  if (p.bathsMin?.value) lines.push(`Bathrooms · At least ${p.bathsMin.value}`);
+  if (p.sqftTarget?.value) lines.push(`Space · At least ${Number(p.sqftTarget.value).toLocaleString()} sq ft`);
+  if (!isSimpleRentalType(p.searchType) && p.lotSizeTarget?.value) lines.push(`Lot size · At least ${p.lotSizeTarget.value} acres`);
 
   const layoutVals = (p.homeLayout?.values || []).filter((v) => v !== 'No Preference');
   if (layoutVals.length) lines.push(layoutVals.join(' or '));
@@ -308,8 +303,8 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
 
   return (
     <div style={{ display: 'grid', gap: 16, maxWidth: 760 }}>
-      <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '0 0 4px', lineHeight: 1.5 }}>
-        Here's what Feels Like Home knows about what you're looking for. Selected priorities are the only things that affect your Match — change importance, remove something, or add more anytime.
+      <p style={{ fontSize: 14, color: 'var(--ink-soft)', margin: '0 0 4px', lineHeight: 1.55 }}>
+        Describe the home you want. Only the things you choose here shape your Match.
       </p>
 
       <BasicsCard p={p} patch={patch} />

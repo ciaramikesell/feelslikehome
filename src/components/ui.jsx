@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Star, ChevronDown, Heart, CheckCircle2, Check, XCircle, HelpCircle } from 'lucide-react';
+import { Star, ChevronDown, Heart, CheckCircle2, Check, MinusCircle, HelpCircle } from 'lucide-react';
 import { TIER_ORDER, TIER_META } from '@/lib/constants';
 import { matchColor, summarizeForCard } from '@/lib/matching';
 
@@ -173,14 +173,13 @@ function MissingRow({ items }) {
   const shown = items.slice(0, CARD_ROW_CAP);
   const overflow = items.length - shown.length;
   return (
-    <div style={{ fontSize: 11.5, color: 'var(--brick)', display: 'flex', alignItems: 'flex-start', gap: 5 }}>
-      <XCircle size={12} style={{ marginTop: 2, flexShrink: 0 }} />
+    <div style={{ fontSize: 12, color: 'var(--ink-soft)', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+      <MinusCircle size={13} style={{ marginTop: 2, flexShrink: 0 }} />
       <span>
-        <strong>Missing:</strong>{' '}
+        <strong style={{ color: 'var(--ink)' }}>Doesn&apos;t match:</strong>{' '}
         {shown.map((c, i) => (
           <span key={c.key}>
-            {c.label}{c.tier === 'must' ? ' · Must Have' : c.tier === 'important' ? ' · Important' : ''}
-            {i < shown.length - 1 ? ', ' : ''}
+            {c.label}{i < shown.length - 1 ? ' · ' : ''}
           </span>
         ))}
         {overflow > 0 && ` +${overflow} more`}
@@ -194,14 +193,13 @@ function NotConfirmedRow({ items }) {
   const shown = items.slice(0, CARD_ROW_CAP);
   const overflow = items.length - shown.length;
   return (
-    <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', display: 'flex', alignItems: 'flex-start', gap: 5 }}>
-      <HelpCircle size={12} style={{ marginTop: 2, flexShrink: 0 }} />
+    <div style={{ fontSize: 12, color: 'var(--ink-soft)', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+      <HelpCircle size={13} style={{ marginTop: 2, flexShrink: 0 }} />
       <span>
-        <strong>Not confirmed:</strong>{' '}
+        <strong style={{ color: 'var(--ink)' }}>Missing information:</strong>{' '}
         {shown.map((c, i) => (
           <span key={c.key}>
-            {c.label}{c.tier === 'must' ? ' · Must Have' : c.tier === 'important' ? ' · Important' : ''}
-            {i < shown.length - 1 ? ', ' : ''}
+            {c.label}{i < shown.length - 1 ? ' · ' : ''}
           </span>
         ))}
         {overflow > 0 && ` +${overflow} more`}

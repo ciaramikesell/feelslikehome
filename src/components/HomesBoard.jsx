@@ -140,7 +140,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   return (
     <div className="hh-corner" ref={commuteRef}>
       <div style={{ background: 'var(--paper-raised)', border: '1px solid var(--line)', borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ position: 'relative', width: '100%', height: 148, background: showPhoto ? 'var(--line)' : 'linear-gradient(135deg, #F2E6D6, #E8D8C1)' }}>
+        <div className="hh-home-card-photo" style={{ position: 'relative', width: '100%', height: 168, background: showPhoto ? 'var(--line)' : 'linear-gradient(135deg, #F2E6D6, #E8D8C1)' }}>
           {showPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={home.photoUrl} alt={home.address} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={() => setImgError(true)} />
@@ -168,15 +168,15 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
           )}
         </div>
 
-        <div style={{ padding: '16px 18px 18px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="hh-home-card-body" style={{ padding: '18px 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+            <span className="hh-mono" style={{ fontSize: 22, fontWeight: 700, color: 'var(--brick)' }}>{fmtMoney(home.price)}{isRentalType(priorities.searchType) ? '/mo' : ''}</span>
+            {home.estMonthly && <span className="hh-mono" style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>{fmtMoney(home.estMonthly)}/mo est.</span>}
+          </div>
+
           <div>
             <div className="hh-address" style={{ fontSize: 19, fontWeight: 600, lineHeight: 1.28, color: 'var(--ink)' }}>{addressLine1 || 'Untitled'}</div>
             {addressLine2 && <div style={{ fontSize: 13.5, color: 'var(--ink-soft)', marginTop: 1 }}>{addressLine2}</div>}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-            <span className="hh-mono" style={{ fontSize: 21, fontWeight: 700, color: 'var(--brick)' }}>{fmtMoney(home.price)}{isRentalType(priorities.searchType) ? '/mo' : ''}</span>
-            {home.estMonthly && <span className="hh-mono" style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>{fmtMoney(home.estMonthly)}/mo est.</span>}
           </div>
 
           {factLine.length > 0 && (
@@ -301,7 +301,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
             </div>
           )}
 
-          <div style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: 6, marginTop: 4, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+          <div className="hh-home-card-actions" style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: 6, marginTop: 4, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
             {home.listingUrl && (
               <a href={home.listingUrl} target="_blank" rel="noreferrer" className="hh-btn hh-btn-ghost" style={{ padding: '5px 7px', flexShrink: 0 }} title="Open listing">
                 <ExternalLink size={13} />

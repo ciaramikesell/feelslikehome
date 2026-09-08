@@ -108,6 +108,24 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 640px) { .hh-root { padding: 18px 12px 48px; } }
 
+/* Focused responsive behavior for the three core decision surfaces. */
+@media (max-width: 640px) {
+  .hh-modal-backdrop { padding: 0; }
+  .hh-modal { min-height: 100vh; margin: 0; padding: 22px 16px 30px; border-radius: 0; }
+  .hh-find-home-row { flex-direction: column; }
+  .hh-find-home-row > .hh-btn { justify-content: center; min-height: 44px; }
+  .hh-property-facts-grid { grid-template-columns: 1fr 1fr !important; }
+  .hh-home-card-photo { height: 190px !important; }
+  .hh-home-card-body { padding: 17px 16px 18px !important; }
+  .hh-home-card-actions { flex-wrap: wrap !important; row-gap: 9px !important; }
+  .hh-home-card-actions .hh-btn { min-height: 40px; }
+  .hh-priority-row { align-items: flex-start !important; gap: 10px; }
+}
+
+@media (max-width: 380px) {
+  .hh-property-facts-grid { grid-template-columns: 1fr !important; }
+}
+
 /* Saved-homes map. The basemap palette lives in Google Cloud via the Map ID;
    these styles cover only our controls, markers, and resilient fallback UI. */
 .hh-map-layout { display: grid; gap: 20px; }
