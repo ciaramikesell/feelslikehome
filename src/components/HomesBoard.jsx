@@ -161,10 +161,19 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
           {!isPreTour && (
             <span className="hh-mono" style={{ position: 'absolute', top: 10, left: 10, fontSize: 10.5, fontWeight: 700, color: '#fff', background: STATUS_COLOR[home.status] || 'var(--ink-soft)', padding: '4px 9px', borderRadius: 999, boxShadow: '0 2px 8px rgba(46,38,33,0.2)' }}>{home.status}</span>
           )}
-          {home.coBuyerArchivedCount > 0 && (
-            <span style={{ position: 'absolute', top: 10, right: 10, fontSize: 10.5, fontWeight: 600, color: 'var(--ink)', background: 'rgba(255,255,255,0.92)', padding: '4px 9px', borderRadius: 999, boxShadow: '0 2px 8px rgba(46,38,33,0.15)' }}>
-              Archived by Co-Buyer
-            </span>
+          {(home.coBuyerArchivedCount > 0 || home.favoriteLabel) && (
+            <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
+              {home.favoriteLabel && (
+                <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--ink)', background: 'rgba(255,255,255,0.92)', padding: '4px 9px', borderRadius: 999, boxShadow: '0 2px 8px rgba(46,38,33,0.15)' }}>
+                  {home.favoriteLabel}
+                </span>
+              )}
+              {home.coBuyerArchivedCount > 0 && (
+                <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--ink)', background: 'rgba(255,255,255,0.92)', padding: '4px 9px', borderRadius: 999, boxShadow: '0 2px 8px rgba(46,38,33,0.15)' }}>
+                  Archived by Co-Buyer
+                </span>
+              )}
+            </div>
           )}
         </div>
 
@@ -384,6 +393,7 @@ function ArchiveRow({ home, onEdit, onRestore, onRequestDelete }) {
         <div style={{ fontWeight: 500, fontSize: 14 }}>{home.address}</div>
         <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 2 }}>{fmtMoney(home.price)}</div>
         {home.rejectionReason && <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 3, fontStyle: 'italic' }}>Passed because: {home.rejectionReason}</div>}
+        {home.favoriteLabel && <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', marginTop: 5, fontWeight: 600 }}>{home.favoriteLabel}</div>}
       </div>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
         <button
