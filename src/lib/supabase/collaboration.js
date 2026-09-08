@@ -151,6 +151,54 @@ export async function savePriorities(supabase, search, userId, priorities) {
   if (error) throw error;
 }
 
+/* -------------------------- private commute data -------------------------- */
+
+function rowToCommuteDestination(row) {
+  return {
+    id: row.id,
+    label: row.label,
+    address: row.address,
+    maxDriveMinutes: row.max_drive_minutes,
+    latitude: row.latitude == null ? null : Number(row.latitude),
+    longitude: row.longitude == null ? null : Number(row.longitude),
+    coordinateAddressFingerprint: row.coordinate_address_fingerprint,
+    coordinateStatus: row.coordinate_status,
+  };
+}
+
+// RLS additionally enforces user_id = auth.uid(); this explicit filter makes
+// the participant boundary obvious and limits every normal query by design.
+export async function getCommuteDestinations(supabase, searchId, userId) {
+  const { data, error } = await supabase.from('commute_destinations').select('*')
+    .eq('search_id', searchId).eq('user_id', userId).order('created_at');
+  if (error) throw error;
+  return (data || []).map(rowToCommuteDestination);
+}
+
+export async function createCommuteDestination(supabase, searchId, userId, destination) {
+  const { data, error } = await supabase.from('commute_destinations').insert({
+    search_id: searchId, user_id: userId, label: destination.label.trim(),
+    address: destination.address.trim(), max_drive_minutes: destination.maxDriveMinutes,
+  }).select().single();
+  if (error) throw error;
+  return rowToCommuteDestination(data);
+}
+
+export async function updateCommuteDestination(supabase, id, changes) {
+  const row = {};
+  if (changes.label !== undefined) row.label = changes.label.trim();
+  if (changes.address !== undefined) row.address = changes.address.trim();
+  if (changes.maxDriveMinutes !== undefined) row.max_drive_minutes = changes.maxDriveMinutes;
+  const { data, error } = await supabase.from('commute_destinations').update(row).eq('id', id).select().single();
+  if (error) throw error;
+  return rowToCommuteDestination(data);
+}
+
+export async function deleteCommuteDestination(supabase, id) {
+  const { error } = await supabase.from('commute_destinations').delete().eq('id', id);
+  if (error) throw error;
+}
+
 /* -------------------------------- home state -------------------------------- */
 
 // Personal, per-user fields. Everything else on a home (address, price,
@@ -164,7 +212,8 @@ const SHARED_FIELDS = [
   'address', 'crossroads', 'listingUrl', 'photoUrl', 'price', 'estMonthly', 'sqft',
   'beds', 'baths', 'lotSize', 'garageSpaces', 'yearBuilt', 'daysOnMarket',
   'homeLayout', 'homeCondition', 'primaryBedroomLocation', 'secondaryBedroomLocation',
-  'notes', 'pros', 'cons', 'latitude', 'longitude', 'hoaFeeMonthly',
+  'notes', 'pros', 'cons', 'latitude', 'longitude', 'coordinateAddressFingerprint',
+  'coordinateStatus', 'coordinateSource', 'hoaFeeMonthly',
   'propertyTaxAnnual', 'propertyTaxYear', 'basementNotes',
   'schoolsNotes', 'conditionNotes',
 ];
@@ -558,6 +607,9 @@ function rowToHomeWithOwner(row) {
     cons: row.cons || '',
     latitude: row.latitude ?? null,
     longitude: row.longitude ?? null,
+    coordinateAddressFingerprint: row.coordinate_address_fingerprint || null,
+    coordinateStatus: row.coordinate_status || 'unresolved',
+    coordinateSource: row.coordinate_source || null,
     hoaFeeMonthly: row.hoa_fee_monthly ?? null,
     propertyTaxAnnual: row.property_tax_annual ?? null,
     propertyTaxYear: row.property_tax_year ?? null,
@@ -605,6 +657,9 @@ function homeToSharedRow(home, userId, searchId, includeLegacyPersonalFields) {
     cons: home.cons || '',
     latitude: home.latitude ?? null,
     longitude: home.longitude ?? null,
+    coordinate_address_fingerprint: home.coordinateAddressFingerprint || null,
+    coordinate_status: home.coordinateStatus || 'unresolved',
+    coordinate_source: home.coordinateSource || null,
     hoa_fee_monthly: home.hoaFeeMonthly ?? null,
     property_tax_annual: home.propertyTaxAnnual ?? null,
     property_tax_year: home.propertyTaxYear ?? null,

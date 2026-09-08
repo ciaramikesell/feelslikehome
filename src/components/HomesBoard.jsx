@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { MatchSummary, MatchTradeoffs } from '@/components/ui';
 import { useCommuteObserver } from '@/lib/useCommuteObserver';
+import { evaluateCommute } from '@/lib/commute';
 import HomeModal from '@/components/HomeModal';
 import PostTourModal from '@/components/PostTourModal';
 import { STATUS_COLOR, emptyHome, isRentalType, isArchivedStatus } from '@/lib/constants';
@@ -78,9 +79,8 @@ function ArchiveConfirmModal({ home, onCancel, onConfirm }) {
 
 /* --------------------------------- card view --------------------------------- */
 
-function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour, onRemoveFromTour }) {
+function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour, onRemoveFromTour }) {
   const [imgError, setImgError] = useState(false);
-  const match = computeMatch(home, priorities);
   const styleSummary = homeStyleSummary(home);
   const showPhoto = home.photoUrl && !imgError;
   const isFavorite = home.reaction === 'love';
@@ -99,17 +99,9 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
     ? deriveWantToTourState(home.status, home.coBuyerWantsToTour ? ['Want to Tour'] : [])
     : null;
 
-  // Personal commute destinations, tier-ordered (Must Have -> Important ->
-  // Nice to Have), matching every other tiered display in this app. Personal
-  // only for V1 — a co-buyer's own destinations never appear here, since
-  // `priorities` is already the current user's own resolved priorities.
-  const commuteDestinations = useMemo(() => {
-    const tierRank = { must: 0, important: 1, nice: 2, dontcare: 3 };
-    return [...(priorities.location?.commuteDestinations || [])].sort(
-      (a, b) => (tierRank[a.tier] ?? 3) - (tierRank[b.tier] ?? 3)
-    );
-  }, [priorities.location?.commuteDestinations]);
   const { setRef: commuteRef, getState: getCommuteState } = useCommuteObserver(home, commuteDestinations);
+  const commuteEvaluation = evaluateCommute(commuteDestinations, getCommuteState);
+  const match = computeMatch(home, priorities, commuteEvaluation);
 
   // Core property facts — beds/baths/sqft/lot only. Garage is deliberately not
   // repeated here: when it's actually a priority the user selected, it already
@@ -253,10 +245,13 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: '.03em' }}>Commute</div>
                 {shown.map((d) => {
                   const state = getCommuteState(d);
-                  const text = state.status === 'ok' ? `${d.name} · ${state.minutes} min`
-                    : state.status === 'loading' ? `${d.name} · Calculating…`
-                    : state.status === 'unavailable' ? `${d.name} · Not available`
-                    : d.name; // idle — not yet scrolled into view, show just the name
+                  const name = d.label;
+                  const text = state.status === 'ok' ? `${name} · ${state.minutes} min`
+                    : state.status === 'loading' ? `${name} · Calculating…`
+                    : state.status === 'destination_invalid' ? `${name} · Check the address`
+                    : state.status === 'destination_ambiguous' ? `${name} · Add a city or ZIP`
+                    : ['unavailable', 'no_route', 'home_unavailable', 'destination_unavailable'].includes(state.status) ? `${name} · Not available`
+                    : name;
                   return <div key={d.id} style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{text}</div>;
                 })}
                 {overflow > 0 && <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>+{overflow} more</div>}
@@ -370,12 +365,12 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
   );
 }
 
-function CardGrid({ homes, priorities, mode, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour, onRemoveFromTour }) {
+function CardGrid({ homes, priorities, commuteDestinations, mode, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour, onRemoveFromTour }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
       {homes.map((h) => (
         <HomeCard
-          key={h.id} home={h} priorities={priorities} mode={mode} onEdit={onEdit} onArchiveRequest={onArchiveRequest}
+          key={h.id} home={h} priorities={priorities} commuteDestinations={commuteDestinations} mode={mode} onEdit={onEdit} onArchiveRequest={onArchiveRequest}
           onToggleFavorite={onToggleFavorite} onWantToTour={onWantToTour} onOpenPostTour={onOpenPostTour} onRemoveFromTour={onRemoveFromTour}
         />
       ))}
@@ -422,7 +417,7 @@ function ArchiveList({ homes, onEdit, onRestore, onRequestDelete }) {
 
 /* ---------------------------------- board ---------------------------------- */
 
-export default function HomesBoard({ mode, userId, searchId, initialHomes, initialPriorities, sharedFactAwareness }) {
+export default function HomesBoard({ mode, userId, searchId, initialHomes, initialPriorities, initialCommuteDestinations = [], sharedFactAwareness }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [homes, setHomes] = useState(initialHomes);
@@ -690,7 +685,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         )
       ) : (
         <CardGrid
-          homes={filtered} priorities={priorities} mode={mode} onEdit={setModalHome} onArchiveRequest={setArchiveTarget}
+          homes={filtered} priorities={priorities} commuteDestinations={initialCommuteDestinations} mode={mode} onEdit={setModalHome} onArchiveRequest={setArchiveTarget}
           onToggleFavorite={toggleFavorite} onWantToTour={wantToTour} onOpenPostTour={setPostTourTarget} onRemoveFromTour={removeFromTour}
         />
       )}

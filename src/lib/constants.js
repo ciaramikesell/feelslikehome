@@ -296,7 +296,8 @@ export function emptyHome() {
     // latitude/longitude are infrastructure for future location features and are not
     // shown anywhere in the UI. hoaFeeMonthly/propertyTaxAnnual/propertyTaxYear are
     // informational only and never contribute to Match.
-    latitude: null, longitude: null,
+    latitude: null, longitude: null, coordinateAddressFingerprint: null,
+    coordinateStatus: 'unresolved', coordinateSource: null,
     hoaFeeMonthly: null, propertyTaxAnnual: null, propertyTaxYear: null,
     // Property Details free-text — shared, descriptive, user-editable. Distinct
     // from personal preference criteria and from the check-kind Basement criteria

@@ -1,174 +1,127 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { resolveActiveSearch, resolvePriorities } from '@/lib/supabase/collaboration';
-
-// Server-only: GOOGLE_ROUTES_API_KEY never reaches the browser.
-//
-// SECURITY MODEL: the client sends only home IDs and destination IDs — never
-// raw addresses/coordinates as authoritative input. This route resolves both
-// server-side:
-//   - Homes are fetched using the signed-in user's own Supabase session (the
-//     server client reads the request's auth cookies), so RLS's existing
-//     can_access_search/can_access_home policies silently exclude any home
-//     ID the user doesn't actually have access to — a client cannot use this
-//     route to compute a route for an arbitrary home they can't see.
-//   - Destinations are read from the current user's OWN resolved priorities
-//     (resolvePriorities, keyed to auth.getUser()'s id, never a client-
-//     supplied user id) — a client cannot request another user's personal
-//     destination by ID, since only the caller's own destination list is
-//     ever consulted.
-//
-// COMPLIANCE MODEL: this route computes and returns durations; it never
-// writes duration/distance/route content to the database. See the comment
-// on GOOGLE_ROUTES_API_KEY usage below for why.
-//
-// NOT YET IMPLEMENTED (deliberately): capturing/persisting a placeId from
-// the Route Matrix response. I don't have live network access to confirm
-// Compute Route Matrix reliably returns place IDs for address-string
-// waypoints in this exact response shape, and the instruction here is
-// explicit not to add a speculative persistence write without that
-// confirmation. The destination shape already tolerates an optional
-// `placeId` field (see collaboration/CommuteDestinations), so adding this
-// later is a pure addition, not a restructuring.
+import { resolveActiveSearch } from '@/lib/supabase/collaboration';
+import { addressFingerprint, coordinatesAreCurrent } from '@/lib/commute';
 
 const ROUTES_URL = 'https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix';
+const GEOCODING_URL = 'https://maps.googleapis.com/maps/api/geocode/json';
+const MAX_IDS = 25;
 
-function parseDurationSeconds(durationStr) {
-  // Routes API durations are returned as strings like "1234s".
-  if (!durationStr || typeof durationStr !== 'string') return null;
-  const match = durationStr.match(/^(\d+)s$/);
-  return match ? parseInt(match[1], 10) : null;
+function durationSeconds(value) {
+  const match = typeof value === 'string' && value.match(/^(\d+(?:\.\d+)?)s$/);
+  return match ? Number(match[1]) : null;
 }
 
-function waypointForHome(home) {
-  if (home.latitude != null && home.longitude != null) {
-    return { waypoint: { location: { latLng: { latitude: home.latitude, longitude: home.longitude } } } };
+async function geocode(address, apiKey) {
+  try {
+    const response = await fetch(`${GEOCODING_URL}?address=${encodeURIComponent(address)}&key=${encodeURIComponent(apiKey)}`, { cache: 'no-store' });
+    if (!response.ok) return { status: 'unavailable' };
+    const body = await response.json();
+    if (body.status === 'ZERO_RESULTS') return { status: 'invalid' };
+    if (body.status !== 'OK') return { status: 'unavailable' };
+    if (body.results.length !== 1 || body.results[0]?.partial_match) return { status: 'ambiguous' };
+    const location = body.results[0]?.geometry?.location;
+    if (!Number.isFinite(location?.lat) || !Number.isFinite(location?.lng)) return { status: 'unavailable' };
+    return { status: 'resolved', latitude: location.lat, longitude: location.lng };
+  } catch (error) {
+    console.error('Commute geocoding failed', error);
+    return { status: 'unavailable' };
   }
-  return { waypoint: { address: home.address } };
 }
 
-function waypointForDestination(dest) {
-  if (dest.placeId) {
-    return { waypoint: { placeId: dest.placeId } };
+async function resolveCoordinates(supabase, table, record, geocodingKey) {
+  const fingerprint = await addressFingerprint(record.address);
+  if (coordinatesAreCurrent(record, fingerprint)) {
+    return { status: 'resolved', latitude: Number(record.latitude), longitude: Number(record.longitude) };
   }
-  return { waypoint: { address: dest.address } };
+  const result = await geocode(record.address, geocodingKey);
+  const update = {
+    latitude: result.status === 'resolved' ? result.latitude : null,
+    longitude: result.status === 'resolved' ? result.longitude : null,
+    coordinate_address_fingerprint: fingerprint,
+    coordinate_status: result.status,
+    coordinate_source: result.status === 'resolved' ? 'google_geocoding' : null,
+  };
+  // This uses the caller's authenticated Supabase client. Homes remain guarded
+  // by can_access_home; destinations remain guarded by owner-only RLS.
+  const { error } = await supabase.from(table).update(update).eq('id', record.id);
+  if (error) console.error(`Could not save ${table} coordinate provenance`, error);
+  return result;
+}
+
+function unavailableResults(homes, destinations, status = 'unavailable') {
+  return Object.fromEntries(homes.map((home) => [home.id,
+    Object.fromEntries(destinations.map((destination) => [destination.id, { minutes: null, status }]))]));
 }
 
 export async function POST(request) {
   try {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'Sign in required.' }, { status: 401 });
-    }
+    if (!user) return NextResponse.json({ error: 'Sign in required.' }, { status: 401 });
 
-    const apiKey = process.env.GOOGLE_ROUTES_API_KEY;
-    if (!apiKey) {
-      console.error('GOOGLE_ROUTES_API_KEY is not set.');
-      return NextResponse.json({ error: 'Commute calculation is not configured yet.' }, { status: 500 });
-    }
+    const body = await request.json().catch(() => ({}));
+    const homeIds = [...new Set(Array.isArray(body.homeIds) ? body.homeIds.filter((id) => typeof id === 'string') : [])].slice(0, MAX_IDS);
+    const destinationIds = [...new Set(Array.isArray(body.destinationIds) ? body.destinationIds.filter((id) => typeof id === 'string') : [])].slice(0, MAX_IDS);
+    if (!homeIds.length || !destinationIds.length) return NextResponse.json({ results: {} });
 
-    const body = await request.json().catch(() => null);
-    const homeIds = Array.isArray(body?.homeIds) ? body.homeIds.filter((id) => typeof id === 'string') : [];
-    const destinationIds = Array.isArray(body?.destinationIds) ? body.destinationIds.filter((id) => typeof id === 'string') : [];
-    if (!homeIds.length || !destinationIds.length) {
-      return NextResponse.json({ results: {} });
-    }
-
-    // Resolve the CURRENT USER's own active search and destinations — never
-    // client-supplied. A requested destinationId that isn't actually in this
-    // user's own list is simply skipped below, never fetched from anyone else.
     const { search } = await resolveActiveSearch(supabase, user.id);
-    const priorities = await resolvePriorities(supabase, search, user.id);
-    const allDestinations = priorities.location?.commuteDestinations || [];
-    const destinations = allDestinations.filter((d) => destinationIds.includes(d.id));
-    if (!destinations.length) {
-      return NextResponse.json({ results: {} });
+    const [{ data: homes, error: homesError }, { data: destinations, error: destinationsError }] = await Promise.all([
+      supabase.from('homes').select('id,address,latitude,longitude,coordinate_address_fingerprint,coordinate_status')
+        .eq('search_id', search.id).in('id', homeIds),
+      supabase.from('commute_destinations').select('*').eq('search_id', search.id)
+        .eq('user_id', user.id).in('id', destinationIds),
+    ]);
+    if (homesError || destinationsError) throw homesError || destinationsError;
+    if (!homes?.length || !destinations?.length) return NextResponse.json({ results: {} });
+
+    const routesKey = process.env.GOOGLE_ROUTES_API_KEY;
+    const geocodingKey = process.env.GOOGLE_GEOCODING_API_KEY;
+    if (!routesKey || !geocodingKey) {
+      return NextResponse.json({ results: unavailableResults(homes, destinations), providerStatus: 'unavailable' });
     }
 
-    // Homes are fetched through the signed-in user's own Supabase client, so
-    // RLS (can_access_search / can_access_home, already in production) is the
-    // actual authority here — a requested home ID the user can't access
-    // simply won't come back in `data`, regardless of what was requested.
-    const { data: homes, error: homesError } = await supabase
-      .from('homes')
-      .select('id, address, latitude, longitude')
-      .in('id', homeIds);
-    if (homesError) {
-      console.error('Commute: home lookup failed', homesError);
-      return NextResponse.json({ error: 'Could not look up homes.' }, { status: 500 });
-    }
-    if (!homes.length) {
-      return NextResponse.json({ results: {} });
-    }
+    const [homeLocations, destinationLocations] = await Promise.all([
+      Promise.all(homes.map((home) => resolveCoordinates(supabase, 'homes', home, geocodingKey))),
+      Promise.all(destinations.map((destination) => resolveCoordinates(supabase, 'commute_destinations', destination, geocodingKey))),
+    ]);
+    const results = unavailableResults(homes, destinations);
+    homeLocations.forEach((location, homeIndex) => destinationLocations.forEach((destinationLocation, destinationIndex) => {
+      if (location.status !== 'resolved') results[homes[homeIndex].id][destinations[destinationIndex].id].status = `home_${location.status}`;
+      else if (destinationLocation.status !== 'resolved') results[homes[homeIndex].id][destinations[destinationIndex].id].status = `destination_${destinationLocation.status}`;
+    }));
 
-    const origins = homes.map(waypointForHome);
-    const destinationWaypoints = destinations.map(waypointForDestination);
+    const validHomeIndexes = homeLocations.map((x, i) => x.status === 'resolved' ? i : -1).filter((i) => i >= 0);
+    const validDestinationIndexes = destinationLocations.map((x, i) => x.status === 'resolved' ? i : -1).filter((i) => i >= 0);
+    if (!validHomeIndexes.length || !validDestinationIndexes.length) return NextResponse.json({ results });
 
-    // NOTE ON THE REQUEST SHAPE BELOW: based on my best understanding of
-    // Google's documented Compute Route Matrix request/response format — I
-    // have no live network access in this environment to verify this against
-    // a real call. Treat this as the one part of this implementation that
-    // needs confirmation against an actual request before being trusted, and
-    // adjust field names/response parsing here first if the live QA below
-    // shows a mismatch.
-    let matrixRows;
-    try {
-      const res = await fetch(ROUTES_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Goog-Api-Key': apiKey,
-          // Compute Route Matrix requires an explicit field mask; asking only
-          // for what we use keeps the response minimal.
-          'X-Goog-FieldMask': 'originIndex,destinationIndex,duration,condition,status',
-        },
-        body: JSON.stringify({
-          origins,
-          destinations: destinationWaypoints,
-          travelMode: 'DRIVE',
-        }),
-      });
-      if (!res.ok) {
-        console.error('Commute: Routes API request failed', res.status, await res.text().catch(() => ''));
-        matrixRows = [];
-      } else {
-        matrixRows = await res.json();
-      }
-    } catch (err) {
-      console.error('Commute: Routes API request threw', err);
-      matrixRows = [];
-    }
-
-    // results[homeId][destinationId] = { minutes: number|null, status: 'ok'|'unavailable' }
-    const results = {};
-    homes.forEach((h) => { results[h.id] = {}; });
-    // Default every requested pair to unavailable, then fill in whatever the
-    // Routes response actually confirms — a partial/failed response should
-    // never crash the request or silently omit pairs the client is waiting on.
-    homes.forEach((h) => {
-      destinations.forEach((d) => {
-        results[h.id][d.id] = { minutes: null, status: 'unavailable' };
-      });
+    const response = await fetch(ROUTES_URL, {
+      method: 'POST', cache: 'no-store',
+      headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': routesKey, 'X-Goog-FieldMask': 'originIndex,destinationIndex,duration,condition,status' },
+      body: JSON.stringify({
+        origins: validHomeIndexes.map((i) => ({ waypoint: { location: { latLng: { latitude: homeLocations[i].latitude, longitude: homeLocations[i].longitude } } } })),
+        destinations: validDestinationIndexes.map((i) => ({ waypoint: { location: { latLng: { latitude: destinationLocations[i].latitude, longitude: destinationLocations[i].longitude } } } })),
+        travelMode: 'DRIVE', routingPreference: 'TRAFFIC_UNAWARE',
+      }),
     });
-
-    (Array.isArray(matrixRows) ? matrixRows : []).forEach((row) => {
-      const home = homes[row.originIndex];
-      const dest = destinations[row.destinationIndex];
-      if (!home || !dest) return;
-      const seconds = parseDurationSeconds(row.duration);
-      const ok = row.condition === 'ROUTE_EXISTS' && seconds !== null;
-      results[home.id][dest.id] = ok
-        ? { minutes: Math.round(seconds / 60), status: 'ok' }
-        : { minutes: null, status: 'unavailable' };
+    if (!response.ok) {
+      console.error('Google Routes request failed', response.status, await response.text().catch(() => ''));
+      return NextResponse.json({ results, providerStatus: 'unavailable' });
+    }
+    const rows = await response.json();
+    (Array.isArray(rows) ? rows : []).forEach((row) => {
+      const home = homes[validHomeIndexes[row.originIndex]];
+      const destination = destinations[validDestinationIndexes[row.destinationIndex]];
+      if (!home || !destination) return;
+      const seconds = durationSeconds(row.duration);
+      results[home.id][destination.id] = row.condition === 'ROUTE_EXISTS' && seconds !== null
+        ? { status: 'ok', minutes: Math.round(seconds / 60) }
+        : { status: row.condition === 'ROUTE_NOT_FOUND' ? 'no_route' : 'unavailable', minutes: null };
     });
-
-    // Never persisted — this response is the entire lifetime of this data
-    // beyond the caller's own session/runtime memory, per the current
-    // Routes-content caching restriction.
+    // Durations, distances, and route content are returned only; no route cache/table exists.
     return NextResponse.json({ results });
-  } catch (err) {
-    console.error('Commute route failed', err);
-    return NextResponse.json({ error: 'Could not calculate commute times.' }, { status: 500 });
+  } catch (error) {
+    console.error('Commute route failed', error);
+    return NextResponse.json({ error: 'Commute time isn’t available right now.' }, { status: 500 });
   }
 }

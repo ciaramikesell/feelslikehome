@@ -1,102 +1,94 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Plus, MapPin } from 'lucide-react';
-import { TIER_META, SELECTABLE_TIERS } from '@/lib/constants';
+import { MapPin, Pencil, Plus, X } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
+import { createCommuteDestination, deleteCommuteDestination, updateCommuteDestination } from '@/lib/supabase/collaboration';
 
-// Phase 5 — named commute destinations. PERSONAL: each destination lives in
-// the current user's own priorities (priorities.location.commuteDestinations),
-// never a shared household concept. Two co-buyers can each have their own
-// "Work" without any conflict or averaging, exactly per the approved product
-// decision — the house is shared, the destination is not.
-//
-// Deliberately does NOT calculate or display any travel time — no provider
-// has been chosen yet. This is purely the ownership/CRUD/tiering
-// architecture; a future pass wires in real drive-time calculation without
-// needing to change this data shape (just adds a cached result alongside it).
-export default function CommuteDestinations({ priorities, patch }) {
-  const destinations = priorities.location?.commuteDestinations || [];
-  const [adding, setAdding] = useState(false);
-  const [name, setName] = useState('');
-  const [address, setAddress] = useState('');
+const blank = { label: '', address: '', maxDriveMinutes: '' };
 
-  const setDestinations = (next) => patch((p) => {
-    p.location = { ...p.location, commuteDestinations: next };
-    return p;
-  });
+export default function CommuteDestinations({ searchId, userId, destinations, onChange }) {
+  const [draft, setDraft] = useState(blank);
+  const [adding, setAdding] = useState(destinations.length === 0);
+  const [editingId, setEditingId] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
-  const addDestination = () => {
-    const trimmedName = name.trim();
-    const trimmedAddress = address.trim();
-    if (!trimmedName || !trimmedAddress) return;
-    const id = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
-    setDestinations([...destinations, { id, name: trimmedName, address: trimmedAddress, tier: 'important' }]);
-    setName('');
-    setAddress('');
+  const beginEdit = (destination) => {
+    setEditingId(destination.id);
     setAdding(false);
+    setDraft({ label: destination.label, address: destination.address, maxDriveMinutes: destination.maxDriveMinutes ?? '' });
+    setError('');
+  };
+  const cancel = () => { setEditingId(null); setAdding(false); setDraft(blank); setError(''); };
+  const parsedMax = draft.maxDriveMinutes === '' ? null : Number(draft.maxDriveMinutes);
+  const valid = draft.label.trim() && draft.address.trim() && (parsedMax === null || (Number.isInteger(parsedMax) && parsedMax > 0 && parsedMax <= 1440));
+
+  const save = async () => {
+    if (!valid || busy) return;
+    setBusy(true); setError('');
+    try {
+      const supabase = createClient();
+      const values = { label: draft.label, address: draft.address, maxDriveMinutes: parsedMax };
+      const saved = editingId
+        ? await updateCommuteDestination(supabase, editingId, values)
+        : await createCommuteDestination(supabase, searchId, userId, values);
+      onChange(editingId ? destinations.map((d) => d.id === editingId ? saved : d) : [...destinations, saved]);
+      cancel();
+    } catch (e) {
+      console.error('Could not save commute destination', e);
+      setError('We couldn’t save that place. Check the details and try again.');
+    } finally { setBusy(false); }
   };
 
-  const removeDestination = (id) => setDestinations(destinations.filter((d) => d.id !== id));
-  const setTier = (id, tier) => setDestinations(destinations.map((d) => (d.id === id ? { ...d, tier } : d)));
+  const remove = async (destination) => {
+    if (busy) return;
+    setBusy(true); setError('');
+    try {
+      await deleteCommuteDestination(createClient(), destination.id);
+      onChange(destinations.filter((d) => d.id !== destination.id));
+      if (editingId === destination.id) cancel();
+    } catch (e) {
+      console.error('Could not delete commute destination', e);
+      setError('We couldn’t remove that place right now.');
+    } finally { setBusy(false); }
+  };
 
   return (
     <div>
       <div className="hh-serif" style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', marginBottom: 2 }}>Places you travel to often</div>
-      <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '0 0 12px' }}>
-        Work, family, school — anywhere your own commute matters. These are yours alone; your co-buyer keeps their own list.
+      <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '0 0 12px', lineHeight: 1.5 }}>
+        These places are private to you. Add a drive-time limit only when it should affect your single Commute priority.
       </p>
-
-      {destinations.length > 0 && (
-        <div style={{ display: 'grid', gap: 2, marginBottom: 12 }}>
-          {destinations.map((d) => (
-            <div key={d.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--line)', flexWrap: 'wrap' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5, color: 'var(--ink)', minWidth: 0 }}>
-                <MapPin size={13} color="var(--ink-soft)" style={{ flexShrink: 0 }} />
-                <span style={{ fontWeight: 600 }}>{d.name}</span>
-                <span style={{ color: 'var(--ink-soft)', fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.address}</span>
-              </span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                  {SELECTABLE_TIERS.map((t) => (
-                    <button
-                      key={t} type="button" onClick={() => setTier(d.id, t)}
-                      style={{
-                        fontSize: 11, padding: '4px 9px', borderRadius: 999, cursor: 'pointer', fontWeight: d.tier === t ? 600 : 400,
-                        border: '1px solid ' + (d.tier === t ? TIER_META[t].color : 'var(--line)'),
-                        background: d.tier === t ? TIER_META[t].color : 'transparent',
-                        color: d.tier === t ? '#fff' : 'var(--ink-soft)',
-                      }}
-                    >
-                      {TIER_META[t].label}
-                    </button>
-                  ))}
-                </div>
-                <button type="button" onClick={() => removeDestination(d.id)} aria-label={`Remove ${d.name}`} style={{ background: 'none', border: 'none', color: 'var(--ink-soft)', cursor: 'pointer', padding: 4, display: 'flex' }}>
-                  <X size={13} />
-                </button>
+      <div style={{ display: 'grid', gap: 2, marginBottom: 12 }}>
+        {destinations.map((d) => (
+          <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '9px 0', borderBottom: '1px solid var(--line)' }}>
+            <div style={{ display: 'flex', gap: 7, minWidth: 0 }}><MapPin size={14} style={{ marginTop: 2, flexShrink: 0 }} />
+              <div style={{ minWidth: 0 }}><div style={{ fontSize: 13.5, fontWeight: 600 }}>{d.label}</div>
+                <div style={{ fontSize: 12, color: 'var(--ink-soft)', overflowWrap: 'anywhere' }}>{d.address}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', marginTop: 2 }}>{d.maxDriveMinutes ? `Too long after ${d.maxDriveMinutes} minutes` : 'Informational only'}</div>
               </div>
             </div>
-          ))}
+            <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+              <button type="button" aria-label={`Edit ${d.label}`} onClick={() => beginEdit(d)} className="hh-btn hh-btn-ghost" style={{ padding: 5 }}><Pencil size={13} /></button>
+              <button type="button" aria-label={`Remove ${d.label}`} onClick={() => remove(d)} className="hh-btn hh-btn-ghost" style={{ padding: 5 }}><X size={13} /></button>
+            </div>
+          </div>
+        ))}
+      </div>
+      {(editingId !== null || adding || destinations.length === 0) ? (
+        <div style={{ display: 'grid', gap: 8 }}>
+          <input className="hh-input" aria-label="Destination label" placeholder="Name (e.g. Work)" maxLength={80} value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} />
+          <input className="hh-input" aria-label="Destination address" placeholder="123 Main St, Detroit, MI" maxLength={500} value={draft.address} onChange={(e) => setDraft({ ...draft, address: e.target.value })} />
+          <label className="hh-label">How long is too long? <span style={{ fontWeight: 400, textTransform: 'none' }}>(optional)</span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 4 }}><input className="hh-input" type="number" min="1" max="1440" placeholder="30" value={draft.maxDriveMinutes} onChange={(e) => setDraft({ ...draft, maxDriveMinutes: e.target.value })} style={{ width: 100 }} /> minutes</span>
+          </label>
+          <div style={{ display: 'flex', gap: 7 }}><button type="button" className="hh-btn" disabled={!valid || busy} onClick={save}>{busy ? 'Saving…' : editingId ? 'Save changes' : 'Add place'}</button>
+            {(editingId || destinations.length > 0) && <button type="button" className="hh-btn hh-btn-ghost" onClick={cancel}>Cancel</button>}
+          </div>
         </div>
-      )}
-
-      {adding ? (
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          <input className="hh-input" placeholder="Name (e.g. Work)" value={name} onChange={(e) => setName(e.target.value)} style={{ flex: '1 1 120px' }} />
-          <input
-            className="hh-input" placeholder="Address" value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addDestination())}
-            style={{ flex: '2 1 200px' }}
-          />
-          <button type="button" className="hh-btn hh-btn-ghost" onClick={addDestination} disabled={!name.trim() || !address.trim()}>Add</button>
-          <button type="button" className="hh-btn hh-btn-ghost" onClick={() => { setAdding(false); setName(''); setAddress(''); }}>Cancel</button>
-        </div>
-      ) : (
-        <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 12 }} onClick={() => setAdding(true)}>
-          <Plus size={14} /> Add a place
-        </button>
-      )}
+      ) : <button type="button" className="hh-btn hh-btn-ghost" onClick={() => setAdding(true)}><Plus size={14} /> Add a place</button>}
+      {error && <p role="alert" style={{ fontSize: 12, color: 'var(--brick)', marginBottom: 0 }}>{error}</p>}
     </div>
   );
 }

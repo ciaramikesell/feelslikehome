@@ -192,7 +192,7 @@ export function parseListingText(text) {
  * auto-data should feed Match when reliable" case, with no extra question asked.
  * ---------------------------------------------------------------------------------- */
 
-export function computeMatch(home, priorities) {
+export function computeMatch(home, priorities, commuteEvaluation = null) {
   if (!priorities) return null;
   const all = []; // every priority the user actually selected, evaluated or not
   const push = (key, label, tier, evaluated, score, met, detail, objective) => {
@@ -275,6 +275,15 @@ export function computeMatch(home, priorities) {
       const tier = effectiveTier(def.key, item.label, priorities, catState.tiers?.[item.label]);
       if (tier === 'dontcare') return;
       const ns = `${def.key}:${item.label}`;
+
+      // Thresholded destinations replace the old subjective Commute rating with
+      // exactly one objective criterion. The caller supplies runtime-only route
+      // evaluation; missing/unavailable route data remains unknown.
+      if (def.key === 'location' && item.label === 'Commute' && commuteEvaluation) {
+        if (!commuteEvaluation.evaluated) notEvaluated(ns, item.label, tier, true);
+        else push(ns, item.label, tier, true, commuteEvaluation.score, commuteEvaluation.met, commuteEvaluation.detail, true);
+        return;
+      }
 
       if (item.kind === 'rating') {
         const val = home.ratings?.[ns] || 0;
