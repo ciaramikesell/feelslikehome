@@ -88,11 +88,38 @@ function rowSignature(c) {
   return c.met ? 'met' : 'missed';
 }
 
-function HomeHeaderCard({ home, match, isFavorite }) {
+function MatchSummary({ match, emptyCopy }) {
+  if (!match) return <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>{emptyCopy}</div>;
+  if (match.pct === null) return <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>Not enough information yet</div>;
+  return (
+    <div>
+      <span className="hh-mono" style={{ fontSize: 17, fontWeight: 700, color: matchColor(match.pct) }}>{match.pct}% Match</span>
+      {match.evaluatedCount < match.selectedCount && (
+        <div style={{ fontSize: 10.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>Based on {match.evaluatedCount} of {match.selectedCount} priorities evaluated</div>
+      )}
+    </div>
+  );
+}
+
+function Perspective({ label, match, feeling, emptyCopy }) {
+  return (
+    <div style={{ padding: '9px 10px', border: '1px solid var(--line)', borderRadius: 10, background: 'var(--paper-raised)' }}>
+      <div className="hh-label" style={{ fontSize: 10, marginBottom: 4 }}>{label}</div>
+      <MatchSummary match={match} emptyCopy={emptyCopy} />
+      {feeling > 0 ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5 }}>
+          <MiniStars value={feeling} />
+          <span style={{ fontSize: 11, color: 'var(--ink-soft)' }}>Overall feeling</span>
+        </div>
+      ) : <div style={{ fontSize: 11, color: 'var(--ink-soft)', fontStyle: 'italic', marginTop: 5 }}>No overall feeling yet</div>}
+    </div>
+  );
+}
+
+function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective }) {
   const [imgError, setImgError] = useState(false);
   const showPhoto = home.photoUrl && !imgError;
   const overallRating = home.ratings?.[TOUR_RATING_KEY] || 0;
-  const evaluatedNote = match && match.pct !== null && match.evaluatedCount < match.selectedCount;
 
   return (
     <div>
@@ -118,11 +145,16 @@ function HomeHeaderCard({ home, match, isFavorite }) {
           .filter(Boolean).join(' · ') || '—'}
       </div>
 
-      {match ? (
+      {coBuyerPerspective ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+          <Perspective label="You" match={match} feeling={overallRating} emptyCopy="Set priorities in My Search to see Match" />
+          <Perspective label="Co-Buyer" match={coBuyerPerspective.match} feeling={coBuyerPerspective.overallFeeling} emptyCopy="Co-Buyer hasn't set relevant priorities yet" />
+        </div>
+      ) : match ? (
         match.pct !== null ? (
           <div style={{ marginBottom: 4 }}>
             <span className="hh-mono" style={{ fontSize: 17, fontWeight: 700, color: matchColor(match.pct) }}>{match.pct}% Match</span>
-            {evaluatedNote && (
+            {match.evaluatedCount < match.selectedCount && (
               <div style={{ fontSize: 10.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>Based on {match.evaluatedCount} of {match.selectedCount} priorities evaluated</div>
             )}
           </div>
@@ -133,7 +165,7 @@ function HomeHeaderCard({ home, match, isFavorite }) {
         <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', fontStyle: 'italic', marginBottom: 4 }}>Set priorities in My Search to see Match</div>
       )}
 
-      {overallRating > 0 && (
+      {!coBuyerPerspective && overallRating > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <MiniStars value={overallRating} />
           <span style={{ fontSize: 11, color: 'var(--ink-soft)' }}>Your rating</span>
@@ -143,7 +175,7 @@ function HomeHeaderCard({ home, match, isFavorite }) {
   );
 }
 
-export default function CompareBoard({ homes, priorities }) {
+export default function CompareBoard({ homes, priorities, coBuyerPerspectives = {} }) {
   const [selectedIds, setSelectedIds] = useState(() => homes.slice(0, Math.min(2, homes.length)).map((h) => h.id));
   const [diffsOnly, setDiffsOnly] = useState(true);
 
@@ -219,7 +251,7 @@ export default function CompareBoard({ homes, priorities }) {
           <div className="hh-scrollx" style={{ overflowX: 'auto' }}>
             <div style={{ display: 'grid', gridTemplateColumns: `repeat(${selected.length}, minmax(160px, 1fr))`, gap: 16, minWidth: selected.length * 160 }}>
               {selected.map((h, i) => (
-                <HomeHeaderCard key={h.id} home={h} match={matches[i]} isFavorite={h.reaction === 'love'} />
+                <HomeHeaderCard key={h.id} home={h} match={matches[i]} isFavorite={h.reaction === 'love'} coBuyerPerspective={coBuyerPerspectives[h.id]} />
               ))}
             </div>
           </div>
@@ -293,6 +325,27 @@ export default function CompareBoard({ homes, priorities }) {
           )}
 
           {/* Deeper, optional sections */}
+          {selected.some((home) => coBuyerPerspectives[home.id]?.differentTakes?.length > 0) && (
+            <details className="hh-details">
+              <summary>Different takes</summary>
+              <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '8px 0 10px' }}>Only criteria you both evaluated with opposing reactions appear here.</p>
+              <div className="hh-compare-notes">
+                {selected.map((home) => (
+                  <div key={home.id} style={{ border: '1px solid var(--line)', borderRadius: 14, padding: 14, background: 'var(--paper-raised)' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 8 }}>{home.address || 'Untitled'}</div>
+                    {(coBuyerPerspectives[home.id]?.differentTakes || []).map((take) => (
+                      <div key={take.key} style={{ fontSize: 12, color: 'var(--ink)', marginTop: 6 }}>
+                        <strong>{criterionDisplayLabel(take.key.split(':')[0], take.label)}</strong>
+                        <div style={{ color: 'var(--ink-soft)', marginTop: 2 }}>You {take.youLiked ? 'liked it' : "didn't like it"} · Co-Buyer {take.coBuyerLiked ? 'liked it' : "didn't like it"}</div>
+                      </div>
+                    ))}
+                    {!coBuyerPerspectives[home.id]?.differentTakes?.length && <div style={{ fontSize: 12, color: 'var(--ink-soft)', fontStyle: 'italic' }}>No different takes here.</div>}
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
+
           <details className="hh-details">
             <summary>Home facts</summary>
             <div className="hh-scrollx" style={{ overflowX: 'auto', marginTop: 10 }}>

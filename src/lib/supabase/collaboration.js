@@ -105,6 +105,28 @@ export async function resolveSharedFactPriorityAwareness(supabase, search) {
   return deriveSharedFactPriorityAwareness(data || []);
 }
 
+// Compare's only bridge to another participant's protected priorities and
+// evaluation state. The SECURITY DEFINER RPC calculates Match independently
+// in Postgres and projects only sanitized display results; raw priorities,
+// tiers, checks, and ratings never cross into application code.
+export async function resolveCoBuyerComparePerspectives(supabase, search, homeIds) {
+  if (!search || !homeIds.length) return new Map();
+  const { data, error } = await supabase.rpc('resolve_cobuyer_compare_perspectives', {
+    p_search_id: search.id,
+    p_home_ids: homeIds,
+  });
+  if (error) throw error;
+  return new Map((data || []).map((row) => [row.home_id, {
+    match: row.selected_count > 0 ? {
+      pct: row.pct,
+      evaluatedCount: row.evaluated_count,
+      selectedCount: row.selected_count,
+    } : null,
+    overallFeeling: row.overall_feeling || 0,
+    differentTakes: row.different_takes || [],
+  }]));
+}
+
 // Saves priorities for (current search, current user). Once a member-
 // priorities row exists for a user, we keep writing there consistently
 // (never flip back to the legacy column) — this matters even for the owner,
