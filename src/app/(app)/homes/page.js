@@ -3,14 +3,15 @@ import HomesBoard from '@/components/HomesBoard';
 import CoBuyerHomesLine from '@/components/CoBuyerHomesLine';
 import { PageIntro } from '@/components/ui';
 import { normalizePriorities } from '@/lib/constants';
-import { resolveActiveSearch, resolvePriorities, getHomesForUser, getParticipantStatusesForHomes, coBuyerArchivedSignal, getSearchParticipantIds } from '@/lib/supabase/collaboration';
+import { resolveActiveSearch, resolvePriorities, resolveSharedFactPriorityAwareness, getHomesForUser, getParticipantStatusesForHomes, coBuyerArchivedSignal, getSearchParticipantIds } from '@/lib/supabase/collaboration';
 
 export default async function HomesPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { search, isOwner } = await resolveActiveSearch(supabase, user.id);
-  const [priorities, homes, participantIds] = await Promise.all([
+  const [priorities, sharedFactAwareness, homes, participantIds] = await Promise.all([
     resolvePriorities(supabase, search, user.id),
+    resolveSharedFactPriorityAwareness(supabase, search, user.id),
     getHomesForUser(supabase, user.id, search.id),
     getSearchParticipantIds(supabase, search),
   ]);
@@ -29,7 +30,7 @@ export default async function HomesPage() {
     <>
       <PageIntro title="Homes" subtitle="Add homes you're considering and keep everything you know about them in one place." />
       <CoBuyerHomesLine searchId={search.id} userId={user.id} isOwner={isOwner} isCollaborative={isCollaborative} />
-      <HomesBoard mode="homes" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizePriorities(priorities)} />
+      <HomesBoard mode="homes" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizePriorities(priorities)} sharedFactAwareness={sharedFactAwareness} />
     </>
   );
 }

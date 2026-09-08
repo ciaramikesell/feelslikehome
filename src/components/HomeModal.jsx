@@ -31,12 +31,17 @@ function storagePathFromPublicUrl(url) {
 // A single compact fact input. Filled values look settled (solid border, dark
 // text); empty ones look like an understated invitation to add something (dashed
 // border, muted "Add ___" placeholder) — never alarming, never a blank form field.
-function CompactField({ label, value, onChange, isCurrency, placeholder, must }) {
+function CoBuyerRelevance({ show }) {
+  if (!show) return null;
+  return <span style={{ display: 'block', fontSize: 10.5, color: 'var(--ink-soft)', fontWeight: 400, marginTop: 2 }}>Also on your Co-Buyer's list</span>;
+}
+
+function CompactField({ label, value, onChange, isCurrency, placeholder, must, coBuyerOnly }) {
   const filled = !!value;
   const shown = isCurrency ? (filled ? formatCurrencyDisplay(value) : '') : (value || '');
   return (
     <div>
-      <label className="hh-label" style={{ fontSize: 10.5, marginBottom: 3 }}>{label}{must && <span className="hh-must-badge">MUST</span>}</label>
+      <label className="hh-label" style={{ fontSize: 10.5, marginBottom: 3 }}>{label}{must && <span className="hh-must-badge">MUST</span>}<CoBuyerRelevance show={coBuyerOnly} /></label>
       <input
         className="hh-input"
         style={{
@@ -60,7 +65,7 @@ function CompactField({ label, value, onChange, isCurrency, placeholder, must })
 // replacing what used to be nine equally-prominent form boxes. Filled vs. empty
 // fields are visually distinct so it's obvious at a glance what's known vs. what's
 // merely optional to add.
-function PropertyFacts({ form, set, priorities }) {
+function PropertyFacts({ form, set, priorities, sharedFactAwareness }) {
   const [editOpen, setEditOpen] = useState(() => !(form.price || form.beds || form.baths || form.sqft));
   const priceLabel = terminology(priorities.searchType).priceFieldLabel;
 
@@ -71,6 +76,8 @@ function PropertyFacts({ form, set, priorities }) {
     hoaFeeMonthly: form.hoaFeeMonthly, propertyTaxAnnual: form.propertyTaxAnnual, propertyTaxYear: form.propertyTaxYear,
   });
   const hasAnyFacts = !!(facts.priceLine || facts.bedsBathsSqft || facts.secondaryFacts);
+  const relevance = (field) => sharedFactAwareness?.fields?.[field];
+  const showPriorityField = (priorityKey, field) => priorities[priorityKey]?.tier !== 'dontcare' || relevance(field)?.selectedByCoBuyer;
 
   return (
     <div style={{ marginBottom: 16 }}>
@@ -94,28 +101,28 @@ function PropertyFacts({ form, set, priorities }) {
       {(editOpen || !hasAnyFacts) && (
         <div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 10 }}>
-            {priorities.budget?.tier !== 'dontcare' && (
-              <CompactField label={priceLabel} value={form.price} isCurrency onChange={(v) => set('price', v)} placeholder={`Add ${priceLabel.toLowerCase()}`} must={priorities.budget?.tier === 'must'} />
+            {showPriorityField('budget', 'price') && (
+              <CompactField label={priceLabel} value={form.price} isCurrency onChange={(v) => set('price', v)} placeholder={`Add ${priceLabel.toLowerCase()}`} must={priorities.budget?.tier === 'must'} coBuyerOnly={relevance('price')?.coBuyerOnly} />
             )}
             <CompactField label="Est. monthly pmt" value={form.estMonthly} isCurrency onChange={(v) => set('estMonthly', v)} placeholder="Add est. payment" />
-            {priorities.bedsMin?.tier !== 'dontcare' && (
-              <CompactField label="Beds" value={form.beds} onChange={(v) => set('beds', v)} placeholder="Add beds" must={priorities.bedsMin?.tier === 'must'} />
+            {showPriorityField('bedsMin', 'beds') && (
+              <CompactField label="Beds" value={form.beds} onChange={(v) => set('beds', v)} placeholder="Add beds" must={priorities.bedsMin?.tier === 'must'} coBuyerOnly={relevance('beds')?.coBuyerOnly} />
             )}
-            {priorities.bathsMin?.tier !== 'dontcare' && (
-              <CompactField label="Baths" value={form.baths} onChange={(v) => set('baths', v)} placeholder="Add baths" must={priorities.bathsMin?.tier === 'must'} />
+            {showPriorityField('bathsMin', 'baths') && (
+              <CompactField label="Baths" value={form.baths} onChange={(v) => set('baths', v)} placeholder="Add baths" must={priorities.bathsMin?.tier === 'must'} coBuyerOnly={relevance('baths')?.coBuyerOnly} />
             )}
-            {priorities.sqftTarget?.tier !== 'dontcare' && (
-              <CompactField label="Sq ft" value={form.sqft} onChange={(v) => set('sqft', v)} placeholder="Add sq ft" must={priorities.sqftTarget?.tier === 'must'} />
+            {showPriorityField('sqftTarget', 'sqft') && (
+              <CompactField label="Sq ft" value={form.sqft} onChange={(v) => set('sqft', v)} placeholder="Add sq ft" must={priorities.sqftTarget?.tier === 'must'} coBuyerOnly={relevance('sqft')?.coBuyerOnly} />
             )}
-            {priorities.lotSizeTarget?.tier !== 'dontcare' && (
-              <CompactField label="Lot size" value={form.lotSize} onChange={(v) => set('lotSize', v)} placeholder="0.25 acres" must={priorities.lotSizeTarget?.tier === 'must'} />
+            {showPriorityField('lotSizeTarget', 'lotSize') && (
+              <CompactField label="Lot size" value={form.lotSize} onChange={(v) => set('lotSize', v)} placeholder="0.25 acres" must={priorities.lotSizeTarget?.tier === 'must'} coBuyerOnly={relevance('lotSize')?.coBuyerOnly} />
             )}
-            <CompactField label="Garage" value={form.garageSpaces} onChange={(v) => set('garageSpaces', v)} placeholder="Add garage" />
+            <CompactField label="Garage" value={form.garageSpaces} onChange={(v) => set('garageSpaces', v)} placeholder="Add garage" coBuyerOnly={relevance('garageSpaces')?.coBuyerOnly} />
             <CompactField label="Year built" value={form.yearBuilt} onChange={(v) => set('yearBuilt', v)} placeholder="Add year" />
             <CompactField label="Days on mkt" value={form.daysOnMarket} onChange={(v) => set('daysOnMarket', v)} placeholder="Add DOM" />
-            <CompactField label="Basement" value={form.basementNotes} onChange={(v) => set('basementNotes', v)} placeholder="e.g. Finished walkout with bedroom" />
-            <CompactField label="Schools" value={form.schoolsNotes} onChange={(v) => set('schoolsNotes', v)} placeholder="e.g. Defer Elementary 8/10, Pierce Middle" />
-            <CompactField label="Condition notes" value={form.conditionNotes} onChange={(v) => set('conditionNotes', v)} placeholder="e.g. Roof 3 years old" />
+            <CompactField label="Basement" value={form.basementNotes} onChange={(v) => set('basementNotes', v)} placeholder="e.g. Finished walkout with bedroom" coBuyerOnly={relevance('basementNotes')?.coBuyerOnly} />
+            <CompactField label="Schools" value={form.schoolsNotes} onChange={(v) => set('schoolsNotes', v)} placeholder="e.g. Defer Elementary 8/10, Pierce Middle" coBuyerOnly={relevance('schoolsNotes')?.coBuyerOnly} />
+            <CompactField label="Condition notes" value={form.conditionNotes} onChange={(v) => set('conditionNotes', v)} placeholder="e.g. Roof 3 years old" coBuyerOnly={relevance('conditionNotes')?.coBuyerOnly} />
           </div>
           {hasAnyFacts && (
             <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px' }} onClick={() => setEditOpen(false)}>
@@ -128,7 +135,7 @@ function PropertyFacts({ form, set, priorities }) {
   );
 }
 
-export default function HomeModal({ initial, priorities, onSave, onClose, userId, onWantToTour, onArchiveRequest }) {
+export default function HomeModal({ initial, priorities, sharedFactAwareness, onSave, onClose, userId, onWantToTour, onArchiveRequest }) {
   const [form, setForm] = useState(initial);
   const [pasteText, setPasteText] = useState('');
   const [parseMsg, setParseMsg] = useState('');
@@ -387,8 +394,12 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
   // import — never during idle/loading, so idle Add Home shows only the Find bar.
   const showObjectiveGrid = !isNewHome || importPhase === 'empty' || importPhase === 'error' || (importPhase === 'success' && editDetailsOpen);
 
-  const visibleMultiselect = MULTISELECT_CATEGORIES.filter((def) => priorities[def.key]?.tier !== 'dontcare');
-  const visibleSingleselect = SINGLESELECT_CATEGORIES.filter((d) => priorities[d.key]?.tier !== 'dontcare');
+  const relevance = (field) => sharedFactAwareness?.fields?.[field];
+  const visibleMultiselect = MULTISELECT_CATEGORIES.filter((def) => priorities[def.key]?.tier !== 'dontcare' || relevance(def.key)?.selectedByCoBuyer);
+  const visibleSingleselect = SINGLESELECT_CATEGORIES.filter((d) => priorities[d.key]?.tier !== 'dontcare' || relevance(d.key)?.selectedByCoBuyer);
+  const importedCoBuyerFacts = showCompactCard
+    ? Object.entries(importResult.fields || {}).filter(([field, value]) => value && relevance(field)?.coBuyerOnly)
+    : [];
 
   return (
     <div className="hh-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
@@ -499,6 +510,7 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
             {cardFacts.bedsBathsSqft && <div style={{ fontSize: 13.5, color: 'var(--ink)', margin: '2px 0' }}>{cardFacts.bedsBathsSqft}</div>}
             {cardFacts.secondaryFacts && <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 6 }}>{cardFacts.secondaryFacts}</div>}
             {cardFacts.hoaTaxLine && <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 4 }}>{cardFacts.hoaTaxLine}</div>}
+            {importedCoBuyerFacts.length > 0 && <CoBuyerRelevance show />}
             <button type="button" className="hh-btn hh-btn-ghost" style={{ marginTop: 12, fontSize: 12.5, padding: '6px 12px' }} onClick={() => setEditDetailsOpen(true)}>Edit details</button>
           </div>
         )}
@@ -547,7 +559,7 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
               </div>
             )}
 
-            <PropertyFacts form={form} set={set} priorities={priorities} />
+            <PropertyFacts form={form} set={set} priorities={priorities} sharedFactAwareness={sharedFactAwareness} />
           </div>
         )}
 
@@ -689,7 +701,7 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
                 <div style={{ marginBottom: 16 }}>
                   {visibleMultiselect.map((def) => (
                     <div key={def.key} style={{ marginBottom: 16 }}>
-                      <label className="hh-label">{def.title}{priorities[def.key]?.tier === 'must' && <span className="hh-must-badge">MUST</span>}</label>
+                      <label className="hh-label">{def.title}{priorities[def.key]?.tier === 'must' && <span className="hh-must-badge">MUST</span>}<CoBuyerRelevance show={relevance(def.key)?.coBuyerOnly} /></label>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                         {def.options.filter((o) => o !== 'No Preference').map((o) => <span key={o} className={`hh-chip ${form[def.key]?.includes(o) ? 'on' : ''}`} onClick={() => toggleMulti(def.key, o)}>{o}</span>)}
                       </div>
@@ -697,7 +709,7 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
                         <div style={{ marginTop: 12, paddingLeft: 14, borderLeft: '2px solid var(--line)' }}>
                           {visibleSingleselect.map((d) => (
                             <div key={d.key} style={{ marginBottom: 10 }}>
-                              <label className="hh-label">{d.title}{priorities[d.key]?.tier === 'must' && <span className="hh-must-badge">MUST</span>}</label>
+                              <label className="hh-label">{d.title}{priorities[d.key]?.tier === 'must' && <span className="hh-must-badge">MUST</span>}<CoBuyerRelevance show={relevance(d.key)?.coBuyerOnly} /></label>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                                 {d.options.filter((o) => o !== 'No Preference').map((o) => <span key={o} className={`hh-chip ${form[d.key] === o ? 'on' : ''}`} onClick={() => setForm((f) => ({ ...f, [d.key]: f[d.key] === o ? '' : o }))}>{o}</span>)}
                               </div>

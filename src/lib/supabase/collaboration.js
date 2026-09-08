@@ -8,6 +8,7 @@
 // here degrades safely (falls back, never throws the user into a broken state).
 
 import { defaultPriorities } from '@/lib/constants';
+import { deriveSharedFactPriorityAwareness } from '@/lib/sharedFactPriorities';
 
 /* ------------------------------- active search ------------------------------- */
 
@@ -90,6 +91,20 @@ export async function resolvePriorities(supabase, search, userId) {
   if (memberRow) return memberRow.priorities;
   if (search.user_id === userId) return search.priorities;
   return defaultPriorities();
+}
+
+// Resolves the household's Add/Edit Home relevance separately from Match. The
+// returned projection contains no co-buyer tiers, values, notes, or ordering.
+// RLS remains authoritative: only priority rows the current collaboration
+// policies allow this participant to read can contribute.
+export async function resolveSharedFactPriorityAwareness(supabase, search, userId) {
+  const currentUserPriorities = await resolvePriorities(supabase, search, userId);
+  if (!search) return deriveSharedFactPriorityAwareness(currentUserPriorities);
+
+  const participantIds = await getSearchParticipantIds(supabase, search);
+  const coBuyerIds = participantIds.filter((id) => id !== userId);
+  const coBuyerPriorities = await Promise.all(coBuyerIds.map((id) => resolvePriorities(supabase, search, id)));
+  return deriveSharedFactPriorityAwareness(currentUserPriorities, coBuyerPriorities);
 }
 
 // Saves priorities for (current search, current user). Once a member-
