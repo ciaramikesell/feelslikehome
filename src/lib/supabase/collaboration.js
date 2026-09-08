@@ -122,6 +122,18 @@ export async function savePriorities(supabase, search, userId, priorities) {
 // facts, enrichment, Pros/Cons/Notes) stays shared and untouched by any of this.
 const PERSONAL_FIELDS = ['status', 'reaction', 'rejectionReason', 'ratings', 'checks'];
 
+// Everything that belongs to the shared home record. Keeping this list beside
+// the persistence helpers lets callers distinguish a personal-only edit from a
+// real property edit without duplicating storage knowledge in UI components.
+const SHARED_FIELDS = [
+  'address', 'crossroads', 'listingUrl', 'photoUrl', 'price', 'estMonthly', 'sqft',
+  'beds', 'baths', 'lotSize', 'garageSpaces', 'yearBuilt', 'daysOnMarket',
+  'homeLayout', 'homeCondition', 'primaryBedroomLocation', 'secondaryBedroomLocation',
+  'notes', 'pros', 'cons', 'latitude', 'longitude', 'hoaFeeMonthly',
+  'propertyTaxAnnual', 'propertyTaxYear', 'schoolDistrict', 'basementNotes',
+  'schoolsNotes', 'conditionNotes',
+];
+
 function emptyPersonalState() {
   return { status: 'Saved', reaction: null, rejectionReason: '', ratings: {}, checks: {} };
 }
@@ -197,11 +209,46 @@ export async function getHomesForUser(supabase, userId, searchId) {
 // began (the read side in resolvePersonalState already prefers a
 // home_member_state row over the flat columns whenever one exists), but no
 // NEW write ever lands there once a search has a member.
-export async function saveHomePersonalAndShared(supabase, home, userId, searchId) {
+async function isCollaborativeSearch(supabase, searchId) {
   const { count: memberCount, error: memberCountError } = await supabase
     .from('search_members').select('id', { count: 'exact', head: true }).eq('search_id', searchId);
   if (memberCountError) throw memberCountError;
-  const isCollaborative = (memberCount || 0) > 0;
+  return (memberCount || 0) > 0;
+}
+
+function personalStateFromHome(home) {
+  return {
+    status: home.status,
+    reaction: home.reaction,
+    rejectionReason: home.rejectionReason,
+    ratings: home.ratings,
+    checks: home.checks,
+  };
+}
+
+async function upsertPersonalState(supabase, homeId, userId, personal) {
+  const { error } = await supabase.from('home_member_state').upsert({
+    home_id: homeId,
+    user_id: userId,
+    status: personal.status,
+    reaction: personal.reaction,
+    rejection_reason: personal.rejectionReason || '',
+    ratings: personal.ratings || {},
+    checks: personal.checks || {},
+  }, { onConflict: 'home_id,user_id' });
+  if (error) throw error;
+}
+
+// True when an edit changes data owned by the shared homes row. Object/array
+// fields are JSON-compatible, so structural comparison avoids treating a new
+// array reference with identical values as a shared edit.
+export function hasSharedHomeChanges(home, previousHome) {
+  if (!home?.id || !previousHome) return true;
+  return SHARED_FIELDS.some((field) => JSON.stringify(home[field] ?? null) !== JSON.stringify(previousHome[field] ?? null));
+}
+
+export async function saveHomePersonalAndShared(supabase, home, userId, searchId) {
+  const isCollaborative = await isCollaborativeSearch(supabase, searchId);
 
   // IMPORTANT: status/reaction/rejection_reason/ratings/checks on the shared
   // `homes` row represent ONE specific person's legacy personal data (kept
@@ -218,23 +265,29 @@ export async function saveHomePersonalAndShared(supabase, home, userId, searchId
 
   const savedHome = rowToHomeWithOwner(savedShared);
 
-  const personal = {
-    status: home.status, reaction: home.reaction, rejectionReason: home.rejectionReason,
-    ratings: home.ratings, checks: home.checks,
-  };
+  const personal = personalStateFromHome(home);
 
   if (!isLegacyOwnerSave) {
-    const { error } = await supabase.from('home_member_state').upsert({
-      home_id: savedHome.id, user_id: userId,
-      status: personal.status, reaction: personal.reaction, rejection_reason: personal.rejectionReason || '',
-      ratings: personal.ratings || {}, checks: personal.checks || {},
-    }, { onConflict: 'home_id,user_id' });
-    if (error) throw error;
+    await upsertPersonalState(supabase, savedHome.id, userId, personal);
   }
   // Non-collaborative path: status/reaction/ratings/checks were already
   // written as part of the shared-row upsert above — nothing further to do.
 
   return { ...savedHome, ...personal };
+}
+
+// Personal lifecycle/evaluation actions take this path. Once a search is
+// collaborative, they touch only the authenticated participant's state row —
+// never the shared homes row. A genuinely single-user search retains the flat
+// homes-column behavior for backward compatibility.
+export async function saveHomePersonalState(supabase, home, userId, searchId) {
+  const isCollaborative = await isCollaborativeSearch(supabase, searchId);
+  if (!isCollaborative) return saveHomePersonalAndShared(supabase, home, userId, searchId);
+  if (!home.id) throw new Error('Cannot save personal state for a home without an id.');
+
+  const personal = personalStateFromHome(home);
+  await upsertPersonalState(supabase, home.id, userId, personal);
+  return { ...home, ...personal };
 }
 
 /* -------------------------------- archive -------------------------------- */

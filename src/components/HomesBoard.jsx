@@ -17,7 +17,9 @@ import { parseNum, fmtMoney, trueCheckLabels, homeStyleSummary, computeMatch, ma
 import { formatLotSizeDisplay, splitAddressLines, parseCommaList } from '@/lib/homeDisplay';
 import { createClient } from '@/lib/supabase/client';
 import { deleteHome as deleteHomeQuery } from '@/lib/supabase/data';
-import { deriveWantToTourState, saveHomePersonalAndShared } from '@/lib/supabase/collaboration';
+import {
+  deriveWantToTourState, hasSharedHomeChanges, saveHomePersonalAndShared, saveHomePersonalState,
+} from '@/lib/supabase/collaboration';
 
 /* -------------------------------- confirm modal -------------------------------- */
 
@@ -434,11 +436,13 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     }
   }, [mode, searchParams, router]);
 
-  const saveHome = useCallback(async (home) => {
+  const saveHome = useCallback(async (home, { shared = true } = {}) => {
     const supabase = createClient();
     let saved;
     try {
-      saved = await saveHomePersonalAndShared(supabase, home, userId, searchId);
+      saved = await (shared
+        ? saveHomePersonalAndShared(supabase, home, userId, searchId)
+        : saveHomePersonalState(supabase, home, userId, searchId));
     } catch (err) {
       // Previously uncaught: any Supabase error here (a missing column from a
       // migration that hasn't been applied yet, a network hiccup, etc.) threw
@@ -462,24 +466,31 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     router.refresh();
   }, [userId, searchId, router]);
 
+  const saveEditedHome = useCallback((home) => {
+    const shared = !home.id || hasSharedHomeChanges(home, modalHome);
+    return saveHome(home, { shared });
+  }, [modalHome, saveHome]);
+
   const toggleFavorite = useCallback((home) => {
     const next = { ...home, reaction: home.reaction === 'love' ? null : 'love' };
     setHomes((prev) => prev.map((h) => (h.id === home.id ? next : h)));
     const supabase = createClient();
-    saveHomePersonalAndShared(supabase, next, userId, searchId).then(() => router.refresh()).catch(() => {});
+    saveHomePersonalState(supabase, next, userId, searchId).then(() => router.refresh()).catch(() => {});
   }, [userId, searchId, router]);
 
   // "This one is worth seeing." One tap, no modal, no confirmation — reuses the
   // existing status field, just moving it to a value it already supports.
   const wantToTour = useCallback((home) => {
-    saveHome({ ...home, status: 'Want to Tour' });
-  }, [saveHome]);
+    const next = { ...home, status: 'Want to Tour' };
+    const savedVersion = homes.find((candidate) => candidate.id === home.id);
+    saveHome(next, { shared: hasSharedHomeChanges(next, savedVersion) });
+  }, [homes, saveHome]);
 
   // "I'm still considering this home, but not on my tour list." Reverses Want to
   // Tour back to the normal active status — not Archive, not deletion, no
   // confirmation, and every other field (ratings, notes, Match inputs) untouched.
   const removeFromTour = useCallback((home) => {
-    saveHome({ ...home, status: 'Saved' });
+    saveHome({ ...home, status: 'Saved' }, { shared: false });
   }, [saveHome]);
 
   // What the post-tour verdict means, conceptually:
@@ -496,14 +507,17 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
       return;
     }
     setPostTourTarget(null);
-    saveHome({ ...home, ...patch, status: 'Toured', reaction: verdict === 'love' ? 'love' : home.reaction });
+    const next = { ...home, ...patch, status: 'Toured', reaction: verdict === 'love' ? 'love' : home.reaction };
+    saveHome(next, { shared: hasSharedHomeChanges(next, home) });
   }, [saveHome]);
 
   const confirmArchive = useCallback((reason) => {
     if (!archiveTarget) return;
-    saveHome({ ...archiveTarget, status: 'Archived', rejectionReason: reason });
+    const next = { ...archiveTarget, status: 'Archived', rejectionReason: reason };
+    const savedVersion = homes.find((home) => home.id === archiveTarget.id);
+    saveHome(next, { shared: hasSharedHomeChanges(next, savedVersion) });
     setArchiveTarget(null);
-  }, [archiveTarget, saveHome]);
+  }, [archiveTarget, homes, saveHome]);
 
   // Restoring should return the home to where it actually was, not always the very
   // beginning. All star ratings are exclusively captured post-tour (pre-tour "Add
@@ -513,7 +527,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   // asking the user to "Want to tour" it again.
   const restoreHome = useCallback((home) => {
     const wasToured = Object.values(home.ratings || {}).some((v) => v > 0);
-    saveHome({ ...home, status: wasToured ? 'Toured' : 'Saved', rejectionReason: '' });
+    saveHome({ ...home, status: wasToured ? 'Toured' : 'Saved', rejectionReason: '' }, { shared: false });
   }, [saveHome]);
 
   const confirmDelete = useCallback(async () => {
@@ -588,7 +602,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     return (
       <>
         <ArchiveList homes={archivedHomes} onEdit={setModalHome} onRestore={restoreHome} onRequestDelete={setDeleteTarget} />
-        {modalHome && <HomeModal initial={modalHome} priorities={priorities} userId={userId} onSave={saveHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget} />}
+        {modalHome && <HomeModal initial={modalHome} priorities={priorities} userId={userId} onSave={saveEditedHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget} />}
         {deleteTarget && (
           <ConfirmModal
             title="Delete this home permanently?"
@@ -672,7 +686,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         />
       )}
 
-      {modalHome && <HomeModal initial={modalHome} priorities={priorities} userId={userId} onSave={saveHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget} />}
+      {modalHome && <HomeModal initial={modalHome} priorities={priorities} userId={userId} onSave={saveEditedHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget} />}
 
       {postTourTarget && (
         <PostTourModal
