@@ -218,7 +218,7 @@ function BasicsCard({ p, patch }) {
 // category sit together, not scattered one category-card at a time. Category
 // organization remains available, but only inside Edit (below), where it helps
 // with DISCOVERING new criteria rather than reviewing what's already chosen.
-function WhatMattersCard({ categories, priorities, patch }) {
+function WhatMattersCard({ categories, priorities, patch, searchId, userId, commuteDestinations, setCommuteDestinations }) {
   const [editOpen, setEditOpen] = useState(false);
 
   const pooled = categories.flatMap((def) =>
@@ -260,11 +260,11 @@ function WhatMattersCard({ categories, priorities, patch }) {
           ) : (
             <div style={{ fontSize: 13, color: 'var(--ink-soft)', fontStyle: 'italic' }}>Nothing selected yet — add what matters to you anytime.</div>
           )}
-          {(priorities.location?.commuteDestinations || []).length > 0 && (
+          {commuteDestinations.length > 0 && (
             <div style={{ marginTop: hasAny ? 18 : 12, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
               <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 6 }}>Places you travel to</div>
               <div style={{ fontSize: 13, color: 'var(--ink)' }}>
-                {priorities.location.commuteDestinations.map((d) => d.name).join(', ')}
+                {commuteDestinations.map((d) => d.label).join(', ')}
               </div>
             </div>
           )}
@@ -279,7 +279,7 @@ function WhatMattersCard({ categories, priorities, patch }) {
           </div>
           <PriorityBoard priorities={priorities} patch={patch} />
           <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--line)' }}>
-            <CommuteDestinations priorities={priorities} patch={patch} />
+            <CommuteDestinations searchId={searchId} userId={userId} destinations={commuteDestinations} onChange={setCommuteDestinations} />
           </div>
           <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px', marginTop: 16 }} onClick={() => setEditOpen(false)}>
             Done
@@ -290,8 +290,9 @@ function WhatMattersCard({ categories, priorities, patch }) {
   );
 }
 
-export default function MySearchPanel({ search, userId, isOwner, participantCount, memberUserId, initialPriorities }) {
+export default function MySearchPanel({ search, userId, isOwner, participantCount, memberUserId, initialPriorities, initialCommuteDestinations }) {
   const [priorities, setPriorities] = useState(() => normalizePriorities(initialPriorities));
+  const [commuteDestinations, setCommuteDestinations] = useState(initialCommuteDestinations || []);
 
   const patch = (updater) => {
     setPriorities((prev) => {
@@ -313,7 +314,7 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
 
       <BasicsCard p={p} patch={patch} />
 
-      <WhatMattersCard categories={categories} priorities={p} patch={patch} />
+      <WhatMattersCard categories={categories} priorities={p} patch={patch} searchId={search.id} userId={userId} commuteDestinations={commuteDestinations} setCommuteDestinations={setCommuteDestinations} />
 
       <CoBuyerManagement
         userId={userId}

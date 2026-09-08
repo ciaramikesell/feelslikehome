@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "test": "node --test test/*.test.js",
     "start": "next start"
   },
   "dependencies": {

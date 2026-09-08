@@ -15,9 +15,9 @@ let batchTimer = null;
 const batchListeners = new Set(); // callbacks to notify when a batch resolves
 
 function locationIdentity(home) {
-  return home.latitude != null && home.longitude != null
-    ? `${home.latitude},${home.longitude}`
-    : home.address || '';
+  // Address is authoritative. Server-side provenance decides whether stored
+  // coordinates may be reused; an address edit therefore always gets a new key.
+  return home.address || '';
 }
 
 function cacheKey(home, destination) {
@@ -47,8 +47,8 @@ async function flushBatch() {
     for (const [pairKey, meta] of batch.keyToPair.entries()) {
       const { home, destination } = meta;
       const homeResult = results[home.id]?.[destination.id];
-      resultCache.set(pairKey, homeResult && homeResult.status === 'ok'
-        ? { minutes: homeResult.minutes, status: 'ok' }
+      resultCache.set(pairKey, homeResult
+        ? { minutes: homeResult.status === 'ok' ? homeResult.minutes : null, status: homeResult.status || 'unavailable' }
         : { minutes: null, status: 'unavailable' });
       inFlightKeys.delete(pairKey);
     }
@@ -98,7 +98,7 @@ export function useCommuteObserver(home, destinations) {
   const elRef = useRef(null);
   const [, forceUpdate] = useState(0);
 
-  const destinationsKey = destinations.map((d) => `${d.id}:${d.address || ''}`).join('|');
+  const destinationsKey = destinations.map((d) => `${d.id}:${d.address || ''}:${d.maxDriveMinutes ?? ''}`).join('|');
   const stableDestinations = useMemo(
     () => destinations,
     // eslint-disable-next-line react-hooks/exhaustive-deps
