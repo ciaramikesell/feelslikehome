@@ -134,3 +134,30 @@ export function useCommuteObserver(home, destinations) {
 
   return { setRef, getState };
 }
+
+// Compare is already an intentional, fully-visible view of every selected home, so it
+// does not need one IntersectionObserver per card. It still goes through the exact same
+// scheduler, in-flight deduplication, session cache, and API batch as the home cards.
+export function useCommuteMatrix(homes, destinations) {
+  const [, forceUpdate] = useState(0);
+  const homesKey = homes.map((h) => `${h.id}:${locationIdentity(h)}`).join('|');
+  const destinationsKey = destinations.map((d) => `${d.id}:${d.address || ''}:${d.maxDriveMinutes ?? ''}`).join('|');
+
+  useEffect(() => {
+    const listener = () => forceUpdate((n) => n + 1);
+    batchListeners.add(listener);
+    homes.forEach((home) => scheduleCalculation(home, destinations));
+    // Scheduling changes idle states to loading before the batch completes.
+    forceUpdate((n) => n + 1);
+    return () => batchListeners.delete(listener);
+    // Stable primitive keys prevent selection-array identity from rescheduling work.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [homesKey, destinationsKey]);
+
+  return useCallback((home, destination) => {
+    const key = cacheKey(home, destination);
+    if (resultCache.has(key)) return resultCache.get(key);
+    if (inFlightKeys.has(key)) return { minutes: null, status: 'loading' };
+    return { minutes: null, status: 'idle' };
+  }, [homesKey, destinationsKey]);
+}

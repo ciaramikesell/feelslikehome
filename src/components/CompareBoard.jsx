@@ -5,6 +5,8 @@ import { Columns, Star, Heart, Home as HomeIcon } from 'lucide-react';
 import { TOUR_RATING_KEY, criterionDisplayLabel } from '@/lib/constants';
 import { parseNum, computeMatch, matchColor } from '@/lib/matching';
 import { formatLotSizeDisplay, formatCurrencyDisplay, parseCommaList } from '@/lib/homeDisplay';
+import { useCommuteMatrix } from '@/lib/useCommuteObserver';
+import { commuteResultSignature, evaluateCommute, uniqueShortestIndex } from '@/lib/commute';
 
 const MAX_COMPARE = 4;
 
@@ -173,7 +175,56 @@ function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective }) {
   );
 }
 
-export default function CompareBoard({ homes, priorities, coBuyerPerspectives = {} }) {
+function CommuteValue({ result, destination, emphasized }) {
+  const known = result?.status === 'ok' && Number.isFinite(result.minutes);
+  const overBy = known && destination.maxDriveMinutes != null
+    ? result.minutes - destination.maxDriveMinutes : 0;
+  const text = known ? `${result.minutes} min`
+    : (!result || result.status === 'idle' || result.status === 'loading') ? 'Calculating…' : 'Not available';
+  return (
+    <div className="hh-commute-value" style={{ color: emphasized ? 'var(--moss)' : 'var(--ink)', fontWeight: emphasized ? 700 : 500 }}>
+      <div className="hh-mono">{text}</div>
+      {overBy > 0 && <div style={{ color: 'var(--brick)', fontSize: 11, fontWeight: 600, marginTop: 2 }}>Over by {overBy} min</div>}
+    </div>
+  );
+}
+
+function CommuteSection({ homes, destinations, diffsOnly, getResult }) {
+  const rows = destinations.map((destination) => {
+    const results = homes.map((home) => getResult(home, destination));
+    return { destination, results, shortest: uniqueShortestIndex(results) };
+  }).filter(({ results }) => !diffsOnly || new Set(results.map(commuteResultSignature)).size > 1);
+
+  if (!rows.length) return null;
+  return (
+    <section className="hh-commute-section">
+      <h3 className="hh-serif" style={{ fontSize: 16, fontWeight: 600, marginBottom: 4, color: 'var(--ink)' }}>Commute</h3>
+      <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '0 0 10px' }}>Your drive times from each home.</p>
+      <div className="hh-commute-desktop hh-scrollx">
+        <div style={{ display: 'grid', gridTemplateColumns: `200px repeat(${homes.length}, minmax(120px, 1fr))`, minWidth: 200 + homes.length * 120 }}>
+          <div />
+          {homes.map((home) => <div key={home.id} className="hh-commute-heading">{home.address || 'Untitled'}</div>)}
+          {rows.map(({ destination, results, shortest }) => (
+            <Fragment key={destination.id}>
+              <div className="hh-commute-label"><strong>{destination.label}</strong>{destination.maxDriveMinutes != null && <span>{destination.maxDriveMinutes} min max</span>}</div>
+              {results.map((result, index) => <CommuteValue key={homes[index].id} result={result} destination={destination} emphasized={index === shortest} />)}
+            </Fragment>
+          ))}
+        </div>
+      </div>
+      <div className="hh-commute-mobile">
+        {rows.map(({ destination, results, shortest }) => (
+          <div key={destination.id} className="hh-commute-mobile-group">
+            <div className="hh-commute-label"><strong>{destination.label}</strong>{destination.maxDriveMinutes != null && <span>{destination.maxDriveMinutes} min max</span>}</div>
+            {homes.map((home, index) => <div key={home.id} className="hh-commute-mobile-row"><span>{home.address || 'Untitled'}</span><CommuteValue result={results[index]} destination={destination} emphasized={index === shortest} /></div>)}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export default function CompareBoard({ homes, priorities, coBuyerPerspectives = {}, commuteDestinations = [] }) {
   const [selectedIds, setSelectedIds] = useState(() => homes.slice(0, Math.min(2, homes.length)).map((h) => h.id));
   const [diffsOnly, setDiffsOnly] = useState(true);
 
@@ -184,7 +235,12 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
   });
 
   const selected = useMemo(() => selectedIds.map((id) => homes.find((h) => h.id === id)).filter(Boolean), [selectedIds, homes]);
-  const matches = useMemo(() => selected.map((h) => computeMatch(h, priorities)), [selected, priorities]);
+  const getCommuteResult = useCommuteMatrix(selected, commuteDestinations);
+  const matches = selected.map((home) => computeMatch(
+    home,
+    priorities,
+    evaluateCommute(commuteDestinations, (destination) => getCommuteResult(home, destination))
+  ));
 
   // One row per label the user selected as a priority, aligned across homes by label
   // (a priority either exists for every home's computeMatch result or none, since it's
@@ -254,7 +310,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
             </div>
           </div>
 
-          {(mustRows.length > 0 || otherRows.length > 0) && (
+          {(mustRows.length > 0 || otherRows.length > 0 || commuteDestinations.length > 0) && (
             <div>
               <button
                 type="button"
@@ -266,6 +322,8 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
               </button>
             </div>
           )}
+
+          {commuteDestinations.length > 0 && <CommuteSection homes={selected} destinations={commuteDestinations} diffsOnly={diffsOnly} getResult={getCommuteResult} />}
 
           {/* Must-Haves */}
           {mustRows.length > 0 && (

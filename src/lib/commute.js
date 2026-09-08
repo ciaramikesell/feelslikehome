@@ -29,3 +29,20 @@ export function evaluateCommute(destinations, getResult) {
     ? { evaluated: true, met: false, score: 0, detail: `${failures[0].destination.label} is ${failures[0].result.minutes} min (limit ${failures[0].destination.maxDriveMinutes})` }
     : { evaluated: true, met: true, score: 1, detail: `All ${required.length} required commute${required.length === 1 ? '' : 's'} meet the limit` };
 }
+
+// Compare treats calm transient states alike, and all unavailable provider/address
+// outcomes alike, because those are the meaningful results presented to a participant.
+export function commuteResultSignature(result) {
+  if (result?.status === 'ok' && Number.isFinite(result.minutes)) return `ok:${result.minutes}`;
+  if (!result || result.status === 'idle' || result.status === 'loading') return 'calculating';
+  return 'unavailable';
+}
+
+export function uniqueShortestIndex(results) {
+  const known = results.map((result, index) => ({ result, index }))
+    .filter(({ result }) => result?.status === 'ok' && Number.isFinite(result.minutes));
+  if (!known.length) return -1;
+  const shortest = Math.min(...known.map(({ result }) => result.minutes));
+  const matches = known.filter(({ result }) => result.minutes === shortest);
+  return matches.length === 1 ? matches[0].index : -1;
+}
