@@ -191,39 +191,6 @@ export async function getHomesForUser(supabase, userId, searchId) {
   return homes.map((home) => ({ ...home, ...resolvePersonalState(home, stateByHomeId.get(home.id), userId) }));
 }
 
-// Read-only Compare projection for the other participant. Deliberately returns
-// only the personal decision fields Compare can use and strips user IDs before
-// data crosses into the client. Co-Buyer priorities are not included: their
-// existing RLS policy is own-row-only, so deriving their Match here would either
-// violate that boundary or risk using the owner's stale legacy priorities.
-export async function getCoBuyerComparePerspectives(supabase, search, homes, currentUserId) {
-  const participantIds = await getSearchParticipantIds(supabase, search);
-  const coBuyerId = participantIds.find((id) => id !== currentUserId);
-  if (!coBuyerId) return { isCollaborative: false, byHomeId: {} };
-
-  const homeIds = homes.map((home) => home.id);
-  let stateRows = [];
-  if (homeIds.length) {
-    const { data, error } = await supabase
-      .from('home_member_state')
-      .select('home_id, ratings')
-      .eq('user_id', coBuyerId)
-      .in('home_id', homeIds);
-    if (error) throw error;
-    stateRows = data || [];
-  }
-
-  const stateByHomeId = new Map(stateRows.map((row) => [row.home_id, row]));
-  const byHomeId = {};
-  homes.forEach((home) => {
-    const state = resolvePersonalState(home, stateByHomeId.get(home.id), coBuyerId);
-    byHomeId[home.id] = {
-      ratings: state.ratings || {},
-    };
-  });
-  return { isCollaborative: true, byHomeId };
-}
-
 // Saves personal fields to home_member_state (or the legacy homes columns for
 // a genuinely non-collaborative search), and shared/objective fields to homes
 // directly — in one call, so callers never need to know which field lives in
