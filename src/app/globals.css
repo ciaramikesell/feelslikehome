@@ -92,7 +92,28 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-priority-row.dragging .hh-drag-handle { color: var(--brick); transform: scale(1.15); }
 .hh-compare-notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
 .hh-perspective-stack { display: flex; flex-direction: column; gap: 9px; padding-left: 9px; border-left: 2px solid var(--line); }
+.hh-commute-desktop { overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: var(--paper-raised); }
+.hh-commute-grid { display: grid; }
+.hh-commute-home-heading { padding: 7px 12px; font-size: 12px; font-weight: 600; color: var(--ink-soft); border-bottom: 1px solid var(--ink); }
+.hh-commute-destination, .hh-commute-cell { padding: 11px 12px; border-bottom: 1px solid var(--line); }
+.hh-commute-destination { display: flex; flex-direction: column; justify-content: center; gap: 2px; font-size: 13px; }
+.hh-commute-destination span { font-size: 11px; color: var(--ink-soft); font-weight: 500; }
+.hh-commute-cell { display: flex; align-items: center; }
+.hh-commute-value { display: flex; flex-direction: column; gap: 2px; font-size: 12.5px; }
+.hh-commute-over { color: var(--brick); font-size: 10.5px; font-weight: 600; }
+.hh-commute-unknown { color: var(--ink-soft); font-size: 12px; font-style: italic; }
+.hh-commute-mobile { display: none; }
 @media (max-width: 640px) { .hh-compare-notes { grid-template-columns: 1fr; } }
+@media (max-width: 640px) {
+  .hh-commute-desktop { display: none; }
+  .hh-commute-mobile { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--paper-raised); }
+  .hh-commute-mobile-group { padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  .hh-commute-mobile-group:last-child { border-bottom: none; }
+  .hh-commute-mobile-group > .hh-commute-destination { padding: 0 0 7px; border-bottom: 1px solid var(--line); }
+  .hh-commute-mobile-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; padding: 8px 0 0; font-size: 12px; color: var(--ink-soft); }
+  .hh-commute-mobile-row > span:first-child { min-width: 0; }
+  .hh-commute-mobile-row .hh-commute-value { align-items: flex-end; flex-shrink: 0; }
+}
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (max-width: 640px) { .hh-root { padding: 18px 12px 48px; } }
 

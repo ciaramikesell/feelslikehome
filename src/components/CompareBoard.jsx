@@ -5,6 +5,7 @@ import { Columns, Star, Heart, Home as HomeIcon } from 'lucide-react';
 import { TOUR_RATING_KEY, criterionDisplayLabel } from '@/lib/constants';
 import { parseNum, computeMatch, matchColor } from '@/lib/matching';
 import { formatLotSizeDisplay, formatCurrencyDisplay, parseCommaList } from '@/lib/homeDisplay';
+import { useCommuteMatrix } from '@/lib/useCommuteObserver';
 
 const MAX_COMPARE = 4;
 
@@ -47,6 +48,87 @@ function bestIndex(values, betterHigh) {
   const winners = nums.filter((v) => v === best).length;
   if (winners !== 1) return -1; // no lone winner — don't highlight a tie
   return nums.indexOf(best);
+}
+
+function destinationMaximum(destination) {
+  const value = destination.maximum_minutes ?? destination.maximumMinutes;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function CommuteValue({ state, maximum, isShortest }) {
+  if (state.status !== 'ok') {
+    return <span className="hh-commute-unknown">{state.status === 'loading' || state.status === 'idle' ? 'Calculating…' : 'Not available'}</span>;
+  }
+  const overBy = maximum !== null && state.minutes > maximum ? state.minutes - maximum : null;
+  return (
+    <div className="hh-commute-value">
+      <span className="hh-mono" style={{ color: overBy ? 'var(--brick)' : isShortest ? 'var(--moss)' : 'var(--ink)', fontWeight: overBy || isShortest ? 700 : 600 }}>
+        {state.minutes} min
+      </span>
+      {overBy !== null && <span className="hh-commute-over">Over by {overBy} min</span>}
+    </div>
+  );
+}
+
+function CommuteComparison({ homes, destinations, diffsOnly }) {
+  const getState = useCommuteMatrix(homes, destinations);
+  const rows = destinations.map((destination) => {
+    const states = homes.map((home) => getState(home, destination));
+    const knownMinutes = states.filter((state) => state.status === 'ok').map((state) => state.minutes);
+    const shortest = knownMinutes.length ? Math.min(...knownMinutes) : null;
+    const uniqueShortest = shortest !== null && knownMinutes.filter((minutes) => minutes === shortest).length === 1 ? shortest : null;
+    const signatures = states.map((state) => state.status === 'ok' ? `known:${state.minutes}` : state.status);
+    const differs = states.some((state) => state.status === 'loading' || state.status === 'idle')
+      || new Set(signatures).size > 1;
+    return { destination, states, uniqueShortest, differs };
+  });
+  const visibleRows = diffsOnly ? rows.filter((row) => row.differs) : rows;
+
+  if (!visibleRows.length) return null;
+  return (
+    <section className="hh-commute-compare" aria-labelledby="commute-heading">
+      <h3 id="commute-heading" className="hh-serif" style={{ fontSize: 16, fontWeight: 600, margin: '0 0 4px', color: 'var(--ink)' }}>Commute</h3>
+      <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '0 0 10px' }}>Your drive times from each home.</p>
+
+      <div className="hh-commute-desktop">
+        <div className="hh-commute-grid" style={{ gridTemplateColumns: `200px repeat(${homes.length}, minmax(120px, 1fr))`, minWidth: 200 + homes.length * 120 }}>
+          <div />
+          {homes.map((home) => <div key={home.id} className="hh-commute-home-heading">{home.address || 'Untitled'}</div>)}
+          {visibleRows.map(({ destination, states, uniqueShortest }) => {
+            const maximum = destinationMaximum(destination);
+            return (
+              <Fragment key={destination.id}>
+                <div className="hh-commute-destination"><strong>{destination.name}</strong>{maximum !== null && <span>{maximum} min max</span>}</div>
+                {states.map((state, index) => (
+                  <div key={`${destination.id}-${homes[index].id}`} className="hh-commute-cell">
+                    <CommuteValue state={state} maximum={maximum} isShortest={state.status === 'ok' && state.minutes === uniqueShortest} />
+                  </div>
+                ))}
+              </Fragment>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="hh-commute-mobile">
+        {visibleRows.map(({ destination, states, uniqueShortest }) => {
+          const maximum = destinationMaximum(destination);
+          return (
+            <div key={destination.id} className="hh-commute-mobile-group">
+              <div className="hh-commute-destination"><strong>{destination.name}</strong>{maximum !== null && <span>{maximum} min max</span>}</div>
+              {homes.map((home, index) => (
+                <div key={home.id} className="hh-commute-mobile-row">
+                  <span>{home.address || 'Untitled'}</span>
+                  <CommuteValue state={states[index]} maximum={maximum} isShortest={states[index].status === 'ok' && states[index].minutes === uniqueShortest} />
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 
 function MiniStars({ value }) {
@@ -167,6 +249,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspective = {
 
   const selected = useMemo(() => selectedIds.map((id) => homes.find((h) => h.id === id)).filter(Boolean), [selectedIds, homes]);
   const matches = useMemo(() => selected.map((h) => computeMatch(h, priorities)), [selected, priorities]);
+  const commuteDestinations = useMemo(() => priorities.location?.commuteDestinations || [], [priorities.location?.commuteDestinations]);
   const differentTakes = useMemo(() => selected.map((home) => {
     if (!coBuyerPerspective.isCollaborative) return [];
     const theirs = coBuyerPerspective.byHomeId[home.id]?.ratings || {};
@@ -247,7 +330,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspective = {
             </div>
           </div>
 
-          {(mustRows.length > 0 || otherRows.length > 0) && (
+          {(mustRows.length > 0 || otherRows.length > 0 || commuteDestinations.length > 0) && (
             <div>
               <button
                 type="button"
@@ -258,6 +341,10 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspective = {
                 {diffsOnly ? 'Showing differences only — show all' : 'Showing all — differences only'}
               </button>
             </div>
+          )}
+
+          {commuteDestinations.length > 0 && (
+            <CommuteComparison homes={selected} destinations={commuteDestinations} diffsOnly={diffsOnly} />
           )}
 
           {/* Must-Haves */}
@@ -311,7 +398,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspective = {
             </section>
           )}
 
-          {mustRows.length === 0 && otherRows.length === 0 && diffsOnly && (
+          {mustRows.length === 0 && otherRows.length === 0 && commuteDestinations.length === 0 && diffsOnly && (
             <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>These homes look the same on everything you've told us matters — toggle to "show all" to see the full picture.</p>
           )}
 

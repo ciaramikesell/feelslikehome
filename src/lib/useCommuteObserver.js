@@ -134,3 +134,33 @@ export function useCommuteObserver(home, destinations) {
 
   return { setRef, getState };
 }
+
+// Compare is visible as a whole, rather than progressively entering the viewport one
+// home card at a time. Queue every selected home through the exact same scheduler,
+// session cache, deduplication, and /api/commute batch used by Home Cards. This is a
+// read-only presentation hook; routing and authorization remain server-owned.
+export function useCommuteMatrix(homes, destinations) {
+  const [, forceUpdate] = useState(0);
+  const homesKey = homes.map((home) => `${home.id}:${locationIdentity(home)}`).join('|');
+  const destinationsKey = destinations.map((destination) => `${destination.id}:${destination.address || ''}`).join('|');
+
+  useEffect(() => {
+    const listener = () => forceUpdate((n) => n + 1);
+    batchListeners.add(listener);
+    return () => batchListeners.delete(listener);
+  }, []);
+
+  useEffect(() => {
+    homes.forEach((home) => scheduleCalculation(home, destinations));
+    // Stable primitive keys keep selection changes reactive without making a new
+    // array/object identity trigger duplicate scheduling on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [homesKey, destinationsKey]);
+
+  return useCallback((home, destination) => {
+    const key = cacheKey(home, destination);
+    if (resultCache.has(key)) return resultCache.get(key);
+    if (inFlightKeys.has(key)) return { minutes: null, status: 'loading' };
+    return { minutes: null, status: 'idle' };
+  }, [homesKey, destinationsKey]);
+}
