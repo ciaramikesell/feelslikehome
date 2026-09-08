@@ -17,7 +17,7 @@ import { parseNum, fmtMoney, trueCheckLabels, homeStyleSummary, computeMatch, ma
 import { formatLotSizeDisplay, splitAddressLines, parseCommaList } from '@/lib/homeDisplay';
 import { createClient } from '@/lib/supabase/client';
 import { deleteHome as deleteHomeQuery } from '@/lib/supabase/data';
-import { saveHomePersonalAndShared } from '@/lib/supabase/collaboration';
+import { deriveWantToTourState, saveHomePersonalAndShared } from '@/lib/supabase/collaboration';
 
 /* -------------------------------- confirm modal -------------------------------- */
 
@@ -93,6 +93,9 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
   // through the Post-Tour reflection ("Edit my thoughts") — never a shortcut that
   // bypasses recording ratings/notes for a toured home.
   const showQuickFavorite = mode === 'favorites' || mode === 'archive';
+  const wantToTourState = home.isCollaborative
+    ? deriveWantToTourState(home.status, home.coBuyerWantsToTour ? ['Want to Tour'] : [])
+    : null;
 
   // Personal commute destinations, tier-ordered (Must Have -> Important ->
   // Nice to Have), matching every other tiered display in this app. Personal
@@ -192,6 +195,12 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
             </div>
           ) : (
             <div style={{ fontSize: 11.5, color: 'var(--ink-soft)' }}>Set your priorities in <em>My Search</em> to see a match score.</div>
+          )}
+
+          {mode === 'tour' && wantToTourState?.wantToTourLabel && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: 'fit-content', fontSize: 12, fontWeight: 600, color: 'var(--ink-soft)', background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 999, padding: '4px 9px' }}>
+              <Footprints size={12} color="var(--moss)" /> {wantToTourState.wantToTourLabel}
+            </div>
           )}
 
           {!isPreTour && home.status === 'Want to Tour' && mode === 'homes' && (
@@ -442,7 +451,9 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
       setSaveError("We couldn't save that home. Please try again.");
       throw err;
     }
-    setHomes((prev) => (prev.some((h) => h.id === saved.id) ? prev.map((h) => (h.id === saved.id ? saved : h)) : [...prev, saved]));
+    // Keep server-derived co-buyer signals while replacing only this user's
+    // freshly saved personal state and the shared home fields.
+    setHomes((prev) => (prev.some((h) => h.id === saved.id) ? prev.map((h) => (h.id === saved.id ? { ...h, ...saved } : h)) : [...prev, saved]));
     setModalHome(null);
     setSaveError('');
     // Favorites/Archive nav visibility is computed server-side in the layout — refresh
@@ -521,7 +532,11 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   // actively "considering" (not yet loved) — once a home is loved it graduates fully
   // to Favorites rather than cluttering both lists.
   const tourHomes = useMemo(
-    () => activeHomes.filter((h) => h.status === 'Want to Tour' || (h.status === 'Toured' && h.reaction !== 'love')),
+    () => activeHomes.filter((h) => (
+      h.status === 'Want to Tour'
+      || h.coBuyerWantsToTour
+      || (h.status === 'Toured' && h.reaction !== 'love')
+    )),
     [activeHomes]
   );
 
