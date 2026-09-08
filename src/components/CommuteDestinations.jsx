@@ -7,7 +7,7 @@ import { createCommuteDestination, deleteCommuteDestination, updateCommuteDestin
 
 const blank = { label: '', address: '', maxDriveMinutes: '' };
 
-export default function CommuteDestinations({ searchId, userId, destinations, onChange }) {
+export default function CommuteDestinations({ searchId, userId, destinations, onChange, hideHeader = false }) {
   const [draft, setDraft] = useState(blank);
   const [adding, setAdding] = useState(destinations.length === 0);
   const [editingId, setEditingId] = useState(null);
@@ -56,17 +56,15 @@ export default function CommuteDestinations({ searchId, userId, destinations, on
 
   return (
     <div>
-      <div className="hh-serif" style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', marginBottom: 2 }}>Places you travel to often</div>
-      <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '0 0 12px', lineHeight: 1.5 }}>
-        These places are private to you. Add a drive-time limit only when it should affect your single Commute priority.
-      </p>
-      <div style={{ display: 'grid', gap: 2, marginBottom: 12 }}>
+      {!hideHeader && <><div className="hh-serif" style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', marginBottom: 2 }}>Places you travel to often</div>
+      <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '0 0 12px', lineHeight: 1.5 }}>These places are private to you. Add a drive-time limit only when it should affect your single Commute priority.</p></>}
+      <div className="hh-destination-grid">
         {destinations.map((d) => (
-          <div key={d.id} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '9px 0', borderBottom: '1px solid var(--line)' }}>
+          <div key={d.id} className="hh-destination-card">
             <div style={{ display: 'flex', gap: 7, minWidth: 0 }}><MapPin size={14} style={{ marginTop: 2, flexShrink: 0 }} />
               <div style={{ minWidth: 0 }}><div style={{ fontSize: 13.5, fontWeight: 600 }}>{d.label}</div>
                 <div style={{ fontSize: 12, color: 'var(--ink-soft)', overflowWrap: 'anywhere' }}>{d.address}</div>
-                <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', marginTop: 2 }}>{d.maxDriveMinutes ? `Too long after ${d.maxDriveMinutes} minutes` : 'Informational only'}</div>
+                <div style={{ fontSize: 11.5, color: 'var(--moss)', marginTop: 4, fontWeight: 600 }}>{d.maxDriveMinutes ? `${d.maxDriveMinutes} min max` : 'Informational only'}</div>
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'flex-start' }}>
@@ -87,7 +85,7 @@ export default function CommuteDestinations({ searchId, userId, destinations, on
             {(editingId || destinations.length > 0) && <button type="button" className="hh-btn hh-btn-ghost" onClick={cancel}>Cancel</button>}
           </div>
         </div>
-      ) : <button type="button" className="hh-btn hh-btn-ghost" onClick={() => setAdding(true)}><Plus size={14} /> Add a place</button>}
+      ) : <button type="button" className="hh-btn hh-btn-ghost" onClick={() => setAdding(true)}><Plus size={14} /> Add another place</button>}
       {error && <p role="alert" style={{ fontSize: 12, color: 'var(--brick)', marginBottom: 0 }}>{error}</p>}
     </div>
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { X, Upload, Link2, Footprints, Archive as ArchiveIcon, ExternalLink, Check } from 'lucide-react';
+import { X, Upload, Link2, Footprints, Archive as ArchiveIcon, ExternalLink, Check, Users } from 'lucide-react';
 import { StarInput } from '@/components/ui';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
@@ -32,7 +32,7 @@ function storagePathFromPublicUrl(url) {
 // text); empty ones look like an understated invitation to add something (dashed
 // border, muted "Add ___" placeholder) — never alarming, never a blank form field.
 function CoBuyerOnlyHelper() {
-  return <span style={{ display: 'block', color: 'var(--ink-soft)', fontSize: 10.5, fontWeight: 400, marginTop: 2 }}>Also on your Co-Buyer&apos;s list</span>;
+  return <span className="hh-shared-fact" title="This detail matters to your co-buyer"><Users size={11} /> Shared</span>;
 }
 
 function CompactField({ label, value, onChange, isCurrency, placeholder, must, coBuyerOnly }) {
@@ -117,9 +117,6 @@ function PropertyFacts({ form, set, priorities, sharedFactAwareness }) {
             <CompactField label="Garage" value={form.garageSpaces} onChange={(v) => set('garageSpaces', v)} placeholder="Add garage" coBuyerOnly={sharedFactAwareness.garageSpaces?.coBuyerOnly} />
             <CompactField label="Year built" value={form.yearBuilt} onChange={(v) => set('yearBuilt', v)} placeholder="Add year" />
             <CompactField label="Days on mkt" value={form.daysOnMarket} onChange={(v) => set('daysOnMarket', v)} placeholder="Add DOM" />
-            <CompactField label="Basement" value={form.basementNotes} onChange={(v) => set('basementNotes', v)} placeholder="e.g. Finished walkout with bedroom" coBuyerOnly={sharedFactAwareness.basementNotes?.coBuyerOnly} />
-            <CompactField label="School details" value={form.schoolsNotes} onChange={(v) => set('schoolsNotes', v)} placeholder="Add shared school-related notes" coBuyerOnly={sharedFactAwareness.schoolsNotes?.coBuyerOnly} />
-            <CompactField label="Condition notes" value={form.conditionNotes} onChange={(v) => set('conditionNotes', v)} placeholder="e.g. Roof 3 years old" coBuyerOnly={sharedFactAwareness.homeCondition?.coBuyerOnly} />
           </div>
           {hasAnyFacts && (
             <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px' }} onClick={() => setEditOpen(false)}>
@@ -148,16 +145,9 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   const [editDetailsOpen, setEditDetailsOpen] = useState(false);
   const [lastLookupAddress, setLastLookupAddress] = useState('');
 
-  // "+ Add more details" starts collapsed for a blank home (the whole point of this
-  // pass), but starts open if the home already has data in there — editing shouldn't
-  // feel like your own answers vanished behind a click.
-  const [moreDetailsOpen, setMoreDetailsOpen] = useState(() => {
-    const i = initial;
-    return !!(
-      i.homeLayout?.length || i.homeCondition?.length || i.primaryBedroomLocation || i.secondaryBedroomLocation
-      || i.pros || i.cons || i.notes || Object.values(i.checks || {}).some(Boolean)
-    );
-  });
+  // Secondary property details stay available without making the edit form feel
+  // like homework. Stored answers remain untouched while this disclosure is closed.
+  const [moreDetailsOpen, setMoreDetailsOpen] = useState(false);
   // "How did it feel?" is the post-tour subjective-impressions panel — same idea:
   // collapsed until there's a tour to reflect on, open by default if already answered.
   const [tourFeelOpen, setTourFeelOpen] = useState(() => {
@@ -481,7 +471,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
           </>
         )}
 
-        <details className="hh-details" style={{ marginTop: 14 }}>
+        {isNewHome && <details className="hh-details" style={{ marginTop: 14 }}>
           <summary>Can't find the home? Paste listing details instead</summary>
           <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '8px 0' }}>Copy the property description or listing details from the listing page and paste them here. We'll try to recognize price, beds, baths, square footage, and other details.</p>
           <textarea className="hh-textarea" style={{ minHeight: 90 }} value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Paste the full listing text here..." />
@@ -489,7 +479,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
             <span style={{ fontSize: 11.5, color: parseMsg.startsWith("Couldn't") ? 'var(--brick)' : 'var(--moss)' }}>{parseMsg}</span>
             <button type="button" className="hh-btn hh-btn-ghost" onClick={runAutofill} disabled={!pasteText.trim()}>Fill in fields</button>
           </div>
-        </details>
+        </details>}
 
         {/* -------------------------- Found automatically -------------------------- */}
         {showCompactCard && (
@@ -535,13 +525,13 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
                 </div>
               </div>
               <div><label className="hh-label">Listing URL</label><input className="hh-input" value={form.listingUrl} onChange={(e) => set('listingUrl', e.target.value)} placeholder="https://..." /></div>
-              <details className="hh-details">
+              {isNewHome && <details className="hh-details">
                 <summary>More location details</summary>
                 <div style={{ marginTop: 10 }}>
                   <label className="hh-label">Nearby cross streets</label>
                   <input className="hh-input" value={form.crossroads} onChange={(e) => set('crossroads', e.target.value)} placeholder="Main & 5th" />
                 </div>
-              </details>
+              </details>}
             </div>
 
             {isArchivedStatus(form.status) && (
@@ -551,6 +541,9 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
               </div>
             )}
 
+            {Object.values(sharedFactAwareness).some((fact) => fact?.coBuyerOnly) && (
+              <p className="hh-shared-note"><Users size={13} /> Some details are highlighted because they matter to either of you.</p>
+            )}
             <PropertyFacts form={form} set={set} priorities={priorities} sharedFactAwareness={sharedFactAwareness} />
           </div>
         )}
@@ -560,7 +553,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
           const currentPreviewSrc = photoFile ? photoPreviewUrl : (form.photoUrl || null);
           const urlInputVisible = !photoFile && (showPhotoUrlInput || !!form.photoUrl);
           return (
-            <div
+            <div className="hh-home-photo"
               style={{
                 background: 'rgba(198,146,69,0.08)',
                 border: '1px solid rgba(198,146,69,0.28)',
@@ -569,7 +562,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
                 margin: '14px 0',
               }}
             >
-              <h3 className="hh-serif" style={{ fontSize: 15, fontWeight: 600, margin: '0 0 3px' }}>Add a photo</h3>
+              <h3 style={{ fontSize: 13, fontWeight: 700, margin: '0 0 3px' }}>{currentPreviewSrc ? 'Home photo' : 'Add a photo'}</h3>
               <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 12px', lineHeight: 1.45 }}>
                 Give this home a face so it's easy to spot later — you can always add or change it.
               </p>
@@ -675,19 +668,24 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
             onClick={() => setMoreDetailsOpen((v) => !v)}
             style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-              background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 12,
+              background: 'var(--paper)', border: 0, borderRadius: 12,
               padding: '12px 14px', cursor: 'pointer', textAlign: 'left',
             }}
           >
             <div>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>{moreDetailsOpen ? '− Hide more details' : '+ Add more details'}</div>
-              <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', marginTop: 2 }}>Layout, condition, features, notes & more</div>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>{moreDetailsOpen ? '− Hide home details' : '+ More home details'}</div>
+              <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', marginTop: 2 }}>Layout, condition, features & more</div>
             </div>
           </button>
 
           {moreDetailsOpen && (
             <div style={{ marginTop: 14 }}>
               <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 14px' }}>Optional — add anything else you already know. You can always come back to this later.</p>
+              <div className="hh-property-facts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 18 }}>
+                <CompactField label="Basement" value={form.basementNotes} onChange={(v) => set('basementNotes', v)} placeholder="e.g. Finished walkout" coBuyerOnly={sharedFactAwareness.basementNotes?.coBuyerOnly} />
+                <CompactField label="School details" value={form.schoolsNotes} onChange={(v) => set('schoolsNotes', v)} placeholder="Add school-related notes" coBuyerOnly={sharedFactAwareness.schoolsNotes?.coBuyerOnly} />
+                <CompactField label="Condition notes" value={form.conditionNotes} onChange={(v) => set('conditionNotes', v)} placeholder="e.g. Roof 3 years old" coBuyerOnly={sharedFactAwareness.homeCondition?.coBuyerOnly} />
+              </div>
 
               {visibleMultiselect.length > 0 && (
                 <div style={{ marginBottom: 16 }}>
@@ -782,17 +780,19 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
                 );
               })}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 16, marginBottom: 12 }}>
-                <div><label className="hh-label">Pros</label><textarea className="hh-textarea" value={form.pros} onChange={(e) => set('pros', e.target.value)} /></div>
-                <div><label className="hh-label">Cons</label><textarea className="hh-textarea" value={form.cons} onChange={(e) => set('cons', e.target.value)} /></div>
-              </div>
-              <div>
-                <label className="hh-label">Notes</label>
-                <textarea className="hh-textarea" value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Anything else worth remembering..." />
-              </div>
             </div>
           )}
         </div>
+
+        <section className="hh-thoughts">
+          <h3 className="hh-serif">Your thoughts</h3>
+          <p>Keep the personal side of this home separate from the listing facts.</p>
+          <div className="hh-thoughts-grid">
+            <div><label className="hh-label">Pros</label><textarea className="hh-textarea" value={form.pros} onChange={(e) => set('pros', e.target.value)} /></div>
+            <div><label className="hh-label">Cons</label><textarea className="hh-textarea" value={form.cons} onChange={(e) => set('cons', e.target.value)} /></div>
+          </div>
+          <div><label className="hh-label">Notes</label><textarea className="hh-textarea" value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Anything else worth remembering..." /></div>
+        </section>
 
         {!isNewHome && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
@@ -836,7 +836,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
           </div>
         )}
 
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 16 }}>
+        <div className="hh-modal-actions">
           <button className="hh-btn hh-btn-ghost" onClick={onClose}>Cancel</button>
           <button className="hh-btn" onClick={submit} disabled={!form.address.trim() || saving}>{saving ? 'Saving...' : 'Save home'}</button>
         </div>
