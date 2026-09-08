@@ -31,12 +31,10 @@ const HOME_FACT_ROWS = [
   { key: 'garage', label: 'Garage', betterHigh: true, get: (h) => parseNum(h.garageSpaces), fmt: (v) => (v === null ? '—' : v) },
   { key: 'year', label: 'Year built', betterHigh: null, get: (h) => h.yearBuilt || null, fmt: (v) => v || '—' },
   { key: 'dom', label: 'Days on market', betterHigh: false, get: (h) => parseNum(h.daysOnMarket), fmt: (v) => (v === null ? '—' : v) },
-  // Auto Enrichment facts — plain figures/facts only, never a rating or a claim about
-  // whether a school district "satisfies" anything. A real financial or factual
-  // difference worth seeing side-by-side; not shown at all when a home doesn't have it.
+  // Auto Enrichment facts — plain financial figures only. They are not Match inputs
+  // and are not shown at all when a home doesn't have them.
   { key: 'hoa', label: 'HOA', betterHigh: false, get: (h) => (typeof h.hoaFeeMonthly === 'number' ? h.hoaFeeMonthly : null), fmt: (v) => (v === null ? '—' : `$${v.toLocaleString()}/mo`) },
   { key: 'tax', label: 'Property tax', betterHigh: false, get: (h) => (typeof h.propertyTaxAnnual === 'number' ? h.propertyTaxAnnual : null), fmt: (v, h) => (v === null ? '—' : `$${v.toLocaleString()}/yr${h?.propertyTaxYear ? ` · ${h.propertyTaxYear}` : ''}`) },
-  { key: 'school', label: 'School district', betterHigh: null, get: (h) => h.schoolDistrict || null, fmt: (v) => v || '—' },
 ];
 
 function bestIndex(values, betterHigh) {

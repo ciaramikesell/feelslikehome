@@ -93,11 +93,7 @@ export function formatFoundCardFacts(fields) {
     f.propertyTaxAnnual ? `Property tax: $${withCommas(f.propertyTaxAnnual)}/yr${f.propertyTaxYear ? ` · ${f.propertyTaxYear}` : ''}` : '',
   ].filter(Boolean).join(' · ');
 
-  // School district — a plain district name only, never a rating/quality label.
-  // Omitted entirely (not "Unknown") when no district was resolved.
-  const schoolLine = f.schoolDistrict || '';
-
-  return { priceLine, bedsBathsSqft, secondaryFacts, hoaTaxLine, schoolLine };
+  return { priceLine, bedsBathsSqft, secondaryFacts, hoaTaxLine };
 }
 
 // Splits a comma-separated freeform string (how Pros/Cons/impression chips are
