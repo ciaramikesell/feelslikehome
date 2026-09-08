@@ -326,7 +326,21 @@ export function normalizePriorities(raw) {
     'location', 'homeFeel', 'exterior', 'features',
   ];
   shapedKeys.forEach((key) => {
-    merged[key] = { ...base[key], ...(raw[key] && typeof raw[key] === 'object' ? raw[key] : {}) };
+    // Excluding arrays here matters: typeof [] === 'object' in JS, so a stray
+    // array value (e.g. an older/malformed stored shape) would otherwise get
+    // spread as index-keyed properties (`{0: 'x', 1: 'y'}`) onto the correct
+    // base shape instead of being safely discarded.
+    const isPlainObject = raw[key] && typeof raw[key] === 'object' && !Array.isArray(raw[key]);
+    merged[key] = { ...base[key], ...(isPlainObject ? raw[key] : {}) };
+  });
+  // Extra guarantee for the two multiselect-shaped keys specifically: `.values`
+  // must always be a real array by the time any component reads it, regardless
+  // of what shape might be sitting in older/malformed stored priorities data.
+  // This is the correct place to close a class of "undefined.includes()"
+  // crash — once guaranteed here, no consumer (Onboarding, My Search, Add/Edit
+  // Home) needs its own defensive check for this specific failure mode.
+  ['homeLayout', 'homeCondition'].forEach((key) => {
+    if (!Array.isArray(merged[key].values)) merged[key] = { ...merged[key], values: [] };
   });
   return merged;
 }

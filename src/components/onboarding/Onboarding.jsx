@@ -132,8 +132,8 @@ function OnboardingStep1({ priorities, patch, onNext }) {
               <label className="hh-label">Home Condition</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {HOME_CONDITION_OPTIONS.map((o) => (
-                  <span key={o} className={`hh-chip ${priorities.homeCondition.values.includes(o) ? 'on' : ''}`}
-                    onClick={() => patch((n) => { n.homeCondition = { ...n.homeCondition, values: toggleWithNoPreference(n.homeCondition.values, o) }; return n; })}>
+                  <span key={o} className={`hh-chip ${(priorities.homeCondition.values || []).includes(o) ? 'on' : ''}`}
+                    onClick={() => patch((n) => { n.homeCondition = { ...n.homeCondition, values: toggleWithNoPreference(n.homeCondition.values || [], o) }; return n; })}>
                     {o}
                   </span>
                 ))}
@@ -146,8 +146,8 @@ function OnboardingStep1({ priorities, patch, onNext }) {
               <label className="hh-label">Preferred Home Layout</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {LAYOUT_OPTIONS.map((o) => (
-                  <span key={o} className={`hh-chip ${priorities.homeLayout.values.includes(o) ? 'on' : ''}`}
-                    onClick={() => patch((n) => { n.homeLayout = { ...n.homeLayout, values: toggleWithNoPreference(n.homeLayout.values, o) }; return n; })}>
+                  <span key={o} className={`hh-chip ${(priorities.homeLayout.values || []).includes(o) ? 'on' : ''}`}
+                    onClick={() => patch((n) => { n.homeLayout = { ...n.homeLayout, values: toggleWithNoPreference(n.homeLayout.values || [], o) }; return n; })}>
                     {o}
                   </span>
                 ))}

@@ -82,7 +82,7 @@ function MultiselectSection({ def, priorities, patch, children }) {
   const { key, title, options } = def;
   const catState = priorities[key] || { values: [], tier: 'dontcare' };
   const toggle = (opt) => patch((next) => {
-    const cur = next[key].values;
+    const cur = next[key].values || [];
     const nextValues = options.includes('No Preference') ? toggleWithNoPreference(cur, opt) : (cur.includes(opt) ? cur.filter((x) => x !== opt) : [...cur, opt]);
     next[key] = { ...next[key], values: nextValues };
     return next;
