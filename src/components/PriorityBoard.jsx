@@ -131,7 +131,7 @@ export default function PriorityBoard({ priorities, patch }) {
                     {item.categoryKey === 'location' && item.label === 'Schools' && (
                       <input
                         className="hh-input"
-                        placeholder="What matters to you about schools? e.g. a district, a specific school, a rating..."
+                        placeholder="e.g. Adams High School, Rochester Community Schools, or a school zone"
                         value={priorities.location?.notes?.Schools || ''}
                         onChange={(e) => setSchoolsNote(e.target.value)}
                         style={{ fontSize: 12.5, marginTop: 6, width: '100%' }}
