@@ -2,15 +2,16 @@ import { createClient } from '@/lib/supabase/server';
 import CompareBoard from '@/components/CompareBoard';
 import { PageIntro } from '@/components/ui';
 import { isArchivedStatus, normalizePriorities } from '@/lib/constants';
-import { resolveActiveSearch, resolvePriorities, getHomesForUser, resolveCoBuyerComparePerspectives } from '@/lib/supabase/collaboration';
+import { resolveActiveSearch, resolvePriorities, getHomesForUser, getCommuteDestinations, resolveCoBuyerComparePerspectives } from '@/lib/supabase/collaboration';
 
 export default async function ComparePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { search } = await resolveActiveSearch(supabase, user.id);
-  const [priorities, homes] = await Promise.all([
+  const [priorities, homes, commuteDestinations] = await Promise.all([
     resolvePriorities(supabase, search, user.id),
     getHomesForUser(supabase, user.id, search.id),
+    getCommuteDestinations(supabase, search.id, user.id),
   ]);
   const activeHomes = homes.filter((h) => !isArchivedStatus(h.status));
   const coBuyerPerspectives = await resolveCoBuyerComparePerspectives(supabase, search, activeHomes.map((home) => home.id));
@@ -22,6 +23,7 @@ export default async function ComparePage() {
         homes={activeHomes}
         priorities={normalizePriorities(priorities)}
         coBuyerPerspectives={Object.fromEntries(coBuyerPerspectives)}
+        commuteDestinations={commuteDestinations}
       />
     </>
   );
