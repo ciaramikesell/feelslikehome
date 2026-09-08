@@ -645,8 +645,8 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
           </div>
         ) : (
           <div className="hh-corner" style={{ border: '1px dashed var(--line)', borderRadius: 16, padding: '48px 24px', textAlign: 'center', color: 'var(--ink-soft)' }}>
-            <p className="hh-serif" style={{ fontSize: 17, color: 'var(--ink)', marginBottom: 6 }}>{activeHomes.length === 0 ? 'Ready to start?' : 'Nothing matches that search'}</p>
-            <p style={{ fontSize: 13, marginBottom: 18 }}>{activeHomes.length === 0 ? 'Find a home on your favorite listing site, copy the link, then click + Add home.' : 'Try a different search or status filter.'}</p>
+            <p className="hh-serif" style={{ fontSize: 17, color: 'var(--ink)', marginBottom: 6 }}>{activeHomes.length === 0 ? "You found the homes. We'll help you choose." : 'Nothing matches that search'}</p>
+            <p style={{ fontSize: 13, marginBottom: 18 }}>{activeHomes.length === 0 ? 'Paste a listing link from anywhere to get started.' : 'Try a different search or status filter.'}</p>
             {activeHomes.length === 0 && <button className="hh-btn" onClick={() => setModalHome(emptyHome())}><Plus size={15} /> Add home</button>}
           </div>
         )

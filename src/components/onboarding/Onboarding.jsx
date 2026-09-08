@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, Plus } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
-import CriteriaPicker from '@/components/CriteriaPicker';
+import PriorityBoard from '@/components/PriorityBoard';
 import SchoolsRelevanceGate from '@/components/SchoolsRelevanceGate';
 import {
   SEARCH_TYPE_OPTIONS, LAYOUT_OPTIONS, HOME_CONDITION_OPTIONS, INVESTMENT_PROPERTY_TYPES, INVESTMENT_LIVING_PLAN_OPTIONS,
@@ -203,9 +203,7 @@ function OnboardingStep2({ priorities, patch, onNext, onBack }) {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        {categories.map((def) => (
-          <CriteriaPicker key={def.key} def={def} priorities={priorities} patch={patch} draggable={false} />
-        ))}
+        <PriorityBoard priorities={priorities} patch={patch} />
       </div>
 
       <p style={{ fontSize: 12, color: 'var(--ink-soft)', fontStyle: 'italic', margin: 0 }}>
@@ -254,11 +252,14 @@ function OnboardingStep3({ onFinish }) {
       <div>
         <h2 className="hh-serif" style={{ fontSize: 25, margin: 0, fontWeight: 600, color: 'var(--ink)' }}>Your search is ready!</h2>
         <p style={{ fontSize: 14.5, color: 'var(--ink-soft)', margin: '10px 0 0', lineHeight: 1.6, maxWidth: 400 }}>
-          Now comes the fun part. Find homes you like on Zillow, Realtor.com, Homes.com, Trulia, builder websites, or anywhere else you browse. Add them here and Feels Like Home will help you see how each one measures up to what matters to you.
+          Now comes the fun. Find a home you like on Zillow, Realtor.com, a builder website, or wherever you already search. Then bring it here. We'll help you see how it measures up to what matters to you.
         </p>
       </div>
       <button type="button" className="hh-btn" onClick={() => onFinish('add-home')}><Plus size={15} /> Add my first home</button>
       <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: 0, fontStyle: 'italic' }}>Already have a listing open? Grab the link — you can add it next.</p>
+      <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: 0, maxWidth: 360, lineHeight: 1.5 }}>
+        Want commute times on your Home Cards too? You can add places you travel to often anytime in My Search.
+      </p>
     </div>
   );
 }
