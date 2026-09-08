@@ -32,17 +32,17 @@ alter table public.commute_destinations enable row level security;
 
 drop policy if exists "commute_destinations_select_own" on public.commute_destinations;
 create policy "commute_destinations_select_own" on public.commute_destinations
-  for select using (auth.uid() = user_id and public.can_access_search(search_id));
+  for select using (auth.uid() = user_id and public.can_access_search(search_id, auth.uid()));
 drop policy if exists "commute_destinations_insert_own" on public.commute_destinations;
 create policy "commute_destinations_insert_own" on public.commute_destinations
-  for insert with check (auth.uid() = user_id and public.can_access_search(search_id));
+  for insert with check (auth.uid() = user_id and public.can_access_search(search_id, auth.uid()));
 drop policy if exists "commute_destinations_update_own" on public.commute_destinations;
 create policy "commute_destinations_update_own" on public.commute_destinations
-  for update using (auth.uid() = user_id and public.can_access_search(search_id))
-  with check (auth.uid() = user_id and public.can_access_search(search_id));
+  for update using (auth.uid() = user_id and public.can_access_search(search_id, auth.uid()))
+  with check (auth.uid() = user_id and public.can_access_search(search_id, auth.uid()));
 drop policy if exists "commute_destinations_delete_own" on public.commute_destinations;
 create policy "commute_destinations_delete_own" on public.commute_destinations
-  for delete using (auth.uid() = user_id and public.can_access_search(search_id));
+  for delete using (auth.uid() = user_id and public.can_access_search(search_id, auth.uid()));
 
 create or replace function public.invalidate_coordinates_on_address_change()
 returns trigger language plpgsql set search_path = public as $$
