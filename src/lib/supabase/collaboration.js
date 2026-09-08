@@ -8,6 +8,7 @@
 // here degrades safely (falls back, never throws the user into a broken state).
 
 import { defaultPriorities } from '@/lib/constants';
+import { deriveSharedFactPriorityAwareness } from '@/lib/sharedFactPriorityAwareness';
 
 /* ------------------------------- active search ------------------------------- */
 
@@ -90,6 +91,18 @@ export async function resolvePriorities(supabase, search, userId) {
   if (memberRow) return memberRow.priorities;
   if (search.user_id === userId) return search.priorities;
   return defaultPriorities();
+}
+
+// The RPC verifies search access and projects protected participant priorities
+// to tier-free shared-fact booleans inside Postgres. Neither this resolver nor
+// any client component can receive the underlying co-buyer priority document.
+export async function resolveSharedFactPriorityAwareness(supabase, search) {
+  if (!search) return {};
+  const { data, error } = await supabase.rpc('resolve_shared_fact_priority_awareness', {
+    p_search_id: search.id,
+  });
+  if (error) throw error;
+  return deriveSharedFactPriorityAwareness(data || []);
 }
 
 // Saves priorities for (current search, current user). Once a member-
