@@ -104,6 +104,18 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
     home.lotSize && formatLotSizeDisplay(home.lotSize),
   ].filter(Boolean);
 
+  // Compact descriptive property-facts strip — purely descriptive shared facts
+  // ("what this home has"), never a Match input and never duplicated into the
+  // Matches/Missing/Not Confirmed section ("whether I care"). Garage reuses the
+  // existing shared descriptive field; Basement/Schools are the new Property
+  // Details text fields. Condition Notes is deliberately NOT included here —
+  // see the separate placement near Pros/Cons/Notes below.
+  const propertyFacts = [
+    home.garageSpaces && { label: 'Garage', text: home.garageSpaces },
+    home.basementNotes && { label: 'Basement', text: home.basementNotes },
+    home.schoolsNotes && { label: 'Schools', text: home.schoolsNotes },
+  ].filter(Boolean);
+
   // Objective context rows — only ever built from data that already exists; no new
   // lookups happen here. Crossroads and Home Style come from the home's own stored
   // fields; School District comes from the already-approved Geocodio enrichment.
@@ -190,6 +202,17 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
             </button>
           )}
 
+          {propertyFacts.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {propertyFacts.map(({ label, text }, i) => (
+                <div key={i} style={{ fontSize: 12, color: 'var(--ink-soft)', lineHeight: 1.4 }}>
+                  <span style={{ fontWeight: 600, color: 'var(--ink)' }}>{label}</span>{' '}
+                  <span>{text}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
           {objectiveFacts.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
               {objectiveFacts.map(({ icon: Icon, text }, i) => (
@@ -197,6 +220,17 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
                   <Icon size={13} style={{ flexShrink: 0 }} /> <span>{text}</span>
                 </div>
               ))}
+            </div>
+          )}
+
+          {home.conditionNotes && (
+            <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', fontStyle: 'italic', lineHeight: 1.4 }}>
+              <span style={{ fontWeight: 600, fontStyle: 'normal' }}>Condition</span>{' '}
+              <span style={{
+                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+              }}>
+                {home.conditionNotes}
+              </span>
             </div>
           )}
 
@@ -342,6 +376,8 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   const [homes, setHomes] = useState(initialHomes);
   const [priorities] = useState(initialPriorities);
   const [query, setQuery] = useState('');
+  const [quickFilter, setQuickFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('default');
   const [modalHome, setModalHome] = useState(null);
   const [postTourTarget, setPostTourTarget] = useState(null);
   const [archiveTarget, setArchiveTarget] = useState(null);
@@ -461,7 +497,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
 
   const filtered = useMemo(() => {
     if (mode !== 'homes') return baseList;
-    return baseList.filter((h) => {
+    let list = baseList.filter((h) => {
       if (query.trim()) {
         const q = query.toLowerCase();
         const hay = [h.address, h.crossroads, ...(h.homeLayout || []), h.primaryBedroomLocation, h.secondaryBedroomLocation, ...trueCheckLabels(h)].join(' ').toLowerCase();
@@ -469,7 +505,37 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
       }
       return true;
     });
-  }, [baseList, query, mode]);
+
+    // Quick filters — a first, restrained layer for narrowing 30+ homes down
+    // to a serious short list. Reuses the exact same computeMatch every card
+    // already uses; no separate scoring path.
+    if (quickFilter === 'match90') {
+      list = list.filter((h) => { const m = computeMatch(h, priorities); return m && m.pct !== null && m.pct >= 90; });
+    } else if (quickFilter === 'noMustMissing') {
+      // "No Must-Haves missing" means no CONFIRMED miss — an unconfirmed
+      // Must-Have does not disqualify a home from this filter. Unknown is
+      // not failure here either.
+      list = list.filter((h) => {
+        const m = computeMatch(h, priorities);
+        if (!m || m.mustTotal === 0) return true;
+        return m.mustMet === m.mustEvaluated;
+      });
+    } else if (quickFilter === 'wantToTour') {
+      list = list.filter((h) => h.status === 'Want to Tour');
+    } else if (quickFilter === 'favorites') {
+      list = list.filter((h) => h.reaction === 'love');
+    }
+
+    if (sortBy === 'match') {
+      list = [...list].sort((a, b) => (computeMatch(b, priorities)?.pct ?? -1) - (computeMatch(a, priorities)?.pct ?? -1));
+    } else if (sortBy === 'price') {
+      list = [...list].sort((a, b) => (parseNum(a.price) ?? Infinity) - (parseNum(b.price) ?? Infinity));
+    } else if (sortBy === 'newest') {
+      list = [...list].reverse(); // homes load oldest-first; reversing gives newest-first
+    }
+
+    return list;
+  }, [baseList, query, mode, quickFilter, sortBy, priorities]);
 
   if (mode === 'archive') {
     return (
@@ -500,11 +566,39 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
       {saveError && <div style={{ background: 'rgba(193,89,47,0.09)', border: '1px solid var(--brick)', color: 'var(--brick)', fontSize: 12.5, padding: '9px 14px', borderRadius: 12, marginBottom: 14 }}>{saveError}</div>}
 
       {mode === 'homes' && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', margin: '4px 0 22px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', margin: '4px 0 14px' }}>
           <div style={{ position: 'relative', flex: '1 1 220px', minWidth: 180 }}>
             <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: 'var(--ink-soft)' }} />
             <input className="hh-input" style={{ paddingLeft: 30 }} placeholder="Search address, layout, feature..." value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
+          <select className="hh-input" value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ flex: '0 0 auto', width: 'auto', fontSize: 12.5 }} aria-label="Sort">
+            <option value="default">Sort: Date added</option>
+            <option value="newest">Sort: Newest first</option>
+            <option value="match">Sort: Match</option>
+            <option value="price">Sort: Price</option>
+          </select>
+        </div>
+      )}
+
+      {mode === 'homes' && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '0 0 22px' }}>
+          {[
+            { key: 'all', label: 'All' },
+            { key: 'match90', label: '90%+ Match' },
+            { key: 'noMustMissing', label: 'No Must-Haves Missing' },
+            { key: 'wantToTour', label: 'Want to Tour' },
+            { key: 'favorites', label: 'Favorites' },
+          ].map((f) => (
+            <button
+              key={f.key}
+              type="button"
+              className="hh-chip"
+              onClick={() => setQuickFilter(f.key)}
+              style={quickFilter === f.key ? { background: 'var(--brick)', borderColor: 'var(--brick)', color: '#fff' } : undefined}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
       )}
 
