@@ -15,6 +15,24 @@ export function coordinatesAreCurrent(record, fingerprint) {
     && Number.isFinite(Number(record.longitude));
 }
 
+// One canonical trust decision for every consumer of a home's resolved location.
+// Coordinate source is intentionally not restricted: both RentCast and the
+// server-side Google resolver are valid when provenance matches the current address.
+export async function currentHomeCoordinates(home) {
+  const fingerprint = await addressFingerprint(home?.address);
+  const record = {
+    coordinate_status: home?.coordinateStatus,
+    coordinate_address_fingerprint: home?.coordinateAddressFingerprint,
+    latitude: home?.latitude,
+    longitude: home?.longitude,
+  };
+  if (!coordinatesAreCurrent(record, fingerprint)) return null;
+  const lat = Number(home.latitude);
+  const lng = Number(home.longitude);
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return { lat, lng };
+}
+
 // All thresholded destinations form one boolean Commute criterion. A single
 // unknown makes the whole criterion unknown; confirmed failures are never averaged.
 export function evaluateCommute(destinations, getResult) {

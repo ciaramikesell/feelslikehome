@@ -281,6 +281,7 @@ export const PRIMARY_TABS = [
   { key: 'homes', label: 'Homes', href: '/homes' },
   { key: 'tour', label: 'Want to Tour', href: '/tour' },
   { key: 'compare', label: 'Compare', href: '/compare' },
+  { key: 'map', label: 'Map', href: '/map' },
 ];
 
 export function emptyHome() {
