@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { TierPicker } from '@/components/ui';
 import PriorityBoard from '@/components/PriorityBoard';
+import CommuteDestinations from '@/components/CommuteDestinations';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, INVESTMENT_PROPERTY_TYPES, INVESTMENT_LIVING_PLAN_OPTIONS,
   isSimpleRentalType, showsMultiselectCategory, terminology, toggleWithNoPreference, getItemlistCategories,
@@ -245,6 +246,14 @@ function WhatMattersCard({ categories, priorities, patch }) {
           ) : (
             <div style={{ fontSize: 13, color: 'var(--ink-soft)', fontStyle: 'italic' }}>Nothing selected yet — add what matters to you anytime.</div>
           )}
+          {(priorities.location?.commuteDestinations || []).length > 0 && (
+            <div style={{ marginTop: hasAny ? 18 : 12, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
+              <div style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 6 }}>Places you travel to</div>
+              <div style={{ fontSize: 13, color: 'var(--ink)' }}>
+                {priorities.location.commuteDestinations.map((d) => d.name).join(', ')}
+              </div>
+            </div>
+          )}
           <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px', marginTop: hasAny ? 16 : 12 }} onClick={() => setEditOpen(true)}>
             {hasAny ? 'Edit priorities' : '+ Add priorities'}
           </button>
@@ -252,6 +261,9 @@ function WhatMattersCard({ categories, priorities, patch }) {
       ) : (
         <div>
           <PriorityBoard priorities={priorities} patch={patch} />
+          <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--line)' }}>
+            <CommuteDestinations priorities={priorities} patch={patch} />
+          </div>
           <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px', marginTop: 16 }} onClick={() => setEditOpen(false)}>
             Done
           </button>

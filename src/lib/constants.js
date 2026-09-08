@@ -302,7 +302,7 @@ export function defaultPriorities() {
     homeCondition: { values: [], tier: 'dontcare' },
     primaryBedroomLocation: { value: '', tier: 'dontcare' },
     secondaryBedroomLocation: { value: '', tier: 'dontcare' },
-    location: { customItems: [], tiers: {}, order: [], hiddenCore: [] },
+    location: { customItems: [], tiers: {}, order: [], hiddenCore: [], commuteDestinations: [] },
     homeFeel: { customItems: [], tiers: {}, order: [], hiddenCore: [] },
     exterior: { customItems: [], tiers: {}, order: [], hiddenCore: [] },
     features: { customItems: [], tiers: {}, order: [], hiddenCore: [] },
