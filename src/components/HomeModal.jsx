@@ -97,7 +97,7 @@ function PropertyFacts({ form, set, priorities, sharedFactAwareness }) {
 
       {(editOpen || !hasAnyFacts) && (
         <div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 10 }}>
+          <div className="hh-property-facts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 10 }}>
             {sharedFactAwareness.price?.eligibleForSharedFactCapture && (
               <CompactField label={priceLabel} value={form.price} isCurrency onChange={(v) => set('price', v)} placeholder={`Add ${priceLabel.toLowerCase()}`} must={priorities.budget?.tier === 'must'} coBuyerOnly={sharedFactAwareness.price.coBuyerOnly} />
             )}
@@ -416,7 +416,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
               Paste a listing link or enter an address. We'll fill in what we can.
             </p>
             <label className="hh-label">Listing link or address</label>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div className="hh-find-home-row" style={{ display: 'flex', gap: 8 }}>
               <input
                 className="hh-input"
                 style={{ flex: 1, fontSize: 15, background: 'var(--paper-raised)' }}
@@ -458,7 +458,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
             {urlFallbackMsg && (
               <div style={{ marginTop: 8, padding: '12px 14px', border: '1px solid var(--line)', borderRadius: 12, background: 'var(--paper-raised)' }}>
                 <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '0 0 8px' }}>{urlFallbackMsg}</p>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div className="hh-find-home-row" style={{ display: 'flex', gap: 8 }}>
                   <input
                     className="hh-input"
                     style={{ flex: 1 }}
