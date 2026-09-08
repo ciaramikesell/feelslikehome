@@ -81,6 +81,18 @@ function BedroomSubPreferences({ priorities, patch }) {
 function MultiselectSection({ def, priorities, patch, children }) {
   const { key, title, options } = def;
   const catState = priorities[key] || { values: [], tier: 'dontcare' };
+  // catState could still be a TRUTHY but malformed object here (missing
+  // .values) if priorities[key] exists but isn't shaped correctly — the
+  // `|| {...}` fallback above only substitutes on falsy, not on malformed-
+  // but-truthy. This is the one gap found in the exhaustive re-audit that
+  // wasn't already covered by the normalizePriorities hardening or the other
+  // guarded call sites. Logging only fires in this exact malformed case, so
+  // if this is still reachable live, the next occurrence gives definitive
+  // proof of the actual shape instead of another guess.
+  if (!Array.isArray(catState.values)) {
+    console.error('[MultiselectSection] malformed catState.values for key', key, '— raw value was:', priorities[key]);
+  }
+  const safeValues = Array.isArray(catState.values) ? catState.values : [];
   const toggle = (opt) => patch((next) => {
     const cur = next[key].values || [];
     const nextValues = options.includes('No Preference') ? toggleWithNoPreference(cur, opt) : (cur.includes(opt) ? cur.filter((x) => x !== opt) : [...cur, opt]);
@@ -92,7 +104,7 @@ function MultiselectSection({ def, priorities, patch, children }) {
       <div className="hh-label" style={{ marginBottom: 6 }}>{title}</div>
       <div className="hh-priority-row" style={{ alignItems: 'flex-start' }}>
         <div style={{ flex: '1 1 220px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {options.map((o) => <span key={o} className={`hh-chip ${catState.values.includes(o) ? 'on' : ''}`} onClick={() => toggle(o)}>{o}</span>)}
+          {options.map((o) => <span key={o} className={`hh-chip ${safeValues.includes(o) ? 'on' : ''}`} onClick={() => toggle(o)}>{o}</span>)}
         </div>
         <TierPicker value={catState.tier} onChange={(t) => patch((next) => { next[key] = { ...next[key], tier: t }; return next; })} />
       </div>
