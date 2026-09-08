@@ -201,15 +201,7 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
     set('photoUrl', '');
   };
 
-  const set = (k, v) => setForm((f) => {
-    if (k === 'address' && v.trim() !== (f.coordinateAddress || '').trim()) {
-      return {
-        ...f, address: v, latitude: null, longitude: null,
-        coordinateStatus: 'unresolved', coordinateSource: null, coordinateAddress: null,
-      };
-    }
-    return { ...f, [k]: v };
-  });
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const submit = async () => {
     if (!form.address.trim()) return;
     setSaving(true);
@@ -305,15 +297,7 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
     setImportPhase('loading');
     setImportErrorMsg('');
     setUrlFallbackMsg('');
-    setForm((f) => ({
-      ...f,
-      address,
-      ...(address.trim() !== (f.coordinateAddress || '').trim() ? {
-        latitude: null, longitude: null, coordinateStatus: 'unresolved',
-        coordinateSource: null, coordinateAddress: null,
-      } : {}),
-      ...(opts.listingUrl !== undefined ? { listingUrl: opts.listingUrl } : {}),
-    }));
+    setForm((f) => ({ ...f, address, ...(opts.listingUrl !== undefined ? { listingUrl: opts.listingUrl } : {}) }));
 
     try {
       const res = await fetch('/api/import-listing', {
@@ -347,13 +331,6 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
       setForm((f) => {
         const next = { ...f };
         Object.entries(data.fields || {}).forEach(([k, v]) => { if (v && !next[k]) next[k] = v; });
-        if (data.fields?.coordinateStatus === 'resolved') {
-          next.latitude = data.fields.latitude;
-          next.longitude = data.fields.longitude;
-          next.coordinateStatus = 'resolved';
-          next.coordinateSource = data.fields.coordinateSource;
-          next.coordinateAddress = data.fields.coordinateAddress;
-        }
         return next;
       });
     } catch {
@@ -540,15 +517,17 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
                 <label className="hh-label">Address *</label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <input className="hh-input" style={{ flex: 1 }} value={form.address} onChange={(e) => set('address', e.target.value)} placeholder="123 Maple St, Ann Arbor, MI" />
-                  <button
-                    type="button"
-                    className="hh-btn hh-btn-ghost"
-                    style={{ whiteSpace: 'nowrap' }}
-                    onClick={() => lookupAddress(form.address)}
-                    disabled={!form.address.trim() || importPhase === 'loading' || form.address.trim() === lastLookupAddress}
-                  >
-                    {importPhase === 'loading' ? 'Looking up...' : 'Look up address'}
-                  </button>
+                  {isNewHome && (
+                    <button
+                      type="button"
+                      className="hh-btn hh-btn-ghost"
+                      style={{ whiteSpace: 'nowrap' }}
+                      onClick={() => lookupAddress(form.address)}
+                      disabled={!form.address.trim() || importPhase === 'loading' || form.address.trim() === lastLookupAddress}
+                    >
+                      {importPhase === 'loading' ? 'Looking up...' : 'Look up property details'}
+                    </button>
+                  )}
                 </div>
               </div>
               <div><label className="hh-label">Listing URL</label><input className="hh-input" value={form.listingUrl} onChange={(e) => set('listingUrl', e.target.value)} placeholder="https://..." /></div>
