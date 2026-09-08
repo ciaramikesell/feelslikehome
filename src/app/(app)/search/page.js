@@ -16,17 +16,6 @@ export default async function SearchPage() {
   // if any, is the co-buyer this page's Remove action would target.
   const memberUserId = participantIds.find((id) => id !== search.user_id) || null;
 
-  // TEMPORARY DIAGNOSTIC — Phase 7 runtime trace, remove after root cause confirmed.
-  console.log('[Phase7 search/page]', {
-    userId: user.id,
-    searchId: search?.id,
-    searchOwnerId: search?.user_id,
-    isOwner,
-    participantIds,
-    participantCount: participantIds?.length,
-    memberUserId,
-  });
-
   return (
     <>
       <PageIntro title="My Search" subtitle="Review what you're looking for and what matters most to you." />
