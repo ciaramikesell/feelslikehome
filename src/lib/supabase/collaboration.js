@@ -351,6 +351,7 @@ function rowToHomeWithOwner(row) {
     yearBuilt: row.year_built || '',
     daysOnMarket: row.days_on_market || '',
     homeLayout: row.home_layout || [],
+    homeCondition: Array.isArray(row.home_condition) ? row.home_condition : [],
     primaryBedroomLocation: row.primary_bedroom_location || '',
     secondaryBedroomLocation: row.secondary_bedroom_location || '',
     status: row.status || 'Considering',
@@ -392,6 +393,7 @@ function homeToSharedRow(home, userId, searchId, includeLegacyPersonalFields) {
     year_built: home.yearBuilt || '',
     days_on_market: home.daysOnMarket || '',
     home_layout: home.homeLayout || [],
+    home_condition: Array.isArray(home.homeCondition) ? home.homeCondition : [],
     primary_bedroom_location: home.primaryBedroomLocation || '',
     secondary_bedroom_location: home.secondaryBedroomLocation || '',
     // Legacy personal-shaped fields — ONLY ever written by the home's actual

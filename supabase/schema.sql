@@ -632,3 +632,8 @@ alter table public.homes
   add column if not exists basement_notes text,
   add column if not exists schools_notes text,
   add column if not exists condition_notes text;
+
+-- Home Condition persistence fix: home_condition never existed as a column;
+-- per-home selections were never saved. Additive, follows the home_layout pattern.
+alter table public.homes
+  add column if not exists home_condition text[] not null default '{}';

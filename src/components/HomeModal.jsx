@@ -129,10 +129,6 @@ function PropertyFacts({ form, set, priorities }) {
 }
 
 export default function HomeModal({ initial, priorities, onSave, onClose, userId, onWantToTour, onArchiveRequest }) {
-  // TEMPORARY DIAGNOSTIC — the exact incoming shape for an existing home, at
-  // the moment the modal opens, before any interaction.
-  // eslint-disable-next-line no-console
-  console.log('[HomeModal mount]', { hasId: !!initial.id, homeCondition: initial.homeCondition, isArray: Array.isArray(initial.homeCondition), homeLayout: initial.homeLayout });
   const [form, setForm] = useState(initial);
   const [pasteText, setPasteText] = useState('');
   const [parseMsg, setParseMsg] = useState('');
@@ -275,15 +271,8 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
     return { ...f, checks: next };
   });
   const toggleMulti = (catKey, opt) => setForm((f) => {
-    // TEMPORARY DIAGNOSTIC — captures the exact state at the moment of click,
-    // before and after the update, scoped only to this interaction.
-    // eslint-disable-next-line no-console
-    console.log('[HomeModal toggleMulti] BEFORE', { catKey, opt, incomingValue: f[catKey], isArray: Array.isArray(f[catKey]) });
     const current = f[catKey] || [];
-    const next = { ...f, [catKey]: current.includes(opt) ? current.filter((x) => x !== opt) : [...current, opt] };
-    // eslint-disable-next-line no-console
-    console.log('[HomeModal toggleMulti] AFTER', { catKey, newValue: next[catKey] });
-    return next;
+    return { ...f, [catKey]: current.includes(opt) ? current.filter((x) => x !== opt) : [...current, opt] };
   });
 
   const runAutofill = () => {
@@ -698,12 +687,7 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
 
               {visibleMultiselect.length > 0 && (
                 <div style={{ marginBottom: 16 }}>
-                  {visibleMultiselect.map((def) => {
-                    // TEMPORARY DIAGNOSTIC — logs on every render of this row so the
-                    // last line printed before a crash shows the exact live shape.
-                    // eslint-disable-next-line no-console
-                    console.log('[HomeModal multiselect render]', { catKey: def.key, formValue: form[def.key], isArray: Array.isArray(form[def.key]) });
-                    return (
+                  {visibleMultiselect.map((def) => (
                     <div key={def.key} style={{ marginBottom: 16 }}>
                       <label className="hh-label">{def.title}{priorities[def.key]?.tier === 'must' && <span className="hh-must-badge">MUST</span>}</label>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -722,8 +706,7 @@ export default function HomeModal({ initial, priorities, onSave, onClose, userId
                         </div>
                       )}
                     </div>
-                    );
-                  })}
+                  ))}
                 </div>
               )}
 
