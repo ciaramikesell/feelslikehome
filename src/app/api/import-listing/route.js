@@ -120,6 +120,15 @@ export async function POST(request) {
 
     const { fields, foundAny } = normalizeRentCastFields(propertyResult.data, listingResult.data);
 
+    // Coordinates are trusted for display only when RentCast returned a complete
+    // pair for this exact lookup. Persist the looked-up address with the pair so
+    // an edited address can never silently retain an old marker location.
+    if (typeof fields.latitude === 'number' && typeof fields.longitude === 'number') {
+      fields.coordinateStatus = 'resolved';
+      fields.coordinateSource = 'rentcast';
+      fields.coordinateAddress = address;
+    }
+
     // Independent of RentCast's outcome — even a fully-populated property record
     // has no school field at all (confirmed against RentCast's own documented
     // schema), so this is always a separate lookup, never a re-use of RentCast data.

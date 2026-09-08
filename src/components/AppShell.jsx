@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Home as HomeIcon, Columns, HelpCircle, X, Footprints, SlidersHorizontal } from 'lucide-react';
+import { LogOut, Home as HomeIcon, Columns, HelpCircle, X, Footprints, SlidersHorizontal, Map } from 'lucide-react';
 import { BrandMark, Wordmark } from '@/components/ui';
 import { PRIMARY_TABS } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
@@ -13,6 +13,7 @@ const TAB_ICONS = {
   homes: HomeIcon,
   tour: Footprints,
   compare: Columns,
+  map: Map,
 };
 
 // Plain-language explanation of the whole workflow. Purely presentational — no

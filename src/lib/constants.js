@@ -281,6 +281,7 @@ export const PRIMARY_TABS = [
   { key: 'homes', label: 'Homes', href: '/homes' },
   { key: 'tour', label: 'Want to Tour', href: '/tour' },
   { key: 'compare', label: 'Compare', href: '/compare' },
+  { key: 'map', label: 'Map', href: '/map' },
 ];
 
 export function emptyHome() {
@@ -297,6 +298,7 @@ export function emptyHome() {
     // shown anywhere in the UI. hoaFeeMonthly/propertyTaxAnnual/propertyTaxYear are
     // informational only and never contribute to Match.
     latitude: null, longitude: null,
+    coordinateStatus: 'unresolved', coordinateSource: null, coordinateAddress: null,
     hoaFeeMonthly: null, propertyTaxAnnual: null, propertyTaxYear: null,
     // Auto Enrichment — School District: captured from Geocodio (a plain district
     // name string, never a rating/score). Informational only — never contributes to
