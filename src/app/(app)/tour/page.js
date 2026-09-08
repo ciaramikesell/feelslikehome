@@ -3,7 +3,10 @@ import HomesBoard from '@/components/HomesBoard';
 import DecisionNav from '@/components/DecisionNav';
 import { PageIntro } from '@/components/ui';
 import { isArchivedStatus, normalizePriorities } from '@/lib/constants';
-import { resolveActiveSearch, resolvePriorities, getHomesForUser, getParticipantStatusesForHomes, coBuyerArchivedSignal } from '@/lib/supabase/collaboration';
+import {
+  resolveActiveSearch, resolvePriorities, getHomesForUser, getParticipantStatusesForHomes,
+  coBuyerArchivedSignal, deriveWantToTourState,
+} from '@/lib/supabase/collaboration';
 
 export default async function TourPage() {
   const supabase = await createClient();
@@ -18,7 +21,13 @@ export default async function TourPage() {
   const homesWithSignal = homes.map((home) => {
     const perParticipant = statusesByHome.get(home.id) || [];
     const otherStatuses = perParticipant.filter((p) => p.userId !== user.id).map((p) => p.status);
-    return { ...home, coBuyerArchivedCount: coBuyerArchivedSignal(home.status, otherStatuses) };
+    const isCollaborative = perParticipant.some((p) => p.userId !== user.id);
+    return {
+      ...home,
+      coBuyerArchivedCount: coBuyerArchivedSignal(home.status, otherStatuses),
+      ...(isCollaborative ? deriveWantToTourState(home.status, otherStatuses) : {}),
+      isCollaborative,
+    };
   });
 
   const hasFavorites = homes.some((h) => h.reaction === 'love' && !isArchivedStatus(h.status));

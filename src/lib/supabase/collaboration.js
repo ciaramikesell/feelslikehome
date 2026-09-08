@@ -300,6 +300,25 @@ export function coBuyerArchivedSignal(currentUserStatus, otherParticipantStatuse
   return archivedOthers > 0 ? archivedOthers : null;
 }
 
+/* ---------------------------- Want to Tour agenda ---------------------------- */
+
+// Want to Tour remains a personal lifecycle choice, but a collaborative search's
+// agenda is the union of both participants' choices. Keep this derivation beside
+// the other participant-state helpers so pages never have to reinterpret another
+// person's full home state (ratings, reaction, checks, etc.).
+export function deriveWantToTourState(currentUserStatus, otherParticipantStatuses = []) {
+  const currentUserWantsToTour = currentUserStatus === 'Want to Tour';
+  const coBuyerWantsToTour = otherParticipantStatuses.some((status) => status === 'Want to Tour');
+  const householdWantsToTour = currentUserWantsToTour || coBuyerWantsToTour;
+
+  let wantToTourLabel = null;
+  if (currentUserWantsToTour && coBuyerWantsToTour) wantToTourLabel = 'You both want to tour';
+  else if (currentUserWantsToTour) wantToTourLabel = 'You want to tour';
+  else if (coBuyerWantsToTour) wantToTourLabel = 'Co-Buyer wants to tour';
+
+  return { currentUserWantsToTour, coBuyerWantsToTour, householdWantsToTour, wantToTourLabel };
+}
+
 /* -------------------------------- invitations -------------------------------- */
 
 // Invite creation needs no RPC — the owner already has direct INSERT rights
