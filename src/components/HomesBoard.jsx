@@ -423,7 +423,7 @@ function ArchiveList({ homes, onEdit, onRestore, onRequestDelete }) {
 
 /* ---------------------------------- board ---------------------------------- */
 
-export default function HomesBoard({ mode, userId, searchId, initialHomes, initialPriorities }) {
+export default function HomesBoard({ mode, userId, searchId, initialHomes, initialPriorities, sharedFactAwareness }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [homes, setHomes] = useState(initialHomes);
@@ -612,7 +612,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     return (
       <>
         <ArchiveList homes={archivedHomes} onEdit={setModalHome} onRestore={restoreHome} onRequestDelete={setDeleteTarget} />
-        {modalHome && <HomeModal initial={modalHome} priorities={priorities} userId={userId} onSave={saveEditedHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget} />}
+        {modalHome && <HomeModal initial={modalHome} priorities={priorities} sharedFactAwareness={sharedFactAwareness} userId={userId} onSave={saveEditedHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget} />}
         {deleteTarget && (
           <ConfirmModal
             title="Delete this home permanently?"
@@ -696,7 +696,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         />
       )}
 
-      {modalHome && <HomeModal initial={modalHome} priorities={priorities} userId={userId} onSave={saveEditedHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget} />}
+      {modalHome && <HomeModal initial={modalHome} priorities={priorities} sharedFactAwareness={sharedFactAwareness} userId={userId} onSave={saveEditedHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget} />}
 
       {postTourTarget && (
         <PostTourModal
