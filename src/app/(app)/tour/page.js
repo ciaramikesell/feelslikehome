@@ -5,7 +5,7 @@ import { PageIntro } from '@/components/ui';
 import { isArchivedStatus, normalizePriorities } from '@/lib/constants';
 import {
   resolveActiveSearch, resolvePriorities, getHomesForUser, getParticipantStatusesForHomes,
-  coBuyerArchivedSignal, deriveWantToTourState,
+  addCoBuyerPersonalSignals, deriveWantToTourState,
 } from '@/lib/supabase/collaboration';
 
 export default async function TourPage() {
@@ -18,13 +18,13 @@ export default async function TourPage() {
   ]);
 
   const statusesByHome = await getParticipantStatusesForHomes(supabase, search, homes);
-  const homesWithSignal = homes.map((home) => {
+  const homesWithPersonalSignals = addCoBuyerPersonalSignals(homes, statusesByHome, user.id);
+  const homesWithSignal = homesWithPersonalSignals.map((home) => {
     const perParticipant = statusesByHome.get(home.id) || [];
     const otherStatuses = perParticipant.filter((p) => p.userId !== user.id).map((p) => p.status);
     const isCollaborative = perParticipant.some((p) => p.userId !== user.id);
     return {
       ...home,
-      coBuyerArchivedCount: coBuyerArchivedSignal(home.status, otherStatuses),
       ...(isCollaborative ? deriveWantToTourState(home.status, otherStatuses) : {}),
       isCollaborative,
     };

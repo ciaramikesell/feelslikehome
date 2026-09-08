@@ -299,9 +299,10 @@ export async function getSearchParticipantIds(supabase, search) {
   return [search.user_id, ...(data || []).map((m) => m.user_id)];
 }
 
-// For a set of homes in a search, resolves every participant's personal
-// status per home — the data needed for global archive aggregation and the
-// "Archived by Co-Buyer" signal. Returns Map<homeId, Array<{userId, status}>>.
+// For a set of homes in a search, resolves only the two personal signals that
+// collaborators are allowed to see here: status and favorite reaction. Ratings,
+// checks, rejection reasons, and notes deliberately never enter this query.
+// Returns Map<homeId, Array<{userId, status, reaction}>>.
 // A participant who has never touched a given home (no home_member_state row,
 // and not the home's original legacy adder) resolves to status: null — never
 // counted as "active" or "archived," simply "hasn't looked at this yet."
@@ -314,23 +315,23 @@ export async function getParticipantStatusesForHomes(supabase, search, homes) {
     // Not collaborative — every home's only participant is the current
     // account itself, whose status is already on the home object.
     const result = new Map();
-    homes.forEach((home) => result.set(home.id, [{ userId: home.userId, status: home.status }]));
+    homes.forEach((home) => result.set(home.id, [{ userId: home.userId, status: home.status, reaction: home.reaction }]));
     return result;
   }
 
   const { data: stateRows, error } = await supabase
-    .from('home_member_state').select('home_id, user_id, status').in('home_id', homeIds).in('user_id', participantIds);
+    .from('home_member_state').select('home_id, user_id, status, reaction').in('home_id', homeIds).in('user_id', participantIds);
   if (error) throw error;
 
-  const stateByHomeAndUser = new Map((stateRows || []).map((r) => [`${r.home_id}:${r.user_id}`, r.status]));
+  const stateByHomeAndUser = new Map((stateRows || []).map((r) => [`${r.home_id}:${r.user_id}`, r]));
 
   const result = new Map();
   homes.forEach((home) => {
     const perParticipant = participantIds.map((pid) => {
-      const stateStatus = stateByHomeAndUser.get(`${home.id}:${pid}`);
-      if (stateStatus !== undefined) return { userId: pid, status: stateStatus };
-      if (home.userId === pid) return { userId: pid, status: home.status }; // legacy fallback, adder only
-      return { userId: pid, status: null }; // hasn't touched this home at all
+      const state = stateByHomeAndUser.get(`${home.id}:${pid}`);
+      if (state) return { userId: pid, status: state.status, reaction: state.reaction };
+      if (home.userId === pid) return { userId: pid, status: home.status, reaction: home.reaction }; // legacy fallback, adder only
+      return { userId: pid, status: null, reaction: null }; // hasn't touched this home at all
     });
     result.set(home.id, perParticipant);
   });
@@ -351,6 +352,54 @@ export function coBuyerArchivedSignal(currentUserStatus, otherParticipantStatuse
   if (currentUserStatus === 'Archived') return null;
   const archivedOthers = otherParticipantStatuses.filter((s) => s === 'Archived').length;
   return archivedOthers > 0 ? archivedOthers : null;
+}
+
+// "The house is ours. The opinion is mine." This is the single presentation
+// derivation for the narrow Favorite/Archive signals collaborators may see.
+// It never combines ownership or mutates either participant's state.
+export function deriveCoBuyerPersonalSignals(currentUserState, otherParticipantStates = []) {
+  const currentUserFavorited = currentUserState.reaction === 'love';
+  const coBuyerFavorited = otherParticipantStates.some((state) => state.reaction === 'love');
+  const currentUserArchived = currentUserState.status === 'Archived';
+  const coBuyerArchived = otherParticipantStates.some((state) => state.status === 'Archived');
+  const coBuyerArchivedCount = coBuyerArchivedSignal(
+    currentUserState.status,
+    otherParticipantStates.map((state) => state.status),
+  );
+  const globallyArchived = isGloballyArchived([
+    currentUserState.status,
+    ...otherParticipantStates.map((state) => state.status),
+  ]);
+
+  let favoriteLabel = null;
+  if (currentUserFavorited && coBuyerFavorited) favoriteLabel = 'You both favorited this';
+  else if (coBuyerFavorited) favoriteLabel = 'Favorited by Co-Buyer';
+
+  return {
+    currentUserFavorited,
+    coBuyerFavorited,
+    favoriteLabel,
+    currentUserArchived,
+    coBuyerArchived,
+    globallyArchived,
+    coBuyerArchivedCount,
+  };
+}
+
+export function addCoBuyerPersonalSignals(homes, personalStatesByHome, currentUserId) {
+  return homes.map((home) => {
+    const perParticipant = personalStatesByHome.get(home.id) || [];
+    const otherStates = perParticipant.filter((state) => state.userId !== currentUserId);
+    if (!otherStates.length) return home;
+    return {
+      ...home,
+      isCollaborative: true,
+      ...deriveCoBuyerPersonalSignals(
+        { status: home.status, reaction: home.reaction },
+        otherStates,
+      ),
+    };
+  });
 }
 
 /* ---------------------------- Want to Tour agenda ---------------------------- */
