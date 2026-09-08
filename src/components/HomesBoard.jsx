@@ -9,6 +9,7 @@ import {
   GraduationCap, Building2, StickyNote, Minus,
 } from 'lucide-react';
 import { MatchSummary, MatchTradeoffs } from '@/components/ui';
+import { useCommuteObserver } from '@/lib/useCommuteObserver';
 import HomeModal from '@/components/HomeModal';
 import PostTourModal from '@/components/PostTourModal';
 import { STATUS_COLOR, emptyHome, isRentalType, isArchivedStatus } from '@/lib/constants';
@@ -93,6 +94,18 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
   // bypasses recording ratings/notes for a toured home.
   const showQuickFavorite = mode === 'favorites' || mode === 'archive';
 
+  // Personal commute destinations, tier-ordered (Must Have -> Important ->
+  // Nice to Have), matching every other tiered display in this app. Personal
+  // only for V1 — a co-buyer's own destinations never appear here, since
+  // `priorities` is already the current user's own resolved priorities.
+  const commuteDestinations = useMemo(() => {
+    const tierRank = { must: 0, important: 1, nice: 2, dontcare: 3 };
+    return [...(priorities.location?.commuteDestinations || [])].sort(
+      (a, b) => (tierRank[a.tier] ?? 3) - (tierRank[b.tier] ?? 3)
+    );
+  }, [priorities.location?.commuteDestinations]);
+  const { setRef: commuteRef, getState: getCommuteState } = useCommuteObserver(home, commuteDestinations);
+
   // Core property facts — beds/baths/sqft/lot only. Garage is deliberately not
   // repeated here: when it's actually a priority the user selected, it already
   // surfaces through the Match box's fulfilled-criteria line below, rather than
@@ -129,7 +142,7 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
   const cons = parseCommaList(home.cons);
 
   return (
-    <div className="hh-corner">
+    <div className="hh-corner" ref={commuteRef}>
       <div style={{ background: 'var(--paper-raised)', border: '1px solid var(--line)', borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <div style={{ position: 'relative', width: '100%', height: 148, background: showPhoto ? 'var(--line)' : 'linear-gradient(135deg, #F2E6D6, #E8D8C1)' }}>
           {showPhoto ? (
@@ -212,6 +225,25 @@ function HomeCard({ home, priorities, mode, onEdit, onArchiveRequest, onToggleFa
               ))}
             </div>
           )}
+
+          {commuteDestinations.length > 0 && (() => {
+            const shown = commuteDestinations.slice(0, 2);
+            const overflow = commuteDestinations.length - shown.length;
+            return (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: '.03em' }}>Commute</div>
+                {shown.map((d) => {
+                  const state = getCommuteState(d);
+                  const text = state.status === 'ok' ? `${d.name} · ${state.minutes} min`
+                    : state.status === 'loading' ? `${d.name} · Calculating…`
+                    : state.status === 'unavailable' ? `${d.name} · Not available`
+                    : d.name; // idle — not yet scrolled into view, show just the name
+                  return <div key={d.id} style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{text}</div>;
+                })}
+                {overflow > 0 && <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>+{overflow} more</div>}
+              </div>
+            );
+          })()}
 
           {objectiveFacts.length > 0 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
