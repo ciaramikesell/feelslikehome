@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { TierPicker } from '@/components/ui';
 import PriorityBoard from '@/components/PriorityBoard';
 import CommuteDestinations from '@/components/CommuteDestinations';
+import SchoolsRelevanceGate from '@/components/SchoolsRelevanceGate';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, INVESTMENT_PROPERTY_TYPES, INVESTMENT_LIVING_PLAN_OPTIONS,
   isSimpleRentalType, showsMultiselectCategory, terminology, toggleWithNoPreference, getItemlistCategories,
@@ -272,6 +273,9 @@ function WhatMattersCard({ categories, priorities, patch }) {
         </div>
       ) : (
         <div>
+          <div style={{ marginBottom: 22, paddingBottom: 20, borderBottom: '1px solid var(--line)' }}>
+            <SchoolsRelevanceGate priorities={priorities} patch={patch} />
+          </div>
           <PriorityBoard priorities={priorities} patch={patch} />
           <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--line)' }}>
             <CommuteDestinations priorities={priorities} patch={patch} />

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Check, Plus } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
 import CriteriaPicker from '@/components/CriteriaPicker';
+import SchoolsRelevanceGate from '@/components/SchoolsRelevanceGate';
 import {
   SEARCH_TYPE_OPTIONS, LAYOUT_OPTIONS, HOME_CONDITION_OPTIONS, INVESTMENT_PROPERTY_TYPES, INVESTMENT_LIVING_PLAN_OPTIONS,
   TIER_META, isSimpleRentalType, showsHomeLayout, showsMultiselectCategory, terminology, toggleWithNoPreference, getItemlistCategories,
@@ -186,6 +187,10 @@ function OnboardingStep2({ priorities, patch, onNext, onBack }) {
         <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '6px 0 0', lineHeight: 1.5 }}>
           Every home has tradeoffs. Pick the things you care about, then tell us how much they matter. You can choose a few or get as detailed as you'd like.
         </p>
+      </div>
+
+      <div style={{ border: '1px solid var(--line)', borderRadius: 12, padding: '14px 16px' }}>
+        <SchoolsRelevanceGate priorities={priorities} patch={patch} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>

@@ -71,6 +71,29 @@ export function isExperientialCriterion(categoryKey, label) {
   return EXPERIENTIAL_CRITERIA.has(`${categoryKey}:${label}`);
 }
 
+// Schools relevance gate (Phase 6). 'no' means the user explicitly said
+// schools don't factor into their decision. This deliberately does NOT touch
+// the underlying stored tier or preference note anywhere — it only
+// determines whether Schools counts as "selected" for Match/display purposes
+// right now. Flipping relevance back to 'yes' instantly restores whatever
+// tier/note was already stored, since nothing is ever overwritten by this
+// check. Absence of this field (every existing search created before this
+// gate existed) means "not answered yet" — current behavior is preserved
+// exactly, never silently treated as "no."
+export function isSchoolsSuppressed(priorities) {
+  return priorities?.location?.schoolsRelevance === 'no';
+}
+
+// Applies the Schools relevance override to a single criterion's tier
+// without touching storage — used at every place a criterion's tier is read
+// for "is this an active selected priority right now" purposes (computeMatch,
+// selectedOrderedItems, My Search's priority pooling), so the suppression is
+// defined once and reused everywhere rather than re-implemented per caller.
+export function effectiveTier(categoryKey, label, priorities, rawTier) {
+  if (categoryKey === 'location' && label === 'Schools' && isSchoolsSuppressed(priorities)) return 'dontcare';
+  return rawTier || 'dontcare';
+}
+
 // Apartment-specific replacements — structurally different from a house, so it gets its
 // own core/suggested sets for Exterior & Property and Home Features rather than reusing
 // the house-oriented ones above.

@@ -1,4 +1,4 @@
-import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories } from './constants';
+import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier } from './constants';
 
 export function parseNum(v) {
   if (v === '' || v === null || v === undefined) return null;
@@ -51,7 +51,7 @@ export function applyOrder(items, order) {
 export function selectedOrderedItems(def, priorities) {
   const { catState, core, custom } = splitCategoryItems(def, priorities);
   const ordered = applyOrder([...core, ...custom], catState.order || []);
-  return ordered.filter((item) => (catState.tiers?.[item.label] || 'dontcare') !== 'dontcare');
+  return ordered.filter((item) => effectiveTier(def.key, item.label, priorities, catState.tiers?.[item.label]) !== 'dontcare');
 }
 
 // Backwards-compatible alias.
@@ -272,8 +272,8 @@ export function computeMatch(home, priorities) {
   getItemlistCategories(priorities.searchType).forEach((def) => {
     const { catState, core, custom } = splitCategoryItems(def, priorities);
     [...core, ...custom].forEach((item) => {
-      const tier = catState.tiers?.[item.label];
-      if (!tier || tier === 'dontcare') return;
+      const tier = effectiveTier(def.key, item.label, priorities, catState.tiers?.[item.label]);
+      if (tier === 'dontcare') return;
       const ns = `${def.key}:${item.label}`;
 
       if (item.kind === 'rating') {

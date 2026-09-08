@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { X, Plus } from 'lucide-react';
-import { TIER_META, SELECTABLE_TIERS, DEFAULT_SELECTED_TIER, TIER_ORDER, criterionDisplayLabel, getItemlistCategories } from '@/lib/constants';
+import { TIER_META, SELECTABLE_TIERS, DEFAULT_SELECTED_TIER, TIER_ORDER, criterionDisplayLabel, getItemlistCategories, effectiveTier, isSchoolsSuppressed } from '@/lib/constants';
 import { splitCategoryItems } from '@/lib/matching';
 
 // Phase 1 — My Search Priority Board. Importance is now the primary
@@ -23,13 +23,30 @@ export default function PriorityBoard({ priorities, patch }) {
   const categories = getItemlistCategories(priorities.searchType);
   const [newItem, setNewItem] = useState('');
   const [newItemCategory, setNewItemCategory] = useState(categories[0]?.key || '');
+  const schoolsSuppressed = isSchoolsSuppressed(priorities);
 
   // Pool every category's known+custom items, tagging each with which
   // category it actually lives in (needed since `patch` still writes into
-  // one category's slice of priorities at a time).
-  const pools = categories.map((def) => ({ def, ...splitCategoryItems(def, priorities) }));
+  // one category's slice of priorities at a time). Schools is excluded
+  // entirely (not just tier-overridden) while relevance is suppressed — the
+  // Yes/No gate is the only place to turn it back on, so leaving it
+  // selectable here (even if it wouldn't count toward Match) would be a
+  // confusing "you can pick it but it does nothing" state. The underlying
+  // stored tier/note are never touched by this filter — see effectiveTier.
+  const isSchoolsItem = (def, item) => def.key === 'location' && item.label === 'Schools';
+  const pools = categories.map((def) => {
+    const split = splitCategoryItems(def, priorities);
+    if (!schoolsSuppressed) return { def, ...split };
+    return {
+      def,
+      catState: split.catState,
+      core: split.core.filter((item) => !isSchoolsItem(def, item)),
+      custom: split.custom.filter((item) => !isSchoolsItem(def, item)),
+      suggestions: split.suggestions.filter((item) => !isSchoolsItem(def, item)),
+    };
+  });
 
-  const tierOf = (def, label) => priorities[def.key]?.tiers?.[label] || 'dontcare';
+  const tierOf = (def, label) => effectiveTier(def.key, label, priorities, priorities[def.key]?.tiers?.[label]);
 
   const selectedPooled = pools.flatMap(({ def, core, custom }) =>
     [...core, ...custom]
