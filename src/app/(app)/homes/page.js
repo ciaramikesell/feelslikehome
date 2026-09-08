@@ -3,7 +3,10 @@ import HomesBoard from '@/components/HomesBoard';
 import CoBuyerHomesLine from '@/components/CoBuyerHomesLine';
 import { PageIntro } from '@/components/ui';
 import { normalizePriorities } from '@/lib/constants';
-import { resolveActiveSearch, resolvePriorities, resolveSharedFactPriorityAwareness, getHomesForUser, getParticipantStatusesForHomes, coBuyerArchivedSignal, getSearchParticipantIds } from '@/lib/supabase/collaboration';
+import {
+  addCoBuyerPersonalSignals, getHomesForUser, getParticipantStatusesForHomes, getSearchParticipantIds,
+  resolveActiveSearch, resolvePriorities, resolveSharedFactPriorityAwareness,
+} from '@/lib/supabase/collaboration';
 
 export default async function HomesPage() {
   const supabase = await createClient();
@@ -20,17 +23,15 @@ export default async function HomesPage() {
   // "Archived by Co-Buyer" — only meaningful once a search actually has a
   // co-buyer; getParticipantStatusesForHomes itself is cheap/no-op otherwise.
   const statusesByHome = await getParticipantStatusesForHomes(supabase, search, homes);
-  const homesWithSignal = homes.map((home) => {
-    const perParticipant = statusesByHome.get(home.id) || [];
-    const otherStatuses = perParticipant.filter((p) => p.userId !== user.id).map((p) => p.status);
-    return { ...home, coBuyerArchivedCount: coBuyerArchivedSignal(home.status, otherStatuses) };
-  });
+  const homesWithSignals = homes.map((home) => addCoBuyerPersonalSignals(
+    home, statusesByHome.get(home.id) || [], user.id
+  ));
 
   return (
     <>
       <PageIntro title="Homes" subtitle="Add homes you're considering and keep everything you know about them in one place." />
       <CoBuyerHomesLine searchId={search.id} userId={user.id} isOwner={isOwner} isCollaborative={isCollaborative} />
-      <HomesBoard mode="homes" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizePriorities(priorities)} sharedFactAwareness={sharedFactAwareness} />
+      <HomesBoard mode="homes" userId={user.id} searchId={search.id} initialHomes={homesWithSignals} initialPriorities={normalizePriorities(priorities)} sharedFactAwareness={sharedFactAwareness} />
     </>
   );
 }

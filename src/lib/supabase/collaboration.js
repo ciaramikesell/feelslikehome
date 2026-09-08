@@ -387,6 +387,23 @@ export function deriveWantToTourState(currentUserStatus, otherParticipantStatuse
   return { currentUserWantsToTour, coBuyerWantsToTour, householdWantsToTour, wantToTourLabel };
 }
 
+// Adds only the small cross-participant signals a home card is allowed to know.
+// The current user's personal fields already came from getHomesForUser; do not
+// replace them with another participant's state row while layering these flags.
+export function addCoBuyerPersonalSignals(home, perParticipant = [], currentUserId) {
+  const otherStatuses = perParticipant
+    .filter((participant) => participant.userId !== currentUserId)
+    .map((participant) => participant.status);
+  const isCollaborative = perParticipant.some((participant) => participant.userId !== currentUserId);
+
+  return {
+    ...home,
+    coBuyerArchivedCount: coBuyerArchivedSignal(home.status, otherStatuses),
+    ...(isCollaborative ? deriveWantToTourState(home.status, otherStatuses) : {}),
+    isCollaborative,
+  };
+}
+
 /* -------------------------------- invitations -------------------------------- */
 
 // Invite creation needs no RPC — the owner already has direct INSERT rights

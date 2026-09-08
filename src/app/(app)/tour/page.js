@@ -4,8 +4,8 @@ import DecisionNav from '@/components/DecisionNav';
 import { PageIntro } from '@/components/ui';
 import { isArchivedStatus, normalizePriorities } from '@/lib/constants';
 import {
-  resolveActiveSearch, resolvePriorities, resolveSharedFactPriorityAwareness, getHomesForUser, getParticipantStatusesForHomes,
-  coBuyerArchivedSignal, deriveWantToTourState,
+  addCoBuyerPersonalSignals, getHomesForUser, getParticipantStatusesForHomes,
+  resolveActiveSearch, resolvePriorities, resolveSharedFactPriorityAwareness,
 } from '@/lib/supabase/collaboration';
 
 export default async function TourPage() {
@@ -19,25 +19,17 @@ export default async function TourPage() {
   ]);
 
   const statusesByHome = await getParticipantStatusesForHomes(supabase, search, homes);
-  const homesWithSignal = homes.map((home) => {
-    const perParticipant = statusesByHome.get(home.id) || [];
-    const otherStatuses = perParticipant.filter((p) => p.userId !== user.id).map((p) => p.status);
-    const isCollaborative = perParticipant.some((p) => p.userId !== user.id);
-    return {
-      ...home,
-      coBuyerArchivedCount: coBuyerArchivedSignal(home.status, otherStatuses),
-      ...(isCollaborative ? deriveWantToTourState(home.status, otherStatuses) : {}),
-      isCollaborative,
-    };
-  });
+  const homesWithSignals = homes.map((home) => addCoBuyerPersonalSignals(
+    home, statusesByHome.get(home.id) || [], user.id
+  ));
 
-  const hasFavorites = homes.some((h) => h.reaction === 'love' && !isArchivedStatus(h.status));
-  const hasArchived = homes.some((h) => isArchivedStatus(h.status));
+  const hasFavorites = homesWithSignals.some((h) => h.reaction === 'love' && !isArchivedStatus(h.status));
+  const hasArchived = homesWithSignals.some((h) => isArchivedStatus(h.status));
 
   return (
     <DecisionNav active="tour" hasFavorites={hasFavorites} hasArchived={hasArchived}>
       <PageIntro title="Want to Tour" subtitle="Homes you're interested enough to see in person." />
-      <HomesBoard mode="tour" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizePriorities(priorities)} sharedFactAwareness={sharedFactAwareness} />
+      <HomesBoard mode="tour" userId={user.id} searchId={search.id} initialHomes={homesWithSignals} initialPriorities={normalizePriorities(priorities)} sharedFactAwareness={sharedFactAwareness} />
     </DecisionNav>
   );
 }
