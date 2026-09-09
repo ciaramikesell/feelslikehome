@@ -17,6 +17,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useReliableOptimisticState } from '@/lib/useReliableOptimisticState';
 import { completeOnboarding } from '@/lib/supabase/data';
 import { savePriorities } from '@/lib/supabase/collaboration';
+import BetaFeedback from '@/components/BetaFeedback';
 
 const TIER_LEGEND = [
   { key: 'must', title: 'Must Have', desc: TIER_DESCRIPTIONS.must },
@@ -297,7 +298,7 @@ function OnboardingStep3({ onFinish, isSaving }) {
   );
 }
 
-export default function Onboarding({ userId, searchId, initialPriorities, initialCommuteDestinations = [] }) {
+export default function Onboarding({ userId, searchId, initialPriorities, initialCommuteDestinations = [], appVersion = null }) {
   const router = useRouter();
   const initial = normalizePriorities(initialPriorities);
   const persistPriorities = useCallback((next) => savePriorities(createClient(), { id: searchId }, userId, next), [searchId, userId]);
@@ -335,6 +336,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
         {step === 2 && <OnboardingStep2 priorities={priorities} patch={patch} onNext={() => setStep(3)} onBack={() => setStep(1)} searchId={searchId} userId={userId} commuteDestinations={commuteDestinations} onCommuteDestinationsChange={setCommuteDestinations} />}
         {step === 3 && <OnboardingStep3 onFinish={onFinish} isSaving={isSaving} />}
       </OnboardingShell>
+      <BetaFeedback userId={userId} searchId={searchId} searchType={priorities.searchType} appVersion={appVersion} />
     </div>
   );
 }
