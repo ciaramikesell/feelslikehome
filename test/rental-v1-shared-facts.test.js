@@ -7,6 +7,7 @@ const schema = fs.readFileSync('supabase/schema.sql', 'utf8');
 const app = fs.readFileSync('src/lib/supabase/collaboration.js', 'utf8');
 const constants = fs.readFileSync('src/lib/constants.js', 'utf8');
 const verifier = fs.readFileSync('supabase/rental-v1-shared-facts-verification.sql', 'utf8');
+const disposableProbe = fs.readFileSync('supabase/rental-v1-disposable-execution.sql', 'utf8');
 const columns = ['property_type', 'available_on', 'pets_allowed', 'utilities_included', 'in_unit_laundry'];
 
 test('migration adds exactly the five nullable Pass B facts without a rewrite', () => {
@@ -16,6 +17,16 @@ test('migration adds exactly the five nullable Pass B facts without a rewrite', 
   for (const value of ['apartment','house','townhome','condo','multifamily','other']) assert.match(migration, new RegExp(`'${value}'`));
   assert.doesNotMatch(migration, /\b(update|delete)\s+public\.homes\b/i);
   assert.doesNotMatch(migration, /monthly_rent|\bunknown\b\s*[,)]/i);
+});
+
+test('disposable execution probe validates every allowed value and rolls back', () => {
+  for (const value of ['apartment','house','townhome','condo','multifamily','other']) {
+    assert.match(disposableProbe, new RegExp(`'${value}'`));
+  }
+  assert.match(disposableProbe, /when check_violation[\s\S]*returned_sqlstate[\s\S]*23514/);
+  assert.match(disposableProbe, /create temporary table[\s\S]*like public\.homes including defaults including constraints/);
+  assert.match(disposableProbe, /has_table_privilege[\s\S]*relrowsecurity[\s\S]*homes_enforce_shared_identity/);
+  assert.match(disposableProbe, /rollback;\s*$/);
 });
 
 test('canonical schema and restricted grants include every shared fact', () => {
