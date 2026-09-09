@@ -3,6 +3,13 @@
 :root {
   --ink: #2E2621; --ink-soft: #8A7C6E; --paper: #FAF6EF; --paper-raised: #FFFFFF;
   --line: #EAE0D2; --brick: #C1592F; --moss: #74804F; --gold: #C69245; --blue: #3E6B6F;
+  --focus-ring: rgba(193,89,47,.3);
+}
+
+button, input, select, textarea, a { -webkit-tap-highlight-color: rgba(193,89,47,.12); }
+:where(button, input, select, textarea, a, summary):focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
 
 * { box-sizing: border-box; }
@@ -46,6 +53,7 @@ html, body {
 .hh-btn.hh-btn-danger { background: transparent; color: var(--brick); border: 1px solid transparent; padding: 6px 8px; }
 .hh-btn.hh-btn-danger:hover { background: rgba(193,89,47,0.1); }
 .hh-btn:disabled { opacity: .45; cursor: not-allowed; }
+.hh-btn:focus-visible, .hh-shell-action:focus-visible, .hh-tab:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .hh-suggest-chip {
   font-size: 13px; padding: 6px 12px; border-radius: 999px; border: 1px dashed var(--line);
   background: transparent; color: var(--ink-soft); cursor: pointer; display: inline-flex;
@@ -57,7 +65,7 @@ html, body {
   background: var(--paper-raised); border: 1px solid var(--line); border-radius: 10px;
   padding: 9px 12px; width: 100%; outline: none; transition: border-color .12s ease;
 }
-.hh-input:focus, .hh-select:focus, .hh-textarea:focus { border-color: var(--brick); }
+.hh-input:focus, .hh-select:focus, .hh-textarea:focus { border-color: var(--brick); box-shadow: 0 0 0 3px var(--focus-ring); }
 .hh-textarea { resize: vertical; min-height: 60px; font-family: 'Plus Jakarta Sans', sans-serif; }
 .hh-label { font-size: 12.5px; color: var(--ink-soft); display: block; margin-bottom: 5px; font-weight: 500; }
 .hh-chip {
@@ -344,7 +352,7 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   background: var(--paper-raised); border: 1px solid var(--line); border-radius: 10px;
   padding: 10px 12px; width: 100%; outline: none; transition: border-color .12s ease;
 }
-.afh-input:focus { border-color: var(--brick); }
+.afh-input:focus { border-color: var(--brick); box-shadow: 0 0 0 3px var(--focus-ring); }
 .afh-eye-btn { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--ink-soft); cursor: pointer; padding: 4px; display: flex; }
 .afh-btn {
   font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 600;
@@ -371,6 +379,15 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   .afh-headline { font-size: 23px; margin: 20px 0 0; }
   .afh-benefits { gap: 12px; margin-top: 22px; }
   .afh-benefit-icon { width: 30px; height: 30px; }
+}
+
+@media (max-width: 640px) {
+  .afh-left { padding: 24px 20px 8px; }
+  .afh-right { align-items: flex-start; padding: 16px 14px 28px; }
+  .afh-panel { max-width: 440px; padding: 24px 20px; border-radius: 16px; }
+  .afh-headline { margin-top: 16px; font-size: 21px; }
+  .afh-description, .afh-benefits { display: none; }
+  .afh-input, .afh-btn { min-height: 44px; }
 }
 
 /* -------------------------- decision workspace (Want to Tour / Favorites / Archive) -------------------------- */

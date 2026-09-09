@@ -40,8 +40,8 @@ export default function ResetPasswordPage() {
 
         {status !== 'done' ? (
           <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <PasswordField label="New password" value={password} onChange={setPassword} placeholder="Create a new password" autoComplete="new-password" />
-            <PasswordField label="Confirm new password" value={confirm} onChange={setConfirm} placeholder="Re-enter your new password" autoComplete="new-password" />
+            <PasswordField id="new-password" label="New password" value={password} onChange={setPassword} placeholder="Create a new password" autoComplete="new-password" />
+            <PasswordField id="confirm-new-password" label="Confirm new password" value={confirm} onChange={setConfirm} placeholder="Re-enter your new password" autoComplete="new-password" />
             {error && <Banner kind="error">{error}</Banner>}
             <button type="submit" className="afh-btn" disabled={status === 'loading'}>
               {status === 'loading' ? <><Spinner /> Updating...</> : 'Update password'}
