@@ -1,6 +1,14 @@
 // Keep this file free of React/JSX so it can be imported from both client and
 // server code without pulling in any UI dependencies.
 
+import {
+  isLegacyRentalSearchType,
+  isLegacySimpleRentalSearchType,
+  legacySearchTypeLabel,
+  legacyShowsHomeLayout,
+  legacyTerminology,
+} from './searchIntent.js';
+
 export const LAYOUT_OPTIONS = ['Ranch / Single Story', 'Two Story', 'Split Level', 'Other', 'No Preference'];
 export const HOME_CONDITION_OPTIONS = ['New Construction', 'Move-In Ready', 'Renovation Potential', 'No Preference'];
 
@@ -224,18 +232,18 @@ export const INVESTMENT_LIVING_PLAN_OPTIONS = [
 ];
 
 export function isRentalType(searchType) {
-  return searchType === 'rent_home' || searchType === 'rent_apartment';
+  return isLegacyRentalSearchType(searchType);
 }
 
 // Apartment renters get a simpler basics set — no layout or lot size questions.
 export function isSimpleRentalType(searchType) {
-  return searchType === 'rent_apartment';
+  return isLegacySimpleRentalSearchType(searchType);
 }
 
 // Home layout only makes sense for standalone homes — not apartments, not investment
 // properties (which may span several layouts/unit types).
 export function showsHomeLayout(searchType) {
-  return searchType === 'buy' || searchType === 'rent_home';
+  return legacyShowsHomeLayout(searchType);
 }
 
 // Per-key visibility for MULTISELECT_CATEGORIES entries — Home Layout doesn't apply to
@@ -259,17 +267,11 @@ export function toggleWithNoPreference(cur, opt) {
 }
 
 export function searchTypeLabel(searchType) {
-  const map = { buy: 'Buying a home', rent_home: 'Renting a home', rent_apartment: 'Renting an apartment', investment: 'An investment property' };
-  return map[searchType] || '';
+  return legacySearchTypeLabel(searchType);
 }
 
 export function terminology(searchType) {
-  const rental = isRentalType(searchType);
-  return {
-    budgetLabel: rental ? 'Maximum Monthly Rent' : 'Maximum Budget',
-    priceFieldLabel: rental ? 'Monthly rent' : 'Asking price',
-    pricePlaceholder: rental ? '2,200' : '450,000',
-  };
+  return legacyTerminology(searchType);
 }
 
 // Primary navigation is now deliberately short and workflow-shaped: Homes is where
