@@ -18,7 +18,7 @@ export default async function ComparePage() {
 
   return (
     <>
-      <PageIntro title="Compare" subtitle="Put your top homes side by side and see which one fits you best." />
+      <PageIntro title="Compare" subtitle="See how your serious contenders measure up on what matters to you." />
       <CompareBoard
         homes={activeHomes}
         priorities={normalizePriorities(priorities)}
