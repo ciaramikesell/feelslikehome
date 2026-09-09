@@ -34,7 +34,8 @@ test('priorities read and write only the current participant table, including on
     source('src/components/onboarding/Onboarding.jsx'),
   ]);
   assert.match(collaboration, /from\('search_member_priorities'\)\.select\('priorities'\).*\.eq\('user_id', userId\)/);
-  assert.match(collaboration, /from\('search_member_priorities'\)[\s\S]*\.upsert\(\{ search_id: search\.id, user_id: userId, priorities \}/);
+  assert.match(collaboration, /from\('search_member_priorities'\)[\s\S]*\.upsert\(\{ search_id: search\.id, user_id: userId, priorities: savedPriorities \}/);
+  assert.match(collaboration, /savedPriorities = prioritiesForExplicitSave\(priorities\)/);
   assert.doesNotMatch(collaboration, /search\.priorities/);
   assert.doesNotMatch(collaboration, /from\('searches'\)\.update\(\{ priorities/);
   assert.match(onboardingPage, /resolvePriorities\(supabase, search, user\.id\)/);

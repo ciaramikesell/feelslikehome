@@ -10,6 +10,7 @@
 import { defaultPriorities } from '@/lib/constants';
 import { deriveSharedFactPriorityAwareness } from '@/lib/sharedFactPriorityAwareness';
 import { hasOutstandingWantToTour } from '@/lib/lifecycle';
+import { prioritiesForExplicitSave } from '@/lib/searchIntent';
 
 // Application allowlists for the shared records. Personal legacy columns are
 // intentionally absent so a later column-privilege cutover cannot change the
@@ -146,8 +147,9 @@ export async function resolveCoBuyerComparePerspectives(supabase, search, homeId
 // Saves priorities only to the authenticated participant's row, for owners
 // and co-buyers alike.
 export async function savePriorities(supabase, search, userId, priorities) {
+  const savedPriorities = prioritiesForExplicitSave(priorities);
   const { error } = await supabase.from('search_member_priorities')
-    .upsert({ search_id: search.id, user_id: userId, priorities }, { onConflict: 'search_id,user_id' });
+    .upsert({ search_id: search.id, user_id: userId, priorities: savedPriorities }, { onConflict: 'search_id,user_id' });
   if (error) throw error;
 }
 

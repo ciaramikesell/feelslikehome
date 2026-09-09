@@ -2,11 +2,8 @@
 // server code without pulling in any UI dependencies.
 
 import {
-  isLegacyRentalSearchType,
-  isLegacySimpleRentalSearchType,
-  legacySearchTypeLabel,
-  legacyShowsHomeLayout,
-  legacyTerminology,
+  CANONICAL_SEARCH_INTENT_OPTIONS,
+  normalizeSearchIntent,
 } from './searchIntent.js';
 
 export const LAYOUT_OPTIONS = ['Ranch / Single Story', 'Two Story', 'Split Level', 'Other', 'No Preference'];
@@ -20,7 +17,7 @@ export const HOME_CONDITION_OPTIONS = ['New Construction', 'Move-In Ready', 'Ren
 // criterion already uses — no new architecture needed for this change.
 export const LOCATION_CORE = [
   { label: 'Schools', kind: 'check' },
-  ...['Commute', 'Neighborhood'].map((label) => ({ label, kind: 'rating' })),
+  { label: 'Neighborhood', kind: 'rating' },
 ];
 // "Overall Location" is intentionally retired from future selection (2026 criteria
 // audit: no meaningfully distinct job from "Neighborhood" was found in how either is
@@ -28,7 +25,7 @@ export const LOCATION_CORE = [
 // user's already-selected suggested items from their own stored `customItems`, never
 // from this list, so removing it here only stops it being *offered* to new selections;
 // nothing is deleted, renamed, or migrated.
-export const LOCATION_SUGGESTED = ['Walkability', 'Immediate Street / Surroundings', 'Parks Nearby', 'Proximity to Family / Friends', 'Dog Parks Nearby', 'Groceries Nearby', 'Restaurants / Coffee / Shopping Nearby'].map((label) => ({ label, kind: 'rating' }));
+export const LOCATION_SUGGESTED = ['Walkability', 'Immediate Street / Surroundings', 'Parks Nearby', 'Dog Parks Nearby', 'Groceries Nearby', 'Restaurants / Coffee / Shopping Nearby'].map((label) => ({ label, kind: 'rating' }));
 
 export const HOME_FEEL_CORE = ['Overall Condition', 'Layout / Flow'].map((label) => ({ label, kind: 'rating' }));
 export const HOME_FEEL_SUGGESTED = ['Natural Light', 'Character / Charm', 'Room Sizes', 'Openness / Ceiling Height', 'Privacy'].map((label) => ({ label, kind: 'rating' }));
@@ -102,13 +99,16 @@ export function effectiveTier(categoryKey, label, priorities, rawTier) {
   return rawTier || 'dontcare';
 }
 
-// Apartment-specific replacements — structurally different from a house, so it gets its
-// own core/suggested sets for Exterior & Property and Home Features rather than reusing
-// the house-oriented ones above.
-const APARTMENT_EXTERIOR_CORE = [{ label: 'Parking', kind: 'check' }, { label: 'Outdoor Space', kind: 'rating' }, { label: 'Privacy', kind: 'rating' }];
-const APARTMENT_EXTERIOR_SUGGESTED = [{ label: 'Noise Level', kind: 'rating' }, { label: 'Elevator', kind: 'check' }];
-const APARTMENT_FEATURES_CORE = [{ label: 'In-Unit Laundry', kind: 'check' }, { label: 'Pet Policy', kind: 'check' }, { label: 'Utilities Included', kind: 'check' }];
-const APARTMENT_FEATURES_SUGGESTED = ['Pet Rent / Fees', 'Building Amenities', 'Storage', 'Central Air', 'Updated Kitchen', 'Updated Bathrooms', 'Walk-In Closet'].map((label) => ({ label, kind: 'check' }));
+const RENTAL_FEATURES = [...FEATURES_CORE, ...FEATURES_SUGGESTED,
+  { label: 'Dishwasher', kind: 'check' }, { label: 'Pets Allowed', kind: 'check' },
+  { label: 'Utilities Included', kind: 'check' }, { label: 'In-Unit Laundry', kind: 'check' }];
+const RENTAL_EXTERIOR = [
+  { label: 'Parking', kind: 'check' }, { label: 'Garage', kind: 'check' },
+  { label: 'Driveway / Off-Street Parking', kind: 'check' }, { label: 'Fenced Yard', kind: 'check' },
+  { label: 'Outdoor Space', kind: 'rating' }, { label: 'Patio / Deck / Outdoor Living', kind: 'check' },
+  { label: 'Privacy', kind: 'rating' }, { label: 'Elevator', kind: 'check' },
+  { label: 'Building Amenities', kind: 'check' }, { label: 'Noise Level', kind: 'rating' },
+];
 
 export const MULTISELECT_CATEGORIES = [
   { key: 'homeLayout', title: 'Home Layout', options: LAYOUT_OPTIONS },
@@ -123,52 +123,51 @@ export const SINGLESELECT_CATEGORIES = [
 ];
 
 // Category order per product spec: Location, Home Features, Exterior & Property, Home Feel (last).
-// Content is tailored per search type — apartment gets a structurally different Exterior/Features
-// set, and rent/investment types get a few extra suggestion chips layered onto the shared sets.
+// Purchase uses the established catalog, Rental uses one unified suggestion bank,
+// and Investment keeps its established additions.
 export function getItemlistCategories(searchType) {
-  const isApartment = searchType === 'rent_apartment';
-  const isInvestment = searchType === 'investment';
-  const isRentHome = searchType === 'rent_home';
+  const intent = normalizeSearchIntent(searchType);
+  const isRental = intent === 'rental';
+  const isInvestment = intent === 'investment';
 
   const location = {
     key: 'location', title: 'Location',
     blurb: "How you feel about where the home sits and what's nearby. You'll rate each per home with stars.",
-    coreItems: LOCATION_CORE,
+    coreItems: isInvestment ? [{ label: 'Schools', kind: 'check' }, { label: 'Commute', kind: 'rating' }, { label: 'Neighborhood', kind: 'rating' }] : LOCATION_CORE,
     suggestedItems: [
       ...LOCATION_SUGGESTED,
-      ...(isApartment ? [{ label: 'Floor / Location in Building', kind: 'check' }] : []),
+      ...(isInvestment ? [{ label: 'Proximity to Family / Friends', kind: 'rating' }] : []),
       ...(isInvestment ? [{ label: 'Tenant Appeal', kind: 'rating' }] : []),
     ],
     defaultCustomKind: 'rating',
   };
 
-  const features = isApartment
+  const features = isRental
     ? {
-        key: 'features', title: 'Home Features', blurb: "Specific things the apartment either has or doesn't.",
-        coreItems: APARTMENT_FEATURES_CORE, suggestedItems: APARTMENT_FEATURES_SUGGESTED, defaultCustomKind: 'check',
+        key: 'features', title: 'Home Features', blurb: "Specific things the home either has or doesn't.",
+        coreItems: [], suggestedItems: RENTAL_FEATURES, defaultCustomKind: 'check',
       }
     : {
         key: 'features', title: 'Home Features', blurb: "Specific things the home either has or doesn't.",
         coreItems: FEATURES_CORE,
         suggestedItems: [
           ...FEATURES_SUGGESTED,
-          ...(isRentHome ? [{ label: 'Pet Policy', kind: 'check' }, { label: 'In-Unit Laundry', kind: 'check' }] : []),
           ...(isInvestment ? [{ label: 'Separate Utilities', kind: 'check' }, { label: 'Unit Configuration', kind: 'check' }] : []),
         ],
         defaultCustomKind: 'check',
       };
 
-  const exterior = isApartment
+  const exterior = isRental
     ? {
-        key: 'exterior', title: 'Exterior & Property', blurb: 'Parking, outdoor space, and how the unit feels.',
-        coreItems: APARTMENT_EXTERIOR_CORE, suggestedItems: APARTMENT_EXTERIOR_SUGGESTED, defaultCustomKind: 'check',
+        key: 'exterior', title: 'Exterior & Building', blurb: 'Parking, outdoor space, and how the building feels.',
+        coreItems: [], suggestedItems: RENTAL_EXTERIOR, defaultCustomKind: 'check',
       }
     : {
         key: 'exterior', title: 'Exterior & Property', blurb: 'The yard, parking, and outdoor spaces.',
         coreItems: EXTERIOR_CORE,
         suggestedItems: [
           ...EXTERIOR_SUGGESTED,
-          ...(isRentHome || isInvestment ? [{ label: 'Parking', kind: 'check' }] : []),
+          ...(isInvestment ? [{ label: 'Parking', kind: 'check' }] : []),
         ],
         defaultCustomKind: 'check',
       };
@@ -180,7 +179,6 @@ export function getItemlistCategories(searchType) {
     suggestedItems: [
       ...HOME_FEEL_SUGGESTED,
       ...(isInvestment ? [{ label: 'Rental Income Potential', kind: 'rating' }, { label: 'Property Condition', kind: 'rating' }, { label: 'Owner-Occupancy Suitability', kind: 'rating' }] : []),
-      ...(isRentHome ? [{ label: 'Maintenance Responsibility', kind: 'rating' }, { label: 'Lease Terms', kind: 'rating' }] : []),
     ],
     defaultCustomKind: 'rating',
   };
@@ -213,17 +211,17 @@ export const TIER_META = {
   nice: { label: 'Nice to have', weight: 1, color: '#3E6B6F' },
   dontcare: { label: "Don't care", weight: 0, color: '#9C8F80' },
 };
+export const TIER_DESCRIPTIONS = Object.freeze({
+  must: 'One of your highest priorities.',
+  important: 'This should weigh heavily in your match.',
+  nice: 'A bonus, but not a requirement.',
+});
 // Only these three are offered once a criterion is selected — "don't care" is simply
 // what a criterion is when it's never been selected in the first place.
 export const SELECTABLE_TIERS = ['nice', 'important', 'must'];
 export const DEFAULT_SELECTED_TIER = 'important';
 
-export const SEARCH_TYPE_OPTIONS = [
-  { key: 'buy', label: 'Home to buy' },
-  { key: 'rent_home', label: 'Home to rent' },
-  { key: 'rent_apartment', label: 'Apartment to rent' },
-  { key: 'investment', label: 'Investment property' },
-];
+export const SEARCH_TYPE_OPTIONS = CANONICAL_SEARCH_INTENT_OPTIONS;
 
 export const INVESTMENT_LIVING_PLAN_OPTIONS = [
   { key: 'yes', label: 'Yes' },
@@ -232,18 +230,18 @@ export const INVESTMENT_LIVING_PLAN_OPTIONS = [
 ];
 
 export function isRentalType(searchType) {
-  return isLegacyRentalSearchType(searchType);
+  return normalizeSearchIntent(searchType) === 'rental';
 }
 
 // Apartment renters get a simpler basics set — no layout or lot size questions.
 export function isSimpleRentalType(searchType) {
-  return isLegacySimpleRentalSearchType(searchType);
+  return normalizeSearchIntent(searchType) === 'rental';
 }
 
 // Home layout only makes sense for standalone homes — not apartments, not investment
 // properties (which may span several layouts/unit types).
 export function showsHomeLayout(searchType) {
-  return legacyShowsHomeLayout(searchType);
+  return normalizeSearchIntent(searchType) === 'purchase';
 }
 
 // Per-key visibility for MULTISELECT_CATEGORIES entries — Home Layout doesn't apply to
@@ -267,11 +265,16 @@ export function toggleWithNoPreference(cur, opt) {
 }
 
 export function searchTypeLabel(searchType) {
-  return legacySearchTypeLabel(searchType);
+  return { purchase: 'Purchase', rental: 'Rental', investment: 'Investment Property' }[normalizeSearchIntent(searchType)] || '';
 }
 
 export function terminology(searchType) {
-  return legacyTerminology(searchType);
+  const rental = isRentalType(searchType);
+  return {
+    budgetLabel: rental ? 'Maximum Monthly Rent' : 'Maximum Budget',
+    priceFieldLabel: rental ? 'Monthly rent' : 'Asking price',
+    pricePlaceholder: rental ? '2,200' : '450,000',
+  };
 }
 
 // Primary navigation is now deliberately short and workflow-shaped: Homes is where
@@ -318,6 +321,7 @@ export function defaultPriorities() {
     searchType: '',
     investmentPropertyTypes: [],
     planningToLiveIn: '',
+    preferredPropertyTypes: { values: [], tier: 'important' },
     budget: { value: '', tier: 'important' },
     sqftTarget: { value: '', tier: 'nice' },
     lotSizeTarget: { value: '', tier: 'dontcare' },
@@ -347,7 +351,7 @@ export function normalizePriorities(raw) {
   const merged = { ...base, ...raw };
   const shapedKeys = [
     'budget', 'sqftTarget', 'lotSizeTarget', 'bedsMin', 'bathsMin',
-    'homeLayout', 'homeCondition', 'primaryBedroomLocation', 'secondaryBedroomLocation',
+    'homeLayout', 'homeCondition', 'primaryBedroomLocation', 'secondaryBedroomLocation', 'preferredPropertyTypes',
     'location', 'homeFeel', 'exterior', 'features',
   ];
   shapedKeys.forEach((key) => {
@@ -364,7 +368,7 @@ export function normalizePriorities(raw) {
   // This is the correct place to close a class of "undefined.includes()"
   // crash — once guaranteed here, no consumer (Onboarding, My Search, Add/Edit
   // Home) needs its own defensive check for this specific failure mode.
-  ['homeLayout', 'homeCondition'].forEach((key) => {
+  ['homeLayout', 'homeCondition', 'preferredPropertyTypes'].forEach((key) => {
     if (!Array.isArray(merged[key].values)) merged[key] = { ...merged[key], values: [] };
   });
   return merged;

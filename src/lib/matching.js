@@ -30,7 +30,13 @@ export function splitCategoryItems(def, priorities) {
   const catState = priorities[def.key] || { customItems: [], tiers: {}, order: [], hiddenCore: [] };
   const hidden = new Set(catState.hiddenCore || []);
   const core = def.coreItems.filter((i) => !hidden.has(i.label));
-  const custom = catState.customItems || [];
+  const knownLabels = new Set([...def.coreItems, ...def.suggestedItems, ...(catState.customItems || [])].map((item) => item.label));
+  // A removed suggestion remains renderable when a legacy participant selected
+  // it. Its stored identity/tier is never rewritten or silently dropped.
+  const legacySelected = Object.keys(catState.tiers || {})
+    .filter((label) => !knownLabels.has(label) && catState.tiers[label] !== 'dontcare')
+    .map((label) => ({ label, kind: ['Commute', 'Proximity to Family / Friends', 'Lease Terms', 'Maintenance Responsibility'].includes(label) ? 'rating' : 'check' }));
+  const custom = [...(catState.customItems || []), ...legacySelected];
   const customLabels = new Set(custom.map((i) => i.label));
   const restorable = def.coreItems.filter((i) => hidden.has(i.label) && !customLabels.has(i.label));
   const suggestions = [...def.suggestedItems.filter((i) => !customLabels.has(i.label) && !hidden.has(i.label)), ...restorable];
@@ -200,6 +206,16 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
   };
   const notEvaluated = (key, label, tier, objective) => push(key, label, tier, false, null, null, 'Not evaluated yet', objective);
 
+  const propertyTypes = priorities.preferredPropertyTypes;
+  if (propertyTypes?.values?.length && propertyTypes.tier !== 'dontcare') {
+    if (!home.propertyType) notEvaluated('preferredPropertyTypes', 'Preferred property type', propertyTypes.tier, true);
+    else {
+      const met = propertyTypes.values.includes(home.propertyType);
+      push('preferredPropertyTypes', 'Preferred property type', propertyTypes.tier, true, met ? 1 : 0, met,
+        met ? home.propertyType : `${home.propertyType} is not on your preferred list`, true);
+    }
+  }
+
   if (priorities.budget?.value && priorities.budget.tier !== 'dontcare') {
     const target = parseNum(priorities.budget.value);
     const price = parseNum(home.price);
@@ -289,6 +305,19 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
         const val = home.ratings?.[ns] || 0;
         if (val > 0) push(ns, item.label, tier, true, val / 5, val >= 3, `${val}/5`, false);
         else notEvaluated(ns, item.label, tier, false);
+        return;
+      }
+
+      const sharedBooleanField = {
+        'features:Pets Allowed': 'petsAllowed',
+        'features:Utilities Included': 'utilitiesIncluded',
+        'features:In-Unit Laundry': 'inUnitLaundry',
+      }[ns];
+      if (sharedBooleanField) {
+        const actual = home[sharedBooleanField];
+        if (actual === true) push(ns, item.label, tier, true, 1, true, 'Yes', true);
+        else if (actual === false) push(ns, item.label, tier, true, 0, false, 'No', true);
+        else notEvaluated(ns, item.label, tier, true);
         return;
       }
 

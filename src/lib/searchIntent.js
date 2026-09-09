@@ -5,6 +5,17 @@
 export const PURCHASE_PROPERTY_TYPE_OPTIONS = Object.freeze(['house', 'condo', 'townhome', 'multifamily']);
 export const RENTAL_PROPERTY_TYPE_OPTIONS = Object.freeze(['apartment', 'house', 'townhome', 'condo']);
 
+export const CANONICAL_SEARCH_INTENT_OPTIONS = Object.freeze([
+  Object.freeze({ key: 'purchase', label: 'Purchase' }),
+  Object.freeze({ key: 'rental', label: 'Rental' }),
+  Object.freeze({ key: 'investment', label: 'Investment Property' }),
+]);
+
+export const PROPERTY_TYPE_LABELS = Object.freeze({
+  apartment: 'Apartment', house: 'House', townhome: 'Townhome',
+  condo: 'Condo', multifamily: 'Multifamily',
+});
+
 const INTENT_BY_SEARCH_TYPE = Object.freeze({
   buy: 'purchase',
   purchase: 'purchase',
@@ -21,6 +32,14 @@ export function normalizeSearchIntent(rawSearchType) {
 
 export function canonicalSearchTypeForWrite(rawSearchType) {
   return normalizeSearchIntent(rawSearchType);
+}
+
+// Explicit edits canonicalize only the intent field while retaining every
+// other key (including unknown legacy keys) in the participant's document.
+export function prioritiesForExplicitSave(priorities) {
+  if (!priorities || typeof priorities !== 'object' || Array.isArray(priorities)) return priorities;
+  const canonical = canonicalSearchTypeForWrite(priorities.searchType);
+  return canonical ? { ...priorities, searchType: canonical } : { ...priorities };
 }
 
 export function searchIntentCapabilities(rawSearchType) {
