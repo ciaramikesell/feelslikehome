@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import {
   applyPostTourVerdict, archiveHome, hasOutstandingWantToTour, hasToured,
-  restoreHome, toggleFavorite,
+  isFavoriteHome, postTourVerdict, restoreHome, toggleFavorite,
 } from '../src/lib/lifecycle.js';
 
 const base = () => ({
@@ -21,6 +21,20 @@ test('Favorite is independent before and after a tour', () => {
   assert.equal(unfavorite.isFavorite, false);
   assert.equal(unfavorite.reaction, 'love');
   assert.equal(unfavorite.touredAt, loved.touredAt);
+});
+
+test('Favorites path preserves verdict independently from Favorite membership', () => {
+  const cases = [
+    { home: { ...base(), id: 'considering', isFavorite: true, reaction: 'considering' }, included: true, verdict: 'considering' },
+    { home: { ...base(), id: 'favorite-love', isFavorite: true, reaction: 'love' }, included: true, verdict: 'love' },
+    { home: { ...base(), id: 'unfavorite-love', isFavorite: false, reaction: 'love' }, included: false, verdict: 'love' },
+    { home: { ...base(), id: 'favorite-no-verdict', isFavorite: true, reaction: null }, included: true, verdict: null },
+  ];
+  const favorites = cases.map(({ home }) => home).filter(isFavoriteHome);
+  for (const { home, included, verdict } of cases) {
+    assert.equal(favorites.some((favorite) => favorite.id === home.id), included);
+    assert.equal(postTourVerdict(home), verdict);
+  }
 });
 
 test('Love It records a tour, saves, and favorites', () => {
@@ -77,6 +91,7 @@ test('application sources keep ownership, household union, modal initialization,
   assert.match(board, /applyPostTourVerdict\(home, verdict, patch\)/);
   assert.match(detail, /setArchiveTarget\(next\)/);
   assert.match(detail, /<ArchiveConfirmModal/);
-  assert.match(modal, /\['love', 'considering', 'not_for_me'\]\.includes\(home\.reaction\)/);
+  assert.match(modal, /postTourVerdict\(home\)/);
   assert.doesNotMatch(modal, /home\.isFavorite.*initialVerdict/);
+  assert.match(board, /key=\{`\$\{postTourTarget\.id\}:\$\{postTourTarget\.reaction/);
 });

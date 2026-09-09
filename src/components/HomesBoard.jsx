@@ -17,7 +17,7 @@ import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
 import { STATUS_COLOR, emptyHome, isRentalType, isArchivedStatus } from '@/lib/constants';
 import { parseNum, fmtMoney, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint } from '@/lib/matching';
 import { formatLotSizeDisplay, splitAddressLines, parseCommaList } from '@/lib/homeDisplay';
-import { applyPostTourVerdict, archiveHome, hasToured, restoreHome as restoreLifecycleHome, toggleFavorite as toggleFavoriteState } from '@/lib/lifecycle';
+import { applyPostTourVerdict, archiveHome, hasToured, isFavoriteHome, restoreHome as restoreLifecycleHome, toggleFavorite as toggleFavoriteState } from '@/lib/lifecycle';
 import { createClient } from '@/lib/supabase/client';
 import { deleteHome as deleteHomeQuery } from '@/lib/supabase/data';
 import {
@@ -541,7 +541,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
 
   const activeHomes = useMemo(() => homes.filter((h) => !isArchivedStatus(h.status)), [homes]);
   const archivedHomes = useMemo(() => homes.filter((h) => isArchivedStatus(h.status)), [homes]);
-  const favoriteHomes = useMemo(() => activeHomes.filter((h) => h.isFavorite), [activeHomes]);
+  const favoriteHomes = useMemo(() => activeHomes.filter(isFavoriteHome), [activeHomes]);
   const tourHomes = useMemo(
     () => activeHomes.filter((h) => (
       deriveWantToTourState(h).currentUserWantsToTour || h.coBuyerWantsToTour
@@ -688,6 +688,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
 
       {postTourTarget && (
         <PostTourModal
+          key={`${postTourTarget.id}:${postTourTarget.reaction ?? 'none'}`}
           home={postTourTarget}
           priorities={priorities}
           isCollaborative={isCollaborative}

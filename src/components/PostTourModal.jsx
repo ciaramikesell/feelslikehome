@@ -5,6 +5,7 @@ import { X, Heart, CircleDashed, XCircle } from 'lucide-react';
 import { StarInput } from '@/components/ui';
 import { TOUR_RATING_KEY, criterionDisplayLabel } from '@/lib/constants';
 import { selectedSubjectiveCriteria, curatedAdditionalSubjectiveCriteria } from '@/lib/matching';
+import { postTourVerdict } from '@/lib/lifecycle';
 
 // A small set of things people commonly notice on a tour that DON'T correspond to a
 // formal rating criterion at all — deliberately short. Anything that maps onto a real
@@ -154,7 +155,7 @@ function StandOutGroup({ title, color, value, onChange }) {
  * meticulous users, and is entirely optional.
  */
 export default function PostTourModal({ home, priorities, isCollaborative = false, saveError = '', onVerdict, onClose }) {
-  const initialVerdict = ['love', 'considering', 'not_for_me'].includes(home.reaction) ? home.reaction : null;
+  const initialVerdict = postTourVerdict(home);
   const [verdict, setVerdict] = useState(initialVerdict);
   const [ratings, setRatings] = useState(home.ratings || {});
   const [pros, setPros] = useState(home.pros || '');

@@ -12,6 +12,14 @@ export function toggleFavorite(home) {
   return { ...home, isFavorite: !Boolean(home.isFavorite) };
 }
 
+export function isFavoriteHome(home) {
+  return Boolean(home?.isFavorite);
+}
+
+export function postTourVerdict(home) {
+  return ['love', 'considering', 'not_for_me'].includes(home?.reaction) ? home.reaction : null;
+}
+
 export function applyPostTourVerdict(home, verdict, patch = {}, recordedAt = new Date().toISOString()) {
   const next = {
     ...home,
