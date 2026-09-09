@@ -180,8 +180,8 @@ export function getItemlistCategories(searchType) {
   return [location, features, exterior, homeFeel];
 }
 
-// Lifecycle as of V1.1: Saved -> Want to Tour -> Toured -> Archived. Favorites are a
-// separate heart flag (home.reaction), not part of this lifecycle.
+// Toured remains readable as a legacy status, but new writes store tour history in
+// touredAt and use status only for current intent. Favorite is an independent flag.
 export const STATUS_OPTIONS = ['Saved', 'Want to Tour', 'Toured', 'Archived'];
 // Legacy values (from before V1.1) are kept here purely so existing homes still render
 // with a sensible color instead of falling back to gray — they're not offered as choices.
@@ -290,7 +290,7 @@ export function emptyHome() {
     address: '', crossroads: '', listingUrl: '', photoUrl: '',
     price: '', estMonthly: '', sqft: '', beds: '', baths: '', lotSize: '', garageSpaces: '', yearBuilt: '', daysOnMarket: '',
     homeLayout: [], homeCondition: [], primaryBedroomLocation: '', secondaryBedroomLocation: '',
-    status: 'Saved', reaction: null, rejectionReason: '',
+    status: 'Saved', touredAt: null, isFavorite: false, reaction: null, rejectionReason: '',
     ratings: {}, checks: {},
     notes: '', pros: '', cons: '',
     // Auto Enrichment 1.0 — captured from RentCast when available, never user-entered.

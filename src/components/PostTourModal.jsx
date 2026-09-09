@@ -154,7 +154,7 @@ function StandOutGroup({ title, color, value, onChange }) {
  * meticulous users, and is entirely optional.
  */
 export default function PostTourModal({ home, priorities, isCollaborative = false, saveError = '', onVerdict, onClose }) {
-  const initialVerdict = home.reaction === 'love' ? 'love' : (home.status === 'Toured' ? 'considering' : null);
+  const initialVerdict = ['love', 'considering', 'not_for_me'].includes(home.reaction) ? home.reaction : null;
   const [verdict, setVerdict] = useState(initialVerdict);
   const [ratings, setRatings] = useState(home.ratings || {});
   const [pros, setPros] = useState(home.pros || '');

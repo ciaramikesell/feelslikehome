@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Check, ExternalLink, Heart, Footprints, Home as HomeIcon, Minus, Pencil, RotateCcw, Star, X } from 'lucide-react';
 import HomeModal from '@/components/HomeModal';
 import PostTourModal from '@/components/PostTourModal';
+import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
 import { criterionDisplayLabel, isArchivedStatus, TOUR_RATING_KEY } from '@/lib/constants';
 import { computeMatch, fmtMoney, parseNum } from '@/lib/matching';
 import { evaluateCommute } from '@/lib/commute';
@@ -12,6 +13,7 @@ import { formatLotSizeDisplay, parseCommaList, splitAddressLines } from '@/lib/h
 import { useCommuteObserver } from '@/lib/useCommuteObserver';
 import { createClient } from '@/lib/supabase/client';
 import { hasSharedHomeChanges, saveHomePersonalAndShared, saveHomePersonalState } from '@/lib/supabase/collaboration';
+import { applyPostTourVerdict, archiveHome, hasToured, restoreHome, toggleFavorite } from '@/lib/lifecycle';
 
 const TIER_LABELS = { must: 'Must-haves', important: 'Important', nice: 'Nice to have' };
 
@@ -28,6 +30,7 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
   const [home, setHome] = useState(initialHome);
   const [editing, setEditing] = useState(false);
   const [reflecting, setReflecting] = useState(false);
+  const [archiveTarget, setArchiveTarget] = useState(null);
   const [notesOpen, setNotesOpen] = useState(false);
   const [thoughts, setThoughts] = useState({ pros: home.pros || '', cons: home.cons || '', notes: home.notes || '' });
   const [saving, setSaving] = useState(false);
@@ -99,9 +102,18 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
     try { await saveWhole({ ...home, ...thoughts }); setNotesOpen(false); } catch {} finally { setSaving(false); }
   };
   const handleVerdict = async (current, verdict, patch) => {
-    const next = { ...current, ...patch, status: verdict === 'not_for_me' ? 'Archived' : 'Toured', reaction: verdict === 'love' ? 'love' : current.reaction };
-    await (hasSharedHomeChanges(next, home) ? saveWhole(next) : savePersonal(next));
+    const next = applyPostTourVerdict(current, verdict, patch);
     setReflecting(false);
+    if (verdict === 'not_for_me') {
+      setArchiveTarget(next);
+      return;
+    }
+    await (hasSharedHomeChanges(next, home) ? saveWhole(next) : savePersonal(next));
+  };
+  const confirmArchive = async (reason) => {
+    const next = archiveHome(archiveTarget, reason);
+    setArchiveTarget(null);
+    await (hasSharedHomeChanges(next, home) ? saveWhole(next) : savePersonal(next));
   };
   const back = () => window.history.length > 1 ? router.back() : router.push('/homes');
 
@@ -114,7 +126,7 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
         <h1 className="hh-serif">{line1 || 'Untitled home'}</h1>{line2 && <p className="hh-detail-locality">{line2}</p>}
         <div className="hh-detail-price">{fmtMoney(home.price)}</div>
         <div className="hh-detail-core-facts">{[home.beds && `${home.beds} beds`, home.baths && `${home.baths} baths`, home.sqft && `${parseNum(home.sqft)?.toLocaleString()} sq ft`, home.lotSize && formatLotSizeDisplay(home.lotSize)].filter(Boolean).map((fact) => <span key={fact}>{fact}</span>)}</div>
-        <div className="hh-detail-summary-row">{match?.pct != null && <strong>{match.pct}% Match</strong>}<span className="hh-detail-lifecycle">{home.status}</span>{home.reaction === 'love' && <span className="hh-detail-favorite"><Heart size={13} fill="currentColor" aria-hidden="true" /> Favorite</span>}</div>
+        <div className="hh-detail-summary-row">{match?.pct != null && <strong>{match.pct}% Match</strong>}<span className="hh-detail-lifecycle">{home.status}</span>{home.isFavorite && <span className="hh-detail-favorite"><Heart size={13} fill="currentColor" aria-hidden="true" /> Favorite</span>}</div>
         <div className="hh-detail-links">{home.listingUrl && <a href={home.listingUrl} target="_blank" rel="noreferrer">Original listing <ExternalLink size={13} /></a>}<button type="button" onClick={() => setEditing(true)}><Pencil size={13} /> Edit home information</button></div>
       </div>
     </header>
@@ -125,12 +137,23 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
 
     {match && <Section eyebrow="How it fits your search" title={match.pct == null ? 'More will come into focus' : `Why this home is a ${match.pct}% Match for you`}><div className="hh-detail-match-groups">{['must', 'important', 'nice'].map((tier) => { const rows = match.allSelected.filter((item) => item.tier === tier); return rows.length ? <div className={`hh-detail-match-tier ${tier}`} key={tier}><h3>{TIER_LABELS[tier]}</h3>{rows.map((item) => { const detail = !item.evaluated ? (item.objective ? 'Needs more information' : 'Evaluate after tour') : item.objective ? item.detail : item.met ? 'Liked' : "Didn't like"; const stateLabel = !item.evaluated ? 'Unknown' : item.met ? 'Satisfied' : 'Missed'; return <div className={`hh-detail-criterion ${!item.evaluated ? 'unknown' : item.met ? 'met' : 'missed'}`} key={item.key}><b aria-hidden="true">{!item.evaluated ? <Minus size={14} /> : item.met ? <Check size={14} /> : <X size={14} />}</b><span><strong>{item.key.includes(':') ? criterionDisplayLabel(item.key.split(':')[0], item.label) : item.label}</strong><small>{detail}</small></span><span className="sr-only">{stateLabel}</span></div>; })}</div> : null; })}</div></Section>}
 
-    <Section eyebrow="Your take" title="Your relationship with this home">{isCollaborative && <p className="hh-detail-context">These choices are yours. Your co-buyer keeps their own.</p>}<div className="hh-detail-actions">{home.status === 'Toured' ? <span className="hh-detail-toured-state"><Check size={15} aria-hidden="true" /> Toured</span> : <button className="hh-btn" aria-pressed={home.status === 'Want to Tour'} onClick={() => savePersonal({ status: home.status === 'Want to Tour' ? 'Saved' : 'Want to Tour' }).catch(() => {})}><Footprints size={15} aria-hidden="true" />{home.status === 'Want to Tour' ? 'On your Want to Tour list' : 'Want to tour'}</button>}<button className="hh-btn hh-btn-ghost" aria-pressed={home.reaction === 'love'} onClick={() => savePersonal({ reaction: home.reaction === 'love' ? null : 'love' }).catch(() => {})}><Heart size={15} aria-hidden="true" fill={home.reaction === 'love' ? 'currentColor' : 'none'} />{home.reaction === 'love' ? 'Favorited' : 'Favorite'}</button><button className="hh-detail-archive-action" onClick={() => savePersonal({ status: isArchivedStatus(home.status) ? (overall ? 'Toured' : 'Saved') : 'Archived' }).catch(() => {})}>{isArchivedStatus(home.status) ? <><RotateCcw size={14} aria-hidden="true" /> Restore</> : 'Archive'}</button></div>{saveError && <p className="hh-save-error" role="alert">{saveError}{retryPersonal.current && <> <button type="button" onClick={() => savePersonal(retryPersonal.current).catch(() => {})}>Retry</button></>}</p>}{overall > 0 || experiential.length > 0 ? <div className="hh-detail-evaluation">{overall > 0 && <div className="hh-detail-overall"><h3>Overall feeling</h3><Stars value={overall} /></div>}{experiential.length > 0 && <div className="hh-detail-reactions">{likedExperiences.length > 0 && <div><h3 className="liked">Liked</h3>{likedExperiences.map((item) => <p key={item.key}>{criterionDisplayLabel(item.key.split(':')[0], item.label)}</p>)}</div>}{dislikedExperiences.length > 0 && <div><h3 className="disliked">Didn't like</h3>{dislikedExperiences.map((item) => <p key={item.key}>{criterionDisplayLabel(item.key.split(':')[0], item.label)}</p>)}</div>}</div>}<button className="hh-detail-text-button" onClick={() => setReflecting(true)}>Edit my thoughts</button></div> : <div className="hh-detail-after-tour"><strong>After your tour</strong><p>Come back to record how the home actually felt.</p><button className="hh-detail-text-button" onClick={() => setReflecting(true)}>Record your take</button></div>}</Section>
+    <Section eyebrow="Your take" title="Your relationship with this home">
+      {isCollaborative && <p className="hh-detail-context">These choices are yours. Your co-buyer keeps their own.</p>}
+      <div className="hh-detail-actions">
+        {hasToured(home) ? <span className="hh-detail-toured-state"><Check size={15} aria-hidden="true" /> Toured</span> : <button className="hh-btn" aria-pressed={home.status === 'Want to Tour'} onClick={() => savePersonal({ status: home.status === 'Want to Tour' ? 'Saved' : 'Want to Tour' }).catch(() => {})}><Footprints size={15} aria-hidden="true" />{home.status === 'Want to Tour' ? 'On your Want to Tour list' : 'Want to tour'}</button>}
+        <button className="hh-btn hh-btn-ghost" aria-pressed={home.isFavorite} onClick={() => savePersonal(toggleFavorite(home)).catch(() => {})}><Heart size={15} aria-hidden="true" fill={home.isFavorite ? 'currentColor' : 'none'} />{home.isFavorite ? 'Favorited' : 'Favorite'}</button>
+        <button className="hh-detail-archive-action" onClick={() => isArchivedStatus(home.status) ? savePersonal(restoreHome(home)).catch(() => {}) : setArchiveTarget(home)}>{isArchivedStatus(home.status) ? <><RotateCcw size={14} aria-hidden="true" /> Restore</> : 'Archive'}</button>
+      </div>
+      {home.coBuyerWantsToTour && <p className="hh-detail-context">Co-Buyer still wants to tour this home.</p>}
+      {saveError && <p className="hh-save-error" role="alert">{saveError}{retryPersonal.current && <> <button type="button" onClick={() => savePersonal(retryPersonal.current).catch(() => {})}>Retry</button></>}</p>}
+      {hasToured(home) ? <div className="hh-detail-evaluation">{overall > 0 && <div className="hh-detail-overall"><h3>Overall feeling</h3><Stars value={overall} /></div>}{experiential.length > 0 && <div className="hh-detail-reactions">{likedExperiences.length > 0 && <div><h3 className="liked">Liked</h3>{likedExperiences.map((item) => <p key={item.key}>{criterionDisplayLabel(item.key.split(':')[0], item.label)}</p>)}</div>}{dislikedExperiences.length > 0 && <div><h3 className="disliked">Didn't like</h3>{dislikedExperiences.map((item) => <p key={item.key}>{criterionDisplayLabel(item.key.split(':')[0], item.label)}</p>)}</div>}</div>}<button className="hh-detail-text-button" onClick={() => setReflecting(true)}>Edit my thoughts</button></div> : <div className="hh-detail-after-tour"><strong>After your tour</strong><p>Come back to record how the home actually felt.</p><button className="hh-detail-text-button" onClick={() => setReflecting(true)}>Record your take</button></div>}
+    </Section>
 
     {hasCoBuyerPerspective && <Section eyebrow="Co-buyer perspective" title="Another view, kept distinct"><div className="hh-detail-cobuyer">{coBuyerPerspective.match?.pct != null && <strong>{coBuyerPerspective.match.pct}% Match</strong>}{coBuyerPerspective.overallFeeling > 0 && <span><Stars value={coBuyerPerspective.overallFeeling} /> Overall feeling</span>}</div>{coBuyerPerspective.differentTakes?.length > 0 && <div className="hh-detail-differences"><h3>Different takes</h3>{coBuyerPerspective.differentTakes.map((take) => { const category = take.key?.split(':')[0]; return <p key={take.key}><strong>{criterionDisplayLabel(category, take.label)}</strong><span>{take.youLiked ? 'You liked it' : "You didn't like it"} · {take.coBuyerLiked ? 'Co-Buyer did' : "Co-Buyer didn't"}</span></p>; })}</div>}</Section>}
 
     <Section eyebrow="Property notes" title={isCollaborative ? "Shared notes" : "What you want to remember"}>{isCollaborative && <p className="hh-detail-context">Pros, cons, and notes are visible to both of you.</p>}{!notesOpen ? <><div className="hh-detail-notes">{parseCommaList(home.pros).length > 0 && <div><h3>Pros</h3>{parseCommaList(home.pros).map((x) => <p key={x}><span aria-hidden="true">+</span>{x}</p>)}</div>}{parseCommaList(home.cons).length > 0 && <div><h3>Cons</h3>{parseCommaList(home.cons).map((x) => <p key={x}><span aria-hidden="true">−</span>{x}</p>)}</div>}{home.notes && <div className="wide"><h3>Notes</h3><p>{home.notes}</p></div>}</div><button className="hh-detail-text-button" onClick={() => setNotesOpen(true)}>{home.pros || home.cons || home.notes ? 'Edit property notes' : 'Add pros, cons, or a note'}</button></> : <div className="hh-detail-notes-form"><label>Pros<input className="hh-input" value={thoughts.pros} onChange={(e) => setThoughts({ ...thoughts, pros: e.target.value })} placeholder="Great kitchen, quiet street" /></label><label>Cons<input className="hh-input" value={thoughts.cons} onChange={(e) => setThoughts({ ...thoughts, cons: e.target.value })} placeholder="Busy road" /></label><label className="wide">Notes<textarea className="hh-textarea" value={thoughts.notes} onChange={(e) => setThoughts({ ...thoughts, notes: e.target.value })} /></label><div className="wide hh-detail-form-actions"><button className="hh-btn hh-btn-ghost" onClick={() => setNotesOpen(false)}>Cancel</button><button className="hh-btn" disabled={saving} onClick={saveThoughts}>{saving ? 'Saving…' : 'Save notes'}</button></div></div>}</Section>
-    {editing && <HomeModal initial={home} priorities={priorities} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} userId={userId} onSave={saveWhole} onClose={() => setEditing(false)} onWantToTour={() => savePersonal({ status: 'Want to Tour' })} onArchiveRequest={() => savePersonal({ status: 'Archived' })} />}
+    {editing && <HomeModal initial={home} priorities={priorities} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} userId={userId} onSave={saveWhole} onClose={() => setEditing(false)} onWantToTour={() => savePersonal({ status: 'Want to Tour' })} onArchiveRequest={setArchiveTarget} />}
+    {archiveTarget && <ArchiveConfirmModal home={archiveTarget} onCancel={() => setArchiveTarget(null)} onConfirm={(reason) => confirmArchive(reason).catch(() => {})} />}
     {reflecting && <PostTourModal home={home} priorities={priorities} isCollaborative={isCollaborative} saveError={saveError} onVerdict={handleVerdict} onClose={() => setReflecting(false)} />}
   </main>;
 }

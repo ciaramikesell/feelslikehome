@@ -13,9 +13,11 @@ import { useCommuteObserver } from '@/lib/useCommuteObserver';
 import { evaluateCommute } from '@/lib/commute';
 import HomeModal from '@/components/HomeModal';
 import PostTourModal from '@/components/PostTourModal';
+import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
 import { STATUS_COLOR, emptyHome, isRentalType, isArchivedStatus } from '@/lib/constants';
 import { parseNum, fmtMoney, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint } from '@/lib/matching';
 import { formatLotSizeDisplay, splitAddressLines, parseCommaList } from '@/lib/homeDisplay';
+import { applyPostTourVerdict, archiveHome, hasToured, restoreHome as restoreLifecycleHome, toggleFavorite as toggleFavoriteState } from '@/lib/lifecycle';
 import { createClient } from '@/lib/supabase/client';
 import { deleteHome as deleteHomeQuery } from '@/lib/supabase/data';
 import {
@@ -45,58 +47,27 @@ function ConfirmModal({ title, body, cancelLabel = 'Cancel', confirmLabel, confi
   );
 }
 
-// Archiving is the one confirmation that also wants a piece of information — why —
-// without turning into a second step. The reason is optional and pre-filled from
-// any reason the home already has, so re-confirming an already-archived home (or
-// re-archiving a restored one) never silently blanks out an existing note.
-function ArchiveConfirmModal({ home, onCancel, onConfirm }) {
-  const [reason, setReason] = useState(home.rejectionReason || '');
-  return (
-    <div className="hh-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onCancel()}>
-      <div className="hh-modal hh-corner" style={{ maxWidth: 440, padding: 26 }}>
-        <h3 className="hh-serif" style={{ fontSize: 18, margin: 0, fontWeight: 600, color: 'var(--ink)' }}>Archive this home?</h3>
-        <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', lineHeight: 1.55, margin: '10px 0 16px' }}>
-          {home.address || 'This home'} will be removed from your active homes, but we'll keep your ratings and notes. You can restore it anytime from Archive.
-        </p>
-        <label className="hh-label" style={{ marginBottom: 6, display: 'block' }}>Why are you ruling it out? (optional)</label>
-        <textarea
-          className="hh-textarea"
-          style={{ minHeight: 70, width: '100%' }}
-          value={reason}
-          onChange={(e) => setReason(e.target.value)}
-          placeholder="e.g. Busy road, no basement, taxes too high"
-        />
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 18 }}>
-          <button className="hh-btn hh-btn-ghost" onClick={onCancel}>Cancel</button>
-          <button className="hh-btn" style={{ background: 'var(--brick)', borderColor: 'var(--brick)' }} onClick={() => onConfirm(reason.trim())}>
-            Archive home
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* --------------------------------- card view --------------------------------- */
 
 function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour, onRemoveFromTour, onRestore, onRequestDelete }) {
   const [imgError, setImgError] = useState(false);
   const styleSummary = homeStyleSummary(home);
   const showPhoto = home.photoUrl && !imgError;
-  const isFavorite = home.reaction === 'love';
+  const isFavorite = home.isFavorite;
   const { line1: addressLine1, line2: addressLine2 } = splitAddressLines(home.address);
   // Normalize lifecycle presentation without touching stored data: any status that
   // isn't 'Want to Tour' or 'Toured' is treated as pre-tour, whether it's the current
   // 'Saved' value or a legacy string like 'Considering' left over from before this
   // lifecycle existed (see rowToHome's 'Considering' fallback in supabase/data.js).
-  const isPreTour = home.status !== 'Want to Tour' && home.status !== 'Toured';
+  const toured = hasToured(home);
+  const isPreTour = !toured && home.status !== 'Want to Tour';
   // Heart/Archive as quick one-tap controls only make sense once favoriting is
   // itself the primary job of the view. In Want to Tour, "Love it" is reached only
   // through the Post-Tour reflection ("Edit my thoughts") — never a shortcut that
   // bypasses recording ratings/notes for a toured home.
-  const showQuickFavorite = mode === 'favorites';
+  const showQuickFavorite = mode !== 'archive';
   const wantToTourState = home.isCollaborative
-    ? deriveWantToTourState(home.status, home.coBuyerWantsToTour ? ['Want to Tour'] : [])
+    ? deriveWantToTourState(home, home.coBuyerWantsToTour ? [{ status: 'Want to Tour' }] : [])
     : null;
 
   const { setRef: commuteRef, getState: getCommuteState } = useCommuteObserver(home, commuteDestinations);
@@ -220,17 +191,17 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
             </div>
           )}
 
-          {!isPreTour && home.status === 'Want to Tour' && mode === 'homes' && (
+          {!toured && home.status === 'Want to Tour' && mode === 'homes' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, color: 'var(--ink-soft)' }}>
               <Check size={14} color="var(--moss)" /> Want to tour
             </div>
           )}
-          {!isPreTour && home.status === 'Want to Tour' && mode !== 'homes' && (
+          {!toured && home.status === 'Want to Tour' && mode !== 'homes' && (
             <button type="button" className="hh-btn" style={{ fontSize: 12.5, padding: '7px 12px', justifyContent: 'center' }} onClick={() => onOpenPostTour(home)}>
               <MessageCircle size={13} /> I toured this home
             </button>
           )}
-          {home.status === 'Toured' && (
+          {toured && (
             <button
               type="button"
               className="hh-btn hh-btn-ghost"
@@ -329,7 +300,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
                 <ArchiveIcon size={13} />
               </button>
             )}
-            {mode === 'tour' && home.status === 'Want to Tour' && (
+            {mode === 'tour' && !toured && home.status === 'Want to Tour' && (
               <button
                 type="button"
                 className="hh-btn hh-btn-quiet-action"
@@ -346,7 +317,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
                 className="hh-btn hh-btn-ghost"
                 style={{ padding: '5px 7px', flexShrink: 0 }}
                 onClick={() => onToggleFavorite(home)}
-                title={isFavorite ? 'Remove from favorites' : 'Love it / Favorite'}
+                title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                 aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
               >
                 <Heart size={13} color={isFavorite ? 'var(--brick)' : undefined} fill={isFavorite ? 'var(--brick)' : 'none'} />
@@ -496,7 +467,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   }, [modalHome, saveHome]);
 
   const toggleFavorite = useCallback((home) => {
-    const next = { ...home, reaction: home.reaction === 'love' ? null : 'love' };
+    const next = toggleFavoriteState(home);
     saveHome(next, { shared: false, optimistic: true }).catch(() => {});
   }, [saveHome]);
 
@@ -516,8 +487,8 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   }, [saveHome]);
 
   // What the post-tour verdict means, conceptually:
-  //   Love it          -> Toured + Favorite (reaction: 'love')
-  //   Still considering -> Toured only, reaction left as-is
+  //   Love it          -> durable tour history + verdict + Favorite
+  //   Still considering -> durable tour history + considering verdict
   //   Not for me        -> NOT saved immediately — routed into the existing
   //                        archive-confirmation flow so the destructive step still
   //                        gets a confirm, with all the collected ratings/notes/
@@ -525,31 +496,24 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   const handleVerdict = useCallback((home, verdict, patch) => {
     if (verdict === 'not_for_me') {
       setPostTourTarget(null);
-      setArchiveTarget({ ...home, ...patch });
+      setArchiveTarget(applyPostTourVerdict(home, verdict, patch));
       return;
     }
     setPostTourTarget(null);
-    const next = { ...home, ...patch, status: 'Toured', reaction: verdict === 'love' ? 'love' : home.reaction };
+    const next = applyPostTourVerdict(home, verdict, patch);
     saveHome(next, { shared: hasSharedHomeChanges(next, home) }).catch(() => {});
   }, [saveHome]);
 
   const confirmArchive = useCallback((reason) => {
     if (!archiveTarget) return;
-    const next = { ...archiveTarget, status: 'Archived', rejectionReason: reason };
+    const next = archiveHome(archiveTarget, reason);
     const savedVersion = homes.find((home) => home.id === archiveTarget.id);
     saveHome(next, { shared: hasSharedHomeChanges(next, savedVersion), optimistic: true }).catch(() => {});
     setArchiveTarget(null);
   }, [archiveTarget, homes, saveHome]);
 
-  // Restoring should return the home to where it actually was, not always the very
-  // beginning. All star ratings are exclusively captured post-tour (pre-tour "Add
-  // more details" only has check/multiselect fields, never stars), so any rating
-  // present is a reliable signal this home was genuinely toured before being
-  // archived — restoring it should preserve that history rather than silently
-  // asking the user to "Want to tour" it again.
   const restoreHome = useCallback((home) => {
-    const wasToured = Object.values(home.ratings || {}).some((v) => v > 0);
-    saveHome({ ...home, status: wasToured ? 'Toured' : 'Saved', rejectionReason: '' }, { shared: false, optimistic: true }).catch(() => {});
+    saveHome(restoreLifecycleHome(home), { shared: false, optimistic: true }).catch(() => {});
   }, [saveHome]);
 
   const confirmDelete = useCallback(async () => {
@@ -577,15 +541,10 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
 
   const activeHomes = useMemo(() => homes.filter((h) => !isArchivedStatus(h.status)), [homes]);
   const archivedHomes = useMemo(() => homes.filter((h) => isArchivedStatus(h.status)), [homes]);
-  const favoriteHomes = useMemo(() => activeHomes.filter((h) => h.reaction === 'love'), [activeHomes]);
-  // The Want to Tour workspace holds homes not yet toured, PLUS toured homes still
-  // actively "considering" (not yet loved) — once a home is loved it graduates fully
-  // to Favorites rather than cluttering both lists.
+  const favoriteHomes = useMemo(() => activeHomes.filter((h) => h.isFavorite), [activeHomes]);
   const tourHomes = useMemo(
     () => activeHomes.filter((h) => (
-      h.status === 'Want to Tour'
-      || h.coBuyerWantsToTour
-      || (h.status === 'Toured' && h.reaction !== 'love')
+      deriveWantToTourState(h).currentUserWantsToTour || h.coBuyerWantsToTour
     )),
     [activeHomes]
   );
@@ -618,9 +577,9 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         return m.mustMet === m.mustEvaluated;
       });
     } else if (quickFilter === 'wantToTour') {
-      list = list.filter((h) => h.status === 'Want to Tour');
+      list = list.filter((h) => deriveWantToTourState(h).currentUserWantsToTour);
     } else if (quickFilter === 'favorites') {
-      list = list.filter((h) => h.reaction === 'love');
+      list = list.filter((h) => h.isFavorite);
     }
 
     if (sortBy === 'match') {
@@ -705,7 +664,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
 
       {filtered.length === 0 ? (
         mode === 'favorites' ? (
-          <EmptyLifecycleState icon={Heart} title="No favorites yet" body="After a tour, keep the homes you love close by choosing Love it." />
+          <EmptyLifecycleState icon={Heart} title="No favorites yet" body="Keep the homes that stand out to you close at hand." />
         ) : mode === 'tour' ? (
           <EmptyLifecycleState icon={Footprints} title="No homes to tour yet" body="When one feels worth seeing in person, mark it Want to tour from Homes.">
             <Link href="/homes" className="hh-btn hh-btn-ghost">View my homes →</Link>

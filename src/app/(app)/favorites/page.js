@@ -20,12 +20,12 @@ export default async function FavoritesPage() {
   const statusesByHome = await getParticipantStatusesForHomes(supabase, search, homes);
   const homesWithSignal = addCoBuyerPersonalSignals(homes, statusesByHome, user.id);
 
-  const hasFavorites = homes.some((h) => h.reaction === 'love' && !isArchivedStatus(h.status));
+  const hasFavorites = homes.some((h) => h.isFavorite && !isArchivedStatus(h.status));
   const hasArchived = homes.some((h) => isArchivedStatus(h.status));
 
   return (
     <DecisionNav active="favorites" hasFavorites={hasFavorites} hasArchived={hasArchived}>
-      <PageIntro title="Favorites" subtitle="The homes you personally loved enough to keep close." />
+      <PageIntro title="Favorites" subtitle="The homes that stand out to you, kept close at hand." />
       <HomesBoard mode="favorites" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizePriorities(priorities)} initialCommuteDestinations={commuteDestinations} sharedFactAwareness={sharedFactAwareness} isCollaborative={participantIds.length > 1} />
     </DecisionNav>
   );
