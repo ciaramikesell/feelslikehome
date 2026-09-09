@@ -19,6 +19,10 @@ with checks(check_name, passed, evidence) as (
   ('commute destinations policies remain own-only',
     (select count(*)=4 and bool_and(coalesce(qual,with_check) like '%auth.uid() = user_id%' and coalesce(qual,with_check) like '%can_access_search%') from pg_policies where schemaname='public' and tablename='commute_destinations'), 'expected SELECT/INSERT/UPDATE/DELETE'),
   ('homes has no authenticated table SELECT', not has_table_privilege('authenticated','public.homes','SELECT'), 'column SELECT only'),
+  ('rental shared facts have exact participant column access',
+    (select count(*)=15 and bool_and(has_column_privilege('authenticated','public.homes',c.column_name,p.privilege))
+     from (values ('property_type'),('available_on'),('pets_allowed'),('utilities_included'),('in_unit_laundry')) c(column_name)
+     cross join (values ('SELECT'),('INSERT'),('UPDATE')) p(privilege)), 'five shared facts x SELECT/INSERT/UPDATE'),
   ('homes legacy columns unreadable',
     not has_column_privilege('authenticated','public.homes','status','SELECT')
     and not has_column_privilege('authenticated','public.homes','reaction','SELECT')

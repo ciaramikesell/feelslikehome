@@ -15,7 +15,7 @@ import { hasOutstandingWantToTour } from '@/lib/lifecycle';
 // intentionally absent so a later column-privilege cutover cannot change the
 // shape consumed by runtime code.
 export const SEARCH_SHARED_COLUMNS = 'id,user_id,created_at,updated_at';
-export const HOME_SHARED_COLUMNS = [
+const HOME_SHARED_COLUMNS_PRE_PASS_B = [
   'id', 'user_id', 'search_id', 'address', 'crossroads', 'listing_url', 'photo_url',
   'price', 'est_monthly', 'sqft', 'beds', 'baths', 'lot_size', 'garage_spaces',
   'year_built', 'days_on_market', 'home_layout', 'home_condition',
@@ -24,6 +24,12 @@ export const HOME_SHARED_COLUMNS = [
   'coordinate_source', 'hoa_fee_monthly', 'property_tax_annual', 'property_tax_year',
   'basement_notes', 'schools_notes', 'condition_notes', 'created_at', 'updated_at',
 ].join(',');
+export const HOME_SHARED_COLUMNS = `${HOME_SHARED_COLUMNS_PRE_PASS_B},property_type,available_on,pets_allowed,utilities_included,in_unit_laundry`;
+
+const PASS_B_DATABASE_COLUMNS = ['property_type', 'available_on', 'pets_allowed', 'utilities_included', 'in_unit_laundry'];
+function isPrePassBSchemaError(error) {
+  return error?.code === '42703' || (error?.code === 'PGRST204' && PASS_B_DATABASE_COLUMNS.some((column) => error.message?.includes(column)));
+}
 
 /* ------------------------------- active search ------------------------------- */
 
@@ -210,6 +216,7 @@ const SHARED_FIELDS = [
   'coordinateStatus', 'coordinateSource', 'hoaFeeMonthly',
   'propertyTaxAnnual', 'propertyTaxYear', 'basementNotes',
   'schoolsNotes', 'conditionNotes',
+  'propertyType', 'availableOn', 'petsAllowed', 'utilitiesIncluded', 'inUnitLaundry',
 ];
 
 function emptyPersonalState() {
@@ -238,8 +245,12 @@ export function resolvePersonalState(home, memberStateRow, userId) {
 // HomeCard, matching.js, etc.) keeps reading home.status/reaction/ratings/
 // checks exactly as it always has, with zero changes needed for reading.
 export async function getHomesForUser(supabase, userId, searchId) {
-  const { data: rows, error } = await supabase
+  let { data: rows, error } = await supabase
     .from('homes').select(HOME_SHARED_COLUMNS).eq('search_id', searchId).order('created_at', { ascending: true });
+  // Repository merge precedes the manual production migration. Retry only the
+  // recognizable missing-column response so the dormant release works on both schemas.
+  if (isPrePassBSchemaError(error)) ({ data: rows, error } = await supabase
+    .from('homes').select(HOME_SHARED_COLUMNS_PRE_PASS_B).eq('search_id', searchId).order('created_at', { ascending: true }));
   if (error) throw error;
 
   const homes = (rows || []).map((row) => ({ ...rowToHomeWithOwner(row) }));
@@ -297,8 +308,13 @@ export function hasSharedHomeChanges(home, previousHome) {
 
 export async function saveHomePersonalAndShared(supabase, home, userId, searchId) {
   const sharedRow = homeToSharedRow(home, userId, searchId);
-  const { data: savedShared, error: sharedError } = await supabase
+  let { data: savedShared, error: sharedError } = await supabase
     .from('homes').upsert(sharedRow).select(HOME_SHARED_COLUMNS).single();
+  if (isPrePassBSchemaError(sharedError)) {
+    const legacyRow = Object.fromEntries(Object.entries(sharedRow).filter(([key]) => !PASS_B_DATABASE_COLUMNS.includes(key)));
+    ({ data: savedShared, error: sharedError } = await supabase
+      .from('homes').upsert(legacyRow).select(HOME_SHARED_COLUMNS_PRE_PASS_B).single());
+  }
   if (sharedError) throw sharedError;
 
   const savedHome = rowToHomeWithOwner(savedShared);
@@ -558,6 +574,11 @@ function rowToHomeWithOwner(row) {
     basementNotes: row.basement_notes || '',
     schoolsNotes: row.schools_notes || '',
     conditionNotes: row.condition_notes || '',
+    propertyType: row.property_type ?? null,
+    availableOn: row.available_on ?? null,
+    petsAllowed: row.pets_allowed ?? null,
+    utilitiesIncluded: row.utilities_included ?? null,
+    inUnitLaundry: row.in_unit_laundry ?? null,
   };
 }
 
@@ -597,6 +618,11 @@ function homeToSharedRow(home, userId, searchId) {
     basement_notes: home.basementNotes || '',
     schools_notes: home.schoolsNotes || '',
     condition_notes: home.conditionNotes || '',
+    property_type: home.propertyType ?? null,
+    available_on: home.availableOn ?? null,
+    pets_allowed: home.petsAllowed ?? null,
+    utilities_included: home.utilitiesIncluded ?? null,
+    in_unit_laundry: home.inUnitLaundry ?? null,
     updated_at: new Date().toISOString(),
   };
 }
