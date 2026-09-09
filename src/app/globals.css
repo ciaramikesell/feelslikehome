@@ -15,7 +15,19 @@ html, body {
 
 /* ---------------------------- main app (hh-) ---------------------------- */
 
-.hh-root { min-height: 100%; padding: 28px 20px 60px; }
+.hh-root { min-height: 100%; padding: 0 20px 64px; }
+.hh-app-frame { max-width: 1240px; margin: 0 auto; }
+.hh-app-header { display: flex; justify-content: space-between; align-items: center; gap: 24px; padding: 24px 0 17px; }
+.hh-brand-lockup { display: flex; align-items: center; gap: 13px; min-width: 0; }
+.hh-brand-copy { min-width: 0; }
+.hh-user-email { margin: 3px 0 0; color: var(--ink-soft); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
+.hh-shell-utilities { display: flex; align-items: center; justify-content: flex-end; gap: 4px; flex-wrap: wrap; }
+.hh-shell-action { min-height: 36px; padding: 7px 9px; border: 0; border-radius: 9px; background: transparent; color: var(--ink-soft); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font: 600 12px 'Plus Jakarta Sans', sans-serif; text-decoration: none; }
+.hh-shell-action:hover, .hh-shell-action:focus-visible { color: var(--ink); background: rgba(46,38,33,.045); outline: none; }
+.hh-shell-action-primary { color: var(--ink); background: rgba(116,128,79,.09); }
+.hh-shell-action-primary:hover, .hh-shell-action-primary.active { color: var(--brick); background: rgba(193,89,47,.08); }
+.hh-shell-action-quiet { font-weight: 500; }
+.hh-search-switcher { max-width: 190px; min-height: 36px; border: 0; border-radius: 9px; padding: 7px 30px 7px 10px; background: rgba(116,128,79,.09); color: var(--ink); cursor: pointer; font: 600 12px 'Plus Jakarta Sans', sans-serif; }
 .hh-serif { font-family: 'Fraunces', serif; font-optical-sizing: auto; }
 .hh-address { font-family: 'Source Serif 4', serif; font-optical-sizing: auto; }
 .hh-match-panel { border-radius: 12px; padding: 10px 12px; }
@@ -69,15 +81,43 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-modal-backdrop { position: fixed; inset: 0; background: rgba(46,38,33,0.45); display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto; z-index: 50; }
 .hh-modal { background: var(--paper-raised); width: 100%; max-width: 640px; border-radius: 20px; padding: 30px; margin-bottom: 40px; }
 .hh-scrollx { overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: var(--paper-raised); }
-.hh-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 22px 0 24px; flex-wrap: wrap; }
+.hh-tabs { display: flex; gap: 24px; border-bottom: 1px solid rgba(138,124,110,.22); margin: 0 0 38px; }
 .hh-tab {
   display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 600;
-  padding: 10px 14px; cursor: pointer; color: var(--ink-soft); border-bottom: 2px solid transparent;
+  padding: 11px 1px 13px; cursor: pointer; color: var(--ink-soft); border-bottom: 2px solid transparent;
   background: none; border-top: none; border-left: none; border-right: none; font-family: 'Plus Jakarta Sans', sans-serif;
   text-decoration: none;
 }
-.hh-tab.active { color: var(--brick); border-bottom-color: var(--brick); }
+.hh-tab.active { color: var(--ink); border-bottom-color: var(--brick); }
 .hh-tab:hover { color: var(--ink); }
+.hh-homes-page > div:first-child { margin-bottom: 6px !important; }
+.hh-homes-page > div:first-child h1 { letter-spacing: -.025em; }
+.hh-cobuyer-context { margin: 0 0 22px; color: var(--ink-soft); font-size: 12.5px; font-weight: 500; }
+.hh-homes-primary-action { display: flex; justify-content: flex-end; margin: -53px 0 24px; }
+.hh-homes-toolbar { margin-bottom: 26px; padding: 14px 16px 15px; border-radius: 15px; background: rgba(255,255,255,.58); box-shadow: 0 1px 0 rgba(46,38,33,.045); }
+.hh-homes-toolbar-row { display: flex; align-items: center; gap: 10px; }
+.hh-homes-search { position: relative; flex: 1 1 260px; max-width: 480px; }
+.hh-homes-search .hh-input { padding-left: 32px; background: rgba(255,255,255,.9); }
+.hh-homes-sort { flex: 0 0 auto; width: auto; min-width: 165px; font-size: 12.5px; }
+.hh-filter-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+.hh-filter-chips .hh-chip { border-color: transparent; background: transparent; color: var(--ink-soft); padding: 6px 11px; }
+.hh-filter-chips .hh-chip:hover, .hh-filter-chips .hh-chip:focus-visible { border-color: rgba(116,128,79,.5); color: var(--ink); outline: none; }
+.hh-filter-chips .hh-chip.on { background: rgba(116,128,79,.14); border-color: rgba(116,128,79,.35); color: #556039; }
+.hh-homes-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px 20px; align-items: start; }
+.hh-home-card { min-width: 0; }
+.hh-home-card-surface { display: flex; flex-direction: column; overflow: hidden; border-radius: 16px; background: var(--paper-raised); box-shadow: inset 0 0 0 1px rgba(138,124,110,.12); transition: transform .16s ease, box-shadow .16s ease; }
+.hh-home-card:hover .hh-home-card-surface { transform: translateY(-2px); box-shadow: inset 0 0 0 1px rgba(138,124,110,.1), 0 17px 32px -25px rgba(46,38,33,.42); }
+.hh-home-card-photo { position: relative; width: 100%; height: 208px; background: var(--line); overflow: hidden; }
+.hh-home-card-photo.is-empty { background: #eee3d2; }
+.hh-home-card-photo-fallback { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: rgba(198,146,69,.08); }
+.hh-card-status { position: absolute; top: 12px; left: 12px; padding: 5px 10px; border-radius: 999px; box-shadow: 0 2px 8px rgba(46,38,33,.18); color: #fff; font-size: 10.5px; font-weight: 700; }
+.hh-card-price-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.hh-card-context { display: grid; gap: 9px; }
+.hh-card-context-group { display: flex; flex-direction: column; gap: 4px; }
+.hh-card-clamp { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-height: 1.45; }
+.hh-home-card-actions .hh-btn { min-width: 36px; min-height: 36px; justify-content: center; }
+.hh-home-card-actions .hh-btn-ghost { border-color: transparent; color: var(--ink-soft); }
+.hh-home-card-actions .hh-btn-ghost:hover { border-color: var(--line); color: var(--ink); background: var(--paper); }
 .hh-priority-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .hh-priority-row:last-child { border-bottom: none; }
 .hh-priority-row.draggable { cursor: grab; }
@@ -124,7 +164,36 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 }
 @media (max-width: 640px) { .hh-compare-notes { grid-template-columns: 1fr; } }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (max-width: 640px) { .hh-root { padding: 18px 12px 48px; } }
+@media (max-width: 980px) {
+  .hh-app-header { align-items: flex-start; }
+  .hh-shell-utilities { max-width: 470px; }
+  .hh-homes-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1440px) {
+  .hh-app-frame { max-width: 1360px; }
+  .hh-homes-grid { grid-template-columns: repeat(4, minmax(300px, 1fr)); }
+}
+@media (max-width: 700px) {
+  .hh-root { padding: 0 14px 48px; }
+  .hh-app-header { padding: 17px 0 12px; gap: 12px; flex-wrap: wrap; }
+  .hh-brand-lockup { width: 100%; }
+  .hh-brand-copy { flex: 1; }
+  .hh-user-email { max-width: calc(100vw - 90px); }
+  .hh-shell-utilities { width: 100%; justify-content: flex-start; gap: 2px; }
+  .hh-shell-action { min-height: 40px; }
+  .hh-shell-action-quiet { margin-left: auto; }
+  .hh-tabs { gap: 0; justify-content: space-between; margin-bottom: 26px; }
+  .hh-tab { justify-content: center; gap: 4px; padding-inline: 4px; font-size: 12px; }
+  .hh-homes-primary-action { margin: 0 0 16px; justify-content: flex-start; }
+  .hh-homes-primary-action .hh-btn { min-height: 44px; }
+  .hh-homes-toolbar { padding: 12px; margin-bottom: 20px; }
+  .hh-homes-toolbar-row { align-items: stretch; flex-direction: column; }
+  .hh-homes-search { max-width: none; width: 100%; }
+  .hh-homes-sort { width: 100%; min-height: 42px; }
+  .hh-filter-chips { gap: 5px; }
+  .hh-filter-chips .hh-chip { min-height: 36px; padding-inline: 9px; font-size: 12px; }
+  .hh-homes-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+}
 
 /* Focused responsive behavior for the three core decision surfaces. */
 @media (max-width: 640px) {

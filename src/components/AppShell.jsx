@@ -91,36 +91,35 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
 
   return (
     <div className="hh-root">
-      <div style={{ maxWidth: 1180, margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 14 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 13 }}>
+      <div className="hh-app-frame">
+        <header className="hh-app-header">
+          <div className="hh-brand-lockup">
             <BrandMark size={38} />
-            <div>
+            <div className="hh-brand-copy">
               <Wordmark size={31} />
-              {userEmail && <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '4px 0 0' }}>{userEmail}</p>}
+              {userEmail && <p className="hh-user-email">{userEmail}</p>}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="hh-shell-utilities">
             {accessibleSearches && accessibleSearches.length > 1 && (
               <SearchSwitcher userId={userId} searches={accessibleSearches} activeSearchId={activeSearchId} />
             )}
             <Link
               href="/search"
-              className="hh-btn hh-btn-ghost"
-              style={{ fontSize: 12.5, color: pathname === '/search' ? 'var(--brick)' : undefined }}
+              className={`hh-shell-action hh-shell-action-primary ${pathname === '/search' ? 'active' : ''}`}
             >
               <SlidersHorizontal size={14} /> My Search
             </Link>
-            <button className="hh-btn hh-btn-ghost" onClick={() => setHowToOpen(true)} style={{ fontSize: 12.5 }}>
+            <button className="hh-shell-action" onClick={() => setHowToOpen(true)}>
               <HelpCircle size={14} /> How to use
             </button>
-            <button className="hh-btn hh-btn-ghost" onClick={signOut} style={{ fontSize: 12.5 }}>
+            <button className="hh-shell-action hh-shell-action-quiet" onClick={signOut}>
               <LogOut size={14} /> Sign out
             </button>
           </div>
-        </div>
+        </header>
 
-        <div className="hh-tabs">
+        <nav className="hh-tabs" aria-label="Primary navigation">
           {PRIMARY_TABS.map(({ key, label, href }) => {
             const Icon = TAB_ICONS[key];
             return (
@@ -129,7 +128,7 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
               </Link>
             );
           })}
-        </div>
+        </nav>
 
         {children}
       </div>

@@ -24,10 +24,10 @@ export default async function HomesPage() {
   const homesWithSignal = addCoBuyerPersonalSignals(homes, statusesByHome, user.id);
 
   return (
-    <>
+    <main className="hh-homes-page">
       <PageIntro title="Homes" subtitle="Add homes you're considering and keep everything you know about them in one place." />
       <CoBuyerHomesLine searchId={search.id} userId={user.id} isOwner={isOwner} isCollaborative={isCollaborative} />
       <HomesBoard mode="homes" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizePriorities(priorities)} initialCommuteDestinations={commuteDestinations} sharedFactAwareness={sharedFactAwareness} />
-    </>
+    </main>
   );
 }

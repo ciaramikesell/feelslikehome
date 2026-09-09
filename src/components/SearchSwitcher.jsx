@@ -32,8 +32,7 @@ export default function SearchSwitcher({ userId, searches, activeSearchId }) {
 
   return (
     <select
-      className="hh-btn hh-btn-ghost"
-      style={{ fontSize: 12.5, padding: '6px 10px', cursor: 'pointer' }}
+      className="hh-search-switcher"
       value={activeSearchId || searches[0].id}
       onChange={handleChange}
       disabled={switching}
