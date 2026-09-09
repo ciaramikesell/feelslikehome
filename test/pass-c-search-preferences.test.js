@@ -55,7 +55,7 @@ test('canonical Rental has one duplicate-free approved suggestion bank', () => {
   assert.equal(new Set(all).size, all.length);
   for (const required of ['Neighborhood', 'Walkability', 'Dog Parks Nearby', 'Groceries Nearby']) assert.ok(labels('rental', 'location').includes(required));
   for (const required of ['Dishwasher', 'Pets Allowed', 'Utilities Included', 'In-Unit Laundry']) assert.ok(labels('rental', 'features').includes(required));
-  for (const removed of ['Commute', 'Proximity to Family / Friends']) {
+  for (const removed of ['Commute', 'Proximity to Family / Friends', 'Schools']) {
     assert.ok(!labels('rental', 'location').includes(removed));
     assert.ok(!labels('purchase', 'location').includes(removed));
   }
@@ -65,11 +65,12 @@ test('canonical Rental has one duplicate-free approved suggestion bank', () => {
 });
 
 test('removed legacy selections and custom criteria remain renderable without mutation', () => {
-  const priorities = normalizePriorities({ searchType: 'rent_home', location: { tiers: { Commute: 'must', 'Proximity to Family / Friends': 'nice' } }, features: { tiers: { 'Pet Policy': 'important' }, customItems: [{ label: 'Near train', kind: 'rating' }] } });
+  const priorities = normalizePriorities({ searchType: 'rent_home', location: { tiers: { Commute: 'must', 'Proximity to Family / Friends': 'nice', Schools: 'important' } }, features: { tiers: { 'Pet Policy': 'important' }, customItems: [{ label: 'Near train', kind: 'rating' }] } });
   const before = structuredClone(priorities);
   const location = splitCategoryItems(getItemlistCategories(priorities.searchType)[0], priorities);
   const features = splitCategoryItems(getItemlistCategories(priorities.searchType)[1], priorities);
-  assert.deepEqual(location.custom.map(({ label }) => label), ['Commute', 'Proximity to Family / Friends']);
+  assert.deepEqual(location.custom.map(({ label }) => label), ['Commute', 'Proximity to Family / Friends', 'Schools']);
+  assert.equal(location.custom.find(({ label }) => label === 'Schools').kind, 'check');
   assert.deepEqual(features.custom.map(({ label }) => label), ['Near train', 'Pet Policy']);
   assert.deepEqual(priorities, before);
 });
@@ -88,6 +89,20 @@ test('Places that matter and weighted Must Have copy are user-facing', () => {
   const constants = fs.readFileSync(new URL('../src/lib/constants.js', import.meta.url), 'utf8');
   assert.match(mySearch, /Places that matter/);
   assert.match(mySearch, /Add the places you travel to regularly/);
+  assert.match(onboarding, /Places that matter/);
+  assert.match(onboarding, /Add places you travel to regularly, like work, family, or school/);
+  assert.match(onboarding, /<CommuteDestinations[\s\S]*hideHeader/);
+  assert.doesNotMatch(onboarding, /requiredDestination|destinationCategor/);
   assert.match(constants, /One of your highest priorities/);
   assert.doesNotMatch(`${mySearch}\n${onboarding}\n${constants}`, /A dealbreaker if it's missing/);
+});
+
+test('onboarding reuses participant-private destination persistence without changing its architecture', () => {
+  const page = fs.readFileSync(new URL('../src/app/onboarding/page.js', import.meta.url), 'utf8');
+  const onboarding = fs.readFileSync(new URL('../src/components/onboarding/Onboarding.jsx', import.meta.url), 'utf8');
+  const destinations = fs.readFileSync(new URL('../src/components/CommuteDestinations.jsx', import.meta.url), 'utf8');
+  assert.match(page, /getCommuteDestinations\(supabase, search\.id, user\.id\)/);
+  assert.match(onboarding, /CommuteDestinations/);
+  assert.match(destinations, /createCommuteDestination\(supabase, searchId, userId, values\)/);
+  assert.match(destinations, /maxDriveMinutes/);
 });

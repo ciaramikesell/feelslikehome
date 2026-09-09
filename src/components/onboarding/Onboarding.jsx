@@ -6,6 +6,7 @@ import { Check, Plus } from 'lucide-react';
 import { BrandMark, TierPicker } from '@/components/ui';
 import PriorityBoard from '@/components/PriorityBoard';
 import SchoolsRelevanceGate from '@/components/SchoolsRelevanceGate';
+import CommuteDestinations from '@/components/CommuteDestinations';
 import {
   SEARCH_TYPE_OPTIONS, LAYOUT_OPTIONS, HOME_CONDITION_OPTIONS, INVESTMENT_PROPERTY_TYPES, INVESTMENT_LIVING_PLAN_OPTIONS,
   TIER_META, TIER_DESCRIPTIONS, isSimpleRentalType, showsHomeLayout, showsMultiselectCategory, terminology, toggleWithNoPreference, getItemlistCategories,
@@ -194,8 +195,9 @@ function OnboardingStep1({ priorities, patch, onNext }) {
   );
 }
 
-function OnboardingStep2({ priorities, patch, onNext, onBack }) {
+function OnboardingStep2({ priorities, patch, onNext, onBack, searchId, userId, commuteDestinations, onCommuteDestinationsChange }) {
   const categories = getItemlistCategories(priorities.searchType);
+  const capabilities = searchIntentCapabilities(priorities.searchType);
   const hasAnySelection = categories.some((def) => {
     const tiers = priorities[def.key]?.tiers || {};
     return Object.values(tiers).some((t) => t && t !== 'dontcare');
@@ -226,6 +228,16 @@ function OnboardingStep2({ priorities, patch, onNext, onBack }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <PriorityBoard priorities={priorities} patch={patch} />
       </div>
+
+      {(capabilities.isPurchase || capabilities.isRental) && (
+        <section style={{ borderTop: '1px solid var(--line)', paddingTop: 18 }}>
+          <h3 className="hh-serif" style={{ fontSize: 17, fontWeight: 700, color: 'var(--ink)', margin: 0 }}>Places that matter</h3>
+          <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '4px 0 12px', lineHeight: 1.5 }}>
+            Add places you travel to regularly, like work, family, or school. We'll show you how far each home is from them.
+          </p>
+          <CommuteDestinations searchId={searchId} userId={userId} destinations={commuteDestinations} onChange={onCommuteDestinationsChange} hideHeader />
+        </section>
+      )}
 
       <p style={{ fontSize: 12, color: 'var(--ink-soft)', fontStyle: 'italic', margin: 0 }}>
         You don't have to pick anything right now — you can always add or change what matters in My Search later.
@@ -285,12 +297,13 @@ function OnboardingStep3({ onFinish, isSaving }) {
   );
 }
 
-export default function Onboarding({ userId, searchId, initialPriorities }) {
+export default function Onboarding({ userId, searchId, initialPriorities, initialCommuteDestinations = [] }) {
   const router = useRouter();
   const initial = normalizePriorities(initialPriorities);
   const persistPriorities = useCallback((next) => savePriorities(createClient(), { id: searchId }, userId, next), [searchId, userId]);
   const { state: priorities, patch, saveError, retry, isSaving } = useReliableOptimisticState(initial, persistPriorities);
   const [step, setStep] = useState(1);
+  const [commuteDestinations, setCommuteDestinations] = useState(initialCommuteDestinations);
   const [finishError, setFinishError] = useState('');
 
   const onFinish = async (action) => {
@@ -319,7 +332,7 @@ export default function Onboarding({ userId, searchId, initialPriorities }) {
         )}
         {step !== 3 && <OnboardingProgress step={step} />}
         {step === 1 && <OnboardingStep1 priorities={priorities} patch={patch} onNext={() => setStep(2)} />}
-        {step === 2 && <OnboardingStep2 priorities={priorities} patch={patch} onNext={() => setStep(3)} onBack={() => setStep(1)} />}
+        {step === 2 && <OnboardingStep2 priorities={priorities} patch={patch} onNext={() => setStep(3)} onBack={() => setStep(1)} searchId={searchId} userId={userId} commuteDestinations={commuteDestinations} onCommuteDestinationsChange={setCommuteDestinations} />}
         {step === 3 && <OnboardingStep3 onFinish={onFinish} isSaving={isSaving} />}
       </OnboardingShell>
     </div>

@@ -16,7 +16,6 @@ export const HOME_CONDITION_OPTIONS = ['New Construction', 'Move-In Ready', 'Ren
 // for Co-Buyer isolation via the same mechanism every other check-kind
 // criterion already uses — no new architecture needed for this change.
 export const LOCATION_CORE = [
-  { label: 'Schools', kind: 'check' },
   { label: 'Neighborhood', kind: 'rating' },
 ];
 // "Overall Location" is intentionally retired from future selection (2026 criteria
