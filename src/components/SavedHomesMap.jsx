@@ -93,11 +93,11 @@ export default function SavedHomesMap({ homes, priorities }) {
           <small>{[selected.beds && `${selected.beds} beds`, selected.baths && `${selected.baths} baths`, selected.sqft && `${selected.sqft} sq ft`].filter(Boolean).join(' · ')}</small>
           {match?.pct !== null && match?.pct !== undefined && <span className="hh-map-match">{match.pct}% Match</span>}
           {selected.status && <span className="hh-map-status">{selected.status}</span>}
-          <Link href={`/homes?home=${encodeURIComponent(selected.id)}`}>View home</Link>
+          <Link href={`/homes/${encodeURIComponent(selected.id)}`}>View home</Link>
         </div>
       </article>}
     </div>
     <section aria-label="Mapped homes"><h2 className="hh-serif">Mapped homes</h2><div className="hh-map-home-list">{eligible.map((home) => <button key={home.id} type="button" className={home.id === selectedId ? 'selected' : ''} onClick={() => setSelectedId(home.id)}><MapPin size={15} /><span>{home.address}</span></button>)}</div></section>
-    {unresolved.length > 0 && <details className="hh-details"><summary>{unresolved.length} {unresolved.length === 1 ? 'home' : 'homes'} couldn't be placed on the map yet.</summary><div className="hh-map-unresolved">{unresolved.map((home) => <Link key={home.id} href={`/homes?home=${encodeURIComponent(home.id)}`}>{home.address || 'Address not added'} <span>Check home</span></Link>)}</div></details>}
+    {unresolved.length > 0 && <details className="hh-details"><summary>{unresolved.length} {unresolved.length === 1 ? 'home' : 'homes'} couldn't be placed on the map yet.</summary><div className="hh-map-unresolved">{unresolved.map((home) => <Link key={home.id} href={`/homes/${encodeURIComponent(home.id)}`}>{home.address || 'Address not added'} <span>Check home</span></Link>)}</div></details>}
   </div>;
 }
