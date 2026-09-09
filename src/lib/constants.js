@@ -307,6 +307,9 @@ export function emptyHome() {
     // (Has/Finished/Walkout/Bedroom, which are personal Yes/No evaluations). These
     // three fields are just "what do I know about this" context, never Match inputs.
     basementNotes: '', schoolsNotes: '', conditionNotes: '',
+    // Rental V1 Pass B dormant shared facts. No current control populates these.
+    propertyType: null, availableOn: null, petsAllowed: null,
+    utilitiesIncluded: null, inUnitLaundry: null,
   };
 }
 

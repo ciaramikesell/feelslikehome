@@ -103,6 +103,14 @@ create table if not exists public.homes (
   pros text not null default '',
   cons text not null default '',
 
+  -- Rental V1 Pass B shared facts. Nullable means unknown; no historical inference.
+  property_type text,
+  available_on date,
+  pets_allowed boolean,
+  utilities_included boolean,
+  in_unit_laundry boolean,
+  constraint homes_property_type_check check (property_type is null or property_type = any (array['apartment','house','townhome','condo','multifamily','other']::text[])),
+
   -- Auto Enrichment 1.0 — already-returned RentCast facts we previously discarded.
   -- All nullable: existing homes simply have null here until their next successful
   -- lookup. Never contribute to Match, never shown as onboarding/My Search criteria.
@@ -715,6 +723,12 @@ begin
         when 'secondaryBedroomLocation' then coalesce(rp.priorities #>> '{secondaryBedroomLocation,tier}', 'dontcare') <> 'dontcare'
         when 'exterior:Garage' then coalesce(rp.priorities #>> '{exterior,tiers,Garage}', 'dontcare') <> 'dontcare'
         when 'features:Basement' then coalesce(rp.priorities #>> '{features,tiers,Basement}', 'dontcare') <> 'dontcare'
+        when 'preferredPropertyTypes' then
+          coalesce(rp.priorities #>> '{preferredPropertyTypes,tier}', 'important') <> 'dontcare'
+          and jsonb_array_length(case when jsonb_typeof(rp.priorities -> 'preferredPropertyTypes') = 'array' then rp.priorities -> 'preferredPropertyTypes' else coalesce(rp.priorities #> '{preferredPropertyTypes,values}', '[]'::jsonb) end) > 0
+        when 'features:Pets Allowed' then coalesce(rp.priorities #>> '{features,tiers,Pets Allowed}', 'dontcare') <> 'dontcare'
+        when 'features:Utilities Included' then coalesce(rp.priorities #>> '{features,tiers,Utilities Included}', 'dontcare') <> 'dontcare'
+        when 'features:In-Unit Laundry' then coalesce(rp.priorities #>> '{features,tiers,In-Unit Laundry}', 'dontcare') <> 'dontcare'
         when 'location:Schools' then
           coalesce(rp.priorities #>> '{location,schoolsRelevance}', '') <> 'no'
           and coalesce(rp.priorities #>> '{location,tiers,Schools}', 'dontcare') <> 'dontcare'
@@ -733,7 +747,11 @@ begin
       ('secondaryBedroomLocation', 'secondaryBedroomLocation'),
       ('garageSpaces', 'exterior:Garage'),
       ('basementNotes', 'features:Basement'),
-      ('schoolsNotes', 'location:Schools')
+      ('schoolsNotes', 'location:Schools'),
+      ('propertyType', 'preferredPropertyTypes'),
+      ('petsAllowed', 'features:Pets Allowed'),
+      ('utilitiesIncluded', 'features:Utilities Included'),
+      ('inUnitLaundry', 'features:In-Unit Laundry')
     ) as f(field, criterion_key)
   ),
   projected as (
@@ -905,12 +923,43 @@ begin
       end if;
     end loop;
 
+    -- Future first-class property type preference. Values remain private;
+    -- only their contribution to the sanitized score leaves this function.
+    v_raw := case when jsonb_typeof(v_priorities -> 'preferredPropertyTypes') = 'array'
+      then v_priorities -> 'preferredPropertyTypes'
+      else coalesce(v_priorities #> '{preferredPropertyTypes,values}', '[]'::jsonb) end;
+    v_tier := coalesce(v_priorities #>> '{preferredPropertyTypes,tier}', 'important');
+    if v_tier <> 'dontcare' and jsonb_array_length(v_raw) > 0 then
+      v_selected := v_selected + 1;
+      if v_home.property_type is not null then
+        v_evaluated := v_evaluated + 1;
+        v_weight := case v_tier when 'must' then 4 when 'important' then 2 else 1 end;
+        v_score := (v_raw ? v_home.property_type)::integer;
+        v_total_weight := v_total_weight + v_weight;
+        v_weighted_sum := v_weighted_sum + v_score * v_weight;
+      end if;
+    end if;
+
     -- Item-list priorities. Their selected tiers are the canonical stored list;
     -- state shape determines rating vs explicit Yes/No without disclosing either.
     foreach v_category in array array['location','features','exterior','homeFeel'] loop
       for v_label, v_tier in select key, value #>> '{}' from jsonb_each(coalesce(v_priorities #> array[v_category, 'tiers'], '{}'::jsonb)) loop
         if v_tier = 'dontcare' or (v_category = 'location' and v_label = 'Schools' and v_priorities #>> '{location,schoolsRelevance}' = 'no') then continue; end if;
         v_selected := v_selected + 1; v_key := v_category || ':' || v_label;
+        -- These shared facts are authoritative. NULL is unevaluated and never
+        -- falls back to participant-private historical checks.
+        if v_key = any(array['features:Pets Allowed','features:Utilities Included','features:In-Unit Laundry']) then
+          v_score := case v_key
+            when 'features:Pets Allowed' then v_home.pets_allowed::integer
+            when 'features:Utilities Included' then v_home.utilities_included::integer
+            when 'features:In-Unit Laundry' then v_home.in_unit_laundry::integer end;
+          if v_score is null then continue; end if;
+          v_evaluated := v_evaluated + 1;
+          v_weight := case v_tier when 'must' then 4 when 'important' then 2 else 1 end;
+          v_total_weight := v_total_weight + v_weight;
+          v_weighted_sum := v_weighted_sum + v_score * v_weight;
+          continue;
+        end if;
         v_raw := coalesce(v_state.ratings, v_legacy_ratings) -> v_key;
         if v_raw is not null and jsonb_typeof(v_raw) = 'number' and (v_raw #>> '{}')::numeric > 0 then
           v_score := (v_raw #>> '{}')::numeric / 5; v_evaluated := v_evaluated + 1;
@@ -1253,7 +1302,8 @@ grant select (
   secondary_bedroom_location, notes, pros, cons, latitude, longitude,
   coordinate_address_fingerprint, coordinate_status, coordinate_source,
   hoa_fee_monthly, property_tax_annual, property_tax_year, basement_notes,
-  schools_notes, condition_notes, created_at, updated_at
+  schools_notes, condition_notes, property_type, available_on, pets_allowed,
+  utilities_included, in_unit_laundry, created_at, updated_at
 ) on public.homes to authenticated;
 
 -- INSERT permits creating a shared record but not supplying legacy private
@@ -1266,7 +1316,8 @@ grant insert (
   secondary_bedroom_location, notes, pros, cons, latitude, longitude,
   coordinate_address_fingerprint, coordinate_status, coordinate_source,
   hoa_fee_monthly, property_tax_annual, property_tax_year, basement_notes,
-  schools_notes, condition_notes, updated_at
+  schools_notes, condition_notes, property_type, available_on, pets_allowed,
+  utilities_included, in_unit_laundry, updated_at
 ) on public.homes to authenticated;
 
 -- Existing 3C.2 upserts include identity columns and updated_at in their SET
@@ -1281,7 +1332,8 @@ grant update (
   secondary_bedroom_location, notes, pros, cons, latitude, longitude,
   coordinate_address_fingerprint, coordinate_status, coordinate_source,
   hoa_fee_monthly, property_tax_annual, property_tax_year, basement_notes,
-  schools_notes, condition_notes, updated_at
+  schools_notes, condition_notes, property_type, available_on, pets_allowed,
+  utilities_included, in_unit_laundry, updated_at
 ) on public.homes to authenticated;
 
 create or replace function public.enforce_home_shared_identity()
