@@ -13,7 +13,8 @@ import {
 } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import { useReliableOptimisticState } from '@/lib/useReliableOptimisticState';
-import { updateSearchPriorities, completeOnboarding } from '@/lib/supabase/data';
+import { completeOnboarding } from '@/lib/supabase/data';
+import { savePriorities } from '@/lib/supabase/collaboration';
 
 const TIER_LEGEND = [
   { key: 'must', title: 'Must have', desc: "A dealbreaker if it's missing." },
@@ -268,7 +269,7 @@ function OnboardingStep3({ onFinish, isSaving }) {
 export default function Onboarding({ userId, searchId, initialPriorities }) {
   const router = useRouter();
   const initial = normalizePriorities(initialPriorities);
-  const persistPriorities = useCallback((next) => updateSearchPriorities(createClient(), searchId, next), [searchId]);
+  const persistPriorities = useCallback((next) => savePriorities(createClient(), { id: searchId }, userId, next), [searchId, userId]);
   const { state: priorities, patch, saveError, retry, isSaving } = useReliableOptimisticState(initial, persistPriorities);
   const [step, setStep] = useState(1);
   const [finishError, setFinishError] = useState('');

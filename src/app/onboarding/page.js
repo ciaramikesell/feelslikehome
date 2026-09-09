@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getProfile, getSearch } from '@/lib/supabase/data';
 import { normalizePriorities } from '@/lib/constants';
+import { resolvePriorities } from '@/lib/supabase/collaboration';
 import Onboarding from '@/components/onboarding/Onboarding';
 
 export default async function OnboardingPage() {
@@ -13,6 +14,7 @@ export default async function OnboardingPage() {
   if (profile?.onboarding_complete) redirect('/homes');
 
   const search = await getSearch(supabase, user.id);
+  const priorities = await resolvePriorities(supabase, search, user.id);
 
-  return <Onboarding userId={user.id} searchId={search.id} initialPriorities={normalizePriorities(search.priorities)} />;
+  return <Onboarding userId={user.id} searchId={search.id} initialPriorities={normalizePriorities(priorities)} />;
 }

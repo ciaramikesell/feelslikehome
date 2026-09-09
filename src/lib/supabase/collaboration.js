@@ -11,6 +11,20 @@ import { defaultPriorities } from '@/lib/constants';
 import { deriveSharedFactPriorityAwareness } from '@/lib/sharedFactPriorityAwareness';
 import { hasOutstandingWantToTour } from '@/lib/lifecycle';
 
+// Application allowlists for the shared records. Personal legacy columns are
+// intentionally absent so a later column-privilege cutover cannot change the
+// shape consumed by runtime code.
+export const SEARCH_SHARED_COLUMNS = 'id,user_id,created_at,updated_at';
+export const HOME_SHARED_COLUMNS = [
+  'id', 'user_id', 'search_id', 'address', 'crossroads', 'listing_url', 'photo_url',
+  'price', 'est_monthly', 'sqft', 'beds', 'baths', 'lot_size', 'garage_spaces',
+  'year_built', 'days_on_market', 'home_layout', 'home_condition',
+  'primary_bedroom_location', 'secondary_bedroom_location', 'notes', 'pros', 'cons',
+  'latitude', 'longitude', 'coordinate_address_fingerprint', 'coordinate_status',
+  'coordinate_source', 'hoa_fee_monthly', 'property_tax_annual', 'property_tax_year',
+  'basement_notes', 'schools_notes', 'condition_notes', 'created_at', 'updated_at',
+].join(',');
+
 /* ------------------------------- active search ------------------------------- */
 
 // Resolves which search the current user should be viewing right now.
@@ -24,7 +38,7 @@ import { hasOutstandingWantToTour } from '@/lib/lifecycle';
 export async function resolveActiveSearch(supabase, userId) {
   const [{ data: profile, error: profileError }, { data: ownedSearch, error: ownedError }] = await Promise.all([
     supabase.from('profiles').select('active_search_id').eq('id', userId).maybeSingle(),
-    supabase.from('searches').select('*').eq('user_id', userId).maybeSingle(),
+    supabase.from('searches').select(SEARCH_SHARED_COLUMNS).eq('user_id', userId).maybeSingle(),
   ]);
   if (profileError) throw profileError;
   if (ownedError) throw ownedError;
@@ -37,7 +51,7 @@ export async function resolveActiveSearch(supabase, userId) {
   // access — if nothing comes back, either the row is gone or access was
   // revoked, and either way we fall back rather than error.
   const { data: activeSearch, error: activeError } = await supabase
-    .from('searches').select('*').eq('id', profile.active_search_id).maybeSingle();
+    .from('searches').select(SEARCH_SHARED_COLUMNS).eq('id', profile.active_search_id).maybeSingle();
   if (activeError) throw activeError;
 
   if (!activeSearch) return { search: ownedSearch, isOwner: true };
@@ -49,7 +63,7 @@ export async function resolveActiveSearch(supabase, userId) {
 // full workspace list.
 export async function getAccessibleSearches(supabase, userId) {
   const [{ data: owned, error: ownedError }, { data: memberships, error: memberError }] = await Promise.all([
-    supabase.from('searches').select('*').eq('user_id', userId).maybeSingle(),
+    supabase.from('searches').select(SEARCH_SHARED_COLUMNS).eq('user_id', userId).maybeSingle(),
     supabase.from('search_members').select('search_id').eq('user_id', userId),
   ]);
   if (ownedError) throw ownedError;
@@ -58,7 +72,7 @@ export async function getAccessibleSearches(supabase, userId) {
   const memberSearchIds = (memberships || []).map((m) => m.search_id);
   let memberSearches = [];
   if (memberSearchIds.length) {
-    const { data, error } = await supabase.from('searches').select('*').in('id', memberSearchIds);
+    const { data, error } = await supabase.from('searches').select(SEARCH_SHARED_COLUMNS).in('id', memberSearchIds);
     if (error) throw error;
     memberSearches = data || [];
   }
@@ -77,11 +91,8 @@ export async function setActiveSearch(supabase, userId, searchId) {
 /* -------------------------------- priorities -------------------------------- */
 
 // Resolves priorities for (current search, current user):
-// 1. A search_member_priorities row exists -> use it.
-// 2. The current user OWNS the search and no such row exists yet -> legacy
-//    fallback to searches.priorities (today's exact behavior, untouched).
-// 3. The current user is a non-owner member with no row yet -> a fresh
-//    default set — NEVER a copy of the owner's priorities.
+// A missing caller-owned row is neutral; legacy searches.priorities is never
+// read or treated as authoritative.
 export async function resolvePriorities(supabase, search, userId) {
   if (!search) return defaultPriorities();
 
@@ -89,9 +100,7 @@ export async function resolvePriorities(supabase, search, userId) {
     .from('search_member_priorities').select('priorities').eq('search_id', search.id).eq('user_id', userId).maybeSingle();
   if (error) throw error;
 
-  if (memberRow) return memberRow.priorities;
-  if (search.user_id === userId) return search.priorities;
-  return defaultPriorities();
+  return memberRow?.priorities || defaultPriorities();
 }
 
 // The RPC verifies search access and projects protected participant priorities
@@ -128,27 +137,11 @@ export async function resolveCoBuyerComparePerspectives(supabase, search, homeId
   }]));
 }
 
-// Saves priorities for (current search, current user). Once a member-
-// priorities row exists for a user, we keep writing there consistently
-// (never flip back to the legacy column) — this matters even for the owner,
-// once they've started using the new path on a shared search.
+// Saves priorities only to the authenticated participant's row, for owners
+// and co-buyers alike.
 export async function savePriorities(supabase, search, userId, priorities) {
-  const { data: existingRow, error: checkError } = await supabase
-    .from('search_member_priorities').select('id').eq('search_id', search.id).eq('user_id', userId).maybeSingle();
-  if (checkError) throw checkError;
-
-  if (existingRow || search.user_id !== userId) {
-    const { error } = await supabase
-      .from('search_member_priorities')
-      .upsert({ search_id: search.id, user_id: userId, priorities }, { onConflict: 'search_id,user_id' });
-    if (error) throw error;
-    return;
-  }
-
-  // Owner, no member-priorities row yet — this is every existing single-user
-  // account, and stays on the exact same legacy path forever unless they
-  // actually start collaborating.
-  const { error } = await supabase.from('searches').update({ priorities }).eq('id', search.id);
+  const { error } = await supabase.from('search_member_priorities')
+    .upsert({ search_id: search.id, user_id: userId, priorities }, { onConflict: 'search_id,user_id' });
   if (error) throw error;
 }
 
@@ -223,13 +216,8 @@ function emptyPersonalState() {
   return { status: 'Saved', touredAt: null, isFavorite: false, reaction: null, rejectionReason: '', ratings: {}, checks: {} };
 }
 
-// Resolves personal lifecycle/evaluation state for one home + one user:
-// 1. A home_member_state row exists -> use it.
-// 2. The user is the home's original adder (homes.user_id, i.e. today's sole
-//    owner field) and no row exists -> legacy fallback to the flat columns
-//    already on `homes` — today's exact behavior for every existing home.
-// 3. Otherwise (a member who hasn't touched this home yet) -> fresh, empty
-//    personal state — never inherited from anyone else.
+// Resolves personal lifecycle/evaluation state from the caller-owned row.
+// Unexpected absence is neutral and never falls back to legacy homes fields.
 export function resolvePersonalState(home, memberStateRow, userId) {
   if (memberStateRow) {
     return {
@@ -242,17 +230,6 @@ export function resolvePersonalState(home, memberStateRow, userId) {
       checks: memberStateRow.checks || {},
     };
   }
-  if (home.userId === userId) {
-    return {
-      status: home.status,
-      touredAt: home.touredAt || null,
-      isFavorite: Boolean(home.isFavorite),
-      reaction: home.reaction,
-      rejectionReason: home.rejectionReason,
-      ratings: home.ratings,
-      checks: home.checks,
-    };
-  }
   return emptyPersonalState();
 }
 
@@ -262,7 +239,7 @@ export function resolvePersonalState(home, memberStateRow, userId) {
 // checks exactly as it always has, with zero changes needed for reading.
 export async function getHomesForUser(supabase, userId, searchId) {
   const { data: rows, error } = await supabase
-    .from('homes').select('*').eq('search_id', searchId).order('created_at', { ascending: true });
+    .from('homes').select(HOME_SHARED_COLUMNS).eq('search_id', searchId).order('created_at', { ascending: true });
   if (error) throw error;
 
   const homes = (rows || []).map((row) => ({ ...rowToHomeWithOwner(row) }));
@@ -271,7 +248,7 @@ export async function getHomesForUser(supabase, userId, searchId) {
   let stateRows = [];
   if (homeIds.length) {
     const { data, error: stateError } = await supabase
-      .from('home_member_state').select('*').eq('user_id', userId).in('home_id', homeIds);
+      .from('home_member_state').select('home_id,status,toured_at,is_favorite,reaction,rejection_reason,ratings,checks').eq('user_id', userId).in('home_id', homeIds);
     if (stateError) throw stateError;
     stateRows = data || [];
   }
@@ -280,31 +257,9 @@ export async function getHomesForUser(supabase, userId, searchId) {
   return homes.map((home) => ({ ...home, ...resolvePersonalState(home, stateByHomeId.get(home.id), userId) }));
 }
 
-// Saves personal fields to home_member_state (or the legacy homes columns for
-// a genuinely non-collaborative search), and shared/objective fields to homes
-// directly — in one call, so callers never need to know which field lives in
-// which table.
-//
-// CRITICAL: whether this is a "legacy" save is determined by whether the
-// SEARCH has any accepted members — never by who happened to add this
-// specific home. An earlier version of this function used "did I add this
-// home" as the test, which meant a co-buyer adding a brand-new home to an
-// already-shared search would have had their own personal opinion written
-// straight onto the shared row (exactly the outcome this whole architecture
-// exists to prevent). Fixed: once a search is collaborative, EVERY
-// participant's personal writes — including the original owner's — go to
-// home_member_state from that point forward. The flat legacy columns remain
-// exactly as they are for any home no one has touched since collaboration
-// began (the read side in resolvePersonalState already prefers a
-// home_member_state row over the flat columns whenever one exists), but no
-// NEW write ever lands there once a search has a member.
-async function isCollaborativeSearch(supabase, searchId) {
-  const { count: memberCount, error: memberCountError } = await supabase
-    .from('search_members').select('id', { count: 'exact', head: true }).eq('search_id', searchId);
-  if (memberCountError) throw memberCountError;
-  return (memberCount || 0) > 0;
-}
-
+// Saves shared/objective fields to homes and the caller's personal fields to
+// home_member_state. The same storage split applies to solo owners and every
+// collaborative participant.
 function personalStateFromHome(home) {
   return {
     status: home.status,
@@ -341,41 +296,23 @@ export function hasSharedHomeChanges(home, previousHome) {
 }
 
 export async function saveHomePersonalAndShared(supabase, home, userId, searchId) {
-  const isCollaborative = await isCollaborativeSearch(supabase, searchId);
-
-  // IMPORTANT: status/reaction/rejection_reason/ratings/checks on the shared
-  // `homes` row represent ONE specific person's legacy personal data (kept
-  // there only for pre-collaboration backward compatibility, never as a
-  // generic "shared" value). This path is only ever taken at all when the
-  // search has no members — i.e., a genuinely single-user account, exactly
-  // today's behavior, unchanged.
-  const isLegacyOwnerSave = !isCollaborative;
-
-  const sharedRow = homeToSharedRow(home, userId, searchId, isLegacyOwnerSave);
+  const sharedRow = homeToSharedRow(home, userId, searchId);
   const { data: savedShared, error: sharedError } = await supabase
-    .from('homes').upsert(sharedRow).select().single();
+    .from('homes').upsert(sharedRow).select(HOME_SHARED_COLUMNS).single();
   if (sharedError) throw sharedError;
 
   const savedHome = rowToHomeWithOwner(savedShared);
 
   const personal = personalStateFromHome(home);
 
-  if (!isLegacyOwnerSave) {
-    await upsertPersonalState(supabase, savedHome.id, userId, personal);
-  }
-  // Non-collaborative path: status/reaction/ratings/checks were already
-  // written as part of the shared-row upsert above — nothing further to do.
+  await upsertPersonalState(supabase, savedHome.id, userId, personal);
 
   return { ...savedHome, ...personal };
 }
 
-// Personal lifecycle/evaluation actions take this path. Once a search is
-// collaborative, they touch only the authenticated participant's state row —
-// never the shared homes row. A genuinely single-user search retains the flat
-// homes-column behavior for backward compatibility.
+// Personal lifecycle/evaluation actions always touch only the authenticated
+// participant's state row, never the shared homes row.
 export async function saveHomePersonalState(supabase, home, userId, searchId) {
-  const isCollaborative = await isCollaborativeSearch(supabase, searchId);
-  if (!isCollaborative) return saveHomePersonalAndShared(supabase, home, userId, searchId);
   if (!home.id) throw new Error('Cannot save personal state for a home without an id.');
 
   const personal = personalStateFromHome(home);
@@ -392,43 +329,27 @@ export async function getSearchParticipantIds(supabase, search) {
   return [search.user_id, ...(data || []).map((m) => m.user_id)];
 }
 
-// For a set of homes in a search, resolves only the two personal signals that
-// collaborators are allowed to see here: status, toured history, and Favorite. Ratings,
-// checks, rejection reasons, and notes deliberately never enter this query.
-// Returns Map<homeId, Array<{userId, status, reaction}>>.
-// A participant who has never touched a given home (no home_member_state row,
-// and not the home's original legacy adder) resolves to status: null — never
-// counted as "active" or "archived," simply "hasn't looked at this yet."
+// For a collaborative search, fetches only the four approved co-buyer/global
+// lifecycle conclusions. Raw participant identities, statuses, tour timestamps,
+// and favorite rows never enter application code.
 export async function getParticipantStatusesForHomes(supabase, search, homes) {
   const homeIds = homes.map((h) => h.id);
   if (!homeIds.length) return new Map();
 
   const participantIds = await getSearchParticipantIds(supabase, search);
-  if (participantIds.length <= 1) {
-    // Not collaborative — every home's only participant is the current
-    // account itself, whose status is already on the home object.
-    const result = new Map();
-    homes.forEach((home) => result.set(home.id, [{ userId: home.userId, status: home.status, touredAt: home.touredAt, isFavorite: home.isFavorite }]));
-    return result;
-  }
+  if (participantIds.length <= 1) return new Map();
 
-  const { data: stateRows, error } = await supabase
-    .from('home_member_state').select('home_id, user_id, status, toured_at, is_favorite').in('home_id', homeIds).in('user_id', participantIds);
-  if (error) throw error;
-
-  const stateByHomeAndUser = new Map((stateRows || []).map((r) => [`${r.home_id}:${r.user_id}`, r]));
-
-  const result = new Map();
-  homes.forEach((home) => {
-    const perParticipant = participantIds.map((pid) => {
-      const state = stateByHomeAndUser.get(`${home.id}:${pid}`);
-      if (state) return { userId: pid, status: state.status, touredAt: state.toured_at, isFavorite: Boolean(state.is_favorite) };
-      if (home.userId === pid) return { userId: pid, status: home.status, touredAt: home.touredAt, isFavorite: home.isFavorite }; // legacy fallback, adder only
-      return { userId: pid, status: null, touredAt: null, isFavorite: false }; // hasn't touched this home at all
-    });
-    result.set(home.id, perParticipant);
+  const { data: stateRows, error } = await supabase.rpc('resolve_cobuyer_lifecycle_signals', {
+    p_search_id: search.id,
+    p_home_ids: homeIds,
   });
-  return result;
+  if (error) throw error;
+  return new Map((stateRows || []).map((row) => [row.home_id, {
+    coBuyerWantsToTour: Boolean(row.co_buyer_wants_to_tour),
+    coBuyerFavorited: Boolean(row.co_buyer_favorited),
+    coBuyerArchived: Boolean(row.co_buyer_archived),
+    allParticipantsArchived: Boolean(row.all_participants_archived),
+  }]));
 }
 
 // A shared home is archived only when EVERY active participant (owner + all
@@ -481,16 +402,23 @@ export function deriveCoBuyerPersonalSignals(currentUserState, otherParticipantS
 
 export function addCoBuyerPersonalSignals(homes, personalStatesByHome, currentUserId) {
   return homes.map((home) => {
-    const perParticipant = personalStatesByHome.get(home.id) || [];
-    const otherStates = perParticipant.filter((state) => state.userId !== currentUserId);
-    if (!otherStates.length) return home;
+    const signal = personalStatesByHome.get(home.id);
+    if (!signal) return home;
+    const currentUserFavorited = Boolean(home.isFavorite);
+    let favoriteLabel = null;
+    if (currentUserFavorited && signal.coBuyerFavorited) favoriteLabel = 'You both favorited this';
+    else if (signal.coBuyerFavorited) favoriteLabel = 'Favorited by Co-Buyer';
     return {
       ...home,
       isCollaborative: true,
-      ...deriveCoBuyerPersonalSignals(
-        { status: home.status, touredAt: home.touredAt, isFavorite: home.isFavorite },
-        otherStates,
-      ),
+      currentUserFavorited,
+      coBuyerFavorited: signal.coBuyerFavorited,
+      favoriteLabel,
+      currentUserArchived: home.status === 'Archived',
+      coBuyerArchived: signal.coBuyerArchived,
+      globallyArchived: signal.allParticipantsArchived,
+      coBuyerArchivedCount: home.status !== 'Archived' && signal.coBuyerArchived ? 1 : null,
+      coBuyerWantsToTour: signal.coBuyerWantsToTour,
     };
   });
 }
@@ -608,13 +536,14 @@ function rowToHomeWithOwner(row) {
     homeCondition: Array.isArray(row.home_condition) ? row.home_condition : [],
     primaryBedroomLocation: row.primary_bedroom_location || '',
     secondaryBedroomLocation: row.secondary_bedroom_location || '',
-    status: row.status || 'Considering',
-    touredAt: row.toured_at || null,
-    isFavorite: Boolean(row.is_favorite),
-    reaction: row.reaction || null,
-    rejectionReason: row.rejection_reason || '',
-    ratings: row.ratings || {},
-    checks: row.checks || {},
+    // Caller-private state is overlaid from home_member_state after mapping.
+    status: 'Saved',
+    touredAt: null,
+    isFavorite: false,
+    reaction: null,
+    rejectionReason: '',
+    ratings: {},
+    checks: {},
     notes: row.notes || '',
     pros: row.pros || '',
     cons: row.cons || '',
@@ -632,7 +561,7 @@ function rowToHomeWithOwner(row) {
   };
 }
 
-function homeToSharedRow(home, userId, searchId, includeLegacyPersonalFields) {
+function homeToSharedRow(home, userId, searchId) {
   return {
     ...(home.id ? { id: home.id } : {}),
     user_id: home.id ? home.userId ?? userId : userId, // never reassign the adder of an existing home
@@ -654,19 +583,6 @@ function homeToSharedRow(home, userId, searchId, includeLegacyPersonalFields) {
     home_condition: Array.isArray(home.homeCondition) ? home.homeCondition : [],
     primary_bedroom_location: home.primaryBedroomLocation || '',
     secondary_bedroom_location: home.secondaryBedroomLocation || '',
-    // Legacy personal-shaped fields — ONLY ever written by the home's actual
-    // original owner (see saveHomePersonalAndShared). Omitted entirely from
-    // a co-buyer's shared-row write, so their own personal save can never
-    // clobber the owner's legacy-fallback data sitting on this same row.
-    ...(includeLegacyPersonalFields ? {
-      status: home.status || 'Considering',
-      toured_at: home.touredAt || null,
-      is_favorite: Boolean(home.isFavorite),
-      reaction: home.reaction || null,
-      rejection_reason: home.rejectionReason || '',
-      ratings: home.ratings || {},
-      checks: home.checks || {},
-    } : {}),
     notes: home.notes || '',
     pros: home.pros || '',
     cons: home.cons || '',

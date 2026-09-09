@@ -23,13 +23,9 @@ export default async function TourPage() {
   const statusesByHome = await getParticipantStatusesForHomes(supabase, search, homes);
   const homesWithPersonalSignals = addCoBuyerPersonalSignals(homes, statusesByHome, user.id);
   const homesWithSignal = homesWithPersonalSignals.map((home) => {
-    const perParticipant = statusesByHome.get(home.id) || [];
-    const otherStates = perParticipant.filter((p) => p.userId !== user.id);
-    const isCollaborative = perParticipant.some((p) => p.userId !== user.id);
     return {
       ...home,
-      ...(isCollaborative ? deriveWantToTourState(home, otherStates) : {}),
-      isCollaborative,
+      ...(home.isCollaborative ? deriveWantToTourState(home, home.coBuyerWantsToTour ? [{ status: 'Want to Tour' }] : []) : {}),
     };
   });
 
