@@ -1,8 +1,9 @@
--- Sanitized co-buyer perspectives for Compare.
+-- Forward hotfix for Compare perspective type-safe fact evaluation.
 --
--- The protected priority document and personal state are read only inside this
--- SECURITY DEFINER function. Callers receive one independently-derived score,
--- the co-buyer's overall feeling, and actual opposing experiential reactions.
+-- Replaces the function because the original migration may already be applied.
+-- Numeric thresholds populate the numeric variable, while bedroom locations
+-- populate the text variable. The function contract and access controls remain
+-- unchanged.
 
 create or replace function public.resolve_cobuyer_compare_perspectives(
   p_search_id uuid,
