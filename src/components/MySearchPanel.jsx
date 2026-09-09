@@ -63,13 +63,13 @@ function BedroomSubPreferences({ priorities, patch }) {
               <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 6 }}>{def.title}</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {def.options.map((o) => (
-                  <span key={o} className={`hh-chip ${catState.value === o ? 'on' : ''}`} onClick={() => patch((next) => {
+                  <button type="button" key={o} className={`hh-chip ${catState.value === o ? 'on' : ''}`} aria-pressed={catState.value === o} onClick={() => patch((next) => {
                     const wasSelected = next[def.key].value === o;
                     const newValue = wasSelected ? '' : o;
                     const newTier = !wasSelected && o === 'No Preference' ? 'dontcare' : next[def.key].tier;
                     next[def.key] = { ...next[def.key], value: newValue, tier: newTier };
                     return next;
-                  })}>{o}</span>
+                  })}>{o}</button>
                 ))}
               </div>
             </div>
@@ -107,7 +107,7 @@ function MultiselectSection({ def, priorities, patch, children }) {
       <div className="hh-label" style={{ marginBottom: 6 }}>{title}</div>
       <div className="hh-priority-row" style={{ alignItems: 'flex-start' }}>
         <div style={{ flex: '1 1 220px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {options.map((o) => <span key={o} className={`hh-chip ${safeValues.includes(o) ? 'on' : ''}`} onClick={() => toggle(o)}>{o}</span>)}
+          {options.map((o) => <button type="button" key={o} className={`hh-chip ${safeValues.includes(o) ? 'on' : ''}`} aria-pressed={safeValues.includes(o)} onClick={() => toggle(o)}>{o}</button>)}
         </div>
         <TierPicker value={catState.tier} onChange={(t) => patch((next) => { next[key] = { ...next[key], tier: t }; return next; })} />
       </div>
@@ -176,19 +176,19 @@ function BasicsCard({ p, patch }) {
               <div className="hh-label" style={{ marginBottom: 6 }}>Investment Property Type</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
                 {INVESTMENT_PROPERTY_TYPES.map((opt) => (
-                  <span key={opt} className={`hh-chip ${(p.investmentPropertyTypes || []).includes(opt) ? 'on' : ''}`}
+                  <button type="button" key={opt} className={`hh-chip ${(p.investmentPropertyTypes || []).includes(opt) ? 'on' : ''}`} aria-pressed={(p.investmentPropertyTypes || []).includes(opt)}
                     onClick={() => patch((n) => { n.investmentPropertyTypes = toggleWithNoPreference(n.investmentPropertyTypes || [], opt); return n; })}>
                     {opt}
-                  </span>
+                  </button>
                 ))}
               </div>
               <div className="hh-label" style={{ marginBottom: 6 }}>Planning to live in the property?</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {INVESTMENT_LIVING_PLAN_OPTIONS.map((o) => (
-                  <span key={o.key} className={`hh-chip ${p.planningToLiveIn === o.key ? 'on' : ''}`}
+                  <button type="button" key={o.key} className={`hh-chip ${p.planningToLiveIn === o.key ? 'on' : ''}`} aria-pressed={p.planningToLiveIn === o.key}
                     onClick={() => patch((n) => { n.planningToLiveIn = n.planningToLiveIn === o.key ? '' : o.key; return n; })}>
                     {o.label}
-                  </span>
+                  </button>
                 ))}
               </div>
             </div>

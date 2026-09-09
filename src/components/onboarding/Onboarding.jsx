@@ -28,7 +28,7 @@ function OnboardingProgress({ step }) {
       {steps.map((s, i) => (
         <div key={s.n} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-            <div style={{
+            <div aria-current={step === s.n ? 'step' : undefined} style={{
               width: 22, height: 22, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 11, fontWeight: 700, flexShrink: 0,
               background: step >= s.n ? 'var(--brick)' : 'var(--paper-raised)',
@@ -73,10 +73,10 @@ function OnboardingStep1({ priorities, patch, onNext }) {
         <div className="hh-label" style={{ marginBottom: 8, fontSize: 13 }}>What are you searching for?</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {SEARCH_TYPE_OPTIONS.map((o) => (
-            <span key={o.key} className={`hh-chip ${priorities.searchType === o.key ? 'on' : ''}`} style={{ fontSize: 13, padding: '8px 14px' }}
+            <button type="button" key={o.key} className={`hh-chip ${priorities.searchType === o.key ? 'on' : ''}`} style={{ fontSize: 13, padding: '8px 14px' }} aria-pressed={priorities.searchType === o.key}
               onClick={() => patch((n) => { n.searchType = n.searchType === o.key ? '' : o.key; return n; })}>
               {o.label}
-            </span>
+            </button>
           ))}
         </div>
       </div>
@@ -89,10 +89,10 @@ function OnboardingStep1({ priorities, patch, onNext }) {
                 <label className="hh-label">What type of investment property are you looking for?</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {INVESTMENT_PROPERTY_TYPES.map((opt) => (
-                    <span key={opt} className={`hh-chip ${(priorities.investmentPropertyTypes || []).includes(opt) ? 'on' : ''}`}
+                    <button type="button" key={opt} className={`hh-chip ${(priorities.investmentPropertyTypes || []).includes(opt) ? 'on' : ''}`} aria-pressed={(priorities.investmentPropertyTypes || []).includes(opt)}
                       onClick={() => patch((n) => { n.investmentPropertyTypes = toggleWithNoPreference(n.investmentPropertyTypes || [], opt); return n; })}>
                       {opt}
-                    </span>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -100,10 +100,10 @@ function OnboardingStep1({ priorities, patch, onNext }) {
                 <label className="hh-label">Planning to live in the property?</label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                   {INVESTMENT_LIVING_PLAN_OPTIONS.map((o) => (
-                    <span key={o.key} className={`hh-chip ${priorities.planningToLiveIn === o.key ? 'on' : ''}`}
+                    <button type="button" key={o.key} className={`hh-chip ${priorities.planningToLiveIn === o.key ? 'on' : ''}`} aria-pressed={priorities.planningToLiveIn === o.key}
                       onClick={() => patch((n) => { n.planningToLiveIn = n.planningToLiveIn === o.key ? '' : o.key; return n; })}>
                       {o.label}
-                    </span>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -134,10 +134,10 @@ function OnboardingStep1({ priorities, patch, onNext }) {
               <label className="hh-label">Home Condition</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {HOME_CONDITION_OPTIONS.map((o) => (
-                  <span key={o} className={`hh-chip ${(priorities.homeCondition.values || []).includes(o) ? 'on' : ''}`}
+                  <button type="button" key={o} className={`hh-chip ${(priorities.homeCondition.values || []).includes(o) ? 'on' : ''}`} aria-pressed={(priorities.homeCondition.values || []).includes(o)}
                     onClick={() => patch((n) => { n.homeCondition = { ...n.homeCondition, values: toggleWithNoPreference(n.homeCondition.values || [], o) }; return n; })}>
                     {o}
-                  </span>
+                  </button>
                 ))}
               </div>
             </div>
@@ -148,10 +148,10 @@ function OnboardingStep1({ priorities, patch, onNext }) {
               <label className="hh-label">Preferred Home Layout</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {LAYOUT_OPTIONS.map((o) => (
-                  <span key={o} className={`hh-chip ${(priorities.homeLayout.values || []).includes(o) ? 'on' : ''}`}
+                  <button type="button" key={o} className={`hh-chip ${(priorities.homeLayout.values || []).includes(o) ? 'on' : ''}`} aria-pressed={(priorities.homeLayout.values || []).includes(o)}
                     onClick={() => patch((n) => { n.homeLayout = { ...n.homeLayout, values: toggleWithNoPreference(n.homeLayout.values || [], o) }; return n; })}>
                     {o}
-                  </span>
+                  </button>
                 ))}
               </div>
             </div>

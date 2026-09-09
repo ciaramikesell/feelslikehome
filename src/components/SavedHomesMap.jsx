@@ -84,8 +84,8 @@ export default function SavedHomesMap({ homes, priorities }) {
       <div ref={canvasRef} className="hh-map-canvas" role="region" aria-label="Map of your saved homes" />
       {mapState !== 'ready' && <div className="hh-map-message">
         <MapPin size={28} />
-        <strong>{eligible.length ? (mapState === 'loading' ? 'Placing your saved homes…' : mapState === 'error' ? "The map couldn't load." : 'Map setup is needed.') : "Your homes couldn't be placed yet."}</strong>
-        <span>{eligible.length ? (mapState === 'loading' ? 'This should only take a moment.' : 'You can still choose a home from the list.') : 'Open a home to check its address and location.'}</span>
+        <strong>{eligible.length ? (mapState === 'loading' ? 'Placing your saved homes…' : "The map isn't available right now.") : "Your homes couldn't be placed yet."}</strong>
+        <span>{eligible.length ? (mapState === 'loading' ? 'This should only take a moment.' : 'Your saved homes are still listed below.') : 'Open a home to check its address and location.'}</span>
       </div>}
       {selected && <article className="hh-map-preview">
         {selected.photoUrl && <img src={selected.photoUrl} alt="" />}

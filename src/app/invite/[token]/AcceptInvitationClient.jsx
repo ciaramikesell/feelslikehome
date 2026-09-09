@@ -26,6 +26,12 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
   const [state, setState] = useState(initialPreview.valid ? 'valid' : 'invalid'); // valid | invalid | accepting | done
   const [reason, setReason] = useState(initialPreview.reason || '');
 
+  const signOut = async () => {
+    await createClient().auth.signOut();
+    router.push(`/auth/sign-in?redirect=${encodeURIComponent(`/invite/${token}`)}`);
+    router.refresh();
+  };
+
   const accept = async () => {
     setState('accepting');
     try {
@@ -86,6 +92,11 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
           <>
             <h1 className="hh-serif" style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', margin: '0 0 8px' }}>We couldn't complete that</h1>
             <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', lineHeight: 1.55 }}>{REASON_COPY[reason] || REASON_COPY.unknown}</p>
+            {reason === 'wrong_account' ? (
+              <button type="button" className="hh-btn" onClick={signOut}>Sign in with another account</button>
+            ) : (
+              <button type="button" className="hh-btn hh-btn-ghost" onClick={() => router.push('/homes')}>Return to Homes</button>
+            )}
           </>
         )}
 

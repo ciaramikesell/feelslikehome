@@ -76,9 +76,12 @@ html, body {
   display: inline-flex; align-items: center; gap: 4px; transition: all .12s ease; font-family: inherit; font-weight: 500;
 }
 .hh-chip.on { background: var(--moss); border-color: var(--moss); color: #fff; }
+.hh-chip:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 .hh-chip.static { cursor: default; }
 .hh-star-row { display: inline-flex; gap: 2px; }
 .hh-star-btn { background: none; border: none; padding: 1px; cursor: pointer; line-height: 0; }
+.hh-post-tour-verdicts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 22px; }
+.hh-post-tour-standouts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 table.hh-table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 table.hh-table th {
   text-align: left; font-weight: 600; font-size: 12.5px; color: var(--ink-soft);
@@ -438,6 +441,8 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   .hh-detail-cobuyer { align-items: flex-start; flex-direction: column; gap: 10px; }
 }
 @media(max-width:420px) {
+  .hh-post-tour-verdicts, .hh-post-tour-standouts { grid-template-columns: 1fr; }
+  .hh-post-tour-verdicts > button { min-height: 68px !important; }
   .hh-detail-facts, .hh-detail-reactions { grid-template-columns: 1fr; }
   .hh-detail-core-facts { line-height: 1.55; }
   .hh-detail-actions { align-items: stretch; }
