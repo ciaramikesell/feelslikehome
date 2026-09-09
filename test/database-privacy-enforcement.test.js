@@ -7,6 +7,7 @@ const schema = fs.readFileSync('supabase/schema.sql', 'utf8');
 const preflight = fs.readFileSync('supabase/3c3-production-preflight.sql', 'utf8');
 const verification = fs.readFileSync('supabase/3c3-production-verification.sql', 'utf8');
 const runbook = fs.readFileSync('docs/pass-3c3-operator-runbook.md', 'utf8');
+const preflightVerdict = fs.readFileSync('supabase/3c3-production-preflight-verdict.sql', 'utf8');
 
 const homeRead = [
   'id','user_id','search_id','address','crossroads','listing_url','photo_url','price','est_monthly','sqft','beds','baths','lot_size','garage_spaces','year_built','days_on_market','home_layout','home_condition','primary_bedroom_location','secondary_bedroom_location','notes','pros','cons','latitude','longitude','coordinate_address_fingerprint','coordinate_status','coordinate_source','hoa_fee_monthly','property_tax_annual','property_tax_year','basement_notes','schools_notes','condition_notes','created_at','updated_at',
@@ -92,4 +93,45 @@ test('migration never destroys or clears legacy data and never restores broad gr
   assert.doesNotMatch(migration, /\b(truncate|delete\s+from)\b/i);
   assert.doesNotMatch(migration, /update\s+public\.(homes|searches)\s+set/i);
   assert.doesNotMatch(migration, /grant\s+(all|select|update)\s+on\s+(table\s+)?public\.(homes|searches)/i);
+});
+
+test('standalone preflight verdict is one read-only catalog result with fail-closed blockers', () => {
+  assert.match(preflightVerdict, /^-- Pass 3C\.3 standalone production GO\/NO-GO verdict/);
+  assert.doesNotMatch(preflightVerdict, /^\s*(insert\s+into|update\s+|delete\s+from|truncate\s+|alter\s+|create\s+|drop\s+|grant\s+|revoke\s+)/im);
+  assert.doesNotMatch(preflightVerdict, /\bfrom\s+public\./i);
+  assert.equal((preflightVerdict.match(/\nselect\n  bool_and\(passed\)/g) || []).length, 1);
+  assert.match(preflightVerdict, /coalesce\(bool_and\(passed\),false\) as safe_to_apply_3c3/);
+  assert.match(preflightVerdict, /array_agg\(check_name order by check_name\) filter\(where not coalesce\(passed,false\)\)/);
+});
+
+test('safe_to_apply_3c3 and blockers consume every named safety prerequisite', () => {
+  const requiredChecks = [
+    'all_six_tables_have_rls',
+    'exact_expected_policy_inventory',
+    'no_unexpected_privacy_policy',
+    'hms_known_pre_3c3_select_policy',
+    'priorities_policies_caller_own_only',
+    'commute_policies_caller_own_two_arg',
+    'homes_expected_authenticated_table_privileges',
+    'searches_expected_authenticated_table_privileges',
+    'no_authenticated_column_acl_drift',
+    'all_homes_migration_columns_exist',
+    'all_searches_migration_columns_exist',
+    'all_protected_legacy_home_columns_exist',
+    'searches_priorities_exists',
+    'one_two_arg_can_access_search',
+    'one_lifecycle_overload',
+    'security_definer_metadata_matches',
+    'function_acls_compatible',
+  ];
+  const checksCte = preflightVerdict.match(/checks\(check_name,passed\) as \(([\s\S]*?)\n\)\nselect/)[1];
+  const namedChecks = [...checksCte.matchAll(/\('([a-z0-9_]+)',b\.[a-z0-9_]+\)/g)].map((m) => m[1]);
+  assert.deepEqual(namedChecks, requiredChecks);
+  for (const check of requiredChecks) {
+    assert.match(preflightVerdict, new RegExp(`filter\\(where check_name='${check}'\\) as ${check}`));
+  }
+  // The verdict and blockers aggregate the same complete checks relation;
+  // there is no hand-maintained permissive AND-list that could omit a check.
+  assert.match(preflightVerdict, /coalesce\(bool_and\(passed\),false\) as safe_to_apply_3c3/);
+  assert.match(preflightVerdict, /from checks;\s*$/);
 });
