@@ -42,8 +42,8 @@ export default function ForgotPasswordPage() {
         {status !== 'sent' ? (
           <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div>
-              <label className="afh-label">Email</label>
-              <input className="afh-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" />
+              <label className="afh-label" htmlFor="reset-email">Email</label>
+              <input className="afh-input" id="reset-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" />
             </div>
             {error && <Banner kind="error">{error}</Banner>}
             <button type="submit" className="afh-btn" disabled={status === 'loading'}>

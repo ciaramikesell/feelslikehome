@@ -3,14 +3,15 @@
 import { useState } from 'react';
 import { Eye, EyeOff, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
-export function PasswordField({ label, value, onChange, placeholder, autoComplete }) {
+export function PasswordField({ label, value, onChange, placeholder, autoComplete, id }) {
   const [show, setShow] = useState(false);
   return (
     <div>
-      <label className="afh-label">{label}</label>
+      <label className="afh-label" htmlFor={id}>{label}</label>
       <div style={{ position: 'relative' }}>
         <input
           className="afh-input"
+          id={id}
           type={show ? 'text' : 'password'}
           value={value}
           onChange={(e) => onChange(e.target.value)}
@@ -35,7 +36,7 @@ export function Banner({ kind, children }) {
   const s = styles[kind] || styles.info;
   const Icon = kind === 'success' ? CheckCircle2 : AlertCircle;
   return (
-    <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: s.bg, border: `1px solid ${s.border}`, color: s.color, fontSize: 12.5, padding: '10px 12px', borderRadius: 12, lineHeight: 1.4 }}>
+    <div role={kind === 'error' ? 'alert' : 'status'} aria-live={kind === 'error' ? 'assertive' : 'polite'} style={{ display: 'flex', gap: 8, alignItems: 'flex-start', background: s.bg, border: `1px solid ${s.border}`, color: s.color, fontSize: 12.5, padding: '10px 12px', borderRadius: 12, lineHeight: 1.4 }}>
       <Icon size={14} style={{ marginTop: 1, flexShrink: 0 }} />
       <span>{children}</span>
     </div>

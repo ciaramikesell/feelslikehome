@@ -41,12 +41,12 @@ function SignInForm() {
         </div>
 
         <div>
-          <label className="afh-label">Email</label>
-          <input className="afh-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" />
+          <label className="afh-label" htmlFor="sign-in-email">Email</label>
+          <input className="afh-input" id="sign-in-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" />
         </div>
 
         <div>
-          <PasswordField label="Password" value={password} onChange={setPassword} placeholder="••••••••" autoComplete="current-password" />
+          <PasswordField id="sign-in-password" label="Password" value={password} onChange={setPassword} placeholder="••••••••" autoComplete="current-password" />
           <div style={{ textAlign: 'right', marginTop: 6 }}>
             <Link href="/auth/forgot-password" className="afh-link" style={{ textDecoration: 'none' }}>Forgot password?</Link>
           </div>

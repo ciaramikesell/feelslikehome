@@ -22,7 +22,7 @@ export default function AuthShell({ children }) {
             <br />
             Find the one that <span style={{ color: 'var(--brick)' }}>feels like home</span>.
           </h2>
-          <p style={{ fontSize: 14.5, color: 'var(--ink-soft)', lineHeight: 1.6, margin: '14px 0 0', maxWidth: 420 }}>
+          <p className="afh-description" style={{ fontSize: 14.5, color: 'var(--ink-soft)', lineHeight: 1.6, margin: '14px 0 0', maxWidth: 420 }}>
             Organize, rate, and compare the homes you're considering based on what matters most to you.
           </p>
 

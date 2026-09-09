@@ -82,12 +82,12 @@ function SignUpForm() {
         </div>
 
         <div>
-          <label className="afh-label">Email</label>
-          <input className="afh-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" />
+          <label className="afh-label" htmlFor="sign-up-email">Email</label>
+          <input className="afh-input" id="sign-up-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" />
         </div>
-        <PasswordField label="Password" value={password} onChange={setPassword} placeholder="Create a password" autoComplete="new-password" />
+        <PasswordField id="sign-up-password" label="Password" value={password} onChange={setPassword} placeholder="Create a password" autoComplete="new-password" />
         <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '-10px 0 0' }}>At least 6 characters.</p>
-        <PasswordField label="Confirm password" value={confirm} onChange={setConfirm} placeholder="Re-enter your password" autoComplete="new-password" />
+        <PasswordField id="sign-up-confirm" label="Confirm password" value={confirm} onChange={setConfirm} placeholder="Re-enter your password" autoComplete="new-password" />
 
         {error && (
           <Banner kind="error">
