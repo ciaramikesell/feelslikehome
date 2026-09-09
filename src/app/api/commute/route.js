@@ -12,19 +12,51 @@ function durationSeconds(value) {
   return match ? Number(match[1]) : null;
 }
 
+function safeProviderError(body) {
+  return {
+    code: body?.error?.status || body?.status || null,
+    message: body?.error?.message || body?.error_message || null,
+  };
+}
+
+function statusCounts(locations) {
+  return locations.reduce((counts, location) => {
+    counts[location.status] = (counts[location.status] || 0) + 1;
+    return counts;
+  }, {});
+}
+
+function routeRowSummary(rows) {
+  return rows.reduce((summary, row) => {
+    const condition = row?.condition || 'CONDITION_UNSPECIFIED';
+    const status = row?.status?.code == null ? 'none' : String(row.status.code);
+    summary.conditions[condition] = (summary.conditions[condition] || 0) + 1;
+    summary.statusCodes[status] = (summary.statusCodes[status] || 0) + 1;
+    return summary;
+  }, { conditions: {}, statusCodes: {} });
+}
+
 async function geocode(address, apiKey) {
   try {
     const response = await fetch(`${GEOCODING_URL}?address=${encodeURIComponent(address)}&key=${encodeURIComponent(apiKey)}`, { cache: 'no-store' });
-    if (!response.ok) return { status: 'unavailable' };
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      console.error('Commute geocoding provider error', { httpStatus: response.status, ...safeProviderError(body) });
+      return { status: 'unavailable' };
+    }
     const body = await response.json();
     if (body.status === 'ZERO_RESULTS') return { status: 'invalid' };
-    if (body.status !== 'OK') return { status: 'unavailable' };
+    if (body.status !== 'OK') {
+      console.error('Commute geocoding provider error', { httpStatus: response.status, ...safeProviderError(body) });
+      return { status: 'unavailable' };
+    }
     if (body.results.length !== 1 || body.results[0]?.partial_match) return { status: 'ambiguous' };
     const location = body.results[0]?.geometry?.location;
     if (!Number.isFinite(location?.lat) || !Number.isFinite(location?.lng)) return { status: 'unavailable' };
     return { status: 'resolved', latitude: location.lat, longitude: location.lng };
   } catch (error) {
-    console.error('Commute geocoding failed', error);
+    // Do not log the thrown request object: it can contain the URL and API key.
+    console.error('Commute geocoding request failed', { errorName: error?.name || 'Error' });
     return { status: 'unavailable' };
   }
 }
@@ -45,7 +77,7 @@ async function resolveCoordinates(supabase, table, record, geocodingKey) {
   // This uses the caller's authenticated Supabase client. Homes remain guarded
   // by can_access_home; destinations remain guarded by owner-only RLS.
   const { error } = await supabase.from(table).update(update).eq('id', record.id);
-  if (error) console.error(`Could not save ${table} coordinate provenance`, error);
+  if (error) console.error('Could not save coordinate provenance', { table, code: error.code || null, message: error.message || null });
   return result;
 }
 
@@ -75,9 +107,14 @@ export async function POST(request) {
     if (homesError || destinationsError) throw homesError || destinationsError;
     if (!homes?.length || !destinations?.length) return NextResponse.json({ results: {} });
 
+    console.info('Commute request loaded', { homeCount: homes.length, destinationCount: destinations.length });
+
     const routesKey = process.env.GOOGLE_ROUTES_API_KEY;
     const geocodingKey = process.env.GOOGLE_GEOCODING_API_KEY;
     if (!routesKey || !geocodingKey) {
+      console.error('Commute provider configuration missing', {
+        missingVariables: [!routesKey && 'GOOGLE_ROUTES_API_KEY', !geocodingKey && 'GOOGLE_GEOCODING_API_KEY'].filter(Boolean),
+      });
       return NextResponse.json({ results: unavailableResults(homes, destinations), providerStatus: 'unavailable' });
     }
 
@@ -86,6 +123,10 @@ export async function POST(request) {
       Promise.all(destinations.map((destination) => resolveCoordinates(supabase, 'commute_destinations', destination, geocodingKey))),
     ]);
     const results = unavailableResults(homes, destinations);
+    console.info('Commute coordinates resolved', {
+      homes: statusCounts(homeLocations),
+      destinations: statusCounts(destinationLocations),
+    });
     homeLocations.forEach((location, homeIndex) => destinationLocations.forEach((destinationLocation, destinationIndex) => {
       if (location.status !== 'resolved') results[homes[homeIndex].id][destinations[destinationIndex].id].status = `home_${location.status}`;
       else if (destinationLocation.status !== 'resolved') results[homes[homeIndex].id][destinations[destinationIndex].id].status = `destination_${destinationLocation.status}`;
@@ -105,10 +146,15 @@ export async function POST(request) {
       }),
     });
     if (!response.ok) {
-      console.error('Google Routes request failed', response.status, await response.text().catch(() => ''));
+      const body = await response.json().catch(() => null);
+      console.error('Google Routes provider error', { httpStatus: response.status, ...safeProviderError(body) });
       return NextResponse.json({ results, providerStatus: 'unavailable' });
     }
     const rows = await response.json();
+    console.info('Google Routes response received', {
+      rowCount: Array.isArray(rows) ? rows.length : 0,
+      ...(Array.isArray(rows) ? routeRowSummary(rows) : { responseShape: 'non_array' }),
+    });
     (Array.isArray(rows) ? rows : []).forEach((row) => {
       const home = homes[validHomeIndexes[row.originIndex]];
       const destination = destinations[validDestinationIndexes[row.destinationIndex]];
@@ -121,7 +167,7 @@ export async function POST(request) {
     // Durations, distances, and route content are returned only; no route cache/table exists.
     return NextResponse.json({ results });
   } catch (error) {
-    console.error('Commute route failed', error);
+    console.error('Commute route failed', { errorName: error?.name || 'Error', message: error?.message || null });
     return NextResponse.json({ error: 'Commute time isn’t available right now.' }, { status: 500 });
   }
 }
