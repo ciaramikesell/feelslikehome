@@ -16,6 +16,17 @@ const PHOTO_BUCKET = 'home-photos';
 const ALLOWED_PHOTO_TYPES = { 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
 const MAX_PHOTO_BYTES = 5 * 1024 * 1024; // 5MB — approved limit: covers a full-resolution phone photo/screenshot without bloating page loads or storage cost.
 
+function LikeDislikeInput({ value, onChange }) {
+  const liked = value >= 3;
+  const disliked = value > 0 && value < 3;
+  return (
+    <div className="hh-like-dislike">
+      <button type="button" className={liked ? 'selected liked' : ''} onClick={() => onChange(liked ? 0 : 5)}>Liked</button>
+      <button type="button" className={disliked ? 'selected disliked' : ''} onClick={() => onChange(disliked ? 0 : 2)}>Didn&apos;t like</button>
+    </div>
+  );
+}
+
 // Pure — no network. Returns the object path within PHOTO_BUCKET if this URL is one
 // of our own public Storage URLs, or null for any externally-pasted Photo URL. Used
 // so Save can best-effort clean up a replaced/removed *uploaded* photo without ever
@@ -577,7 +588,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
 
               {currentPreviewSrc ? (
                 <div>
-                  <div style={{ width: '100%', aspectRatio: '16 / 9', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--line)', background: 'var(--line)' }}>
+                  <div className="hh-home-photo-preview">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={currentPreviewSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                   </div>
@@ -619,18 +630,20 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
           );
         })()}
 
-        {/* -------------------------- How did it feel? (post-tour, optional) -------------------------- */}
+        {/* -------------------------- After your tour (post-tour, optional) -------------------------- */}
         {(form.status === 'Toured' || isArchivedStatus(form.status)) && (() => {
           const subjectiveItems = selectedSubjectiveCriteria(priorities);
           return (
-            <div style={{ marginTop: 20 }}>
+            <section className="hh-after-tour">
+              <div className="hh-section-kicker">After your tour</div>
+              <p>How did this home feel in person?</p>
               <button
                 type="button"
                 className="hh-btn hh-btn-ghost"
                 style={{ fontSize: 13, borderColor: 'rgba(193,89,47,0.4)', color: 'var(--brick)' }}
                 onClick={() => setTourFeelOpen((v) => !v)}
               >
-                {tourFeelOpen ? '− Hide' : 'How did it feel? →'}
+                {tourFeelOpen ? '− Hide evaluation' : 'Add your evaluation →'}
               </button>
 
               {tourFeelOpen && (
@@ -649,7 +662,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
                         return (
                           <div key={`${item.categoryKey}:${item.label}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                             <span style={{ fontSize: 13, color: must ? 'var(--brick)' : 'var(--ink)', fontWeight: must ? 700 : 400 }}>{criterionDisplayLabel(item.categoryKey, item.label)}</span>
-                            <StarInput value={form.ratings[nsKey(item.categoryKey, item.label)] || 0} onChange={(v) => setRatingItem(item.categoryKey, item.label, v)} />
+                            <LikeDislikeInput value={form.ratings[nsKey(item.categoryKey, item.label)] || 0} onChange={(v) => setRatingItem(item.categoryKey, item.label, v)} />
                           </div>
                         );
                       })}
@@ -657,7 +670,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
                   )}
                 </div>
               )}
-            </div>
+            </section>
           );
         })()}
 
