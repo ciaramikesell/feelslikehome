@@ -89,6 +89,8 @@ create table if not exists public.homes (
 
   status text not null default 'Considering',
   reaction text,
+  toured_at timestamptz,
+  is_favorite boolean not null default false,
   rejection_reason text not null default '',
 
   -- Namespaced "category:label" -> value maps (e.g. "location:Schools": 4),
@@ -362,6 +364,8 @@ create table if not exists public.home_member_state (
   user_id uuid not null references auth.users(id) on delete cascade,
   status text,
   reaction text,
+  toured_at timestamptz,
+  is_favorite boolean not null default false,
   rejection_reason text not null default '',
   ratings jsonb not null default '{}'::jsonb,
   checks jsonb not null default '{}'::jsonb,
