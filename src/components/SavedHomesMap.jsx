@@ -21,11 +21,12 @@ function loadGoogleMaps(key) {
   return mapsPromise;
 }
 
-function MarkerContent({ selected }) {
+function MarkerContent({ selected, address }) {
   const node = document.createElement('button');
   node.type = 'button';
   node.className = `hh-map-marker${selected ? ' selected' : ''}`;
-  node.setAttribute('aria-label', 'Select saved home');
+  node.setAttribute('aria-label', `${selected ? 'Selected home' : 'Select saved home'}: ${address || 'Address not added'}`);
+  node.setAttribute('aria-pressed', String(selected));
   node.innerHTML = '<span aria-hidden="true">⌂</span>';
   return node;
 }
@@ -54,7 +55,7 @@ export default function SavedHomesMap({ homes, priorities }) {
       mapRef.current = map;
       const bounds = new maps.LatLngBounds();
       eligible.forEach((home) => {
-        const marker = new AdvancedMarkerElement({ map, position: home.mapPosition, title: home.address, content: MarkerContent({ selected: home.id === selectedId }) });
+        const marker = new AdvancedMarkerElement({ map, position: home.mapPosition, title: home.address, content: MarkerContent({ selected: home.id === selectedId, address: home.address }) });
         marker.addListener('click', () => setSelectedId(home.id));
         markersRef.current.set(home.id, marker);
         bounds.extend(home.mapPosition);
@@ -67,7 +68,10 @@ export default function SavedHomesMap({ homes, priorities }) {
   }, [eligible, key, mapId]);
 
   useEffect(() => {
-    markersRef.current.forEach((marker, id) => { marker.content = MarkerContent({ selected: id === selectedId }); });
+    markersRef.current.forEach((marker, id) => {
+      const home = eligible.find((item) => item.id === id);
+      marker.content = MarkerContent({ selected: id === selectedId, address: home?.address });
+    });
     const home = eligible.find((item) => item.id === selectedId);
     if (home && mapRef.current) mapRef.current.panTo(home.mapPosition);
   }, [selectedId, eligible]);
@@ -80,14 +84,15 @@ export default function SavedHomesMap({ homes, priorities }) {
       <div ref={canvasRef} className="hh-map-canvas" role="region" aria-label="Map of your saved homes" />
       {mapState !== 'ready' && <div className="hh-map-message">
         <MapPin size={28} />
-        <strong>{eligible.length ? (mapState === 'error' ? "The map couldn't load." : 'Map setup is needed.') : "Your homes couldn't be placed yet."}</strong>
-        <span>{eligible.length ? 'You can still choose a home from the list below.' : 'Open a home to check its address and location.'}</span>
+        <strong>{eligible.length ? (mapState === 'loading' ? 'Placing your saved homes…' : mapState === 'error' ? "The map couldn't load." : 'Map setup is needed.') : "Your homes couldn't be placed yet."}</strong>
+        <span>{eligible.length ? (mapState === 'loading' ? 'This should only take a moment.' : 'You can still choose a home from the list.') : 'Open a home to check its address and location.'}</span>
       </div>}
       {selected && <article className="hh-map-preview">
         {selected.photoUrl && <img src={selected.photoUrl} alt="" />}
-        <div><strong className="hh-address">{selected.address}</strong><div>{fmtMoney(selected.price)}</div>
+        <div className="hh-map-preview-copy"><div className="hh-mono hh-map-preview-price">{fmtMoney(selected.price)}</div><strong className="hh-address">{selected.address}</strong>
           <small>{[selected.beds && `${selected.beds} beds`, selected.baths && `${selected.baths} baths`, selected.sqft && `${selected.sqft} sq ft`].filter(Boolean).join(' · ')}</small>
-          {match && <span className="hh-map-match">{match.pct}% Match</span>}
+          {match?.pct !== null && match?.pct !== undefined && <span className="hh-map-match">{match.pct}% Match</span>}
+          {selected.status && <span className="hh-map-status">{selected.status}</span>}
           <Link href={`/homes?home=${encodeURIComponent(selected.id)}`}>View home</Link>
         </div>
       </article>}

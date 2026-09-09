@@ -65,7 +65,7 @@ function MiniStars({ value }) {
 // at all — kept for symmetry across homes in the grid).
 function CriteriaValue({ c }) {
   if (!c || !c.evaluated) {
-    return <span style={{ fontSize: 12.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>Not evaluated yet</span>;
+    return <span className="hh-criteria-value is-unknown"><b aria-hidden="true">?</b><span>Not evaluated</span></span>;
   }
   // Subjective/experiential criteria are captured in Post-Tour as Liked/Didn't Like,
   // not a star scale — showing stars here would be a stale artifact of a UI that no
@@ -73,11 +73,9 @@ function CriteriaValue({ c }) {
   // calculation, so a historical fine-grained star rating (e.g. an old 4/5) still
   // displays correctly as "Liked" through this same threshold, with nothing rewritten.
   const text = c.objective ? c.detail : (c.met ? 'Liked' : "Didn't like");
-  return (
-    <span style={{ fontSize: 12.5, color: c.met ? 'var(--moss)' : 'var(--brick)', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-      <span style={{ fontWeight: 700 }}>{c.met ? '✓' : '✕'}</span> {text}
-    </span>
-  );
+  return <span className={`hh-criteria-value ${c.met ? 'is-met' : 'is-missed'}`}>
+    <b aria-hidden="true">{c.met ? '✓' : '—'}</b><span>{text}</span>
+  </span>;
 }
 
 // A row's "signature" for Differences Only: two homes count as "the same" only if
@@ -103,8 +101,8 @@ function MatchSummary({ match, emptyCopy }) {
 
 function Perspective({ label, match, feeling, emptyCopy }) {
   return (
-    <div style={{ padding: '9px 10px', border: '1px solid var(--line)', borderRadius: 10, background: 'var(--paper-raised)' }}>
-      <div className="hh-label" style={{ fontSize: 10, marginBottom: 4 }}>{label}</div>
+    <div className="hh-compare-perspective">
+      <div className="hh-compare-perspective-label">{label} perspective</div>
       <MatchSummary match={match} emptyCopy={emptyCopy} />
       {feeling > 0 ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5 }}>
@@ -122,8 +120,8 @@ function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective }) {
   const overallRating = home.ratings?.[TOUR_RATING_KEY] || 0;
 
   return (
-    <div>
-      <div style={{ position: 'relative', width: '100%', aspectRatio: '16 / 10', borderRadius: 12, overflow: 'hidden', background: 'var(--line)', marginBottom: 8 }}>
+    <article className="hh-compare-home">
+      <div className="hh-compare-photo">
         {showPhoto ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={home.photoUrl} alt="" onError={() => setImgError(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
@@ -139,9 +137,10 @@ function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective }) {
         )}
       </div>
 
-      <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', marginBottom: 2 }}>{home.address || 'Untitled'}</div>
-      <div className="hh-mono" style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginBottom: 10 }}>
-        {[home.price ? formatCurrencyDisplay(home.price) : null, home.beds ? `${home.beds} bd` : null, home.baths ? `${home.baths} ba` : null, home.sqft ? `${Number(home.sqft).toLocaleString()} sqft` : null]
+      <div className="hh-mono hh-compare-price">{home.price ? formatCurrencyDisplay(home.price) : 'Price not added'}</div>
+      <div className="hh-address hh-compare-address">{home.address || 'Untitled'}</div>
+      <div className="hh-mono hh-compare-facts">
+        {[home.beds ? `${home.beds} bd` : null, home.baths ? `${home.baths} ba` : null, home.sqft ? `${Number(home.sqft).toLocaleString()} sqft` : null]
           .filter(Boolean).join(' · ') || '—'}
       </div>
 
@@ -168,10 +167,10 @@ function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective }) {
       {!coBuyerPerspective && overallRating > 0 && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <MiniStars value={overallRating} />
-          <span style={{ fontSize: 11, color: 'var(--ink-soft)' }}>Your rating</span>
+          <span style={{ fontSize: 11, color: 'var(--ink-soft)' }}>Your overall feeling</span>
         </div>
       )}
-    </div>
+    </article>
   );
 }
 
@@ -281,14 +280,16 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
             const isSelected = selectedIds.includes(h.id);
             const disabled = !isSelected && selectedIds.length >= MAX_COMPARE;
             return (
-              <span
+              <button type="button"
                 key={h.id}
                 className={`hh-chip ${isSelected ? 'on' : ''}`}
                 style={disabled ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
-                onClick={() => !disabled && toggle(h.id)}
+                disabled={disabled}
+                aria-pressed={isSelected}
+                onClick={() => toggle(h.id)}
               >
                 {h.address || 'Untitled'}
-              </span>
+              </button>
             );
           })}
         </div>
@@ -302,8 +303,8 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
       ) : (
         <>
           {/* Identification + the big picture: Match and Overall Feeling */}
-          <div className="hh-scrollx" style={{ overflowX: 'auto' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${selected.length}, minmax(160px, 1fr))`, gap: 16, minWidth: selected.length * 160 }}>
+          <div className="hh-compare-identity-scroll">
+            <div className="hh-compare-identity-grid" style={{ '--compare-count': selected.length }}>
               {selected.map((h, i) => (
                 <HomeHeaderCard key={h.id} home={h} match={matches[i]} isFavorite={h.reaction === 'love'} coBuyerPerspective={coBuyerPerspectives[h.id]} />
               ))}
@@ -323,13 +324,11 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
             </div>
           )}
 
-          {commuteDestinations.length > 0 && <CommuteSection homes={selected} destinations={commuteDestinations} diffsOnly={diffsOnly} getResult={getCommuteResult} />}
-
           {/* Must-Haves */}
           {mustRows.length > 0 && (
             <section>
               <h3 className="hh-serif" style={{ fontSize: 16, fontWeight: 600, marginBottom: 4, color: 'var(--ink)' }}>Must-Haves</h3>
-              <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '0 0 10px' }}>✓ Satisfied · ✕ Confirmed miss · Not evaluated yet means we don't know yet — never a miss.</p>
+              <p className="hh-compare-legend"><span className="is-met">✓ Satisfied</span><span className="is-missed">— Confirmed mismatch</span><span className="is-unknown">? Not evaluated</span></p>
               <div className="hh-scrollx" style={{ overflowX: 'auto' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: `200px repeat(${selected.length}, minmax(120px, 1fr))`, minWidth: 200 + selected.length * 120 }}>
                   <div />
@@ -350,6 +349,8 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
               </div>
             </section>
           )}
+
+          {commuteDestinations.length > 0 && <CommuteSection homes={selected} destinations={commuteDestinations} diffsOnly={diffsOnly} getResult={getCommuteResult} />}
 
           {/* What matters to you */}
           {otherRows.length > 0 && (
@@ -380,19 +381,19 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
             <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>These homes look the same on everything you've told us matters — toggle to "show all" to see the full picture.</p>
           )}
 
-          {/* Deeper, optional sections */}
+          {/* Participant-specific context returned by the secure perspective boundary. */}
           {selected.some((home) => coBuyerPerspectives[home.id]?.differentTakes?.length > 0) && (
-            <details className="hh-details">
-              <summary>Different takes</summary>
-              <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '8px 0 10px' }}>Only criteria you both evaluated with opposing reactions appear here.</p>
+            <details className="hh-details hh-different-takes" open>
+              <summary>Different Takes</summary>
+              <p className="hh-different-takes-intro">You both evaluated these, and experienced them differently.</p>
               <div className="hh-compare-notes">
                 {selected.map((home) => (
-                  <div key={home.id} style={{ border: '1px solid var(--line)', borderRadius: 14, padding: 14, background: 'var(--paper-raised)' }}>
+                  <div key={home.id} className="hh-different-takes-home">
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 8 }}>{home.address || 'Untitled'}</div>
                     {(coBuyerPerspectives[home.id]?.differentTakes || []).map((take) => (
-                      <div key={take.key} style={{ fontSize: 12, color: 'var(--ink)', marginTop: 6 }}>
+                      <div key={take.key} className="hh-different-take">
                         <strong>{criterionDisplayLabel(take.key.split(':')[0], take.label)}</strong>
-                        <div style={{ color: 'var(--ink-soft)', marginTop: 2 }}>You {take.youLiked ? 'liked it' : "didn't like it"} · Co-Buyer {take.coBuyerLiked ? 'liked it' : "didn't like it"}</div>
+                        <div><span><b>You</b> {take.youLiked ? 'Liked' : "Didn't like"}</span><span><b>Co-Buyer</b> {take.coBuyerLiked ? 'Liked' : "Didn't like"}</span></div>
                       </div>
                     ))}
                     {!coBuyerPerspectives[home.id]?.differentTakes?.length && <div style={{ fontSize: 12, color: 'var(--ink-soft)', fontStyle: 'italic' }}>No different takes here.</div>}
