@@ -83,7 +83,7 @@ export function TierPicker({ value, onChange }) {
   return (
     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }} onMouseLeave={() => setOpen(false)}>
       {TIER_ORDER.map((t) => (
-        <button key={t} type="button" onClick={() => { onChange(t); setOpen(false); }}
+        <button key={t} type="button" aria-pressed={value === t} onClick={() => { onChange(t); setOpen(false); }}
           style={{
             fontSize: 11.5, padding: '5px 10px', borderRadius: 999, cursor: 'pointer', fontFamily: 'Plus Jakarta Sans, sans-serif',
             border: '1px solid ' + (value === t ? TIER_META[t].color : 'var(--line)'),

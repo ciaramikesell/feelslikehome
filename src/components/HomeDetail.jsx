@@ -106,7 +106,7 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
   const back = () => window.history.length > 1 ? router.back() : router.push('/homes');
 
   return <main className="hh-home-detail" ref={setRef}>
-    <button type="button" className="hh-detail-back" onClick={back}><ArrowLeft size={16} /> Back to homes</button>
+    <button type="button" className="hh-detail-back" onClick={back}><ArrowLeft size={16} aria-hidden="true" /> Back</button>
     <header className="hh-detail-hero">
       <div className="hh-detail-photo">{home.photoUrl ? <img src={home.photoUrl} alt={`Exterior of ${home.address}`} /> : <HomeIcon size={50} />}</div>
       <div className="hh-detail-identity">

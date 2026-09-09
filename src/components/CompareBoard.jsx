@@ -40,16 +40,6 @@ const HOME_FACT_ROWS = [
   { key: 'tax', label: 'Property tax', betterHigh: false, get: (h) => (typeof h.propertyTaxAnnual === 'number' ? h.propertyTaxAnnual : null), fmt: (v, h) => (v === null ? '—' : `$${v.toLocaleString()}/yr${h?.propertyTaxYear ? ` · ${h.propertyTaxYear}` : ''}`) },
 ];
 
-function bestIndex(values, betterHigh) {
-  if (betterHigh === null || betterHigh === undefined) return -1;
-  const nums = values.map((v) => (typeof v === 'number' ? v : null));
-  if (nums.every((v) => v === null)) return -1;
-  const best = betterHigh ? Math.max(...nums.filter((v) => v !== null)) : Math.min(...nums.filter((v) => v !== null));
-  const winners = nums.filter((v) => v === best).length;
-  if (winners !== 1) return -1; // no lone winner — don't highlight a tie
-  return nums.indexOf(best);
-}
-
 function MiniStars({ value }) {
   return (
     <span style={{ display: 'inline-flex', gap: 1 }}>
@@ -268,6 +258,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
       <div className="hh-corner" style={{ border: '1px dashed var(--line)', borderRadius: 16, padding: '36px 24px', textAlign: 'center', color: 'var(--ink-soft)' }}>
         <Columns size={22} style={{ marginBottom: 8, opacity: 0.5 }} />
         <p style={{ fontSize: 13.5 }}>Compare becomes useful once you have at least two homes to weigh against each other.</p>
+        <Link className="hh-btn" href="/homes?add=1">{homes.length === 0 ? 'Add a home' : 'Add another home'}</Link>
       </div>
     );
   }
@@ -414,14 +405,13 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
                 ))}
                 {HOME_FACT_ROWS.map((row) => {
                   const values = selected.map((h) => row.get(h));
-                  const winner = bestIndex(values, row.betterHigh);
                   return (
                     <Fragment key={row.key}>
                       <div style={{ padding: '8px 12px', fontSize: 12.5, color: 'var(--ink-soft)', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center' }}>{row.label}</div>
                       {values.map((v, i) => (
                         <div key={row.key + '-' + i} className="hh-mono" style={{
                           padding: '8px 12px', fontSize: 12.5, borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center',
-                          color: i === winner ? 'var(--moss)' : 'var(--ink)', fontWeight: i === winner ? 700 : 500,
+                          color: 'var(--ink)', fontWeight: 500,
                         }}>
                           {row.fmt(v, selected[i])}
                         </div>

@@ -400,7 +400,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
       <div className="hh-modal hh-corner">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: isNewHome ? 14 : 18 }}>
           <h2 className="hh-serif" style={{ fontSize: 20, margin: 0, fontWeight: 600 }}>{isNewHome ? 'Add a home' : 'Edit home'}</h2>
-          <button className="hh-btn hh-btn-ghost" style={{ padding: 6 }} onClick={onClose}><X size={16} /></button>
+          <button type="button" className="hh-btn hh-btn-ghost" style={{ padding: 6 }} onClick={onClose} aria-label="Close"><X size={16} aria-hidden="true" /></button>
         </div>
 
         {isNewHome && (
@@ -706,7 +706,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
                     <div key={def.key} style={{ marginBottom: 16 }}>
                       <label className="hh-label">{def.title}{priorities[def.key]?.tier === 'must' && <span className="hh-must-badge">MUST</span>}{sharedFactAwareness[def.key]?.coBuyerOnly && <CoBuyerOnlyHelper />}</label>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        {def.options.filter((o) => o !== 'No Preference').map((o) => <span key={o} className={`hh-chip ${form[def.key]?.includes(o) ? 'on' : ''}`} onClick={() => toggleMulti(def.key, o)}>{o}</span>)}
+                        {def.options.filter((o) => o !== 'No Preference').map((o) => <button type="button" key={o} className={`hh-chip ${form[def.key]?.includes(o) ? 'on' : ''}`} aria-pressed={form[def.key]?.includes(o)} onClick={() => toggleMulti(def.key, o)}>{o}</button>)}
                       </div>
                       {def.key === 'homeLayout' && visibleSingleselect.length > 0 && (
                         <div style={{ marginTop: 12, paddingLeft: 14, borderLeft: '2px solid var(--line)' }}>
@@ -714,7 +714,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
                             <div key={d.key} style={{ marginBottom: 10 }}>
                               <label className="hh-label">{d.title}{priorities[d.key]?.tier === 'must' && <span className="hh-must-badge">MUST</span>}{sharedFactAwareness[d.key]?.coBuyerOnly && <CoBuyerOnlyHelper />}</label>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                {d.options.filter((o) => o !== 'No Preference').map((o) => <span key={o} className={`hh-chip ${form[d.key] === o ? 'on' : ''}`} onClick={() => setForm((f) => ({ ...f, [d.key]: f[d.key] === o ? '' : o }))}>{o}</span>)}
+                                {d.options.filter((o) => o !== 'No Preference').map((o) => <button type="button" key={o} className={`hh-chip ${form[d.key] === o ? 'on' : ''}`} aria-pressed={form[d.key] === o} onClick={() => setForm((f) => ({ ...f, [d.key]: f[d.key] === o ? '' : o }))}>{o}</button>)}
                               </div>
                             </div>
                           ))}

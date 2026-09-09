@@ -63,6 +63,7 @@ function LikeDislikeRow({ label, must, value, onChange }) {
       <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
         <button
           type="button"
+          aria-pressed={liked}
           onClick={() => onChange(liked ? 0 : 5)}
           className="hh-chip"
           style={{
@@ -74,6 +75,7 @@ function LikeDislikeRow({ label, must, value, onChange }) {
         </button>
         <button
           type="button"
+          aria-pressed={disliked}
           onClick={() => onChange(disliked ? 0 : 2)}
           className="hh-chip"
           style={{
@@ -109,9 +111,9 @@ function StandOutGroup({ title, color, value, onChange }) {
         {IMPRESSION_CHIPS.map((c) => {
           const on = isInList(value, c);
           return (
-            <span key={c} className={`hh-chip ${on ? 'on' : ''}`} style={{ fontSize: 11 }} onClick={() => onChange(toggleInList(value, c))}>
+            <button type="button" key={c} className={`hh-chip ${on ? 'on' : ''}`} style={{ fontSize: 11 }} aria-pressed={on} onClick={() => onChange(toggleInList(value, c))}>
               {c}
-            </span>
+            </button>
           );
         })}
       </div>
@@ -206,7 +208,7 @@ export default function PostTourModal({ home, priorities, isCollaborative = fals
 
         {/* 3. The decision — large, tappable, unambiguous. */}
         <label className="hh-label" style={{ marginBottom: 8 }}>Where are you at with this home?</label>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 22 }}>
+        <div className="hh-post-tour-verdicts">
           {VERDICTS.map((v) => {
             const selected = verdict === v.key;
             const Icon = v.icon;
@@ -214,6 +216,7 @@ export default function PostTourModal({ home, priorities, isCollaborative = fals
               <button
                 key={v.key}
                 type="button"
+                aria-pressed={selected}
                 onClick={() => setVerdict(v.key)}
                 style={{
                   textAlign: 'center', padding: '16px 8px', borderRadius: 14, cursor: 'pointer', minHeight: 76,
@@ -276,7 +279,7 @@ export default function PostTourModal({ home, priorities, isCollaborative = fals
               <div>
                 <label className="hh-label" style={{ marginBottom: 4 }}>Anything else worth remembering?</label>
                 <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '0 0 10px' }}>For things that aren't in the list above — the kitchen, the neighbors, anything.</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div className="hh-post-tour-standouts">
                   <StandOutGroup title="Liked" color="var(--moss)" value={pros} onChange={setPros} />
                   <StandOutGroup title="Didn't like" color="var(--brick)" value={cons} onChange={setCons} />
                 </div>
