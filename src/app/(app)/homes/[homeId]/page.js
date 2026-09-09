@@ -31,7 +31,7 @@ export default async function HomeDetailPage({ params }) {
     resolveCoBuyerComparePerspectives(supabase, search, [home.id]),
     getParticipantStatusesForHomes(supabase, search, [home]),
   ]);
-  const otherStates = (participantStates.get(home.id) || []).filter((state) => state.userId !== user.id);
-  const lifecycleSignals = deriveWantToTourState(home, otherStates);
+  const signal = participantStates.get(home.id);
+  const lifecycleSignals = deriveWantToTourState(home, signal?.coBuyerWantsToTour ? [{ status: 'Want to Tour' }] : []);
   return <HomeDetail home={{ ...home, ...lifecycleSignals }} priorities={normalizePriorities(priorities)} commuteDestinations={commuteDestinations} coBuyerPerspective={perspectives.get(home.id) || null} sharedFactAwareness={sharedFactAwareness} userId={user.id} searchId={search.id} isCollaborative={participantIds.length > 1} />;
 }
