@@ -23,7 +23,7 @@ function SearchCard({ title, subtitle, showHeader = true, children }) {
     <section className="hh-search-card">
       {showHeader && (
         <>
-          <h3 className="hh-serif" style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', margin: 0 }}>{title}</h3>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', margin: 0 }}>{title}</h3>
           {subtitle && <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '3px 0 0' }}>{subtitle}</p>}
         </>
       )}
@@ -120,11 +120,11 @@ function MultiselectSection({ def, priorities, patch, children }) {
 function buildBasicsSummary(p) {
   const lines = [];
   const rental = terminology(p.searchType).priceFieldLabel.toLowerCase().includes('rent');
-  if (p.budget?.value) lines.push(`Price · Up to $${Number(p.budget.value).toLocaleString()}${rental ? '/mo' : ''}`);
-  if (p.bedsMin?.value) lines.push(`Bedrooms · At least ${p.bedsMin.value}`);
-  if (p.bathsMin?.value) lines.push(`Bathrooms · At least ${p.bathsMin.value}`);
-  if (p.sqftTarget?.value) lines.push(`Space · At least ${Number(p.sqftTarget.value).toLocaleString()} sq ft`);
-  if (!isSimpleRentalType(p.searchType) && p.lotSizeTarget?.value) lines.push(`Lot size · At least ${p.lotSizeTarget.value} acres`);
+  if (p.budget?.value) lines.push(`Up to $${Number(p.budget.value).toLocaleString()}${rental ? '/mo' : ''}`);
+  const rooms = [p.bedsMin?.value && `${p.bedsMin.value}+ beds`, p.bathsMin?.value && `${p.bathsMin.value}+ baths`].filter(Boolean);
+  if (rooms.length) lines.push(rooms.join(' · '));
+  const space = [p.sqftTarget?.value && `${Number(p.sqftTarget.value).toLocaleString()}+ sq ft`, !isSimpleRentalType(p.searchType) && p.lotSizeTarget?.value && `${p.lotSizeTarget.value}+ acres`].filter(Boolean);
+  if (space.length) lines.push(space.join(' · '));
 
   const layoutVals = (p.homeLayout?.values || []).filter((v) => v !== 'No Preference');
   if (layoutVals.length) lines.push(layoutVals.join(' or '));
@@ -226,14 +226,16 @@ function WhatMattersCard({ categories, priorities, patch }) {
   const hasAny = pooled.length > 0;
   const buckets = TIER_ORDER.filter((t) => t !== 'dontcare').map((tier) => ({
     tier, items: pooled.filter((i) => i.tier === tier),
-  })).filter((b) => b.items.length > 0);
+  }));
 
   return (
     <SearchCard title="What matters most to me" showHeader={!editOpen}>
       {!editOpen ? (
         <div>
           {hasAny ? (
-            <div style={{ display: 'grid', gap: 18 }}>
+            <>
+            <div className="hh-priority-legend"><span aria-hidden="true">◆</span> Evaluated after you tour</div>
+            <div className="hh-priority-tiers">
               {buckets.map(({ tier, items }) => (
                 <div key={tier} className={`hh-tier-group hh-tier-${tier}`}>
                   <div className="hh-tier-heading" style={{ color: TIER_META[tier].color }}>
@@ -241,17 +243,17 @@ function WhatMattersCard({ categories, priorities, patch }) {
                   </div>
                   <div className="hh-selected-priorities">
                     {items.map((item) => (
-                      <div key={`${item.categoryKey}:${item.label}`} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 6, fontSize: 13.5, color: 'var(--ink)', padding: '4px 0' }}>
+                      <div key={`${item.categoryKey}:${item.label}`} className="hh-selected-priority">
                         <span>{criterionDisplayLabel(item.categoryKey, item.label)}</span>
                         {isExperientialCriterion(item.categoryKey, item.label) && (
-                          <span style={{ fontSize: 10.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>We'll ask after you tour</span>
+                          <span className="hh-experiential-marker" title="Evaluated after you tour" aria-label="Evaluated after you tour">◆</span>
                         )}
                       </div>
                     ))}
                   </div>
                 </div>
               ))}
-            </div>
+            </div></>
           ) : (
             <div style={{ fontSize: 13, color: 'var(--ink-soft)', fontStyle: 'italic' }}>Nothing selected yet — add what matters to you anytime.</div>
           )}

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Star, ChevronDown, Heart, CheckCircle2, Check, MinusCircle, HelpCircle } from 'lucide-react';
+import { Star, ChevronDown, Heart, Check, MinusCircle, HelpCircle } from 'lucide-react';
 import { TIER_ORDER, TIER_META } from '@/lib/constants';
 import { matchColor, summarizeForCard } from '@/lib/matching';
 
@@ -126,17 +126,13 @@ export function MatchSummary({ match }) {
   let mustSubLabel = null;
   if (match.mustTotal > 0) {
     if (match.mustEvaluated === 0) mustLabel = 'Must-haves not evaluated yet';
-    else if (match.mustEvaluated === match.mustTotal) mustLabel = `Must-haves: ${match.mustMet}/${match.mustTotal} met`;
+    else if (match.mustEvaluated === match.mustTotal && match.mustMet === match.mustTotal) mustLabel = `✓ All ${match.mustTotal} Must-Haves met`;
+    else if (match.mustEvaluated === match.mustTotal) mustLabel = `Must-Haves: ${match.mustMet}/${match.mustTotal} met`;
     else {
       mustLabel = `Must-haves: ${match.mustMet}/${match.mustEvaluated} met`;
       mustSubLabel = `${match.mustTotal - match.mustEvaluated} not evaluated`;
     }
   }
-
-  // Reuses the same evaluated/objective/must-or-important "satisfied" list Match 2.0
-  // already computes — never a separate satisfaction check. Only actually-confirmed
-  // fulfilled criteria appear here; unknown and missed criteria are never listed.
-  const fulfilledList = match.satisfied.map((c) => c.label).join(', ');
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
@@ -152,37 +148,19 @@ export function MatchSummary({ match }) {
           Based on {match.evaluatedCount} of {match.selectedCount} priorities evaluated
         </div>
       )}
-      {fulfilledList && (
-        <div style={{ fontSize: 11.5, color: 'var(--moss)', display: 'flex', alignItems: 'flex-start', gap: 5 }}>
-          <CheckCircle2 size={12} style={{ marginTop: 2, flexShrink: 0 }} />
-          <span>{fulfilledList}</span>
-        </div>
-      )}
     </div>
   );
 }
 
-// Phase 3: makes tradeoffs visible on the collapsed card — "what am I giving
-// up, what still needs verifying" — without listing every selected criterion.
-// Shows actual criteria (not just counts), Must-Have first, with a small
-// overflow cap so a card with many gaps still stays scannable across 30+ homes.
-const CARD_ROW_CAP = 3;
-
 function MissingRow({ items }) {
   if (!items.length) return null;
-  const shown = items.slice(0, CARD_ROW_CAP);
-  const overflow = items.length - shown.length;
+  const importantMiss = items.find((item) => item.tier === 'must');
   return (
     <div style={{ fontSize: 12, color: 'var(--ink-soft)', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
       <MinusCircle size={13} style={{ marginTop: 2, flexShrink: 0 }} />
       <span>
-        <strong style={{ color: 'var(--ink)' }}>Doesn&apos;t match:</strong>{' '}
-        {shown.map((c, i) => (
-          <span key={c.key}>
-            {c.label}{i < shown.length - 1 ? ' · ' : ''}
-          </span>
-        ))}
-        {overflow > 0 && ` +${overflow} more`}
+        <strong style={{ color: 'var(--ink)' }}>{items.length} {items.length === 1 ? 'doesn\'t' : 'don\'t'} match</strong>
+        {importantMiss && <span> · Must-have: {importantMiss.label}</span>}
       </span>
     </div>
   );
@@ -190,19 +168,11 @@ function MissingRow({ items }) {
 
 function NotConfirmedRow({ items }) {
   if (!items.length) return null;
-  const shown = items.slice(0, CARD_ROW_CAP);
-  const overflow = items.length - shown.length;
   return (
     <div style={{ fontSize: 12, color: 'var(--ink-soft)', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
       <HelpCircle size={13} style={{ marginTop: 2, flexShrink: 0 }} />
       <span>
-        <strong style={{ color: 'var(--ink)' }}>Missing information:</strong>{' '}
-        {shown.map((c, i) => (
-          <span key={c.key}>
-            {c.label}{i < shown.length - 1 ? ' · ' : ''}
-          </span>
-        ))}
-        {overflow > 0 && ` +${overflow} more`}
+        <strong style={{ color: 'var(--ink)' }}>{items.length} need more information</strong>
       </span>
     </div>
   );
