@@ -68,12 +68,12 @@ test('capabilities describe canonical behavior without activating product UI', (
   });
 });
 
-test('legacy UI helpers retain their raw-value behavior', () => {
+test('legacy UI helpers now present canonical intent behavior without mutating raw values', () => {
   const expected = {
-    buy: ['Buying a home', false, false, true, true, true, 'Maximum Budget', 'Asking price', '450,000'],
-    rent_home: ['Renting a home', true, false, true, true, true, 'Maximum Monthly Rent', 'Monthly rent', '2,200'],
-    rent_apartment: ['Renting an apartment', true, true, false, false, false, 'Maximum Monthly Rent', 'Monthly rent', '2,200'],
-    investment: ['An investment property', false, false, false, false, true, 'Maximum Budget', 'Asking price', '450,000'],
+    buy: ['Purchase', false, false, true, true, true, 'Maximum Budget', 'Asking price', '450,000'],
+    rent_home: ['Rental', true, true, false, false, false, 'Maximum Monthly Rent', 'Monthly rent', '2,200'],
+    rent_apartment: ['Rental', true, true, false, false, false, 'Maximum Monthly Rent', 'Monthly rent', '2,200'],
+    investment: ['Investment Property', false, false, false, false, true, 'Maximum Budget', 'Asking price', '450,000'],
   };
   for (const type of legacyTypes) {
     const term = terminology(type);
@@ -86,21 +86,21 @@ test('legacy UI helpers retain their raw-value behavior', () => {
     assert.equal(showsMultiselectCategory('futureCategory', type), true);
   }
 
-  // Canonical values are not activated in legacy UI helpers during Pass A.
-  assert.equal(searchTypeLabel('rental'), '');
-  assert.equal(isRentalType('rental'), false);
-  assert.equal(showsHomeLayout('purchase'), false);
-  assert.deepEqual(terminology('rental'), terminology(''));
+  assert.equal(searchTypeLabel('rental'), 'Rental');
+  assert.equal(isRentalType('rental'), true);
+  assert.equal(showsHomeLayout('purchase'), true);
+  assert.notDeepEqual(terminology('rental'), terminology(''));
 });
 
-test('legacy criteria catalogs retain their type-specific contents', () => {
+test('legacy rental values resolve the unified canonical catalog while Investment remains unchanged', () => {
   const labels = (type, key, part) => getItemlistCategories(type)
     .find((category) => category.key === key)[part].map((item) => item.label);
 
-  assert.deepEqual(labels('rent_apartment', 'features', 'coreItems'), ['In-Unit Laundry', 'Pet Policy', 'Utilities Included']);
-  assert.ok(labels('rent_apartment', 'location', 'suggestedItems').includes('Floor / Location in Building'));
-  assert.ok(labels('rent_home', 'features', 'suggestedItems').includes('Pet Policy'));
-  assert.ok(labels('rent_home', 'homeFeel', 'suggestedItems').includes('Lease Terms'));
+  assert.deepEqual(getItemlistCategories('rent_apartment'), getItemlistCategories('rental'));
+  assert.deepEqual(getItemlistCategories('rent_home'), getItemlistCategories('rental'));
+  assert.ok(labels('rental', 'features', 'suggestedItems').includes('In-Unit Laundry'));
+  assert.ok(!labels('rental', 'features', 'suggestedItems').includes('Pet Policy'));
+  assert.ok(!labels('rental', 'homeFeel', 'suggestedItems').includes('Lease Terms'));
   assert.ok(labels('investment', 'location', 'suggestedItems').includes('Tenant Appeal'));
   assert.ok(labels('investment', 'features', 'suggestedItems').includes('Unit Configuration'));
   assert.ok(!labels('buy', 'features', 'suggestedItems').includes('Pet Policy'));
@@ -109,10 +109,10 @@ test('legacy criteria catalogs retain their type-specific contents', () => {
   }
 });
 
-test('defaults remain legacy-shaped and do not introduce future fields', () => {
+test('defaults include an optional private property preference', () => {
   const priorities = defaultPriorities();
   assert.equal(priorities.searchType, '');
-  assert.equal(Object.hasOwn(priorities, 'preferredPropertyTypes'), false);
+  assert.deepEqual(priorities.preferredPropertyTypes, { values: [], tier: 'important' });
 });
 
 test('normalization preserves complete legacy documents without mutation', () => {

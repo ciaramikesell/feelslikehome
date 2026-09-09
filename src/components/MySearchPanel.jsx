@@ -11,6 +11,7 @@ import {
   isSimpleRentalType, showsMultiselectCategory, terminology, toggleWithNoPreference, getItemlistCategories,
   normalizePriorities, searchTypeLabel, TIER_META, TIER_ORDER, criterionDisplayLabel, isExperientialCriterion,
 } from '@/lib/constants';
+import { PROPERTY_TYPE_LABELS, searchIntentCapabilities } from '@/lib/searchIntent';
 import { selectedOrderedItems } from '@/lib/matching';
 import { createClient } from '@/lib/supabase/client';
 import { useReliableOptimisticState } from '@/lib/useReliableOptimisticState';
@@ -136,6 +137,9 @@ function buildBasicsSummary(p) {
   if (p.searchType === 'investment' && (p.investmentPropertyTypes || []).filter((v) => v !== 'No Preference').length) {
     lines.push(p.investmentPropertyTypes.filter((v) => v !== 'No Preference').join(' or '));
   }
+  if (p.preferredPropertyTypes?.values?.length) {
+    lines.push(p.preferredPropertyTypes.values.map((value) => PROPERTY_TYPE_LABELS[value] || value).join(' or '));
+  }
 
   return lines;
 }
@@ -143,6 +147,7 @@ function buildBasicsSummary(p) {
 // "What I'm looking for" — the basic search requirements, shown as a settled summary
 // by default with an Edit action revealing the same underlying fields as before.
 function BasicsCard({ p, patch }) {
+  const capabilities = searchIntentCapabilities(p.searchType);
   const hasBasics = !!(p.searchType || p.budget?.value || p.bedsMin?.value || p.bathsMin?.value || p.sqftTarget?.value);
   const [editOpen, setEditOpen] = useState(!hasBasics);
   const lines = buildBasicsSummary(p);
@@ -191,6 +196,25 @@ function BasicsCard({ p, patch }) {
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {(capabilities.isPurchase || capabilities.isRental) && (
+            <div style={{ marginTop: 18 }}>
+              <div className="hh-label" style={{ marginBottom: 6 }}>What kinds of homes are you considering? <span style={{ fontWeight: 400, textTransform: 'none' }}>(optional)</span></div>
+              <div className="hh-priority-row" style={{ alignItems: 'flex-start' }}>
+                <div style={{ flex: '1 1 220px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {capabilities.preferredPropertyTypeOptions.map((value) => {
+                    const selected = p.preferredPropertyTypes.values.includes(value);
+                    return <button type="button" key={value} className={`hh-chip ${selected ? 'on' : ''}`} aria-pressed={selected}
+                      onClick={() => patch((n) => { const values = n.preferredPropertyTypes.values || []; n.preferredPropertyTypes = { ...n.preferredPropertyTypes, values: selected ? values.filter((item) => item !== value) : [...values, value] }; return n; })}>
+                      {PROPERTY_TYPE_LABELS[value]}
+                    </button>;
+                  })}
+                </div>
+                <TierPicker value={p.preferredPropertyTypes.tier} onChange={(tier) => patch((n) => { n.preferredPropertyTypes = { ...n.preferredPropertyTypes, tier }; return n; })} />
+              </div>
+              <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '6px 0 0' }}>This shapes Match when a home's type is known; it never filters homes out.</p>
             </div>
           )}
 
@@ -293,7 +317,7 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
 
       <WhatMattersCard categories={categories} priorities={p} patch={patch} />
 
-      <SearchCard title="Places you travel to often" subtitle="Private to you. Add a drive-time limit only when it should shape your Commute match.">
+      <SearchCard title="Places that matter" subtitle="Add the places you travel to regularly. We'll show you how far each home is from them. Private to you.">
         <CommuteDestinations searchId={search.id} userId={userId} destinations={commuteDestinations} onChange={setCommuteDestinations} hideHeader />
       </SearchCard>
 

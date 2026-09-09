@@ -3,23 +3,25 @@
 import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, Plus } from 'lucide-react';
-import { BrandMark } from '@/components/ui';
+import { BrandMark, TierPicker } from '@/components/ui';
 import PriorityBoard from '@/components/PriorityBoard';
 import SchoolsRelevanceGate from '@/components/SchoolsRelevanceGate';
+import CommuteDestinations from '@/components/CommuteDestinations';
 import {
   SEARCH_TYPE_OPTIONS, LAYOUT_OPTIONS, HOME_CONDITION_OPTIONS, INVESTMENT_PROPERTY_TYPES, INVESTMENT_LIVING_PLAN_OPTIONS,
-  TIER_META, isSimpleRentalType, showsHomeLayout, showsMultiselectCategory, terminology, toggleWithNoPreference, getItemlistCategories,
+  TIER_META, TIER_DESCRIPTIONS, isSimpleRentalType, showsHomeLayout, showsMultiselectCategory, terminology, toggleWithNoPreference, getItemlistCategories,
   normalizePriorities,
 } from '@/lib/constants';
+import { PROPERTY_TYPE_LABELS, searchIntentCapabilities } from '@/lib/searchIntent';
 import { createClient } from '@/lib/supabase/client';
 import { useReliableOptimisticState } from '@/lib/useReliableOptimisticState';
 import { completeOnboarding } from '@/lib/supabase/data';
 import { savePriorities } from '@/lib/supabase/collaboration';
 
 const TIER_LEGEND = [
-  { key: 'must', title: 'Must have', desc: "A dealbreaker if it's missing." },
-  { key: 'important', title: 'Important', desc: 'This should weigh heavily in your match.' },
-  { key: 'nice', title: 'Nice to have', desc: 'A bonus, but not a dealbreaker.' },
+  { key: 'must', title: 'Must Have', desc: TIER_DESCRIPTIONS.must },
+  { key: 'important', title: 'Important', desc: TIER_DESCRIPTIONS.important },
+  { key: 'nice', title: 'Nice to Have', desc: TIER_DESCRIPTIONS.nice },
 ];
 
 function OnboardingProgress({ step }) {
@@ -60,11 +62,12 @@ function OnboardingShell({ children, maxWidth = 640 }) {
 }
 
 function OnboardingStep1({ priorities, patch, onNext }) {
+  const capabilities = searchIntentCapabilities(priorities.searchType);
   const term = terminology(priorities.searchType);
   const showLot = priorities.searchType && !isSimpleRentalType(priorities.searchType);
   const showLayout = showsHomeLayout(priorities.searchType);
   const showCondition = showsMultiselectCategory('homeCondition', priorities.searchType);
-  const showInvestmentExtras = priorities.searchType === 'investment';
+  const showInvestmentExtras = capabilities.isInvestment;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -109,6 +112,23 @@ function OnboardingStep1({ priorities, patch, onNext }) {
                 </div>
               </div>
             </>
+          )}
+
+          {(capabilities.isPurchase || capabilities.isRental) && (
+            <div>
+              <label className="hh-label">What kinds of homes are you considering? <span style={{ fontWeight: 400, color: 'var(--ink-soft)', textTransform: 'none' }}>(optional)</span></label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                {capabilities.preferredPropertyTypeOptions.map((value) => {
+                  const selected = priorities.preferredPropertyTypes.values.includes(value);
+                  return <button type="button" key={value} className={`hh-chip ${selected ? 'on' : ''}`} aria-pressed={selected}
+                    onClick={() => patch((n) => { const values = n.preferredPropertyTypes.values || []; n.preferredPropertyTypes = { ...n.preferredPropertyTypes, values: selected ? values.filter((item) => item !== value) : [...values, value] }; return n; })}>
+                    {PROPERTY_TYPE_LABELS[value]}
+                  </button>;
+                })}
+              </div>
+              <div style={{ marginTop: 8 }}><TierPicker value={priorities.preferredPropertyTypes.tier} onChange={(tier) => patch((n) => { n.preferredPropertyTypes = { ...n.preferredPropertyTypes, tier }; return n; })} /></div>
+              <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '6px 0 0' }}>A preference, not a restriction. You can always compare any home.</p>
+            </div>
           )}
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -175,8 +195,9 @@ function OnboardingStep1({ priorities, patch, onNext }) {
   );
 }
 
-function OnboardingStep2({ priorities, patch, onNext, onBack }) {
+function OnboardingStep2({ priorities, patch, onNext, onBack, searchId, userId, commuteDestinations, onCommuteDestinationsChange }) {
   const categories = getItemlistCategories(priorities.searchType);
+  const capabilities = searchIntentCapabilities(priorities.searchType);
   const hasAnySelection = categories.some((def) => {
     const tiers = priorities[def.key]?.tiers || {};
     return Object.values(tiers).some((t) => t && t !== 'dontcare');
@@ -207,6 +228,16 @@ function OnboardingStep2({ priorities, patch, onNext, onBack }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <PriorityBoard priorities={priorities} patch={patch} />
       </div>
+
+      {(capabilities.isPurchase || capabilities.isRental) && (
+        <section style={{ borderTop: '1px solid var(--line)', paddingTop: 18 }}>
+          <h3 className="hh-serif" style={{ fontSize: 17, fontWeight: 700, color: 'var(--ink)', margin: 0 }}>Places that matter</h3>
+          <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '4px 0 12px', lineHeight: 1.5 }}>
+            Add places you travel to regularly, like work, family, or school. We'll show you how far each home is from them.
+          </p>
+          <CommuteDestinations searchId={searchId} userId={userId} destinations={commuteDestinations} onChange={onCommuteDestinationsChange} hideHeader />
+        </section>
+      )}
 
       <p style={{ fontSize: 12, color: 'var(--ink-soft)', fontStyle: 'italic', margin: 0 }}>
         You don't have to pick anything right now — you can always add or change what matters in My Search later.
@@ -260,18 +291,19 @@ function OnboardingStep3({ onFinish, isSaving }) {
       <button type="button" className="hh-btn" disabled={isSaving} onClick={() => onFinish('add-home')}><Plus size={15} /> {isSaving ? 'Saving priorities…' : 'Add my first home'}</button>
       <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: 0, fontStyle: 'italic' }}>Already have a listing open? Grab the link — you can add it next.</p>
       <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: 0, maxWidth: 360, lineHeight: 1.5 }}>
-        Want commute times on your Home Cards too? You can add places you travel to often anytime in My Search.
+        Want travel times on your Home Cards too? Add Places that matter anytime in My Search.
       </p>
     </div>
   );
 }
 
-export default function Onboarding({ userId, searchId, initialPriorities }) {
+export default function Onboarding({ userId, searchId, initialPriorities, initialCommuteDestinations = [] }) {
   const router = useRouter();
   const initial = normalizePriorities(initialPriorities);
   const persistPriorities = useCallback((next) => savePriorities(createClient(), { id: searchId }, userId, next), [searchId, userId]);
   const { state: priorities, patch, saveError, retry, isSaving } = useReliableOptimisticState(initial, persistPriorities);
   const [step, setStep] = useState(1);
+  const [commuteDestinations, setCommuteDestinations] = useState(initialCommuteDestinations);
   const [finishError, setFinishError] = useState('');
 
   const onFinish = async (action) => {
@@ -300,7 +332,7 @@ export default function Onboarding({ userId, searchId, initialPriorities }) {
         )}
         {step !== 3 && <OnboardingProgress step={step} />}
         {step === 1 && <OnboardingStep1 priorities={priorities} patch={patch} onNext={() => setStep(2)} />}
-        {step === 2 && <OnboardingStep2 priorities={priorities} patch={patch} onNext={() => setStep(3)} onBack={() => setStep(1)} />}
+        {step === 2 && <OnboardingStep2 priorities={priorities} patch={patch} onNext={() => setStep(3)} onBack={() => setStep(1)} searchId={searchId} userId={userId} commuteDestinations={commuteDestinations} onCommuteDestinationsChange={setCommuteDestinations} />}
         {step === 3 && <OnboardingStep3 onFinish={onFinish} isSaving={isSaving} />}
       </OnboardingShell>
     </div>

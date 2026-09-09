@@ -56,8 +56,8 @@ export default function CommuteDestinations({ searchId, userId, destinations, on
 
   return (
     <div>
-      {!hideHeader && <><div className="hh-serif" style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', marginBottom: 2 }}>Places you travel to often</div>
-      <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '0 0 12px', lineHeight: 1.5 }}>These places are private to you. Add a drive-time limit only when it should affect your single Commute priority.</p></>}
+      {!hideHeader && <><div className="hh-serif" style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', marginBottom: 2 }}>Places that matter</div>
+      <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '0 0 12px', lineHeight: 1.5 }}>Add the places you travel to regularly. We'll show you how far each home is from them. These places are private to you.</p></>}
       <div className="hh-destination-grid">
         {destinations.map((d) => (
           <div key={d.id} className="hh-destination-card">
