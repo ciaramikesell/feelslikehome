@@ -8,6 +8,7 @@ import { BrandMark, Wordmark } from '@/components/ui';
 import { PRIMARY_TABS } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
 import SearchSwitcher from '@/components/SearchSwitcher';
+import BetaFeedback from '@/components/BetaFeedback';
 
 const TAB_ICONS = {
   homes: HomeIcon,
@@ -77,7 +78,7 @@ function HowToUseModal({ onClose }) {
   );
 }
 
-export default function AppShell({ children, userEmail, userId, accessibleSearches, activeSearchId }) {
+export default function AppShell({ children, userEmail, userId, accessibleSearches, activeSearchId, searchIntent, appVersion }) {
   const pathname = usePathname();
   const router = useRouter();
   const [howToOpen, setHowToOpen] = useState(false);
@@ -134,6 +135,7 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
       </div>
 
       {howToOpen && <HowToUseModal onClose={() => setHowToOpen(false)} />}
+      <BetaFeedback userId={userId} searchId={activeSearchId} searchType={searchIntent} appVersion={appVersion} />
     </div>
   );
 }

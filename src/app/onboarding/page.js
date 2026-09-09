@@ -19,5 +19,6 @@ export default async function OnboardingPage() {
     getCommuteDestinations(supabase, search.id, user.id),
   ]);
 
-  return <Onboarding userId={user.id} searchId={search.id} initialPriorities={normalizePriorities(priorities)} initialCommuteDestinations={commuteDestinations} />;
+  const appVersion = process.env.VERCEL_GIT_COMMIT_SHA || process.env.VERCEL_DEPLOYMENT_ID || null;
+  return <Onboarding userId={user.id} searchId={search.id} initialPriorities={normalizePriorities(priorities)} initialCommuteDestinations={commuteDestinations} appVersion={appVersion} />;
 }
