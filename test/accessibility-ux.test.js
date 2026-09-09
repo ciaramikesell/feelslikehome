@@ -33,3 +33,15 @@ test('narrow post-tour layout stacks and neutral facts do not declare a winner',
   assert.doesNotMatch(compare, /function bestIndex/);
   assert.doesNotMatch(compare, /i === winner/);
 });
+
+test('auth stays contained and Home Detail actions retain clear hierarchy', () => {
+  const css = read('src/app/globals.css');
+  const detail = read('src/components/HomeDetail.jsx');
+  assert.match(css, /\.afh-grid \{[^}]*grid-template-columns: minmax\(0,55fr\) minmax\(380px,45fr\)/);
+  assert.match(css, /\.afh-panel \{[^}]*max-width: 380px/);
+  assert.match(css, /@media \(max-width: 880px\) \{[\s\S]*?\.afh-grid \{ grid-template-columns: 1fr; \}/);
+  assert.match(css, /\.hh-detail-section \{[^}]*border-top:/);
+  assert.match(detail, /hh-detail-take-action/);
+  assert.match(detail, /hh-detail-notes-action/);
+  assert.match(detail, /hh-detail-toured-state/);
+});

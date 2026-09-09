@@ -298,7 +298,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
           <div className="hh-compare-identity-scroll">
             <div className="hh-compare-identity-grid" style={{ '--compare-count': selected.length }}>
               {selected.map((h, i) => (
-                <HomeHeaderCard key={h.id} home={h} match={matches[i]} isFavorite={h.reaction === 'love'} coBuyerPerspective={coBuyerPerspectives[h.id]} />
+                <HomeHeaderCard key={h.id} home={h} match={matches[i]} isFavorite={h.isFavorite} coBuyerPerspective={coBuyerPerspectives[h.id]} />
               ))}
             </div>
           </div>

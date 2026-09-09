@@ -11,6 +11,7 @@ import { visibleOrderedItems, parseListingText, selectedSubjectiveCriteria } fro
 import { extractAddressFromListingUrl } from '@/lib/listingUrl';
 import { splitAddressLines, formatFoundCardFacts, countFoundFacts, formatCurrencyDisplay, digitsOnly, formatLotSizeDisplay } from '@/lib/homeDisplay';
 import { createClient } from '@/lib/supabase/client';
+import { hasToured } from '@/lib/lifecycle';
 
 const PHOTO_BUCKET = 'home-photos';
 const ALLOWED_PHOTO_TYPES = { 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
@@ -631,7 +632,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         })()}
 
         {/* -------------------------- After your tour (post-tour, optional) -------------------------- */}
-        {(form.status === 'Toured' || isArchivedStatus(form.status)) && (() => {
+        {hasToured(form) && (() => {
           const subjectiveItems = selectedSubjectiveCriteria(priorities);
           return (
             <section className="hh-after-tour">
@@ -826,7 +827,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
                 <ArchiveIcon size={13} />
               </button>
             )}
-            {onWantToTour && form.status !== 'Want to Tour' && form.status !== 'Toured' && !isArchivedStatus(form.status) && (
+            {onWantToTour && form.status !== 'Want to Tour' && !hasToured(form) && !isArchivedStatus(form.status) && (
               <button
                 type="button"
                 className="hh-btn"

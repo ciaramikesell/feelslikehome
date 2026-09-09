@@ -24,16 +24,16 @@ export default async function TourPage() {
   const homesWithPersonalSignals = addCoBuyerPersonalSignals(homes, statusesByHome, user.id);
   const homesWithSignal = homesWithPersonalSignals.map((home) => {
     const perParticipant = statusesByHome.get(home.id) || [];
-    const otherStatuses = perParticipant.filter((p) => p.userId !== user.id).map((p) => p.status);
+    const otherStates = perParticipant.filter((p) => p.userId !== user.id);
     const isCollaborative = perParticipant.some((p) => p.userId !== user.id);
     return {
       ...home,
-      ...(isCollaborative ? deriveWantToTourState(home.status, otherStatuses) : {}),
+      ...(isCollaborative ? deriveWantToTourState(home, otherStates) : {}),
       isCollaborative,
     };
   });
 
-  const hasFavorites = homes.some((h) => h.reaction === 'love' && !isArchivedStatus(h.status));
+  const hasFavorites = homes.some((h) => h.isFavorite && !isArchivedStatus(h.status));
   const hasArchived = homes.some((h) => isArchivedStatus(h.status));
 
   return (

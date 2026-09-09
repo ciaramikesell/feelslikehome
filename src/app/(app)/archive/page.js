@@ -19,7 +19,7 @@ export default async function ArchivePage() {
   const statusesByHome = await getParticipantStatusesForHomes(supabase, search, homes);
   const homesWithSignal = addCoBuyerPersonalSignals(homes, statusesByHome, user.id);
 
-  const hasFavorites = homes.some((h) => h.reaction === 'love' && !isArchivedStatus(h.status));
+  const hasFavorites = homes.some((h) => h.isFavorite && !isArchivedStatus(h.status));
   const hasArchived = homes.some((h) => isArchivedStatus(h.status));
 
   return (

@@ -9,6 +9,7 @@
 
 import { defaultPriorities } from '@/lib/constants';
 import { deriveSharedFactPriorityAwareness } from '@/lib/sharedFactPriorityAwareness';
+import { hasOutstandingWantToTour } from '@/lib/lifecycle';
 
 /* ------------------------------- active search ------------------------------- */
 
@@ -203,7 +204,7 @@ export async function deleteCommuteDestination(supabase, id) {
 
 // Personal, per-user fields. Everything else on a home (address, price,
 // facts, enrichment, Pros/Cons/Notes) stays shared and untouched by any of this.
-const PERSONAL_FIELDS = ['status', 'reaction', 'rejectionReason', 'ratings', 'checks'];
+const PERSONAL_FIELDS = ['status', 'touredAt', 'isFavorite', 'reaction', 'rejectionReason', 'ratings', 'checks'];
 
 // Everything that belongs to the shared home record. Keeping this list beside
 // the persistence helpers lets callers distinguish a personal-only edit from a
@@ -219,7 +220,7 @@ const SHARED_FIELDS = [
 ];
 
 function emptyPersonalState() {
-  return { status: 'Saved', reaction: null, rejectionReason: '', ratings: {}, checks: {} };
+  return { status: 'Saved', touredAt: null, isFavorite: false, reaction: null, rejectionReason: '', ratings: {}, checks: {} };
 }
 
 // Resolves personal lifecycle/evaluation state for one home + one user:
@@ -233,6 +234,8 @@ export function resolvePersonalState(home, memberStateRow, userId) {
   if (memberStateRow) {
     return {
       status: memberStateRow.status || 'Saved',
+      touredAt: memberStateRow.toured_at || null,
+      isFavorite: Boolean(memberStateRow.is_favorite),
       reaction: memberStateRow.reaction || null,
       rejectionReason: memberStateRow.rejection_reason || '',
       ratings: memberStateRow.ratings || {},
@@ -242,6 +245,8 @@ export function resolvePersonalState(home, memberStateRow, userId) {
   if (home.userId === userId) {
     return {
       status: home.status,
+      touredAt: home.touredAt || null,
+      isFavorite: Boolean(home.isFavorite),
       reaction: home.reaction,
       rejectionReason: home.rejectionReason,
       ratings: home.ratings,
@@ -303,6 +308,8 @@ async function isCollaborativeSearch(supabase, searchId) {
 function personalStateFromHome(home) {
   return {
     status: home.status,
+    touredAt: home.touredAt || null,
+    isFavorite: Boolean(home.isFavorite),
     reaction: home.reaction,
     rejectionReason: home.rejectionReason,
     ratings: home.ratings,
@@ -315,6 +322,8 @@ async function upsertPersonalState(supabase, homeId, userId, personal) {
     home_id: homeId,
     user_id: userId,
     status: personal.status,
+    toured_at: personal.touredAt || null,
+    is_favorite: Boolean(personal.isFavorite),
     reaction: personal.reaction,
     rejection_reason: personal.rejectionReason || '',
     ratings: personal.ratings || {},
@@ -384,7 +393,7 @@ export async function getSearchParticipantIds(supabase, search) {
 }
 
 // For a set of homes in a search, resolves only the two personal signals that
-// collaborators are allowed to see here: status and favorite reaction. Ratings,
+// collaborators are allowed to see here: status, toured history, and Favorite. Ratings,
 // checks, rejection reasons, and notes deliberately never enter this query.
 // Returns Map<homeId, Array<{userId, status, reaction}>>.
 // A participant who has never touched a given home (no home_member_state row,
@@ -399,12 +408,12 @@ export async function getParticipantStatusesForHomes(supabase, search, homes) {
     // Not collaborative — every home's only participant is the current
     // account itself, whose status is already on the home object.
     const result = new Map();
-    homes.forEach((home) => result.set(home.id, [{ userId: home.userId, status: home.status, reaction: home.reaction }]));
+    homes.forEach((home) => result.set(home.id, [{ userId: home.userId, status: home.status, touredAt: home.touredAt, isFavorite: home.isFavorite }]));
     return result;
   }
 
   const { data: stateRows, error } = await supabase
-    .from('home_member_state').select('home_id, user_id, status, reaction').in('home_id', homeIds).in('user_id', participantIds);
+    .from('home_member_state').select('home_id, user_id, status, toured_at, is_favorite').in('home_id', homeIds).in('user_id', participantIds);
   if (error) throw error;
 
   const stateByHomeAndUser = new Map((stateRows || []).map((r) => [`${r.home_id}:${r.user_id}`, r]));
@@ -413,9 +422,9 @@ export async function getParticipantStatusesForHomes(supabase, search, homes) {
   homes.forEach((home) => {
     const perParticipant = participantIds.map((pid) => {
       const state = stateByHomeAndUser.get(`${home.id}:${pid}`);
-      if (state) return { userId: pid, status: state.status, reaction: state.reaction };
-      if (home.userId === pid) return { userId: pid, status: home.status, reaction: home.reaction }; // legacy fallback, adder only
-      return { userId: pid, status: null, reaction: null }; // hasn't touched this home at all
+      if (state) return { userId: pid, status: state.status, touredAt: state.toured_at, isFavorite: Boolean(state.is_favorite) };
+      if (home.userId === pid) return { userId: pid, status: home.status, touredAt: home.touredAt, isFavorite: home.isFavorite }; // legacy fallback, adder only
+      return { userId: pid, status: null, touredAt: null, isFavorite: false }; // hasn't touched this home at all
     });
     result.set(home.id, perParticipant);
   });
@@ -442,8 +451,8 @@ export function coBuyerArchivedSignal(currentUserStatus, otherParticipantStatuse
 // derivation for the narrow Favorite/Archive signals collaborators may see.
 // It never combines ownership or mutates either participant's state.
 export function deriveCoBuyerPersonalSignals(currentUserState, otherParticipantStates = []) {
-  const currentUserFavorited = currentUserState.reaction === 'love';
-  const coBuyerFavorited = otherParticipantStates.some((state) => state.reaction === 'love');
+  const currentUserFavorited = Boolean(currentUserState.isFavorite);
+  const coBuyerFavorited = otherParticipantStates.some((state) => Boolean(state.isFavorite));
   const currentUserArchived = currentUserState.status === 'Archived';
   const coBuyerArchived = otherParticipantStates.some((state) => state.status === 'Archived');
   const coBuyerArchivedCount = coBuyerArchivedSignal(
@@ -479,7 +488,7 @@ export function addCoBuyerPersonalSignals(homes, personalStatesByHome, currentUs
       ...home,
       isCollaborative: true,
       ...deriveCoBuyerPersonalSignals(
-        { status: home.status, reaction: home.reaction },
+        { status: home.status, touredAt: home.touredAt, isFavorite: home.isFavorite },
         otherStates,
       ),
     };
@@ -492,9 +501,11 @@ export function addCoBuyerPersonalSignals(homes, personalStatesByHome, currentUs
 // agenda is the union of both participants' choices. Keep this derivation beside
 // the other participant-state helpers so pages never have to reinterpret another
 // person's full home state (ratings, reaction, checks, etc.).
-export function deriveWantToTourState(currentUserStatus, otherParticipantStatuses = []) {
-  const currentUserWantsToTour = currentUserStatus === 'Want to Tour';
-  const coBuyerWantsToTour = otherParticipantStatuses.some((status) => status === 'Want to Tour');
+export function deriveWantToTourState(currentUserState, otherParticipantStates = []) {
+  const current = typeof currentUserState === 'string' ? { status: currentUserState } : currentUserState;
+  const others = otherParticipantStates.map((state) => typeof state === 'string' ? { status: state } : state);
+  const currentUserWantsToTour = hasOutstandingWantToTour(current);
+  const coBuyerWantsToTour = others.some(hasOutstandingWantToTour);
   const householdWantsToTour = currentUserWantsToTour || coBuyerWantsToTour;
 
   let wantToTourLabel = null;
@@ -598,6 +609,8 @@ function rowToHomeWithOwner(row) {
     primaryBedroomLocation: row.primary_bedroom_location || '',
     secondaryBedroomLocation: row.secondary_bedroom_location || '',
     status: row.status || 'Considering',
+    touredAt: row.toured_at || null,
+    isFavorite: Boolean(row.is_favorite),
     reaction: row.reaction || null,
     rejectionReason: row.rejection_reason || '',
     ratings: row.ratings || {},
@@ -647,6 +660,8 @@ function homeToSharedRow(home, userId, searchId, includeLegacyPersonalFields) {
     // clobber the owner's legacy-fallback data sitting on this same row.
     ...(includeLegacyPersonalFields ? {
       status: home.status || 'Considering',
+      toured_at: home.touredAt || null,
+      is_favorite: Boolean(home.isFavorite),
       reaction: home.reaction || null,
       rejection_reason: home.rejectionReason || '',
       ratings: home.ratings || {},

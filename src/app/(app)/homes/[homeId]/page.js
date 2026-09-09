@@ -6,6 +6,7 @@ import {
   getCommuteDestinations, getHomesForUser, resolveActiveSearch,
   resolveCoBuyerComparePerspectives, resolvePriorities,
   resolveSharedFactPriorityAwareness, getSearchParticipantIds,
+  deriveWantToTourState, getParticipantStatusesForHomes,
 } from '@/lib/supabase/collaboration';
 
 export default async function HomeDetailPage({ params }) {
@@ -26,6 +27,11 @@ export default async function HomeDetailPage({ params }) {
   const home = homes.find((candidate) => String(candidate.id) === homeId);
   if (!home) notFound();
 
-  const perspectives = await resolveCoBuyerComparePerspectives(supabase, search, [home.id]);
-  return <HomeDetail home={home} priorities={normalizePriorities(priorities)} commuteDestinations={commuteDestinations} coBuyerPerspective={perspectives.get(home.id) || null} sharedFactAwareness={sharedFactAwareness} userId={user.id} searchId={search.id} isCollaborative={participantIds.length > 1} />;
+  const [perspectives, participantStates] = await Promise.all([
+    resolveCoBuyerComparePerspectives(supabase, search, [home.id]),
+    getParticipantStatusesForHomes(supabase, search, [home]),
+  ]);
+  const otherStates = (participantStates.get(home.id) || []).filter((state) => state.userId !== user.id);
+  const lifecycleSignals = deriveWantToTourState(home, otherStates);
+  return <HomeDetail home={{ ...home, ...lifecycleSignals }} priorities={normalizePriorities(priorities)} commuteDestinations={commuteDestinations} coBuyerPerspective={perspectives.get(home.id) || null} sharedFactAwareness={sharedFactAwareness} userId={user.id} searchId={search.id} isCollaborative={participantIds.length > 1} />;
 }
