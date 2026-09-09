@@ -23,7 +23,7 @@ export default async function ArchivePage() {
 
   return (
     <DecisionNav active="archive" hasFavorites={hasFavorites} hasArchived={hasArchived}>
-      <PageIntro title="Archived" subtitle="Homes you've ruled out, with your thoughts saved in case you change your mind." />
+      <PageIntro title="Archive" subtitle="Homes you've set aside, with your thoughts saved in case you change your mind." />
       <HomesBoard mode="archive" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizePriorities(priorities)} initialCommuteDestinations={commuteDestinations} sharedFactAwareness={sharedFactAwareness} />
     </DecisionNav>
   );

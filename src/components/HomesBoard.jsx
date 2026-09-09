@@ -79,7 +79,7 @@ function ArchiveConfirmModal({ home, onCancel, onConfirm }) {
 
 /* --------------------------------- card view --------------------------------- */
 
-function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour, onRemoveFromTour }) {
+function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour, onRemoveFromTour, onRestore, onRequestDelete }) {
   const [imgError, setImgError] = useState(false);
   const styleSummary = homeStyleSummary(home);
   const showPhoto = home.photoUrl && !imgError;
@@ -94,7 +94,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   // itself the primary job of the view. In Want to Tour, "Love it" is reached only
   // through the Post-Tour reflection ("Edit my thoughts") — never a shortcut that
   // bypasses recording ratings/notes for a toured home.
-  const showQuickFavorite = mode === 'favorites' || mode === 'archive';
+  const showQuickFavorite = mode === 'favorites';
   const wantToTourState = home.isCollaborative
     ? deriveWantToTourState(home.status, home.coBuyerWantsToTour ? ['Want to Tour'] : [])
     : null;
@@ -138,7 +138,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   const cons = parseCommaList(home.cons);
 
   return (
-    <article className="hh-home-card hh-corner" ref={commuteRef}>
+    <article className={`hh-home-card hh-corner ${mode === 'archive' ? 'is-archived' : ''}`} ref={commuteRef}>
       <div className="hh-home-card-surface">
         <div className={`hh-home-card-photo ${showPhoto ? '' : 'is-empty'}`}>
           {showPhoto ? (
@@ -200,8 +200,21 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
           )}
 
           {mode === 'tour' && wantToTourState?.wantToTourLabel && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, width: 'fit-content', fontSize: 12, fontWeight: 600, color: 'var(--ink-soft)', background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 999, padding: '4px 9px' }}>
+            <div className="hh-lifecycle-status">
               <Footprints size={12} color="var(--moss)" /> {wantToTourState.wantToTourLabel}
+            </div>
+          )}
+
+          {mode === 'favorites' && (
+            <div className="hh-lifecycle-status is-favorite">
+              <Heart size={12} color="var(--brick)" fill="var(--brick)" /> Your favorite
+            </div>
+          )}
+
+          {mode === 'archive' && home.rejectionReason && (
+            <div className="hh-archive-reason">
+              <span>Why you archived it</span>
+              <p>{home.rejectionReason}</p>
             </div>
           )}
 
@@ -309,19 +322,20 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
                 <ExternalLink size={13} />
               </a>
             )}
-            <button className="hh-btn hh-btn-ghost" style={{ padding: '5px 7px', flexShrink: 0 }} onClick={() => onArchiveRequest(home)} title="Archive">
-              <ArchiveIcon size={13} />
-            </button>
+            {mode !== 'archive' && (
+              <button className="hh-btn hh-btn-ghost" style={{ padding: '5px 7px', flexShrink: 0 }} onClick={() => onArchiveRequest(home)} title="Archive" aria-label="Archive home">
+                <ArchiveIcon size={13} />
+              </button>
+            )}
             {mode === 'tour' && home.status === 'Want to Tour' && (
               <button
                 type="button"
-                className="hh-btn hh-btn-ghost"
-                style={{ padding: '5px 7px', flexShrink: 0 }}
+                className="hh-btn hh-btn-quiet-action"
                 onClick={() => onRemoveFromTour(home)}
                 title="Remove from Want to Tour"
                 aria-label="Remove from Want to Tour"
               >
-                <Undo2 size={13} />
+                <Undo2 size={13} /> Remove mine
               </button>
             )}
             {showQuickFavorite && (
@@ -339,7 +353,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
 
             <div style={{ flex: 1 }} />
 
-            {isPreTour && (
+            {isPreTour && mode !== 'archive' && (
               <button
                 type="button"
                 className="hh-btn"
@@ -350,16 +364,13 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
               </button>
             )}
 
-            <button
-              className="hh-btn"
-              style={{
-                padding: '6px 11px', fontSize: 11.5, flexShrink: 0,
-                background: 'var(--paper)', border: '1px solid var(--ink-soft)', color: 'var(--ink)', fontWeight: 700,
-              }}
-              onClick={() => onEdit(home)}
-            >
-              Edit
-            </button>
+            {mode === 'archive' && (
+              <button className="hh-btn hh-card-primary-action" onClick={() => onRestore(home)}><Undo2 size={13} /> Restore</button>
+            )}
+            <button className="hh-btn hh-card-secondary-action" onClick={() => onEdit(home)}>Edit</button>
+            {mode === 'archive' && (
+              <button type="button" className="hh-card-text-action" onClick={() => onRequestDelete(home)}>Delete permanently</button>
+            )}
           </div>
         </div>
       </div>
@@ -367,52 +378,27 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   );
 }
 
-function CardGrid({ homes, priorities, commuteDestinations, mode, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour, onRemoveFromTour }) {
+function CardGrid({ homes, priorities, commuteDestinations, mode, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour, onRemoveFromTour, onRestore, onRequestDelete }) {
   return (
     <div className="hh-homes-grid">
       {homes.map((h) => (
         <HomeCard
           key={h.id} home={h} priorities={priorities} commuteDestinations={commuteDestinations} mode={mode} onEdit={onEdit} onArchiveRequest={onArchiveRequest}
           onToggleFavorite={onToggleFavorite} onWantToTour={onWantToTour} onOpenPostTour={onOpenPostTour} onRemoveFromTour={onRemoveFromTour}
+          onRestore={onRestore} onRequestDelete={onRequestDelete}
         />
       ))}
     </div>
   );
 }
 
-/* -------------------------------- archive list -------------------------------- */
-
-function ArchiveRow({ home, onEdit, onRestore, onRequestDelete }) {
+function EmptyLifecycleState({ icon: Icon, title, body, children }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '14px 18px', border: '1px solid var(--line)', borderRadius: 14, background: 'var(--paper-raised)', flexWrap: 'wrap' }}>
-      <div>
-        <div style={{ fontWeight: 500, fontSize: 14 }}>{home.address}</div>
-        <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 2 }}>{fmtMoney(home.price)}</div>
-        {home.rejectionReason && <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 3, fontStyle: 'italic' }}>Passed because: {home.rejectionReason}</div>}
-        {home.favoriteLabel && <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', marginTop: 5, fontWeight: 600 }}>{home.favoriteLabel}</div>}
-      </div>
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-        <button
-          className="hh-btn"
-          style={{ fontSize: 12, padding: '6px 11px', background: 'var(--paper)', border: '1px solid var(--ink-soft)', color: 'var(--ink)', fontWeight: 700 }}
-          onClick={() => onEdit(home)}
-        >
-          Edit
-        </button>
-        <button className="hh-btn hh-btn-ghost" style={{ fontSize: 12, padding: '6px 10px' }} onClick={() => onRestore(home)}><Undo2 size={13} /> Restore</button>
-        <button type="button" onClick={() => onRequestDelete(home)} style={{ background: 'none', border: 'none', color: 'var(--ink-soft)', fontSize: 11.5, cursor: 'pointer', padding: '6px 4px', textDecoration: 'underline' }}>
-          Delete permanently
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function ArchiveList({ homes, onEdit, onRestore, onRequestDelete }) {
-  if (!homes.length) return <div style={{ fontSize: 13, color: 'var(--ink-soft)', padding: '30px 0' }}>Homes you've archived stay here with your notes and ratings, so you can remember why you ruled them out — or bring one back.</div>;
-  return (
-    <div style={{ display: 'grid', gap: 10 }}>
-      {homes.map((h) => <ArchiveRow key={h.id} home={h} onEdit={onEdit} onRestore={onRestore} onRequestDelete={onRequestDelete} />)}
+    <div className="hh-lifecycle-empty hh-corner">
+      <div className="hh-lifecycle-empty-icon"><Icon size={22} strokeWidth={1.7} /></div>
+      <p className="hh-serif">{title}</p>
+      <span>{body}</span>
+      {children && <div className="hh-lifecycle-empty-action">{children}</div>}
     </div>
   );
 }
@@ -617,7 +603,11 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   if (mode === 'archive') {
     return (
       <>
-        <ArchiveList homes={archivedHomes} onEdit={setModalHome} onRestore={restoreHome} onRequestDelete={setDeleteTarget} />
+        {archivedHomes.length === 0 ? (
+          <EmptyLifecycleState icon={ArchiveIcon} title="Nothing archived" body="Homes you archive will stay here with your notes and ratings, ready to restore anytime." />
+        ) : (
+          <CardGrid homes={archivedHomes} priorities={priorities} commuteDestinations={initialCommuteDestinations} mode={mode} onEdit={setModalHome} onRestore={restoreHome} onRequestDelete={setDeleteTarget} />
+        )}
         {modalHome && <HomeModal initial={modalHome} priorities={priorities} sharedFactAwareness={sharedFactAwareness} userId={userId} onSave={saveEditedHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget} />}
         {deleteTarget && (
           <ConfirmModal
@@ -680,13 +670,11 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
 
       {filtered.length === 0 ? (
         mode === 'favorites' ? (
-          <div style={{ fontSize: 13.5, color: 'var(--ink-soft)', padding: '30px 0' }}>Nothing favorited yet. Tour a home and choose Love it to see it here.</div>
+          <EmptyLifecycleState icon={Heart} title="No favorites yet" body="After a tour, keep the homes you love close by choosing Love it." />
         ) : mode === 'tour' ? (
-          <div className="hh-corner" style={{ border: '1px dashed var(--line)', borderRadius: 16, padding: '48px 24px', textAlign: 'center', color: 'var(--ink-soft)' }}>
-            <p className="hh-serif" style={{ fontSize: 17, color: 'var(--ink)', marginBottom: 6 }}>No homes to tour yet</p>
-            <p style={{ fontSize: 13, marginBottom: 18 }}>When you find a home you'd like to see in person, mark it Want to tour from Homes.</p>
+          <EmptyLifecycleState icon={Footprints} title="No homes to tour yet" body="When one feels worth seeing in person, mark it Want to tour from Homes.">
             <Link href="/homes" className="hh-btn hh-btn-ghost">View my homes →</Link>
-          </div>
+          </EmptyLifecycleState>
         ) : (
           <div className="hh-corner" style={{ border: '1px dashed var(--line)', borderRadius: 16, padding: '48px 24px', textAlign: 'center', color: 'var(--ink-soft)' }}>
             <p className="hh-serif" style={{ fontSize: 17, color: 'var(--ink)', marginBottom: 6 }}>{activeHomes.length === 0 ? "You found the homes. We'll help you choose." : 'Nothing matches that search'}</p>
@@ -698,6 +686,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         <CardGrid
           homes={filtered} priorities={priorities} commuteDestinations={initialCommuteDestinations} mode={mode} onEdit={setModalHome} onArchiveRequest={setArchiveTarget}
           onToggleFavorite={toggleFavorite} onWantToTour={wantToTour} onOpenPostTour={setPostTourTarget} onRemoveFromTour={removeFromTour}
+          onRestore={restoreHome} onRequestDelete={setDeleteTarget}
         />
       )}
 

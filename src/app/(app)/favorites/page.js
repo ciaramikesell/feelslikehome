@@ -24,7 +24,7 @@ export default async function FavoritesPage() {
 
   return (
     <DecisionNav active="favorites" hasFavorites={hasFavorites} hasArchived={hasArchived}>
-      <PageIntro title="Favorites" subtitle="The homes you toured and loved." />
+      <PageIntro title="Favorites" subtitle="The homes you personally loved enough to keep close." />
       <HomesBoard mode="favorites" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizePriorities(priorities)} initialCommuteDestinations={commuteDestinations} sharedFactAwareness={sharedFactAwareness} />
     </DecisionNav>
   );
