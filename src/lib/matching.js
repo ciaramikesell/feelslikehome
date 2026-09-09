@@ -1,4 +1,4 @@
-import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier } from './constants';
+import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier } from './constants.js';
 
 export function parseNum(v) {
   if (v === '' || v === null || v === undefined) return null;
