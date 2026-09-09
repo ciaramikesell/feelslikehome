@@ -842,7 +842,7 @@ begin
     v_selected := 0; v_evaluated := 0; v_total_weight := 0; v_weighted_sum := 0;
 
     -- Numeric threshold priorities share computeMatch's partial-credit rules.
-    for v_key, v_actual_text in select * from (values
+    for v_key, v_actual in select * from (values
       ('budget', nullif(regexp_replace(v_home.price, '[^0-9.]', '', 'g'), '')::numeric),
       ('sqftTarget', nullif(regexp_replace(v_home.sqft, '[^0-9.]', '', 'g'), '')::numeric),
       ('lotSizeTarget', nullif(regexp_replace(v_home.lot_size, '[^0-9.]', '', 'g'), '')::numeric),
@@ -884,7 +884,7 @@ begin
       end if;
     end loop;
 
-    for v_key, v_actual in select * from (values
+    for v_key, v_actual_text in select * from (values
       ('primaryBedroomLocation', v_home.primary_bedroom_location),
       ('secondaryBedroomLocation', v_home.secondary_bedroom_location)
     ) s(key, actual)
