@@ -4,7 +4,7 @@ import { Footprints, Heart, Archive as ArchiveIcon } from 'lucide-react';
 const ITEMS = [
   { key: 'tour', label: 'Want to Tour', href: '/tour', Icon: Footprints },
   { key: 'favorites', label: 'Favorites', href: '/favorites', Icon: Heart },
-  { key: 'archive', label: 'Archived', href: '/archive', Icon: ArchiveIcon },
+  { key: 'archive', label: 'Archive', href: '/archive', Icon: ArchiveIcon },
 ];
 
 /**
@@ -23,9 +23,9 @@ export default function DecisionNav({ active, hasFavorites, hasArchived, childre
 
   return (
     <div className="hh-decision-layout">
-      <nav className="hh-decision-rail">
+      <nav className="hh-decision-rail" aria-label="Saved home views">
         {items.map(({ key, label, href, Icon }) => (
-          <Link key={key} href={href} className={`hh-decision-item ${active === key ? 'active' : ''}`}>
+          <Link key={key} href={href} className={`hh-decision-item ${active === key ? 'active' : ''}`} aria-current={active === key ? 'page' : undefined}>
             <Icon size={15} /> {label}
           </Link>
         ))}
