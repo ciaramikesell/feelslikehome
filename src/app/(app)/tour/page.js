@@ -5,18 +5,19 @@ import { PageIntro } from '@/components/ui';
 import { isArchivedStatus, normalizePriorities } from '@/lib/constants';
 import {
   resolveActiveSearch, resolvePriorities, resolveSharedFactPriorityAwareness, getHomesForUser, getParticipantStatusesForHomes,
-  addCoBuyerPersonalSignals, deriveWantToTourState, getCommuteDestinations,
+  addCoBuyerPersonalSignals, deriveWantToTourState, getSearchParticipantIds, getCommuteDestinations,
 } from '@/lib/supabase/collaboration';
 
 export default async function TourPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { search } = await resolveActiveSearch(supabase, user.id);
-  const [priorities, homes, sharedFactAwareness, commuteDestinations] = await Promise.all([
+  const [priorities, homes, sharedFactAwareness, commuteDestinations, participantIds] = await Promise.all([
     resolvePriorities(supabase, search, user.id),
     getHomesForUser(supabase, user.id, search.id),
     resolveSharedFactPriorityAwareness(supabase, search),
     getCommuteDestinations(supabase, search.id, user.id),
+    getSearchParticipantIds(supabase, search),
   ]);
 
   const statusesByHome = await getParticipantStatusesForHomes(supabase, search, homes);
@@ -38,7 +39,7 @@ export default async function TourPage() {
   return (
     <DecisionNav active="tour" hasFavorites={hasFavorites} hasArchived={hasArchived}>
       <PageIntro title="Want to Tour" subtitle="Homes that you or your co-buyer are thinking about seeing in person." />
-      <HomesBoard mode="tour" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizePriorities(priorities)} initialCommuteDestinations={commuteDestinations} sharedFactAwareness={sharedFactAwareness} />
+      <HomesBoard mode="tour" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizePriorities(priorities)} initialCommuteDestinations={commuteDestinations} sharedFactAwareness={sharedFactAwareness} isCollaborative={participantIds.length > 1} />
     </DecisionNav>
   );
 }

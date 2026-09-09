@@ -3,17 +3,18 @@ import HomesBoard from '@/components/HomesBoard';
 import DecisionNav from '@/components/DecisionNav';
 import { PageIntro } from '@/components/ui';
 import { isArchivedStatus, normalizePriorities } from '@/lib/constants';
-import { resolveActiveSearch, resolvePriorities, resolveSharedFactPriorityAwareness, getHomesForUser, getParticipantStatusesForHomes, addCoBuyerPersonalSignals, getCommuteDestinations } from '@/lib/supabase/collaboration';
+import { resolveActiveSearch, resolvePriorities, resolveSharedFactPriorityAwareness, getHomesForUser, getParticipantStatusesForHomes, addCoBuyerPersonalSignals, getSearchParticipantIds, getCommuteDestinations } from '@/lib/supabase/collaboration';
 
 export default async function ArchivePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { search } = await resolveActiveSearch(supabase, user.id);
-  const [priorities, homes, sharedFactAwareness, commuteDestinations] = await Promise.all([
+  const [priorities, homes, sharedFactAwareness, commuteDestinations, participantIds] = await Promise.all([
     resolvePriorities(supabase, search, user.id),
     getHomesForUser(supabase, user.id, search.id),
     resolveSharedFactPriorityAwareness(supabase, search),
     getCommuteDestinations(supabase, search.id, user.id),
+    getSearchParticipantIds(supabase, search),
   ]);
   const statusesByHome = await getParticipantStatusesForHomes(supabase, search, homes);
   const homesWithSignal = addCoBuyerPersonalSignals(homes, statusesByHome, user.id);
@@ -24,7 +25,7 @@ export default async function ArchivePage() {
   return (
     <DecisionNav active="archive" hasFavorites={hasFavorites} hasArchived={hasArchived}>
       <PageIntro title="Archive" subtitle="Homes you've set aside, with your thoughts saved in case you change your mind." />
-      <HomesBoard mode="archive" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizePriorities(priorities)} initialCommuteDestinations={commuteDestinations} sharedFactAwareness={sharedFactAwareness} />
+      <HomesBoard mode="archive" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizePriorities(priorities)} initialCommuteDestinations={commuteDestinations} sharedFactAwareness={sharedFactAwareness} isCollaborative={participantIds.length > 1} />
     </DecisionNav>
   );
 }

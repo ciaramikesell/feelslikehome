@@ -59,6 +59,7 @@ export default function InviteCoBuyer({ searchId, userId, embedded = false, onCl
       {!inviteLink ? (
         <>
           <label className="hh-label" style={{ marginBottom: 6, display: 'block' }}>Invite a co-buyer by email</label>
+          <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 10px', lineHeight: 1.45 }}>Share homes and notes while keeping your own priorities, Match, feelings, and choices.</p>
           <input
             className="hh-input"
             type="email"
