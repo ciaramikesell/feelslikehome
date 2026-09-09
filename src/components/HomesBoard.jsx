@@ -124,7 +124,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
     home.garageSpaces && { label: 'Garage', text: home.garageSpaces },
     home.basementNotes && { label: 'Basement', text: home.basementNotes },
     home.schoolsNotes && { label: 'Schools', text: home.schoolsNotes },
-  ].filter(Boolean);
+  ].filter(Boolean).slice(0, 2);
 
   // Objective context rows — only ever built from data that already exists; no new
   // lookups happen here. Crossroads and Home Style come from the home's own stored
@@ -132,25 +132,25 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   const objectiveFacts = [
     home.crossroads && { icon: MapPin, text: home.crossroads },
     styleSummary && { icon: Building2, text: styleSummary },
-  ].filter(Boolean);
+  ].filter(Boolean).slice(0, 2);
 
   const pros = parseCommaList(home.pros);
   const cons = parseCommaList(home.cons);
 
   return (
-    <div className="hh-corner" ref={commuteRef}>
-      <div style={{ background: 'var(--paper-raised)', border: '1px solid var(--line)', borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-        <div className="hh-home-card-photo" style={{ position: 'relative', width: '100%', height: 168, background: showPhoto ? 'var(--line)' : 'linear-gradient(135deg, #F2E6D6, #E8D8C1)' }}>
+    <article className="hh-home-card hh-corner" ref={commuteRef}>
+      <div className="hh-home-card-surface">
+        <div className={`hh-home-card-photo ${showPhoto ? '' : 'is-empty'}`}>
           {showPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={home.photoUrl} alt={home.address} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={() => setImgError(true)} />
           ) : (
-            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="hh-home-card-photo-fallback">
               <HomeIcon size={34} color="rgba(46,38,33,0.22)" strokeWidth={1.5} />
             </div>
           )}
           {!isPreTour && (
-            <span className="hh-mono" style={{ position: 'absolute', top: 10, left: 10, fontSize: 10.5, fontWeight: 700, color: '#fff', background: STATUS_COLOR[home.status] || 'var(--ink-soft)', padding: '4px 9px', borderRadius: 999, boxShadow: '0 2px 8px rgba(46,38,33,0.2)' }}>{home.status}</span>
+            <span className="hh-card-status hh-mono" style={{ background: STATUS_COLOR[home.status] || 'var(--ink-soft)' }}>{home.status}</span>
           )}
           {(home.coBuyerArchivedCount > 0 || home.favoriteLabel) && (
             <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
@@ -169,7 +169,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
         </div>
 
         <div className="hh-home-card-body" style={{ padding: '18px 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+          <div className="hh-card-price-row">
             <span className="hh-mono" style={{ fontSize: 22, fontWeight: 700, color: 'var(--brick)' }}>{fmtMoney(home.price)}{isRentalType(priorities.searchType) ? '/mo' : ''}</span>
             {home.estMonthly && <span className="hh-mono" style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>{fmtMoney(home.estMonthly)}/mo est.</span>}
           </div>
@@ -226,8 +226,9 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
             </button>
           )}
 
+          <div className="hh-card-context">
           {propertyFacts.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <div className="hh-card-context-group">
               {propertyFacts.map(({ label, text }, i) => (
                 <div key={i} style={{ fontSize: 12, color: 'var(--ink-soft)', lineHeight: 1.4 }}>
                   <span style={{ fontWeight: 600, color: 'var(--ink)' }}>{label}</span>{' '}
@@ -241,7 +242,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
             const shown = commuteDestinations.slice(0, 2);
             const overflow = commuteDestinations.length - shown.length;
             return (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              <div className="hh-card-context-group">
                 <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: '.03em' }}>Commute</div>
                 {shown.map((d) => {
                   const state = getCommuteState(d);
@@ -260,7 +261,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
           })()}
 
           {objectiveFacts.length > 0 && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <div className="hh-card-context-group">
               {objectiveFacts.map(({ icon: Icon, text }, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--ink-soft)' }}>
                   <Icon size={13} style={{ flexShrink: 0 }} /> <span>{text}</span>
@@ -283,23 +284,24 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
           {pros.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12.5, color: 'var(--ink)' }}>
               <Plus size={13} color="var(--moss)" strokeWidth={2.5} style={{ flexShrink: 0, marginTop: 2 }} />
-              <span>{pros.join(', ')}</span>
+              <span className="hh-card-clamp">{pros.join(', ')}</span>
             </div>
           )}
 
           {cons.length > 0 && (
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12.5, color: 'var(--ink)' }}>
               <Minus size={13} color="var(--brick)" strokeWidth={2.5} style={{ flexShrink: 0, marginTop: 2 }} />
-              <span>{cons.join(', ')}</span>
+              <span className="hh-card-clamp">{cons.join(', ')}</span>
             </div>
           )}
 
           {home.notes && (
             <div style={{ display: 'flex', gap: 6, fontSize: 12, color: 'var(--ink-soft)', background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 10px' }}>
               <StickyNote size={13} style={{ flexShrink: 0, marginTop: 1 }} />
-              <span style={{ whiteSpace: 'pre-wrap' }}>{home.notes}</span>
+              <span className="hh-card-clamp" style={{ whiteSpace: 'pre-wrap' }}>{home.notes}</span>
             </div>
           )}
+          </div>
 
           <div className="hh-home-card-actions" style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: 6, marginTop: 4, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
             {home.listingUrl && (
@@ -361,13 +363,13 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
           </div>
         </div>
       </div>
-    </div>
+    </article>
   );
 }
 
 function CardGrid({ homes, priorities, commuteDestinations, mode, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour, onRemoveFromTour }) {
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 16 }}>
+    <div className="hh-homes-grid">
       {homes.map((h) => (
         <HomeCard
           key={h.id} home={h} priorities={priorities} commuteDestinations={commuteDestinations} mode={mode} onEdit={onEdit} onArchiveRequest={onArchiveRequest}
@@ -633,7 +635,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   return (
     <>
       {mode === 'homes' && (
-        <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '4px 0 14px' }}>
+        <div className="hh-homes-primary-action">
           <button className="hh-btn" onClick={() => setModalHome(emptyHome())}><Plus size={15} /> Add home</button>
         </div>
       )}
@@ -641,22 +643,20 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
       {saveError && <div style={{ background: 'rgba(193,89,47,0.09)', border: '1px solid var(--brick)', color: 'var(--brick)', fontSize: 12.5, padding: '9px 14px', borderRadius: 12, marginBottom: 14 }}>{saveError}</div>}
 
       {mode === 'homes' && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', margin: '4px 0 14px' }}>
-          <div style={{ position: 'relative', flex: '1 1 220px', minWidth: 180 }}>
+        <section className="hh-homes-toolbar" aria-label="Search and filter homes">
+        <div className="hh-homes-toolbar-row">
+          <div className="hh-homes-search">
             <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: 'var(--ink-soft)' }} />
             <input className="hh-input" style={{ paddingLeft: 30 }} placeholder="Search address, layout, feature..." value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
-          <select className="hh-input" value={sortBy} onChange={(e) => setSortBy(e.target.value)} style={{ flex: '0 0 auto', width: 'auto', fontSize: 12.5 }} aria-label="Sort">
+          <select className="hh-input hh-homes-sort" value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label="Sort homes">
             <option value="default">Sort: Date added</option>
             <option value="newest">Sort: Newest first</option>
             <option value="match">Sort: Match</option>
             <option value="price">Sort: Price</option>
           </select>
         </div>
-      )}
-
-      {mode === 'homes' && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, margin: '0 0 22px' }}>
+        <div className="hh-filter-chips" aria-label="Filter homes">
           {[
             { key: 'all', label: 'All' },
             { key: 'match90', label: '90%+ Match' },
@@ -667,14 +667,15 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
             <button
               key={f.key}
               type="button"
-              className="hh-chip"
+              className={`hh-chip ${quickFilter === f.key ? 'on' : ''}`}
+              aria-pressed={quickFilter === f.key}
               onClick={() => setQuickFilter(f.key)}
-              style={quickFilter === f.key ? { background: 'var(--brick)', borderColor: 'var(--brick)', color: '#fff' } : undefined}
             >
               {f.label}
             </button>
           ))}
         </div>
+        </section>
       )}
 
       {filtered.length === 0 ? (
