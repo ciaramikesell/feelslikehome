@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, Fragment } from 'react';
+import Link from 'next/link';
 import { Columns, Star, Heart, Home as HomeIcon } from 'lucide-react';
 import { TOUR_RATING_KEY, criterionDisplayLabel } from '@/lib/constants';
 import { parseNum, computeMatch, matchColor } from '@/lib/matching';
@@ -138,7 +139,7 @@ function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective }) {
       </div>
 
       <div className="hh-mono hh-compare-price">{home.price ? formatCurrencyDisplay(home.price) : 'Price not added'}</div>
-      <div className="hh-address hh-compare-address">{home.address || 'Untitled'}</div>
+      <Link href={`/homes/${encodeURIComponent(home.id)}`} className="hh-address hh-compare-address hh-home-identity-link">{home.address || 'Untitled'}</Link>
       <div className="hh-mono hh-compare-facts">
         {[home.beds ? `${home.beds} bd` : null, home.baths ? `${home.baths} ba` : null, home.sqft ? `${Number(home.sqft).toLocaleString()} sqft` : null]
           .filter(Boolean).join(' · ') || '—'}

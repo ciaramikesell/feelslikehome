@@ -140,7 +140,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   return (
     <article className={`hh-home-card hh-corner ${mode === 'archive' ? 'is-archived' : ''}`} ref={commuteRef}>
       <div className="hh-home-card-surface">
-        <div className={`hh-home-card-photo ${showPhoto ? '' : 'is-empty'}`}>
+        <Link href={`/homes/${encodeURIComponent(home.id)}`} className={`hh-home-card-photo ${showPhoto ? '' : 'is-empty'}`} aria-label={`Open ${home.address || 'home'} details`}>
           {showPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={home.photoUrl} alt={home.address} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={() => setImgError(true)} />
@@ -166,7 +166,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
               )}
             </div>
           )}
-        </div>
+        </Link>
 
         <div className="hh-home-card-body" style={{ padding: '18px 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="hh-card-price-row">
@@ -175,8 +175,10 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
           </div>
 
           <div>
-            <div className="hh-address" style={{ fontSize: 19, fontWeight: 600, lineHeight: 1.28, color: 'var(--ink)' }}>{addressLine1 || 'Untitled'}</div>
-            {addressLine2 && <div style={{ fontSize: 13.5, color: 'var(--ink-soft)', marginTop: 1 }}>{addressLine2}</div>}
+            <Link href={`/homes/${encodeURIComponent(home.id)}`} className="hh-home-identity-link">
+              <div className="hh-address" style={{ fontSize: 19, fontWeight: 600, lineHeight: 1.28, color: 'var(--ink)' }}>{addressLine1 || 'Untitled'}</div>
+              {addressLine2 && <div style={{ fontSize: 13.5, color: 'var(--ink-soft)', marginTop: 1 }}>{addressLine2}</div>}
+            </Link>
           </div>
 
           {factLine.length > 0 && (
