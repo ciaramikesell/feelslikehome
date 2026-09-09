@@ -65,7 +65,7 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
           <>
             <h1 className="hh-serif" style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', margin: '0 0 8px' }}>You've been invited to a shared home search</h1>
             <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', lineHeight: 1.55, margin: '0 0 20px' }}>
-              You'll see the same homes as your co-buyer, with your own priorities, Match, and tour notes — kept separate from theirs.
+              Home details and notes are shared. Your priorities, Match, feelings, and choices stay yours.
             </p>
             <button type="button" className="hh-btn" style={{ width: '100%', justifyContent: 'center' }} onClick={accept}>
               Accept invitation

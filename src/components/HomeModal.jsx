@@ -140,7 +140,7 @@ function PropertyFacts({ form, set, priorities, sharedFactAwareness }) {
   );
 }
 
-export default function HomeModal({ initial, priorities, sharedFactAwareness = {}, onSave, onClose, userId, onWantToTour, onArchiveRequest }) {
+export default function HomeModal({ initial, priorities, sharedFactAwareness = {}, isCollaborative = false, onSave, onClose, userId, onWantToTour, onArchiveRequest }) {
   const [form, setForm] = useState(initial);
   const [pasteText, setPasteText] = useState('');
   const [parseMsg, setParseMsg] = useState('');
@@ -798,8 +798,9 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         </div>
 
         <section className="hh-thoughts">
-          <h3 className="hh-serif">Your thoughts</h3>
-          <p>Keep the personal side of this home separate from the listing facts.</p>
+          <h3 className="hh-serif">{isCollaborative ? 'Shared notes' : 'Your thoughts'}</h3>
+          {isCollaborative && <p className="hh-detail-context">Pros, cons, and notes are visible to both of you.</p>}
+          <p>{isCollaborative ? 'Keep the details both of you want to remember in one place.' : 'Keep the personal side of this home separate from the listing facts.'}</p>
           <div className="hh-thoughts-grid">
             <div><label className="hh-label">Pros</label><textarea className="hh-textarea" value={form.pros} onChange={(e) => set('pros', e.target.value)} /></div>
             <div><label className="hh-label">Cons</label><textarea className="hh-textarea" value={form.cons} onChange={(e) => set('cons', e.target.value)} /></div>

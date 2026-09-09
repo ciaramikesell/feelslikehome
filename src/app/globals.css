@@ -145,6 +145,9 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-lifecycle-empty > span { display: block; max-width: 470px; margin: 0 auto; font-size: 13px; line-height: 1.6; }
 .hh-lifecycle-empty-action { margin-top: 18px; display: flex; justify-content: center; }
 .hh-priority-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.hh-save-error { margin: 0 0 12px; padding: 9px 12px; border: 1px solid rgba(193,89,47,.35); border-radius: 10px; color: var(--brick); background: rgba(193,89,47,.07); font-size: 12.5px; }
+.hh-save-error button { border: 0; padding: 0; background: none; color: inherit; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+.hh-detail-context { margin: -4px 0 12px; color: var(--ink-soft); font-size: 12px; line-height: 1.45; }
 .hh-priority-row:last-child { border-bottom: none; }
 .hh-priority-row.draggable { cursor: grab; }
 .hh-priority-row.dragging { opacity: 0.4; }

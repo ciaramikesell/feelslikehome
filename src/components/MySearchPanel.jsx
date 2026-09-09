@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { TierPicker } from '@/components/ui';
 import PriorityBoard from '@/components/PriorityBoard';
 import CommuteDestinations from '@/components/CommuteDestinations';
@@ -13,6 +13,7 @@ import {
 } from '@/lib/constants';
 import { selectedOrderedItems } from '@/lib/matching';
 import { createClient } from '@/lib/supabase/client';
+import { useReliableOptimisticState } from '@/lib/useReliableOptimisticState';
 import { savePriorities } from '@/lib/supabase/collaboration';
 
 // A soft, warm card shell — the same visual language established in Add/Edit Home's
@@ -277,23 +278,17 @@ function WhatMattersCard({ categories, priorities, patch }) {
 }
 
 export default function MySearchPanel({ search, userId, isOwner, participantCount, memberUserId, initialPriorities, initialCommuteDestinations }) {
-  const [priorities, setPriorities] = useState(() => normalizePriorities(initialPriorities));
+  const initial = normalizePriorities(initialPriorities);
+  const persistPriorities = useCallback((next) => savePriorities(createClient(), search, userId, next), [search, userId]);
+  const { state: priorities, patch, saveError, retry } = useReliableOptimisticState(initial, persistPriorities);
   const [commuteDestinations, setCommuteDestinations] = useState(initialCommuteDestinations || []);
-
-  const patch = (updater) => {
-    setPriorities((prev) => {
-      const next = updater({ ...prev });
-      const supabase = createClient();
-      savePriorities(supabase, search, userId, next).catch((e) => console.error('Could not save priorities', e));
-      return next;
-    });
-  };
 
   const p = priorities;
   const categories = getItemlistCategories(p.searchType);
 
   return (
     <div className="hh-search-layout">
+      {saveError && <p className="hh-save-error" role="alert">{saveError} <button type="button" onClick={retry}>Retry</button></p>}
       <BasicsCard p={p} patch={patch} />
 
       <WhatMattersCard categories={categories} priorities={p} patch={patch} />

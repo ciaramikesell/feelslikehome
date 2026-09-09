@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, Plus } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
@@ -12,6 +12,7 @@ import {
   normalizePriorities,
 } from '@/lib/constants';
 import { createClient } from '@/lib/supabase/client';
+import { useReliableOptimisticState } from '@/lib/useReliableOptimisticState';
 import { updateSearchPriorities, completeOnboarding } from '@/lib/supabase/data';
 
 const TIER_LEGEND = [
@@ -244,7 +245,7 @@ function Confetti() {
   );
 }
 
-function OnboardingStep3({ onFinish }) {
+function OnboardingStep3({ onFinish, isSaving }) {
   return (
     <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', gap: 22, alignItems: 'center', textAlign: 'center', padding: '12px 0' }}>
       <Confetti />
@@ -255,7 +256,7 @@ function OnboardingStep3({ onFinish }) {
           Now comes the fun. Find a home you like on Zillow, Realtor.com, a builder website, or wherever you already search. Then bring it here. We'll help you see how it measures up to what matters to you.
         </p>
       </div>
-      <button type="button" className="hh-btn" onClick={() => onFinish('add-home')}><Plus size={15} /> Add my first home</button>
+      <button type="button" className="hh-btn" disabled={isSaving} onClick={() => onFinish('add-home')}><Plus size={15} /> {isSaving ? 'Saving priorities…' : 'Add my first home'}</button>
       <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: 0, fontStyle: 'italic' }}>Already have a listing open? Grab the link — you can add it next.</p>
       <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: 0, maxWidth: 360, lineHeight: 1.5 }}>
         Want commute times on your Home Cards too? You can add places you travel to often anytime in My Search.
@@ -266,27 +267,27 @@ function OnboardingStep3({ onFinish }) {
 
 export default function Onboarding({ userId, searchId, initialPriorities }) {
   const router = useRouter();
-  const [priorities, setPriorities] = useState(() => normalizePriorities(initialPriorities));
+  const initial = normalizePriorities(initialPriorities);
+  const persistPriorities = useCallback((next) => updateSearchPriorities(createClient(), searchId, next), [searchId]);
+  const { state: priorities, patch, saveError, retry, isSaving } = useReliableOptimisticState(initial, persistPriorities);
   const [step, setStep] = useState(1);
-
-  const patch = (updater) => {
-    setPriorities((prev) => {
-      const next = updater({ ...prev });
-      const supabase = createClient();
-      updateSearchPriorities(supabase, searchId, next).catch((e) => console.error('Could not save priorities', e));
-      return next;
-    });
-  };
+  const [finishError, setFinishError] = useState('');
 
   const onFinish = async (action) => {
     const supabase = createClient();
-    try { await completeOnboarding(supabase, userId); } catch (e) { console.error('Could not mark onboarding complete', e); }
-    router.push(action === 'add-home' ? '/homes?add=1' : '/search');
+    setFinishError('');
+    try {
+      await completeOnboarding(supabase, userId);
+      router.push(action === 'add-home' ? '/homes?add=1' : '/search');
+    } catch {
+      setFinishError("Couldn't finish setup. Try again.");
+    }
   };
 
   return (
     <div className="hh-root">
       <OnboardingShell maxWidth={step === 3 ? 480 : 640}>
+        {(saveError || finishError) && <p className="hh-save-error" role="alert">{saveError || finishError} <button type="button" onClick={saveError ? retry : () => onFinish('add-home')}>Retry</button></p>}
         {step !== 3 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <BrandMark size={30} />
@@ -299,7 +300,7 @@ export default function Onboarding({ userId, searchId, initialPriorities }) {
         {step !== 3 && <OnboardingProgress step={step} />}
         {step === 1 && <OnboardingStep1 priorities={priorities} patch={patch} onNext={() => setStep(2)} />}
         {step === 2 && <OnboardingStep2 priorities={priorities} patch={patch} onNext={() => setStep(3)} onBack={() => setStep(1)} />}
-        {step === 3 && <OnboardingStep3 onFinish={onFinish} />}
+        {step === 3 && <OnboardingStep3 onFinish={onFinish} isSaving={isSaving} />}
       </OnboardingShell>
     </div>
   );

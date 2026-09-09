@@ -407,7 +407,7 @@ function EmptyLifecycleState({ icon: Icon, title, body, children }) {
 
 /* ---------------------------------- board ---------------------------------- */
 
-export default function HomesBoard({ mode, userId, searchId, initialHomes, initialPriorities, initialCommuteDestinations = [], sharedFactAwareness }) {
+export default function HomesBoard({ mode, userId, searchId, initialHomes, initialPriorities, initialCommuteDestinations = [], sharedFactAwareness, isCollaborative = false }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [homes, setHomes] = useState(initialHomes);
@@ -420,6 +420,10 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   const [archiveTarget, setArchiveTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [saveError, setSaveError] = useState('');
+  const [retrySave, setRetrySave] = useState(null);
+  const mutationVersions = useRef(new Map());
+  const mutationQueues = useRef(new Map());
+  const confirmedHomes = useRef(new Map(initialHomes.map((home) => [home.id, home])));
   const autoOpenedRef = useRef(false);
 
   useEffect(() => {
@@ -440,13 +444,20 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     router.replace('/homes');
   }, [mode, searchParams, router, homes]);
 
-  const saveHome = useCallback(async (home, { shared = true } = {}) => {
+  const saveHome = useCallback(async (home, { shared = true, optimistic = false } = {}) => {
     const supabase = createClient();
+    const previous = homes.find((candidate) => candidate.id === home.id);
+    const version = (mutationVersions.current.get(home.id) || 0) + 1;
+    mutationVersions.current.set(home.id, version);
+    if (optimistic) setHomes((current) => current.map((candidate) => candidate.id === home.id ? home : candidate));
     let saved;
     try {
-      saved = await (shared
+      const write = () => shared
         ? saveHomePersonalAndShared(supabase, home, userId, searchId)
-        : saveHomePersonalState(supabase, home, userId, searchId));
+        : saveHomePersonalState(supabase, home, userId, searchId);
+      const pending = (mutationQueues.current.get(home.id) || Promise.resolve()).then(write, write);
+      mutationQueues.current.set(home.id, pending.catch(() => {}));
+      saved = await pending;
     } catch (err) {
       // Previously uncaught: any Supabase error here (a missing column from a
       // migration that hasn't been applied yet, a network hiccup, etc.) threw
@@ -456,19 +467,28 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
       // HomeModal's own catch can show it immediately, right where the user is
       // looking, without losing anything they'd entered.
       console.error('saveHome failed', err);
-      setSaveError("We couldn't save that home. Please try again.");
+      if (mutationVersions.current.get(home.id) === version) {
+        const confirmed = confirmedHomes.current.get(home.id) || previous;
+        if (optimistic && confirmed) setHomes((current) => current.map((candidate) => candidate.id === home.id ? confirmed : candidate));
+        setSaveError("Couldn't save that change. Try again.");
+        setRetrySave(() => () => saveHome(home, { shared, optimistic }));
+      }
       throw err;
     }
     // Keep server-derived co-buyer signals while replacing only this user's
     // freshly saved personal state and the shared home fields.
-    setHomes((prev) => (prev.some((h) => h.id === saved.id) ? prev.map((h) => (h.id === saved.id ? { ...h, ...saved } : h)) : [...prev, saved]));
+    confirmedHomes.current.set(saved.id, { ...(confirmedHomes.current.get(saved.id) || {}), ...saved });
+    if (mutationVersions.current.get(home.id) === version) {
+      setHomes((prev) => (prev.some((h) => h.id === saved.id) ? prev.map((h) => (h.id === saved.id ? { ...h, ...saved } : h)) : [...prev, saved]));
+    }
     setModalHome(null);
     setSaveError('');
+    setRetrySave(null);
     // Favorites/Archive nav visibility is computed server-side in the layout — refresh
     // it so a first favorite/archive (or the last one being undone) updates the nav
     // right away instead of only after a manual reload.
     router.refresh();
-  }, [userId, searchId, router]);
+  }, [userId, searchId, router, homes]);
 
   const saveEditedHome = useCallback((home) => {
     const shared = !home.id || hasSharedHomeChanges(home, modalHome);
@@ -477,24 +497,22 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
 
   const toggleFavorite = useCallback((home) => {
     const next = { ...home, reaction: home.reaction === 'love' ? null : 'love' };
-    setHomes((prev) => prev.map((h) => (h.id === home.id ? next : h)));
-    const supabase = createClient();
-    saveHomePersonalState(supabase, next, userId, searchId).then(() => router.refresh()).catch(() => {});
-  }, [userId, searchId, router]);
+    saveHome(next, { shared: false, optimistic: true }).catch(() => {});
+  }, [saveHome]);
 
   // "This one is worth seeing." One tap, no modal, no confirmation — reuses the
   // existing status field, just moving it to a value it already supports.
   const wantToTour = useCallback((home) => {
     const next = { ...home, status: 'Want to Tour' };
     const savedVersion = homes.find((candidate) => candidate.id === home.id);
-    saveHome(next, { shared: hasSharedHomeChanges(next, savedVersion) });
+    saveHome(next, { shared: hasSharedHomeChanges(next, savedVersion), optimistic: true }).catch(() => {});
   }, [homes, saveHome]);
 
   // "I'm still considering this home, but not on my tour list." Reverses Want to
   // Tour back to the normal active status — not Archive, not deletion, no
   // confirmation, and every other field (ratings, notes, Match inputs) untouched.
   const removeFromTour = useCallback((home) => {
-    saveHome({ ...home, status: 'Saved' }, { shared: false });
+    saveHome({ ...home, status: 'Saved' }, { shared: false, optimistic: true }).catch(() => {});
   }, [saveHome]);
 
   // What the post-tour verdict means, conceptually:
@@ -512,14 +530,14 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     }
     setPostTourTarget(null);
     const next = { ...home, ...patch, status: 'Toured', reaction: verdict === 'love' ? 'love' : home.reaction };
-    saveHome(next, { shared: hasSharedHomeChanges(next, home) });
+    saveHome(next, { shared: hasSharedHomeChanges(next, home) }).catch(() => {});
   }, [saveHome]);
 
   const confirmArchive = useCallback((reason) => {
     if (!archiveTarget) return;
     const next = { ...archiveTarget, status: 'Archived', rejectionReason: reason };
     const savedVersion = homes.find((home) => home.id === archiveTarget.id);
-    saveHome(next, { shared: hasSharedHomeChanges(next, savedVersion) });
+    saveHome(next, { shared: hasSharedHomeChanges(next, savedVersion), optimistic: true }).catch(() => {});
     setArchiveTarget(null);
   }, [archiveTarget, homes, saveHome]);
 
@@ -531,16 +549,30 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   // asking the user to "Want to tour" it again.
   const restoreHome = useCallback((home) => {
     const wasToured = Object.values(home.ratings || {}).some((v) => v > 0);
-    saveHome({ ...home, status: wasToured ? 'Toured' : 'Saved', rejectionReason: '' }, { shared: false });
+    saveHome({ ...home, status: wasToured ? 'Toured' : 'Saved', rejectionReason: '' }, { shared: false, optimistic: true }).catch(() => {});
   }, [saveHome]);
 
   const confirmDelete = useCallback(async () => {
     if (!deleteTarget) return;
+    const previous = deleteTarget;
     const id = deleteTarget.id;
     setHomes((prev) => prev.filter((h) => h.id !== id));
     setDeleteTarget(null);
     const supabase = createClient();
-    try { await deleteHomeQuery(supabase, id); router.refresh(); } catch (e) { /* already removed locally */ }
+    try {
+      await deleteHomeQuery(supabase, id);
+      router.refresh();
+    } catch {
+      setHomes((current) => current.some((home) => home.id === id) ? current : [...current, previous]);
+      setSaveError("Couldn't delete that home. Try again.");
+      setRetrySave(() => async () => {
+        await deleteHomeQuery(createClient(), id);
+        setHomes((current) => current.filter((home) => home.id !== id));
+        setSaveError('');
+        setRetrySave(null);
+        router.refresh();
+      });
+    }
   }, [deleteTarget, router]);
 
   const activeHomes = useMemo(() => homes.filter((h) => !isArchivedStatus(h.status)), [homes]);
@@ -605,12 +637,13 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   if (mode === 'archive') {
     return (
       <>
+        {saveError && <div className="hh-save-error" role="alert">{saveError}{retrySave && <> <button type="button" onClick={() => retrySave().catch(() => {})}>Retry</button></>}</div>}
         {archivedHomes.length === 0 ? (
           <EmptyLifecycleState icon={ArchiveIcon} title="Nothing archived" body="Homes you archive will stay here with your notes and ratings, ready to restore anytime." />
         ) : (
           <CardGrid homes={archivedHomes} priorities={priorities} commuteDestinations={initialCommuteDestinations} mode={mode} onEdit={setModalHome} onRestore={restoreHome} onRequestDelete={setDeleteTarget} />
         )}
-        {modalHome && <HomeModal initial={modalHome} priorities={priorities} sharedFactAwareness={sharedFactAwareness} userId={userId} onSave={saveEditedHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget} />}
+        {modalHome && <HomeModal initial={modalHome} priorities={priorities} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} userId={userId} onSave={saveEditedHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget} />}
         {deleteTarget && (
           <ConfirmModal
             title="Delete this home permanently?"
@@ -632,7 +665,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         </div>
       )}
 
-      {saveError && <div style={{ background: 'rgba(193,89,47,0.09)', border: '1px solid var(--brick)', color: 'var(--brick)', fontSize: 12.5, padding: '9px 14px', borderRadius: 12, marginBottom: 14 }}>{saveError}</div>}
+      {saveError && <div className="hh-save-error" role="alert">{saveError}{retrySave && <> <button type="button" onClick={() => retrySave().catch(() => {})}>Retry</button></>}</div>}
 
       {mode === 'homes' && (
         <section className="hh-homes-toolbar" aria-label="Search and filter homes">
@@ -692,12 +725,13 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         />
       )}
 
-      {modalHome && <HomeModal initial={modalHome} priorities={priorities} sharedFactAwareness={sharedFactAwareness} userId={userId} onSave={saveEditedHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget} />}
+      {modalHome && <HomeModal initial={modalHome} priorities={priorities} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} userId={userId} onSave={saveEditedHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget} />}
 
       {postTourTarget && (
         <PostTourModal
           home={postTourTarget}
           priorities={priorities}
+          isCollaborative={isCollaborative}
           onVerdict={handleVerdict}
           onClose={() => setPostTourTarget(null)}
         />
