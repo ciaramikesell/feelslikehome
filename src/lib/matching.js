@@ -44,6 +44,21 @@ export function splitCategoryItems(def, priorities) {
   return { catState, core, suggestions, custom };
 }
 
+// Core/custom items already have a durable identity. A suggested item must be
+// promoted when selected so it can leave the bank and render on the priority
+// board instead of remaining a chip whose stored tier is otherwise invisible.
+export function selectPriorityItem(catState, def, item, tier) {
+  const customItems = catState.customItems || [];
+  const isDurableItem = def.coreItems.some(({ label }) => label === item.label)
+    || customItems.some(({ label }) => label === item.label);
+
+  return {
+    ...catState,
+    customItems: isDurableItem ? customItems : [...customItems, item],
+    tiers: { ...(catState.tiers || {}), [item.label]: tier },
+  };
+}
+
 // Orders items by a saved label order; anything not yet in the order keeps its natural position at the end.
 export function applyOrder(items, order) {
   if (!order || !order.length) return items;
