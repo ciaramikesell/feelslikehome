@@ -321,13 +321,12 @@ export function hasSharedHomeChanges(home, previousHome) {
 
 export async function saveHomePersonalAndShared(supabase, home, userId, searchId) {
   const sharedRow = homeToSharedRow(home, userId, searchId);
-  let { data: savedShared, error: sharedError } = await supabase
+  const { data: savedShared, error: sharedError } = await supabase
     .from('homes').upsert(sharedRow).select(HOME_SHARED_COLUMNS).single();
-  if (isPrePassBSchemaError(sharedError)) {
-    const legacyRow = Object.fromEntries(Object.entries(sharedRow).filter(([key]) => !PASS_B_DATABASE_COLUMNS.includes(key)));
-    ({ data: savedShared, error: sharedError } = await supabase
-      .from('homes').upsert(legacyRow).select(HOME_SHARED_COLUMNS_PRE_PASS_B).single());
-  }
+  // Never retry a write without the canonical shared-fact columns. That legacy
+  // compatibility path reported success after silently dropping propertyType
+  // (and the other Pass B facts), so the selection disappeared on reload. A
+  // database missing the shipped migration must fail visibly instead.
   if (sharedError) throw sharedError;
 
   const savedHome = rowToHomeWithOwner(savedShared);

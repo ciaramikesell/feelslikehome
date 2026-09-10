@@ -837,7 +837,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
             <div><label className="hh-label">Pros</label><textarea className="hh-textarea" value={form.pros} onChange={(e) => set('pros', e.target.value)} /></div>
             <div><label className="hh-label">Cons</label><textarea className="hh-textarea" value={form.cons} onChange={(e) => set('cons', e.target.value)} /></div>
           </div>
-          <div><label className="hh-label">Notes</label><textarea className="hh-textarea" value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Anything else worth remembering..." /></div>
+          <div><label className="hh-label">Anything else you want to remember?</label><textarea className="hh-textarea" value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="HOA details, sewer/water, financing options, recent updates, listing terms, or anything else worth noting." /></div>
         </section>
 
         {!isNewHome && (
