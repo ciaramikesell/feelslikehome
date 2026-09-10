@@ -33,6 +33,23 @@ export async function currentHomeCoordinates(home) {
   return { lat, lng };
 }
 
+// Destinations use the same address-provenance contract as homes, so an edited
+// address never renders at stale coordinates.
+export async function currentDestinationCoordinates(destination) {
+  const fingerprint = await addressFingerprint(destination?.address);
+  const record = {
+    coordinate_status: destination?.coordinateStatus,
+    coordinate_address_fingerprint: destination?.coordinateAddressFingerprint,
+    latitude: destination?.latitude,
+    longitude: destination?.longitude,
+  };
+  if (!coordinatesAreCurrent(record, fingerprint)) return null;
+  const lat = Number(destination.latitude);
+  const lng = Number(destination.longitude);
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return { lat, lng };
+}
+
 // All thresholded destinations form one boolean Commute criterion. A single
 // unknown makes the whole criterion unknown; confirmed failures are never averaged.
 export function evaluateCommute(destinations, getResult) {

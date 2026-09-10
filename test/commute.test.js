@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { addressFingerprint, commuteResultSignature, coordinatesAreCurrent, evaluateCommute, uniqueShortestIndex } from '../src/lib/commute.js';
+import { addressFingerprint, commuteResultSignature, coordinatesAreCurrent, currentDestinationCoordinates, evaluateCommute, uniqueShortestIndex } from '../src/lib/commute.js';
 
 const required = (id, max) => ({ id, label: id, maxDriveMinutes: max });
 
@@ -25,6 +25,16 @@ test('coordinate provenance only accepts the current address fingerprint', async
   const fingerprint = await addressFingerprint('123 Main St, Detroit, MI');
   assert.equal(coordinatesAreCurrent({ coordinate_status: 'resolved', coordinate_address_fingerprint: fingerprint, latitude: 42, longitude: -83 }, fingerprint), true);
   assert.equal(coordinatesAreCurrent({ coordinate_status: 'resolved', coordinate_address_fingerprint: fingerprint, latitude: 42, longitude: -83 }, await addressFingerprint('999 New St')), false);
+});
+
+test('destination map coordinates require the current destination address', async () => {
+  const address = '1 Campus Drive, Columbus, OH';
+  const destination = {
+    address, latitude: 39.99, longitude: -83.01, coordinateStatus: 'resolved',
+    coordinateAddressFingerprint: await addressFingerprint(address),
+  };
+  assert.deepEqual(await currentDestinationCoordinates(destination), { lat: 39.99, lng: -83.01 });
+  assert.equal(await currentDestinationCoordinates({ ...destination, address: 'Edited address' }), null);
 });
 
 test('Compare differences use meaningful commute states', () => {

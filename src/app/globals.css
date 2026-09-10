@@ -414,6 +414,9 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-map-marker { width: 34px; height: 34px; border: 3px solid #fff; border-radius: 50% 50% 50% 12%; transform: rotate(-45deg); background: var(--brick); color: #fff; box-shadow: 0 3px 9px rgba(46,38,33,.28); cursor: pointer; }
 .hh-map-marker span { display: block; transform: rotate(45deg); font-size: 18px; line-height: 24px; }
 .hh-map-marker.selected { width: 40px; height: 40px; background: var(--moss); border-color: #fff7eb; box-shadow: 0 0 0 3px var(--brick), 0 5px 12px rgba(46,38,33,.3); }
+.hh-map-destination-marker { width: 28px; height: 28px; border-radius: 50%; background: var(--gold); }
+.hh-map-destination-marker span { transform: none; font-size: 24px; line-height: 15px; }
+.hh-map-destination-marker.selected { width: 34px; height: 34px; background: var(--gold); box-shadow: 0 0 0 3px var(--moss), 0 5px 12px rgba(46,38,33,.3); }
 .hh-map-preview { position: absolute; z-index: 2; left: 16px; bottom: 16px; width: min(390px, calc(100% - 32px)); display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; padding: 12px; border: 1px solid rgba(138,124,110,.2); border-radius: 15px; background: rgba(255,253,249,.97); box-shadow: 0 12px 30px rgba(46,38,33,.2); }
 .hh-map-preview img { width: 92px; height: 82px; object-fit: cover; border-radius: 10px; }
 .hh-map-preview-copy { min-width: 0; }
@@ -421,6 +424,9 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-map-preview strong { display: block; overflow: hidden; color: var(--ink); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
 .hh-map-preview small { display: block; color: var(--ink-soft); margin: 3px 0 7px; }
 .hh-map-preview a { color: var(--brick); font-size: 13px; font-weight: 700; }
+.hh-map-destination-preview { grid-template-columns: auto minmax(0, 1fr); align-items: center; }
+.hh-map-destination-preview > svg { color: var(--gold); }
+.hh-map-place-label { color: var(--moss); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
 .hh-map-match { display: inline-block; margin-right: 10px; padding: 3px 7px; border-radius: 999px; background: rgba(116,128,79,.14); color: var(--moss); font-size: 11px; font-weight: 700; }
 .hh-map-status { display: inline-block; margin-right: 10px; color: var(--ink-soft); font-size: 10.5px; font-weight: 600; text-transform: capitalize; }
 .hh-map-layout > section { padding: 14px; border-radius: 15px; background: rgba(255,255,255,.56); }

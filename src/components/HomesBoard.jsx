@@ -111,8 +111,9 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   const propertyFacts = [
     home.garageSpaces && { label: 'Garage', text: home.garageSpaces },
     home.basementNotes && { label: 'Basement', text: home.basementNotes },
+    home.homeCondition?.length && { label: 'Home condition', text: home.homeCondition.join(', ') },
     home.schoolsNotes && { label: 'Schools', text: home.schoolsNotes },
-  ].filter(Boolean).slice(0, 2);
+  ].filter(Boolean);
 
   // Objective context rows — only ever built from data that already exists; no new
   // lookups happen here. Crossroads and Home Style come from the home's own stored
