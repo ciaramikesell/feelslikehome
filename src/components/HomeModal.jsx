@@ -12,6 +12,7 @@ import { extractAddressFromListingUrl } from '@/lib/listingUrl';
 import { splitAddressLines, formatFoundCardFacts, countFoundFacts, formatCurrencyDisplay, digitsOnly, formatLotSizeDisplay } from '@/lib/homeDisplay';
 import { createClient } from '@/lib/supabase/client';
 import { hasToured } from '@/lib/lifecycle';
+import { HOME_PROPERTY_TYPE_OPTIONS, PROPERTY_TYPE_LABELS, searchIntentCapabilities } from '@/lib/searchIntent';
 
 const PHOTO_BUCKET = 'home-photos';
 const ALLOWED_PHOTO_TYPES = { 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
@@ -71,6 +72,15 @@ function CompactField({ label, value, onChange, isCurrency, placeholder, must, c
   );
 }
 
+function TriStateField({ label, value, onChange }) {
+  return <div><label className="hh-label" style={{ fontSize: 10.5, marginBottom: 3 }}>{label}</label><div style={{ display: 'flex', gap: 5 }}>
+    {[['unknown', 'Unknown'], ['yes', 'Yes'], ['no', 'No']].map(([key, text]) => {
+      const selected = key === 'unknown' ? value == null : key === 'yes' ? value === true : value === false;
+      return <button key={key} type="button" className={`hh-chip ${selected ? 'on' : ''}`} aria-pressed={selected} onClick={() => onChange(key === 'unknown' ? null : key === 'yes')}>{text}</button>;
+    })}
+  </div></div>;
+}
+
 // The compact "Property details" area: a settled, scannable summary of what's
 // known by default, with an explicit toggle to reveal small editable fields —
 // replacing what used to be nine equally-prominent form boxes. Filled vs. empty
@@ -78,7 +88,8 @@ function CompactField({ label, value, onChange, isCurrency, placeholder, must, c
 // merely optional to add.
 function PropertyFacts({ form, set, priorities, sharedFactAwareness }) {
   const [editOpen, setEditOpen] = useState(() => !(form.price || form.beds || form.baths || form.sqft));
-  const priceLabel = terminology(priorities.searchType).priceFieldLabel;
+  const { showsRentalFacts } = searchIntentCapabilities(priorities.searchType);
+  const priceLabel = showsRentalFacts ? 'Monthly Rent' : terminology(priorities.searchType).priceFieldLabel;
 
   const facts = formatFoundCardFacts({
     price: form.price, beds: form.beds, baths: form.baths, sqft: form.sqft,
@@ -113,7 +124,7 @@ function PropertyFacts({ form, set, priorities, sharedFactAwareness }) {
             {sharedFactAwareness.price?.eligibleForSharedFactCapture && (
               <CompactField label={priceLabel} value={form.price} isCurrency onChange={(v) => set('price', v)} placeholder={`Add ${priceLabel.toLowerCase()}`} must={priorities.budget?.tier === 'must'} coBuyerOnly={sharedFactAwareness.price.coBuyerOnly} />
             )}
-            <CompactField label="Est. monthly pmt" value={form.estMonthly} isCurrency onChange={(v) => set('estMonthly', v)} placeholder="Add est. payment" />
+            {!showsRentalFacts && <CompactField label="Est. monthly pmt" value={form.estMonthly} isCurrency onChange={(v) => set('estMonthly', v)} placeholder="Add est. payment" />}
             {sharedFactAwareness.beds?.eligibleForSharedFactCapture && (
               <CompactField label="Beds" value={form.beds} onChange={(v) => set('beds', v)} placeholder="Add beds" must={priorities.bedsMin?.tier === 'must'} coBuyerOnly={sharedFactAwareness.beds.coBuyerOnly} />
             )}
@@ -130,6 +141,22 @@ function PropertyFacts({ form, set, priorities, sharedFactAwareness }) {
             <CompactField label="Year built" value={form.yearBuilt} onChange={(v) => set('yearBuilt', v)} placeholder="Add year" />
             <CompactField label="Days on mkt" value={form.daysOnMarket} onChange={(v) => set('daysOnMarket', v)} placeholder="Add DOM" />
           </div>
+          <div style={{ marginBottom: 12 }}>
+            <label className="hh-label" htmlFor="home-property-type">Property Type</label>
+            <select id="home-property-type" className="hh-input" value={form.propertyType ?? ''} onChange={(e) => set('propertyType', e.target.value || null)}>
+              <option value="">Unknown / not specified</option>
+              {HOME_PROPERTY_TYPE_OPTIONS.map((value) => <option key={value} value={value}>{PROPERTY_TYPE_LABELS[value]}</option>)}
+            </select>
+          </div>
+          {showsRentalFacts && <section style={{ border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px', marginBottom: 10 }}>
+            <div className="hh-label" style={{ marginBottom: 10 }}>Rental details</div>
+            <div className="hh-property-facts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+              <div><label className="hh-label" htmlFor="available-on" style={{ fontSize: 10.5, marginBottom: 3 }}>Available On</label><input id="available-on" type="date" className="hh-input" value={form.availableOn ?? ''} onChange={(e) => set('availableOn', e.target.value || null)} /></div>
+              <TriStateField label="Pets Allowed" value={form.petsAllowed} onChange={(v) => set('petsAllowed', v)} />
+              <TriStateField label="Utilities Included" value={form.utilitiesIncluded} onChange={(v) => set('utilitiesIncluded', v)} />
+              <TriStateField label="In-Unit Laundry" value={form.inUnitLaundry} onChange={(v) => set('inUnitLaundry', v)} />
+            </div>
+          </section>}
           {hasAnyFacts && (
             <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px' }} onClick={() => setEditOpen(false)}>
               Show summary
@@ -282,14 +309,17 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   });
 
   const runAutofill = () => {
-    const parsed = parseListingText(pasteText);
-    let count = 0;
+    const parsed = parseListingText(pasteText, priorities.searchType);
+    const additions = Object.entries(parsed).filter(([k, v]) =>
+      v !== null && v !== undefined && v !== '' && (form[k] === null || form[k] === undefined || form[k] === '')
+    );
     setForm((f) => {
       const next = { ...f };
-      Object.entries(parsed).forEach(([k, v]) => { if (v && !next[k]) { next[k] = v; count += 1; } });
+      additions.forEach(([k, v]) => { next[k] = v; });
       return next;
     });
-    setParseMsg(count > 0 ? `Filled in ${count} field${count === 1 ? '' : 's'} from what you pasted — double-check before saving.` : `Couldn't find anything usable in that text — try filling fields in manually.`);
+    setImportPhase('error'); // reveal the reviewable manual form without claiming a provider result
+    setParseMsg(additions.length > 0 ? `Filled in ${additions.length} field${additions.length === 1 ? '' : 's'} from what you pasted — double-check before saving.` : `Couldn't find anything usable in that text — try filling fields in manually.`);
   };
 
   // Runs a RentCast lookup for a specific address via our own server route (which

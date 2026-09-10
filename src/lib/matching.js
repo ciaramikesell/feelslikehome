@@ -1,4 +1,5 @@
 import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier } from './constants.js';
+import { normalizeSearchIntent } from './searchIntent.js';
 
 export function parseNum(v) {
   if (v === '' || v === null || v === undefined) return null;
@@ -123,16 +124,52 @@ export function curatedAdditionalSubjectiveCriteria(priorities) {
 
 /* ----------------------------- listing text parser ----------------------------- */
 
-export function parseListingText(text) {
+function listingDate(year, month, day) {
+  const y = Number(year); const m = Number(month); const d = Number(day);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  if (date.getUTCFullYear() !== y || date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d) return null;
+  return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+function parseExplicitAvailability(text) {
+  let m = text.match(/\bavailable(?:\s+on)?\s*[:\-]?\s*((?:19|20)\d{2})-(\d{1,2})-(\d{1,2})\b/i);
+  if (m) return listingDate(m[1], m[2], m[3]);
+  m = text.match(/\bavailable(?:\s+on)?\s*[:\-]?\s*(\d{1,2})\/(\d{1,2})\/((?:19|20)\d{2})\b/i);
+  if (m) return listingDate(m[3], m[1], m[2]);
+  m = text.match(/\bavailable(?:\s+on)?\s*[:\-]?\s*(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})(?:st|nd|rd|th)?[,]?\s+((?:19|20)\d{2})\b/i);
+  if (!m) return null;
+  const month = ['january','february','march','april','may','june','july','august','september','october','november','december'].indexOf(m[1].toLowerCase()) + 1;
+  return listingDate(m[3], month, m[2]);
+}
+
+function parseExplicitPropertyType(text) {
+  const labelled = text.match(/\b(?:property|home)\s+type\s*[:\-]\s*(apartment|house|townhome|townhouse|condo(?:minium)?|multi[ -]?family|other)\b/i);
+  const explicitRental = text.match(/\b(apartment|house|townhome|townhouse|condo(?:minium)?|multi[ -]?family)\s+for\s+rent\b/i);
+  const standaloneMultifamily = text.match(/^\s*multi[ -]?family\s*$/im);
+  const raw = labelled?.[1] || explicitRental?.[1] || standaloneMultifamily?.[0];
+  if (!raw) return null;
+  const normalized = raw.toLowerCase().replace(/[ -]/g, '');
+  return ({ townhouse: 'townhome', condominium: 'condo', multifamily: 'multifamily' })[normalized] || normalized;
+}
+
+/** Parse pasted listing text in the context of its search intent. */
+export function parseListingText(text, searchType = null) {
   const t = text || '';
   const out = {};
+  const isRental = normalizeSearchIntent(typeof searchType === 'object' ? searchType?.searchType : searchType) === 'rental';
 
-  let m = t.match(/(?:list price|price)\s*[:\-]?\s*\$?\s?([\d,]{4,10})/i);
-  if (!m) m = t.match(/\$\s?([\d,]{4,10})(?!\s*\/\s*mo)/);
-  if (m) out.price = m[1].replace(/,/g, '');
-
-  m = t.match(/\$\s?([\d,]{3,7})\s*\/\s*mo/i) || t.match(/(?:est\.?\s*(?:payment|monthly)|monthly payment)\s*[:\-]?\s*\$?\s?([\d,]{3,7})/i);
-  if (m) out.estMonthly = m[1].replace(/,/g, '');
+  let m;
+  if (isRental) {
+    m = t.match(/\$\s?([\d,]{3,7})\s*(?:\/\s*(?:mo(?:nth)?|month)|per\s+month)\b/i)
+      || t.match(/\brent\s*[:\-]\s*\$\s?([\d,]{3,7})\b/i);
+    if (m) out.price = m[1].replace(/,/g, '');
+  } else {
+    m = t.match(/(?:list price|price)\s*[:\-]?\s*\$?\s?([\d,]{4,10})/i);
+    if (!m) m = t.match(/\$\s?([\d,]{4,10})(?!\s*\/\s*mo)/);
+    if (m) out.price = m[1].replace(/,/g, '');
+    m = t.match(/\$\s?([\d,]{3,7})\s*\/\s*mo/i) || t.match(/(?:est\.?\s*(?:payment|monthly)|monthly payment)\s*[:\-]?\s*\$?\s?([\d,]{3,7})/i);
+    if (m) out.estMonthly = m[1].replace(/,/g, '');
+  }
 
   m = t.match(/(\d+(?:\.\d+)?)\s*(?:bed(?:room)?s?|bd|br)\b/i);
   if (m) out.beds = m[1];
@@ -154,6 +191,23 @@ export function parseListingText(text) {
 
   m = t.match(/(\d+)\s*days?\s*on\s*(?:market|zillow|site|realtor)/i);
   if (m) out.daysOnMarket = m[1];
+
+  const propertyType = parseExplicitPropertyType(t);
+  if (propertyType) out.propertyType = propertyType;
+
+  if (isRental) {
+    const availableOn = parseExplicitAvailability(t);
+    if (availableOn) out.availableOn = availableOn; // "Available now" intentionally stays unknown.
+
+    if (/\b(?:no pets|pets (?:are )?not allowed)\b/i.test(t)) out.petsAllowed = false;
+    else if (/\b(?:pets allowed|pet[- ]friendly|dogs and cats (?:are )?allowed)\b/i.test(t)) out.petsAllowed = true;
+
+    if (/\b(?:utilities (?:are )?not included|tenant (?:is responsible for|pays)(?: for)? (?:all )?utilities)\b/i.test(t)) out.utilitiesIncluded = false;
+    else if (/\b(?:all )?utilities (?:are )?included\b/i.test(t) && !/\bsome utilities (?:are )?included\b/i.test(t)) out.utilitiesIncluded = true;
+
+    if (/\b(?:no in-unit laundry|shared laundry only|laundry room in (?:the )?building[^.\n]*(?:no in-unit|no washer))\b/i.test(t)) out.inUnitLaundry = false;
+    else if (/\b(?:in-unit laundry|washer\s*(?:\/|and)\s*dryer in (?:the )?unit|in-unit washer\s*(?:\/|and)\s*dryer)\b/i.test(t)) out.inUnitLaundry = true;
+  }
 
   const lines = t.split('\n').map((l) => l.trim()).filter(Boolean);
   const addrLine = lines.find((l) => /^\d+\s+\S+/.test(l) && l.length < 100);

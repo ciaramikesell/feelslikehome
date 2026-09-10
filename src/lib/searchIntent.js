@@ -13,8 +13,14 @@ export const CANONICAL_SEARCH_INTENT_OPTIONS = Object.freeze([
 
 export const PROPERTY_TYPE_LABELS = Object.freeze({
   apartment: 'Apartment', house: 'House', townhome: 'Townhome',
-  condo: 'Condo', multifamily: 'Multifamily',
+  condo: 'Condo', multifamily: 'Multifamily', other: 'Other',
 });
+
+// The actual type of a home is a universal shared fact. This list is deliberately
+// separate from the narrower, intent-specific preference option lists above.
+export const HOME_PROPERTY_TYPE_OPTIONS = Object.freeze([
+  'apartment', 'house', 'townhome', 'condo', 'multifamily', 'other',
+]);
 
 const INTENT_BY_SEARCH_TYPE = Object.freeze({
   buy: 'purchase',
