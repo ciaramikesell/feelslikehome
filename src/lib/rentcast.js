@@ -13,6 +13,8 @@
 //
 // Only fields that already exist on the `homes` table are ever produced here.
 
+import { EVIDENCE_STRENGTH, findingsFromFields, resolveImport } from './importDomain.js';
+
 function num(v) {
   if (v === null || v === undefined || v === '') return null;
   const n = Number(v);
@@ -40,6 +42,23 @@ function formatInt(v) {
 function formatDecimal(v) {
   const n = num(v);
   return n === null ? null : String(n);
+}
+
+function canonicalPropertyType(value) {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toLowerCase().replace(/[ _-]+/g, ' ');
+  return ({
+    apartment: 'apartment',
+    'single family': 'house',
+    house: 'house',
+    townhouse: 'townhome',
+    townhome: 'townhome',
+    condo: 'condo',
+    condominium: 'condo',
+    'multi family': 'multifamily',
+    multifamily: 'multifamily',
+    other: 'other',
+  })[normalized] || null;
 }
 
 // RentCast's `propertyTaxes` field is an OBJECT keyed by year (e.g. { "2023": {...},
@@ -93,6 +112,9 @@ export function normalizeRentCastFields(property, listing) {
   const yearBuilt = property?.yearBuilt;
   if (yearBuilt !== undefined && yearBuilt !== null) fields.yearBuilt = formatInt(yearBuilt);
 
+  const propertyType = canonicalPropertyType(listing?.propertyType ?? property?.propertyType);
+  if (propertyType) fields.propertyType = propertyType;
+
   const garageSpaces = property?.features?.garageSpaces;
   if (garageSpaces !== undefined && garageSpaces !== null) fields.garageSpaces = formatInt(garageSpaces);
 
@@ -129,5 +151,11 @@ export function normalizeRentCastFields(property, listing) {
     if (fields[k] === null || fields[k] === undefined || fields[k] === '') delete fields[k];
   });
 
-  return { fields, foundAny: Object.keys(fields).length > 0 };
+  const findings = findingsFromFields(fields, {
+    sourceType: 'structured_listing',
+    sourceProvider: 'rentcast',
+    evidenceStrength: EVIDENCE_STRENGTH.AUTHORITATIVE,
+  });
+  const { resolutions, fieldPatch } = resolveImport(findings);
+  return { fields: fieldPatch, findings, resolutions, foundAny: Object.keys(fieldPatch).length > 0 };
 }
