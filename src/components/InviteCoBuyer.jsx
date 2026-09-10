@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { X, Users } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { createInvitation } from '@/lib/supabase/collaboration';
 
@@ -48,18 +49,29 @@ export default function InviteCoBuyer({ searchId, userId, embedded = false, onCl
   if (!open) {
     if (embedded) return null;
     return (
-      <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px' }} onClick={() => setOpen(true)}>
-        Invite co-buyer
+      <button type="button" className="hh-btn hh-btn-secondary" onClick={() => setOpen(true)}>
+        <Users size={14} /> Invite collaborator
       </button>
     );
   }
 
   return (
-    <div style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 12, padding: '14px 16px', marginTop: 8, maxWidth: 420 }}>
+    <div className="hh-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && close()}>
+      <div className="hh-modal hh-corner hh-collaboration-modal" role="dialog" aria-modal="true" aria-labelledby="invite-collaborator-title">
+        <div className="hh-collaboration-modal-heading">
+          <div><div className="hh-label">Searching together</div><h2 id="invite-collaborator-title" className="hh-serif">The house is ours. The opinion is mine.</h2></div>
+          <button type="button" className="hh-btn hh-btn-ghost" onClick={close} aria-label="Close"><X size={16} /></button>
+        </div>
+        <p>Invite someone to compare the same homes with you while keeping your individual opinions separate.</p>
+        <div className="hh-collaboration-disclosure">
+          <strong>Your opinions stay yours, but they aren&apos;t hidden from the people in this search.</strong>
+          <p>People you search with may see your priorities, Match, Favorites, Want to Tour choices, commute destinations, notes, Overall Feeling, and how you rated a home after touring.</p>
+          <p>Feels Like Home keeps each person&apos;s opinions separate—we don&apos;t combine them into one score or let another person change your preferences or ratings.</p>
+        </div>
+        <p className="hh-detail-context">Only people you invite to this search can see its shared-search activity.</p>
       {!inviteLink ? (
         <>
-          <label className="hh-label" style={{ marginBottom: 6, display: 'block' }}>Invite a co-buyer by email</label>
-          <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 10px', lineHeight: 1.45 }}>Share homes and notes while keeping your own priorities, Match, feelings, and choices.</p>
+          <label className="hh-label" style={{ marginBottom: 6, display: 'block' }}>Collaborator email</label>
           <input
             className="hh-input"
             type="email"
@@ -85,10 +97,11 @@ export default function InviteCoBuyer({ searchId, userId, embedded = false, onCl
               {copied ? 'Copied' : 'Copy link'}
             </button>
           </div>
-          <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '8px 0 0' }}>Expires in 7 days. Send this link to your co-buyer however you like.</p>
+          <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '8px 0 0' }}>Expires in 7 days. Send this link to your collaborator however you like.</p>
           <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, marginTop: 10 }} onClick={close}>Done</button>
         </>
       )}
+      </div>
     </div>
   );
 }

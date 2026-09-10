@@ -149,7 +149,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
             <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
               {home.coBuyerArchivedCount > 0 && (
                 <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--ink)', background: 'rgba(255,255,255,0.92)', padding: '4px 9px', borderRadius: 999, boxShadow: '0 2px 8px rgba(46,38,33,0.15)' }}>
-                  Archived by Co-Buyer
+                  Archived by collaborator
                 </span>
               )}
             </div>

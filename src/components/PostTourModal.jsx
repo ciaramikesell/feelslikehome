@@ -189,7 +189,7 @@ export default function PostTourModal({ home, priorities, isCollaborative = fals
           <button className="hh-btn hh-btn-ghost" style={{ padding: 6 }} onClick={onClose} aria-label="Close"><X size={16} /></button>
         </div>
         <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '2px 0 20px' }}>Capture your first impression while it's fresh.</p>
-        {isCollaborative && <p className="hh-detail-context">Your feelings and reactions stay yours. Notes, pros, and cons are shared.</p>}
+        {isCollaborative && <p className="hh-detail-context">Your feelings and reactions stay under your control. In a shared search, your collaborator can see them. Notes, pros, and cons are shared.</p>}
         {saveError && <p className="hh-save-error" role="alert">{saveError} Use Done to try again.</p>}
 
         {/* 1. Overall feeling — the user's gut reaction, kept separate from Match. */}

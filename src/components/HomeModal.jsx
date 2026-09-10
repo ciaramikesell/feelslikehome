@@ -45,7 +45,7 @@ function storagePathFromPublicUrl(url) {
 // text); empty ones look like an understated invitation to add something (dashed
 // border, muted "Add ___" placeholder) — never alarming, never a blank form field.
 function CoBuyerOnlyHelper() {
-  return <span className="hh-shared-fact" title="This detail matters to your co-buyer"><Users size={11} /> Shared</span>;
+  return <span className="hh-shared-fact" title="This detail matters to your collaborator"><Users size={11} /> Shared</span>;
 }
 
 function CompactField({ label, value, onChange, isCurrency, placeholder, must, coBuyerOnly }) {

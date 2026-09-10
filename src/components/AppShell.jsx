@@ -71,7 +71,7 @@ function HowToUseModal({ onClose }) {
           <section>
             <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--moss)', marginBottom: 4 }}>Searching together</div>
             <p style={{ fontSize: 12.5, color: 'var(--ink)', lineHeight: 1.5, margin: 0 }}>
-              <strong>The house is ours. The opinion is mine.</strong> You can share one pool of homes while each person keeps their own priorities and opinions. We may celebrate safe shared moments — like a mutual favorite or both wanting to tour — but there is no combined Couple Match.
+              <strong>The house is ours. The opinion is mine. The conversation is shared.</strong> People in a shared search can see each other&apos;s search-specific priorities and opinions, but only their author can change them. Each person keeps an independent Match and Overall Feeling—there is no combined score or winner.
             </p>
           </section>
         </div>

@@ -44,12 +44,12 @@ export default function CoBuyerManagement({ userId, search, isOwner, participant
           style={{ fontSize: 12, color: 'var(--brick)', borderColor: 'rgba(193,89,47,0.35)' }}
           onClick={() => setConfirming(true)}
         >
-          {isOwner ? 'Remove co-buyer from this search' : 'Leave this search'}
+          {isOwner ? 'Remove collaborator from this search' : 'Leave this search'}
         </button>
       ) : (
         <div style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 12, padding: '14px 16px', maxWidth: 440 }}>
           <p style={{ fontSize: 13, color: 'var(--ink)', margin: '0 0 4px', fontWeight: 600 }}>
-            {isOwner ? 'Remove co-buyer?' : 'Leave this search?'}
+            {isOwner ? 'Remove collaborator?' : 'Leave this search?'}
           </p>
           <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '0 0 12px', lineHeight: 1.5 }}>
             {isOwner

@@ -36,7 +36,7 @@ test('personal home actions roll back only the latest intent and offer retry', a
   assert.match(board, /role="alert"/);
 });
 
-test('collaboration copy distinguishes shared notes from personal choices', async () => {
+test('collaboration copy distinguishes visible search activity from participant control', async () => {
   const [detail, modal, invite, postTour] = await Promise.all([
     source('src/components/HomeDetail.jsx'),
     source('src/components/HomeModal.jsx'),
@@ -46,7 +46,6 @@ test('collaboration copy distinguishes shared notes from personal choices', asyn
   assert.match(detail, /isCollaborative \? "Shared notes" : "What you want to remember"/);
   assert.match(detail, /These choices are yours/);
   assert.match(modal, /isCollaborative \? 'Shared notes' : 'Your thoughts'/);
-  assert.match(invite, /Home details and notes are shared/);
-  assert.match(postTour, /Your feelings and reactions stay yours\. Notes, pros, and cons are shared\./);
+  assert.match(invite, /see each other&apos;s search preferences and opinions/);
+  assert.match(postTour, /Your feelings and reactions stay under your control/);
 });
-

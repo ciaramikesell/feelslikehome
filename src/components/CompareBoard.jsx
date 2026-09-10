@@ -118,6 +118,12 @@ function Perspective({ label, match, feeling, emptyCopy }) {
   );
 }
 
+function CollaboratorState({ state }) {
+  if (!state) return null;
+  const choices = [state.isFavorite ? 'Favorite' : null, state.status === 'Want to Tour' ? 'Want to Tour' : null, state.status === 'Archived' ? 'Archived' : null, state.reaction || null].filter(Boolean);
+  return choices.length ? <div className="hh-collaborator-state">{choices.join(' · ')}</div> : null;
+}
+
 function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective, searchType }) {
   const [imgError, setImgError] = useState(false);
   const showPhoto = home.photoUrl && !imgError;
@@ -151,7 +157,8 @@ function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective, searchTyp
       {coBuyerPerspective ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
           <Perspective label="You" match={match} feeling={overallRating} emptyCopy="Set priorities in My Search to see Match" />
-          <Perspective label="Co-Buyer" match={coBuyerPerspective.match} feeling={coBuyerPerspective.overallFeeling} emptyCopy="Co-Buyer hasn't set relevant priorities yet" />
+          <Perspective label="Collaborator" match={coBuyerPerspective.match} feeling={coBuyerPerspective.overallFeeling} emptyCopy="Your collaborator hasn't set relevant priorities yet" />
+          <CollaboratorState state={coBuyerPerspective.state} />
         </div>
       ) : match ? (
         match.pct !== null ? (
@@ -404,7 +411,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
                     {(coBuyerPerspectives[home.id]?.differentTakes || []).map((take) => (
                       <div key={take.key} className="hh-different-take">
                         <strong>{criterionDisplayLabel(take.key.split(':')[0], take.label)}</strong>
-                        <div><span><b>You</b> {take.youLiked ? 'Liked' : "Didn't like"}</span><span><b>Co-Buyer</b> {take.coBuyerLiked ? 'Liked' : "Didn't like"}</span></div>
+                        <div><span><b>You</b> {take.youLiked ? 'Liked' : "Didn't like"}</span><span><b>Collaborator</b> {take.coBuyerLiked ? 'Liked' : "Didn't like"}</span></div>
                       </div>
                     ))}
                     {!coBuyerPerspectives[home.id]?.differentTakes?.length && <div style={{ fontSize: 12, color: 'var(--ink-soft)', fontStyle: 'italic' }}>No different takes here.</div>}

@@ -240,6 +240,21 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-how-to-steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 26px; margin-bottom: 18px; }
 .hh-how-to-notes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
 .hh-how-to-notes section { padding: 14px 16px; border: 1px solid rgba(138,124,110,.2); border-radius: 14px; background: rgba(255,255,255,.44); }
+.hh-collaboration-entry { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px 20px; border: 1px solid rgba(193,89,47,.28); border-radius: 16px; background: rgba(193,89,47,.055); }
+.hh-collaboration-entry .hh-serif { font-size: 16px; font-weight: 700; }
+.hh-collaboration-entry p { margin: 3px 0 0; color: var(--ink-soft); font-size: 12.5px; line-height: 1.45; }
+.hh-collaboration-modal { max-width: 620px; }
+.hh-collaboration-modal-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.hh-collaboration-modal-heading h2 { margin: 3px 0 0; font-size: 22px; }
+.hh-collaboration-modal > p { color: var(--ink-soft); font-size: 13px; line-height: 1.55; }
+.hh-collaboration-disclosure { margin: 18px 0 12px; padding: 16px; border: 1px solid rgba(193,89,47,.25); border-radius: 14px; background: rgba(193,89,47,.06); color: var(--ink); font-size: 13px; line-height: 1.55; }
+.hh-collaboration-disclosure p { margin: 8px 0 0; }
+.hh-collaboration-consent { padding: 12px 14px; border-radius: 12px; background: rgba(193,89,47,.07); color: var(--ink); font-size: 12.5px; line-height: 1.5; }
+.hh-collaborator-priorities { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+.hh-collaborator-priorities .hh-chip { cursor: default; }
+.hh-collaborator-places { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 12.5px; }
+.hh-collaborator-places p { margin: 6px 0 0; color: var(--ink-soft); }
+.hh-collaborator-state { color: var(--ink-soft); font-size: 11px; font-weight: 600; }
 .hh-destination-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
 .hh-destination-card { display: flex; justify-content: space-between; gap: 10px; padding: 13px; border-radius: 12px; background: var(--paper); }
 .hh-shared-fact { display: inline-flex; align-items: center; gap: 3px; margin-left: 6px; color: var(--moss); font-size: 9.5px; font-weight: 700; text-transform: none; letter-spacing: 0; vertical-align: middle; }
@@ -311,6 +326,7 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   .hh-priority-tiers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hh-suggestion-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hh-how-to-steps { grid-template-columns: 1fr; }
+  .hh-collaboration-entry { align-items: flex-start; flex-direction: column; }
 }
 @media (max-width: 760px) {
   .hh-onboarding-priority-board .hh-priority-tiers { grid-template-columns: 1fr; }

@@ -107,17 +107,17 @@ test('post-tour guidance appears once and uses the central experiential classifi
   assert.doesNotMatch(board, /We&apos;ll ask after you tour/);
 });
 
-test('How to Use tells the current six-step, Match, and private collaboration story', () => {
+test('How to Use tells the current six-step, Match, and shared-conversation collaboration story', () => {
   const shell = read('src/components/AppShell.jsx');
   assert.equal(shell.match(/\{ title:/g)?.length, 6);
   for (const copy of ['Zillow', 'not a listing-search engine', 'Favorite', 'Want to Tour', 'Overall Feeling', 'Compare the survivors', 'Map is another view']) assert.match(shell, new RegExp(copy));
   assert.match(shell, /unknown details aren&apos;t treated as misses/);
   assert.doesNotMatch(shell, /hard disqualification|dealbreaker/);
   assert.match(shell, /The house is ours\. The opinion is mine\./);
-  assert.match(shell, /each person keeps their own priorities and opinions/);
-  assert.match(shell, /there is no combined Couple Match/);
+  assert.match(shell, /only their author can change them/);
+  assert.match(shell, /there is no combined score or winner/);
   assert.match(shell, /<strong>Match shows how the known information about a home lines up with your priorities\.<\/strong>/);
-  assert.match(shell, /<strong>The house is ours\. The opinion is mine\.<\/strong>/);
+  assert.match(shell, /<strong>The house is ours\. The opinion is mine\. The conversation is shared\.<\/strong>/);
   assert.match(shell, /role="dialog" aria-modal="true"/);
   const css = read('src/app/globals.css');
   assert.match(css, /\.hh-how-to \{[^}]*max-width: 1040px;[^}]*max-height: calc\(100dvh - 48px\);[^}]*overflow-y: auto/);

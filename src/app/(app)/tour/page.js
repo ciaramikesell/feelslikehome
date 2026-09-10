@@ -34,7 +34,7 @@ export default async function TourPage() {
 
   return (
     <DecisionNav active="tour" hasFavorites={hasFavorites} hasArchived={hasArchived}>
-      <PageIntro title="Want to Tour" subtitle="Homes that you or your co-buyer are thinking about seeing in person." />
+      <PageIntro title="Want to Tour" subtitle="Homes that you or your collaborator are thinking about seeing in person." />
       <HomesBoard mode="tour" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizePriorities(priorities)} initialCommuteDestinations={commuteDestinations} sharedFactAwareness={sharedFactAwareness} isCollaborative={participantIds.length > 1} />
     </DecisionNav>
   );
