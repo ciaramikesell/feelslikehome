@@ -45,6 +45,7 @@ test('selected rows expose contextual keyboard actions without resting-board clu
   assert.match(board, /aria-expanded=\{open\}/);
   assert.match(board, /onClick=\{\(\) => setActiveItem/);
   assert.match(board, /Move to \{TIER_META\[target\]\.label\}/);
+  assert.match(board, /disabled=\{target === tier\}/);
   assert.match(board, />Remove priority<\/button>/);
   assert.match(board, /setTier\(item\.categoryKey, item\.label, 'dontcare'\)/);
 });
@@ -63,9 +64,31 @@ test('Schools configuration and specific/custom preference discovery remain avai
   const board = read('src/components/PriorityBoard.jsx');
   assert.match(board, /item\.label === 'Schools'[\s\S]*?School preference/);
   assert.match(board, /onChange=\{\(event\) => setSchoolsNote\(event\.target\.value\)\}/);
-  assert.match(board, /<summary>More specific preferences<\/summary>/);
+  assert.match(board, /\.\.\.\(def\.specificItems \|\| \[\]\)/);
+  assert.doesNotMatch(board, /<summary>More specific preferences<\/summary>/);
+  assert.match(board, /tierOf\(def, item\.label\) === 'dontcare'/);
   assert.match(board, /placeholder="Add your own\.\.\."/);
   assert.match(board, /addCustomItem\(newItemCategory/);
+});
+
+test('drag education explicitly covers suggestions, destination tiers, and existing priorities', () => {
+  const board = read('src/components/PriorityBoard.jsx');
+  assert.match(board, /Drag any preference below into Must Have, Important, or Nice to Have\./);
+  assert.match(board, /drag your existing priorities between columns to change how much they matter\./);
+  assert.match(board, /className="hh-chip" onClick=\{\(\) => selectItem\(def, item\)\} onDragStart/);
+});
+
+test('structured basics use a compact responsive grid and quieter importance controls', () => {
+  const panel = read('src/components/MySearchPanel.jsx');
+  const css = read('src/app/globals.css');
+  assert.match(panel, /className="hh-basics-grid"/);
+  for (const label of ['Minimum Square Footage', 'Minimum Lot Size', 'Minimum Bedrooms', 'Minimum Bathrooms']) assert.match(panel, new RegExp(label));
+  assert.match(panel, /wide label=\{terminology\(p\.searchType\)\.budgetLabel\}/);
+  assert.match(panel, /quiet ariaLabel=\{`\$\{label\} importance`\}/);
+  assert.match(css, /\.hh-basics-grid \{[^}]*grid-template-columns: minmax\(210px, 1\.35fr\) repeat\(3/);
+  assert.match(css, /@media \(max-width: 900px\)[\s\S]*?\.hh-basics-grid \{ grid-template-columns: repeat\(2/);
+  assert.match(css, /@media \(max-width: 640px\)[\s\S]*?\.hh-basics-grid \{ grid-template-columns: 1fr/);
+  assert.match(panel, /More specific layout preferences/);
 });
 
 test('available suggestions use four, two, and one-column responsive layouts', () => {
@@ -96,7 +119,7 @@ test('How to Use tells the current six-step, Match, and private collaboration st
   assert.match(shell, /<strong>The house is ours\. The opinion is mine\.<\/strong>/);
   assert.match(shell, /role="dialog" aria-modal="true"/);
   const css = read('src/app/globals.css');
-  assert.match(css, /\.hh-how-to \{[^}]*max-width: 940px;[^}]*max-height: calc\(100dvh - 48px\);[^}]*overflow-y: auto/);
+  assert.match(css, /\.hh-how-to \{[^}]*max-width: 1040px;[^}]*max-height: calc\(100dvh - 48px\);[^}]*overflow-y: auto/);
   assert.match(css, /\.hh-how-to-steps \{[^}]*repeat\(2/);
   assert.match(shell, />Got it<\/button>/);
 });

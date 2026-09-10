@@ -118,8 +118,8 @@ export default function PriorityBoard({ priorities, patch }) {
                         </button>
                         {open && (
                           <div className="hh-priority-context" role="group" aria-label={`Actions for ${criterionDisplayLabel(item.categoryKey, item.label)}`}>
-                            {TIER_ORDER.filter((target) => target !== 'dontcare' && target !== tier).map((target) => (
-                              <button type="button" key={target} onClick={() => { setTier(item.categoryKey, item.label, target); setActiveItem(null); }}>Move to {TIER_META[target].label}</button>
+                            {TIER_ORDER.filter((target) => target !== 'dontcare').map((target) => (
+                              <button type="button" key={target} disabled={target === tier} aria-current={target === tier ? 'true' : undefined} onClick={() => { setTier(item.categoryKey, item.label, target); setActiveItem(null); }}>Move to {TIER_META[target].label}</button>
                             ))}
                             <button type="button" onClick={() => { setTier(item.categoryKey, item.label, 'dontcare'); setActiveItem(null); }}>Remove priority</button>
                             {item.categoryKey === 'location' && item.label === 'Schools' && (
@@ -144,19 +144,23 @@ export default function PriorityBoard({ priorities, patch }) {
       {addOpen && (
         <div className="hh-add-priority-panel">
           <div className="hh-schools-gate"><SchoolsRelevanceGate priorities={priorities} patch={patch} /></div>
-          <p className="hh-add-priority-help">Choose a preference, or drag it into the column that says how much it matters.</p>
+          <p className="hh-add-priority-help">Drag any preference below into Must Have, Important, or Nice to Have. You can also drag your existing priorities between columns to change how much they matter.</p>
           <div className="hh-suggestion-grid">
             {pools.map(({ def, core, custom, suggestions }) => {
               const unselected = [...core, ...custom].filter((item) => tierOf(def, item.label) === 'dontcare');
               const customLabels = new Set(custom.map((item) => item.label));
-              const tray = [...unselected, ...suggestions.filter((item) => !customLabels.has(item.label))];
+              // The add tray is already progressive disclosure. Keep every catalog
+              // suggestion directly discoverable without changing its stored label.
+              const catalogSuggestions = [...suggestions, ...(def.specificItems || [])]
+                .filter((item) => !customLabels.has(item.label));
+              const tray = [...unselected, ...catalogSuggestions]
+                .filter((item, index, items) => tierOf(def, item.label) === 'dontcare' && items.findIndex((candidate) => candidate.label === item.label) === index);
               return (
                 <section key={def.key}>
                   <h4 className="hh-suggestion-heading">{def.title}</h4>
                   <div className="hh-suggestion-tray">
                     {tray.map((item) => <button key={item.label} type="button" draggable className="hh-chip" onClick={() => selectItem(def, item)} onDragStart={(event) => { setDragged({ type: 'available', def, item }); event.dataTransfer.effectAllowed = 'copy'; event.dataTransfer.setData('text/plain', `${def.key}:${item.label}`); }} onDragEnd={() => { setDragged(null); setDropTier(null); }}>{criterionDisplayLabel(def.key, item.label)}</button>)}
                   </div>
-                  {!!def.specificItems?.length && <details className="hh-specific-preferences"><summary>More specific preferences</summary><div className="hh-specific-tray">{def.specificItems.filter((item) => tierOf(def, item.label) === 'dontcare' && !customLabels.has(item.label)).map((item) => <button key={item.label} type="button" draggable className="hh-chip" onClick={() => selectItem(def, item)} onDragStart={(event) => { setDragged({ type: 'available', def, item }); event.dataTransfer.effectAllowed = 'copy'; event.dataTransfer.setData('text/plain', `${def.key}:${item.label}`); }} onDragEnd={() => { setDragged(null); setDropTier(null); }}>{criterionDisplayLabel(def.key, item.label)}</button>)}</div></details>}
                 </section>
               );
             })}
