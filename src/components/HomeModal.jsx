@@ -10,6 +10,7 @@ import {
 import { visibleOrderedItems, parseListingTextFindings, selectedSubjectiveCriteria } from '@/lib/matching';
 import { extractAddressFromListingUrl } from '@/lib/listingUrl';
 import { mergeImportFields, resolveImport } from '@/lib/importDomain';
+import { appendAllSuggestions, appendSuggestionToNotes, derivePriorityCheckPatch, extractEnrichmentSuggestions } from '@/lib/importReview';
 import { splitAddressLines, formatFoundCardFacts, countFoundFacts, formatCurrencyDisplay, digitsOnly, formatLotSizeDisplay } from '@/lib/homeDisplay';
 import { createClient } from '@/lib/supabase/client';
 import { hasToured } from '@/lib/lifecycle';
@@ -196,6 +197,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   const [findInput, setFindInput] = useState(initial.listingUrl || initial.address || '');
   const [importPhase, setImportPhase] = useState('idle'); // idle | loading | success | text-success | empty | error
   const [importResult, setImportResult] = useState(null); // { fields, searchedAddress }
+  const [acceptedSuggestionIds, setAcceptedSuggestionIds] = useState([]);
   const [importErrorMsg, setImportErrorMsg] = useState('');
   const [urlFallbackMsg, setUrlFallbackMsg] = useState('');
   const [fallbackAddressInput, setFallbackAddressInput] = useState('');
@@ -324,12 +326,31 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   const runAutofill = () => {
     const findings = parseListingTextFindings(pasteText, priorities.searchType);
     const result = resolveImport(findings, form);
-    const additions = Object.keys(result.fieldPatch);
-    setForm((f) => mergeImportFields(f, result.fieldPatch));
-    setImportResult({ ...result, fields: result.fieldPatch, source: 'raw-text' });
+    const canonicalAdditions = Object.keys(result.fieldPatch);
+    const merged = mergeImportFields(form, result.fieldPatch);
+    const checkPatch = derivePriorityCheckPatch(pasteText, priorities, form.checks);
+    const next = { ...merged, checks: { ...form.checks, ...checkPatch } };
+    const suggestions = extractEnrichmentSuggestions(pasteText, next, { acceptedIds: acceptedSuggestionIds });
+    const foundCount = canonicalAdditions.length + Object.keys(checkPatch).length + suggestions.length;
+    const additions = Array.from({ length: foundCount });
+    setForm(next);
+    setImportResult({ ...result, fields: result.fieldPatch, suggestions, source: 'raw-text' });
     setEditDetailsOpen(true);
     setImportPhase(additions.length > 0 ? 'text-success' : 'empty');
-    setParseMsg(additions.length > 0 ? `Filled in ${additions.length} field${additions.length === 1 ? '' : 's'} from what you pasted — double-check before saving.` : `Couldn't find anything usable in that text — try filling fields in manually.`);
+    setParseMsg(foundCount > 0 ? `Found ${foundCount} useful detail${foundCount === 1 ? '' : 's'} from what you pasted — double-check before saving.` : `Couldn't find anything usable in that text — try filling fields in manually.`);
+  };
+
+  const addSuggestion = (suggestion) => {
+    setForm((f) => ({ ...f, notes: appendSuggestionToNotes(f.notes, suggestion) }));
+    setAcceptedSuggestionIds((ids) => ids.includes(suggestion.id) ? ids : [...ids, suggestion.id]);
+    setImportResult((result) => result ? { ...result, suggestions: result.suggestions.filter((item) => item.id !== suggestion.id) } : result);
+  };
+
+  const addAllSuggestions = () => {
+    const suggestions = importResult?.suggestions || [];
+    setForm((f) => ({ ...f, notes: appendAllSuggestions(f.notes, suggestions) }));
+    setAcceptedSuggestionIds((ids) => [...new Set([...ids, ...suggestions.map((item) => item.id)])]);
+    setImportResult((result) => result ? { ...result, suggestions: [] } : result);
   };
 
   // Runs a RentCast lookup for a specific address via our own server route (which
@@ -597,6 +618,26 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         )}
 
         {/* -------------------------- Photo -------------------------- */}
+        {isNewHome && importResult?.suggestions?.length > 0 && (
+          <section style={{ border: '1px solid var(--line)', background: 'var(--paper)', borderRadius: 14, padding: '14px 16px', margin: '16px 0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'start' }}>
+              <div>
+                <h3 className="hh-serif" style={{ fontSize: 16, margin: 0 }}>We found quite a lot!</h3>
+                <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '4px 0 12px' }}>We filled in what we could. Here are a few other details you may want to keep.</p>
+              </div>
+              {importResult.suggestions.length >= 2 && <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 9px' }} onClick={addAllSuggestions}>Add all</button>}
+            </div>
+            <div style={{ display: 'grid', gap: 7 }}>
+              {importResult.suggestions.map((suggestion) => (
+                <div key={suggestion.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                  <span style={{ fontSize: 12.5, color: 'var(--ink)' }}>{suggestion.text}</span>
+                  <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '3px 9px', flexShrink: 0 }} onClick={() => addSuggestion(suggestion)}>Add</button>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
         {(() => {
           const currentPreviewSrc = photoFile ? photoPreviewUrl : (form.photoUrl || null);
           const urlInputVisible = !photoFile && (showPhotoUrlInput || !!form.photoUrl);
