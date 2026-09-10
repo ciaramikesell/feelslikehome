@@ -54,8 +54,8 @@ function ObjectiveRow({ label, value, onValueChange, tier, onTierChange, placeho
 // nested beneath Home Layout, never as its own top-level section.
 function BedroomSubPreferences({ priorities, patch }) {
   return (
-    <div style={{ marginTop: 14, paddingLeft: 14, borderLeft: '2px solid var(--line)' }}>
-      <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--ink-soft)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '.03em' }}>Bedroom Preferences</div>
+    <details className="hh-specific-preferences">
+      <summary>More specific layout preferences</summary>
       {SINGLESELECT_CATEGORIES.map((def) => {
         const catState = priorities[def.key] || { value: '', tier: 'dontcare' };
         return (
@@ -78,7 +78,7 @@ function BedroomSubPreferences({ priorities, patch }) {
           </div>
         );
       })}
-    </div>
+    </details>
   );
 }
 
@@ -259,7 +259,7 @@ function WhatMattersCard({ categories, priorities, patch }) {
         <div>
           {hasAny ? (
             <>
-            <div className="hh-priority-legend"><span aria-hidden="true">◆</span> Evaluated after you tour</div>
+            <div className="hh-priority-legend"><span aria-hidden="true">*</span> Best answered after you tour</div>
             <div className="hh-priority-tiers">
               {buckets.map(({ tier, items }) => (
                 <div key={tier} className={`hh-tier-group hh-tier-${tier}`}>
@@ -271,7 +271,7 @@ function WhatMattersCard({ categories, priorities, patch }) {
                       <div key={`${item.categoryKey}:${item.label}`} className="hh-selected-priority">
                         <span>{criterionDisplayLabel(item.categoryKey, item.label)}</span>
                         {isExperientialCriterion(item.categoryKey, item.label) && (
-                          <span className="hh-experiential-marker" title="Evaluated after you tour" aria-label="Evaluated after you tour">◆</span>
+                          <span className="hh-experiential-marker" title="Best answered after you tour" aria-label="Best answered after you tour">*</span>
                         )}
                       </div>
                     ))}
