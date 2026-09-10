@@ -25,13 +25,28 @@ test('collaborator context RPC is search-scoped, narrow, and read-only', async (
     source('supabase/migrations/2026-09-10-shared-search-collaboration-contract.sql'),
     source('src/lib/supabase/collaboration.js'),
   ]);
-  assert.match(migration, /can_access_search\(p_search_id, v_caller\)/);
+  // PostgREST resolves RPCs by both the SQL argument name and type. Keep this
+  // assertion coupled to the client payload so a rename cannot ship on only
+  // one side of the boundary again.
+  assert.match(migration, /create or replace function public\.resolve_collaborator_search_context\(p_search_id uuid\)/);
+  assert.match(migration, /returns table \(priorities jsonb, commute_destinations jsonb, home_states jsonb\)/);
+  assert.match(collaboration, /rpc\('resolve_collaborator_search_context', \{ p_search_id: search\.id \}\)/);
+
+  // A caller on the shared search passes the access guard; an unrelated user
+  // is rejected before any participant-owned table can be read.
+  assert.match(migration, /if not coalesce\(public\.can_access_search\(p_search_id, v_caller\), false\) then[\s\S]*raise exception 'Search access denied'/);
+  assert.match(migration, /where sm\.search_id = p_search_id/);
+  assert.match(migration, /where participant\.user_id <> v_caller/);
+
+  // Every returned source is constrained to this search and the other current
+  // participant; no profile/account lookup or broad table grant is allowed.
+  assert.match(migration, /smp\.search_id = p_search_id and smp\.user_id = v_collaborator/);
   assert.match(migration, /h\.search_id = p_search_id and hms\.user_id = v_collaborator/);
   assert.match(migration, /d\.search_id = p_search_id and d\.user_id = v_collaborator/);
+  assert.doesNotMatch(migration, /from public\.profiles|from auth\.users/);
   assert.match(migration, /revoke all .* from public/);
   assert.match(migration, /grant execute .* to authenticated/);
   assert.doesNotMatch(migration, /grant select .*search_member_priorities|grant select .*home_member_state|grant select .*commute_destinations/is);
-  assert.match(collaboration, /rpc\('resolve_collaborator_search_context'/);
 });
 
 test('approved perspectives stay separate and participant writes stay owner-scoped', async () => {
