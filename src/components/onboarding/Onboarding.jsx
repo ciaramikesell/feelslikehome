@@ -118,6 +118,7 @@ function OnboardingStep1({ priorities, patch, onNext }) {
           {(capabilities.isPurchase || capabilities.isRental) && (
             <div>
               <label className="hh-label">What kinds of homes are you considering? <span style={{ fontWeight: 400, color: 'var(--ink-soft)', textTransform: 'none' }}>(optional)</span></label>
+              <p className="hh-field-helper">Choose as many as you&apos;d like.</p>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {capabilities.preferredPropertyTypeOptions.map((value) => {
                   const selected = priorities.preferredPropertyTypes.values.includes(value);
@@ -323,7 +324,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
       <OnboardingShell maxWidth={step === 3 ? 480 : 640}>
         {(saveError || finishError) && <p className="hh-save-error" role="alert">{saveError || finishError} <button type="button" onClick={saveError ? retry : () => onFinish('add-home')}>Retry</button></p>}
         {step !== 3 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div className="hh-onboarding-brand" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <BrandMark size={30} />
             <span className="hh-serif" style={{ fontSize: 18, letterSpacing: '-0.01em' }}>
               <span style={{ color: 'var(--ink)', fontWeight: 500 }}>Feels Like </span>

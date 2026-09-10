@@ -60,12 +60,13 @@ function SignInForm() {
 
         <div className="afh-divider"><span>or</span></div>
 
+        <p className="afh-new-account">New to Feels Like Home?</p>
         <Link
           href={redirectTo !== '/' ? `/auth/sign-up?redirect=${encodeURIComponent(redirectTo)}` : '/auth/sign-up'}
           className="afh-btn afh-btn-ghost"
           style={{ textDecoration: 'none', textAlign: 'center' }}
         >
-          Start your home search
+          Create an account
         </Link>
       </form>
     </AuthShell>

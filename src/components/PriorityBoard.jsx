@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { X, Plus } from 'lucide-react';
 import { TIER_META, DEFAULT_SELECTED_TIER, TIER_ORDER, criterionDisplayLabel, getItemlistCategories, effectiveTier, isSchoolsSuppressed } from '@/lib/constants';
-import { splitCategoryItems } from '@/lib/matching';
+import { selectPriorityItem, splitCategoryItems } from '@/lib/matching';
 import { TierPicker } from '@/components/ui';
 
 // Phase 1 — My Search Priority Board. Importance is now the primary
@@ -64,7 +64,10 @@ export default function PriorityBoard({ priorities, patch }) {
     return n;
   });
 
-  const selectKnownItem = (categoryKey, label) => setTier(categoryKey, label, DEFAULT_SELECTED_TIER);
+  const selectItem = (def, item) => patch((n) => {
+    n[def.key] = selectPriorityItem(n[def.key], def, item, DEFAULT_SELECTED_TIER);
+    return n;
+  });
 
   const addCustomItem = (categoryKey, item) => patch((n) => {
     n[categoryKey] = {
@@ -153,7 +156,7 @@ export default function PriorityBoard({ priorities, patch }) {
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 {tray.map((item) => (
-                  <button key={item.label} type="button" className="hh-chip" onClick={() => selectKnownItem(def.key, item.label)}>
+                  <button key={item.label} type="button" className="hh-chip" aria-pressed="false" onClick={() => selectItem(def, item)}>
                     {criterionDisplayLabel(def.key, item.label)}
                   </button>
                 ))}

@@ -12,7 +12,7 @@ export default function AuthShell({ children }) {
     <div className="afh-root">
       <div className="afh-grid">
         <div className="afh-left">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="afh-brand" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <BrandMark size={36} />
             <Wordmark size={29} className="afh-serif" />
           </div>
