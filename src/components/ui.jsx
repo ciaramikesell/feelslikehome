@@ -59,7 +59,7 @@ export function StarInput({ value, onChange, size = 16, readOnly = false }) {
   );
 }
 
-export function TierPicker({ value, onChange }) {
+export function TierPicker({ value, onChange, quiet = false, ariaLabel }) {
   const [open, setOpen] = useState(false);
 
   if (!open) {
@@ -67,11 +67,12 @@ export function TierPicker({ value, onChange }) {
     return (
       <button
         type="button"
+        aria-label={ariaLabel}
         onClick={() => setOpen(true)}
         style={{
           fontSize: 11.5, padding: '5px 8px 5px 12px', borderRadius: 999, cursor: 'pointer',
           fontFamily: 'Plus Jakarta Sans, sans-serif', fontWeight: 600,
-          border: '1px solid ' + meta.color, background: meta.color, color: '#fff',
+          border: '1px solid ' + (quiet ? 'var(--line)' : meta.color), background: quiet ? 'transparent' : meta.color, color: quiet ? 'var(--ink-soft)' : '#fff',
           display: 'inline-flex', alignItems: 'center', gap: 3,
         }}
       >

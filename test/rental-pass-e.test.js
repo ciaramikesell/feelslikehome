@@ -50,7 +50,7 @@ test('cross-intent helper copy is neutral', async () => {
   const sources = await Promise.all(['CoBuyerHomesLine.jsx', 'AppShell.jsx', 'onboarding/Onboarding.jsx', 'ArchiveConfirmModal.jsx']
     .map((file) => readFile(new URL(`../src/components/${file}`, import.meta.url), 'utf8')));
   const joined = sources.join('\n');
-  assert.doesNotMatch(joined, /Buying together\?|builder website|taxes too high/i);
+  assert.doesNotMatch(joined, /Buying together\?|taxes too high/i);
   assert.match(joined, /Searching together\?/);
-  assert.match(joined, /listing site you're already using/);
+  assert.match(joined, /Zillow, Realtor, Homes\.com, builder websites, rental sites/);
 });

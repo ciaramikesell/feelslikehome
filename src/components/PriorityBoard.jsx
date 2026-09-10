@@ -2,14 +2,12 @@
 
 import { useState } from 'react';
 import { X, Plus } from 'lucide-react';
-import { TIER_META, DEFAULT_SELECTED_TIER, TIER_ORDER, criterionDisplayLabel, getItemlistCategories, effectiveTier, isSchoolsSuppressed } from '@/lib/constants';
+import { DEFAULT_SELECTED_TIER, TIER_ORDER, criterionDisplayLabel, getItemlistCategories, effectiveTier, isSchoolsSuppressed, isExperientialCriterion } from '@/lib/constants';
 import { selectPriorityItem, splitCategoryItems } from '@/lib/matching';
 import { TierPicker } from '@/components/ui';
 
-// Phase 1 — My Search Priority Board. Importance is now the primary
-// organizing lens for SELECTED criteria (pooled across every category), per
-// the beta finding that category-first organization made sense early on but
-// importance is what actually helps someone decide. The old per-category
+// My Search pools selected criteria across categories, with the preference name
+// primary and its editable importance as quiet supporting information. The old per-category
 // drag-to-reorder system is intentionally not carried over here — once
 // importance is the primary hierarchy, order-within-a-tier no longer serves
 // the purpose it used to, and removing it also removes mobile's biggest
@@ -58,6 +56,7 @@ export default function PriorityBoard({ priorities, patch }) {
   const buckets = TIER_ORDER.filter((t) => t !== 'dontcare').map((tier) => ({
     tier, items: selectedPooled.filter((i) => i.tier === tier),
   })).filter((b) => b.items.length > 0);
+  const hasExperiential = selectedPooled.some((item) => isExperientialCriterion(item.categoryKey, item.label));
 
   const setTier = (categoryKey, label, tier) => patch((n) => {
     n[categoryKey] = { ...n[categoryKey], tiers: { ...n[categoryKey].tiers, [label]: tier } };
@@ -95,29 +94,23 @@ export default function PriorityBoard({ priorities, patch }) {
 
   return (
     <div>
-      {/* Selected criteria, grouped by importance — the primary board. */}
+      {/* Selected preferences remain tier-sorted, without turning tiers into the visual headline. */}
       {buckets.length > 0 ? (
-        <div style={{ display: 'grid', gap: 18, marginBottom: 22 }}>
-          {buckets.map(({ tier, items }) => (
-            <div key={tier}>
-              <div style={{ fontSize: 11.5, fontWeight: 700, color: TIER_META[tier].color, textTransform: 'uppercase', letterSpacing: '.04em', marginBottom: 8 }}>
-                {TIER_META[tier].label}
-              </div>
-              <div style={{ display: 'grid', gap: 2 }}>
-                {items.map((item) => (
-                  <div key={`${item.categoryKey}:${item.label}`} style={{ padding: '7px 0', borderBottom: '1px solid var(--line)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                      <span style={{ fontSize: 13.5, color: 'var(--ink)' }}>{criterionDisplayLabel(item.categoryKey, item.label)}</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <TierPicker value={item.tier} onChange={(tier) => setTier(item.categoryKey, item.label, tier)} />
+        <div className="hh-priority-editor-wrap">
+          {hasExperiential && <p className="hh-post-tour-key"><span aria-hidden="true">*</span> Best answered after you tour</p>}
+          <div className="hh-priority-editor-grid">
+            {buckets.flatMap(({ items }) => items).map((item) => (
+                  <div className="hh-priority-editor-item" key={`${item.categoryKey}:${item.label}`}>
+                    <div className="hh-priority-editor-name">
+                      {criterionDisplayLabel(item.categoryKey, item.label)}
+                      {isExperientialCriterion(item.categoryKey, item.label) && <span className="hh-experiential-marker" title="Best answered after you tour" aria-label="Best answered after you tour">*</span>}
+                    </div>
+                    <div className="hh-priority-editor-actions">
+                        <TierPicker quiet ariaLabel={`Importance for ${criterionDisplayLabel(item.categoryKey, item.label)}`} value={item.tier} onChange={(tier) => setTier(item.categoryKey, item.label, tier)} />
                         <button type="button" onClick={() => removeItem(item.categoryKey, item.label)} aria-label={`Remove ${criterionDisplayLabel(item.categoryKey, item.label)}`} style={{ background: 'none', border: 'none', color: 'var(--ink-soft)', cursor: 'pointer', padding: 4, display: 'flex' }}>
                           <X size={13} />
                         </button>
-                      </div>
                     </div>
-                    {item.kind === 'rating' && (
-                      <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', marginTop: 3 }}>We&apos;ll ask after you tour.</div>
-                    )}
                     {/* Schools gets one, narrowly-scoped exception: a personal preference
                         note, since "matters to me" alone doesn't say WHAT matters. This is
                         deliberately not a generic pattern — only Schools currently needs it. */}
@@ -131,17 +124,15 @@ export default function PriorityBoard({ priorities, patch }) {
                       />
                     )}
                   </div>
-                ))}
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       ) : (
         <p style={{ fontSize: 13, color: 'var(--ink-soft)', fontStyle: 'italic', marginBottom: 18 }}>Nothing selected yet — tap anything below that matters to you.</p>
       )}
 
       {/* Suggestion bank — grouped by category for discovery, tap to add. */}
-      <div style={{ display: 'grid', gap: 16 }}>
+      <div className="hh-suggestion-grid">
         {pools.map(({ def, core, custom, suggestions }) => {
           const known = [...core, ...custom];
           const unselectedKnown = known.filter((item) => tierOf(def, item.label) === 'dontcare');
@@ -161,6 +152,16 @@ export default function PriorityBoard({ priorities, patch }) {
                   </button>
                 ))}
               </div>
+              {(def.specificItems || []).length > 0 && (
+                <details className="hh-specific-preferences">
+                  <summary>More specific preferences</summary>
+                  <div className="hh-specific-tray">
+                    {def.specificItems.filter((item) => tierOf(def, item.label) === 'dontcare' && !customLabels.has(item.label)).map((item) => (
+                      <button key={item.label} type="button" className="hh-chip" aria-pressed="false" onClick={() => selectItem(def, item)}>{criterionDisplayLabel(def.key, item.label)}</button>
+                    ))}
+                  </div>
+                </details>
+              )}
             </div>
           );
         })}

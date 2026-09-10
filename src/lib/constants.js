@@ -38,7 +38,11 @@ export const EXTERIOR_SUGGESTED = [
 ];
 
 export const FEATURES_CORE = ['Basement', 'Fireplace', 'Primary Ensuite'].map((label) => ({ label, kind: 'check' }));
-export const FEATURES_SUGGESTED = ['Central Air', 'Home Office', 'Finished Basement', 'Walkout Basement', 'First-Floor Laundry', 'Mudroom', 'Pantry', 'Storage', 'Updated Kitchen', 'Updated Bathrooms', 'Walk-In Closet', 'Additional Living Space', 'Guest / In-Law Suite', 'Basement Bedroom'].map((label) => ({ label, kind: 'check' }));
+export const FEATURES_SUGGESTED = ['Central Air', 'Home Office', 'Finished Basement', 'Walkout Basement', 'First-Floor Laundry', 'Mudroom', 'Pantry', 'Storage', 'Updated Kitchen', 'Updated Bathrooms', 'Walk-In Closet', 'Additional Living Space'].map((label) => ({ label, kind: 'check' }));
+// These remain part of the catalog and can still be selected, but live behind the
+// "More specific preferences" disclosure instead of occupying the common bank.
+// Existing selections are also recovered from stored tiers by splitCategoryItems.
+export const FEATURES_SPECIFIC = ['Guest / In-Law Suite', 'Basement Bedroom'].map((label) => ({ label, kind: 'check' }));
 
 // "Privacy" exists as two independent criteria (Exterior & Property, and Home Feel) —
 // a legitimate distinction (outdoor/yard privacy vs. privacy from neighbors' sightlines
@@ -144,7 +148,7 @@ export function getItemlistCategories(searchType) {
   const features = isRental
     ? {
         key: 'features', title: 'Home Features', blurb: "Specific things the home either has or doesn't.",
-        coreItems: [], suggestedItems: RENTAL_FEATURES, defaultCustomKind: 'check',
+        coreItems: [], suggestedItems: RENTAL_FEATURES, specificItems: FEATURES_SPECIFIC, defaultCustomKind: 'check',
       }
     : {
         key: 'features', title: 'Home Features', blurb: "Specific things the home either has or doesn't.",
@@ -153,6 +157,7 @@ export function getItemlistCategories(searchType) {
           ...FEATURES_SUGGESTED,
           ...(isInvestment ? [{ label: 'Separate Utilities', kind: 'check' }, { label: 'Unit Configuration', kind: 'check' }] : []),
         ],
+        specificItems: isInvestment ? [] : FEATURES_SPECIFIC,
         defaultCustomKind: 'check',
       };
 
