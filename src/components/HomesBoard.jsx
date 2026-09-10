@@ -246,8 +246,8 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
             const shown = commuteDestinations.slice(0, 2);
             const overflow = commuteDestinations.length - shown.length;
             return (
-              <div className="hh-card-context-group">
-                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: '.03em' }}>Commute</div>
+              <div className="hh-card-commute">
+                <div className="hh-card-commute-label">Commute</div>
                 {shown.map((d) => {
                   const state = getCommuteState(d);
                   const name = d.label;
@@ -257,7 +257,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
                     : state.status === 'destination_ambiguous' ? `${name} · Add a city or ZIP`
                     : ['unavailable', 'no_route', 'home_unavailable', 'destination_unavailable'].includes(state.status) ? `${name} · Not available`
                     : name;
-                  return <div key={d.id} style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{text}</div>;
+                  return <div className="hh-card-commute-route" key={d.id}>{text}</div>;
                 })}
                 {overflow > 0 && <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>+{overflow} more</div>}
               </div>
