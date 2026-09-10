@@ -6,10 +6,11 @@ import PriorityBoard from '@/components/PriorityBoard';
 import CommuteDestinations from '@/components/CommuteDestinations';
 import SchoolsRelevanceGate from '@/components/SchoolsRelevanceGate';
 import CoBuyerManagement from '@/components/CoBuyerManagement';
+import InviteCoBuyer from '@/components/InviteCoBuyer';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, INVESTMENT_PROPERTY_TYPES, INVESTMENT_LIVING_PLAN_OPTIONS,
   isSimpleRentalType, showsMultiselectCategory, terminology, toggleWithNoPreference,
-  normalizePriorities, searchTypeLabel,
+  normalizePriorities, searchTypeLabel, getItemlistCategories,
 } from '@/lib/constants';
 import { PROPERTY_TYPE_LABELS, searchIntentCapabilities } from '@/lib/searchIntent';
 import { createClient } from '@/lib/supabase/client';
@@ -244,7 +245,32 @@ function WhatMattersCard({ priorities, patch }) {
   );
 }
 
-export default function MySearchPanel({ search, userId, isOwner, participantCount, memberUserId, initialPriorities, initialCommuteDestinations }) {
+function CollaboratorContextCard({ context }) {
+  if (!context) return null;
+  const priorities = normalizePriorities(context.priorities);
+  const boardItems = getItemlistCategories(priorities.searchType).flatMap((category) =>
+    Object.entries(priorities[category.key]?.tiers || {})
+      .filter(([, tier]) => tier && tier !== 'dontcare')
+      .map(([label, tier]) => ({ label, tier }))
+  );
+  const structured = [
+    ['Maximum price', priorities.budget], ['Minimum bedrooms', priorities.bedsMin],
+    ['Minimum bathrooms', priorities.bathsMin], ['Minimum square footage', priorities.sqftTarget],
+    ['Minimum lot size', priorities.lotSizeTarget], ['Property type', priorities.preferredPropertyTypes],
+    ['Home layout', priorities.homeLayout], ['Home condition', priorities.homeCondition],
+  ].filter(([, value]) => value?.tier && value.tier !== 'dontcare' && (value.value || value.values?.length))
+    .map(([label, value]) => ({ label: `${label}: ${value.value || value.values.join(', ')}`, tier: value.tier }));
+  const items = [...structured, ...boardItems];
+  const places = context.commuteDestinations || [];
+  return (
+    <SearchCard title="Collaborator perspective" subtitle="Read-only. These priorities and places remain under your collaborator's control.">
+      {items.length ? <div className="hh-collaborator-priorities">{items.map((item) => <span key={`${item.label}-${item.tier}`} className="hh-chip"><b>{item.label}</b> · {item.tier === 'must' ? 'Must Have' : item.tier === 'important' ? 'Important' : 'Nice to Have'}</span>)}</div> : <p className="hh-detail-context">Your collaborator hasn&apos;t added priority-board preferences yet.</p>}
+      {places.length > 0 && <div className="hh-collaborator-places"><strong>Places that matter</strong>{places.map((place) => <p key={`${place.label}-${place.address}`}><b>{place.label}</b> · {place.address}{place.maxDriveMinutes != null ? ` · ${place.maxDriveMinutes} min max` : ''}</p>)}</div>}
+    </SearchCard>
+  );
+}
+
+export default function MySearchPanel({ search, userId, isOwner, participantCount, memberUserId, initialPriorities, initialCommuteDestinations, collaboratorContext = null }) {
   const initial = normalizePriorities(initialPriorities);
   const persistPriorities = useCallback((next) => savePriorities(createClient(), search, userId, next), [search, userId]);
   const { state: priorities, patch, saveError, retry } = useReliableOptimisticState(initial, persistPriorities);
@@ -258,9 +284,18 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
 
       <WhatMattersCard priorities={p} patch={patch} />
 
-      <SearchCard title="Places that matter" subtitle="Add the places you travel to regularly. We'll show you how far each home is from them. Private to you.">
+      <CollaboratorContextCard context={collaboratorContext} />
+
+      <SearchCard title="Places that matter" subtitle="Add the places you travel to regularly. We'll show you how far each home is from them. In a shared search, collaborators can see these places, but only you can change yours.">
         <CommuteDestinations searchId={search.id} userId={userId} destinations={commuteDestinations} onChange={setCommuteDestinations} hideHeader />
       </SearchCard>
+
+      {isOwner && participantCount <= 1 && (
+        <section className="hh-collaboration-entry hh-corner">
+          <div><div className="hh-serif">Searching together?</div><p>Invite someone to compare the same homes while keeping each person&apos;s perspective under their own control.</p></div>
+          <InviteCoBuyer searchId={search.id} userId={userId} />
+        </section>
+      )}
 
       <CoBuyerManagement
         userId={userId}

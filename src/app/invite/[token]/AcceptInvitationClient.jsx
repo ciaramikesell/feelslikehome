@@ -10,7 +10,7 @@ const REASON_COPY = {
   not_found: "This invite link doesn't look right. Double-check the link, or ask for a new one.",
   already_accepted: 'This invite has already been used.',
   revoked: 'This invite has been cancelled by the person who sent it.',
-  expired: 'This invite has expired. Ask your co-buyer to send a new one.',
+  expired: 'This invite has expired. Ask your collaborator to send a new one.',
   self_invite: "You can't accept an invite you sent yourself.",
   wrong_account: "This invite was sent to a different email address than the one you're signed in with. Sign in with the invited email and try again.",
   not_authenticated: 'Please sign in first.',
@@ -69,12 +69,13 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
 
         {state === 'valid' && (
           <>
-            <h1 className="hh-serif" style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', margin: '0 0 8px' }}>You've been invited to a shared home search</h1>
+            <h1 className="hh-serif" style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', margin: '0 0 8px' }}>You&apos;ve been invited to search together</h1>
             <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', lineHeight: 1.55, margin: '0 0 20px' }}>
-              Home details and notes are shared. Your priorities, Match, feelings, and choices stay yours.
+              You&apos;ll share the same collection of homes and be able to see each other&apos;s search preferences and opinions. Your ratings and preferences stay under your control—no one else can change them for you.
             </p>
+            <p className="hh-collaboration-consent">This includes priorities, Match, Favorites, Want to Tour choices, commute destinations, notes, Overall Feeling, and post-tour ratings. Only participants in this search can see its activity.</p>
             <button type="button" className="hh-btn" style={{ width: '100%', justifyContent: 'center' }} onClick={accept}>
-              Accept invitation
+              Join search
             </button>
           </>
         )}

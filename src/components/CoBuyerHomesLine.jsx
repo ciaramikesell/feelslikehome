@@ -14,7 +14,7 @@ export default function CoBuyerHomesLine({ searchId, userId, isOwner, isCollabor
   if (isCollaborative) {
     return (
       <p className="hh-cobuyer-context">
-        You're searching with a co-buyer.
+        You&apos;re searching with a collaborator.
       </p>
     );
   }
@@ -39,7 +39,7 @@ export default function CoBuyerHomesLine({ searchId, userId, isOwner, isCollabor
           font: 'inherit', fontSize: 13, fontWeight: 500, color: 'var(--brick)',
         }}
       >
-        Searching together? <span style={{ textDecoration: 'underline' }}>Add a search partner →</span>
+        Searching together? <span style={{ textDecoration: 'underline' }}>Invite collaborator →</span>
       </button>
     </p>
   );

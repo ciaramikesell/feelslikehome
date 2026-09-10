@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import CompareBoard from '@/components/CompareBoard';
 import { PageIntro } from '@/components/ui';
 import { isArchivedStatus, normalizePriorities } from '@/lib/constants';
-import { resolveActiveSearch, resolvePriorities, getHomesForUser, getCommuteDestinations, resolveCoBuyerComparePerspectives } from '@/lib/supabase/collaboration';
+import { resolveActiveSearch, resolvePriorities, getHomesForUser, getCommuteDestinations, resolveCoBuyerComparePerspectives, resolveCollaboratorSearchContext } from '@/lib/supabase/collaboration';
 
 export default async function ComparePage() {
   const supabase = await createClient();
@@ -14,7 +14,12 @@ export default async function ComparePage() {
     getCommuteDestinations(supabase, search.id, user.id),
   ]);
   const activeHomes = homes.filter((h) => !isArchivedStatus(h.status));
-  const coBuyerPerspectives = await resolveCoBuyerComparePerspectives(supabase, search, activeHomes.map((home) => home.id));
+  const [coBuyerPerspectives, collaboratorContext] = await Promise.all([
+    resolveCoBuyerComparePerspectives(supabase, search, activeHomes.map((home) => home.id)),
+    resolveCollaboratorSearchContext(supabase, search),
+  ]);
+  const collaboratorState = new Map((collaboratorContext?.homeStates || []).map((state) => [state.homeId, state]));
+  const visiblePerspectives = Object.fromEntries([...coBuyerPerspectives].map(([homeId, perspective]) => [homeId, { ...perspective, state: collaboratorState.get(homeId) || null }]));
 
   return (
     <>
@@ -22,7 +27,7 @@ export default async function ComparePage() {
       <CompareBoard
         homes={activeHomes}
         priorities={normalizePriorities(priorities)}
-        coBuyerPerspectives={Object.fromEntries(coBuyerPerspectives)}
+        coBuyerPerspectives={visiblePerspectives}
         commuteDestinations={commuteDestinations}
       />
     </>

@@ -144,6 +144,17 @@ export async function resolveCoBuyerComparePerspectives(supabase, search, homeId
   }]));
 }
 
+// Read-only, search-scoped collaboration context. The RPC verifies that the
+// caller belongs to the search and returns only the other current participant's
+// search preferences and intentionally-added places; writes remain own-row-only.
+export async function resolveCollaboratorSearchContext(supabase, search) {
+  if (!search) return null;
+  const { data, error } = await supabase.rpc('resolve_collaborator_search_context', { p_search_id: search.id });
+  if (error) throw error;
+  const row = data?.[0];
+  return row ? { priorities: row.priorities || {}, commuteDestinations: row.commute_destinations || [], homeStates: row.home_states || [] } : null;
+}
+
 // Saves priorities only to the authenticated participant's row, for owners
 // and co-buyers alike.
 export async function savePriorities(supabase, search, userId, priorities) {

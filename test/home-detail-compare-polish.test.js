@@ -26,7 +26,7 @@ test('Home Detail editor is attached to the dossier and reuses canonical persist
 
 test('Home Detail keeps participant relationship writes on the personal path', () => {
   assert.match(detail, /saveHomePersonalState\(createClient\(\), next, userId, searchId\)/);
-  assert.match(detail, /These choices are yours\. Your co-buyer keeps their own\./);
+  assert.match(detail, /These choices are yours to control\. Your collaborator can see them and keeps their own\./);
   assert.match(detail, /savePersonal\(toggleFavorite\(home\)\)/);
   assert.match(detail, /savePersonal\(\{ status: home\.status === 'Want to Tour'/);
 });
