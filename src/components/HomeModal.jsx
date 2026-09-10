@@ -13,6 +13,7 @@ import { splitAddressLines, formatFoundCardFacts, countFoundFacts, formatCurrenc
 import { createClient } from '@/lib/supabase/client';
 import { hasToured } from '@/lib/lifecycle';
 import { HOME_PROPERTY_TYPE_OPTIONS, PROPERTY_TYPE_LABELS, searchIntentCapabilities } from '@/lib/searchIntent';
+import { EXISTING_STRUCTURED_FACT_VALUE, structuredFactSelectValue, structuredFactValueFromSelect } from '@/lib/homeStructuredFacts';
 
 const PHOTO_BUCKET = 'home-photos';
 const ALLOWED_PHOTO_TYPES = { 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
@@ -68,6 +69,22 @@ function CompactField({ label, value, onChange, isCurrency, placeholder, must, c
         onChange={(e) => onChange(isCurrency ? digitsOnly(e.target.value) : e.target.value)}
         placeholder={placeholder}
       />
+    </div>
+  );
+}
+
+function StructuredFactSelect({ definition, value, onChange, must, coBuyerOnly }) {
+  const choices = definition.options.filter((option) => option !== 'No Preference');
+  const selected = Array.isArray(value) ? value : [];
+  const currentValue = structuredFactSelectValue(selected, choices);
+  return (
+    <div>
+      <label className="hh-label" htmlFor={`home-${definition.key}`}>{definition.title}{must && <span className="hh-must-badge">MUST</span>}{coBuyerOnly && <CoBuyerOnlyHelper />}</label>
+      <select id={`home-${definition.key}`} className="hh-input" value={currentValue} onChange={(event) => onChange(structuredFactValueFromSelect(event.target.value))}>
+        <option value="">Unknown / not specified</option>
+        {currentValue === EXISTING_STRUCTURED_FACT_VALUE && <option value={EXISTING_STRUCTURED_FACT_VALUE} disabled>{selected.join(', ')}</option>}
+        {choices.map((choice) => <option key={choice} value={choice}>{choice}</option>)}
+      </select>
     </div>
   );
 }
@@ -303,11 +320,6 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     else next[k] = value;
     return { ...f, checks: next };
   });
-  const toggleMulti = (catKey, opt) => setForm((f) => {
-    const current = f[catKey] || [];
-    return { ...f, [catKey]: current.includes(opt) ? current.filter((x) => x !== opt) : [...current, opt] };
-  });
-
   const runAutofill = () => {
     const parsed = parseListingText(pasteText, priorities.searchType);
     const additions = Object.entries(parsed).filter(([k, v]) =>
@@ -729,29 +741,17 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
               <div className="hh-property-facts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 18 }}>
                 <CompactField label="Basement" value={form.basementNotes} onChange={(v) => set('basementNotes', v)} placeholder="e.g. Finished walkout" coBuyerOnly={sharedFactAwareness.basementNotes?.coBuyerOnly} />
                 <CompactField label="School details" value={form.schoolsNotes} onChange={(v) => set('schoolsNotes', v)} placeholder="Add school-related notes" coBuyerOnly={sharedFactAwareness.schoolsNotes?.coBuyerOnly} />
-                <CompactField label="Condition notes" value={form.conditionNotes} onChange={(v) => set('conditionNotes', v)} placeholder="e.g. Roof 3 years old" coBuyerOnly={sharedFactAwareness.homeCondition?.coBuyerOnly} />
+                {visibleMultiselect.map((def) => <StructuredFactSelect key={def.key} definition={def} value={form[def.key]} onChange={(value) => set(def.key, value)} must={priorities[def.key]?.tier === 'must'} coBuyerOnly={sharedFactAwareness[def.key]?.coBuyerOnly} />)}
               </div>
 
-              {visibleMultiselect.length > 0 && (
+              {visibleSingleselect.length > 0 && (
                 <div style={{ marginBottom: 16 }}>
-                  {visibleMultiselect.map((def) => (
-                    <div key={def.key} style={{ marginBottom: 16 }}>
-                      <label className="hh-label">{def.title}{priorities[def.key]?.tier === 'must' && <span className="hh-must-badge">MUST</span>}{sharedFactAwareness[def.key]?.coBuyerOnly && <CoBuyerOnlyHelper />}</label>
+                  {visibleSingleselect.map((d) => (
+                    <div key={d.key} style={{ marginBottom: 10 }}>
+                      <label className="hh-label">{d.title}{priorities[d.key]?.tier === 'must' && <span className="hh-must-badge">MUST</span>}{sharedFactAwareness[d.key]?.coBuyerOnly && <CoBuyerOnlyHelper />}</label>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        {def.options.filter((o) => o !== 'No Preference').map((o) => <button type="button" key={o} className={`hh-chip ${form[def.key]?.includes(o) ? 'on' : ''}`} aria-pressed={form[def.key]?.includes(o)} onClick={() => toggleMulti(def.key, o)}>{o}</button>)}
+                        {d.options.filter((o) => o !== 'No Preference').map((o) => <button type="button" key={o} className={`hh-chip ${form[d.key] === o ? 'on' : ''}`} aria-pressed={form[d.key] === o} onClick={() => setForm((f) => ({ ...f, [d.key]: f[d.key] === o ? '' : o }))}>{o}</button>)}
                       </div>
-                      {def.key === 'homeLayout' && visibleSingleselect.length > 0 && (
-                        <div style={{ marginTop: 12, paddingLeft: 14, borderLeft: '2px solid var(--line)' }}>
-                          {visibleSingleselect.map((d) => (
-                            <div key={d.key} style={{ marginBottom: 10 }}>
-                              <label className="hh-label">{d.title}{priorities[d.key]?.tier === 'must' && <span className="hh-must-badge">MUST</span>}{sharedFactAwareness[d.key]?.coBuyerOnly && <CoBuyerOnlyHelper />}</label>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                {d.options.filter((o) => o !== 'No Preference').map((o) => <button type="button" key={o} className={`hh-chip ${form[d.key] === o ? 'on' : ''}`} aria-pressed={form[d.key] === o} onClick={() => setForm((f) => ({ ...f, [d.key]: f[d.key] === o ? '' : o }))}>{o}</button>)}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -837,7 +837,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
             <div><label className="hh-label">Pros</label><textarea className="hh-textarea" value={form.pros} onChange={(e) => set('pros', e.target.value)} /></div>
             <div><label className="hh-label">Cons</label><textarea className="hh-textarea" value={form.cons} onChange={(e) => set('cons', e.target.value)} /></div>
           </div>
-          <div><label className="hh-label">Notes</label><textarea className="hh-textarea" value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Anything else worth remembering..." /></div>
+          <div><label className="hh-label">Anything else you want to remember?</label><textarea className="hh-textarea" value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="HOA details, sewer/water, financing options, recent updates, listing terms, or anything else worth noting." /></div>
         </section>
 
         {!isNewHome && (

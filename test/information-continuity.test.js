@@ -2,24 +2,37 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { computeMatch, summarizeForCard } from '../src/lib/matching.js';
-import { defaultPriorities, emptyHome, TIER_META } from '../src/lib/constants.js';
+import { defaultPriorities, emptyHome, HOME_CONDITION_OPTIONS, LAYOUT_OPTIONS, TIER_META } from '../src/lib/constants.js';
+import { EXISTING_STRUCTURED_FACT_VALUE, structuredFactSelectValue, structuredFactValueFromSelect } from '../src/lib/homeStructuredFacts.js';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('home layout and condition retain canonical shared-fact controls without preference values', () => {
+test('home layout and condition use compact selects with canonical array persistence', () => {
   const modal = read('src/components/HomeModal.jsx');
-  assert.match(modal, /visibleMultiselect\.map/);
-  assert.match(modal, /def\.options\.filter\(\(o\) => o !== 'No Preference'\)/);
+  assert.match(modal, /<StructuredFactSelect/);
+  assert.match(modal, /definition\.options\.filter\(\(option\) => option !== 'No Preference'\)/);
+  assert.doesNotMatch(modal, /toggleMulti/);
   assert.deepEqual(emptyHome().homeLayout, []);
   assert.deepEqual(emptyHome().homeCondition, []);
-  assert.match(read('src/lib/supabase/collaboration.js'), /home_layout: home\.homeLayout \|\| \[\]/);
-  assert.match(read('src/lib/supabase/collaboration.js'), /home_condition: Array\.isArray\(home\.homeCondition\)/);
+  assert.deepEqual(LAYOUT_OPTIONS, ['Ranch / Single Story', 'Two Story', 'Split Level', 'Other', 'No Preference']);
+  assert.deepEqual(HOME_CONDITION_OPTIONS, ['New Construction', 'Move-In Ready', 'Renovation Potential', 'No Preference']);
+  assert.deepEqual(structuredFactValueFromSelect('Two Story'), ['Two Story']);
+  assert.deepEqual(structuredFactValueFromSelect('Move-In Ready'), ['Move-In Ready']);
+  assert.deepEqual(structuredFactValueFromSelect(''), []);
+  assert.equal(structuredFactSelectValue(['Split Level'], ['Split Level']), 'Split Level');
+  assert.equal(structuredFactSelectValue([], ['Split Level']), '');
+  assert.equal(structuredFactSelectValue(['Ranch / Single Story', 'Other'], ['Ranch / Single Story', 'Other']), EXISTING_STRUCTURED_FACT_VALUE);
+  const collaboration = read('src/lib/supabase/collaboration.js');
+  assert.match(collaboration, /homeLayout: row\.home_layout \|\| \[\]/);
+  assert.match(collaboration, /homeCondition: Array\.isArray\(row\.home_condition\)/);
+  assert.match(collaboration, /home_layout: home\.homeLayout \|\| \[\]/);
+  assert.match(collaboration, /home_condition: Array\.isArray\(home\.homeCondition\)/);
 });
 
-test('condition notes stay a separate lossless shared fact', () => {
+test('condition notes leave the editor but remain a lossless shared fact', () => {
   const modal = read('src/components/HomeModal.jsx');
   const collaboration = read('src/lib/supabase/collaboration.js');
-  assert.match(modal, /label="Condition notes" value=\{form\.conditionNotes\}/);
+  assert.doesNotMatch(modal, /label="Condition notes"/);
   assert.match(collaboration, /conditionNotes: row\.condition_notes \|\| ''/);
   assert.match(collaboration, /condition_notes: home\.conditionNotes \|\| ''/);
 });
