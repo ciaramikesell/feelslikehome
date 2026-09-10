@@ -315,7 +315,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
         <>
           {/* Identification + the big picture: Match and Overall Feeling */}
           <div className="hh-compare-identity-scroll">
-            <div className="hh-compare-identity-grid" style={{ '--compare-count': selected.length }}>
+            <div className="hh-compare-identity-grid" data-count={selected.length} style={{ '--compare-count': selected.length }}>
               {selected.map((h, i) => (
                 <HomeHeaderCard key={h.id} home={h} match={matches[i]} isFavorite={h.isFavorite} coBuyerPerspective={coBuyerPerspectives[h.id]} searchType={priorities.searchType} />
               ))}
