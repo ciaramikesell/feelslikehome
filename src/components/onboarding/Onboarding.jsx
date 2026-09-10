@@ -9,7 +9,7 @@ import SchoolsRelevanceGate from '@/components/SchoolsRelevanceGate';
 import CommuteDestinations from '@/components/CommuteDestinations';
 import {
   SEARCH_TYPE_OPTIONS, LAYOUT_OPTIONS, HOME_CONDITION_OPTIONS, INVESTMENT_PROPERTY_TYPES, INVESTMENT_LIVING_PLAN_OPTIONS,
-  TIER_META, TIER_DESCRIPTIONS, isSimpleRentalType, showsHomeLayout, showsMultiselectCategory, terminology, toggleWithNoPreference, getItemlistCategories,
+  isSimpleRentalType, showsHomeLayout, showsMultiselectCategory, terminology, toggleWithNoPreference, getItemlistCategories,
   normalizePriorities,
 } from '@/lib/constants';
 import { PROPERTY_TYPE_LABELS, searchIntentCapabilities } from '@/lib/searchIntent';
@@ -18,12 +18,6 @@ import { useReliableOptimisticState } from '@/lib/useReliableOptimisticState';
 import { completeOnboarding } from '@/lib/supabase/data';
 import { savePriorities } from '@/lib/supabase/collaboration';
 import BetaFeedback from '@/components/BetaFeedback';
-
-const TIER_LEGEND = [
-  { key: 'must', title: 'Must Have', desc: TIER_DESCRIPTIONS.must },
-  { key: 'important', title: 'Important', desc: TIER_DESCRIPTIONS.important },
-  { key: 'nice', title: 'Nice to Have', desc: TIER_DESCRIPTIONS.nice },
-];
 
 function OnboardingProgress({ step }) {
   const steps = [{ n: 1, label: 'The basics' }, { n: 2, label: 'What matters' }, { n: 3, label: "You're ready" }];
@@ -218,17 +212,8 @@ function OnboardingStep2({ priorities, patch, onNext, onBack, searchId, userId, 
         <SchoolsRelevanceGate priorities={priorities} patch={patch} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-        {TIER_LEGEND.map((t) => (
-          <div key={t.key} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: '8px 10px' }}>
-            <div style={{ fontSize: 11.5, fontWeight: 700, color: TIER_META[t.key].color }}>{t.title}</div>
-            <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginTop: 2 }}>{t.desc}</div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-        <PriorityBoard priorities={priorities} patch={patch} />
+      <div className="hh-onboarding-priority-board" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <PriorityBoard priorities={priorities} patch={patch} onboarding />
       </div>
 
       {(capabilities.isPurchase || capabilities.isRental) && (
@@ -321,7 +306,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
 
   return (
     <div className="hh-root">
-      <OnboardingShell maxWidth={step === 3 ? 480 : 640}>
+      <OnboardingShell maxWidth={step === 3 ? 480 : step === 2 ? 900 : 640}>
         {(saveError || finishError) && <p className="hh-save-error" role="alert">{saveError || finishError} <button type="button" onClick={saveError ? retry : () => onFinish('add-home')}>Retry</button></p>}
         {step !== 3 && (
           <div className="hh-onboarding-brand" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

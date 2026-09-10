@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
-import { DEFAULT_SELECTED_TIER, TIER_META, TIER_ORDER, criterionDisplayLabel, getItemlistCategories, effectiveTier, isSchoolsSuppressed, isExperientialCriterion } from '@/lib/constants';
+import { DEFAULT_SELECTED_TIER, TIER_DESCRIPTIONS, TIER_META, TIER_ORDER, criterionDisplayLabel, getItemlistCategories, effectiveTier, isSchoolsSuppressed, isExperientialCriterion } from '@/lib/constants';
 import { selectPriorityItem, splitCategoryItems } from '@/lib/matching';
 import SchoolsRelevanceGate from '@/components/SchoolsRelevanceGate';
 
 // The selected board has one canonical appearance. Adding reveals discovery
 // controls beneath it; it never swaps the board for a configuration surface.
 // Tier changes use the existing category tier map, with no within-tier order.
-export default function PriorityBoard({ priorities, patch }) {
+export default function PriorityBoard({ priorities, patch, onboarding = false }) {
   const categories = getItemlistCategories(priorities.searchType);
   const [addOpen, setAddOpen] = useState(false);
   const [activeItem, setActiveItem] = useState(null);
@@ -18,6 +18,7 @@ export default function PriorityBoard({ priorities, patch }) {
   const [newItem, setNewItem] = useState('');
   const [newItemCategory, setNewItemCategory] = useState(categories[0]?.key || '');
   const schoolsSuppressed = isSchoolsSuppressed(priorities);
+  const choicesOpen = onboarding || addOpen;
 
   const isSchoolsItem = (def, item) => def.key === 'location' && item.label === 'Schools';
   const pools = categories.map((def) => {
@@ -80,7 +81,7 @@ export default function PriorityBoard({ priorities, patch }) {
 
   return (
     <div>
-      {selected.length || addOpen ? (
+      {selected.length || choicesOpen ? (
         <>
           {hasExperiential && <div className="hh-priority-legend"><span aria-hidden="true">*</span> Best answered after you tour</div>}
           <div className="hh-priority-tiers" aria-label="Selected preferences by importance">
@@ -93,6 +94,7 @@ export default function PriorityBoard({ priorities, patch }) {
                 onDrop={(event) => { event.preventDefault(); dropIntoTier(tier); }}
               >
                 <div className="hh-tier-heading" style={{ color: TIER_META[tier].color }}>{TIER_META[tier].label}</div>
+                {onboarding && <p className="hh-tier-description">{TIER_DESCRIPTIONS[tier]}</p>}
                 <div className="hh-selected-priorities">
                   {items.map((item) => {
                     const key = `${item.categoryKey}:${item.label}`;
@@ -137,14 +139,18 @@ export default function PriorityBoard({ priorities, patch }) {
         </>
       ) : <p className="hh-priority-empty">Nothing selected yet — add what matters to you anytime.</p>}
 
-      <button type="button" className="hh-btn hh-btn-ghost hh-add-priority-toggle" aria-expanded={addOpen} onClick={() => setAddOpen((open) => !open)}>
-        {addOpen ? 'Close choices' : selected.length ? '+ Add another priority' : '+ Add a priority'}
-      </button>
+      {!onboarding && (
+        <button type="button" className="hh-btn hh-btn-ghost hh-add-priority-toggle" aria-expanded={addOpen} onClick={() => setAddOpen((open) => !open)}>
+          {addOpen ? 'Close choices' : selected.length ? '+ Add another priority' : '+ Add a priority'}
+        </button>
+      )}
 
-      {addOpen && (
+      {choicesOpen && (
         <div className="hh-add-priority-panel">
-          <div className="hh-schools-gate"><SchoolsRelevanceGate priorities={priorities} patch={patch} /></div>
-          <p className="hh-add-priority-help">Drag any preference below into Must Have, Important, or Nice to Have. You can also drag your existing priorities between columns to change how much they matter.</p>
+          {!onboarding && <div className="hh-schools-gate"><SchoolsRelevanceGate priorities={priorities} patch={patch} /></div>}
+          <p className="hh-add-priority-help">{onboarding
+            ? 'Drag a preference into the column that matches how much it matters to you. You can move it later if you change your mind. You can also click a preference to add it.'
+            : 'Drag any preference below into Must Have, Important, or Nice to Have. You can also drag your existing priorities between columns to change how much they matter.'}</p>
           <div className="hh-suggestion-grid">
             {pools.map(({ def, core, custom, suggestions }) => {
               const unselected = [...core, ...custom].filter((item) => tierOf(def, item.label) === 'dontcare');
