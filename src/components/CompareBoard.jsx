@@ -275,7 +275,8 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
     return (
       <div className="hh-corner" style={{ border: '1px dashed var(--line)', borderRadius: 16, padding: '36px 24px', textAlign: 'center', color: 'var(--ink-soft)' }}>
         <Columns size={22} style={{ marginBottom: 8, opacity: 0.5 }} />
-        <p style={{ fontSize: 13.5 }}>Compare becomes useful once you have at least two homes to weigh against each other.</p>
+        <p className="hh-serif" style={{ fontSize: 18, color: 'var(--ink)', margin: '0 0 5px' }}>The showdown starts here.</p>
+        <p style={{ fontSize: 13.5 }}>Pick 2–4 homes and see how they stack up.</p>
         <Link className="hh-btn" href="/homes?add=1">{homes.length === 0 ? 'Add a home' : 'Add another home'}</Link>
       </div>
     );

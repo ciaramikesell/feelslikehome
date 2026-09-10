@@ -194,7 +194,8 @@ export default function PostTourModal({ home, priorities, isCollaborative = fals
 
         {/* 1. Overall feeling — the user's gut reaction, kept separate from Match. */}
         <div style={{ marginBottom: 20 }}>
-          <label className="hh-label" style={{ marginBottom: 8 }}>Overall, how did this home feel?</label>
+          <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 3px' }}>Forget the checklist for a second.</p>
+          <label className="hh-label" style={{ marginBottom: 8 }}>How did this home feel?</label>
           <StarInput value={ratings[TOUR_RATING_KEY] || 0} onChange={(v) => setRating(TOUR_RATING_KEY, v)} size={26} />
         </div>
 

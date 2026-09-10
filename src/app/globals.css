@@ -149,6 +149,10 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-home-card-photo.is-empty { background: #eee3d2; }
 .hh-home-card-photo-fallback { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: rgba(198,146,69,.08); }
 .hh-card-status { position: absolute; top: 12px; left: 12px; padding: 5px 10px; border-radius: 999px; box-shadow: 0 2px 8px rgba(46,38,33,.18); color: #fff; font-size: 10.5px; font-weight: 700; }
+.hh-flh-moment { position: absolute; right: 10px; bottom: 10px; max-width: calc(100% - 20px); padding: 6px 10px; border: 1px solid rgba(116,128,79,.34); border-radius: 999px; background: rgba(250,247,240,.94); box-shadow: 0 2px 9px rgba(46,38,33,.16); color: #4f5936; font-size: 10.5px; font-weight: 700; line-height: 1.25; text-align: right; }
+.hh-favorite-pop { animation: hh-favorite-pop 200ms ease-out; transform-origin: center; }
+@keyframes hh-favorite-pop { 0% { transform: scale(1); } 48% { transform: scale(1.22); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .hh-favorite-pop { animation: none; } }
 .hh-card-price-row { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
 .hh-card-context { display: grid; gap: 9px; }
 .hh-card-context-group { display: flex; flex-direction: column; gap: 4px; }
