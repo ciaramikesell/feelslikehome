@@ -33,10 +33,10 @@ function SearchCard({ title, subtitle, showHeader = true, children }) {
   );
 }
 
-function ObjectiveRow({ label, value, onValueChange, tier, onTierChange, placeholder, prefix, suffix }) {
+function ObjectiveRow({ label, value, onValueChange, tier, onTierChange, placeholder, prefix, suffix, wide = false }) {
   return (
-    <div className="hh-priority-row" style={{ alignItems: 'center' }}>
-      <div style={{ flex: '1 1 220px' }}>
+    <div className={`hh-basic-field ${wide ? 'hh-basic-field-wide' : ''}`}>
+      <div>
         <div className="hh-label" style={{ marginBottom: 4 }}>{label}</div>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
           {prefix && <span className="hh-mono" style={{ fontSize: 18, fontWeight: 700, color: 'var(--ink)' }}>{prefix}</span>}
@@ -44,7 +44,7 @@ function ObjectiveRow({ label, value, onValueChange, tier, onTierChange, placeho
           {suffix && <span style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>{suffix}</span>}
         </div>
       </div>
-      <TierPicker value={tier} onChange={onTierChange} />
+      <TierPicker value={tier} onChange={onTierChange} quiet ariaLabel={`${label} importance`} />
     </div>
   );
 }
@@ -73,7 +73,7 @@ function BedroomSubPreferences({ priorities, patch }) {
                 ))}
               </div>
             </div>
-            <TierPicker value={catState.tier} onChange={(t) => patch((next) => { next[def.key] = { ...next[def.key], tier: t }; return next; })} />
+            <TierPicker value={catState.tier} onChange={(t) => patch((next) => { next[def.key] = { ...next[def.key], tier: t }; return next; })} quiet ariaLabel={`${def.title} importance`} />
           </div>
         );
       })}
@@ -109,7 +109,7 @@ function MultiselectSection({ def, priorities, patch, children }) {
         <div style={{ flex: '1 1 220px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {options.map((o) => <button type="button" key={o} className={`hh-chip ${safeValues.includes(o) ? 'on' : ''}`} aria-pressed={safeValues.includes(o)} onClick={() => toggle(o)}>{o}</button>)}
         </div>
-        <TierPicker value={catState.tier} onChange={(t) => patch((next) => { next[key] = { ...next[key], tier: t }; return next; })} />
+        <TierPicker value={catState.tier} onChange={(t) => patch((next) => { next[key] = { ...next[key], tier: t }; return next; })} quiet ariaLabel={`${title} importance`} />
       </div>
       {children}
     </div>
@@ -169,11 +169,13 @@ function BasicsCard({ p, patch }) {
         </div>
       ) : (
         <div>
-          <ObjectiveRow label={terminology(p.searchType).budgetLabel} prefix="$" value={p.budget.value} onValueChange={(v) => patch((n) => { n.budget = { ...n.budget, value: v }; return n; })} tier={p.budget.tier} onTierChange={(t) => patch((n) => { n.budget = { ...n.budget, tier: t }; return n; })} placeholder={terminology(p.searchType).pricePlaceholder} />
-          <ObjectiveRow label="Minimum Square Footage" suffix="sqft" value={p.sqftTarget.value} onValueChange={(v) => patch((n) => { n.sqftTarget = { ...n.sqftTarget, value: v }; return n; })} tier={p.sqftTarget.tier} onTierChange={(t) => patch((n) => { n.sqftTarget = { ...n.sqftTarget, tier: t }; return n; })} placeholder="1,800" />
-          {!isSimpleRentalType(p.searchType) && <ObjectiveRow label="Minimum Lot Size" suffix="acres" value={p.lotSizeTarget.value} onValueChange={(v) => patch((n) => { n.lotSizeTarget = { ...n.lotSizeTarget, value: v }; return n; })} tier={p.lotSizeTarget.tier} onTierChange={(t) => patch((n) => { n.lotSizeTarget = { ...n.lotSizeTarget, tier: t }; return n; })} placeholder="0.25" />}
-          <ObjectiveRow label="Minimum Bedrooms" suffix="beds" value={p.bedsMin.value} onValueChange={(v) => patch((n) => { n.bedsMin = { ...n.bedsMin, value: v }; return n; })} tier={p.bedsMin.tier} onTierChange={(t) => patch((n) => { n.bedsMin = { ...n.bedsMin, tier: t }; return n; })} placeholder="3" />
-          <ObjectiveRow label="Minimum Bathrooms" suffix="baths" value={p.bathsMin.value} onValueChange={(v) => patch((n) => { n.bathsMin = { ...n.bathsMin, value: v }; return n; })} tier={p.bathsMin.tier} onTierChange={(t) => patch((n) => { n.bathsMin = { ...n.bathsMin, tier: t }; return n; })} placeholder="2" />
+          <div className="hh-basics-grid">
+            <ObjectiveRow wide label={terminology(p.searchType).budgetLabel} prefix="$" value={p.budget.value} onValueChange={(v) => patch((n) => { n.budget = { ...n.budget, value: v }; return n; })} tier={p.budget.tier} onTierChange={(t) => patch((n) => { n.budget = { ...n.budget, tier: t }; return n; })} placeholder={terminology(p.searchType).pricePlaceholder} />
+            <ObjectiveRow label="Minimum Square Footage" suffix="sqft" value={p.sqftTarget.value} onValueChange={(v) => patch((n) => { n.sqftTarget = { ...n.sqftTarget, value: v }; return n; })} tier={p.sqftTarget.tier} onTierChange={(t) => patch((n) => { n.sqftTarget = { ...n.sqftTarget, tier: t }; return n; })} placeholder="1,800" />
+            {!isSimpleRentalType(p.searchType) && <ObjectiveRow label="Minimum Lot Size" suffix="acres" value={p.lotSizeTarget.value} onValueChange={(v) => patch((n) => { n.lotSizeTarget = { ...n.lotSizeTarget, value: v }; return n; })} tier={p.lotSizeTarget.tier} onTierChange={(t) => patch((n) => { n.lotSizeTarget = { ...n.lotSizeTarget, tier: t }; return n; })} placeholder="0.25" />}
+            <ObjectiveRow label="Minimum Bedrooms" suffix="beds" value={p.bedsMin.value} onValueChange={(v) => patch((n) => { n.bedsMin = { ...n.bedsMin, value: v }; return n; })} tier={p.bedsMin.tier} onTierChange={(t) => patch((n) => { n.bedsMin = { ...n.bedsMin, tier: t }; return n; })} placeholder="3" />
+            <ObjectiveRow label="Minimum Bathrooms" suffix="baths" value={p.bathsMin.value} onValueChange={(v) => patch((n) => { n.bathsMin = { ...n.bathsMin, value: v }; return n; })} tier={p.bathsMin.tier} onTierChange={(t) => patch((n) => { n.bathsMin = { ...n.bathsMin, tier: t }; return n; })} placeholder="2" />
+          </div>
 
           {p.searchType === 'investment' && (
             <div style={{ marginTop: 18 }}>
@@ -211,7 +213,7 @@ function BasicsCard({ p, patch }) {
                     </button>;
                   })}
                 </div>
-                <TierPicker value={p.preferredPropertyTypes.tier} onChange={(tier) => patch((n) => { n.preferredPropertyTypes = { ...n.preferredPropertyTypes, tier }; return n; })} />
+                <TierPicker value={p.preferredPropertyTypes.tier} onChange={(tier) => patch((n) => { n.preferredPropertyTypes = { ...n.preferredPropertyTypes, tier }; return n; })} quiet ariaLabel="Property type importance" />
               </div>
               <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '6px 0 0' }}>This shapes Match when a home's type is known; it never filters homes out.</p>
             </div>
