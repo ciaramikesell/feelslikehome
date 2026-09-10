@@ -167,13 +167,17 @@ function MissingRow({ items }) {
   );
 }
 
-function NotConfirmedRow({ items }) {
-  if (!items.length) return null;
+function NotConfirmedRow({ preTourUnknown, afterTour }) {
+  if (!preTourUnknown.length && !afterTour.length) return null;
+  const phrases = [
+    preTourUnknown.length && `${preTourUnknown.length} ${preTourUnknown.length === 1 ? 'detail' : 'details'} still unknown`,
+    afterTour.length && `${afterTour.length} to answer after touring`,
+  ].filter(Boolean);
   return (
     <div style={{ fontSize: 12, color: 'var(--ink-soft)', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
       <HelpCircle size={13} style={{ marginTop: 2, flexShrink: 0 }} />
       <span>
-        <strong style={{ color: 'var(--ink)' }}>{items.length} need more information</strong>
+        <strong style={{ color: 'var(--ink)' }}>{phrases.join(' · ')}</strong>
       </span>
     </div>
   );
@@ -181,12 +185,12 @@ function NotConfirmedRow({ items }) {
 
 export function MatchTradeoffs({ match }) {
   if (!match) return null;
-  const { missing, notConfirmed } = summarizeForCard(match);
+  const { missing, notConfirmed, preTourUnknown, afterTour } = summarizeForCard(match);
   if (!missing.length && !notConfirmed.length) return null;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 2 }}>
       <MissingRow items={missing} />
-      <NotConfirmedRow items={notConfirmed} />
+      <NotConfirmedRow preTourUnknown={preTourUnknown} afterTour={afterTour} />
     </div>
   );
 }

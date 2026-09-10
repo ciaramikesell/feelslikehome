@@ -1,4 +1,4 @@
-import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier } from './constants.js';
+import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier, isExperientialCriterion } from './constants.js';
 import { normalizeSearchIntent } from './searchIntent.js';
 
 export function parseNum(v) {
@@ -463,13 +463,21 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
 // second scoring path. UNKNOWN criteria always land in notConfirmed, never
 // missing — this only ever reads computeMatch's own evaluated/met flags.
 export function summarizeForCard(match) {
-  if (!match) return { matches: [], missing: [], notConfirmed: [] };
+  if (!match) return { matches: [], missing: [], notConfirmed: [], preTourUnknown: [], afterTour: [] };
   const tierRank = { must: 0, important: 1, nice: 2, dontcare: 3 };
   const byTier = (a, b) => (tierRank[a.tier] ?? 3) - (tierRank[b.tier] ?? 3);
+  const notConfirmed = match.allSelected.filter((c) => !c.evaluated).sort(byTier);
+  const afterTour = notConfirmed.filter((criterion) => {
+    const separator = criterion.key.indexOf(':');
+    return separator > 0 && isExperientialCriterion(criterion.key.slice(0, separator), criterion.label);
+  });
+  const afterTourKeys = new Set(afterTour.map((criterion) => criterion.key));
   return {
     matches: match.allSelected.filter((c) => c.evaluated && c.met).sort(byTier),
     missing: match.allSelected.filter((c) => c.evaluated && c.met === false).sort(byTier),
-    notConfirmed: match.allSelected.filter((c) => !c.evaluated).sort(byTier),
+    notConfirmed,
+    preTourUnknown: notConfirmed.filter((criterion) => !afterTourKeys.has(criterion.key)),
+    afterTour,
   };
 }
 
