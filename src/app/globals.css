@@ -202,31 +202,27 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-tier-important { border-top-color: var(--moss); }
 .hh-tier-nice { border-top-color: #a9ae8c; }
 .hh-tier-heading { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 7px; }
-.hh-selected-priorities { display: grid; gap: 2px; }
-.hh-selected-priority { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 7px 0; border-bottom: 1px solid rgba(138,124,110,.12); color: var(--ink); font-size: 13px; line-height: 1.35; }
-.hh-selected-priority:last-child { border-bottom: 0; }
-.hh-priority-editor-wrap { margin-bottom: 24px; }
-.hh-post-tour-key { margin: 0 0 10px; color: var(--ink-soft); font-size: 11.5px; }
-.hh-post-tour-key span { color: var(--gold); font-weight: 700; }
-.hh-priority-board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; align-items: stretch; }
-.hh-priority-column { min-width: 0; padding: 13px 12px 12px; border: 1px solid rgba(138,124,110,.16); border-top: 3px solid; border-radius: 13px; transition: border-color .15s ease, box-shadow .15s ease, background .15s ease; }
-.hh-priority-column-must { border-top-color: var(--brick); background: rgba(193,89,47,.045); }
-.hh-priority-column-important { border-top-color: var(--moss); background: rgba(116,128,79,.055); }
-.hh-priority-column-nice { border-top-color: #b49a78; background: rgba(198,146,69,.045); }
-.hh-priority-column.is-drop-target { border-color: var(--brick); box-shadow: inset 0 0 0 2px rgba(193,89,47,.14); background: rgba(193,89,47,.08); }
-.hh-priority-column-heading { margin: 0 0 9px; color: var(--ink-soft); font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; }
-.hh-priority-column-must .hh-priority-column-heading { color: var(--brick); }
-.hh-priority-column-important .hh-priority-column-heading { color: var(--moss); }
-.hh-priority-column-nice .hh-priority-column-heading { color: #8d7354; }
-.hh-priority-column-items { display: grid; align-content: start; gap: 6px; }
-.hh-priority-board-item { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 5px; min-width: 0; padding: 6px 6px 6px 3px; border: 1px solid rgba(138,124,110,.16); border-radius: 9px; background: rgba(255,255,255,.72); }
-.hh-priority-board-item > .hh-input { grid-column: 2 / -1; }
-.hh-priority-editor-name { min-width: 0; color: var(--ink); font-size: 13px; font-weight: 650; line-height: 1.3; overflow-wrap: anywhere; }
-.hh-priority-editor-actions { display: flex; align-items: center; gap: 2px; }
-.hh-priority-drag-handle { display: flex; align-items: center; align-self: stretch; padding: 2px; border: 0; background: transparent; color: rgba(138,124,110,.65); cursor: grab; }
-.hh-priority-drag-handle:active { cursor: grabbing; }
-.hh-priority-column-empty { margin: 3px 2px; color: var(--ink-soft); font-size: 11px; font-style: italic; }
+.hh-selected-priorities { display: grid; }
+.hh-selected-priority-wrap { min-width: 0; border-bottom: 1px solid rgba(138,124,110,.12); }
+.hh-selected-priority-wrap:last-child { border-bottom: 0; }
+.hh-selected-priority { display: flex; width: 100%; align-items: baseline; justify-content: flex-start; gap: 2px; padding: 7px 0; border: 0; background: transparent; color: var(--ink); cursor: grab; font: 500 13px/1.35 'Plus Jakarta Sans', sans-serif; text-align: left; }
+.hh-selected-priority:active { cursor: grabbing; }
+.hh-tier-group.is-drop-target { border-color: var(--brick); box-shadow: inset 0 0 0 2px rgba(193,89,47,.12); background: rgba(193,89,47,.07); }
+.hh-priority-context { display: flex; flex-wrap: wrap; gap: 5px; padding: 2px 0 9px; }
+.hh-priority-context button { padding: 4px 7px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper-raised); color: var(--ink-soft); cursor: pointer; font: 600 10.5px 'Plus Jakarta Sans', sans-serif; }
+.hh-priority-context label { width: 100%; color: var(--ink-soft); font-size: 10.5px; }
+.hh-priority-context .hh-input { margin-top: 4px; padding: 7px 9px; font-size: 12px; }
+.hh-priority-empty { margin: 0; color: var(--ink-soft); font-size: 13px; font-style: italic; }
+.hh-add-priority-toggle { margin-top: 16px; padding: 4px 10px; font-size: 11.5px; }
+.hh-add-priority-panel { margin-top: 16px; padding-top: 18px; border-top: 1px solid var(--line); }
+.hh-schools-gate { margin-bottom: 16px; }
+.hh-add-priority-help { margin: 0 0 14px; color: var(--ink-soft); font-size: 11.5px; }
 .hh-suggestion-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px 24px; align-items: start; }
+.hh-suggestion-heading { margin: 0 0 8px; color: var(--ink-soft); font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.hh-suggestion-tray { display: flex; flex-wrap: wrap; gap: 6px; }
+.hh-custom-priority { display: flex; gap: 6px; margin-top: 16px; flex-wrap: wrap; }
+.hh-custom-priority select { flex: 0 0 150px; width: auto; }
+.hh-custom-priority input { flex: 1 1 180px; }
 .hh-specific-preferences { margin-top: 12px; color: var(--ink-soft); font-size: 12px; }
 .hh-specific-preferences summary { min-height: 34px; padding: 7px 0; cursor: pointer; font-weight: 600; }
 .hh-specific-tray { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 6px; }
@@ -297,7 +293,7 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 }
 
 @media (max-width: 900px) {
-  .hh-priority-board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hh-priority-tiers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hh-suggestion-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hh-how-to-steps { grid-template-columns: 1fr; }
 }
@@ -359,8 +355,7 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   .hh-search-layout { gap: 14px; }
   .hh-search-card { padding: 18px 16px; border-radius: 16px; }
   .hh-priority-tiers { grid-template-columns: 1fr; }
-  .hh-priority-board, .hh-suggestion-grid, .hh-how-to-notes { grid-template-columns: 1fr; }
-  .hh-priority-editor-actions button:first-child { min-height: 40px; }
+  .hh-priority-tiers, .hh-suggestion-grid, .hh-how-to-notes { grid-template-columns: 1fr; }
   .hh-how-to { width: 100%; max-height: none; overflow-y: visible; }
   .hh-home-photo-preview { height: min(56vw, 230px); }
   .hh-destination-grid, .hh-thoughts-grid { grid-template-columns: 1fr; }

@@ -23,52 +23,61 @@ test('specific defaults are demoted without losing legacy selections or canonica
   assert.equal(computeMatch({ checks: { 'features:Basement Bedroom': true } }, priorities).pct, 100);
 });
 
-test('My Search priority board groups selected criteria by tier with compact accessible controls', () => {
+test('My Search keeps one compact canonical board while add choices are progressively disclosed', () => {
   const board = read('src/components/PriorityBoard.jsx');
+  const panel = read('src/components/MySearchPanel.jsx');
   const css = read('src/app/globals.css');
-  assert.match(board, /TIER_ORDER\.filter\(\(t\) => t !== 'dontcare'\)/);
-  assert.match(board, /selectedPooled\.filter\(\(i\) => i\.tier === tier\)/);
-  assert.match(board, /hh-priority-column-\$\{tier\}/);
-  assert.match(board, /TIER_META\[tier\]\.label/);
-  assert.match(board, /hh-priority-editor-name/);
-  assert.match(board, /<TierPicker quiet ariaLabel=/);
-  assert.match(board, /aria-label=\{`Remove /);
-  assert.doesNotMatch(board, /hh-priority-editor-item/);
-  assert.match(css, /\.hh-priority-board \{[^}]*repeat\(3/);
-  assert.match(css, /\.hh-priority-board-item \{[^}]*grid-template-columns: auto minmax\(0, 1fr\) auto/);
-  assert.match(css, /\.hh-priority-column-must[^}]*var\(--brick\)/);
-  assert.match(css, /\.hh-priority-column-important[^}]*var\(--moss\)/);
-  assert.match(css, /\.hh-priority-column-nice[^}]*#b49a78/);
+  assert.match(board, /hh-priority-tiers/);
+  assert.match(board, /TIER_ORDER\.filter\(\(tier\) => tier !== 'dontcare'\)/);
+  assert.match(board, /selected\.filter\(\(item\) => item\.tier === tier\)/);
+  assert.equal(board.match(/hh-selected-priority"/g)?.length, 1);
+  assert.match(board, /\{addOpen && \(/);
+  assert.match(board, /\+ Add another priority/);
+  assert.match(board, /Close choices/);
+  assert.match(panel, /<PriorityBoard priorities=\{priorities\} patch=\{patch\} \/>/);
+  assert.doesNotMatch(panel, /showHeader=!editOpen/);
+  assert.match(css, /\.hh-selected-priority \{[^}]*background: transparent/);
+  assert.doesNotMatch(board, /<TierPicker|aria-label=\{`Remove /);
 });
 
-test('dragging only changes tiers through the same priority mutation as the dropdown', () => {
+test('selected rows expose contextual keyboard actions without resting-board clutter', () => {
+  const board = read('src/components/PriorityBoard.jsx');
+  assert.match(board, /aria-expanded=\{open\}/);
+  assert.match(board, /onClick=\{\(\) => setActiveItem/);
+  assert.match(board, /Move to \{TIER_META\[target\]\.label\}/);
+  assert.match(board, />Remove priority<\/button>/);
+  assert.match(board, /setTier\(item\.categoryKey, item\.label, 'dontcare'\)/);
+});
+
+test('selected and available drags use existing tier semantics without manual ranking', () => {
   const board = read('src/components/PriorityBoard.jsx');
   assert.match(board, /const setTier = \(categoryKey, label, tier\) => patch/);
-  assert.match(board, /onChange=\{\(tier\) => setTier\(item\.categoryKey, item\.label, tier\)\}/);
-  assert.match(board, /if \(draggedItem && draggedItem\.tier !== tier\)/);
-  assert.match(board, /setTier\(draggedItem\.categoryKey, draggedItem\.label, tier\)/);
-  assert.match(board, /className="hh-priority-drag-handle"[\s\S]*?draggable/);
+  assert.match(board, /dragged\?\.type === 'selected'[\s\S]*?setTier\(dragged\.item\.categoryKey, dragged\.item\.label, tier\)/);
+  assert.match(board, /dragged\?\.type === 'available'[\s\S]*?selectItem\(dragged\.def, dragged\.item, tier\)/);
+  assert.match(board, /draggable[\s\S]*?type: 'selected'/);
+  assert.match(board, /className="hh-chip"[\s\S]*?type: 'available'/);
   assert.doesNotMatch(board, /\b(order|rank|position|sortIndex)\s*:/);
 });
 
-test('configured Schools remains usable inside a compact item', () => {
+test('Schools configuration and specific/custom preference discovery remain available', () => {
   const board = read('src/components/PriorityBoard.jsx');
-  const css = read('src/app/globals.css');
-  assert.match(board, /item\.label === 'Schools'[\s\S]*?<input/);
-  assert.match(board, /onChange=\{\(e\) => setSchoolsNote\(e\.target\.value\)\}/);
-  assert.match(css, /\.hh-priority-board-item > \.hh-input \{ grid-column: 2 \/ -1; \}/);
+  assert.match(board, /item\.label === 'Schools'[\s\S]*?School preference/);
+  assert.match(board, /onChange=\{\(event\) => setSchoolsNote\(event\.target\.value\)\}/);
+  assert.match(board, /<summary>More specific preferences<\/summary>/);
+  assert.match(board, /placeholder="Add your own\.\.\."/);
+  assert.match(board, /addCustomItem\(newItemCategory/);
 });
 
-test('available preferences use four, two, and one-column responsive layouts', () => {
+test('available suggestions use four, two, and one-column responsive layouts', () => {
   const css = read('src/app/globals.css');
   assert.match(css, /\.hh-suggestion-grid \{[^}]*repeat\(4/);
   assert.match(css, /@media \(max-width: 900px\)[\s\S]*?\.hh-suggestion-grid \{ grid-template-columns: repeat\(2/);
-  assert.match(css, /@media \(max-width: 640px\)[\s\S]*?\.hh-priority-board, \.hh-suggestion-grid, \.hh-how-to-notes \{ grid-template-columns: 1fr; \}/);
+  assert.match(css, /@media \(max-width: 640px\)[\s\S]*?\.hh-priority-tiers, \.hh-suggestion-grid, \.hh-how-to-notes \{ grid-template-columns: 1fr; \}/);
 });
 
 test('post-tour guidance appears once and uses the central experiential classification accessibly', () => {
   const board = read('src/components/PriorityBoard.jsx');
-  assert.equal(board.match(/Best answered after you tour<\/p>/g)?.length, 1);
+  assert.equal(board.match(/Best answered after you tour<\/div>/g)?.length, 1);
   assert.match(board, /isExperientialCriterion\(item\.categoryKey, item\.label\)/);
   assert.match(board, /aria-label="Best answered after you tour"/);
   assert.doesNotMatch(board, /We&apos;ll ask after you tour/);
