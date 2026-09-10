@@ -207,6 +207,7 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-tier-important { border-top-color: var(--moss); }
 .hh-tier-nice { border-top-color: #a9ae8c; }
 .hh-tier-heading { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 7px; }
+.hh-tier-description { min-height: 32px; margin: -2px 0 5px; color: var(--ink-soft); font-size: 10.5px; line-height: 1.4; }
 .hh-selected-priorities { display: grid; }
 .hh-selected-priority-wrap { min-width: 0; border-bottom: 1px solid rgba(138,124,110,.12); }
 .hh-selected-priority-wrap:last-child { border-bottom: 0; }
@@ -310,6 +311,10 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   .hh-priority-tiers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hh-suggestion-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hh-how-to-steps { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  .hh-onboarding-priority-board .hh-priority-tiers { grid-template-columns: 1fr; }
+  .hh-onboarding-priority-board .hh-tier-description { min-height: 0; }
 }
 @media (max-width: 640px) { .hh-compare-notes { grid-template-columns: 1fr; } }
 @media (max-width: 640px) {

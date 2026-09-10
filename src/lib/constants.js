@@ -39,9 +39,9 @@ export const EXTERIOR_SUGGESTED = [
 
 export const FEATURES_CORE = ['Basement', 'Fireplace', 'Primary Ensuite'].map((label) => ({ label, kind: 'check' }));
 export const FEATURES_SUGGESTED = ['Central Air', 'Home Office', 'Finished Basement', 'Walkout Basement', 'First-Floor Laundry', 'Mudroom', 'Pantry', 'Storage', 'Updated Kitchen', 'Updated Bathrooms', 'Walk-In Closet', 'Additional Living Space'].map((label) => ({ label, kind: 'check' }));
-// These remain part of the catalog and can still be selected, but live behind the
-// "More specific preferences" disclosure instead of occupying the common bank.
-// Existing selections are also recovered from stored tiers by splitCategoryItems.
+// These remain part of the canonical catalog. PriorityBoard combines them with
+// the regular suggestion tray so both onboarding and My Search discover the same
+// criteria without an additional generic disclosure.
 export const FEATURES_SPECIFIC = ['Guest / In-Law Suite', 'Basement Bedroom'].map((label) => ({ label, kind: 'check' }));
 
 // "Privacy" exists as two independent criteria (Exterior & Property, and Home Feel) —
@@ -217,7 +217,7 @@ export const TIER_META = {
 };
 export const TIER_DESCRIPTIONS = Object.freeze({
   must: 'One of your highest priorities.',
-  important: 'This should weigh heavily in your match.',
+  important: 'This should weigh heavily in your Match.',
   nice: 'A bonus, but not a requirement.',
 });
 // Only these three are offered once a criterion is selected — "don't care" is simply
