@@ -1,18 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Plus } from 'lucide-react';
-import { DEFAULT_SELECTED_TIER, TIER_ORDER, criterionDisplayLabel, getItemlistCategories, effectiveTier, isSchoolsSuppressed, isExperientialCriterion } from '@/lib/constants';
+import { GripVertical, X, Plus } from 'lucide-react';
+import { DEFAULT_SELECTED_TIER, TIER_META, TIER_ORDER, criterionDisplayLabel, getItemlistCategories, effectiveTier, isSchoolsSuppressed, isExperientialCriterion } from '@/lib/constants';
 import { selectPriorityItem, splitCategoryItems } from '@/lib/matching';
 import { TierPicker } from '@/components/ui';
 
-// My Search pools selected criteria across categories, with the preference name
-// primary and its editable importance as quiet supporting information. The old per-category
-// drag-to-reorder system is intentionally not carried over here — once
-// importance is the primary hierarchy, order-within-a-tier no longer serves
-// the purpose it used to, and removing it also removes mobile's biggest
-// accessibility gap (drag-only interaction). Every action here is tap/click;
-// there is no drag anywhere in this component.
+// My Search pools selected criteria across categories. Importance is spatial:
+// the three columns are the only ordering, and drag/drop is merely an optional
+// shortcut to the same tier change offered by every item's picker. There is no
+// within-tier rank to save.
 //
 // The suggestion BANK (for items not yet selected) still groups by the old
 // category taxonomy — Home / Property / Location / Space & Layout / How It
@@ -22,6 +19,8 @@ export default function PriorityBoard({ priorities, patch }) {
   const categories = getItemlistCategories(priorities.searchType);
   const [newItem, setNewItem] = useState('');
   const [newItemCategory, setNewItemCategory] = useState(categories[0]?.key || '');
+  const [draggedItem, setDraggedItem] = useState(null);
+  const [dropTier, setDropTier] = useState(null);
   const schoolsSuppressed = isSchoolsSuppressed(priorities);
 
   // Pool every category's known+custom items, tagging each with which
@@ -55,7 +54,7 @@ export default function PriorityBoard({ priorities, patch }) {
 
   const buckets = TIER_ORDER.filter((t) => t !== 'dontcare').map((tier) => ({
     tier, items: selectedPooled.filter((i) => i.tier === tier),
-  })).filter((b) => b.items.length > 0);
+  }));
   const hasExperiential = selectedPooled.some((item) => isExperientialCriterion(item.categoryKey, item.label));
 
   const setTier = (categoryKey, label, tier) => patch((n) => {
@@ -79,6 +78,14 @@ export default function PriorityBoard({ priorities, patch }) {
 
   const removeItem = (categoryKey, label) => setTier(categoryKey, label, 'dontcare');
 
+  const dropIntoTier = (tier) => {
+    if (draggedItem && draggedItem.tier !== tier) {
+      setTier(draggedItem.categoryKey, draggedItem.label, tier);
+    }
+    setDraggedItem(null);
+    setDropTier(null);
+  };
+
   const addTyped = () => {
     const label = newItem.trim();
     if (!label || !newItemCategory) return;
@@ -95,15 +102,38 @@ export default function PriorityBoard({ priorities, patch }) {
   return (
     <div>
       {/* Selected preferences remain tier-sorted, without turning tiers into the visual headline. */}
-      {buckets.length > 0 ? (
+      {selectedPooled.length > 0 ? (
         <div className="hh-priority-editor-wrap">
           {hasExperiential && <p className="hh-post-tour-key"><span aria-hidden="true">*</span> Best answered after you tour</p>}
-          <div className="hh-priority-editor-grid">
-            {buckets.flatMap(({ items }) => items).map((item) => (
-                  <div className="hh-priority-editor-item" key={`${item.categoryKey}:${item.label}`}>
+          <div className="hh-priority-board" aria-label="Selected preferences by importance">
+            {buckets.map(({ tier, items }) => (
+              <section
+                className={`hh-priority-column hh-priority-column-${tier} ${dropTier === tier ? 'is-drop-target' : ''}`}
+                key={tier}
+                onDragOver={(event) => { event.preventDefault(); setDropTier(tier); }}
+                onDragLeave={(event) => !event.currentTarget.contains(event.relatedTarget) && setDropTier(null)}
+                onDrop={(event) => { event.preventDefault(); dropIntoTier(tier); }}
+              >
+                <h4 className="hh-priority-column-heading">{TIER_META[tier].label}</h4>
+                <div className="hh-priority-column-items">
+                {items.map((item) => (
+                  <div className="hh-priority-board-item" key={`${item.categoryKey}:${item.label}`}>
+                    <button
+                      type="button"
+                      className="hh-priority-drag-handle"
+                      draggable
+                      aria-label={`Drag ${criterionDisplayLabel(item.categoryKey, item.label)} to another importance group`}
+                      title="Drag to change importance"
+                      onDragStart={(event) => {
+                        setDraggedItem(item);
+                        event.dataTransfer.effectAllowed = 'move';
+                        event.dataTransfer.setData('text/plain', `${item.categoryKey}:${item.label}`);
+                      }}
+                      onDragEnd={() => { setDraggedItem(null); setDropTier(null); }}
+                    ><GripVertical size={14} aria-hidden="true" /></button>
                     <div className="hh-priority-editor-name">
                       {criterionDisplayLabel(item.categoryKey, item.label)}
-                      {isExperientialCriterion(item.categoryKey, item.label) && <span className="hh-experiential-marker" title="Best answered after you tour" aria-label="Best answered after you tour">*</span>}
+                      {isExperientialCriterion(item.categoryKey, item.label) && <sup className="hh-experiential-marker" title="Best answered after you tour" aria-label="Best answered after you tour">*</sup>}
                     </div>
                     <div className="hh-priority-editor-actions">
                         <TierPicker quiet ariaLabel={`Importance for ${criterionDisplayLabel(item.categoryKey, item.label)}`} value={item.tier} onChange={(tier) => setTier(item.categoryKey, item.label, tier)} />
@@ -124,6 +154,10 @@ export default function PriorityBoard({ priorities, patch }) {
                       />
                     )}
                   </div>
+                ))}
+                {!items.length && <p className="hh-priority-column-empty">Drop preferences here</p>}
+                </div>
+              </section>
             ))}
           </div>
         </div>
@@ -154,7 +188,7 @@ export default function PriorityBoard({ priorities, patch }) {
               </div>
               {(def.specificItems || []).length > 0 && (
                 <details className="hh-specific-preferences">
-                  <summary>More specific preferences</summary>
+                  <summary>More choices</summary>
                   <div className="hh-specific-tray">
                     {def.specificItems.filter((item) => tierOf(def, item.label) === 'dontcare' && !customLabels.has(item.label)).map((item) => (
                       <button key={item.label} type="button" className="hh-chip" aria-pressed="false" onClick={() => selectItem(def, item)}>{criterionDisplayLabel(def.key, item.label)}</button>

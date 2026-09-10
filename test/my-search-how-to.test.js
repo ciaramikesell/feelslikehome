@@ -23,14 +23,47 @@ test('specific defaults are demoted without losing legacy selections or canonica
   assert.equal(computeMatch({ checks: { 'features:Basement Bedroom': true } }, priorities).pct, 100);
 });
 
-test('My Search makes names primary, importance quietly editable, responsive, and never draggable', () => {
+test('My Search priority board groups selected criteria by tier with compact accessible controls', () => {
   const board = read('src/components/PriorityBoard.jsx');
   const css = read('src/app/globals.css');
+  assert.match(board, /TIER_ORDER\.filter\(\(t\) => t !== 'dontcare'\)/);
+  assert.match(board, /selectedPooled\.filter\(\(i\) => i\.tier === tier\)/);
+  assert.match(board, /hh-priority-column-\$\{tier\}/);
+  assert.match(board, /TIER_META\[tier\]\.label/);
   assert.match(board, /hh-priority-editor-name/);
   assert.match(board, /<TierPicker quiet ariaLabel=/);
-  assert.doesNotMatch(board, /draggable=|onDrag|drag-and-drop/i);
-  assert.match(css, /\.hh-priority-editor-grid \{[^}]*repeat\(3/);
-  assert.match(css, /\.hh-priority-editor-grid, \.hh-suggestion-grid, \.hh-how-to-notes \{ grid-template-columns: 1fr; \}/);
+  assert.match(board, /aria-label=\{`Remove /);
+  assert.doesNotMatch(board, /hh-priority-editor-item/);
+  assert.match(css, /\.hh-priority-board \{[^}]*repeat\(3/);
+  assert.match(css, /\.hh-priority-board-item \{[^}]*grid-template-columns: auto minmax\(0, 1fr\) auto/);
+  assert.match(css, /\.hh-priority-column-must[^}]*var\(--brick\)/);
+  assert.match(css, /\.hh-priority-column-important[^}]*var\(--moss\)/);
+  assert.match(css, /\.hh-priority-column-nice[^}]*#b49a78/);
+});
+
+test('dragging only changes tiers through the same priority mutation as the dropdown', () => {
+  const board = read('src/components/PriorityBoard.jsx');
+  assert.match(board, /const setTier = \(categoryKey, label, tier\) => patch/);
+  assert.match(board, /onChange=\{\(tier\) => setTier\(item\.categoryKey, item\.label, tier\)\}/);
+  assert.match(board, /if \(draggedItem && draggedItem\.tier !== tier\)/);
+  assert.match(board, /setTier\(draggedItem\.categoryKey, draggedItem\.label, tier\)/);
+  assert.match(board, /className="hh-priority-drag-handle"[\s\S]*?draggable/);
+  assert.doesNotMatch(board, /\b(order|rank|position|sortIndex)\s*:/);
+});
+
+test('configured Schools remains usable inside a compact item', () => {
+  const board = read('src/components/PriorityBoard.jsx');
+  const css = read('src/app/globals.css');
+  assert.match(board, /item\.label === 'Schools'[\s\S]*?<input/);
+  assert.match(board, /onChange=\{\(e\) => setSchoolsNote\(e\.target\.value\)\}/);
+  assert.match(css, /\.hh-priority-board-item > \.hh-input \{ grid-column: 2 \/ -1; \}/);
+});
+
+test('available preferences use four, two, and one-column responsive layouts', () => {
+  const css = read('src/app/globals.css');
+  assert.match(css, /\.hh-suggestion-grid \{[^}]*repeat\(4/);
+  assert.match(css, /@media \(max-width: 900px\)[\s\S]*?\.hh-suggestion-grid \{ grid-template-columns: repeat\(2/);
+  assert.match(css, /@media \(max-width: 640px\)[\s\S]*?\.hh-priority-board, \.hh-suggestion-grid, \.hh-how-to-notes \{ grid-template-columns: 1fr; \}/);
 });
 
 test('post-tour guidance appears once and uses the central experiential classification accessibly', () => {
@@ -50,4 +83,11 @@ test('How to Use tells the current six-step, Match, and private collaboration st
   assert.match(shell, /The house is ours\. The opinion is mine\./);
   assert.match(shell, /each person keeps their own priorities and opinions/);
   assert.match(shell, /there is no combined Couple Match/);
+  assert.match(shell, /<strong>Match shows how the known information about a home lines up with your priorities\.<\/strong>/);
+  assert.match(shell, /<strong>The house is ours\. The opinion is mine\.<\/strong>/);
+  assert.match(shell, /role="dialog" aria-modal="true"/);
+  const css = read('src/app/globals.css');
+  assert.match(css, /\.hh-how-to \{[^}]*max-width: 940px;[^}]*max-height: calc\(100dvh - 48px\);[^}]*overflow-y: auto/);
+  assert.match(css, /\.hh-how-to-steps \{[^}]*repeat\(2/);
+  assert.match(shell, />Got it<\/button>/);
 });
