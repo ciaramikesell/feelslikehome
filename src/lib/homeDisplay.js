@@ -4,6 +4,8 @@
 // mutate the underlying stored value (that's normalizeRentCastFields in
 // src/lib/rentcast.js, which is untouched by this file).
 
+import { normalizeSearchIntent, PROPERTY_TYPE_LABELS } from './searchIntent.js';
+
 function withCommas(numStr) {
   const n = Number(numStr);
   return Number.isFinite(n) ? n.toLocaleString() : numStr;
@@ -25,6 +27,40 @@ export function formatCurrencyDisplay(v) {
   const n = Number(String(v).replace(/[^0-9.]/g, ''));
   if (!Number.isFinite(n) || n === 0) return '';
   return `$${Math.round(n).toLocaleString()}`;
+}
+
+// The listing price is the monthly rent only for the canonical Rental intent and
+// its two legacy aliases. Investment prices remain purchase prices.
+export function formatHomePrice(value, searchType) {
+  const amount = formatCurrencyDisplay(value);
+  return amount && normalizeSearchIntent(searchType) === 'rental' ? `${amount}/mo` : amount;
+}
+
+export function homePriceLabel(searchType) {
+  return normalizeSearchIntent(searchType) === 'rental' ? 'Monthly Rent' : 'Price';
+}
+
+export function preferencePriceLabel(searchType) {
+  return normalizeSearchIntent(searchType) === 'rental' ? 'Maximum Monthly Price' : 'Maximum Budget';
+}
+
+export function formatPropertyType(value) {
+  return PROPERTY_TYPE_LABELS[value] || 'Unknown';
+}
+
+export function formatTriState(value) {
+  return value === true ? 'Yes' : value === false ? 'No' : 'Unknown';
+}
+
+// Parse PostgreSQL date semantics directly instead of passing through Date, which
+// would shift the calendar day in time zones west of UTC.
+export function formatDateOnly(value, locale = 'en-US') {
+  const match = typeof value === 'string' && value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return 'Unknown';
+  const [, year, month, day] = match;
+  const date = new Date(Number(year), Number(month) - 1, Number(day));
+  if (date.getFullYear() !== Number(year) || date.getMonth() !== Number(month) - 1 || date.getDate() !== Number(day)) return 'Unknown';
+  return new Intl.DateTimeFormat(locale, { month: 'long', day: 'numeric', year: 'numeric' }).format(date);
 }
 
 // Strips everything but digits — used when writing back from a currency-formatted
@@ -69,9 +105,9 @@ export function formatLotSizeDisplay(raw) {
 // Builds the fact lines for the compact confirmation card from whichever fields
 // were actually returned — never invents a field that wasn't found, and never
 // shows an empty placeholder for something unavailable.
-export function formatFoundCardFacts(fields) {
+export function formatFoundCardFacts(fields, searchType) {
   const f = fields || {};
-  const priceLine = f.price ? `$${withCommas(f.price)}` : '';
+  const priceLine = formatHomePrice(f.price, searchType);
 
   const bedsBathsSqft = [
     f.beds ? `${f.beds} bd` : '',
@@ -88,7 +124,7 @@ export function formatFoundCardFacts(fields) {
 
   // HOA/property tax — plain factual amounts only, each omitted entirely (not
   // shown as "Not available") when RentCast didn't return it for this property.
-  const hoaTaxLine = [
+  const hoaTaxLine = normalizeSearchIntent(searchType) === 'rental' ? '' : [
     f.hoaFeeMonthly ? `HOA: $${withCommas(f.hoaFeeMonthly)}/mo` : '',
     f.propertyTaxAnnual ? `Property tax: $${withCommas(f.propertyTaxAnnual)}/yr${f.propertyTaxYear ? ` · ${f.propertyTaxYear}` : ''}` : '',
   ].filter(Boolean).join(' · ');

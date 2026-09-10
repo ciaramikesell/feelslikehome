@@ -270,8 +270,8 @@ export function searchTypeLabel(searchType) {
 export function terminology(searchType) {
   const rental = isRentalType(searchType);
   return {
-    budgetLabel: rental ? 'Maximum Monthly Rent' : 'Maximum Budget',
-    priceFieldLabel: rental ? 'Monthly rent' : 'Asking price',
+    budgetLabel: rental ? 'Maximum Monthly Price' : 'Maximum Budget',
+    priceFieldLabel: rental ? 'Monthly Rent' : 'Asking price',
     pricePlaceholder: rental ? '2,200' : '450,000',
   };
 }

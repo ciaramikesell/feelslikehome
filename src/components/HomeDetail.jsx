@@ -7,9 +7,10 @@ import HomeModal from '@/components/HomeModal';
 import PostTourModal from '@/components/PostTourModal';
 import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
 import { criterionDisplayLabel, isArchivedStatus, TOUR_RATING_KEY } from '@/lib/constants';
-import { computeMatch, fmtMoney, parseNum } from '@/lib/matching';
+import { computeMatch, parseNum } from '@/lib/matching';
 import { evaluateCommute } from '@/lib/commute';
-import { formatLotSizeDisplay, parseCommaList, splitAddressLines } from '@/lib/homeDisplay';
+import { formatDateOnly, formatHomePrice, formatLotSizeDisplay, formatPropertyType, formatTriState, parseCommaList, splitAddressLines } from '@/lib/homeDisplay';
+import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { useCommuteObserver } from '@/lib/useCommuteObserver';
 import { createClient } from '@/lib/supabase/client';
 import { hasSharedHomeChanges, saveHomePersonalAndShared, saveHomePersonalState } from '@/lib/supabase/collaboration';
@@ -52,12 +53,23 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
     coBuyerPerspective.overallFeeling > 0 ||
     (coBuyerPerspective.differentTakes?.length ?? 0) > 0
   ));
+  const { showsRentalFacts } = searchIntentCapabilities(priorities.searchType);
   const facts = [
+    ['Property Type', home.propertyType && formatPropertyType(home.propertyType)],
+    ...(showsRentalFacts ? [
+      ['Available On', home.availableOn && formatDateOnly(home.availableOn)],
+      ['Pets Allowed', formatTriState(home.petsAllowed)],
+      ['Utilities Included', formatTriState(home.utilitiesIncluded)],
+      ['In-Unit Laundry', formatTriState(home.inUnitLaundry)],
+    ] : []),
     ['Home layout', (home.homeLayout || []).join(', ')], ['Condition', (home.homeCondition || []).join(', ')],
     ['Garage', home.garageSpaces], ['Basement', home.basementNotes], ['Year built', home.yearBuilt],
     ['Lot', home.lotSize && formatLotSizeDisplay(home.lotSize)], ['Primary bedroom', home.primaryBedroomLocation],
-    ['Secondary bedrooms', home.secondaryBedroomLocation], ['HOA', home.hoaFeeMonthly != null && `$${Number(home.hoaFeeMonthly).toLocaleString()}/mo`],
-    ['Property tax', home.propertyTaxAnnual != null && `$${Number(home.propertyTaxAnnual).toLocaleString()}/yr`],
+    ['Secondary bedrooms', home.secondaryBedroomLocation],
+    ...(!showsRentalFacts ? [
+      ['HOA', home.hoaFeeMonthly != null && `$${Number(home.hoaFeeMonthly).toLocaleString()}/mo`],
+      ['Property tax', home.propertyTaxAnnual != null && `$${Number(home.propertyTaxAnnual).toLocaleString()}/yr`],
+    ] : []),
   ].filter(([, value]) => value);
   const { line1, line2 } = splitAddressLines(home.address);
 
@@ -125,7 +137,7 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
       <div className="hh-detail-identity">
         <div className="hh-detail-eyebrow">Home</div>
         <h1 className="hh-serif">{line1 || 'Untitled home'}</h1>{line2 && <p className="hh-detail-locality">{line2}</p>}
-        <div className="hh-detail-price">{fmtMoney(home.price)}</div>
+        <div className="hh-detail-price">{formatHomePrice(home.price, priorities.searchType) || 'Price not added'}</div>
         <div className="hh-detail-core-facts">{[home.beds && `${home.beds} beds`, home.baths && `${home.baths} baths`, home.sqft && `${parseNum(home.sqft)?.toLocaleString()} sq ft`, home.lotSize && formatLotSizeDisplay(home.lotSize)].filter(Boolean).map((fact) => <span key={fact}>{fact}</span>)}</div>
         <div className="hh-detail-summary-row">{match?.pct != null && <strong>{match.pct}% Match</strong>}<span className="hh-detail-lifecycle">{home.status}</span>{home.isFavorite && <span className="hh-detail-favorite"><Heart size={13} fill="currentColor" aria-hidden="true" /> Favorite</span>}</div>
         <div className="hh-detail-links">{home.listingUrl && <a href={home.listingUrl} target="_blank" rel="noreferrer">Original listing <ExternalLink size={13} /></a>}<button type="button" onClick={() => setEditing(true)}><Pencil size={13} /> Edit home information</button></div>

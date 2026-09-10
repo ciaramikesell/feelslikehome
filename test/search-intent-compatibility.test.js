@@ -71,8 +71,8 @@ test('capabilities describe canonical behavior without activating product UI', (
 test('legacy UI helpers now present canonical intent behavior without mutating raw values', () => {
   const expected = {
     buy: ['Purchase', false, false, true, true, true, 'Maximum Budget', 'Asking price', '450,000'],
-    rent_home: ['Rental', true, true, false, false, false, 'Maximum Monthly Rent', 'Monthly rent', '2,200'],
-    rent_apartment: ['Rental', true, true, false, false, false, 'Maximum Monthly Rent', 'Monthly rent', '2,200'],
+    rent_home: ['Rental', true, true, false, false, false, 'Maximum Monthly Price', 'Monthly Rent', '2,200'],
+    rent_apartment: ['Rental', true, true, false, false, false, 'Maximum Monthly Price', 'Monthly Rent', '2,200'],
     investment: ['Investment Property', false, false, false, false, true, 'Maximum Budget', 'Asking price', '450,000'],
   };
   for (const type of legacyTypes) {
