@@ -21,7 +21,7 @@ const TAB_ICONS = {
 // database field, no localStorage, nothing persisted; the modal just closes on
 // its own state, so a returning user who already knows the app can ignore it.
 const HOW_TO_STEPS = [
-  { title: "Find homes wherever you normally search", body: 'Use Zillow, Realtor.com, Homes.com, Redfin, a builder website, or anywhere else you like to look for homes.' },
+  { title: "Find homes wherever you normally search", body: "Use the listing site you're already using, or anywhere else you like to look for homes." },
   { title: "Add the homes you're considering", body: "Copy the listing link and paste it into Feels Like Home, or enter the home's address. We'll fill in whatever property details we can." },
   { title: 'Add what you already know', body: "Add a photo and anything else you know about the home. You can also keep notes, pros, and cons so you don't have to remember everything yourself." },
   { title: 'Want to tour a home', body: "When one's worth seeing in person, tap Want to tour. It'll show up on your Want to Tour page." },

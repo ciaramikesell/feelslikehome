@@ -14,9 +14,10 @@ import { evaluateCommute } from '@/lib/commute';
 import HomeModal from '@/components/HomeModal';
 import PostTourModal from '@/components/PostTourModal';
 import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
-import { STATUS_COLOR, emptyHome, isRentalType, isArchivedStatus } from '@/lib/constants';
+import { STATUS_COLOR, emptyHome, isArchivedStatus } from '@/lib/constants';
 import { parseNum, fmtMoney, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint } from '@/lib/matching';
-import { formatLotSizeDisplay, splitAddressLines, parseCommaList } from '@/lib/homeDisplay';
+import { formatHomePrice, formatLotSizeDisplay, splitAddressLines, parseCommaList } from '@/lib/homeDisplay';
+import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { applyPostTourVerdict, archiveHome, hasToured, isFavoriteHome, restoreHome as restoreLifecycleHome, toggleFavorite as toggleFavoriteState } from '@/lib/lifecycle';
 import { createClient } from '@/lib/supabase/client';
 import { deleteHome as deleteHomeQuery } from '@/lib/supabase/data';
@@ -73,6 +74,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   const { setRef: commuteRef, getState: getCommuteState } = useCommuteObserver(home, commuteDestinations);
   const commuteEvaluation = evaluateCommute(commuteDestinations, getCommuteState);
   const match = computeMatch(home, priorities, commuteEvaluation);
+  const { showsPurchaseFinancials } = searchIntentCapabilities(priorities.searchType);
 
   // Core property facts — beds/baths/sqft/lot only. Garage is deliberately not
   // repeated here: when it's actually a priority the user selected, it already
@@ -141,8 +143,8 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
 
         <div className="hh-home-card-body" style={{ padding: '18px 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="hh-card-price-row">
-            <span className="hh-mono" style={{ fontSize: 22, fontWeight: 700, color: 'var(--brick)' }}>{fmtMoney(home.price)}{isRentalType(priorities.searchType) ? '/mo' : ''}</span>
-            {home.estMonthly && <span className="hh-mono" style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>{fmtMoney(home.estMonthly)}/mo est.</span>}
+            <span className="hh-mono" style={{ fontSize: 22, fontWeight: 700, color: 'var(--brick)' }}>{formatHomePrice(home.price, priorities.searchType) || 'Price not added'}</span>
+            {showsPurchaseFinancials && home.estMonthly && <span className="hh-mono" style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>{fmtMoney(home.estMonthly)}/mo est.</span>}
           </div>
 
           <div>

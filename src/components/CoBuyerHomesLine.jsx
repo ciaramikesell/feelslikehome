@@ -39,7 +39,7 @@ export default function CoBuyerHomesLine({ searchId, userId, isOwner, isCollabor
           font: 'inherit', fontSize: 13, fontWeight: 500, color: 'var(--brick)',
         }}
       >
-        Buying together? <span style={{ textDecoration: 'underline' }}>Add a co-buyer →</span>
+        Searching together? <span style={{ textDecoration: 'underline' }}>Add a search partner →</span>
       </button>
     </p>
   );

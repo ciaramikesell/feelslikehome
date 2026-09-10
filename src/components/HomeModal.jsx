@@ -96,7 +96,7 @@ function PropertyFacts({ form, set, priorities, sharedFactAwareness }) {
     yearBuilt: form.yearBuilt, garageSpaces: form.garageSpaces,
     lotSize: form.lotSize, daysOnMarket: form.daysOnMarket,
     hoaFeeMonthly: form.hoaFeeMonthly, propertyTaxAnnual: form.propertyTaxAnnual, propertyTaxYear: form.propertyTaxYear,
-  });
+  }, priorities.searchType);
   const hasAnyFacts = !!(facts.priceLine || facts.bedsBathsSqft || facts.secondaryFacts);
 
   return (
@@ -109,7 +109,7 @@ function PropertyFacts({ form, set, priorities, sharedFactAwareness }) {
           {facts.bedsBathsSqft && <div style={{ fontSize: 13.5, color: 'var(--ink)', marginTop: 2 }}>{facts.bedsBathsSqft}</div>}
           {facts.secondaryFacts && <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 4 }}>{facts.secondaryFacts}</div>}
           {facts.hoaTaxLine && <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 4 }}>{facts.hoaTaxLine}</div>}
-          {!form.estMonthly && (
+          {!showsRentalFacts && !form.estMonthly && (
             <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 6, fontStyle: 'italic' }}>Estimated monthly payment not added</div>
           )}
           <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px', marginTop: 10 }} onClick={() => setEditOpen(true)}>
@@ -417,7 +417,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   const showCompactCard = isNewHome && importPhase === 'success' && !editDetailsOpen && importResult;
   const foundFactsCount = importResult ? countFoundFacts(importResult.fields) : 0;
   const addressLines = showCompactCard ? splitAddressLines(importResult.fields.address || importResult.searchedAddress) : { line1: '', line2: '' };
-  const cardFacts = showCompactCard ? formatFoundCardFacts(importResult.fields) : null;
+  const cardFacts = showCompactCard ? formatFoundCardFacts(importResult.fields, priorities.searchType) : null;
   // On a new home, the manual field grid only appears once there's something to
   // resolve manually (no data found / lookup failed) or the user asks to edit an
   // import — never during idle/loading, so idle Add Home shows only the Find bar.
@@ -534,7 +534,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
             {cardFacts.priceLine && <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', margin: '10px 0 2px' }}>{cardFacts.priceLine}</div>}
             {cardFacts.bedsBathsSqft && <div style={{ fontSize: 13.5, color: 'var(--ink)', margin: '2px 0' }}>{cardFacts.bedsBathsSqft}</div>}
             {cardFacts.secondaryFacts && <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 6 }}>{cardFacts.secondaryFacts}</div>}
-            {cardFacts.hoaTaxLine && <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 4 }}>{cardFacts.hoaTaxLine}</div>}
+            {!searchIntentCapabilities(priorities.searchType).showsRentalFacts && cardFacts.hoaTaxLine && <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 4 }}>{cardFacts.hoaTaxLine}</div>}
             <button type="button" className="hh-btn hh-btn-ghost" style={{ marginTop: 12, fontSize: 12.5, padding: '6px 12px' }} onClick={() => setEditDetailsOpen(true)}>Edit details</button>
           </div>
         )}
@@ -579,7 +579,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
             {isArchivedStatus(form.status) && (
               <div style={{ marginBottom: 14 }}>
                 <label className="hh-label">Why did you rule this one out?</label>
-                <input className="hh-input" value={form.rejectionReason} onChange={(e) => set('rejectionReason', e.target.value)} placeholder="e.g. Busy road, no basement, taxes too high" />
+                <input className="hh-input" value={form.rejectionReason} onChange={(e) => set('rejectionReason', e.target.value)} placeholder="e.g. Too expensive, wrong location, missing a must-have" />
               </div>
             )}
 

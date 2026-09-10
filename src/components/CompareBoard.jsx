@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { Columns, Star, Heart, Home as HomeIcon } from 'lucide-react';
 import { TOUR_RATING_KEY, criterionDisplayLabel } from '@/lib/constants';
 import { parseNum, computeMatch, matchColor } from '@/lib/matching';
-import { formatLotSizeDisplay, formatCurrencyDisplay, parseCommaList } from '@/lib/homeDisplay';
+import { formatDateOnly, formatHomePrice, formatLotSizeDisplay, formatPropertyType, formatTriState, parseCommaList } from '@/lib/homeDisplay';
+import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { useCommuteMatrix } from '@/lib/useCommuteObserver';
 import { commuteResultSignature, evaluateCommute, uniqueShortestIndex } from '@/lib/commute';
 
@@ -23,22 +24,34 @@ function rowDisplayLabel(row) {
 // Purely quantitative reference facts — kept separate from Match/Must-Haves/priorities,
 // which use the qualitative satisfied/missed/unknown language instead. A quiet "—" for
 // anything unavailable; never treated as a negative.
-const HOME_FACT_ROWS = [
-  { key: 'price', label: 'Price', betterHigh: false, get: (h) => parseNum(h.price), fmt: (v) => (v === null ? '—' : formatCurrencyDisplay(String(v))) },
-  { key: 'estMonthly', label: 'Est. monthly payment', betterHigh: false, get: (h) => parseNum(h.estMonthly), fmt: (v) => (v === null ? '—' : formatCurrencyDisplay(String(v))) },
+const PHYSICAL_FACT_ROWS = [
   { key: 'beds', label: 'Beds', betterHigh: true, get: (h) => parseNum(h.beds), fmt: (v) => (v === null ? '—' : v) },
   { key: 'baths', label: 'Baths', betterHigh: true, get: (h) => parseNum(h.baths), fmt: (v) => (v === null ? '—' : v) },
   { key: 'sqft', label: 'Sq ft', betterHigh: true, get: (h) => parseNum(h.sqft), fmt: (v) => (v === null ? '—' : v.toLocaleString()) },
-  { key: 'pps', label: '$/sq ft', betterHigh: false, get: (h) => (parseNum(h.price) && parseNum(h.sqft) ? Math.round(parseNum(h.price) / parseNum(h.sqft)) : null), fmt: (v) => (v === null ? '—' : '$' + v) },
   { key: 'lot', label: 'Lot', betterHigh: null, get: (h) => h.lotSize || null, fmt: (v) => (v ? formatLotSizeDisplay(v) : '—') },
   { key: 'garage', label: 'Garage', betterHigh: true, get: (h) => parseNum(h.garageSpaces), fmt: (v) => (v === null ? '—' : v) },
   { key: 'year', label: 'Year built', betterHigh: null, get: (h) => h.yearBuilt || null, fmt: (v) => v || '—' },
   { key: 'dom', label: 'Days on market', betterHigh: false, get: (h) => parseNum(h.daysOnMarket), fmt: (v) => (v === null ? '—' : v) },
-  // Auto Enrichment facts — plain financial figures only. They are not Match inputs
-  // and are not shown at all when a home doesn't have them.
+];
+
+function homeFactRows(searchType) {
+  const { showsRentalFacts } = searchIntentCapabilities(searchType);
+  const price = { key: 'price', label: showsRentalFacts ? 'Monthly Rent' : 'Price', betterHigh: false, get: (h) => parseNum(h.price), fmt: (v) => (v === null ? '—' : formatHomePrice(String(v), searchType)) };
+  if (showsRentalFacts) return [price, ...PHYSICAL_FACT_ROWS,
+    { key: 'propertyType', label: 'Property Type', betterHigh: null, get: (h) => h.propertyType || null, fmt: formatPropertyType },
+    { key: 'availableOn', label: 'Available On', betterHigh: null, get: (h) => h.availableOn || null, fmt: formatDateOnly },
+    { key: 'petsAllowed', label: 'Pets Allowed', betterHigh: null, get: (h) => h.petsAllowed, fmt: formatTriState },
+    { key: 'utilitiesIncluded', label: 'Utilities Included', betterHigh: null, get: (h) => h.utilitiesIncluded, fmt: formatTriState },
+    { key: 'inUnitLaundry', label: 'In-Unit Laundry', betterHigh: null, get: (h) => h.inUnitLaundry, fmt: formatTriState },
+  ];
+  return [price,
+  { key: 'estMonthly', label: 'Est. monthly payment', betterHigh: false, get: (h) => parseNum(h.estMonthly), fmt: (v) => (v === null ? '—' : formatHomePrice(String(v), searchType)) },
+  ...PHYSICAL_FACT_ROWS,
+  { key: 'pps', label: '$/sq ft', betterHigh: false, get: (h) => (parseNum(h.price) && parseNum(h.sqft) ? Math.round(parseNum(h.price) / parseNum(h.sqft)) : null), fmt: (v) => (v === null ? '—' : '$' + v) },
   { key: 'hoa', label: 'HOA', betterHigh: false, get: (h) => (typeof h.hoaFeeMonthly === 'number' ? h.hoaFeeMonthly : null), fmt: (v) => (v === null ? '—' : `$${v.toLocaleString()}/mo`) },
   { key: 'tax', label: 'Property tax', betterHigh: false, get: (h) => (typeof h.propertyTaxAnnual === 'number' ? h.propertyTaxAnnual : null), fmt: (v, h) => (v === null ? '—' : `$${v.toLocaleString()}/yr${h?.propertyTaxYear ? ` · ${h.propertyTaxYear}` : ''}`) },
-];
+  ];
+}
 
 function MiniStars({ value }) {
   return (
@@ -105,7 +118,7 @@ function Perspective({ label, match, feeling, emptyCopy }) {
   );
 }
 
-function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective }) {
+function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective, searchType }) {
   const [imgError, setImgError] = useState(false);
   const showPhoto = home.photoUrl && !imgError;
   const overallRating = home.ratings?.[TOUR_RATING_KEY] || 0;
@@ -128,7 +141,7 @@ function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective }) {
         )}
       </div>
 
-      <div className="hh-mono hh-compare-price">{home.price ? formatCurrencyDisplay(home.price) : 'Price not added'}</div>
+      <div className="hh-mono hh-compare-price">{formatHomePrice(home.price, searchType) || 'Price not added'}</div>
       <Link href={`/homes/${encodeURIComponent(home.id)}`} className="hh-address hh-compare-address hh-home-identity-link">{home.address || 'Untitled'}</Link>
       <div className="hh-mono hh-compare-facts">
         {[home.beds ? `${home.beds} bd` : null, home.baths ? `${home.baths} ba` : null, home.sqft ? `${Number(home.sqft).toLocaleString()} sqft` : null]
@@ -231,6 +244,11 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
     priorities,
     evaluateCommute(commuteDestinations, (destination) => getCommuteResult(home, destination))
   ));
+  const factRows = homeFactRows(priorities.searchType).filter((row) => {
+    if (!diffsOnly) return true;
+    const values = selected.map((home) => row.get(home));
+    return new Set(values.map((value) => value == null ? 'unknown' : String(value))).size > 1;
+  });
 
   // One row per label the user selected as a priority, aligned across homes by label
   // (a priority either exists for every home's computeMatch result or none, since it's
@@ -298,12 +316,12 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
           <div className="hh-compare-identity-scroll">
             <div className="hh-compare-identity-grid" style={{ '--compare-count': selected.length }}>
               {selected.map((h, i) => (
-                <HomeHeaderCard key={h.id} home={h} match={matches[i]} isFavorite={h.isFavorite} coBuyerPerspective={coBuyerPerspectives[h.id]} />
+                <HomeHeaderCard key={h.id} home={h} match={matches[i]} isFavorite={h.isFavorite} coBuyerPerspective={coBuyerPerspectives[h.id]} searchType={priorities.searchType} />
               ))}
             </div>
           </div>
 
-          {(mustRows.length > 0 || otherRows.length > 0 || commuteDestinations.length > 0) && (
+          {(mustRows.length > 0 || otherRows.length > 0 || commuteDestinations.length > 0 || factRows.length > 0) && (
             <div>
               <button
                 type="button"
@@ -403,7 +421,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
                 {selected.map((h) => (
                   <div key={h.id} style={{ padding: '6px 12px', fontSize: 12, fontWeight: 600, color: 'var(--ink-soft)', borderBottom: '1px solid var(--ink)' }}>{h.address || 'Untitled'}</div>
                 ))}
-                {HOME_FACT_ROWS.map((row) => {
+                {factRows.map((row) => {
                   const values = selected.map((h) => row.get(h));
                   return (
                     <Fragment key={row.key}>

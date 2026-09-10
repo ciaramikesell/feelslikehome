@@ -286,7 +286,7 @@ function OnboardingStep3({ onFinish, isSaving }) {
       <div>
         <h2 className="hh-serif" style={{ fontSize: 25, margin: 0, fontWeight: 600, color: 'var(--ink)' }}>Your search is ready!</h2>
         <p style={{ fontSize: 14.5, color: 'var(--ink-soft)', margin: '10px 0 0', lineHeight: 1.6, maxWidth: 400 }}>
-          Now comes the fun. Find a home you like on Zillow, Realtor.com, a builder website, or wherever you already search. Then bring it here. We'll help you see how it measures up to what matters to you.
+          Now comes the fun. Find a home you like on the listing site you're already using, or wherever you already search. Then bring it here. We'll help you see how it measures up to what matters to you.
         </p>
       </div>
       <button type="button" className="hh-btn" disabled={isSaving} onClick={() => onFinish('add-home')}><Plus size={15} /> {isSaving ? 'Saving priorities…' : 'Add my first home'}</button>

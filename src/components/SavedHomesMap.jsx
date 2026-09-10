@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Home, MapPin } from 'lucide-react';
-import { computeMatch, fmtMoney } from '@/lib/matching';
+import { computeMatch } from '@/lib/matching';
+import { formatHomePrice } from '@/lib/homeDisplay';
 
 let mapsPromise;
 function loadGoogleMaps(key) {
@@ -89,7 +90,7 @@ export default function SavedHomesMap({ homes, priorities }) {
       </div>}
       {selected && <article className="hh-map-preview">
         {selected.photoUrl && <img src={selected.photoUrl} alt="" />}
-        <div className="hh-map-preview-copy"><div className="hh-mono hh-map-preview-price">{fmtMoney(selected.price)}</div><strong className="hh-address">{selected.address}</strong>
+        <div className="hh-map-preview-copy"><div className="hh-mono hh-map-preview-price">{formatHomePrice(selected.price, priorities.searchType) || 'Price not added'}</div><strong className="hh-address">{selected.address}</strong>
           <small>{[selected.beds && `${selected.beds} beds`, selected.baths && `${selected.baths} baths`, selected.sqft && `${selected.sqft} sq ft`].filter(Boolean).join(' · ')}</small>
           {match?.pct !== null && match?.pct !== undefined && <span className="hh-map-match">{match.pct}% Match</span>}
           {selected.status && <span className="hh-map-status">{selected.status}</span>}
