@@ -18,6 +18,7 @@ import { STATUS_COLOR, emptyHome, isArchivedStatus } from '@/lib/constants';
 import { parseNum, fmtMoney, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint } from '@/lib/matching';
 import { formatHomePrice, formatLotSizeDisplay, splitAddressLines, parseCommaList } from '@/lib/homeDisplay';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
+import { deriveFlhMoment } from '@/lib/flhMoments';
 import { applyPostTourVerdict, archiveHome, hasToured, isFavoriteHome, restoreHome as restoreLifecycleHome, toggleFavorite as toggleFavoriteState } from '@/lib/lifecycle';
 import { createClient } from '@/lib/supabase/client';
 import { deleteHome as deleteHomeQuery } from '@/lib/supabase/data';
@@ -55,6 +56,8 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   const styleSummary = homeStyleSummary(home);
   const showPhoto = home.photoUrl && !imgError;
   const isFavorite = home.isFavorite;
+  const [favoritePop, setFavoritePop] = useState(false);
+  const favoritePopTimer = useRef(null);
   const { line1: addressLine1, line2: addressLine2 } = splitAddressLines(home.address);
   // Normalize lifecycle presentation without touching stored data: any status that
   // isn't 'Want to Tour' or 'Toured' is treated as pre-tour, whether it's the current
@@ -70,6 +73,18 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   const wantToTourState = home.isCollaborative
     ? deriveWantToTourState(home, home.coBuyerWantsToTour ? [{ status: 'Want to Tour' }] : [])
     : null;
+  const moment = deriveFlhMoment(home);
+
+  useEffect(() => () => clearTimeout(favoritePopTimer.current), []);
+
+  const handleFavorite = () => {
+    if (!isFavorite) {
+      clearTimeout(favoritePopTimer.current);
+      setFavoritePop(true);
+      favoritePopTimer.current = setTimeout(() => setFavoritePop(false), 220);
+    }
+    onToggleFavorite(home);
+  };
 
   const { setRef: commuteRef, getState: getCommuteState } = useCommuteObserver(home, commuteDestinations);
   const commuteEvaluation = evaluateCommute(commuteDestinations, getCommuteState);
@@ -125,13 +140,13 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
           {!isPreTour && (
             <span className="hh-card-status hh-mono" style={{ background: STATUS_COLOR[home.status] || 'var(--ink-soft)' }}>{home.status}</span>
           )}
-          {(home.coBuyerArchivedCount > 0 || home.favoriteLabel) && (
+          {moment && (
+            <span className="hh-flh-moment" aria-label={moment.hasEyes ? `${moment.label}. Shared home signal.` : `${moment.label}.`}>
+              {moment.hasEyes && <span aria-hidden="true">👀 </span>}{moment.label}
+            </span>
+          )}
+          {home.coBuyerArchivedCount > 0 && (
             <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
-              {home.favoriteLabel && (
-                <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--ink)', background: 'rgba(255,255,255,0.92)', padding: '4px 9px', borderRadius: 999, boxShadow: '0 2px 8px rgba(46,38,33,0.15)' }}>
-                  {home.favoriteLabel}
-                </span>
-              )}
               {home.coBuyerArchivedCount > 0 && (
                 <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--ink)', background: 'rgba(255,255,255,0.92)', padding: '4px 9px', borderRadius: 999, boxShadow: '0 2px 8px rgba(46,38,33,0.15)' }}>
                   Archived by Co-Buyer
@@ -318,11 +333,11 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
                 type="button"
                 className="hh-btn hh-btn-ghost"
                 style={{ padding: '5px 7px', flexShrink: 0 }}
-                onClick={() => onToggleFavorite(home)}
+                onClick={handleFavorite}
                 title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                 aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
               >
-                <Heart size={13} color={isFavorite ? 'var(--brick)' : undefined} fill={isFavorite ? 'var(--brick)' : 'none'} />
+                <Heart className={favoritePop ? 'hh-favorite-pop' : undefined} size={13} color={isFavorite ? 'var(--brick)' : undefined} fill={isFavorite ? 'var(--brick)' : 'none'} />
               </button>
             )}
 
@@ -600,7 +615,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
       <>
         {saveError && <div className="hh-save-error" role="alert">{saveError}{retrySave && <> <button type="button" onClick={() => retrySave().catch(() => {})}>Retry</button></>}</div>}
         {archivedHomes.length === 0 ? (
-          <EmptyLifecycleState icon={ArchiveIcon} title="Nothing archived" body="Homes you archive will stay here with your notes and ratings, ready to restore anytime." />
+          <EmptyLifecycleState icon={ArchiveIcon} title="The ones that weren't meant to be." body="They're still here if you change your mind." />
         ) : (
           <CardGrid homes={archivedHomes} priorities={priorities} commuteDestinations={initialCommuteDestinations} mode={mode} onEdit={setModalHome} onRestore={restoreHome} onRequestDelete={setDeleteTarget} />
         )}
@@ -666,9 +681,9 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
 
       {filtered.length === 0 ? (
         mode === 'favorites' ? (
-          <EmptyLifecycleState icon={Heart} title="No favorites yet" body="Keep the homes that stand out to you close at hand." />
+          <EmptyLifecycleState icon={Heart} title="No favorites... yet." body="You'll know one when you see one." />
         ) : mode === 'tour' ? (
-          <EmptyLifecycleState icon={Footprints} title="No homes to tour yet" body="When one feels worth seeing in person, mark it Want to tour from Homes.">
+          <EmptyLifecycleState icon={Footprints} title="Nothing calling your name yet." body="Homes you want to see in person will show up here.">
             <Link href="/homes" className="hh-btn hh-btn-ghost">View my homes →</Link>
           </EmptyLifecycleState>
         ) : (

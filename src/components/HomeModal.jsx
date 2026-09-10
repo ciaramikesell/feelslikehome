@@ -682,7 +682,8 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
                   <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '0 0 12px' }}>Things you can only really know after seeing it in person. Optional — skip anything you're not sure about.</p>
 
                   <div style={{ marginBottom: subjectiveItems.length ? 14 : 0 }}>
-                    <label className="hh-label" style={{ marginBottom: 6 }}>Overall, how did this home feel?</label>
+                    <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '0 0 3px' }}>Forget the checklist for a second.</p>
+                    <label className="hh-label" style={{ marginBottom: 6 }}>How did this home feel?</label>
                     <StarInput value={form.ratings[TOUR_RATING_KEY] || 0} onChange={(v) => setRatingItem('tour', 'overall', v)} size={20} />
                   </div>
 
