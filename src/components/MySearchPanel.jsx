@@ -8,11 +8,10 @@ import SchoolsRelevanceGate from '@/components/SchoolsRelevanceGate';
 import CoBuyerManagement from '@/components/CoBuyerManagement';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, INVESTMENT_PROPERTY_TYPES, INVESTMENT_LIVING_PLAN_OPTIONS,
-  isSimpleRentalType, showsMultiselectCategory, terminology, toggleWithNoPreference, getItemlistCategories,
-  normalizePriorities, searchTypeLabel, TIER_META, TIER_ORDER, criterionDisplayLabel, isExperientialCriterion,
+  isSimpleRentalType, showsMultiselectCategory, terminology, toggleWithNoPreference,
+  normalizePriorities, searchTypeLabel,
 } from '@/lib/constants';
 import { PROPERTY_TYPE_LABELS, searchIntentCapabilities } from '@/lib/searchIntent';
-import { selectedOrderedItems } from '@/lib/matching';
 import { createClient } from '@/lib/supabase/client';
 import { useReliableOptimisticState } from '@/lib/useReliableOptimisticState';
 import { savePriorities } from '@/lib/supabase/collaboration';
@@ -233,70 +232,12 @@ function BasicsCard({ p, patch }) {
   );
 }
 
-// The default review lens: pooled across every category, organized by importance —
-// "is that REALLY a Must Have?" is easiest to notice when Must Haves from every
-// category sit together, not scattered one category-card at a time. Category
-// organization remains available, but only inside Edit (below), where it helps
-// with DISCOVERING new criteria rather than reviewing what's already chosen.
-function WhatMattersCard({ categories, priorities, patch }) {
-  const [editOpen, setEditOpen] = useState(false);
-
-  const pooled = categories.flatMap((def) =>
-    selectedOrderedItems(def, priorities).map((item) => ({
-      ...item,
-      categoryKey: def.key,
-      tier: priorities[def.key]?.tiers?.[item.label] || 'dontcare',
-    }))
-  );
-  const hasAny = pooled.length > 0;
-  const buckets = TIER_ORDER.filter((t) => t !== 'dontcare').map((tier) => ({
-    tier, items: pooled.filter((i) => i.tier === tier),
-  }));
-
+// The selected board is also the editing surface: discovery opens beneath it,
+// so its resting portrait never transforms into a configuration panel.
+function WhatMattersCard({ priorities, patch }) {
   return (
-    <SearchCard title="What matters most to me" showHeader={!editOpen}>
-      {!editOpen ? (
-        <div>
-          {hasAny ? (
-            <>
-            <div className="hh-priority-legend"><span aria-hidden="true">*</span> Best answered after you tour</div>
-            <div className="hh-priority-tiers">
-              {buckets.map(({ tier, items }) => (
-                <div key={tier} className={`hh-tier-group hh-tier-${tier}`}>
-                  <div className="hh-tier-heading" style={{ color: TIER_META[tier].color }}>
-                    {TIER_META[tier].label}
-                  </div>
-                  <div className="hh-selected-priorities">
-                    {items.map((item) => (
-                      <div key={`${item.categoryKey}:${item.label}`} className="hh-selected-priority">
-                        <span>{criterionDisplayLabel(item.categoryKey, item.label)}</span>
-                        {isExperientialCriterion(item.categoryKey, item.label) && (
-                          <span className="hh-experiential-marker" title="Best answered after you tour" aria-label="Best answered after you tour">*</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div></>
-          ) : (
-            <div style={{ fontSize: 13, color: 'var(--ink-soft)', fontStyle: 'italic' }}>Nothing selected yet — add what matters to you anytime.</div>
-          )}
-          <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px', marginTop: hasAny ? 16 : 12 }} onClick={() => setEditOpen(true)}>
-            {hasAny ? '+ Add another priority' : '+ Add a priority'}
-          </button>
-        </div>
-      ) : (
-        <div>
-          <div style={{ marginBottom: 22, paddingBottom: 20, borderBottom: '1px solid var(--line)' }}>
-            <SchoolsRelevanceGate priorities={priorities} patch={patch} />
-          </div>
-          <PriorityBoard priorities={priorities} patch={patch} />
-          <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px', marginTop: 16 }} onClick={() => setEditOpen(false)}>
-            Done
-          </button>
-        </div>
-      )}
+    <SearchCard title="What matters most to me">
+      <PriorityBoard priorities={priorities} patch={patch} />
     </SearchCard>
   );
 }
@@ -308,14 +249,12 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
   const [commuteDestinations, setCommuteDestinations] = useState(initialCommuteDestinations || []);
 
   const p = priorities;
-  const categories = getItemlistCategories(p.searchType);
-
   return (
     <div className="hh-search-layout">
       {saveError && <p className="hh-save-error" role="alert">{saveError} <button type="button" onClick={retry}>Retry</button></p>}
       <BasicsCard p={p} patch={patch} />
 
-      <WhatMattersCard categories={categories} priorities={p} patch={patch} />
+      <WhatMattersCard priorities={p} patch={patch} />
 
       <SearchCard title="Places that matter" subtitle="Add the places you travel to regularly. We'll show you how far each home is from them. Private to you.">
         <CommuteDestinations searchId={search.id} userId={userId} destinations={commuteDestinations} onChange={setCommuteDestinations} hideHeader />

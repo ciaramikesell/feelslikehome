@@ -32,16 +32,16 @@ const HOW_TO_STEPS = [
 function HowToUseModal({ onClose }) {
   return (
     <div className="hh-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="hh-modal hh-corner hh-how-to" style={{ maxWidth: 680 }}>
+      <div className="hh-modal hh-corner hh-how-to" role="dialog" aria-modal="true" aria-labelledby="how-to-title">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-          <h2 className="hh-serif" style={{ fontSize: 20, margin: 0, fontWeight: 600 }}>How Feels Like Home works</h2>
+          <h2 id="how-to-title" className="hh-serif" style={{ fontSize: 20, margin: 0, fontWeight: 600 }}>How Feels Like Home works</h2>
           <button className="hh-btn hh-btn-ghost" style={{ padding: 6 }} onClick={onClose} aria-label="Close"><X size={16} /></button>
         </div>
         <p style={{ fontSize: 14, color: 'var(--ink)', fontWeight: 500, margin: '4px 0 18px' }}>
           You found the homes. We&apos;ll help you choose.
         </p>
 
-        <div style={{ display: 'grid', gap: 14, marginBottom: 18 }}>
+        <div className="hh-how-to-steps">
           {HOW_TO_STEPS.map((step, i) => (
             <div key={step.title} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
               <span
@@ -65,13 +65,13 @@ function HowToUseModal({ onClose }) {
           <section>
           <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--brick)', marginBottom: 4 }}>Match on paper</div>
           <p style={{ fontSize: 12.5, color: 'var(--ink)', lineHeight: 1.5, margin: 0 }}>
-            Match shows how the known information about a home lines up with your priorities. Higher-importance preferences count more, and unknown details aren&apos;t treated as misses. It&apos;s a useful on-paper view — not a prediction of whether you&apos;ll love the home. Overall Feeling stays separate because that comes from being there.
+            <strong>Match shows how the known information about a home lines up with your priorities.</strong> Higher-importance preferences count more, and unknown details aren&apos;t treated as misses. It&apos;s a useful on-paper view — not a prediction of whether you&apos;ll love the home. Overall Feeling stays separate because that comes from being there.
           </p>
           </section>
           <section>
             <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--moss)', marginBottom: 4 }}>Searching together</div>
             <p style={{ fontSize: 12.5, color: 'var(--ink)', lineHeight: 1.5, margin: 0 }}>
-              The house is ours. The opinion is mine. You can share one pool of homes while each person keeps their own priorities and opinions. We may celebrate safe shared moments — like a mutual favorite or both wanting to tour — but there is no combined Couple Match.
+              <strong>The house is ours. The opinion is mine.</strong> You can share one pool of homes while each person keeps their own priorities and opinions. We may celebrate safe shared moments — like a mutual favorite or both wanting to tour — but there is no combined Couple Match.
             </p>
           </section>
         </div>

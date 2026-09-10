@@ -29,8 +29,8 @@ test('every criterion bank item can be selected, including later suggestions in 
 
 test('criterion chips retain native button keyboard semantics and independent wrapped targets', () => {
   const board = read('src/components/PriorityBoard.jsx');
-  assert.match(board, /<button key=\{item\.label\} type="button" className="hh-chip" aria-pressed="false"/);
-  assert.match(board, /display: 'flex', flexWrap: 'wrap', gap: 6/);
+  assert.match(board, /<button key=\{item\.label\} type="button" draggable className="hh-chip"/);
+  assert.match(board, /className="hh-suggestion-tray"/);
   assert.match(board, /onClick=\{\(\) => selectItem\(def, item\)\}/);
   assert.doesNotMatch(board, /<span[^>]+hh-chip[^>]+onClick/);
   assert.match(read('src/app/globals.css'), /\.hh-chip:focus-visible \{ outline: 3px solid var\(--focus-ring\); outline-offset: 2px; \}/);
