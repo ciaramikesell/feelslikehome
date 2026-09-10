@@ -1,5 +1,6 @@
 import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier, isExperientialCriterion } from './constants.js';
 import { normalizeSearchIntent } from './searchIntent.js';
+import { EVIDENCE_STRENGTH, findingsFromFields } from './importDomain.js';
 
 export function parseNum(v) {
   if (v === '' || v === null || v === undefined) return null;
@@ -235,6 +236,15 @@ export function parseListingText(text, searchType = null) {
   if (otherUrl) out.listingUrl = otherUrl.replace(/[),.]+$/, '');
 
   return out;
+}
+
+/** Adapt explicit raw listing text facts to the shared import-domain contract. */
+export function parseListingTextFindings(text, searchType = null) {
+  return findingsFromFields(parseListingText(text, searchType), {
+    sourceType: 'listing_prose',
+    sourceProvider: 'user_paste',
+    evidenceStrength: EVIDENCE_STRENGTH.EXPLICIT,
+  });
 }
 
 /* -------------------------------- match scoring --------------------------------

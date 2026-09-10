@@ -92,11 +92,13 @@ export async function POST(request) {
       );
     }
 
-    const { fields, foundAny } = normalizeRentCastFields(propertyResult.data, listingResult.data);
+    const { fields, findings, resolutions, foundAny } = normalizeRentCastFields(propertyResult.data, listingResult.data);
 
     return NextResponse.json({
       found: foundAny,
       fields,
+      findings,
+      resolutions,
       message: foundAny ? undefined : 'No property data was found for that address — you can enter details manually.',
     });
   } catch (err) {

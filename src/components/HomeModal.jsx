@@ -7,8 +7,9 @@ import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
   isArchivedStatus, isRentalType, TOUR_RATING_KEY, criterionDisplayLabel, TIER_ORDER,
 } from '@/lib/constants';
-import { visibleOrderedItems, parseListingText, selectedSubjectiveCriteria } from '@/lib/matching';
+import { visibleOrderedItems, parseListingTextFindings, selectedSubjectiveCriteria } from '@/lib/matching';
 import { extractAddressFromListingUrl } from '@/lib/listingUrl';
+import { mergeImportFields, resolveImport } from '@/lib/importDomain';
 import { splitAddressLines, formatFoundCardFacts, countFoundFacts, formatCurrencyDisplay, digitsOnly, formatLotSizeDisplay } from '@/lib/homeDisplay';
 import { createClient } from '@/lib/supabase/client';
 import { hasToured } from '@/lib/lifecycle';
@@ -193,7 +194,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
 
   // Find-a-home flow: one input that accepts a listing URL or a plain address.
   const [findInput, setFindInput] = useState(initial.listingUrl || initial.address || '');
-  const [importPhase, setImportPhase] = useState('idle'); // idle | loading | success | empty | error
+  const [importPhase, setImportPhase] = useState('idle'); // idle | loading | success | text-success | empty | error
   const [importResult, setImportResult] = useState(null); // { fields, searchedAddress }
   const [importErrorMsg, setImportErrorMsg] = useState('');
   const [urlFallbackMsg, setUrlFallbackMsg] = useState('');
@@ -321,16 +322,13 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     return { ...f, checks: next };
   });
   const runAutofill = () => {
-    const parsed = parseListingText(pasteText, priorities.searchType);
-    const additions = Object.entries(parsed).filter(([k, v]) =>
-      v !== null && v !== undefined && v !== '' && (form[k] === null || form[k] === undefined || form[k] === '')
-    );
-    setForm((f) => {
-      const next = { ...f };
-      additions.forEach(([k, v]) => { next[k] = v; });
-      return next;
-    });
-    setImportPhase('error'); // reveal the reviewable manual form without claiming a provider result
+    const findings = parseListingTextFindings(pasteText, priorities.searchType);
+    const result = resolveImport(findings, form);
+    const additions = Object.keys(result.fieldPatch);
+    setForm((f) => mergeImportFields(f, result.fieldPatch));
+    setImportResult({ ...result, fields: result.fieldPatch, source: 'raw-text' });
+    setEditDetailsOpen(true);
+    setImportPhase(additions.length > 0 ? 'text-success' : 'empty');
     setParseMsg(additions.length > 0 ? `Filled in ${additions.length} field${additions.length === 1 ? '' : 's'} from what you pasted — double-check before saving.` : `Couldn't find anything usable in that text — try filling fields in manually.`);
   };
 
@@ -373,14 +371,10 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         return;
       }
 
-      setImportResult({ fields: data.fields || {}, searchedAddress: address });
+      setImportResult({ fields: data.fields || {}, findings: data.findings || [], resolutions: data.resolutions || [], searchedAddress: address });
       setEditDetailsOpen(false);
       setImportPhase('success');
-      setForm((f) => {
-        const next = { ...f };
-        Object.entries(data.fields || {}).forEach(([k, v]) => { if (v && !next[k]) next[k] = v; });
-        return next;
-      });
+      setForm((f) => mergeImportFields(f, data.fields || {}));
     } catch {
       setImportPhase('error');
       setImportResult(null);
@@ -433,7 +427,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   // On a new home, the manual field grid only appears once there's something to
   // resolve manually (no data found / lookup failed) or the user asks to edit an
   // import — never during idle/loading, so idle Add Home shows only the Find bar.
-  const showObjectiveGrid = !isNewHome || importPhase === 'empty' || importPhase === 'error' || (importPhase === 'success' && editDetailsOpen);
+  const showObjectiveGrid = !isNewHome || importPhase === 'empty' || importPhase === 'error' || importPhase === 'text-success' || (importPhase === 'success' && editDetailsOpen);
 
   const visibleMultiselect = MULTISELECT_CATEGORIES.filter((def) => sharedFactAwareness[def.key]?.eligibleForSharedFactCapture);
   const visibleSingleselect = SINGLESELECT_CATEGORIES.filter((d) => sharedFactAwareness[d.key]?.eligibleForSharedFactCapture);
