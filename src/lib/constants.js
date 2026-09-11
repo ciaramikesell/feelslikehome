@@ -27,7 +27,7 @@ export const LOCATION_CORE = [
 export const LOCATION_SUGGESTED = ['Walkability', 'Immediate Street / Surroundings', 'Parks Nearby', 'Dog Parks Nearby', 'Groceries Nearby', 'Restaurants / Coffee / Shopping Nearby'].map((label) => ({ label, kind: 'rating' }));
 
 export const HOME_FEEL_CORE = ['Overall Condition', 'Layout / Flow'].map((label) => ({ label, kind: 'rating' }));
-export const HOME_FEEL_SUGGESTED = ['Natural Light', 'Character / Charm', 'Room Sizes', 'Openness / Ceiling Height', 'Privacy'].map((label) => ({ label, kind: 'rating' }));
+export const HOME_FEEL_SUGGESTED = ['Natural Light', 'Character / Charm', 'Room Sizes', 'Openness / Ceiling Height', 'Privacy', 'Social Community', 'On-Site Management'].map((label) => ({ label, kind: 'rating' }));
 
 export const EXTERIOR_CORE = [{ label: 'Yard', kind: 'rating' }, { label: 'Garage', kind: 'check' }, { label: 'Privacy', kind: 'rating' }];
 export const EXTERIOR_SUGGESTED = [
@@ -35,10 +35,12 @@ export const EXTERIOR_SUGGESTED = [
   { label: 'Exterior Condition', kind: 'rating' }, { label: 'Landscaping', kind: 'rating' },
   { label: 'Patio / Deck / Outdoor Living', kind: 'check' }, { label: 'Attached Garage', kind: 'check' },
   { label: 'Driveway / Off-Street Parking', kind: 'check' },
+  { label: 'Pool', kind: 'check' }, { label: 'Fitness Center', kind: 'check' },
+  { label: 'Secure Entry', kind: 'check' }, { label: 'Elevator', kind: 'check' },
 ];
 
 export const FEATURES_CORE = ['Basement', 'Fireplace', 'Primary Ensuite'].map((label) => ({ label, kind: 'check' }));
-export const FEATURES_SUGGESTED = ['Central Air', 'Home Office', 'Finished Basement', 'Walkout Basement', 'First-Floor Laundry', 'Mudroom', 'Pantry', 'Storage', 'Updated Kitchen', 'Updated Bathrooms', 'Walk-In Closet', 'Additional Living Space'].map((label) => ({ label, kind: 'check' }));
+export const FEATURES_SUGGESTED = ['Central Air', 'Home Office', 'Finished Basement', 'Walkout Basement', 'First-Floor Laundry', 'Mudroom', 'Pantry', 'Storage', 'Updated Kitchen', 'Updated Bathrooms', 'Walk-In Closet', 'Additional Living Space', 'Hardwood Floors', 'Dishwasher', 'In-Unit Laundry', 'Updated Interior', 'Pets Allowed', 'Utilities Included'].map((label) => ({ label, kind: 'check' }));
 // These remain part of the canonical catalog. PriorityBoard combines them with
 // the regular suggestion tray so both onboarding and My Search discover the same
 // criteria without an additional generic disclosure.
@@ -102,15 +104,15 @@ export function effectiveTier(categoryKey, label, priorities, rawTier) {
   return rawTier || 'dontcare';
 }
 
-const RENTAL_FEATURES = [...FEATURES_CORE, ...FEATURES_SUGGESTED,
-  { label: 'Dishwasher', kind: 'check' }, { label: 'Pets Allowed', kind: 'check' },
-  { label: 'Utilities Included', kind: 'check' }, { label: 'In-Unit Laundry', kind: 'check' }];
+const RENTAL_FEATURES = [...FEATURES_CORE, ...FEATURES_SUGGESTED];
 const RENTAL_EXTERIOR = [
   { label: 'Parking', kind: 'check' }, { label: 'Garage', kind: 'check' },
   { label: 'Driveway / Off-Street Parking', kind: 'check' }, { label: 'Fenced Yard', kind: 'check' },
   { label: 'Outdoor Space', kind: 'rating' }, { label: 'Patio / Deck / Outdoor Living', kind: 'check' },
   { label: 'Privacy', kind: 'rating' }, { label: 'Elevator', kind: 'check' },
   { label: 'Building Amenities', kind: 'check' }, { label: 'Noise Level', kind: 'rating' },
+  { label: 'Pool', kind: 'check' }, { label: 'Fitness Center', kind: 'check' },
+  { label: 'Secure Entry', kind: 'check' },
 ];
 
 export const MULTISELECT_CATEGORIES = [
@@ -242,6 +244,19 @@ export function isSimpleRentalType(searchType) {
   return normalizeSearchIntent(searchType) === 'rental';
 }
 
+// New onboarding distinguishes rented houses and apartments without introducing a
+// fourth database intent. This participant-private hint is stored inside the existing
+// priorities JSON; older rental documents simply retain the established rental behavior.
+export function isApartmentRental(prioritiesOrType) {
+  if (prioritiesOrType && typeof prioritiesOrType === 'object') {
+    return prioritiesOrType.onboardingSearchType === 'apartment_rent'
+      || (normalizeSearchIntent(prioritiesOrType.searchType) === 'rental'
+        && prioritiesOrType.preferredPropertyTypes?.values?.length === 1
+        && prioritiesOrType.preferredPropertyTypes.values[0] === 'apartment');
+  }
+  return prioritiesOrType === 'apartment_rent';
+}
+
 // Home layout only makes sense for standalone homes — not apartments, not investment
 // properties (which may span several layouts/unit types).
 export function showsHomeLayout(searchType) {
@@ -270,6 +285,13 @@ export function toggleWithNoPreference(cur, opt) {
 
 export function searchTypeLabel(searchType) {
   return { purchase: 'Purchase', rental: 'Rental', investment: 'Investment Property' }[normalizeSearchIntent(searchType)] || '';
+}
+
+export function searchExperienceLabel(priorities) {
+  if (priorities?.onboardingSearchType === 'home_buy') return 'Home to buy';
+  if (priorities?.onboardingSearchType === 'home_rent') return 'Home to rent';
+  if (isApartmentRental(priorities)) return 'Apartment to rent';
+  return searchTypeLabel(priorities?.searchType);
 }
 
 export function terminology(searchType) {

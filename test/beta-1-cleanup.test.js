@@ -56,18 +56,17 @@ test('signed-out auth makes account creation explicit without removing recovery 
   assert.match(signIn, /supabase\.auth\.signInWithPassword/);
 });
 
-test('property-type prompt clearly states multi-select while keeping optional array storage', () => {
+test('new onboarding search choices set an explicit, accessible rental subtype', () => {
   const onboarding = read('src/components/onboarding/Onboarding.jsx');
-  assert.match(onboarding, /What kinds of homes are you considering\?[\s\S]*\(optional\)/);
-  assert.match(onboarding, /Choose as many as you&apos;d like\./);
-  assert.match(onboarding, /selected \? values\.filter[\s\S]*: \[\.\.\.values, value\]/);
-  assert.match(onboarding, /aria-pressed=\{selected\}/);
+  assert.match(onboarding, /NEW_SEARCH_CHOICES\.map/);
+  assert.match(onboarding, /aria-pressed=\{selectedChoice === choice\.key\}/);
+  assert.match(onboarding, /applySearchChoice\(next, choice\.key\)/);
 });
 
 test('auth mobile and onboarding brand placement use focused centering classes', () => {
   assert.match(read('src/components/auth/AuthShell.jsx'), /className="afh-brand"/);
   assert.match(read('src/components/onboarding/Onboarding.jsx'), /className="hh-onboarding-brand"/);
   const css = read('src/app/globals.css');
-  assert.match(css, /\.hh-onboarding-brand \{ justify-content: center; text-align: center; \}/);
+  assert.match(css, /\.hh-onboarding-brand \{[^}]*justify-content: center/);
   assert.match(css, /@media \(max-width: 640px\) \{[\s\S]*\.afh-brand \{ justify-content: center; \}/);
 });

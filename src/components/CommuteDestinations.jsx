@@ -7,9 +7,9 @@ import { createCommuteDestination, deleteCommuteDestination, updateCommuteDestin
 
 const blank = { label: '', address: '', maxDriveMinutes: '' };
 
-export default function CommuteDestinations({ searchId, userId, destinations, onChange, hideHeader = false }) {
+export default function CommuteDestinations({ searchId, userId, destinations, onChange, hideHeader = false, startCollapsedWhenEmpty = false }) {
   const [draft, setDraft] = useState(blank);
-  const [adding, setAdding] = useState(destinations.length === 0);
+  const [adding, setAdding] = useState(destinations.length === 0 && !startCollapsedWhenEmpty);
   const [editingId, setEditingId] = useState(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -74,7 +74,7 @@ export default function CommuteDestinations({ searchId, userId, destinations, on
           </div>
         ))}
       </div>
-      {(editingId !== null || adding || destinations.length === 0) ? (
+      {(editingId !== null || adding || (destinations.length === 0 && !startCollapsedWhenEmpty)) ? (
         <div style={{ display: 'grid', gap: 8 }}>
           <input className="hh-input" aria-label="Destination label" placeholder="Name (e.g. Work)" maxLength={80} value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} />
           <input className="hh-input" aria-label="Destination address" placeholder="123 Main St, Detroit, MI" maxLength={500} value={draft.address} onChange={(e) => setDraft({ ...draft, address: e.target.value })} />
@@ -85,7 +85,7 @@ export default function CommuteDestinations({ searchId, userId, destinations, on
             {(editingId || destinations.length > 0) && <button type="button" className="hh-btn hh-btn-ghost" onClick={cancel}>Cancel</button>}
           </div>
         </div>
-      ) : <button type="button" className="hh-btn hh-btn-ghost" onClick={() => setAdding(true)}><Plus size={14} /> Add another place</button>}
+      ) : <button type="button" className="hh-btn hh-btn-ghost" onClick={() => setAdding(true)}><Plus size={14} /> {destinations.length ? 'Add another place' : 'Add a place'}</button>}
       {error && <p role="alert" style={{ fontSize: 12, color: 'var(--brick)', marginBottom: 0 }}>{error}</p>}
     </div>
   );

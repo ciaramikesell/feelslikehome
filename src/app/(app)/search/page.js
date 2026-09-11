@@ -4,7 +4,8 @@ import { PageIntro } from '@/components/ui';
 import { normalizePriorities } from '@/lib/constants';
 import { resolveActiveSearch, resolvePriorities, getSearchParticipantIds, getCommuteDestinations, resolveCollaboratorSearchContext } from '@/lib/supabase/collaboration';
 
-export default async function SearchPage() {
+export default async function SearchPage({ searchParams }) {
+  const params = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   const { search, isOwner } = await resolveActiveSearch(supabase, user.id);
@@ -30,6 +31,7 @@ export default async function SearchPage() {
         initialPriorities={normalizePriorities(priorities)}
         initialCommuteDestinations={commuteDestinations}
         collaboratorContext={collaboratorContext}
+        firstRun={params?.welcome === '1'}
       />
     </>
   );

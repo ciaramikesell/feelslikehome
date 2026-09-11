@@ -193,6 +193,49 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-priority-row.dragging .hh-drag-handle { color: var(--brick); transform: scale(1.15); }
 .hh-search-layout { display: grid; gap: 20px; max-width: 1100px; }
 .hh-search-card { background: rgba(255,255,255,.62); border-radius: 18px; padding: 22px 24px; box-shadow: 0 1px 0 rgba(46,38,33,.05); }
+.hh-search-reveal { display: grid; grid-template-columns: minmax(0,1.25fr) minmax(260px,.75fr); gap: 22px; padding: 24px; border: 1px solid rgba(193,89,47,.2); border-radius: 18px; background: linear-gradient(135deg, rgba(255,255,255,.78), rgba(198,146,69,.1)); }
+.hh-search-reveal h2 { margin: 2px 0 7px; color: var(--brick); font-size: 25px; }
+.hh-search-reveal p { margin: 0; color: var(--ink-soft); font-size: 13.5px; line-height: 1.55; }
+.hh-first-home-handoff { padding-left: 22px; border-left: 1px solid var(--line); }
+.hh-first-home-handoff strong { display: block; margin-bottom: 4px; color: var(--ink); }
+.hh-first-home-handoff .hh-btn { margin-top: 13px; }
+.hh-places-empty { margin-bottom: 12px; }
+.hh-places-empty strong { color: var(--ink); font-family: 'Fraunces', serif; font-size: 16px; }
+.hh-places-empty p { margin: 3px 0 0; color: var(--ink-soft); font-size: 12.5px; line-height: 1.5; }
+
+/* Onboarding keeps the established paper, ink, brick, and rounded-corner language,
+   while replacing the tall priority board with compact, tap-first decisions. */
+.hh-onboarding-shell { min-height: 80vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; }
+.hh-onboarding-card { width: 100%; max-width: 640px; padding: 28px 30px 26px; border: 1px solid var(--line); border-radius: 20px; background: var(--paper-raised); }
+.hh-onboarding-card.is-wide { max-width: 920px; }
+.hh-onboarding-brand { display: flex; justify-content: center; align-items: center; gap: 9px; margin-bottom: 17px; font-size: 18px; }
+.hh-onboarding-brand b { color: var(--brick); }
+.hh-onboarding-progress { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; padding: 0; margin: 0 0 22px; list-style: none; }
+.hh-onboarding-progress li { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--ink-soft); font-size: 11px; }
+.hh-onboarding-progress li > span { display: inline-flex; flex: 0 0 22px; width: 22px; height: 22px; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%; font-weight: 700; }
+.hh-onboarding-progress li b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hh-onboarding-progress li.is-active { color: var(--ink); }
+.hh-onboarding-progress li.is-active > span { border-color: var(--brick); background: var(--brick); color: #fff; }
+.hh-onboarding-step { display: grid; gap: 18px; }
+.hh-onboarding-step header h1 { margin: 0; color: var(--ink); font-size: 25px; font-weight: 600; }
+.hh-onboarding-step header > p { max-width: 690px; margin: 6px 0 0; color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
+.hh-onboarding-step header .hh-onboarding-note { color: var(--moss); font-weight: 650; }
+.hh-onboarding-fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.hh-choice-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 9px; margin-top: 8px; }
+.hh-choice-card { min-height: 48px; padding: 9px 12px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.45); color: var(--ink); cursor: pointer; font: 700 12px 'Plus Jakarta Sans',sans-serif; text-transform: uppercase; letter-spacing: .025em; }
+.hh-choice-card.on { border-color: var(--brick); background: rgba(193,89,47,.1); color: var(--brick); box-shadow: inset 0 0 0 1px rgba(193,89,47,.22); }
+.hh-onboarding-basics-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; padding-top: 16px; border-top: 1px solid var(--line); }
+.hh-onboarding-field { display: grid; gap: 5px; }
+.hh-onboarding-input-wrap { display: flex; align-items: center; gap: 6px; color: var(--ink-soft); font-size: 12px; }
+.hh-onboarding-input-wrap .hh-input { min-width: 0; }
+.hh-onboarding-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding-top: 2px; }
+.hh-onboarding-suggestions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 13px 22px; }
+.hh-onboarding-suggestions h2 { margin: 0 0 6px; color: var(--ink-soft); font-size: 10.5px; text-transform: uppercase; letter-spacing: .065em; }
+.hh-onboarding-suggestions section > div, .hh-dealbreaker-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.hh-onboarding-suggestions .hh-chip, .hh-dealbreaker-chips .hh-chip { min-height: 40px; padding: 7px 11px; font-size: 12px; }
+.hh-add-own { display: inline-flex; width: fit-content; min-height: 40px; align-items: center; gap: 5px; padding: 7px 11px; border: 1px dashed var(--brick); border-radius: 999px; background: transparent; color: var(--brick); cursor: pointer; font: 650 12px 'Plus Jakarta Sans',sans-serif; }
+.hh-onboarding-custom { margin-top: 0; }
+.hh-onboarding-empty { margin: 0; padding: 14px; border-radius: 12px; background: rgba(116,128,79,.08); color: var(--ink-soft); font-size: 13px; }
 .hh-basics-grid { display: grid; grid-template-columns: minmax(210px, 1.35fr) repeat(3, minmax(150px, 1fr)); gap: 18px 22px; align-items: start; }
 .hh-basic-field { display: grid; min-width: 0; gap: 9px; align-content: start; }
 .hh-basic-field-wide { grid-column: span 1; }
@@ -214,6 +257,7 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-selected-priority { display: flex; width: 100%; align-items: baseline; justify-content: flex-start; gap: 2px; padding: 7px 0; border: 0; background: transparent; color: var(--ink); cursor: grab; font: 500 13px/1.35 'Plus Jakarta Sans', sans-serif; text-align: left; }
 .hh-selected-priority:hover, .hh-selected-priority:focus-visible { color: var(--brick); }
 .hh-selected-priority:active { cursor: grabbing; }
+.hh-priority-change { margin-left: auto; color: var(--ink-soft); font-size: 9.5px; font-weight: 650; }
 .hh-tier-group.is-drop-target { border-color: var(--brick); box-shadow: inset 0 0 0 2px rgba(193,89,47,.12); background: rgba(193,89,47,.07); }
 .hh-priority-context { display: flex; flex-wrap: wrap; gap: 5px; padding: 2px 0 9px; }
 .hh-priority-context button { padding: 4px 7px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper-raised); color: var(--ink-soft); cursor: pointer; font: 600 10.5px 'Plus Jakarta Sans', sans-serif; }
@@ -389,6 +433,23 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   .hh-priority-row { align-items: flex-start !important; gap: 10px; }
   .hh-search-layout { gap: 14px; }
   .hh-search-card { padding: 18px 16px; border-radius: 16px; }
+  .hh-search-reveal { grid-template-columns: 1fr; gap: 16px; padding: 19px 16px; }
+  .hh-first-home-handoff { padding: 15px 0 0; border-left: 0; border-top: 1px solid var(--line); }
+  .hh-onboarding-shell { align-items: flex-start; padding: 10px 8px 20px; }
+  .hh-onboarding-card, .hh-onboarding-card.is-wide { padding: 18px 14px 16px; border-radius: 16px; }
+  .hh-onboarding-brand { margin-bottom: 12px; }
+  .hh-onboarding-progress { gap: 3px; margin-bottom: 15px; }
+  .hh-onboarding-progress li { justify-content: center; }
+  .hh-onboarding-progress li b { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .hh-onboarding-step { gap: 14px; }
+  .hh-onboarding-step header h1 { font-size: 22px; }
+  .hh-choice-grid { grid-template-columns: 1fr; gap: 6px; }
+  .hh-choice-card { min-height: 44px; }
+  .hh-onboarding-basics-grid { gap: 9px; padding-top: 12px; }
+  .hh-onboarding-suggestions { grid-template-columns: 1fr; gap: 9px; }
+  .hh-onboarding-suggestions .hh-chip, .hh-dealbreaker-chips .hh-chip { min-height: 40px; padding: 6px 9px; }
+  .hh-onboarding-custom select { flex-basis: 120px; }
+  .hh-onboarding-actions { position: sticky; z-index: 2; bottom: 0; margin: 0 -6px -7px; padding: 9px 6px 7px; background: linear-gradient(transparent, var(--paper-raised) 25%); }
   .hh-basics-grid { grid-template-columns: 1fr; gap: 16px; }
   .hh-priority-tiers { grid-template-columns: 1fr; }
   .hh-priority-tiers, .hh-suggestion-grid, .hh-how-to-notes { grid-template-columns: 1fr; }
