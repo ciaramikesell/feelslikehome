@@ -235,6 +235,19 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
   }, [photoPreviewUrl]);
 
+  // Apartment to Rent has no "Unknown / not specified" property-type step in
+  // Add Property — the search type already tells us it's an apartment, so a
+  // brand-new record defaults to that instead of asking the user to pick it.
+  // Runs once, only for a new (addressless) apartment record with no type set
+  // yet — never touches an already-loaded/edited value, so this never
+  // overwrites a collaborator's saved selection.
+  useEffect(() => {
+    if (vocabulary.apartment && !initial.address && !initial.propertyType) {
+      setForm((f) => (f.propertyType ? f : { ...f, propertyType: 'apartment' }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handlePhotoFileChange = (e) => {
     const file = e.target.files?.[0];
     e.target.value = ''; // allow re-selecting the same file after Remove
@@ -569,8 +582,8 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
           </>
         )}
 
-        {isNewHome && <details className="hh-details" style={{ marginTop: 14 }}>
-          <summary>Can&apos;t find the {vocabulary.apartment ? 'property' : 'home'}? Paste listing details instead</summary>
+        {isNewHome && !vocabulary.apartment && <details className="hh-details" style={{ marginTop: 14 }}>
+          <summary>Can&apos;t find the home? Paste listing details instead</summary>
           <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '8px 0' }}>Copy the property description or listing details from the listing page and paste them here. We'll try to recognize price, beds, baths, square footage, and other details.</p>
           <textarea className="hh-textarea" style={{ minHeight: 90 }} value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Paste the full listing text here..." />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, gap: 10, flexWrap: 'wrap' }}>
@@ -629,7 +642,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
               {vocabulary.apartment && <section style={{ border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px' }}>
                 <h3 className="hh-serif" style={{ fontSize: 16, margin: '0 0 3px' }}>Currently considering</h3>
                 <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 10px' }}>Add the floor plan or unit if you know it — you can also leave this blank.</p>
-                <div className="hh-property-facts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+                <div className="hh-property-facts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
                   <CompactField label="Floor plan" value={form.selectedFloorPlanName} onChange={(v) => set('selectedFloorPlanName', v)} placeholder="B2 Plan" />
                   <CompactField label="Unit" value={form.selectedUnitLabel} onChange={(v) => set('selectedUnitLabel', v)} placeholder="Unit 410" />
                   <CompactField label="Monthly rent" value={form.price} isCurrency onChange={(v) => set('price', v)} placeholder="Add rent" />
@@ -637,10 +650,10 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
                   <CompactField label="Baths" value={form.baths} onChange={(v) => set('baths', v)} placeholder="Add baths" />
                   <CompactField label="Sqft" value={form.sqft} onChange={(v) => set('sqft', v)} placeholder="Add sqft" />
                   <div><label className="hh-label" htmlFor="apartment-available">Available</label><input id="apartment-available" type="date" className="hh-input" value={form.availableOn || ''} onChange={(e) => set('availableOn', e.target.value || null)} /></div>
-                  <div style={{ gridColumn: 'span 2' }}><label className="hh-label">Floor-plan image</label><input className="hh-input" value={form.floorPlanImageUrl || ''} onChange={(e) => set('floorPlanImageUrl', e.target.value)} placeholder="Paste a floor-plan image URL" /></div>
+                  <div><label className="hh-label" htmlFor="apartment-property-type">Property type</label><select id="apartment-property-type" className="hh-input" value={form.propertyType || ''} onChange={(e) => set('propertyType', e.target.value || null)}>{HOME_PROPERTY_TYPE_OPTIONS.map((value) => <option key={value} value={value}>{PROPERTY_TYPE_LABELS[value]}</option>)}</select></div>
                 </div>
               </section>}
-              {isNewHome && <details className="hh-details">
+              {isNewHome && !vocabulary.apartment && <details className="hh-details">
                 <summary>More location details</summary>
                 <div style={{ marginTop: 10 }}>
                   <label className="hh-label">Nearby cross streets</label>
@@ -659,7 +672,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
             {Object.values(sharedFactAwareness).some((fact) => fact?.coBuyerOnly) && (
               <p className="hh-shared-note"><Users size={13} /> Some details are highlighted because they matter to either of you.</p>
             )}
-            <PropertyFacts form={form} set={set} priorities={priorities} sharedFactAwareness={sharedFactAwareness} />
+            {!vocabulary.apartment && <PropertyFacts form={form} set={set} priorities={priorities} sharedFactAwareness={sharedFactAwareness} />}
           </div>
         )}
 
@@ -701,6 +714,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
               <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 12px', lineHeight: 1.45 }}>
                 {vocabulary.apartment ? "Optional — add something that'll help you recognize this one later." : `Give this ${vocabulary.singularLower} a face so it's easy to spot later — you can always add or change it.`}
               </p>
+              {vocabulary.apartment && <div style={{ marginBottom: 10 }}><label className="hh-label">Floor-plan image</label><input className="hh-input" value={form.floorPlanImageUrl || ''} onChange={(e) => set('floorPlanImageUrl', e.target.value)} placeholder="Paste a floor-plan image URL" /></div>}
               <input
                 ref={photoInputRef}
                 type="file"
