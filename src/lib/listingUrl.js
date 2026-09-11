@@ -168,3 +168,80 @@ export function extractAddressFromListingUrl(url) {
     return null;
   }
 }
+
+const STATE_CODES = new Set([
+  'al','ak','az','ar','ca','co','ct','de','fl','ga','hi','id','il','in','ia','ks','ky','la','me','md','ma','mi','mn','ms','mo','mt','ne','nv','nh','nj','nm','ny','nc','nd','oh','ok','or','pa','ri','sc','sd','tn','tx','ut','vt','va','wa','wv','wi','wy','dc',
+]);
+
+function displaySlug(slug) {
+  return titleCase(toWords(slug)).replace(/\b(?:At|And|Of|The)\b/g, (word, offset) => offset === 0 ? word : word.toLowerCase());
+}
+
+function localityFromSlug(slug) {
+  const tokens = slug.toLowerCase().split('-').filter(Boolean);
+  const state = tokens.at(-1);
+  if (!STATE_CODES.has(state) || tokens.length < 2) return null;
+  return { tokens: tokens.slice(0, -1), state: state.toUpperCase() };
+}
+
+// Combined provider slugs do not contain a reliable name/city delimiter. The
+// narrow V1 adapter only splits the auditable "<name> at <place>-<two-word city>-ST"
+// shape; everything else falls back rather than pretending confidence.
+function parseCombinedCommunitySlug(slug, source) {
+  const locality = localityFromSlug(slug);
+  if (!locality) return null;
+  const at = locality.tokens.indexOf('at');
+  if (at < 1 || locality.tokens.length - at - 1 < 4) return null;
+  const cityTokens = locality.tokens.slice(-2);
+  const nameTokens = locality.tokens.slice(0, -2);
+  if (nameTokens.length < 3) return null;
+  return {
+    propertyName: displaySlug(nameTokens.join('-')),
+    locality: `${displaySlug(cityTokens.join('-'))}, ${locality.state}`,
+    source,
+  };
+}
+
+function parseOfficialCommunityHost(host) {
+  const label = host.split('.')[0].replace(/^(live|the)-?/, '');
+  // A concatenated domain is only considered when it has a clear "at" join.
+  const match = label.match(/^([a-z]{3,})at([a-z]{3,})$/i);
+  if (!match) return null;
+  let place = match[2].toLowerCase();
+  for (const suffix of ['pointe', 'heights', 'springs', 'village', 'park']) {
+    if (place.length > suffix.length && place.endsWith(suffix)) {
+      place = `${place.slice(0, -suffix.length)}-${suffix}`;
+      break;
+    }
+  }
+  return { propertyName: displaySlug(`${match[1]}-at-${place}`), locality: null, source: 'community-domain' };
+}
+
+/**
+ * Extracts identity hints only. These candidates are never addresses and must
+ * be confirmed by the user before any address-driven enrichment runs.
+ */
+export function extractApartmentIdentityFromListingUrl(url) {
+  if (!url || typeof url !== 'string') return null;
+  let parsed;
+  try { parsed = new URL(url.trim()); } catch { return null; }
+  const host = parsed.hostname.replace(/^www\./, '').toLowerCase();
+  const parts = parsed.pathname.split('/').filter(Boolean);
+
+  if (host === 'zillow.com' && parts[0] === 'apartments' && parts.length >= 4) {
+    const locality = localityFromSlug(parts[1]);
+    if (!locality || locality.tokens.length < 1) return null;
+    return {
+      propertyName: displaySlug(parts[2]),
+      locality: `${displaySlug(locality.tokens.join('-'))}, ${locality.state}`,
+      source: 'zillow',
+    };
+  }
+  if (host === 'apartments.com' && parts.length === 2) return parseCombinedCommunitySlug(parts[0], 'apartments.com');
+  if (host === 'rent.com' && parts[0] === 'apartment' && parts.length === 2) {
+    const slug = parts[1].replace(/-lc\d+$/i, '');
+    return parseCombinedCommunitySlug(slug, 'rent.com');
+  }
+  if (!parts.length && !['zillow.com', 'apartments.com', 'rent.com'].includes(host)) return parseOfficialCommunityHost(host);
+  return null;
+}

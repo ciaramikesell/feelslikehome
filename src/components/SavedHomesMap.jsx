@@ -6,22 +6,7 @@ import { Home, MapPin } from 'lucide-react';
 import { computeMatch } from '@/lib/matching';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
 import { formatHomePrice } from '@/lib/homeDisplay';
-
-let mapsPromise;
-function loadGoogleMaps(key) {
-  if (window.google?.maps?.importLibrary) return Promise.resolve(window.google.maps);
-  if (mapsPromise) return mapsPromise;
-  mapsPromise = new Promise((resolve, reject) => {
-    const callback = `flhGoogleMapsReady${Date.now()}`;
-    window[callback] = () => { delete window[callback]; resolve(window.google.maps); };
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&loading=async&libraries=marker&callback=${callback}`;
-    script.async = true;
-    script.onerror = () => reject(new Error('Google Maps could not load'));
-    document.head.appendChild(script);
-  });
-  return mapsPromise;
-}
+import { loadGoogleMaps } from '@/lib/googleMaps';
 
 function MarkerContent({ selected, address }) {
   const node = document.createElement('button');

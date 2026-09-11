@@ -8,7 +8,8 @@ import {
   isArchivedStatus, isRentalType, TOUR_RATING_KEY, criterionDisplayLabel, TIER_ORDER,
 } from '@/lib/constants';
 import { visibleOrderedItems, parseListingTextFindings, selectedSubjectiveCriteria } from '@/lib/matching';
-import { extractAddressFromListingUrl } from '@/lib/listingUrl';
+import { extractAddressFromListingUrl, extractApartmentIdentityFromListingUrl } from '@/lib/listingUrl';
+import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { mergeImportFields, resolveImport } from '@/lib/importDomain';
 import { appendAllSuggestions, appendSuggestionToNotes, derivePriorityCheckPatch, extractEnrichmentSuggestions } from '@/lib/importReview';
 import { splitAddressLines, formatFoundCardFacts, countFoundFacts, formatCurrencyDisplay, digitsOnly, formatLotSizeDisplay } from '@/lib/homeDisplay';
@@ -197,12 +198,13 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
 
   // Find-a-home flow: one input that accepts a listing URL or a plain address.
   const [findInput, setFindInput] = useState(initial.listingUrl || initial.address || '');
-  const [importPhase, setImportPhase] = useState('idle'); // idle | loading | success | text-success | empty | error
+  const [importPhase, setImportPhase] = useState('idle'); // idle | identity | loading | success | text-success | empty | error
   const [importResult, setImportResult] = useState(null); // { fields, searchedAddress }
   const [acceptedSuggestionIds, setAcceptedSuggestionIds] = useState([]);
   const [importErrorMsg, setImportErrorMsg] = useState('');
   const [urlFallbackMsg, setUrlFallbackMsg] = useState('');
   const [fallbackAddressInput, setFallbackAddressInput] = useState('');
+  const [apartmentIdentity, setApartmentIdentity] = useState(null);
   const [editDetailsOpen, setEditDetailsOpen] = useState(false);
   const [lastLookupAddress, setLastLookupAddress] = useState('');
 
@@ -416,14 +418,21 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     if (looksLikeUrl) {
       const result = extractAddressFromListingUrl(raw);
       if (result?.address) {
+        setApartmentIdentity(null);
         setUrlFallbackMsg('');
         lookupAddress(result.address, { listingUrl: raw });
       } else {
-        // Graceful, non-technical fallback — never a raw error for an unrecognized link.
-        setImportPhase('idle');
+        const identity = vocabulary.apartment ? extractApartmentIdentityFromListingUrl(raw) : null;
+        setApartmentIdentity(identity);
+        setImportPhase(identity ? 'identity' : 'empty');
         setImportResult(null);
-        setUrlFallbackMsg("We couldn't read an address from that link — enter the property address below and we'll look it up.");
-        set('listingUrl', raw);
+        setUrlFallbackMsg(identity ? '' : "We couldn't get much from that link, but you can still add the property.");
+        setFallbackAddressInput(identity ? `${identity.propertyName}${identity.locality ? `, ${identity.locality}` : ''}` : '');
+        setForm((current) => ({
+          ...current,
+          listingUrl: raw,
+          propertyName: current.propertyName || identity?.propertyName || '',
+        }));
       }
     } else if (vocabulary.apartment && !/\d/.test(raw)) {
       // A community name is valid discovery input, but must never be copied into
@@ -442,7 +451,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     const address = fallbackAddressInput.trim();
     if (!address) return;
     setUrlFallbackMsg('');
-    lookupAddress(address);
+    lookupAddress(address, { listingUrl: form.listingUrl });
   };
 
   const isNewHome = !initial.address;
@@ -514,7 +523,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
                 ✓ We found {foundFactsCount} property detail{foundFactsCount === 1 ? '' : 's'}. Review them below.
               </p>
             )}
-            {importPhase === 'empty' && (
+            {importPhase === 'empty' && !urlFallbackMsg && (
               <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '10px 0 4px' }}>
                 We couldn't find property data for that address — enter what you know below.
               </p>
@@ -527,24 +536,30 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
               <div style={{ marginTop: 8, padding: '12px 14px', border: '1px solid var(--line)', borderRadius: 12, background: 'var(--paper-raised)' }}>
                 <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '0 0 8px' }}>{urlFallbackMsg}</p>
                 <div className="hh-find-home-row" style={{ display: 'flex', gap: 8 }}>
-                  <input
-                    className="hh-input"
-                    style={{ flex: 1 }}
-                    value={fallbackAddressInput}
-                    onChange={(e) => setFallbackAddressInput(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleFallbackAddressLookup()}
-                    placeholder="123 Maple St, Ann Arbor, MI"
-                  />
+                  <AddressAutocomplete value={fallbackAddressInput} onChange={setFallbackAddressInput} onSelect={(address) => { setFallbackAddressInput(address); lookupAddress(address, { listingUrl: form.listingUrl }); }} />
                   <button
                     type="button"
                     className="hh-btn"
                     onClick={handleFallbackAddressLookup}
                     disabled={!fallbackAddressInput.trim() || importPhase === 'loading'}
                   >
-                    Find this home
+                    Find this {vocabulary.singularLower}
                   </button>
                 </div>
               </div>
+            )}
+            {importPhase === 'identity' && apartmentIdentity && (
+              <section className="hh-apartment-identity" style={{ marginTop: 8, padding: '12px 14px', border: '1px solid var(--moss)', borderRadius: 12, background: 'rgba(116,128,79,0.07)' }} aria-labelledby="apartment-identity-title">
+                <p id="apartment-identity-title" style={{ fontSize: 13, fontWeight: 700, color: 'var(--moss)', margin: 0 }}>We found the property.</p>
+                <p style={{ fontSize: 14, margin: '4px 0 0' }}>{apartmentIdentity.propertyName}</p>
+                {apartmentIdentity.locality && <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '1px 0 8px' }}>{apartmentIdentity.locality}</p>}
+                <div className="hh-label">We just need the street address.</div>
+                <div className="hh-find-home-row" style={{ display: 'flex', gap: 8 }}>
+                  <AddressAutocomplete value={fallbackAddressInput} onChange={setFallbackAddressInput} onSelect={(address) => { setFallbackAddressInput(address); lookupAddress(address, { listingUrl: form.listingUrl }); }} searchHint={`${apartmentIdentity.propertyName}${apartmentIdentity.locality ? `, ${apartmentIdentity.locality}` : ''}`} />
+                  <button type="button" className="hh-btn" onClick={handleFallbackAddressLookup} disabled={!fallbackAddressInput.trim() || importPhase === 'loading'}>Use address</button>
+                </div>
+                <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '7px 0 0' }}>Choose a suggestion or type the address yourself. Add the floor plan or unit later if you know it — it can stay blank.</p>
+              </section>
             )}
           </>
         )}
@@ -588,8 +603,8 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
               <div>
                 {vocabulary.apartment && <><label className="hh-label">Property name</label><input className="hh-input" style={{ marginBottom: 12 }} value={form.propertyName || ''} onChange={(e) => set('propertyName', e.target.value)} placeholder="Amber Apartments" /></>}
                 <label className="hh-label">Address *</label>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <input className="hh-input" style={{ flex: 1 }} value={form.address} onChange={(e) => set('address', e.target.value)} placeholder="123 Maple St, Ann Arbor, MI" />
+                <div className="hh-find-home-row" style={{ display: 'flex', gap: 8 }}>
+                  <AddressAutocomplete value={form.address} onChange={(value) => set('address', value)} onSelect={(address) => { set('address', address); if (isNewHome) lookupAddress(address); }} placeholder="123 Maple St, Ann Arbor, MI" />
                   {isNewHome && (
                     <button
                       type="button"
