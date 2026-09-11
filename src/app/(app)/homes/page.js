@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import HomesBoard from '@/components/HomesBoard';
 import CoBuyerHomesLine from '@/components/CoBuyerHomesLine';
-import { PageIntro } from '@/components/ui';
 import { normalizePriorities } from '@/lib/constants';
 import { homeVocabulary } from '@/lib/homePresentation';
 import { resolveActiveSearch, resolvePriorities, resolveSharedFactPriorityAwareness, getHomesForUser, getParticipantStatusesForHomes, addCoBuyerPersonalSignals, getSearchParticipantIds, getCommuteDestinations } from '@/lib/supabase/collaboration';
@@ -28,8 +27,14 @@ export default async function HomesPage() {
 
   return (
     <main className="hh-homes-page">
-      <PageIntro title={vocabulary.plural} subtitle={`Add ${vocabulary.pluralLower} you're considering and keep everything you know about them in one place.`} />
-      <CoBuyerHomesLine searchId={search.id} userId={user.id} isOwner={isOwner} isCollaborative={isCollaborative} />
+      <div className="hh-homes-intro">
+        <p className="hh-homes-instructions">
+          {vocabulary.apartment
+            ? "Keep the properties you're considering in one place. Add them as you find them, then compare the property, the option you're considering, and how well each one fits what matters to you."
+            : "Keep the homes you're considering in one place. Add them as you find them, then compare how each one lines up with what matters to you."}
+        </p>
+        <CoBuyerHomesLine searchId={search.id} userId={user.id} isOwner={isOwner} isCollaborative={isCollaborative} />
+      </div>
       <HomesBoard mode="homes" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizedPriorities} initialCommuteDestinations={commuteDestinations} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} />
     </main>
   );
