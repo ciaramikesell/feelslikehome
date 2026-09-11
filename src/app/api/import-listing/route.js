@@ -52,7 +52,7 @@ export async function POST(request) {
     try { body = await request.json(); } catch { /* missing/invalid body handled below */ }
 
     const address = typeof body.address === 'string' ? body.address.trim() : '';
-    const mode = body.mode === 'rental' ? 'rental' : 'sale';
+    const mode = body.mode === 'rental' || body.mode === 'apartment' ? body.mode : 'sale';
 
     if (!address) {
       return NextResponse.json({ error: 'An address is required.' }, { status: 400 });
@@ -61,7 +61,7 @@ export async function POST(request) {
       return NextResponse.json({ error: 'That address looks too long to be valid.' }, { status: 400 });
     }
 
-    const listingPath = mode === 'rental' ? '/v1/listings/rental/long-term' : '/v1/listings/sale';
+    const listingPath = mode === 'rental' || mode === 'apartment' ? '/v1/listings/rental/long-term' : '/v1/listings/sale';
 
     const [propertyResult, listingResult] = await Promise.all([
       fetchRentCast('/v1/properties', address, apiKey),
@@ -92,7 +92,11 @@ export async function POST(request) {
       );
     }
 
-    const { fields, findings, resolutions, foundAny } = normalizeRentCastFields(propertyResult.data, listingResult.data);
+    const { fields, findings, resolutions, foundAny } = normalizeRentCastFields(
+      propertyResult.data,
+      listingResult.data,
+      { apartmentCommunity: mode === 'apartment' },
+    );
 
     return NextResponse.json({
       found: foundAny,
