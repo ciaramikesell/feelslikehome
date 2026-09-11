@@ -123,7 +123,7 @@ function PropertyFacts({ form, set, priorities, sharedFactAwareness }) {
 
   return (
     <div style={{ marginBottom: 16 }}>
-      <label className="hh-label" style={{ marginBottom: 8 }}>{apartment ? 'Property facts' : 'Property details'}</label>
+      <label className="hh-label" style={{ marginBottom: 8 }}>{apartment ? 'What do we know about it?' : 'Property details'}</label>
       {apartment && <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '-3px 0 10px' }}>Reliable details about the property, when available.</p>}
 
       {!editOpen && hasAnyFacts && (
@@ -606,6 +606,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
             )}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12, marginBottom: 6 }}>
+              {vocabulary.apartment && <h3 className="hh-serif" style={{ fontSize: 16, margin: '0 0 -4px' }}>What property is this?</h3>}
               <div>
                 {vocabulary.apartment && <><label className="hh-label">Property name</label><input className="hh-input" style={{ marginBottom: 12 }} value={form.propertyName || ''} onChange={(e) => set('propertyName', e.target.value)} placeholder="Amber Apartments" /></>}
                 <label className="hh-label">Address *</label>
@@ -636,6 +637,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
                   <CompactField label="Baths" value={form.baths} onChange={(v) => set('baths', v)} placeholder="Add baths" />
                   <CompactField label="Sqft" value={form.sqft} onChange={(v) => set('sqft', v)} placeholder="Add sqft" />
                   <div><label className="hh-label" htmlFor="apartment-available">Available</label><input id="apartment-available" type="date" className="hh-input" value={form.availableOn || ''} onChange={(e) => set('availableOn', e.target.value || null)} /></div>
+                  <div style={{ gridColumn: 'span 2' }}><label className="hh-label">Floor-plan image</label><input className="hh-input" value={form.floorPlanImageUrl || ''} onChange={(e) => set('floorPlanImageUrl', e.target.value)} placeholder="Paste a floor-plan image URL" /></div>
                 </div>
               </section>}
               {isNewHome && <details className="hh-details">
@@ -699,8 +701,6 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
               <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 12px', lineHeight: 1.45 }}>
                 {vocabulary.apartment ? "Optional — add something that'll help you recognize this one later." : `Give this ${vocabulary.singularLower} a face so it's easy to spot later — you can always add or change it.`}
               </p>
-              {vocabulary.apartment && <div style={{ marginBottom: 10 }}><label className="hh-label">Floor-plan image</label><input className="hh-input" value={form.floorPlanImageUrl || ''} onChange={(e) => set('floorPlanImageUrl', e.target.value)} placeholder="Paste a floor-plan image URL" /></div>}
-
               <input
                 ref={photoInputRef}
                 type="file"
