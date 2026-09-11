@@ -56,5 +56,7 @@ export function useReliableOptimisticState(initialState, persist) {
     return submit(failed.current.next);
   }, [submit]);
 
-  return { state, patch, submit, saveError, retry, isSaving: pendingCount > 0 };
+  const flush = useCallback(() => queue.current, []);
+
+  return { state, patch, submit, saveError, retry, flush, isSaving: pendingCount > 0 };
 }

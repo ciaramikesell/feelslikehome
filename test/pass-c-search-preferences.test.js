@@ -88,21 +88,21 @@ test('Places that matter and weighted Must Have copy are user-facing', () => {
   const onboarding = fs.readFileSync(new URL('../src/components/onboarding/Onboarding.jsx', import.meta.url), 'utf8');
   const constants = fs.readFileSync(new URL('../src/lib/constants.js', import.meta.url), 'utf8');
   assert.match(mySearch, /Places that matter/);
-  assert.match(mySearch, /Add the places you travel to regularly/);
-  assert.match(onboarding, /Places that matter/);
-  assert.match(onboarding, /Add places you travel to regularly, like work, family, or school/);
-  assert.match(onboarding, /<CommuteDestinations[\s\S]*hideHeader/);
+  assert.match(mySearch, /Got somewhere you go all the time\?/);
+  assert.doesNotMatch(onboarding, /Places that matter/);
+  assert.doesNotMatch(onboarding, /CommuteDestinations/);
   assert.doesNotMatch(onboarding, /requiredDestination|destinationCategor/);
   assert.match(constants, /One of your highest priorities/);
   assert.doesNotMatch(`${mySearch}\n${onboarding}\n${constants}`, /A dealbreaker if it's missing/);
 });
 
-test('onboarding reuses participant-private destination persistence without changing its architecture', () => {
+test('Places are optional My Search enrichment using existing private persistence', () => {
   const page = fs.readFileSync(new URL('../src/app/onboarding/page.js', import.meta.url), 'utf8');
   const onboarding = fs.readFileSync(new URL('../src/components/onboarding/Onboarding.jsx', import.meta.url), 'utf8');
   const destinations = fs.readFileSync(new URL('../src/components/CommuteDestinations.jsx', import.meta.url), 'utf8');
-  assert.match(page, /getCommuteDestinations\(supabase, search\.id, user\.id\)/);
-  assert.match(onboarding, /CommuteDestinations/);
+  assert.doesNotMatch(page, /getCommuteDestinations/);
+  assert.doesNotMatch(onboarding, /CommuteDestinations/);
   assert.match(destinations, /createCommuteDestination\(supabase, searchId, userId, values\)/);
   assert.match(destinations, /maxDriveMinutes/);
+  assert.match(destinations, /startCollapsedWhenEmpty/);
 });

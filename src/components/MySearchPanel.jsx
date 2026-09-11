@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import Link from 'next/link';
 import { TierPicker } from '@/components/ui';
 import PriorityBoard from '@/components/PriorityBoard';
 import CommuteDestinations from '@/components/CommuteDestinations';
@@ -9,8 +10,8 @@ import CoBuyerManagement from '@/components/CoBuyerManagement';
 import InviteCoBuyer from '@/components/InviteCoBuyer';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, INVESTMENT_PROPERTY_TYPES, INVESTMENT_LIVING_PLAN_OPTIONS,
-  isSimpleRentalType, showsMultiselectCategory, terminology, toggleWithNoPreference,
-  normalizePriorities, searchTypeLabel, getItemlistCategories,
+  showsMultiselectCategory, terminology, toggleWithNoPreference,
+  normalizePriorities, searchExperienceLabel, getItemlistCategories, isApartmentRental,
 } from '@/lib/constants';
 import { PROPERTY_TYPE_LABELS, searchIntentCapabilities } from '@/lib/searchIntent';
 import { createClient } from '@/lib/supabase/client';
@@ -125,7 +126,7 @@ function buildBasicsSummary(p) {
   if (p.budget?.value) lines.push(`Up to $${Number(p.budget.value).toLocaleString()}${rental ? '/mo' : ''}`);
   const rooms = [p.bedsMin?.value && `${p.bedsMin.value}+ beds`, p.bathsMin?.value && `${p.bathsMin.value}+ baths`].filter(Boolean);
   if (rooms.length) lines.push(rooms.join(' · '));
-  const space = [p.sqftTarget?.value && `${Number(p.sqftTarget.value).toLocaleString()}+ sq ft`, !isSimpleRentalType(p.searchType) && p.lotSizeTarget?.value && `${p.lotSizeTarget.value}+ acres`].filter(Boolean);
+  const space = [p.sqftTarget?.value && `${Number(p.sqftTarget.value).toLocaleString()}+ sq ft`, !isApartmentRental(p) && p.lotSizeTarget?.value && `${p.lotSizeTarget.value}+ acres`].filter(Boolean);
   if (space.length) lines.push(space.join(' · '));
 
   const layoutVals = (p.homeLayout?.values || []).filter((v) => v !== 'No Preference');
@@ -156,7 +157,7 @@ function BasicsCard({ p, patch }) {
     <SearchCard title="What I'm looking for">
       {!editOpen ? (
         <div>
-          {p.searchType && <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>{searchTypeLabel(p.searchType)}</div>}
+          {p.searchType && <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>{searchExperienceLabel(p)}</div>}
           {lines.length > 0 ? (
             <div style={{ display: 'grid', gap: 3 }}>
               {lines.map((line, i) => <div key={i} style={{ fontSize: 13.5, color: 'var(--ink)' }}>{line}</div>)}
@@ -173,7 +174,7 @@ function BasicsCard({ p, patch }) {
           <div className="hh-basics-grid">
             <ObjectiveRow wide label={terminology(p.searchType).budgetLabel} prefix="$" value={p.budget.value} onValueChange={(v) => patch((n) => { n.budget = { ...n.budget, value: v }; return n; })} tier={p.budget.tier} onTierChange={(t) => patch((n) => { n.budget = { ...n.budget, tier: t }; return n; })} placeholder={terminology(p.searchType).pricePlaceholder} />
             <ObjectiveRow label="Minimum Square Footage" suffix="sqft" value={p.sqftTarget.value} onValueChange={(v) => patch((n) => { n.sqftTarget = { ...n.sqftTarget, value: v }; return n; })} tier={p.sqftTarget.tier} onTierChange={(t) => patch((n) => { n.sqftTarget = { ...n.sqftTarget, tier: t }; return n; })} placeholder="1,800" />
-            {!isSimpleRentalType(p.searchType) && <ObjectiveRow label="Minimum Lot Size" suffix="acres" value={p.lotSizeTarget.value} onValueChange={(v) => patch((n) => { n.lotSizeTarget = { ...n.lotSizeTarget, value: v }; return n; })} tier={p.lotSizeTarget.tier} onTierChange={(t) => patch((n) => { n.lotSizeTarget = { ...n.lotSizeTarget, tier: t }; return n; })} placeholder="0.25" />}
+            {!isApartmentRental(p) && <ObjectiveRow label="Minimum Lot Size" suffix="acres" value={p.lotSizeTarget.value} onValueChange={(v) => patch((n) => { n.lotSizeTarget = { ...n.lotSizeTarget, value: v }; return n; })} tier={p.lotSizeTarget.tier} onTierChange={(t) => patch((n) => { n.lotSizeTarget = { ...n.lotSizeTarget, tier: t }; return n; })} placeholder="0.25" />}
             <ObjectiveRow label="Minimum Bedrooms" suffix="beds" value={p.bedsMin.value} onValueChange={(v) => patch((n) => { n.bedsMin = { ...n.bedsMin, value: v }; return n; })} tier={p.bedsMin.tier} onTierChange={(t) => patch((n) => { n.bedsMin = { ...n.bedsMin, tier: t }; return n; })} placeholder="3" />
             <ObjectiveRow label="Minimum Bathrooms" suffix="baths" value={p.bathsMin.value} onValueChange={(v) => patch((n) => { n.bathsMin = { ...n.bathsMin, value: v }; return n; })} tier={p.bathsMin.tier} onTierChange={(t) => patch((n) => { n.bathsMin = { ...n.bathsMin, tier: t }; return n; })} placeholder="2" />
           </div>
@@ -270,7 +271,7 @@ function CollaboratorContextCard({ context }) {
   );
 }
 
-export default function MySearchPanel({ search, userId, isOwner, participantCount, memberUserId, initialPriorities, initialCommuteDestinations, collaboratorContext = null }) {
+export default function MySearchPanel({ search, userId, isOwner, participantCount, memberUserId, initialPriorities, initialCommuteDestinations, collaboratorContext = null, firstRun = false }) {
   const initial = normalizePriorities(initialPriorities);
   const persistPriorities = useCallback((next) => savePriorities(createClient(), search, userId, next), [search, userId]);
   const { state: priorities, patch, saveError, retry } = useReliableOptimisticState(initial, persistPriorities);
@@ -280,14 +281,19 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
   return (
     <div className="hh-search-layout">
       {saveError && <p className="hh-save-error" role="alert">{saveError} <button type="button" onClick={retry}>Retry</button></p>}
+      {firstRun && <section className="hh-search-reveal hh-corner">
+        <div><p className="hh-label">Your search is ready</p><h2 className="hh-serif">Here&apos;s what we heard.</h2><p>This is what Feels Like Home will use to Match your options. Nothing&apos;s set in stone—you can change your mind anytime.</p></div>
+        <div className="hh-first-home-handoff"><strong>Looks good? Give us something to work with.</strong><p>Add a home you&apos;re considering and we&apos;ll show you how it stacks up.</p><Link className="hh-btn" href="/homes?add=1">Add your first home</Link></div>
+      </section>}
       <BasicsCard p={p} patch={patch} />
 
       <WhatMattersCard priorities={p} patch={patch} />
 
       <CollaboratorContextCard context={collaboratorContext} />
 
-      <SearchCard title="Places that matter" subtitle="Add the places you travel to regularly. We'll show you how far each home is from them. In a shared search, collaborators can see these places, but only you can change yours.">
-        <CommuteDestinations searchId={search.id} userId={userId} destinations={commuteDestinations} onChange={setCommuteDestinations} hideHeader />
+      <SearchCard title="Places that matter" subtitle={commuteDestinations.length ? "We'll compare the trip from every home. In a shared search, collaborators can see these places, but only you can change yours." : undefined}>
+        {!commuteDestinations.length && <div className="hh-places-empty"><strong>Got somewhere you go all the time?</strong><p>Add work, family, school—or anywhere else—and we&apos;ll compare the trip from every home.</p></div>}
+        <CommuteDestinations searchId={search.id} userId={userId} destinations={commuteDestinations} onChange={setCommuteDestinations} hideHeader startCollapsedWhenEmpty />
       </SearchCard>
 
       {isOwner && participantCount <= 1 && (

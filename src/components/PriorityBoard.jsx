@@ -117,6 +117,7 @@ export default function PriorityBoard({ priorities, patch, onboarding = false })
                         >
                           <span>{criterionDisplayLabel(item.categoryKey, item.label)}</span>
                           {isExperientialCriterion(item.categoryKey, item.label) && <sup className="hh-experiential-marker" title="Best answered after you tour" aria-label="Best answered after you tour">*</sup>}
+                          <small className="hh-priority-change">Change</small>
                         </button>
                         {open && (
                           <div className="hh-priority-context" role="group" aria-label={`Actions for ${criterionDisplayLabel(item.categoryKey, item.label)}`}>
