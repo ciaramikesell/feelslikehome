@@ -85,25 +85,30 @@ function mostRecentPropertyTax(propertyTaxes) {
  *   /v1/listings/rental/long-term, or null
  * @returns {{ fields: object, foundAny: boolean }}
  */
-export function normalizeRentCastFields(property, listing) {
+export function normalizeRentCastFields(property, listing, { apartmentCommunity = false } = {}) {
   const fields = {};
 
-  const address = listing?.formattedAddress || property?.formattedAddress;
+  const address = apartmentCommunity
+    ? property?.formattedAddress || listing?.formattedAddress
+    : listing?.formattedAddress || property?.formattedAddress;
   if (address) fields.address = address;
 
-  const price = listing?.price;
+  // A community address can return one arbitrary advertised unit. In apartment
+  // mode that listing is not evidence about the option the user is considering.
+  const optionListing = apartmentCommunity ? null : listing;
+  const price = optionListing?.price;
   if (price !== undefined && price !== null) fields.price = formatPrice(price);
 
-  const beds = listing?.bedrooms ?? property?.bedrooms;
+  const beds = optionListing?.bedrooms ?? (apartmentCommunity ? null : property?.bedrooms);
   if (beds !== undefined && beds !== null) fields.beds = formatDecimal(beds);
 
-  const baths = listing?.bathrooms ?? property?.bathrooms;
+  const baths = optionListing?.bathrooms ?? (apartmentCommunity ? null : property?.bathrooms);
   if (baths !== undefined && baths !== null) fields.baths = formatDecimal(baths);
 
-  const sqft = listing?.squareFootage ?? property?.squareFootage;
+  const sqft = optionListing?.squareFootage ?? (apartmentCommunity ? null : property?.squareFootage);
   if (sqft !== undefined && sqft !== null) fields.sqft = formatInt(sqft);
 
-  const lotSize = property?.lotSize ?? listing?.lotSize;
+  const lotSize = property?.lotSize ?? optionListing?.lotSize;
   if (lotSize !== undefined && lotSize !== null) {
     const formatted = formatLotSize(lotSize);
     if (formatted) fields.lotSize = formatted;
@@ -112,13 +117,13 @@ export function normalizeRentCastFields(property, listing) {
   const yearBuilt = property?.yearBuilt;
   if (yearBuilt !== undefined && yearBuilt !== null) fields.yearBuilt = formatInt(yearBuilt);
 
-  const propertyType = canonicalPropertyType(listing?.propertyType ?? property?.propertyType);
+  const propertyType = canonicalPropertyType(optionListing?.propertyType ?? property?.propertyType);
   if (propertyType) fields.propertyType = propertyType;
 
-  const garageSpaces = property?.features?.garageSpaces;
+  const garageSpaces = apartmentCommunity ? null : property?.features?.garageSpaces;
   if (garageSpaces !== undefined && garageSpaces !== null) fields.garageSpaces = formatInt(garageSpaces);
 
-  const daysOnMarket = listing?.daysOnMarket;
+  const daysOnMarket = optionListing?.daysOnMarket;
   if (daysOnMarket !== undefined && daysOnMarket !== null) fields.daysOnMarket = formatInt(daysOnMarket);
 
   // --- Auto Enrichment 1.0: already-returned facts we previously discarded ---

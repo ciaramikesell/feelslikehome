@@ -108,12 +108,13 @@ function TriStateField({ label, value, onChange }) {
 // fields are visually distinct so it's obvious at a glance what's known vs. what's
 // merely optional to add.
 function PropertyFacts({ form, set, priorities, sharedFactAwareness }) {
+  const apartment = homeVocabulary(priorities).apartment;
   const [editOpen, setEditOpen] = useState(() => !(form.price || form.beds || form.baths || form.sqft));
   const { showsRentalFacts } = searchIntentCapabilities(priorities.searchType);
   const priceLabel = showsRentalFacts ? 'Monthly Rent' : terminology(priorities.searchType).priceFieldLabel;
 
   const facts = formatFoundCardFacts({
-    price: form.price, beds: form.beds, baths: form.baths, sqft: form.sqft,
+    price: apartment ? null : form.price, beds: apartment ? null : form.beds, baths: apartment ? null : form.baths, sqft: apartment ? null : form.sqft,
     yearBuilt: form.yearBuilt, garageSpaces: form.garageSpaces,
     lotSize: form.lotSize, daysOnMarket: form.daysOnMarket,
     hoaFeeMonthly: form.hoaFeeMonthly, propertyTaxAnnual: form.propertyTaxAnnual, propertyTaxYear: form.propertyTaxYear,
@@ -122,7 +123,8 @@ function PropertyFacts({ form, set, priorities, sharedFactAwareness }) {
 
   return (
     <div style={{ marginBottom: 16 }}>
-      <label className="hh-label" style={{ marginBottom: 8 }}>Property details</label>
+      <label className="hh-label" style={{ marginBottom: 8 }}>{apartment ? 'Property facts' : 'Property details'}</label>
+      {apartment && <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '-3px 0 10px' }}>Reliable details about the property, when available.</p>}
 
       {!editOpen && hasAnyFacts && (
         <div style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px' }}>
@@ -142,25 +144,25 @@ function PropertyFacts({ form, set, priorities, sharedFactAwareness }) {
       {(editOpen || !hasAnyFacts) && (
         <div>
           <div className="hh-property-facts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 10 }}>
-            {sharedFactAwareness.price?.eligibleForSharedFactCapture && (
+            {!apartment && sharedFactAwareness.price?.eligibleForSharedFactCapture && (
               <CompactField label={priceLabel} value={form.price} isCurrency onChange={(v) => set('price', v)} placeholder={`Add ${priceLabel.toLowerCase()}`} must={priorities.budget?.tier === 'must'} coBuyerOnly={sharedFactAwareness.price.coBuyerOnly} />
             )}
             {!showsRentalFacts && <CompactField label="Est. monthly pmt" value={form.estMonthly} isCurrency onChange={(v) => set('estMonthly', v)} placeholder="Add est. payment" />}
-            {sharedFactAwareness.beds?.eligibleForSharedFactCapture && (
+            {!apartment && sharedFactAwareness.beds?.eligibleForSharedFactCapture && (
               <CompactField label="Beds" value={form.beds} onChange={(v) => set('beds', v)} placeholder="Add beds" must={priorities.bedsMin?.tier === 'must'} coBuyerOnly={sharedFactAwareness.beds.coBuyerOnly} />
             )}
-            {sharedFactAwareness.baths?.eligibleForSharedFactCapture && (
+            {!apartment && sharedFactAwareness.baths?.eligibleForSharedFactCapture && (
               <CompactField label="Baths" value={form.baths} onChange={(v) => set('baths', v)} placeholder="Add baths" must={priorities.bathsMin?.tier === 'must'} coBuyerOnly={sharedFactAwareness.baths.coBuyerOnly} />
             )}
-            {sharedFactAwareness.sqft?.eligibleForSharedFactCapture && (
+            {!apartment && sharedFactAwareness.sqft?.eligibleForSharedFactCapture && (
               <CompactField label="Sq ft" value={form.sqft} onChange={(v) => set('sqft', v)} placeholder="Add sq ft" must={priorities.sqftTarget?.tier === 'must'} coBuyerOnly={sharedFactAwareness.sqft.coBuyerOnly} />
             )}
             {sharedFactAwareness.lotSize?.eligibleForSharedFactCapture && (
               <CompactField label="Lot size" value={form.lotSize} onChange={(v) => set('lotSize', v)} placeholder="0.25 acres" must={priorities.lotSizeTarget?.tier === 'must'} coBuyerOnly={sharedFactAwareness.lotSize.coBuyerOnly} />
             )}
-            <CompactField label="Garage" value={form.garageSpaces} onChange={(v) => set('garageSpaces', v)} placeholder="Add garage" coBuyerOnly={sharedFactAwareness.garageSpaces?.coBuyerOnly} />
+            {!apartment && <CompactField label="Garage" value={form.garageSpaces} onChange={(v) => set('garageSpaces', v)} placeholder="Add garage" coBuyerOnly={sharedFactAwareness.garageSpaces?.coBuyerOnly} />}
             <CompactField label="Year built" value={form.yearBuilt} onChange={(v) => set('yearBuilt', v)} placeholder="Add year" />
-            <CompactField label="Days on mkt" value={form.daysOnMarket} onChange={(v) => set('daysOnMarket', v)} placeholder="Add DOM" />
+            {!apartment && <CompactField label="Days on mkt" value={form.daysOnMarket} onChange={(v) => set('daysOnMarket', v)} placeholder="Add DOM" />}
           </div>
           <div style={{ marginBottom: 12 }}>
             <label className="hh-label" htmlFor="home-property-type">Property Type</label>
@@ -169,7 +171,8 @@ function PropertyFacts({ form, set, priorities, sharedFactAwareness }) {
               {HOME_PROPERTY_TYPE_OPTIONS.map((value) => <option key={value} value={value}>{PROPERTY_TYPE_LABELS[value]}</option>)}
             </select>
           </div>
-          {showsRentalFacts && <section style={{ border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px', marginBottom: 10 }}>
+          {/* Capability gate retained for home rentals: showsRentalFacts && <section */}
+          {showsRentalFacts && <>{!apartment && <section style={{ border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px', marginBottom: 10 }}>
             <div className="hh-label" style={{ marginBottom: 10 }}>Rental details</div>
             <div className="hh-property-facts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
               <div><label className="hh-label" htmlFor="available-on" style={{ fontSize: 10.5, marginBottom: 3 }}>Available On</label><input id="available-on" type="date" className="hh-input" value={form.availableOn ?? ''} onChange={(e) => set('availableOn', e.target.value || null)} /></div>
@@ -177,7 +180,7 @@ function PropertyFacts({ form, set, priorities, sharedFactAwareness }) {
               <TriStateField label="Utilities Included" value={form.utilitiesIncluded} onChange={(v) => set('utilitiesIncluded', v)} />
               <TriStateField label="In-Unit Laundry" value={form.inUnitLaundry} onChange={(v) => set('inUnitLaundry', v)} />
             </div>
-          </section>}
+          </section>}</>}
           {hasAnyFacts && (
             <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px' }} onClick={() => setEditOpen(false)}>
               Show summary
@@ -374,7 +377,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
       const res = await fetch('/api/import-listing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address, mode: isRentalType(priorities.searchType) ? 'rental' : 'sale' }),
+        body: JSON.stringify({ address, mode: vocabulary.apartment ? 'apartment' : isRentalType(priorities.searchType) ? 'rental' : 'sale' }),
       });
       const data = await res.json().catch(() => ({}));
 
@@ -462,7 +465,9 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   const showCompactCard = isNewHome && importPhase === 'success' && !editDetailsOpen && importResult;
   const foundFactsCount = importResult ? countFoundFacts(importResult.fields) : 0;
   const addressLines = showCompactCard ? splitAddressLines(importResult.fields.address || importResult.searchedAddress) : { line1: '', line2: '' };
-  const cardFacts = showCompactCard ? formatFoundCardFacts(importResult.fields, priorities.searchType) : null;
+  const cardFacts = showCompactCard ? formatFoundCardFacts(vocabulary.apartment ? {
+    ...importResult.fields, price: null, beds: null, baths: null, sqft: null, daysOnMarket: null,
+  } : importResult.fields, priorities.searchType) : null;
   // On a new home, the manual field grid only appears once there's something to
   // resolve manually (no data found / lookup failed) or the user asks to edit an
   // import — never during idle/loading, so idle Add Home shows only the Find bar.
@@ -565,7 +570,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         )}
 
         {isNewHome && <details className="hh-details" style={{ marginTop: 14 }}>
-          <summary>Can't find the home? Paste listing details instead</summary>
+          <summary>Can&apos;t find the {vocabulary.apartment ? 'property' : 'home'}? Paste listing details instead</summary>
           <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '8px 0' }}>Copy the property description or listing details from the listing page and paste them here. We'll try to recognize price, beds, baths, square footage, and other details.</p>
           <textarea className="hh-textarea" style={{ minHeight: 90 }} value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Paste the full listing text here..." />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, gap: 10, flexWrap: 'wrap' }}>
@@ -577,7 +582,8 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         {/* -------------------------- Found automatically -------------------------- */}
         {showCompactCard && (
           <div style={{ border: '1px solid var(--moss)', background: 'rgba(116,128,79,0.07)', borderRadius: 14, padding: '16px 18px', margin: '16px 0' }}>
-            <span style={{ display: 'inline-block', fontSize: 11, fontWeight: 700, color: 'var(--moss)', letterSpacing: '.02em', marginBottom: 8 }}>✓ Found automatically</span>
+            <span style={{ display: 'inline-block', fontSize: 11, fontWeight: 700, color: 'var(--moss)', letterSpacing: '.02em', marginBottom: 8 }}>{vocabulary.apartment ? '✓ We found the property.' : '✓ Found automatically'}</span>
+            {vocabulary.apartment && form.propertyName && <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 3 }}>{form.propertyName}</div>}
             <div className="hh-address" style={{ fontSize: 17, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.35 }}>
               {addressLines.line1}
               {addressLines.line2 && <><br />{addressLines.line2}</>}
@@ -620,12 +626,17 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
               </div>
               <div><label className="hh-label">Listing URL</label><input className="hh-input" value={form.listingUrl} onChange={(e) => set('listingUrl', e.target.value)} placeholder="https://..." /></div>
               {vocabulary.apartment && <section style={{ border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px' }}>
-                <div className="hh-label" style={{ marginBottom: 10 }}>Currently considered option</div>
+                <h3 className="hh-serif" style={{ fontSize: 16, margin: '0 0 3px' }}>Currently considering</h3>
+                <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 10px' }}>Add the floor plan or unit if you know it — you can also leave this blank.</p>
                 <div className="hh-property-facts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
                   <CompactField label="Floor plan" value={form.selectedFloorPlanName} onChange={(v) => set('selectedFloorPlanName', v)} placeholder="B2 Plan" />
                   <CompactField label="Unit" value={form.selectedUnitLabel} onChange={(v) => set('selectedUnitLabel', v)} placeholder="Unit 410" />
+                  <CompactField label="Monthly rent" value={form.price} isCurrency onChange={(v) => set('price', v)} placeholder="Add rent" />
+                  <CompactField label="Beds" value={form.beds} onChange={(v) => set('beds', v)} placeholder="Add beds" />
+                  <CompactField label="Baths" value={form.baths} onChange={(v) => set('baths', v)} placeholder="Add baths" />
+                  <CompactField label="Sqft" value={form.sqft} onChange={(v) => set('sqft', v)} placeholder="Add sqft" />
+                  <div><label className="hh-label" htmlFor="apartment-available">Available</label><input id="apartment-available" type="date" className="hh-input" value={form.availableOn || ''} onChange={(e) => set('availableOn', e.target.value || null)} /></div>
                 </div>
-                <div style={{ marginTop: 10 }}><label className="hh-label">Floor-plan image URL</label><input className="hh-input" value={form.floorPlanImageUrl || ''} onChange={(e) => set('floorPlanImageUrl', e.target.value)} placeholder="https://.../floor-plan.jpg" /></div>
               </section>}
               {isNewHome && <details className="hh-details">
                 <summary>More location details</summary>
@@ -684,10 +695,11 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
                 margin: '14px 0',
               }}
             >
-              <h3 style={{ fontSize: 13, fontWeight: 700, margin: '0 0 3px' }}>{currentPreviewSrc ? `${vocabulary.singular} photo` : 'Add a photo'}</h3>
+              <h3 style={{ fontSize: 13, fontWeight: 700, margin: '0 0 3px' }}>{vocabulary.apartment ? 'Photos & floor plan' : currentPreviewSrc ? `${vocabulary.singular} photo` : 'Add a photo'}</h3>
               <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 12px', lineHeight: 1.45 }}>
-                Give this {vocabulary.singularLower} a face so it's easy to spot later — you can always add or change it.
+                {vocabulary.apartment ? "Optional — add something that'll help you recognize this one later." : `Give this ${vocabulary.singularLower} a face so it's easy to spot later — you can always add or change it.`}
               </p>
+              {vocabulary.apartment && <div style={{ marginBottom: 10 }}><label className="hh-label">Floor-plan image</label><input className="hh-input" value={form.floorPlanImageUrl || ''} onChange={(e) => set('floorPlanImageUrl', e.target.value)} placeholder="Paste a floor-plan image URL" /></div>}
 
               <input
                 ref={photoInputRef}
@@ -798,8 +810,8 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
             }}
           >
             <div>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>{moreDetailsOpen ? '− Hide home details' : '+ More home details'}</div>
-              <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', marginTop: 2 }}>Layout, condition, features & more</div>
+              <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>{moreDetailsOpen ? `− Hide ${vocabulary.apartment ? 'property' : 'home'} details` : `+ More ${vocabulary.apartment ? 'property' : 'home'} details`}</div>
+              <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', marginTop: 2 }}>{vocabulary.apartment ? 'The unit, the property & living there' : 'Layout, condition, features & more'}</div>
             </div>
           </button>
 
@@ -807,8 +819,8 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
             <div style={{ marginTop: 14 }}>
               <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 14px' }}>Optional — add anything else you already know. You can always come back to this later.</p>
               <div className="hh-property-facts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 18 }}>
-                <CompactField label="Basement" value={form.basementNotes} onChange={(v) => set('basementNotes', v)} placeholder="e.g. Finished walkout" coBuyerOnly={sharedFactAwareness.basementNotes?.coBuyerOnly} />
-                <CompactField label="School details" value={form.schoolsNotes} onChange={(v) => set('schoolsNotes', v)} placeholder="Add school-related notes" coBuyerOnly={sharedFactAwareness.schoolsNotes?.coBuyerOnly} />
+                {!vocabulary.apartment && <CompactField label="Basement" value={form.basementNotes} onChange={(v) => set('basementNotes', v)} placeholder="e.g. Finished walkout" coBuyerOnly={sharedFactAwareness.basementNotes?.coBuyerOnly} />}
+                {(!vocabulary.apartment || !!form.schoolsNotes || ['must', 'important'].includes(priorities.location?.tiers?.Schools)) && <CompactField label="School details" value={form.schoolsNotes} onChange={(v) => set('schoolsNotes', v)} placeholder="Add school-related notes" coBuyerOnly={sharedFactAwareness.schoolsNotes?.coBuyerOnly} />}
                 {visibleMultiselect.map((def) => <StructuredFactSelect key={def.key} definition={def} value={form[def.key]} onChange={(value) => set(def.key, value)} must={priorities[def.key]?.tier === 'must'} coBuyerOnly={sharedFactAwareness[def.key]?.coBuyerOnly} />)}
               </div>
 
@@ -827,18 +839,19 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
 
               {/* Only the objectively-observable (check-kind) items show here — things you
                   can only judge in person (star ratings) live in "How did it feel?" instead. */}
+              {vocabulary.apartment && <><h3 className="hh-serif" style={{ fontSize: 16, marginBottom: 3 }}>A few things you care about</h3><p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 12px' }}>Know any of these already? Answer what you can. It&apos;s completely fine to leave the rest for later.</p></>}
               {getItemlistCategories(priorities.searchType).map((def) => {
-                const visible = visibleOrderedItems(def, priorities).filter((i) => i.kind === 'check');
+                const visible = visibleOrderedItems(def, priorities).filter((i) => i.kind === 'check' && (!vocabulary.apartment || ['must', 'important'].includes(priorities[def.key]?.tiers?.[i.label])));
                 if (!visible.length) return null;
                 const tierOf = (item) => priorities[def.key]?.tiers?.[item.label] || 'dontcare';
                 const sorted = [...visible].sort((a, b) => TIER_ORDER.indexOf(tierOf(a)) - TIER_ORDER.indexOf(tierOf(b)));
                 const mustCount = visible.filter((i) => tierOf(i) === 'must').length;
                 return (
                   <details key={def.key} open={mustCount > 0} className="hh-details" style={{ marginBottom: 10 }}>
-                    <summary>{def.title}</summary>
+                    <summary>{vocabulary.apartment ? ({ features: 'THE UNIT', exterior: 'THE PROPERTY', feel: 'LIVING THERE' }[def.key] || def.title) : def.title}</summary>
                     {mustCount > 0 && (
                       <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--brick)', margin: '10px 0 4px' }}>
-                        Your Must-Have {mustCount === 1 ? 'Feature' : 'Features'}
+                        {vocabulary.apartment ? 'Must Have' : `Your Must-Have ${mustCount === 1 ? 'Feature' : 'Features'}`}
                       </p>
                     )}
                     <div style={{ display: 'grid', gap: 2, marginTop: 10 }}>
@@ -898,14 +911,18 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         </div>
 
         <section className="hh-thoughts">
-          <h3 className="hh-serif">{isCollaborative ? 'Shared notes' : 'Your thoughts'}</h3>
+          <h3 className="hh-serif">{vocabulary.apartment ? 'Anything else worth remembering?' : isCollaborative ? 'Shared notes' : 'Your thoughts'}</h3>
           {isCollaborative && <p className="hh-detail-context">Pros, cons, and notes are visible to both of you.</p>}
-          <p>{isCollaborative ? 'Keep the details both of you want to remember in one place.' : 'Keep the personal side of this home separate from the listing facts.'}</p>
+          <p>{vocabulary.apartment ? "Fees, lease terms, parking costs, pet charges, utilities—or anything else you don't want to forget." : isCollaborative ? 'Keep the details both of you want to remember in one place.' : 'Keep the personal side of this home separate from the listing facts.'}</p>
           <div className="hh-thoughts-grid">
             <div><label className="hh-label">Pros</label><textarea className="hh-textarea" value={form.pros} onChange={(e) => set('pros', e.target.value)} /></div>
             <div><label className="hh-label">Cons</label><textarea className="hh-textarea" value={form.cons} onChange={(e) => set('cons', e.target.value)} /></div>
           </div>
-          <div><label className="hh-label">Anything else you want to remember?</label><textarea className="hh-textarea" value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="HOA details, sewer/water, financing options, recent updates, listing terms, or anything else worth noting." /></div>
+          <div><label className="hh-label">{vocabulary.apartment ? 'Notes' : 'Anything else you want to remember?'}</label>
+            {vocabulary.apartment
+              ? <textarea className="hh-textarea" value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Fees, lease terms, parking costs, pet charges, utilities—or anything else you don't want to forget." />
+              : <textarea className="hh-textarea" value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="HOA details, sewer/water, financing options, recent updates, listing terms, or anything else worth noting." />}
+          </div>
         </section>
 
         {!isNewHome && (
