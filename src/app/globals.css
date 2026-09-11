@@ -128,8 +128,8 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .beta-feedback-actions > span { color: var(--ink-soft); font-size: 10.5px; }
 .beta-feedback-actions .hh-btn { padding: 8px 13px; font-size: 12.5px; }
 .beta-feedback-success { display: flex; min-height: 120px; align-items: center; justify-content: center; color: var(--moss); font-size: 14px; font-weight: 700; }
-.hh-homes-page > div:first-child { margin-bottom: 6px !important; }
-.hh-homes-page > div:first-child h1 { letter-spacing: -.025em; }
+.hh-homes-intro { max-width: calc(100% - 180px); }
+.hh-homes-instructions { max-width: 820px; margin: 0 0 6px; color: var(--ink-soft); font-size: 14px; line-height: 1.6; }
 .hh-cobuyer-context { margin: 0 0 22px; color: var(--ink-soft); font-size: 12.5px; font-weight: 500; }
 .hh-homes-primary-action { display: flex; justify-content: flex-end; margin: -53px 0 24px; }
 .hh-homes-toolbar { margin-bottom: 26px; padding: 14px 16px 15px; border-radius: 15px; background: rgba(255,255,255,.58); box-shadow: 0 1px 0 rgba(46,38,33,.045); }
@@ -404,6 +404,7 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   .hh-shell-action-quiet { margin-left: auto; }
   .hh-tabs { gap: 0; justify-content: space-between; margin-bottom: 26px; }
   .hh-tab { justify-content: center; gap: 4px; padding-inline: 4px; font-size: 12px; }
+  .hh-homes-intro { max-width: none; }
   .hh-homes-primary-action { margin: 0 0 16px; justify-content: flex-start; }
   .hh-homes-primary-action .hh-btn { min-height: 44px; }
   .hh-homes-toolbar { padding: 12px; margin-bottom: 20px; }

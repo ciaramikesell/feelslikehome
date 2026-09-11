@@ -17,7 +17,7 @@ import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
 import { STATUS_COLOR, emptyHome, isArchivedStatus } from '@/lib/constants';
 import { parseNum, fmtMoney, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint } from '@/lib/matching';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
-import { formatHomePrice, formatLotSizeDisplay, splitAddressLines, parseCommaList } from '@/lib/homeDisplay';
+import { formatHomePrice, formatLotSizeDisplay, parseCommaList } from '@/lib/homeDisplay';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { deriveFlhMoment } from '@/lib/flhMoments';
 import { applyPostTourVerdict, archiveHome, hasToured, isFavoriteHome, restoreHome as restoreLifecycleHome, toggleFavorite as toggleFavoriteState } from '@/lib/lifecycle';
@@ -59,7 +59,6 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   const isFavorite = home.isFavorite;
   const [favoritePop, setFavoritePop] = useState(false);
   const favoritePopTimer = useRef(null);
-  const { line1: addressLine1, line2: addressLine2 } = splitAddressLines(home.address);
   const identity = homeIdentity(home, priorities);
   // Normalize lifecycle presentation without touching stored data: any status that
   // isn't 'Want to Tour' or 'Toured' is treated as pre-tour, whether it's the current
@@ -169,7 +168,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
             <Link href={`/homes/${encodeURIComponent(home.id)}`} className="hh-home-identity-link">
               <div className="hh-address" style={{ fontSize: 19, fontWeight: 600, lineHeight: 1.28, color: 'var(--ink)' }}>{identity.primary}</div>
               {identity.option && <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', marginTop: 2 }}>{identity.option}</div>}
-              {identity.supporting ? <div style={{ fontSize: 13.5, color: 'var(--ink-soft)', marginTop: 1 }}>{identity.supporting}</div> : addressLine2 && <div style={{ fontSize: 13.5, color: 'var(--ink-soft)', marginTop: 1 }}>{addressLine2}</div>}
+              {identity.supporting && <div style={{ fontSize: 13.5, color: 'var(--ink-soft)', marginTop: 1 }}>{identity.supporting}</div>}
             </Link>
           </div>
 
