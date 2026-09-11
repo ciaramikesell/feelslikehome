@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogOut, Home as HomeIcon, Columns, HelpCircle, X, Footprints, SlidersHorizontal, Map } from 'lucide-react';
 import { BrandMark, Wordmark } from '@/components/ui';
-import { PRIMARY_TABS } from '@/lib/constants';
+import { PRIMARY_TABS, MOBILE_PRIMARY_TABS } from '@/lib/constants';
 import { homeVocabulary } from '@/lib/homePresentation';
 import { createClient } from '@/lib/supabase/client';
 import SearchSwitcher from '@/components/SearchSwitcher';
@@ -16,7 +16,32 @@ const TAB_ICONS = {
   tour: Footprints,
   compare: Columns,
   map: Map,
+  search: SlidersHorizontal,
 };
+
+// Narrow-viewport-only replacement for the desktop top tab bar — see
+// .hh-mobile-nav / .hh-tabs in globals.css for the display toggle between
+// them. A route is "active" for its own page and anything nested under it
+// (e.g. /homes/[homeId] still highlights Homes), unlike the desktop tabs'
+// exact-match check, since a fixed bottom bar needs to read as "where am I"
+// even while drilled into a detail screen.
+function MobileNav({ pathname, vocabulary }) {
+  return (
+    <nav className="hh-mobile-nav" aria-label="Primary navigation">
+      {MOBILE_PRIMARY_TABS.map(({ key, label, href }) => {
+        const Icon = TAB_ICONS[key];
+        const presentationLabel = key === 'homes' ? vocabulary.plural : label;
+        const active = pathname === href || pathname.startsWith(`${href}/`);
+        return (
+          <Link key={key} href={href} className={`hh-mobile-nav-item ${active ? 'active' : ''}`} aria-current={active ? 'page' : undefined}>
+            <span className="hh-mobile-nav-icon"><Icon size={21} strokeWidth={active ? 2.3 : 2} aria-hidden="true" /></span>
+            <span className="hh-mobile-nav-label">{presentationLabel}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
 
 // Plain-language explanation of the whole workflow. Purely presentational — no
 // database field, no localStorage, nothing persisted; the modal just closes on
@@ -115,7 +140,7 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
             )}
             <Link
               href="/search"
-              className={`hh-shell-action hh-shell-action-primary ${pathname === '/search' ? 'active' : ''}`}
+              className={`hh-shell-action hh-shell-action-primary hh-desktop-only ${pathname === '/search' ? 'active' : ''}`}
             >
               <SlidersHorizontal size={14} /> My Search
             </Link>
@@ -142,6 +167,8 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
 
         {children}
       </div>
+
+      <MobileNav pathname={pathname} vocabulary={vocabulary} />
 
       {howToOpen && <HowToUseModal onClose={() => setHowToOpen(false)} />}
       <BetaFeedback userId={userId} searchId={activeSearchId} searchType={searchIntent} appVersion={appVersion} />

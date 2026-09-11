@@ -315,6 +315,18 @@ export const PRIMARY_TABS = [
   { key: 'map', label: 'Map', href: '/map' },
 ];
 
+// Mobile bottom navigation folds My Search back in as a primary destination
+// (desktop keeps it as a header utility instead — see AppShell) and uses
+// shorter labels sized for a 5-item tab bar. Desktop's PRIMARY_TABS above is
+// untouched by this addition.
+export const MOBILE_PRIMARY_TABS = [
+  { key: 'homes', label: 'Homes', href: '/homes' },
+  { key: 'tour', label: 'Tour', href: '/tour' },
+  { key: 'compare', label: 'Compare', href: '/compare' },
+  { key: 'map', label: 'Map', href: '/map' },
+  { key: 'search', label: 'Search', href: '/search' },
+];
+
 export function emptyHome() {
   return {
     id: null,

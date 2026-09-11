@@ -106,6 +106,17 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-tab.active { color: var(--ink); border-bottom-color: var(--brick); }
 .hh-tab:hover { color: var(--ink); }
 
+/* Mobile bottom navigation — hidden by default; swaps in for .hh-tabs (and
+   hh-desktop-only header items) at the app's established phone boundary,
+   see @media (max-width: 700px) below. */
+.hh-mobile-nav { display: none; }
+
+/* Card "More details" disclosure. Base rule always shows the content and
+   hides the toggle — i.e. today's desktop behavior, unconditionally — so
+   desktop is never affected by the narrow-viewport override below, which
+   is the only place a real collapse/expand happens. */
+.hh-card-context-summary { display: none; }
+
 /* Temporary pre-beta feedback drawer. It sits below modal z-index so it never
    competes with focused/full-screen work. */
 .beta-feedback { position: fixed; right: 0; top: 50%; transform: translateY(-50%); z-index: 30; font-family: 'Plus Jakarta Sans', sans-serif; }
@@ -394,30 +405,63 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   .hh-homes-grid { grid-template-columns: repeat(4, minmax(300px, 1fr)); }
 }
 @media (max-width: 700px) {
-  .hh-root { padding: 0 14px 48px; }
-  .hh-app-header { padding: 17px 0 12px; gap: 12px; flex-wrap: wrap; }
+  /* Extra bottom clearance keeps the last card/action clear of the fixed
+     mobile nav (~62px tall) plus the iPhone home-indicator safe area. */
+  .hh-root { padding: 0 14px calc(78px + env(safe-area-inset-bottom)); }
+  .hh-app-header { padding: 10px 0 8px; gap: 8px; flex-wrap: wrap; }
   .hh-brand-lockup { width: 100%; }
   .hh-brand-copy { flex: 1; }
-  .hh-user-email { max-width: calc(100vw - 90px); }
+  .hh-user-email { display: none; }
   .hh-shell-utilities { width: 100%; justify-content: flex-start; gap: 2px; }
   .hh-shell-action { min-height: 40px; }
   .hh-shell-action-quiet { margin-left: auto; }
-  .hh-tabs { gap: 0; justify-content: space-between; margin-bottom: 26px; }
-  .hh-tab { justify-content: center; gap: 4px; padding-inline: 4px; font-size: 12px; }
+  /* Desktop's top tab bar and the header's My Search link are replaced by
+     .hh-mobile-nav below — see the base-rule comment near .hh-tabs. */
+  .hh-tabs { display: none; }
+  .hh-desktop-only { display: none; }
   .hh-homes-intro { max-width: none; }
+  /* Explanatory intro copy is desktop page chrome; the collaborator-status
+     line (InviteCoBuyer / "searching with a collaborator") stays — it's
+     functional, not explanatory. */
+  .hh-homes-instructions { display: none; }
   .hh-homes-primary-action { margin: 0 0 16px; justify-content: flex-start; }
   .hh-homes-primary-action .hh-btn { min-height: 44px; }
   .hh-homes-toolbar { padding: 12px; margin-bottom: 20px; }
   .hh-homes-toolbar-row { align-items: stretch; flex-direction: column; }
-  .hh-homes-search { max-width: none; width: 100%; }
+  /* .hh-homes-search's base "flex: 1 1 260px" sizes it against the row
+     layout's main axis (width); once the toolbar switches to a column here,
+     that same 260px basis applies to height instead and forced a tall empty
+     gap under the input. flex-basis: auto lets it size to its own content
+     (the input) like every other stacked control here. */
+  .hh-homes-search { flex: 1 1 auto; max-width: none; width: 100%; }
   .hh-homes-sort { width: 100%; min-height: 42px; }
   .hh-filter-chips { gap: 5px; }
   .hh-filter-chips .hh-chip { min-height: 36px; padding-inline: 9px; font-size: 12px; }
   .hh-homes-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
-  .beta-feedback { top: auto; bottom: 14px; right: 14px; transform: none; }
+  /* Lifted clear of the fixed mobile nav so the closed feedback tab and the
+     open drawer both sit above it instead of overlapping. */
+  .beta-feedback { top: auto; bottom: calc(70px + env(safe-area-inset-bottom)); right: 14px; transform: none; }
   .beta-feedback-tab { min-height: 38px; padding: 8px 11px; border-right: 1px solid rgba(138,124,110,.38); border-radius: 9px; writing-mode: horizontal-tb; }
   .beta-feedback.is-open { left: 14px; }
   .beta-feedback-drawer { width: 100%; max-height: min(520px, calc(100dvh - 28px)); overflow-y: auto; border-right: 1px solid var(--line); border-radius: 16px; padding: 18px; }
+
+  .hh-mobile-nav {
+    display: flex;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+    background: var(--paper-raised);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -6px 18px rgba(46,38,33,.08);
+    padding: 6px max(10px, env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  }
+  .hh-mobile-nav-item {
+    flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 3px; min-height: 50px; padding: 4px 2px; border-radius: 12px; text-decoration: none;
+    color: var(--ink-soft); font: 600 10.5px 'Plus Jakarta Sans', sans-serif;
+  }
+  .hh-mobile-nav-icon { display: flex; align-items: center; justify-content: center; width: 32px; height: 24px; border-radius: 8px; }
+  .hh-mobile-nav-item.active { color: var(--brick); }
+  .hh-mobile-nav-item.active .hh-mobile-nav-icon { background: rgba(193,89,47,.1); }
+  .hh-mobile-nav-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 
 /* Focused responsive behavior for the three core decision surfaces. */
@@ -427,10 +471,23 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   .hh-find-home-row { flex-direction: column; }
   .hh-find-home-row > .hh-btn { justify-content: center; min-height: 44px; }
   .hh-property-facts-grid { grid-template-columns: 1fr 1fr !important; }
-  .hh-home-card-photo { height: 190px !important; }
-  .hh-home-card-body { padding: 17px 16px 18px !important; }
+  /* Image-forward: taller than the old mobile shrink, not just the desktop
+     card restacked narrower. */
+  .hh-home-card-photo { height: 220px !important; }
+  .hh-home-card-body { padding: 16px 16px 17px !important; gap: 10px !important; }
   .hh-home-card-actions { flex-wrap: wrap !important; row-gap: 9px !important; }
   .hh-home-card-actions .hh-btn { min-height: 40px; }
+  /* Progressive disclosure: secondary context (facts/commute/notes) starts
+     collapsed on a narrow card instead of restacking everything open —
+     CardContextDisclosure in HomesBoard.jsx does the actual open/closed
+     rendering; this just surfaces the toggle button (hidden on desktop,
+     see the base rule near .hh-tabs above). */
+  .hh-card-context-summary {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    width: 100%; min-height: 36px; padding: 2px 0; margin: -2px 0 2px; border: 0; background: none;
+    cursor: pointer; color: var(--ink-soft); font: 600 11.5px 'Plus Jakarta Sans', sans-serif;
+  }
+  .hh-card-context-chevron { flex-shrink: 0; transition: transform .15s ease; }
   .hh-priority-row { align-items: flex-start !important; gap: 10px; }
   .hh-search-layout { gap: 14px; }
   .hh-search-card { padding: 18px 16px; border-radius: 16px; }
