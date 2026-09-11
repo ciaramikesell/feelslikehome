@@ -3,6 +3,7 @@ import HomesBoard from '@/components/HomesBoard';
 import CoBuyerHomesLine from '@/components/CoBuyerHomesLine';
 import { PageIntro } from '@/components/ui';
 import { normalizePriorities } from '@/lib/constants';
+import { homeVocabulary } from '@/lib/homePresentation';
 import { resolveActiveSearch, resolvePriorities, resolveSharedFactPriorityAwareness, getHomesForUser, getParticipantStatusesForHomes, addCoBuyerPersonalSignals, getSearchParticipantIds, getCommuteDestinations } from '@/lib/supabase/collaboration';
 
 export default async function HomesPage() {
@@ -22,12 +23,14 @@ export default async function HomesPage() {
   // co-buyer; getParticipantStatusesForHomes itself is cheap/no-op otherwise.
   const statusesByHome = await getParticipantStatusesForHomes(supabase, search, homes);
   const homesWithSignal = addCoBuyerPersonalSignals(homes, statusesByHome, user.id);
+  const normalizedPriorities = normalizePriorities(priorities);
+  const vocabulary = homeVocabulary(normalizedPriorities);
 
   return (
     <main className="hh-homes-page">
-      <PageIntro title="Homes" subtitle="Add homes you're considering and keep everything you know about them in one place." />
+      <PageIntro title={vocabulary.plural} subtitle={`Add ${vocabulary.pluralLower} you're considering and keep everything you know about them in one place.`} />
       <CoBuyerHomesLine searchId={search.id} userId={user.id} isOwner={isOwner} isCollaborative={isCollaborative} />
-      <HomesBoard mode="homes" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizePriorities(priorities)} initialCommuteDestinations={commuteDestinations} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} />
+      <HomesBoard mode="homes" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizedPriorities} initialCommuteDestinations={commuteDestinations} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} />
     </main>
   );
 }

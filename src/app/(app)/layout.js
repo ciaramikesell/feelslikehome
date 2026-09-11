@@ -21,7 +21,7 @@ export default async function AppGroupLayout({ children }) {
   const appVersion = process.env.VERCEL_GIT_COMMIT_SHA || process.env.VERCEL_DEPLOYMENT_ID || null;
 
   return (
-    <AppShell userEmail={user.email} userId={user.id} accessibleSearches={accessibleSearches} activeSearchId={search.id} searchIntent={normalizeSearchIntent(priorities?.searchType)} appVersion={appVersion}>
+    <AppShell userEmail={user.email} userId={user.id} accessibleSearches={accessibleSearches} activeSearchId={search.id} priorities={priorities} searchIntent={normalizeSearchIntent(priorities?.searchType)} appVersion={appVersion}>
       {children}
     </AppShell>
   );

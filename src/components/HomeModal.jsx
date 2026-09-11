@@ -15,6 +15,7 @@ import { splitAddressLines, formatFoundCardFacts, countFoundFacts, formatCurrenc
 import { createClient } from '@/lib/supabase/client';
 import { hasToured } from '@/lib/lifecycle';
 import { HOME_PROPERTY_TYPE_OPTIONS, PROPERTY_TYPE_LABELS, searchIntentCapabilities } from '@/lib/searchIntent';
+import { homeVocabulary } from '@/lib/homePresentation';
 import { EXISTING_STRUCTURED_FACT_VALUE, structuredFactSelectValue, structuredFactValueFromSelect } from '@/lib/homeStructuredFacts';
 
 const PHOTO_BUCKET = 'home-photos';
@@ -189,6 +190,7 @@ function PropertyFacts({ form, set, priorities, sharedFactAwareness }) {
 
 export default function HomeModal({ initial, priorities, sharedFactAwareness = {}, isCollaborative = false, onSave, onClose, userId, onWantToTour, onArchiveRequest, presentation = 'modal' }) {
   const [form, setForm] = useState(initial);
+  const vocabulary = homeVocabulary(priorities);
   const [pasteText, setPasteText] = useState('');
   const [parseMsg, setParseMsg] = useState('');
   const [saving, setSaving] = useState(false);
@@ -423,6 +425,13 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         setUrlFallbackMsg("We couldn't read an address from that link — enter the property address below and we'll look it up.");
         set('listingUrl', raw);
       }
+    } else if (vocabulary.apartment && !/\d/.test(raw)) {
+      // A community name is valid discovery input, but must never be copied into
+      // the canonical address used by maps, geocoding, commute, and RentCast.
+      set('propertyName', raw);
+      setImportPhase('empty');
+      setImportResult(null);
+      setUrlFallbackMsg('');
     } else {
       setUrlFallbackMsg('');
       lookupAddress(raw);
@@ -455,9 +464,9 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
 
   return (
     <div className={`hh-modal-backdrop ${presentation === 'detail-panel' ? 'hh-detail-editor-backdrop' : ''}`} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={`hh-modal hh-corner ${presentation === 'detail-panel' ? 'hh-detail-editor-panel' : ''}`} role="dialog" aria-modal="true" aria-label={presentation === 'detail-panel' ? 'Edit home information' : undefined}>
+      <div className={`hh-modal hh-corner ${presentation === 'detail-panel' ? 'hh-detail-editor-panel' : ''}`} role="dialog" aria-modal="true" aria-label={presentation === 'detail-panel' ? `Edit ${vocabulary.singularLower} information` : undefined}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: isNewHome ? 14 : 18 }}>
-          <h2 className="hh-serif" style={{ fontSize: 20, margin: 0, fontWeight: 600 }}>{isNewHome ? 'Add a home' : 'Edit home'}</h2>
+          <h2 className="hh-serif" style={{ fontSize: 20, margin: 0, fontWeight: 600 }}>{isNewHome ? `Add a ${vocabulary.singularLower}` : `Edit ${vocabulary.singularLower}`}</h2>
           <button type="button" className="hh-btn hh-btn-ghost" style={{ padding: 6 }} onClick={onClose} aria-label="Close"><X size={16} aria-hidden="true" /></button>
         </div>
 
@@ -472,9 +481,9 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
             }}
           >
             <p style={{ fontSize: 14, color: 'var(--ink-soft)', lineHeight: 1.5, margin: '0 0 14px' }}>
-              Paste a listing link or enter an address. We'll fill in what we can.
+              {vocabulary.apartment ? "Paste a rental listing or enter the property yourself. We’ll fill in what we can." : "Paste a listing link or enter an address. We'll fill in what we can."}
             </p>
-            <label className="hh-label">Listing link or address</label>
+            <label className="hh-label">{vocabulary.apartment ? 'Listing link, property name, or address' : 'Listing link or address'}</label>
             <div className="hh-find-home-row" style={{ display: 'flex', gap: 8 }}>
               <input
                 className="hh-input"
@@ -482,7 +491,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
                 value={findInput}
                 onChange={(e) => setFindInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleFind()}
-                placeholder="Paste a listing link, or type an address"
+                placeholder={vocabulary.apartment ? 'Paste a rental listing, or type a property' : 'Paste a listing link, or type an address'}
               />
               <button
                 type="button"
@@ -491,7 +500,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
                 onClick={handleFind}
                 disabled={!findInput.trim() || importPhase === 'loading'}
               >
-                {importPhase === 'loading' ? 'Finding...' : 'Find this home'}
+                {importPhase === 'loading' ? 'Finding...' : `Find this ${vocabulary.singularLower}`}
               </button>
             </div>
           </div>
@@ -577,6 +586,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12, marginBottom: 6 }}>
               <div>
+                {vocabulary.apartment && <><label className="hh-label">Property name</label><input className="hh-input" style={{ marginBottom: 12 }} value={form.propertyName || ''} onChange={(e) => set('propertyName', e.target.value)} placeholder="Amber Apartments" /></>}
                 <label className="hh-label">Address *</label>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <input className="hh-input" style={{ flex: 1 }} value={form.address} onChange={(e) => set('address', e.target.value)} placeholder="123 Maple St, Ann Arbor, MI" />
@@ -594,6 +604,14 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
                 </div>
               </div>
               <div><label className="hh-label">Listing URL</label><input className="hh-input" value={form.listingUrl} onChange={(e) => set('listingUrl', e.target.value)} placeholder="https://..." /></div>
+              {vocabulary.apartment && <section style={{ border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px' }}>
+                <div className="hh-label" style={{ marginBottom: 10 }}>Currently considered option</div>
+                <div className="hh-property-facts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+                  <CompactField label="Floor plan" value={form.selectedFloorPlanName} onChange={(v) => set('selectedFloorPlanName', v)} placeholder="B2 Plan" />
+                  <CompactField label="Unit" value={form.selectedUnitLabel} onChange={(v) => set('selectedUnitLabel', v)} placeholder="Unit 410" />
+                </div>
+                <div style={{ marginTop: 10 }}><label className="hh-label">Floor-plan image URL</label><input className="hh-input" value={form.floorPlanImageUrl || ''} onChange={(e) => set('floorPlanImageUrl', e.target.value)} placeholder="https://.../floor-plan.jpg" /></div>
+              </section>}
               {isNewHome && <details className="hh-details">
                 <summary>More location details</summary>
                 <div style={{ marginTop: 10 }}>
@@ -651,9 +669,9 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
                 margin: '14px 0',
               }}
             >
-              <h3 style={{ fontSize: 13, fontWeight: 700, margin: '0 0 3px' }}>{currentPreviewSrc ? 'Home photo' : 'Add a photo'}</h3>
+              <h3 style={{ fontSize: 13, fontWeight: 700, margin: '0 0 3px' }}>{currentPreviewSrc ? `${vocabulary.singular} photo` : 'Add a photo'}</h3>
               <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 12px', lineHeight: 1.45 }}>
-                Give this home a face so it's easy to spot later — you can always add or change it.
+                Give this {vocabulary.singularLower} a face so it's easy to spot later — you can always add or change it.
               </p>
 
               <input
@@ -919,7 +937,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
 
         <div className="hh-modal-actions">
           <button className="hh-btn hh-btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="hh-btn" onClick={submit} disabled={!form.address.trim() || saving}>{saving ? 'Saving...' : 'Save home'}</button>
+          <button className="hh-btn" onClick={submit} disabled={!form.address.trim() || saving}>{saving ? 'Saving...' : `Save ${vocabulary.singularLower}`}</button>
         </div>
       </div>
     </div>

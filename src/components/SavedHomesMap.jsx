@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Home, MapPin } from 'lucide-react';
 import { computeMatch } from '@/lib/matching';
+import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
 import { formatHomePrice } from '@/lib/homeDisplay';
 
 let mapsPromise;
@@ -43,6 +44,7 @@ function DestinationMarkerContent({ selected, label }) {
 }
 
 export default function SavedHomesMap({ homes, destinations = [], priorities }) {
+  const vocabulary = homeVocabulary(priorities);
   const eligible = useMemo(() => homes.filter((home) => home.mapPosition), [homes]);
   const eligibleDestinations = useMemo(() => destinations.filter((destination) => destination.mapPosition), [destinations]);
   const unresolved = useMemo(() => homes.filter((home) => !home.mapPosition), [homes]);
@@ -68,7 +70,7 @@ export default function SavedHomesMap({ homes, destinations = [], priorities }) 
       mapRef.current = map;
       const bounds = new maps.LatLngBounds();
       eligible.forEach((home) => {
-        const marker = new AdvancedMarkerElement({ map, position: home.mapPosition, title: home.address, content: MarkerContent({ selected: selection?.type === 'home' && home.id === selection.id, address: home.address }) });
+        const marker = new AdvancedMarkerElement({ map, position: home.mapPosition, title: homeIdentity(home, priorities).accessible, content: MarkerContent({ selected: selection?.type === 'home' && home.id === selection.id, address: homeIdentity(home, priorities).accessible }) });
         marker.addListener('click', () => setSelection({ type: 'home', id: home.id }));
         markersRef.current.set(`home:${home.id}`, marker);
         bounds.extend(home.mapPosition);
@@ -91,7 +93,7 @@ export default function SavedHomesMap({ homes, destinations = [], priorities }) 
       const [type, id] = keyName.split(':');
       if (type === 'home') {
         const home = eligible.find((item) => item.id === id);
-        marker.content = MarkerContent({ selected: selection?.type === 'home' && id === selection.id, address: home?.address });
+        marker.content = MarkerContent({ selected: selection?.type === 'home' && id === selection.id, address: home ? homeIdentity(home, priorities).accessible : '' });
       } else {
         const destination = eligibleDestinations.find((item) => item.id === id);
         marker.content = DestinationMarkerContent({ selected: selection?.type === 'destination' && id === selection.id, label: destination?.label });
@@ -103,7 +105,7 @@ export default function SavedHomesMap({ homes, destinations = [], priorities }) 
     if (selectedItem && mapRef.current) mapRef.current.panTo(selectedItem.mapPosition);
   }, [selection, eligible, eligibleDestinations]);
 
-  if (!homes.length && !destinations.length) return <div className="hh-map-empty"><Home size={30} /><h2>Your homes and places will show up here.</h2><p>Add a home or a place that matters to start your map.</p><Link className="hh-btn" href="/homes?add=1">Add home</Link></div>;
+  if (!homes.length && !destinations.length) return <div className="hh-map-empty"><Home size={30} /><h2>Your {vocabulary.pluralLower} and places will show up here.</h2><p>Add a {vocabulary.singularLower} or a place that matters to start your map.</p><Link className="hh-btn" href="/homes?add=1">Add {vocabulary.singularLower}</Link></div>;
   const match = selected ? computeMatch(selected, priorities) : null;
 
   return <div className="hh-map-layout">
@@ -116,11 +118,11 @@ export default function SavedHomesMap({ homes, destinations = [], priorities }) 
       </div>}
       {selected && <article className="hh-map-preview">
         {selected.photoUrl && <img src={selected.photoUrl} alt="" />}
-        <div className="hh-map-preview-copy"><div className="hh-mono hh-map-preview-price">{formatHomePrice(selected.price, priorities.searchType) || 'Price not added'}</div><strong className="hh-address">{selected.address}</strong>
+        <div className="hh-map-preview-copy"><div className="hh-mono hh-map-preview-price">{formatHomePrice(selected.price, priorities.searchType) || 'Price not added'}</div><strong className="hh-address">{homeIdentity(selected, priorities).primary}</strong>{homeIdentity(selected, priorities).option && <small>{homeIdentity(selected, priorities).option}</small>}{homeIdentity(selected, priorities).supporting && <small>{homeIdentity(selected, priorities).supporting}</small>}
           <small>{[selected.beds && `${selected.beds} beds`, selected.baths && `${selected.baths} baths`, selected.sqft && `${selected.sqft} sq ft`].filter(Boolean).join(' · ')}</small>
           {match?.pct !== null && match?.pct !== undefined && <span className="hh-map-match">{match.pct}% Match</span>}
           {selected.status && <span className="hh-map-status">{selected.status}</span>}
-          <Link href={`/homes/${encodeURIComponent(selected.id)}`}>View home</Link>
+          <Link href={`/homes/${encodeURIComponent(selected.id)}`}>View {vocabulary.singularLower}</Link>
         </div>
       </article>}
       {selectedDestination && <article className="hh-map-preview hh-map-destination-preview">
@@ -128,7 +130,7 @@ export default function SavedHomesMap({ homes, destinations = [], priorities }) 
         <div className="hh-map-preview-copy"><div className="hh-map-place-label">Place that matters</div><strong>{selectedDestination.label}</strong><small>{selectedDestination.address}</small></div>
       </article>}
     </div>
-    <section aria-label="Mapped homes"><h2 className="hh-serif">Mapped homes</h2><div className="hh-map-home-list">{eligible.map((home) => <button key={home.id} type="button" className={selection?.type === 'home' && home.id === selection.id ? 'selected' : ''} onClick={() => setSelection({ type: 'home', id: home.id })}><Home size={15} /><span>{home.address}</span></button>)}</div></section>
+    <section aria-label="Mapped homes"><h2 className="hh-serif">Mapped homes</h2><div className="hh-map-home-list">{eligible.map((home) => <button key={home.id} type="button" className={selection?.type === 'home' && home.id === selection.id ? 'selected' : ''} onClick={() => setSelection({ type: 'home', id: home.id })}><Home size={15} /><span>{homeIdentity(home, priorities).primary}</span></button>)}</div></section>
     {eligibleDestinations.length > 0 && <section aria-label="Mapped places that matter"><h2 className="hh-serif">Places that matter</h2><div className="hh-map-home-list">{eligibleDestinations.map((destination) => <button key={destination.id} type="button" className={selection?.type === 'destination' && destination.id === selection.id ? 'selected' : ''} onClick={() => setSelection({ type: 'destination', id: destination.id })}><MapPin size={15} /><span>{destination.label}</span></button>)}</div></section>}
     {unresolved.length > 0 && <details className="hh-details"><summary>{unresolved.length} {unresolved.length === 1 ? 'home' : 'homes'} couldn't be placed on the map yet.</summary><div className="hh-map-unresolved">{unresolved.map((home) => <Link key={home.id} href={`/homes/${encodeURIComponent(home.id)}`}>{home.address || 'Address not added'} <span>Check home</span></Link>)}</div></details>}
   </div>;

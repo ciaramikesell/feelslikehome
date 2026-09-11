@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { LogOut, Home as HomeIcon, Columns, HelpCircle, X, Footprints, SlidersHorizontal, Map } from 'lucide-react';
 import { BrandMark, Wordmark } from '@/components/ui';
 import { PRIMARY_TABS } from '@/lib/constants';
+import { homeVocabulary } from '@/lib/homePresentation';
 import { createClient } from '@/lib/supabase/client';
 import SearchSwitcher from '@/components/SearchSwitcher';
 import BetaFeedback from '@/components/BetaFeedback';
@@ -84,10 +85,11 @@ function HowToUseModal({ onClose }) {
   );
 }
 
-export default function AppShell({ children, userEmail, userId, accessibleSearches, activeSearchId, searchIntent, appVersion }) {
+export default function AppShell({ children, userEmail, userId, accessibleSearches, activeSearchId, priorities, searchIntent, appVersion }) {
   const pathname = usePathname();
   const router = useRouter();
   const [howToOpen, setHowToOpen] = useState(false);
+  const vocabulary = homeVocabulary(priorities);
 
   const signOut = async () => {
     const supabase = createClient();
@@ -129,9 +131,10 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
         <nav className="hh-tabs" aria-label="Primary navigation">
           {PRIMARY_TABS.map(({ key, label, href }) => {
             const Icon = TAB_ICONS[key];
+            const presentationLabel = key === 'homes' ? vocabulary.plural : label;
             return (
               <Link key={key} href={href} className={`hh-tab ${pathname === href ? 'active' : ''}`}>
-                <Icon size={14} /> {label}
+                <Icon size={14} /> {presentationLabel}
               </Link>
             );
           })}
