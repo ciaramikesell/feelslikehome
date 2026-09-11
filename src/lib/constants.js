@@ -318,6 +318,7 @@ export const PRIMARY_TABS = [
 export function emptyHome() {
   return {
     id: null,
+    propertyName: '', selectedFloorPlanName: '', selectedUnitLabel: '', floorPlanImageUrl: '',
     address: '', crossroads: '', listingUrl: '', photoUrl: '',
     price: '', estMonthly: '', sqft: '', beds: '', baths: '', lotSize: '', garageSpaces: '', yearBuilt: '', daysOnMarket: '',
     homeLayout: [], homeCondition: [], primaryBedroomLocation: '', secondaryBedroomLocation: '',

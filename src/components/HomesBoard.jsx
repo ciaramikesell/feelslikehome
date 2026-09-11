@@ -16,6 +16,7 @@ import PostTourModal from '@/components/PostTourModal';
 import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
 import { STATUS_COLOR, emptyHome, isArchivedStatus } from '@/lib/constants';
 import { parseNum, fmtMoney, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint } from '@/lib/matching';
+import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
 import { formatHomePrice, formatLotSizeDisplay, splitAddressLines, parseCommaList } from '@/lib/homeDisplay';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { deriveFlhMoment } from '@/lib/flhMoments';
@@ -59,6 +60,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   const [favoritePop, setFavoritePop] = useState(false);
   const favoritePopTimer = useRef(null);
   const { line1: addressLine1, line2: addressLine2 } = splitAddressLines(home.address);
+  const identity = homeIdentity(home, priorities);
   // Normalize lifecycle presentation without touching stored data: any status that
   // isn't 'Want to Tour' or 'Toured' is treated as pre-tour, whether it's the current
   // 'Saved' value or a legacy string like 'Considering' left over from before this
@@ -129,10 +131,10 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   return (
     <article className={`hh-home-card hh-corner ${mode === 'archive' ? 'is-archived' : ''}`} ref={commuteRef}>
       <div className="hh-home-card-surface">
-        <Link href={`/homes/${encodeURIComponent(home.id)}`} className={`hh-home-card-photo ${showPhoto ? '' : 'is-empty'}`} aria-label={`Open ${home.address || 'home'} details`}>
+        <Link href={`/homes/${encodeURIComponent(home.id)}`} className={`hh-home-card-photo ${showPhoto ? '' : 'is-empty'}`} aria-label={`Open ${identity.accessible} details`}>
           {showPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={home.photoUrl} alt={home.address} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={() => setImgError(true)} />
+            <img src={home.photoUrl} alt={`${identity.accessible} ${homeVocabulary(priorities).singularLower} photo`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={() => setImgError(true)} />
           ) : (
             <div className="hh-home-card-photo-fallback">
               <HomeIcon size={34} color="rgba(46,38,33,0.22)" strokeWidth={1.5} />
@@ -165,8 +167,9 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
 
           <div>
             <Link href={`/homes/${encodeURIComponent(home.id)}`} className="hh-home-identity-link">
-              <div className="hh-address" style={{ fontSize: 19, fontWeight: 600, lineHeight: 1.28, color: 'var(--ink)' }}>{addressLine1 || 'Untitled'}</div>
-              {addressLine2 && <div style={{ fontSize: 13.5, color: 'var(--ink-soft)', marginTop: 1 }}>{addressLine2}</div>}
+              <div className="hh-address" style={{ fontSize: 19, fontWeight: 600, lineHeight: 1.28, color: 'var(--ink)' }}>{identity.primary}</div>
+              {identity.option && <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', marginTop: 2 }}>{identity.option}</div>}
+              {identity.supporting ? <div style={{ fontSize: 13.5, color: 'var(--ink-soft)', marginTop: 1 }}>{identity.supporting}</div> : addressLine2 && <div style={{ fontSize: 13.5, color: 'var(--ink-soft)', marginTop: 1 }}>{addressLine2}</div>}
             </Link>
           </div>
 
@@ -401,6 +404,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   const searchParams = useSearchParams();
   const [homes, setHomes] = useState(initialHomes);
   const [priorities] = useState(initialPriorities);
+  const vocabulary = homeVocabulary(initialPriorities);
   const [query, setQuery] = useState('');
   const [quickFilter, setQuickFilter] = useState('all');
   const [sortBy, setSortBy] = useState('default');
@@ -574,7 +578,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     let list = baseList.filter((h) => {
       if (query.trim()) {
         const q = query.toLowerCase();
-        const hay = [h.address, h.crossroads, ...(h.homeLayout || []), h.primaryBedroomLocation, h.secondaryBedroomLocation, ...trueCheckLabels(h)].join(' ').toLowerCase();
+        const hay = [h.propertyName, h.address, h.selectedFloorPlanName, h.selectedUnitLabel, h.crossroads, ...(h.homeLayout || []), h.primaryBedroomLocation, h.secondaryBedroomLocation, ...trueCheckLabels(h)].join(' ').toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -638,20 +642,20 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     <>
       {mode === 'homes' && (
         <div className="hh-homes-primary-action">
-          <button className="hh-btn" onClick={() => setModalHome(emptyHome())}><Plus size={15} /> Add home</button>
+          <button className="hh-btn" onClick={() => setModalHome(emptyHome())}><Plus size={15} /> Add {vocabulary.singularLower}</button>
         </div>
       )}
 
       {saveError && <div className="hh-save-error" role="alert">{saveError}{retrySave && <> <button type="button" onClick={() => retrySave().catch(() => {})}>Retry</button></>}</div>}
 
       {mode === 'homes' && (
-        <section className="hh-homes-toolbar" aria-label="Search and filter homes">
+        <section className="hh-homes-toolbar" aria-label={`Search and filter ${vocabulary.pluralLower}`}>
         <div className="hh-homes-toolbar-row">
           <div className="hh-homes-search">
             <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: 'var(--ink-soft)' }} />
-            <input className="hh-input" style={{ paddingLeft: 30 }} placeholder="Search address, layout, feature..." value={query} onChange={(e) => setQuery(e.target.value)} />
+            <input className="hh-input" style={{ paddingLeft: 30 }} placeholder={vocabulary.apartment ? "Search property, address, floor plan, unit..." : "Search address, layout, feature..."} value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
-          <select className="hh-input hh-homes-sort" value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label="Sort homes">
+          <select className="hh-input hh-homes-sort" value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label={`Sort ${vocabulary.pluralLower}`}>
             <option value="default">Sort: Date added</option>
             <option value="newest">Sort: Newest first</option>
             <option value="match">Sort: Match</option>
@@ -689,9 +693,9 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
           </EmptyLifecycleState>
         ) : (
           <div className="hh-corner" style={{ border: '1px dashed var(--line)', borderRadius: 16, padding: '48px 24px', textAlign: 'center', color: 'var(--ink-soft)' }}>
-            <p className="hh-serif" style={{ fontSize: 17, color: 'var(--ink)', marginBottom: 6 }}>{activeHomes.length === 0 ? "You found the homes. We'll help you choose." : 'Nothing matches that search'}</p>
+            <p className="hh-serif" style={{ fontSize: 17, color: 'var(--ink)', marginBottom: 6 }}>{activeHomes.length === 0 ? vocabulary.apartment ? "No properties yet" : "You found the homes. We'll help you choose." : 'Nothing matches that search'}</p>
             <p style={{ fontSize: 13, marginBottom: 18 }}>{activeHomes.length === 0 ? 'Paste a listing link from anywhere to get started.' : 'Try a different search or status filter.'}</p>
-            {activeHomes.length === 0 && <button className="hh-btn" onClick={() => setModalHome(emptyHome())}><Plus size={15} /> Add home</button>}
+            {activeHomes.length === 0 && <button className="hh-btn" onClick={() => setModalHome(emptyHome())}><Plus size={15} /> Add {vocabulary.singularLower}</button>}
           </div>
         )
       ) : (

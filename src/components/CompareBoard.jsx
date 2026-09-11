@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Columns, Star, Heart, Home as HomeIcon } from 'lucide-react';
 import { TOUR_RATING_KEY, criterionDisplayLabel } from '@/lib/constants';
 import { parseNum, computeMatch, matchColor } from '@/lib/matching';
+import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
 import { formatDateOnly, formatHomePrice, formatLotSizeDisplay, formatPropertyType, formatTriState, parseCommaList } from '@/lib/homeDisplay';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { useCommuteMatrix } from '@/lib/useCommuteObserver';
@@ -124,7 +125,7 @@ function CollaboratorState({ state }) {
   return choices.length ? <div className="hh-collaborator-state">{choices.join(' · ')}</div> : null;
 }
 
-function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective, searchType }) {
+function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective, searchType, priorities }) {
   const [imgError, setImgError] = useState(false);
   const showPhoto = home.photoUrl && !imgError;
   const overallRating = home.ratings?.[TOUR_RATING_KEY] || 0;
@@ -148,7 +149,7 @@ function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective, searchTyp
       </div>
 
       <div className="hh-mono hh-compare-price">{formatHomePrice(home.price, searchType) || 'Price not added'}</div>
-      <Link href={`/homes/${encodeURIComponent(home.id)}`} className="hh-address hh-compare-address hh-home-identity-link">{home.address || 'Untitled'}</Link>
+      <Link href={`/homes/${encodeURIComponent(home.id)}`} className="hh-address hh-compare-address hh-home-identity-link">{homeIdentity(home, priorities).primary}</Link>{homeIdentity(home, priorities).option && <div className="hh-compare-option">{homeIdentity(home, priorities).option}</div>}{homeIdentity(home, priorities).supporting && <div className="hh-compare-supporting">{homeIdentity(home, priorities).supporting}</div>}
       <div className="hh-mono hh-compare-facts">
         {[home.beds ? `${home.beds} bd` : null, home.baths ? `${home.baths} ba` : null, home.sqft ? `${Number(home.sqft).toLocaleString()} sqft` : null]
           .filter(Boolean).join(' · ') || '—'}
@@ -213,7 +214,7 @@ function CommuteSection({ homes, destinations, diffsOnly, getResult }) {
       <div className="hh-commute-desktop hh-scrollx">
         <div style={{ display: 'grid', gridTemplateColumns: `200px repeat(${homes.length}, minmax(120px, 1fr))`, minWidth: 200 + homes.length * 120 }}>
           <div />
-          {homes.map((home) => <div key={home.id} className="hh-commute-heading">{home.address || 'Untitled'}</div>)}
+          {homes.map((home) => <div key={home.id} className="hh-commute-heading">{homeIdentity(home, priorities).primary}</div>)}
           {rows.map(({ destination, results, shortest }) => (
             <Fragment key={destination.id}>
               <div className="hh-commute-label"><strong>{destination.label}</strong>{destination.maxDriveMinutes != null && <span>{destination.maxDriveMinutes} min max</span>}</div>
@@ -226,7 +227,7 @@ function CommuteSection({ homes, destinations, diffsOnly, getResult }) {
         {rows.map(({ destination, results, shortest }) => (
           <div key={destination.id} className="hh-commute-mobile-group">
             <div className="hh-commute-label"><strong>{destination.label}</strong>{destination.maxDriveMinutes != null && <span>{destination.maxDriveMinutes} min max</span>}</div>
-            {homes.map((home, index) => <div key={home.id} className="hh-commute-mobile-row"><span>{home.address || 'Untitled'}</span><CommuteValue result={results[index]} destination={destination} emphasized={index === shortest} /></div>)}
+            {homes.map((home, index) => <div key={home.id} className="hh-commute-mobile-row"><span>{homeIdentity(home, priorities).primary}</span><CommuteValue result={results[index]} destination={destination} emphasized={index === shortest} /></div>)}
           </div>
         ))}
       </div>
@@ -237,6 +238,7 @@ function CommuteSection({ homes, destinations, diffsOnly, getResult }) {
 export default function CompareBoard({ homes, priorities, coBuyerPerspectives = {}, commuteDestinations = [] }) {
   const [selectedIds, setSelectedIds] = useState(() => homes.slice(0, Math.min(2, homes.length)).map((h) => h.id));
   const [diffsOnly, setDiffsOnly] = useState(true);
+  const vocabulary = homeVocabulary(priorities);
 
   const toggle = (id) => setSelectedIds((prev) => {
     if (prev.includes(id)) return prev.filter((x) => x !== id);
@@ -283,8 +285,8 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
       <div className="hh-corner" style={{ border: '1px dashed var(--line)', borderRadius: 16, padding: '36px 24px', textAlign: 'center', color: 'var(--ink-soft)' }}>
         <Columns size={22} style={{ marginBottom: 8, opacity: 0.5 }} />
         <p className="hh-serif" style={{ fontSize: 18, color: 'var(--ink)', margin: '0 0 5px' }}>The showdown starts here.</p>
-        <p style={{ fontSize: 13.5 }}>Pick 2–4 homes and see how they stack up.</p>
-        <Link className="hh-btn" href="/homes?add=1">{homes.length === 0 ? 'Add a home' : 'Add another home'}</Link>
+        <p style={{ fontSize: 13.5 }}>{vocabulary.apartment ? 'Pick 2–4 properties and see how they stack up.' : 'Pick 2–4 homes and see how they stack up.'}</p>
+        <Link className="hh-btn" href="/homes?add=1">{homes.length === 0 ? (vocabulary.apartment ? 'Add a property' : 'Add a home') : (vocabulary.apartment ? 'Add another property' : 'Add another home')}</Link>
       </div>
     );
   }
@@ -292,7 +294,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div>
-        <div className="hh-label" style={{ marginBottom: 8 }}>Choose homes to compare {selectedIds.length >= MAX_COMPARE && <span>(max {MAX_COMPARE})</span>}</div>
+        <div className="hh-label" style={{ marginBottom: 8 }}>Choose {vocabulary.pluralLower} to compare {selectedIds.length >= MAX_COMPARE && <span>(max {MAX_COMPARE})</span>}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {homes.map((h) => {
             const isSelected = selectedIds.includes(h.id);
@@ -306,7 +308,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
                 aria-pressed={isSelected}
                 onClick={() => toggle(h.id)}
               >
-                {h.address || 'Untitled'}
+                {homeIdentity(h, priorities).primary}
               </button>
             );
           })}
@@ -324,7 +326,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
           <div className="hh-compare-identity-scroll">
             <div className="hh-compare-identity-grid" data-count={selected.length} style={{ '--compare-count': selected.length }}>
               {selected.map((h, i) => (
-                <HomeHeaderCard key={h.id} home={h} match={matches[i]} isFavorite={h.isFavorite} coBuyerPerspective={coBuyerPerspectives[h.id]} searchType={priorities.searchType} />
+                <HomeHeaderCard key={h.id} home={h} match={matches[i]} isFavorite={h.isFavorite} coBuyerPerspective={coBuyerPerspectives[h.id]} searchType={priorities.searchType} priorities={priorities} />
               ))}
             </div>
           </div>
@@ -351,7 +353,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
                 <div style={{ display: 'grid', gridTemplateColumns: `200px repeat(${selected.length}, minmax(120px, 1fr))`, minWidth: 200 + selected.length * 120 }}>
                   <div />
                   {selected.map((h) => (
-                    <div key={h.id} style={{ padding: '6px 12px', fontSize: 12, fontWeight: 600, color: 'var(--ink-soft)', borderBottom: '1px solid var(--ink)' }}>{h.address || 'Untitled'}</div>
+                    <div key={h.id} style={{ padding: '6px 12px', fontSize: 12, fontWeight: 600, color: 'var(--ink-soft)', borderBottom: '1px solid var(--ink)' }}>{homeIdentity(h, priorities).primary}</div>
                   ))}
                   {mustRows.map((row) => (
                     <Fragment key={row.key}>
@@ -378,7 +380,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
                 <div style={{ display: 'grid', gridTemplateColumns: `200px repeat(${selected.length}, minmax(120px, 1fr))`, minWidth: 200 + selected.length * 120 }}>
                   <div />
                   {selected.map((h) => (
-                    <div key={h.id} style={{ padding: '6px 12px', fontSize: 12, fontWeight: 600, color: 'var(--ink-soft)', borderBottom: '1px solid var(--ink)' }}>{h.address || 'Untitled'}</div>
+                    <div key={h.id} style={{ padding: '6px 12px', fontSize: 12, fontWeight: 600, color: 'var(--ink-soft)', borderBottom: '1px solid var(--ink)' }}>{homeIdentity(h, priorities).primary}</div>
                   ))}
                   {otherRows.map((row) => (
                     <Fragment key={row.key}>
@@ -407,7 +409,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
               <div className="hh-compare-notes">
                 {selected.map((home) => (
                   <div key={home.id} className="hh-different-takes-home">
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 8 }}>{home.address || 'Untitled'}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 8 }}>{homeIdentity(home, priorities).primary}</div>
                     {(coBuyerPerspectives[home.id]?.differentTakes || []).map((take) => (
                       <div key={take.key} className="hh-different-take">
                         <strong>{criterionDisplayLabel(take.key.split(':')[0], take.label)}</strong>
@@ -422,12 +424,12 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
           )}
 
           <details className="hh-details">
-            <summary>Home facts</summary>
+            <summary>{vocabulary.singular} facts</summary>
             <div className="hh-scrollx" style={{ overflowX: 'auto', marginTop: 10 }}>
               <div style={{ display: 'grid', gridTemplateColumns: `160px repeat(${selected.length}, minmax(100px, 1fr))`, minWidth: 160 + selected.length * 100 }}>
                 <div />
                 {selected.map((h) => (
-                  <div key={h.id} style={{ padding: '6px 12px', fontSize: 12, fontWeight: 600, color: 'var(--ink-soft)', borderBottom: '1px solid var(--ink)' }}>{h.address || 'Untitled'}</div>
+                  <div key={h.id} style={{ padding: '6px 12px', fontSize: 12, fontWeight: 600, color: 'var(--ink-soft)', borderBottom: '1px solid var(--ink)' }}>{homeIdentity(h, priorities).primary}</div>
                 ))}
                 {factRows.map((row) => {
                   const values = selected.map((h) => row.get(h));
@@ -457,7 +459,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
                 const disliked = parseCommaList(h.cons);
                 return (
                   <div key={h.id} style={{ border: '1px solid var(--line)', borderRadius: 14, padding: 14, background: 'var(--paper-raised)' }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 8 }}>{h.address || 'Untitled'}</div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 8 }}>{homeIdentity(h, priorities).primary}</div>
                     {liked.length > 0 && (
                       <div style={{ fontSize: 12, color: 'var(--ink)', marginBottom: 6 }}><strong style={{ color: 'var(--moss)' }}>Liked: </strong>{liked.join(', ')}</div>
                     )}
@@ -476,7 +478,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
             <div className="hh-compare-notes" style={{ marginTop: 10 }}>
               {selected.map((h) => (
                 <div key={h.id} style={{ border: '1px solid var(--line)', borderRadius: 14, padding: 14, background: 'var(--paper-raised)' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 6 }}>{h.address || 'Untitled'}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 6 }}>{homeIdentity(h, priorities).primary}</div>
                   <div style={{ fontSize: 12.5, color: h.notes ? 'var(--ink)' : 'var(--ink-soft)', fontStyle: h.notes ? 'normal' : 'italic', whiteSpace: 'pre-wrap' }}>{h.notes || 'Nothing noted yet.'}</div>
                 </div>
               ))}

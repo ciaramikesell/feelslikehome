@@ -25,7 +25,7 @@ const HOME_SHARED_COLUMNS_PRE_PASS_B = [
   'coordinate_source', 'hoa_fee_monthly', 'property_tax_annual', 'property_tax_year',
   'basement_notes', 'schools_notes', 'condition_notes', 'created_at', 'updated_at',
 ].join(',');
-export const HOME_SHARED_COLUMNS = `${HOME_SHARED_COLUMNS_PRE_PASS_B},property_type,available_on,pets_allowed,utilities_included,in_unit_laundry`;
+export const HOME_SHARED_COLUMNS = `${HOME_SHARED_COLUMNS_PRE_PASS_B},property_type,available_on,pets_allowed,utilities_included,in_unit_laundry,property_name,selected_floor_plan_name,selected_unit_label,floor_plan_image_url`;
 
 const PASS_B_DATABASE_COLUMNS = ['property_type', 'available_on', 'pets_allowed', 'utilities_included', 'in_unit_laundry'];
 function isPrePassBSchemaError(error) {
@@ -230,6 +230,7 @@ const SHARED_FIELDS = [
   'propertyTaxAnnual', 'propertyTaxYear', 'basementNotes',
   'schoolsNotes', 'conditionNotes',
   'propertyType', 'availableOn', 'petsAllowed', 'utilitiesIncluded', 'inUnitLaundry',
+  'propertyName', 'selectedFloorPlanName', 'selectedUnitLabel', 'floorPlanImageUrl',
 ];
 
 function emptyPersonalState() {
@@ -591,6 +592,10 @@ function rowToHomeWithOwner(row) {
     petsAllowed: row.pets_allowed ?? null,
     utilitiesIncluded: row.utilities_included ?? null,
     inUnitLaundry: row.in_unit_laundry ?? null,
+    propertyName: row.property_name || '',
+    selectedFloorPlanName: row.selected_floor_plan_name || '',
+    selectedUnitLabel: row.selected_unit_label || '',
+    floorPlanImageUrl: row.floor_plan_image_url || '',
   };
 }
 
@@ -635,6 +640,10 @@ function homeToSharedRow(home, userId, searchId) {
     pets_allowed: home.petsAllowed ?? null,
     utilities_included: home.utilitiesIncluded ?? null,
     in_unit_laundry: home.inUnitLaundry ?? null,
+    property_name: home.propertyName || null,
+    selected_floor_plan_name: home.selectedFloorPlanName || null,
+    selected_unit_label: home.selectedUnitLabel || null,
+    floor_plan_image_url: home.floorPlanImageUrl || null,
     updated_at: new Date().toISOString(),
   };
 }

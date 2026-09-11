@@ -152,6 +152,12 @@ create table if not exists public.homes (
   pets_allowed boolean,
   utilities_included boolean,
   in_unit_laundry boolean,
+
+  -- Apartment V1 property identity + one selected option snapshot.
+  property_name text,
+  selected_floor_plan_name text,
+  selected_unit_label text,
+  floor_plan_image_url text,
   constraint homes_property_type_check check (property_type is null or property_type = any (array['apartment','house','townhome','condo','multifamily','other']::text[])),
 
   -- Auto Enrichment 1.0 — already-returned RentCast facts we previously discarded.
@@ -1346,7 +1352,8 @@ grant select (
   coordinate_address_fingerprint, coordinate_status, coordinate_source,
   hoa_fee_monthly, property_tax_annual, property_tax_year, basement_notes,
   schools_notes, condition_notes, property_type, available_on, pets_allowed,
-  utilities_included, in_unit_laundry, created_at, updated_at
+  utilities_included, in_unit_laundry, property_name, selected_floor_plan_name,
+  selected_unit_label, floor_plan_image_url, created_at, updated_at
 ) on public.homes to authenticated;
 
 -- INSERT permits creating a shared record but not supplying legacy private
@@ -1360,7 +1367,8 @@ grant insert (
   coordinate_address_fingerprint, coordinate_status, coordinate_source,
   hoa_fee_monthly, property_tax_annual, property_tax_year, basement_notes,
   schools_notes, condition_notes, property_type, available_on, pets_allowed,
-  utilities_included, in_unit_laundry, updated_at
+  utilities_included, in_unit_laundry, property_name, selected_floor_plan_name,
+  selected_unit_label, floor_plan_image_url, updated_at
 ) on public.homes to authenticated;
 
 -- Existing 3C.2 upserts include identity columns and updated_at in their SET
@@ -1376,7 +1384,8 @@ grant update (
   coordinate_address_fingerprint, coordinate_status, coordinate_source,
   hoa_fee_monthly, property_tax_annual, property_tax_year, basement_notes,
   schools_notes, condition_notes, property_type, available_on, pets_allowed,
-  utilities_included, in_unit_laundry, updated_at
+  utilities_included, in_unit_laundry, property_name, selected_floor_plan_name,
+  selected_unit_label, floor_plan_image_url, updated_at
 ) on public.homes to authenticated;
 
 create or replace function public.enforce_home_shared_identity()
