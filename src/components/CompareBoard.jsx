@@ -35,13 +35,15 @@ const PHYSICAL_FACT_ROWS = [
   { key: 'dom', label: 'Days on market', betterHigh: false, get: (h) => parseNum(h.daysOnMarket), fmt: (v) => (v === null ? '—' : v) },
 ];
 
-// Apartment-to-Rent communities don't have a meaningful per-listing lot,
-// assigned year built, or private garage the way a standalone home does —
-// showing them just because the shared `homes` model has the columns would
-// present irrelevant Home fields as if they were apartment facts. Beds/
-// baths/sqft/days-on-market genuinely do describe a specific unit/listing,
-// so those stay for both.
-const APARTMENT_IRRELEVANT_FACT_KEYS = new Set(['lot', 'garage', 'year']);
+// Apartment-to-Rent communities don't have a meaningful per-listing lot the
+// way a standalone home does — showing it just because the shared `homes`
+// model has the column would present an irrelevant Home field as if it were
+// an apartment fact. Garage and Year built, by contrast, are real, valid
+// apartment/community facts when known (assigned parking, when the building
+// was built) — they're only suppressed here if genuinely unset, the same as
+// every other fact row, never categorically hidden for apartments. Beds/
+// baths/sqft/days-on-market are equally per-unit facts for both.
+const APARTMENT_IRRELEVANT_FACT_KEYS = new Set(['lot']);
 
 function homeFactRows(priorities) {
   const apartment = isApartmentRental(priorities);
@@ -203,7 +205,12 @@ function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective, searchTyp
 // thumbnail + identity + Match keeps that answerable without turning
 // selection into its own control surface (falls back to the same empty-photo
 // icon Home cards use elsewhere — no new placeholder system).
-function PickerChip({ home, priorities, match, isSelected, disabled, onToggle }) {
+//
+// `matchTrustworthy` gates whether `match`'s percentage is shown at all — see
+// the comment on pickerMatches/commuteIsSelectedPriority below for why: this
+// component itself has no opinion on trust, it just doesn't render a number
+// it wasn't told to trust.
+function PickerChip({ home, priorities, match, matchTrustworthy, isSelected, disabled, onToggle }) {
   const [imgError, setImgError] = useState(false);
   const identity = homeIdentity(home, priorities);
   const showPhoto = home.photoUrl && !imgError;
@@ -225,10 +232,12 @@ function PickerChip({ home, priorities, match, isSelected, disabled, onToggle })
       </span>
       <span className="hh-compare-picker-text">
         <span className="hh-compare-picker-name">{identity.primary}</span>
-        {match?.pct != null ? (
+        {matchTrustworthy && match?.pct != null ? (
           <span className="hh-compare-picker-match" style={{ color: matchColor(match.pct) }}>{match.pct}% Match</span>
-        ) : (
+        ) : matchTrustworthy ? (
           <span className="hh-compare-picker-match is-unset">Match unavailable</span>
+        ) : (
+          <span className="hh-compare-picker-match is-unset">Select to see Match</span>
         )}
       </span>
     </button>
@@ -343,16 +352,35 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
   });
 
   // A quick Match badge for every candidate in the picker, not just the ones
-  // currently selected — deliberately without commute evaluation (that needs
-  // an active comparison's commute matrix, not a picker of homes that may
-  // never be selected); commute-based priorities just read as unevaluated
-  // here, exactly like any other not-yet-evaluated criterion. Same shared
-  // computeMatch as everywhere else, never a separate scoring path.
+  // currently selected — deliberately without commute evaluation, since that
+  // needs an active comparison's commute matrix (see useCommuteMatrix below),
+  // not a request fired for every home just to decorate the picker. Same
+  // shared computeMatch as everywhere else, never a separate scoring path.
+  //
+  // Trust guard: a percentage is only ever labeled "Match" if it is provably
+  // identical to what the same home would show once actually selected and
+  // fully evaluated. That's true whenever the user hasn't selected "Commute"
+  // as a location priority at all — computeMatch never looks at commute in
+  // that case, with or without evaluation data, so the two calculations are
+  // the same calculation. The moment Commute IS a selected priority, this
+  // no-commute calculation and the real, commute-aware one selecting the
+  // home would trigger can genuinely diverge (different evaluatedCount,
+  // different pct) — so the picker shows no percentage at all rather than
+  // one that might not match what the user sees a moment later. Detected
+  // structurally from computeMatch's own `allSelected` (whether a
+  // 'location:Commute' row was selected at all), not by re-deriving tier
+  // logic here.
   const pickerMatches = useMemo(() => {
     const byId = new Map();
     homes.forEach((home) => byId.set(home.id, computeMatch(home, priorities)));
     return byId;
   }, [homes, priorities]);
+
+  const commuteIsSelectedPriority = useMemo(
+    () => Array.from(pickerMatches.values()).some((m) => m?.allSelected?.some((c) => c.key === 'location:Commute')),
+    [pickerMatches]
+  );
+  const pickerMatchTrustworthy = !commuteIsSelectedPriority;
 
   const selected = useMemo(() => selectedIds.map((id) => homes.find((h) => h.id === id)).filter(Boolean), [selectedIds, homes]);
   const getCommuteResult = useCommuteMatrix(selected, commuteDestinations);
@@ -413,6 +441,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
                 home={h}
                 priorities={priorities}
                 match={pickerMatches.get(h.id)}
+                matchTrustworthy={pickerMatchTrustworthy}
                 isSelected={isSelected}
                 disabled={disabled}
                 onToggle={() => toggle(h.id)}
