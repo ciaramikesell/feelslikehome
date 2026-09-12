@@ -14,6 +14,7 @@ import { evaluateCommute } from '@/lib/commute';
 import HomeModal from '@/components/HomeModal';
 import PostTourModal from '@/components/PostTourModal';
 import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
+import Sheet from '@/components/Sheet';
 import { STATUS_COLOR, emptyHome, isArchivedStatus } from '@/lib/constants';
 import { parseNum, fmtMoney, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint } from '@/lib/matching';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
@@ -31,22 +32,19 @@ import {
 
 function ConfirmModal({ title, body, cancelLabel = 'Cancel', confirmLabel, confirmTone = 'danger', onCancel, onConfirm }) {
   return (
-    <div className="hh-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onCancel()}>
-      <div className="hh-modal hh-corner" style={{ maxWidth: 420, padding: 26 }}>
-        <h3 className="hh-serif" style={{ fontSize: 18, margin: 0, fontWeight: 600, color: 'var(--ink)' }}>{title}</h3>
-        <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', lineHeight: 1.55, margin: '10px 0 20px' }}>{body}</p>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-          <button className="hh-btn hh-btn-ghost" onClick={onCancel}>{cancelLabel}</button>
-          <button
-            className="hh-btn"
-            style={confirmTone === 'danger' ? { background: 'var(--brick)', borderColor: 'var(--brick)' } : undefined}
-            onClick={onConfirm}
-          >
-            {confirmLabel}
-          </button>
-        </div>
+    <Sheet open size="compact" title={title} onClose={onCancel}>
+      <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', lineHeight: 1.55, margin: '0 0 20px' }}>{body}</p>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+        <button className="hh-btn hh-btn-ghost" onClick={onCancel}>{cancelLabel}</button>
+        <button
+          className="hh-btn"
+          style={confirmTone === 'danger' ? { background: 'var(--brick)', borderColor: 'var(--brick)' } : undefined}
+          onClick={onConfirm}
+        >
+          {confirmLabel}
+        </button>
       </div>
-    </div>
+    </Sheet>
   );
 }
 
@@ -445,6 +443,12 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   const [quickFilter, setQuickFilter] = useState('all');
   const [sortBy, setSortBy] = useState('default');
   const [modalHome, setModalHome] = useState(null);
+  // Carries the "this particular modal open should auto-run Find" intent
+  // separately from modalHome itself, set at the same moment as the home
+  // being opened (see openHomeModal below) rather than derived from the URL
+  // at render time — the query param only exists to trigger the open once;
+  // it must not be able to un-set this after router.replace clears it.
+  const [modalAutoFind, setModalAutoFind] = useState(false);
   const [postTourTarget, setPostTourTarget] = useState(null);
   const [archiveTarget, setArchiveTarget] = useState(null);
   const [deleteTarget, setDeleteTarget] = useState(null);
@@ -455,13 +459,22 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   const confirmedHomes = useRef(new Map(initialHomes.map((home) => [home.id, home])));
   const autoOpenedRef = useRef(false);
 
+  // Single entry point for opening Add/Edit Home — every caller states its
+  // own autoFind intent explicitly (defaulting off) instead of any of them
+  // reading shared, possibly-stale state, so a later, unrelated open can
+  // never accidentally inherit a previous open's auto-find intent.
+  const openHomeModal = useCallback((home, { autoFind = false } = {}) => {
+    setModalAutoFind(autoFind);
+    setModalHome(home);
+  }, []);
+
   useEffect(() => {
     if (mode === 'homes' && !autoOpenedRef.current && searchParams.get('add') === '1') {
       autoOpenedRef.current = true;
-      setModalHome(emptyHome());
+      openHomeModal(emptyHome());
       router.replace('/homes');
     }
-  }, [mode, searchParams, router]);
+  }, [mode, searchParams, router, openHomeModal]);
 
   useEffect(() => {
     const requestedId = searchParams.get('home');
@@ -469,9 +482,29 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     const requestedHome = homes.find((home) => String(home.id) === requestedId);
     if (!requestedHome) return;
     autoOpenedRef.current = true;
-    setModalHome(requestedHome);
+    openHomeModal(requestedHome);
     router.replace('/homes');
-  }, [mode, searchParams, router, homes]);
+  }, [mode, searchParams, router, homes, openHomeModal]);
+
+  // Share-to-FLH preparation: /homes?url=<listing URL> opens Add Home
+  // pre-filled and auto-looked-up, exactly as if the URL had been pasted into
+  // the existing Find-a-home bar by hand — see HomeModal's autoFindOnMount.
+  // This is the landing point a future native iOS Share Extension would send
+  // a shared listing link to; nothing about Share Extensions/Universal Links
+  // is implemented here, just this already-web-safe entry point.
+  //
+  // The autoFind intent is captured into modalAutoFind right here, at the
+  // moment the param is consumed — not re-derived from searchParams later —
+  // so router.replace clearing the URL immediately afterward can't turn it
+  // back off. autoOpenedRef still guarantees this whole effect, URL param
+  // included, only ever fires once.
+  useEffect(() => {
+    const sharedUrl = searchParams.get('url');
+    if (mode !== 'homes' || !sharedUrl || autoOpenedRef.current) return;
+    autoOpenedRef.current = true;
+    openHomeModal({ ...emptyHome(), listingUrl: sharedUrl }, { autoFind: true });
+    router.replace('/homes');
+  }, [mode, searchParams, router, openHomeModal]);
 
   const saveHome = useCallback(async (home, { shared = true, optimistic = false } = {}) => {
     const supabase = createClient();
@@ -658,7 +691,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         {archivedHomes.length === 0 ? (
           <EmptyLifecycleState icon={ArchiveIcon} title="The ones that weren't meant to be." body="They're still here if you change your mind." />
         ) : (
-          <CardGrid homes={archivedHomes} priorities={priorities} commuteDestinations={initialCommuteDestinations} mode={mode} onEdit={setModalHome} onRestore={restoreHome} onRequestDelete={setDeleteTarget} />
+          <CardGrid homes={archivedHomes} priorities={priorities} commuteDestinations={initialCommuteDestinations} mode={mode} onEdit={openHomeModal} onRestore={restoreHome} onRequestDelete={setDeleteTarget} />
         )}
         {modalHome && <HomeModal initial={modalHome} priorities={priorities} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} userId={userId} onSave={saveEditedHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget} />}
         {deleteTarget && (
@@ -678,7 +711,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     <>
       {mode === 'homes' && (
         <div className="hh-homes-primary-action">
-          <button className="hh-btn" onClick={() => setModalHome(emptyHome())}><Plus size={15} /> Add {vocabulary.singularLower}</button>
+          <button className="hh-btn" onClick={() => openHomeModal(emptyHome())}><Plus size={15} /> Add {vocabulary.singularLower}</button>
         </div>
       )}
 
@@ -731,18 +764,24 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
           <div className="hh-corner" style={{ border: '1px dashed var(--line)', borderRadius: 16, padding: '48px 24px', textAlign: 'center', color: 'var(--ink-soft)' }}>
             <p className="hh-serif" style={{ fontSize: 17, color: 'var(--ink)', marginBottom: 6 }}>{activeHomes.length === 0 ? vocabulary.apartment ? "No properties yet" : "You found the homes. We'll help you choose." : 'Nothing matches that search'}</p>
             <p style={{ fontSize: 13, marginBottom: 18 }}>{activeHomes.length === 0 ? 'Paste a listing link from anywhere to get started.' : 'Try a different search or status filter.'}</p>
-            {activeHomes.length === 0 && <button className="hh-btn" onClick={() => setModalHome(emptyHome())}><Plus size={15} /> Add {vocabulary.singularLower}</button>}
+            {activeHomes.length === 0 && <button className="hh-btn" onClick={() => openHomeModal(emptyHome())}><Plus size={15} /> Add {vocabulary.singularLower}</button>}
           </div>
         )
       ) : (
         <CardGrid
-          homes={filtered} priorities={priorities} commuteDestinations={initialCommuteDestinations} mode={mode} onEdit={setModalHome} onArchiveRequest={setArchiveTarget}
+          homes={filtered} priorities={priorities} commuteDestinations={initialCommuteDestinations} mode={mode} onEdit={openHomeModal} onArchiveRequest={setArchiveTarget}
           onToggleFavorite={toggleFavorite} onWantToTour={wantToTour} onOpenPostTour={setPostTourTarget} onRemoveFromTour={removeFromTour}
           onRestore={restoreHome} onRequestDelete={setDeleteTarget}
         />
       )}
 
-      {modalHome && <HomeModal initial={modalHome} priorities={priorities} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} userId={userId} onSave={saveEditedHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget} />}
+      {modalHome && (
+        <HomeModal
+          initial={modalHome} priorities={priorities} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} userId={userId}
+          onSave={saveEditedHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget}
+          autoFindOnMount={modalAutoFind}
+        />
+      )}
 
       {postTourTarget && (
         <PostTourModal

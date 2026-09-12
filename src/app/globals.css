@@ -409,6 +409,10 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
      mobile nav (~62px tall) plus the iPhone home-indicator safe area. */
   .hh-root { padding: 0 14px calc(78px + env(safe-area-inset-bottom)); }
   .hh-app-header { padding: 10px 0 8px; gap: 8px; flex-wrap: wrap; }
+  /* Native-only: an installed app has no browser chrome pushing content
+     below the status bar/notch the way mobile Safari's own UI does, so only
+     the native shell needs its header padded for the top safe area. */
+  .hh-native .hh-app-header { padding-top: max(10px, env(safe-area-inset-top)); }
   .hh-brand-lockup { width: 100%; }
   .hh-brand-copy { flex: 1; }
   .hh-user-email { display: none; }
@@ -482,6 +486,52 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-tour-callout-compare { left: 50%; transform: translateX(-50%); }
 .hh-tour-callout-search { right: max(14px, env(safe-area-inset-right)); }
 .hh-tour-callout-final { left: 50%; transform: translateX(-50%); text-align: center; }
+
+/* Reusable Sheet primitive (Sheet.jsx) — bottom sheet on mobile/native,
+   centered dialog on desktop. Sits above .hh-mobile-nav (z-index 40) and
+   independently of the older .hh-modal-backdrop (z-index 50) it doesn't yet
+   replace everywhere. */
+.hh-sheet-backdrop {
+  position: fixed; inset: 0; z-index: 55; background: rgba(46,38,33,0.45);
+  display: flex; align-items: center; justify-content: center; padding: 40px 16px;
+}
+.hh-sheet {
+  width: 100%; background: var(--paper-raised); border-radius: 20px;
+  box-shadow: 0 1px 2px rgba(46,38,33,0.06), 0 20px 40px -18px rgba(46,38,33,0.28);
+  display: flex; flex-direction: column; max-height: 86vh;
+}
+.hh-sheet-compact { max-width: 420px; }
+.hh-sheet-default { max-width: 560px; }
+.hh-sheet-large { max-width: 680px; }
+.hh-sheet-grabber { display: none; }
+.hh-sheet-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 22px 24px 0; flex-shrink: 0; }
+.hh-sheet-title { font-size: 18px; margin: 0; font-weight: 600; color: var(--ink); }
+.hh-sheet-close { background: none; border: none; padding: 6px; margin: -6px -6px 0 0; color: var(--ink-soft); cursor: pointer; border-radius: 8px; flex-shrink: 0; }
+.hh-sheet-close:hover { color: var(--ink); background: rgba(46,38,33,.06); }
+.hh-sheet-body { padding: 18px 24px 24px; overflow-y: auto; overscroll-behavior: contain; }
+
+@media (max-width: 700px) {
+  /* Below the phone boundary this becomes an actual bottom sheet: pinned to
+     the bottom edge, full width, rounded only on top, safe-area-aware. */
+  .hh-sheet-backdrop { align-items: flex-end; padding: 0; }
+  .hh-sheet {
+    max-width: none; border-radius: 20px 20px 0 0;
+    max-height: calc(90vh - env(safe-area-inset-top));
+    padding-bottom: env(safe-area-inset-bottom);
+    animation: hh-sheet-slide-up 0.22s ease-out;
+  }
+  .hh-sheet-grabber { display: block; width: 36px; height: 4px; border-radius: 999px; background: var(--line); margin: 10px auto 0; flex-shrink: 0; }
+  .hh-sheet-header { padding: 10px 20px 0; }
+  .hh-sheet-body { padding: 16px 20px calc(20px + env(safe-area-inset-bottom)); }
+  .hh-sheet-close, .hh-sheet-body button, .hh-sheet-body .hh-btn { min-height: 40px; }
+}
+@keyframes hh-sheet-slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hh-sheet { animation: none; }
+}
 
 /* Focused responsive behavior for the three core decision surfaces. */
 @media (max-width: 640px) {
@@ -768,6 +818,18 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .afh-divider { display: flex; align-items: center; gap: 12px; color: var(--ink-soft); font-size: 11.5px; }
 .afh-divider::before, .afh-divider::after { content: ''; flex: 1; height: 1px; background: var(--line); }
 .afh-new-account { margin: -4px 0 -8px; color: var(--ink-soft); font-size: 12.5px; text-align: center; }
+
+/* Simplified native-app sign-in presentation (AuthShell.jsx, isNativeApp()) —
+   no two-column marketing grid, just brand + tagline above the same panel
+   used everywhere else, centered with safe-area padding for the native shell. */
+.afh-native-root {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 28px; padding: max(32px, env(safe-area-inset-top)) 22px max(32px, env(safe-area-inset-bottom));
+  background: var(--paper);
+}
+.afh-native-header { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
+.afh-native-tagline { margin: 0; font-size: 14.5px; font-weight: 500; color: var(--ink-soft); max-width: 320px; }
+.afh-native-root .afh-panel { width: 100%; max-width: 380px; }
 @keyframes afh-spin { to { transform: rotate(360deg); } }
 @media (max-width: 880px) {
   .afh-grid { grid-template-columns: 1fr; }

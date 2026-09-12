@@ -1,5 +1,9 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import { SlidersHorizontal, LayoutGrid, Target } from 'lucide-react';
 import { BrandMark, Wordmark } from '@/components/ui';
+import { isNativeApp } from '@/lib/platform';
 
 const BENEFITS = [
   { icon: SlidersHorizontal, title: 'Set your priorities', desc: 'Decide what matters — and how much.' },
@@ -7,7 +11,40 @@ const BENEFITS = [
   { icon: Target, title: 'Find your best match', desc: 'See how each home measures up to what matters to you.' },
 ];
 
+// Inside the native Capacitor shell, a signed-out user should never see the
+// public marketing site (the two-column pitch below is that site — there is
+// no separate marketing route in this app) — they should land on something
+// that reads as "sign in to the app you already installed." SSR always
+// resolves isNativeApp() to false, so this starts on the ordinary marketing
+// layout and only swaps to the simplified one after hydration confirms the
+// native shell, the same hydration-gated pattern used elsewhere in this app
+// (see CardContextDisclosure, NativeBootScreen). Ordinary web/mobile-Safari
+// traffic never sees a flash of this — it never becomes true for them.
+function NativeAuthHeader() {
+  return (
+    <div className="afh-native-header">
+      <div className="afh-brand" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <BrandMark size={40} />
+        <Wordmark size={27} className="afh-serif" />
+      </div>
+      <p className="afh-native-tagline">You found the homes. We&apos;ll help you choose.</p>
+    </div>
+  );
+}
+
 export default function AuthShell({ children }) {
+  const [native, setNative] = useState(false);
+  useEffect(() => { if (isNativeApp()) setNative(true); }, []);
+
+  if (native) {
+    return (
+      <div className="afh-root afh-native-root">
+        <NativeAuthHeader />
+        <div className="afh-panel">{children}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="afh-root">
       <div className="afh-grid">

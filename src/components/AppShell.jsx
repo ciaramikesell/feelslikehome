@@ -8,6 +8,7 @@ import { BrandMark, Wordmark } from '@/components/ui';
 import { PRIMARY_TABS, MOBILE_PRIMARY_TABS } from '@/lib/constants';
 import { homeVocabulary } from '@/lib/homePresentation';
 import { createClient } from '@/lib/supabase/client';
+import { isNativeApp } from '@/lib/platform';
 import SearchSwitcher from '@/components/SearchSwitcher';
 import BetaFeedback from '@/components/BetaFeedback';
 
@@ -179,7 +180,15 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
   const [tourDismissed, setTourDismissed] = useState(true);
   const [tourEligibleDevice, setTourEligibleDevice] = useState(false);
   const [tourStep, setTourStep] = useState(0);
+  const [native, setNative] = useState(false);
   const vocabulary = homeVocabulary(priorities);
+
+  // Centralizes the one native-vs-web chrome difference this shell needs —
+  // the installed app has no browser UI pushing content below the status
+  // bar/notch, so its header needs its own safe-area-top padding (see
+  // .hh-native .hh-app-header in globals.css). Everything else about the
+  // header/tabs/nav is identical between native and mobile web.
+  useEffect(() => { if (isNativeApp()) setNative(true); }, []);
 
   // Reads localStorage once after mount — same mechanism and key style as
   // InstallPrompt's install-banner dismissal (flh-install-dismissed) — rather
@@ -218,7 +227,7 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
   };
 
   return (
-    <div className="hh-root">
+    <div className={`hh-root ${native ? 'hh-native' : ''}`}>
       <div className="hh-app-frame">
         <header className="hh-app-header">
           <div className="hh-brand-lockup">
