@@ -26,7 +26,9 @@ export default async function MapPage() {
 
   return (
     <>
-      <PageIntro title="Map" subtitle="See your homes and the places that matter to this search." />
+      <div className="hh-map-page-intro">
+        <PageIntro title="Map" subtitle="See your homes and the places that matter to this search." />
+      </div>
       <SavedHomesMap homes={mapped} destinations={mappedDestinations} priorities={normalizePriorities(priorities)} />
     </>
   );

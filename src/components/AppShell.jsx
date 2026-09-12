@@ -8,7 +8,6 @@ import { BrandMark, Wordmark } from '@/components/ui';
 import { PRIMARY_TABS, MOBILE_PRIMARY_TABS } from '@/lib/constants';
 import { homeVocabulary } from '@/lib/homePresentation';
 import { createClient } from '@/lib/supabase/client';
-import { savePriorities } from '@/lib/supabase/collaboration';
 import SearchSwitcher from '@/components/SearchSwitcher';
 import BetaFeedback from '@/components/BetaFeedback';
 
@@ -25,8 +24,10 @@ const TAB_ICONS = {
 // them. A route is "active" for its own page and anything nested under it
 // (e.g. /homes/[homeId] still highlights Homes), unlike the desktop tabs'
 // exact-match check, since a fixed bottom bar needs to read as "where am I"
-// even while drilled into a detail screen.
-function MobileNav({ pathname, vocabulary }) {
+// even while drilled into a detail screen. `highlightKey` lights up one item
+// during the first-run tour (see MobileFirstRunTour) — undefined/no match
+// the rest of the time.
+function MobileNav({ pathname, vocabulary, highlightKey }) {
   return (
     <nav className="hh-mobile-nav" aria-label="Primary navigation">
       {MOBILE_PRIMARY_TABS.map(({ key, label, href }) => {
@@ -34,7 +35,7 @@ function MobileNav({ pathname, vocabulary }) {
         const presentationLabel = key === 'homes' ? vocabulary.plural : label;
         const active = pathname === href || pathname.startsWith(`${href}/`);
         return (
-          <Link key={key} href={href} className={`hh-mobile-nav-item ${active ? 'active' : ''}`} aria-current={active ? 'page' : undefined}>
+          <Link key={key} href={href} className={`hh-mobile-nav-item ${active ? 'active' : ''} ${key === highlightKey ? 'hh-tour-highlight' : ''}`} aria-current={active ? 'page' : undefined}>
             <span className="hh-mobile-nav-icon"><Icon size={21} strokeWidth={active ? 2.3 : 2} aria-hidden="true" /></span>
             <span className="hh-mobile-nav-label">{presentationLabel}</span>
           </Link>
@@ -44,51 +45,63 @@ function MobileNav({ pathname, vocabulary }) {
   );
 }
 
-// One-time orientation for the mobile bottom nav, shown once per search per
-// device class — see the mount effect in AppShell for the "mobile and not
-// already dismissed" gate. All four steps show at once (no carousel/paging
-// state to build or get stuck in); dismissing via the X or "Got it" are
-// equivalent — either persists the same flag and never blocks navigation.
-function MobileFirstTimeTour({ vocabulary, onDismiss }) {
-  const steps = [
-    { label: vocabulary.plural, icon: HomeIcon, body: `Your contenders live here. Add ${vocabulary.pluralLower} as you find them and keep everything in one place.` },
-    { label: 'Tour', icon: Footprints, body: `Save the ${vocabulary.pluralLower} you want to see in person.` },
-    { label: 'Compare', icon: Columns, body: 'See how your favorites stack up based on what matters to you.' },
-    { label: 'Search', icon: SlidersHorizontal, body: "Update your priorities anytime — your Match scores update with them." },
+// Device-specific by design for V1 — see MOBILE_TOUR_DISMISS_KEY usage below.
+const MOBILE_TOUR_DISMISS_KEY = 'flh-mobile-tour-dismissed';
+
+// The four real nav items the tour walks through, in order. Map is
+// intentionally excluded per product direction. Vocabulary-adaptive copy
+// mirrors how the rest of the app never hardcodes "home" for apartment
+// search types.
+function mobileTourSteps(vocabulary) {
+  return [
+    { key: 'homes', label: vocabulary.plural, body: `Your contenders live here. Add ${vocabulary.pluralLower} as you find them and keep everything in one place.` },
+    { key: 'tour', label: 'Tour', body: `Keep track of the ${vocabulary.pluralLower} you want to see.` },
+    { key: 'compare', label: 'Compare', body: 'See where your strongest contenders differ.' },
+    { key: 'search', label: 'Search', body: 'This is where what matters to you lives. Change it anytime.' },
   ];
+}
+
+// Contextual coach-mark tour, replacing the old full-page tutorial modal.
+// The user stays on Homes the whole time (AppShell only renders this while
+// pathname === '/homes' — see the gate below); each step highlights one real
+// nav item via MobileNav's `highlightKey` and a small callout near it
+// explains it, with the rest of the screen dimmed by a backdrop that sits
+// below the nav's z-index so the nav itself stays undimmed. Step index is
+// owned by AppShell (not here) because the highlight lives in a sibling
+// component (MobileNav), not inside this one.
+//
+// Structured so a future "Replay mobile tour" control (e.g. from How to Use)
+// only needs to clear MOBILE_TOUR_DISMISS_KEY and reset step to 0 — not
+// built here, per scope, but nothing here stands in the way of it.
+function MobileFirstRunTour({ vocabulary, step, onNext, onFinish }) {
+  const steps = mobileTourSteps(vocabulary);
+  const isFinal = step >= steps.length;
+  const current = steps[step];
+
   return (
-    <div className="hh-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onDismiss()}>
-      <div className="hh-modal hh-corner" role="dialog" aria-modal="true" aria-labelledby="mobile-tour-title">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-          <h2 id="mobile-tour-title" className="hh-serif" style={{ fontSize: 20, margin: 0, fontWeight: 600 }}>Getting around</h2>
-          <button type="button" className="hh-btn hh-btn-ghost" style={{ padding: 6 }} onClick={onDismiss} aria-label="Skip">
-            <X size={16} aria-hidden="true" />
-          </button>
+    <>
+      <div className="hh-tour-backdrop" onMouseDown={onFinish} />
+      {!isFinal && current && (
+        <div className={`hh-tour-callout hh-tour-callout-${current.key}`} role="dialog" aria-modal="true" aria-labelledby="mobile-tour-step-title">
+          <div id="mobile-tour-step-title" className="hh-serif" style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>{current.label}</div>
+          <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', lineHeight: 1.5, margin: '0 0 12px' }}>{current.body}</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '5px 9px' }} onClick={onFinish}>Skip</button>
+            <span style={{ fontSize: 10.5, color: 'var(--ink-soft)' }}>{step + 1} of {steps.length}</span>
+            <button type="button" className="hh-btn" style={{ fontSize: 11.5, padding: '5px 11px' }} onClick={onNext}>Next</button>
+          </div>
         </div>
-
-        <div style={{ display: 'grid', gap: 16, marginBottom: 20 }}>
-          {steps.map((step) => (
-            <div key={step.label} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-              <span style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 10, background: 'rgba(193,89,47,.09)', color: 'var(--brick)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <step.icon size={17} aria-hidden="true" />
-              </span>
-              <div>
-                <div className="hh-serif" style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', marginBottom: 2 }}>{step.label}</div>
-                <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', lineHeight: 1.5 }}>{step.body}</div>
-              </div>
-            </div>
-          ))}
+      )}
+      {isFinal && (
+        <div className="hh-tour-callout hh-tour-callout-final" role="dialog" aria-modal="true" aria-labelledby="mobile-tour-final-title">
+          <div id="mobile-tour-final-title" className="hh-serif" style={{ fontSize: 16, fontWeight: 600, color: 'var(--ink)', marginBottom: 4 }}>You&apos;re ready.</div>
+          <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', lineHeight: 1.5, margin: '0 0 14px' }}>Add a {vocabulary.singularLower} and we&apos;ll take it from there.</p>
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button type="button" className="hh-btn" style={{ fontSize: 12.5, padding: '6px 13px' }} onClick={onFinish}>Got it</button>
+          </div>
         </div>
-
-        <p style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 500, margin: '0 0 18px' }}>
-          That&apos;s it. Add a {vocabulary.singularLower} and we&apos;ll take it from there.
-        </p>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button type="button" className="hh-btn" onClick={onDismiss}>Got it</button>
-        </div>
-      </div>
-    </div>
+      )}
+    </>
   );
 }
 
@@ -163,25 +176,38 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
   const pathname = usePathname();
   const router = useRouter();
   const [howToOpen, setHowToOpen] = useState(false);
-  const [mobileTourOpen, setMobileTourOpen] = useState(false);
+  const [tourDismissed, setTourDismissed] = useState(true);
+  const [tourEligibleDevice, setTourEligibleDevice] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
   const vocabulary = homeVocabulary(priorities);
 
-  // Mobile-only, first-time-only: checked once after mount (never on resize —
-  // rotating a phone mid-session shouldn't resurface a tutorial someone
-  // already dismissed) against the same ~700px boundary the bottom nav
-  // itself switches on. Starting closed keeps the first client render
-  // identical to the server-rendered markup, so there's no hydration
-  // mismatch — this only ever opens it, never on desktop.
+  // Reads localStorage once after mount — same mechanism and key style as
+  // InstallPrompt's install-banner dismissal (flh-install-dismissed) — rather
+  // than the search-priorities JSONB round trip this used previously. That
+  // approach could reappear right after being dismissed: the write was an
+  // async, fire-and-forget save, and a navigation immediately afterward could
+  // re-fetch server-side priorities before the write had committed, showing
+  // the tour again. A synchronous, local, per-device flag has no such race,
+  // survives refresh trivially, and the product direction explicitly accepts
+  // device/browser-specific dismissal for V1 — no schema/migration involved
+  // either way. Viewport is also checked only once here, not on resize.
   useEffect(() => {
-    if (priorities?.mobileTourDismissed) return;
-    if (window.matchMedia('(max-width: 700px)').matches) setMobileTourOpen(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let dismissed = true;
+    try { dismissed = localStorage.getItem(MOBILE_TOUR_DISMISS_KEY) === '1'; } catch { dismissed = true; }
+    setTourDismissed(dismissed);
+    setTourEligibleDevice(window.matchMedia('(max-width: 700px)').matches);
   }, []);
 
-  const dismissMobileTour = () => {
-    setMobileTourOpen(false);
-    if (!activeSearchId) return;
-    savePriorities(createClient(), { id: activeSearchId }, userId, { ...priorities, mobileTourDismissed: true }).catch(() => {});
+  // The tour only ever shows on the Homes screen (per product direction —
+  // the user learns the real nav without leaving it), so navigating away
+  // simply unmounts it; navigating back before finishing starts over at step
+  // 0, which is fine for something this short-lived.
+  const tourOpen = tourEligibleDevice && !tourDismissed && pathname === '/homes';
+  useEffect(() => { if (tourOpen) setTourStep(0); }, [tourOpen]);
+
+  const finishTour = () => {
+    setTourDismissed(true);
+    try { localStorage.setItem(MOBILE_TOUR_DISMISS_KEY, '1'); } catch { /* best-effort; never blocks dismissal */ }
   };
 
   const signOut = async () => {
@@ -236,9 +262,16 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
         {children}
       </div>
 
-      <MobileNav pathname={pathname} vocabulary={vocabulary} />
+      <MobileNav pathname={pathname} vocabulary={vocabulary} highlightKey={tourOpen ? mobileTourSteps(vocabulary)[tourStep]?.key : undefined} />
 
-      {mobileTourOpen && <MobileFirstTimeTour vocabulary={vocabulary} onDismiss={dismissMobileTour} />}
+      {tourOpen && (
+        <MobileFirstRunTour
+          vocabulary={vocabulary}
+          step={tourStep}
+          onNext={() => setTourStep((s) => s + 1)}
+          onFinish={finishTour}
+        />
+      )}
       {howToOpen && <HowToUseModal onClose={() => setHowToOpen(false)} />}
       <BetaFeedback userId={userId} searchId={activeSearchId} searchType={searchIntent} appVersion={appVersion} />
     </div>

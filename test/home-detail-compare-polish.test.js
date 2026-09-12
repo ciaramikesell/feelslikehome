@@ -54,3 +54,12 @@ test('Compare retains participant Match and unknown semantics without winner log
   assert.match(compare, /Not enough information yet/);
   assert.doesNotMatch(compare, /Couple Match|Winner!|combined Match|AI recommendation/);
 });
+
+// Regression: CommuteSection referenced `priorities` (via homeIdentity) without
+// ever receiving it as a prop, throwing "priorities is not defined" and
+// crashing the whole Compare page for any search with a commute destination
+// configured — on any device/width, not just mobile.
+test('Compare\'s CommuteSection receives priorities rather than referencing an out-of-scope variable', () => {
+  assert.match(compare, /function CommuteSection\(\{[^}]*\bpriorities\b[^}]*\}\)/);
+  assert.match(compare, /<CommuteSection[^>]*\bpriorities=\{priorities\}/);
+});
