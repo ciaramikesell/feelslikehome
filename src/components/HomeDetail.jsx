@@ -6,6 +6,7 @@ import { ArrowLeft, Check, ExternalLink, Heart, Footprints, Home as HomeIcon, Mi
 import HomeModal from '@/components/HomeModal';
 import PostTourModal from '@/components/PostTourModal';
 import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
+import MobileDisclosure from '@/components/MobileDisclosure';
 import { criterionDisplayLabel, isArchivedStatus, TOUR_RATING_KEY } from '@/lib/constants';
 import { computeMatch, parseNum } from '@/lib/matching';
 import { evaluateCommute } from '@/lib/commute';
@@ -148,7 +149,34 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
 
     {facts.length > 0 && <Section eyebrow="Property facts" className="hh-detail-section-wide"><dl className="hh-detail-facts">{facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>{home.conditionNotes && <p className="hh-detail-condition">{home.conditionNotes}</p>}</Section>}
 
-    {commuteDestinations.length > 0 && <Section eyebrow="Location & commute" title="Your everyday routes"><div className="hh-detail-commutes">{commuteDestinations.map((destination) => { const state = getState(destination); const resolved = state.status === 'ok'; return <div className={resolved ? 'resolved' : 'unresolved'} key={destination.id}><span>{destination.label}</span><strong>{resolved ? `${state.minutes} min drive` : state.status === 'loading' || state.status === 'idle' ? 'Calculating…' : 'Not available yet'}</strong></div>; })}</div></Section>}
+    {commuteDestinations.length > 0 && (() => {
+      const commutesGrid = (
+        <div className="hh-detail-commutes">
+          {commuteDestinations.map((destination) => {
+            const state = getState(destination);
+            const resolved = state.status === 'ok';
+            return (
+              <div className={resolved ? 'resolved' : 'unresolved'} key={destination.id}>
+                <span>{destination.label}</span>
+                <strong>{resolved ? `${state.minutes} min drive` : state.status === 'loading' || state.status === 'idle' ? 'Calculating…' : 'Not available yet'}</strong>
+              </div>
+            );
+          })}
+        </div>
+      );
+      // A couple of commutes read fine at a glance; a longer list is exactly
+      // the kind of supplementary reference data worth collapsing on a phone
+      // (see MobileDisclosure) — desktop always shows it in full either way.
+      return (
+        <Section eyebrow="Location & commute" title="Your everyday routes">
+          {commuteDestinations.length > 2 ? (
+            <MobileDisclosure label={`${commuteDestinations.length} commutes`} className="hh-detail-commutes-disclosure">
+              {commutesGrid}
+            </MobileDisclosure>
+          ) : commutesGrid}
+        </Section>
+      );
+    })()}
 
     {match && <Section eyebrow="How it fits your search" title={match.pct == null ? 'More will come into focus' : `Why this home is a ${match.pct}% Match for you`}><div className="hh-detail-match-groups">{['must', 'important', 'nice'].map((tier) => { const rows = match.allSelected.filter((item) => item.tier === tier); return rows.length ? <div className={`hh-detail-match-tier ${tier}`} key={tier}><h3>{TIER_LABELS[tier]}</h3>{rows.map((item) => { const detail = !item.evaluated ? (item.objective ? 'Needs more information' : 'Evaluate after tour') : item.objective ? item.detail : item.met ? 'Liked' : "Didn't like"; const stateLabel = !item.evaluated ? 'Unknown' : item.met ? 'Satisfied' : 'Missed'; return <div className={`hh-detail-criterion ${!item.evaluated ? 'unknown' : item.met ? 'met' : 'missed'}`} key={item.key}><b aria-hidden="true">{!item.evaluated ? <Minus size={14} /> : item.met ? <Check size={14} /> : <X size={14} />}</b><span><strong>{item.key.includes(':') ? criterionDisplayLabel(item.key.split(':')[0], item.label) : item.label}</strong><small>{detail}</small></span><span className="sr-only">{stateLabel}</span></div>; })}</div> : null; })}</div></Section>}
 
