@@ -276,6 +276,19 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-priority-context label { width: 100%; color: var(--ink-soft); font-size: 10.5px; }
 .hh-priority-context .hh-input { margin-top: 4px; padding: 7px 9px; font-size: 12px; }
 .hh-priority-empty { margin: 0; color: var(--ink-soft); font-size: 13px; font-style: italic; }
+/* Mobile compact tier summary (PriorityBoard.jsx, mobileCompact) — three
+   rows read before anything is tapped ("summary first, editing second"),
+   each opening its tier's existing TierItemsList in a Sheet rather than
+   showing three fully-expanded columns stacked one after another. */
+.hh-tier-summary-list { display: grid; gap: 8px; }
+.hh-tier-summary-row {
+  display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 12px 14px;
+  border: 1px solid rgba(138,124,110,.16); border-radius: 12px; background: rgba(255,255,255,.6);
+  color: var(--ink); cursor: pointer; text-align: left;
+}
+.hh-tier-summary-name { font-size: 13.5px; font-weight: 700; }
+.hh-tier-summary-count { flex: 1; color: var(--ink-soft); font-size: 12px; }
+.hh-tier-summary-row > svg { flex-shrink: 0; color: var(--ink-soft); }
 .hh-add-priority-toggle { margin-top: 16px; padding: 4px 10px; font-size: 11.5px; }
 .hh-add-priority-panel { margin-top: 16px; padding-top: 18px; border-top: 1px solid var(--line); }
 .hh-schools-gate { margin-bottom: 16px; }
@@ -644,12 +657,14 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-map-destination-marker span { transform: none; font-size: 24px; line-height: 15px; }
 .hh-map-destination-marker.selected { width: 34px; height: 34px; background: var(--gold); box-shadow: 0 0 0 3px var(--moss), 0 5px 12px rgba(46,38,33,.3); }
 .hh-map-preview { position: absolute; z-index: 2; left: 16px; bottom: 16px; width: min(390px, calc(100% - 32px)); display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; padding: 12px; border: 1px solid rgba(138,124,110,.2); border-radius: 15px; background: rgba(255,253,249,.97); box-shadow: 0 12px 30px rgba(46,38,33,.2); }
-.hh-map-preview img { width: 92px; height: 82px; object-fit: cover; border-radius: 10px; }
+.hh-map-preview img, .hh-map-preview-photo-fallback { width: 92px; height: 82px; object-fit: cover; border-radius: 10px; }
+.hh-map-preview-photo-fallback { display: flex; align-items: center; justify-content: center; background: var(--line); color: var(--ink-soft); }
 .hh-map-preview-copy { min-width: 0; }
 .hh-map-preview-price { color: var(--brick); font-size: 16px; font-weight: 700; }
 .hh-map-preview strong { display: block; overflow: hidden; color: var(--ink); font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
 .hh-map-preview small { display: block; color: var(--ink-soft); margin: 3px 0 7px; }
-.hh-map-preview a { color: var(--brick); font-size: 13px; font-weight: 700; }
+.hh-map-preview-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin: 2px -6px -6px; }
+.hh-map-preview-actions a { display: inline-flex; align-items: center; min-height: 40px; padding: 6px; color: var(--brick); font-size: 13px; font-weight: 700; }
 .hh-map-destination-preview { grid-template-columns: auto minmax(0, 1fr); align-items: center; }
 .hh-map-destination-preview > svg { color: var(--gold); }
 .hh-map-place-label { color: var(--moss); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
@@ -676,12 +691,31 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
    in its own breakpoint block after the rules above rather than inside the
    earlier general-chrome @media(max-width:700px) block: at equal
    specificity the unconditional .hh-map-layout rule above wins over an
-   earlier same-breakpoint override by source order alone. */
+   earlier same-breakpoint override by source order alone.
+   The frame's height used to be approximated with a flat "100dvh - 200px" —
+   a guess at header + bottom-nav clearance that only happened to be close,
+   and drifted (a visible gap above the nav, or worse, an overlap) the moment
+   the header's real height differed from that guess (a second utilities row,
+   a longer email, etc). AppShell now marks the map route's frame with
+   .hh-map-frame; here it becomes a fixed-height flex column so the header
+   is measured by the browser, not guessed, and the map (flex: 1) takes
+   whatever is genuinely left. The bottom-nav clearance itself is still the
+   one already-shared constant used everywhere else (78px + the safe-area
+   inset) — .hh-root's own copy of that same reservation is suspended here
+   via :has() so the two never stack and double-reserve it. */
 @media (max-width: 700px) {
   .hh-map-page-intro { display: none; }
-  .hh-map-layout { grid-template-columns: 1fr; }
   .hh-map-layout > section { display: none; }
-  .hh-map-stage { height: calc(100dvh - 200px); min-height: 50vh; }
+  .hh-root:has(.hh-map-frame) { padding-bottom: 0; }
+  .hh-map-frame { display: flex; flex-direction: column; height: calc(100dvh - 78px - env(safe-area-inset-bottom)); }
+  /* align-items: stretch overrides the base rule's align-items: start (a
+     grid-alignment leftover) — without it, a column flex container leaves
+     each item at its own content width instead of the full cross-axis
+     width, and .hh-map-stage (whose only children are absolutely
+     positioned) has no content width of its own to fall back to. */
+  .hh-map-frame .hh-map-layout { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
+  .hh-map-frame .hh-map-stage { flex: 1; min-height: 0; height: auto; }
+  .hh-map-frame .hh-map-layout > details { flex-shrink: 0; max-height: 40vh; overflow-y: auto; }
 }
 
 /* Canonical home dossier. Typography and whitespace carry the grouping so the

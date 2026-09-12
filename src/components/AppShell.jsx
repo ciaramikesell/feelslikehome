@@ -228,7 +228,7 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
 
   return (
     <div className={`hh-root ${native ? 'hh-native' : ''}`}>
-      <div className="hh-app-frame">
+      <div className={`hh-app-frame ${pathname === '/map' ? 'hh-map-frame' : ''}`}>
         <header className="hh-app-header">
           <div className="hh-brand-lockup">
             <BrandMark size={38} />

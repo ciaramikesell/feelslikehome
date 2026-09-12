@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Sheet from '@/components/Sheet';
 import { createClient } from '@/lib/supabase/client';
 import { leaveSearch, removeMember } from '@/lib/supabase/collaboration';
 
@@ -35,44 +36,42 @@ export default function CoBuyerManagement({ userId, search, isOwner, participant
   };
 
   return (
-    <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--line)' }}>
-      <div className="hh-serif" style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', marginBottom: 4 }}>Searching together</div>
-      {!confirming ? (
-        <button
-          type="button"
-          className="hh-btn hh-btn-ghost"
-          style={{ fontSize: 12, color: 'var(--brick)', borderColor: 'rgba(193,89,47,0.35)' }}
-          onClick={() => setConfirming(true)}
-        >
-          {isOwner ? 'Remove collaborator from this search' : 'Leave this search'}
-        </button>
-      ) : (
-        <div style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 12, padding: '14px 16px', maxWidth: 440 }}>
-          <p style={{ fontSize: 13, color: 'var(--ink)', margin: '0 0 4px', fontWeight: 600 }}>
-            {isOwner ? 'Remove collaborator?' : 'Leave this search?'}
-          </p>
-          <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '0 0 12px', lineHeight: 1.5 }}>
-            {isOwner
-              ? "They'll lose access to this shared search and its homes. Your search and home data will not be deleted."
-              : "You'll lose access to the shared homes and search. This won't delete the search for the other person."}
-          </p>
-          {error && <p style={{ fontSize: 12, color: 'var(--brick)', margin: '0 0 10px' }}>{error}</p>}
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 12 }} onClick={() => setConfirming(false)} disabled={working}>
-              Cancel
-            </button>
-            <button
-              type="button"
-              className="hh-btn"
-              style={{ fontSize: 12, background: 'var(--brick)', borderColor: 'var(--brick)' }}
-              onClick={act}
-              disabled={working}
-            >
-              {working ? 'Working…' : (isOwner ? 'Remove' : 'Leave search')}
-            </button>
-          </div>
+    <>
+      <button
+        type="button"
+        className="hh-btn hh-btn-ghost"
+        style={{ fontSize: 12, color: 'var(--brick)', borderColor: 'rgba(193,89,47,0.35)' }}
+        onClick={() => setConfirming(true)}
+      >
+        {isOwner ? 'Remove collaborator from this search' : 'Leave this search'}
+      </button>
+      <Sheet
+        open={confirming}
+        onClose={() => !working && setConfirming(false)}
+        size="compact"
+        title={isOwner ? 'Remove collaborator?' : 'Leave this search?'}
+      >
+        <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '0 0 16px', lineHeight: 1.5 }}>
+          {isOwner
+            ? "They'll lose access to this shared search and its homes. Your search and home data will not be deleted."
+            : "You'll lose access to the shared homes and search. This won't delete the search for the other person."}
+        </p>
+        {error && <p style={{ fontSize: 12, color: 'var(--brick)', margin: '0 0 10px' }}>{error}</p>}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button type="button" className="hh-btn hh-btn-ghost" onClick={() => setConfirming(false)} disabled={working}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="hh-btn"
+            style={{ background: 'var(--brick)', borderColor: 'var(--brick)' }}
+            onClick={act}
+            disabled={working}
+          >
+            {working ? 'Working…' : (isOwner ? 'Remove' : 'Leave search')}
+          </button>
         </div>
-      )}
-    </div>
+      </Sheet>
+    </>
   );
 }
