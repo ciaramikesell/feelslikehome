@@ -92,6 +92,14 @@ export default function SavedHomesMap({ homes, destinations = [], priorities }) 
 
   if (!homes.length && !destinations.length) return <div className="hh-map-empty"><Home size={30} /><h2>Your {vocabulary.pluralLower} and places will show up here.</h2><p>Add a {vocabulary.singularLower} or a place that matters to start your map.</p><Link className="hh-btn" href="/homes?add=1">Add {vocabulary.singularLower}</Link></div>;
   const match = selected ? computeMatch(selected, priorities) : null;
+  // Same Match-trust rule as Compare's contender picker: this Match is
+  // computed without commute evaluation (the map never fetches a commute
+  // matrix just to badge a preview card), which is fine — identical to the
+  // canonical Home Detail Match — UNLESS the user has selected "Commute" as
+  // a location priority, in which case this number and the real one could
+  // differ. Detected the same structural way: presence of a
+  // 'location:Commute' row in allSelected, not by re-deriving tier logic.
+  const matchTrustworthy = !match?.allSelected?.some((c) => c.key === 'location:Commute');
 
   return <div className="hh-map-layout">
     <div className="hh-map-stage">
@@ -102,12 +110,15 @@ export default function SavedHomesMap({ homes, destinations = [], priorities }) 
         <span>{eligible.length || eligibleDestinations.length ? (mapState === 'loading' ? 'This should only take a moment.' : 'Your locations are still listed below.') : 'Check the saved addresses and try again.'}</span>
       </div>}
       {selected && <article className="hh-map-preview">
-        {selected.photoUrl && <img src={selected.photoUrl} alt="" />}
+        {selected.photoUrl ? <img src={selected.photoUrl} alt="" /> : <div className="hh-map-preview-photo-fallback"><Home size={22} aria-hidden="true" /></div>}
         <div className="hh-map-preview-copy"><div className="hh-mono hh-map-preview-price">{formatHomePrice(selected.price, priorities.searchType) || 'Price not added'}</div><strong className="hh-address">{homeIdentity(selected, priorities).primary}</strong>{homeIdentity(selected, priorities).option && <small>{homeIdentity(selected, priorities).option}</small>}{homeIdentity(selected, priorities).supporting && <small>{homeIdentity(selected, priorities).supporting}</small>}
           <small>{[selected.beds && `${selected.beds} beds`, selected.baths && `${selected.baths} baths`, selected.sqft && `${selected.sqft} sq ft`].filter(Boolean).join(' · ')}</small>
-          {match?.pct !== null && match?.pct !== undefined && <span className="hh-map-match">{match.pct}% Match</span>}
+          {matchTrustworthy && match?.pct !== null && match?.pct !== undefined && <span className="hh-map-match">{match.pct}% Match</span>}
           {selected.status && <span className="hh-map-status">{selected.status}</span>}
-          <Link href={`/homes/${encodeURIComponent(selected.id)}`}>View {vocabulary.singularLower}</Link>
+          <div className="hh-map-preview-actions">
+            <Link href={`/homes/${encodeURIComponent(selected.id)}`}>View {vocabulary.singularLower}</Link>
+            {selected.address && <a href={`https://maps.apple.com/?daddr=${encodeURIComponent(selected.address)}`} target="_blank" rel="noreferrer">Directions</a>}
+          </div>
         </div>
       </article>}
       {selectedDestination && <article className="hh-map-preview hh-map-destination-preview">

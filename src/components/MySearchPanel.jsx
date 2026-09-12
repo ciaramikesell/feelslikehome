@@ -246,7 +246,12 @@ function WhatMattersCard({ priorities, patch }) {
   );
 }
 
-function CollaboratorContextCard({ context }) {
+// Read-only content only — this always renders nested inside the single
+// "Searching Together" card below, never as its own top-level card, so the
+// collaboration story (whether alone or together, collaborator context,
+// invite/manage action) reads as one calm section instead of three
+// separately scattered ones.
+function CollaboratorContext({ context }) {
   if (!context) return null;
   const priorities = normalizePriorities(context.priorities);
   const boardItems = getItemlistCategories(priorities.searchType).flatMap((category) =>
@@ -264,9 +269,42 @@ function CollaboratorContextCard({ context }) {
   const items = [...structured, ...boardItems];
   const places = context.commuteDestinations || [];
   return (
-    <SearchCard title="Collaborator perspective" subtitle="Read-only. These priorities and places remain under your collaborator's control.">
+    <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
+      <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '0 0 10px' }}>Read-only. These priorities and places remain under your collaborator&apos;s control.</p>
       {items.length ? <div className="hh-collaborator-priorities">{items.map((item) => <span key={`${item.label}-${item.tier}`} className="hh-chip"><b>{item.label}</b> · {item.tier === 'must' ? 'Must Have' : item.tier === 'important' ? 'Important' : 'Nice to Have'}</span>)}</div> : <p className="hh-detail-context">Your collaborator hasn&apos;t added priority-board preferences yet.</p>}
       {places.length > 0 && <div className="hh-collaborator-places"><strong>Places that matter</strong>{places.map((place) => <p key={`${place.label}-${place.address}`}><b>{place.label}</b> · {place.address}{place.maxDriveMinutes != null ? ` · ${place.maxDriveMinutes} min max` : ''}</p>)}</div>}
+    </div>
+  );
+}
+
+// One calm, consolidated section for the whole collaboration story: whether
+// the user is searching alone or with someone, the collaborator's read-only
+// context when present, and the one appropriate action (invite, or
+// remove/leave) — instead of three fragments scattered across the page.
+// "The house is ours. The opinion is mine. The conversation is shared."
+function SearchingTogetherCard({ search, userId, isOwner, participantCount, memberUserId, collaboratorContext }) {
+  const isCollaborative = participantCount > 1;
+  return (
+    <SearchCard title="Searching Together">
+      {isCollaborative ? (
+        <>
+          <p style={{ fontSize: 13.5, color: 'var(--ink)', margin: 0 }}>You&apos;re searching with a collaborator.</p>
+          <CollaboratorContext context={collaboratorContext} />
+          <div style={{ marginTop: 14 }}>
+            <CoBuyerManagement userId={userId} search={search} isOwner={isOwner} participantCount={participantCount} memberUserId={memberUserId} />
+          </div>
+        </>
+      ) : (
+        <>
+          <p style={{ fontSize: 13.5, color: 'var(--ink)', margin: '0 0 4px' }}>You&apos;re searching alone.</p>
+          {isOwner && (
+            <>
+              <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '0 0 12px' }}>Invite someone to compare the same homes while keeping each person&apos;s perspective under their own control.</p>
+              <InviteCoBuyer searchId={search.id} userId={userId} />
+            </>
+          )}
+        </>
+      )}
     </SearchCard>
   );
 }
@@ -289,26 +327,18 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
 
       <WhatMattersCard priorities={p} patch={patch} />
 
-      <CollaboratorContextCard context={collaboratorContext} />
-
       <SearchCard title="Places that matter" subtitle={commuteDestinations.length ? "We'll compare the trip from every home. In a shared search, collaborators can see these places, but only you can change yours." : undefined}>
         {!commuteDestinations.length && <div className="hh-places-empty"><strong>Got somewhere you go all the time?</strong><p>Add work, family, school—or anywhere else—and we&apos;ll compare the trip from every home.</p></div>}
         <CommuteDestinations searchId={search.id} userId={userId} destinations={commuteDestinations} onChange={setCommuteDestinations} hideHeader startCollapsedWhenEmpty />
       </SearchCard>
 
-      {isOwner && participantCount <= 1 && (
-        <section className="hh-collaboration-entry hh-corner">
-          <div><div className="hh-serif">Searching together?</div><p>Invite someone to compare the same homes while keeping each person&apos;s perspective under their own control.</p></div>
-          <InviteCoBuyer searchId={search.id} userId={userId} />
-        </section>
-      )}
-
-      <CoBuyerManagement
-        userId={userId}
+      <SearchingTogetherCard
         search={search}
+        userId={userId}
         isOwner={isOwner}
         participantCount={participantCount}
         memberUserId={memberUserId}
+        collaboratorContext={collaboratorContext}
       />
     </div>
   );

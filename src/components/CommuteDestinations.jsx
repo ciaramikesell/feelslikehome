@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { MapPin, Pencil, Plus, X } from 'lucide-react';
+import Sheet from '@/components/Sheet';
 import { createClient } from '@/lib/supabase/client';
 import { createCommuteDestination, deleteCommuteDestination, updateCommuteDestination } from '@/lib/supabase/collaboration';
 
@@ -74,19 +75,32 @@ export default function CommuteDestinations({ searchId, userId, destinations, on
           </div>
         ))}
       </div>
-      {(editingId !== null || adding || (destinations.length === 0 && !startCollapsedWhenEmpty)) ? (
+      {!(destinations.length === 0 && !startCollapsedWhenEmpty) && (
+        <button type="button" className="hh-btn hh-btn-ghost" onClick={() => { setDraft(blank); setError(''); setAdding(true); }}><Plus size={14} /> {destinations.length ? 'Add another place' : 'Add a place'}</button>
+      )}
+      {(() => {
+        const sheetOpen = editingId !== null || adding || (destinations.length === 0 && !startCollapsedWhenEmpty);
+        return !sheetOpen && error && <p role="alert" style={{ fontSize: 12, color: 'var(--brick)', margin: '8px 0 0' }}>{error}</p>;
+      })()}
+      <Sheet
+        open={editingId !== null || adding || (destinations.length === 0 && !startCollapsedWhenEmpty)}
+        onClose={cancel}
+        size="compact"
+        title={editingId ? 'Edit place' : 'Add a place'}
+      >
         <div style={{ display: 'grid', gap: 8 }}>
           <input className="hh-input" aria-label="Destination label" placeholder="Name (e.g. Work)" maxLength={80} value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} />
           <input className="hh-input" aria-label="Destination address" placeholder="123 Main St, Detroit, MI" maxLength={500} value={draft.address} onChange={(e) => setDraft({ ...draft, address: e.target.value })} />
           <label className="hh-label">How long is too long? <span style={{ fontWeight: 400, textTransform: 'none' }}>(optional)</span>
             <span style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 4 }}><input className="hh-input" type="number" min="1" max="1440" placeholder="30" value={draft.maxDriveMinutes} onChange={(e) => setDraft({ ...draft, maxDriveMinutes: e.target.value })} style={{ width: 100 }} /> minutes</span>
           </label>
-          <div style={{ display: 'flex', gap: 7 }}><button type="button" className="hh-btn" disabled={!valid || busy} onClick={save}>{busy ? 'Saving…' : editingId ? 'Save changes' : 'Add place'}</button>
+          {error && <p role="alert" style={{ fontSize: 12, color: 'var(--brick)', margin: 0 }}>{error}</p>}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 7 }}>
             {(editingId || destinations.length > 0) && <button type="button" className="hh-btn hh-btn-ghost" onClick={cancel}>Cancel</button>}
+            <button type="button" className="hh-btn" disabled={!valid || busy} onClick={save}>{busy ? 'Saving…' : editingId ? 'Save changes' : 'Add place'}</button>
           </div>
         </div>
-      ) : <button type="button" className="hh-btn hh-btn-ghost" onClick={() => setAdding(true)}><Plus size={14} /> {destinations.length ? 'Add another place' : 'Add a place'}</button>}
-      {error && <p role="alert" style={{ fontSize: 12, color: 'var(--brick)', marginBottom: 0 }}>{error}</p>}
+      </Sheet>
     </div>
   );
 }
