@@ -8,7 +8,7 @@ import {
   isArchivedStatus, isRentalType, TOUR_RATING_KEY, criterionDisplayLabel, TIER_ORDER,
 } from '@/lib/constants';
 import { visibleOrderedItems, parseListingTextFindings, selectedSubjectiveCriteria } from '@/lib/matching';
-import { extractAddressFromListingUrl, extractApartmentIdentityFromListingUrl } from '@/lib/listingUrl';
+import { extractAddressFromListingUrl, extractApartmentIdentityFromListingUrl, isLikelyListingUrl } from '@/lib/listingUrl';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { mergeImportFields, resolveImport } from '@/lib/importDomain';
 import { appendAllSuggestions, appendSuggestionToNotes, derivePriorityCheckPatch, extractEnrichmentSuggestions } from '@/lib/importReview';
@@ -429,7 +429,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   const handleFind = () => {
     const raw = findInput.trim();
     if (!raw) return;
-    const looksLikeUrl = /^https?:\/\//i.test(raw);
+    const looksLikeUrl = isLikelyListingUrl(raw);
 
     if (looksLikeUrl) {
       const result = extractAddressFromListingUrl(raw);

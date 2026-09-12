@@ -57,7 +57,9 @@ test('journey preserves choices on Back, persists before completion, and reveals
   const search = read('src/components/MySearchPanel.jsx');
   assert.match(onboarding, /onBack=\{\(\) => setStep\(2\)\}/);
   assert.match(onboarding, /await flush\(\); await completeOnboarding/);
-  assert.match(onboarding, /router\.push\('\/search\?welcome=1'\)/);
+  // #73: a pending share-intake destination (see (app)/layout.js) takes over
+  // this push when present; the plain welcome landing is still the default.
+  assert.match(onboarding, /router\.push\(pendingRedirect \|\| '\/search\?welcome=1'\)/);
   assert.match(search, /Here&apos;s what we heard\./);
   assert.match(search, /href="\/homes\?add=1">Add your first home/);
 });

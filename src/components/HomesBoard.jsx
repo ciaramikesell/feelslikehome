@@ -17,6 +17,7 @@ import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
 import Sheet from '@/components/Sheet';
 import MobileDisclosure from '@/components/MobileDisclosure';
 import { STATUS_COLOR, emptyHome, isArchivedStatus } from '@/lib/constants';
+import { isLikelyListingUrl, findHomeByListingUrl } from '@/lib/listingUrl';
 import { parseNum, fmtMoney, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint } from '@/lib/matching';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
 import { formatHomePrice, formatLotSizeDisplay, parseCommaList } from '@/lib/homeDisplay';
@@ -458,12 +459,13 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     router.replace('/homes');
   }, [mode, searchParams, router, homes, openHomeModal]);
 
-  // Share-to-FLH preparation: /homes?url=<listing URL> opens Add Home
-  // pre-filled and auto-looked-up, exactly as if the URL had been pasted into
-  // the existing Find-a-home bar by hand — see HomeModal's autoFindOnMount.
-  // This is the landing point a future native iOS Share Extension would send
-  // a shared listing link to; nothing about Share Extensions/Universal Links
-  // is implemented here, just this already-web-safe entry point.
+  // Share intake contract: /homes?url=<listing URL> opens Add Home pre-filled
+  // and auto-looked-up, exactly as if the URL had been pasted into the
+  // existing Find-a-home bar by hand — see HomeModal's autoFindOnMount. This
+  // is the landing point a future native iOS Share Extension would send a
+  // shared listing link to (see docs/share-intake-contract.md); nothing
+  // about Share Extensions/Universal Links is implemented here, just this
+  // already-web-safe entry point.
   //
   // The autoFind intent is captured into modalAutoFind right here, at the
   // moment the param is consumed — not re-derived from searchParams later —
@@ -471,12 +473,30 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   // back off. autoOpenedRef still guarantees this whole effect, URL param
   // included, only ever fires once.
   useEffect(() => {
-    const sharedUrl = searchParams.get('url');
-    if (mode !== 'homes' || !sharedUrl || autoOpenedRef.current) return;
+    const rawUrl = searchParams.get('url');
+    if (mode !== 'homes' || rawUrl === null || autoOpenedRef.current) return;
     autoOpenedRef.current = true;
-    openHomeModal({ ...emptyHome(), listingUrl: sharedUrl }, { autoFind: true });
+
+    // An already-saved home with this exact listing URL wins over creating
+    // another — "the user should add the home once." Anything less certain
+    // than an exact URL match (a different query string, a re-shortened
+    // link) is left alone rather than guessing two listings are the same
+    // property.
+    const existing = findHomeByListingUrl(homes, rawUrl);
+    if (existing) {
+      router.replace(`/homes/${encodeURIComponent(existing.id)}`);
+      return;
+    }
+
+    // Empty (`?url=`) or not a real http(s) URL (malformed, an unsupported
+    // scheme, plain garbage text) never gets treated as a shared link — that
+    // would either fabricate identity from noise or run handleFind's plain-
+    // text/address fallback on a value the user never actually typed. Either
+    // way the existing Add Home flow still opens, ready for manual entry.
+    const validUrl = isLikelyListingUrl(rawUrl);
+    openHomeModal(validUrl ? { ...emptyHome(), listingUrl: rawUrl.trim() } : emptyHome(), { autoFind: validUrl });
     router.replace('/homes');
-  }, [mode, searchParams, router, openHomeModal]);
+  }, [mode, searchParams, router, homes, openHomeModal]);
 
   const saveHome = useCallback(async (home, { shared = true, optimistic = false } = {}) => {
     const supabase = createClient();

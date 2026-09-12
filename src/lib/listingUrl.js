@@ -139,6 +139,29 @@ function parseGeneric(pathname) {
   return null;
 }
 
+// Single source of truth for "does this look like a listing URL worth
+// running through the parsers above," shared by HomeModal's Find-a-home bar
+// and the /homes?url= share-intake entry point (HomesBoard.jsx) so the two
+// can never drift into accepting different things. Deliberately narrow —
+// http(s) only, exactly like the parsers themselves assume — so a non-URL
+// value (empty, garbage text, an unsupported scheme like javascript:/ftp:)
+// is never treated as if it were a shared link.
+export function isLikelyListingUrl(value) {
+  return typeof value === 'string' && /^https?:\/\//i.test(value.trim());
+}
+
+// Exact-match duplicate detection only — deliberately the most conservative
+// signal available (the same listing URL was already saved onto some home
+// in this search), never a fuzzy address/name comparison. Confident enough
+// to route straight to the existing contender instead of creating another;
+// anything less confident than an exact URL match is left alone rather than
+// risking two distinct properties getting silently treated as one.
+export function findHomeByListingUrl(homes, url) {
+  const target = typeof url === 'string' ? url.trim() : '';
+  if (!target || !Array.isArray(homes)) return null;
+  return homes.find((home) => typeof home.listingUrl === 'string' && home.listingUrl.trim() === target) || null;
+}
+
 /**
  * Attempts to extract a candidate address from a listing URL string.
  * Never fetches the URL — pattern-matches the path only.

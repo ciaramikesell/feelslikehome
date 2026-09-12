@@ -6,11 +6,15 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import AuthShell from '@/components/auth/AuthShell';
 import { PasswordField, Banner, Spinner } from '@/components/auth/AuthHelpers';
 import { createClient } from '@/lib/supabase/client';
+import { sanitizeRedirectPath } from '@/lib/safeRedirect';
 
 function SignInForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirect') || '/';
+  // Never trust this straight from the URL — validated the same way
+  // everywhere it's produced or consumed (see safeRedirect.js) so a crafted
+  // `?redirect=https://evil.com` link can't send a signed-in user off-site.
+  const redirectTo = sanitizeRedirectPath(searchParams.get('redirect')) || '/';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [status, setStatus] = useState(null);
