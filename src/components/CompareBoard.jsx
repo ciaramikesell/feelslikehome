@@ -200,7 +200,7 @@ function CommuteValue({ result, destination, emphasized }) {
   );
 }
 
-function CommuteSection({ homes, destinations, diffsOnly, getResult }) {
+function CommuteSection({ homes, destinations, diffsOnly, getResult, priorities }) {
   const rows = destinations.map((destination) => {
     const results = homes.map((home) => getResult(home, destination));
     return { destination, results, shortest: uniqueShortestIndex(results) };
@@ -370,7 +370,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
             </section>
           )}
 
-          {commuteDestinations.length > 0 && <CommuteSection homes={selected} destinations={commuteDestinations} diffsOnly={diffsOnly} getResult={getCommuteResult} />}
+          {commuteDestinations.length > 0 && <CommuteSection homes={selected} destinations={commuteDestinations} diffsOnly={diffsOnly} getResult={getCommuteResult} priorities={priorities} />}
 
           {/* What matters to you */}
           {otherRows.length > 0 && (

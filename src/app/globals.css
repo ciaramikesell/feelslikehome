@@ -462,7 +462,26 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   .hh-mobile-nav-item.active { color: var(--brick); }
   .hh-mobile-nav-item.active .hh-mobile-nav-icon { background: rgba(193,89,47,.1); }
   .hh-mobile-nav-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hh-mobile-nav-item.hh-tour-highlight { color: var(--brick); }
+  .hh-mobile-nav-item.hh-tour-highlight .hh-mobile-nav-icon { background: rgba(193,89,47,.16); box-shadow: 0 0 0 4px rgba(193,89,47,.3); }
 }
+
+/* Mobile first-run tour — a dimming backdrop plus a small callout anchored
+   near the real nav item it's teaching. The backdrop sits below .hh-mobile-nav's
+   z-index (40) so the whole nav bar renders undimmed above it (the user is
+   meant to see the real controls); the highlighted item additionally gets a
+   glow ring, above. Only ever mounted on mobile (gated in AppShell.jsx), so
+   these aren't wrapped in a breakpoint themselves. */
+.hh-tour-backdrop { position: fixed; inset: 0; z-index: 39; background: rgba(20,15,10,.55); }
+.hh-tour-callout {
+  position: fixed; z-index: 46; bottom: calc(72px + env(safe-area-inset-bottom));
+  max-width: min(260px, calc(100vw - 28px)); padding: 14px 16px; border-radius: 14px;
+  background: var(--paper-raised); box-shadow: 0 12px 30px rgba(46,38,33,.35);
+}
+.hh-tour-callout-homes, .hh-tour-callout-tour { left: max(14px, env(safe-area-inset-left)); }
+.hh-tour-callout-compare { left: 50%; transform: translateX(-50%); }
+.hh-tour-callout-search { right: max(14px, env(safe-area-inset-right)); }
+.hh-tour-callout-final { left: 50%; transform: translateX(-50%); text-align: center; }
 
 /* Focused responsive behavior for the three core decision surfaces. */
 @media (max-width: 640px) {
@@ -560,6 +579,22 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-map-empty { display: flex; min-height: 360px; flex-direction: column; align-items: center; justify-content: center; text-align: center; border: 1px dashed var(--line); border-radius: 18px; background: var(--paper-raised); color: var(--ink-soft); }
 .hh-map-empty h2 { margin: 12px 0 2px; color: var(--ink); font: 600 22px 'Fraunces', serif; }
 .hh-map-empty p { margin: 4px 0 18px; }
+
+/* Map becomes the primary full-width mobile surface: heading/subtitle and the
+   permanent side lists (desktop-only real estate) are dropped in favor of the
+   map itself plus the tap-to-select preview card it already has — see
+   .hh-map-preview above, unchanged. "Unresolved homes" stays — it's already
+   collapsed and isn't the side-by-side list this is about. This has to live
+   in its own breakpoint block after the rules above rather than inside the
+   earlier general-chrome @media(max-width:700px) block: at equal
+   specificity the unconditional .hh-map-layout rule above wins over an
+   earlier same-breakpoint override by source order alone. */
+@media (max-width: 700px) {
+  .hh-map-page-intro { display: none; }
+  .hh-map-layout { grid-template-columns: 1fr; }
+  .hh-map-layout > section { display: none; }
+  .hh-map-stage { height: calc(100dvh - 200px); min-height: 50vh; }
+}
 
 /* Canonical home dossier. Typography and whitespace carry the grouping so the
    page stays editorial rather than becoming another dense dashboard. */
