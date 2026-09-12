@@ -14,6 +14,7 @@ import { evaluateCommute } from '@/lib/commute';
 import HomeModal from '@/components/HomeModal';
 import PostTourModal from '@/components/PostTourModal';
 import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
+import Sheet from '@/components/Sheet';
 import { STATUS_COLOR, emptyHome, isArchivedStatus } from '@/lib/constants';
 import { parseNum, fmtMoney, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint } from '@/lib/matching';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
@@ -31,22 +32,19 @@ import {
 
 function ConfirmModal({ title, body, cancelLabel = 'Cancel', confirmLabel, confirmTone = 'danger', onCancel, onConfirm }) {
   return (
-    <div className="hh-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onCancel()}>
-      <div className="hh-modal hh-corner" style={{ maxWidth: 420, padding: 26 }}>
-        <h3 className="hh-serif" style={{ fontSize: 18, margin: 0, fontWeight: 600, color: 'var(--ink)' }}>{title}</h3>
-        <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', lineHeight: 1.55, margin: '10px 0 20px' }}>{body}</p>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-          <button className="hh-btn hh-btn-ghost" onClick={onCancel}>{cancelLabel}</button>
-          <button
-            className="hh-btn"
-            style={confirmTone === 'danger' ? { background: 'var(--brick)', borderColor: 'var(--brick)' } : undefined}
-            onClick={onConfirm}
-          >
-            {confirmLabel}
-          </button>
-        </div>
+    <Sheet open size="compact" title={title} onClose={onCancel}>
+      <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', lineHeight: 1.55, margin: '0 0 20px' }}>{body}</p>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+        <button className="hh-btn hh-btn-ghost" onClick={onCancel}>{cancelLabel}</button>
+        <button
+          className="hh-btn"
+          style={confirmTone === 'danger' ? { background: 'var(--brick)', borderColor: 'var(--brick)' } : undefined}
+          onClick={onConfirm}
+        >
+          {confirmLabel}
+        </button>
       </div>
-    </div>
+    </Sheet>
   );
 }
 
@@ -473,6 +471,20 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     router.replace('/homes');
   }, [mode, searchParams, router, homes]);
 
+  // Share-to-FLH preparation: /homes?url=<listing URL> opens Add Home
+  // pre-filled and auto-looked-up, exactly as if the URL had been pasted into
+  // the existing Find-a-home bar by hand — see HomeModal's autoFindOnMount.
+  // This is the landing point a future native iOS Share Extension would send
+  // a shared listing link to; nothing about Share Extensions/Universal Links
+  // is implemented here, just this already-web-safe entry point.
+  useEffect(() => {
+    const sharedUrl = searchParams.get('url');
+    if (mode !== 'homes' || !sharedUrl || autoOpenedRef.current) return;
+    autoOpenedRef.current = true;
+    setModalHome({ ...emptyHome(), listingUrl: sharedUrl });
+    router.replace('/homes');
+  }, [mode, searchParams, router]);
+
   const saveHome = useCallback(async (home, { shared = true, optimistic = false } = {}) => {
     const supabase = createClient();
     const previous = homes.find((candidate) => candidate.id === home.id);
@@ -742,7 +754,13 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         />
       )}
 
-      {modalHome && <HomeModal initial={modalHome} priorities={priorities} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} userId={userId} onSave={saveEditedHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget} />}
+      {modalHome && (
+        <HomeModal
+          initial={modalHome} priorities={priorities} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} userId={userId}
+          onSave={saveEditedHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget}
+          autoFindOnMount={mode === 'homes' && Boolean(searchParams.get('url'))}
+        />
+      )}
 
       {postTourTarget && (
         <PostTourModal

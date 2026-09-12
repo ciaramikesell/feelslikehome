@@ -192,7 +192,7 @@ function PropertyFacts({ form, set, priorities, sharedFactAwareness }) {
   );
 }
 
-export default function HomeModal({ initial, priorities, sharedFactAwareness = {}, isCollaborative = false, onSave, onClose, userId, onWantToTour, onArchiveRequest, presentation = 'modal' }) {
+export default function HomeModal({ initial, priorities, sharedFactAwareness = {}, isCollaborative = false, onSave, onClose, userId, onWantToTour, onArchiveRequest, presentation = 'modal', autoFindOnMount = false }) {
   const [form, setForm] = useState(initial);
   const vocabulary = homeVocabulary(priorities);
   const [pasteText, setPasteText] = useState('');
@@ -462,6 +462,15 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
       lookupAddress(raw);
     }
   };
+
+  // Share-to-FLH preparation: when Add Home is opened pre-filled from a
+  // shared/linked listing URL (see /add?url= in HomesBoard.jsx) rather than
+  // pasted by hand, run the exact same Find-a-home lookup automatically once
+  // — no separate import path, just triggering the existing one for the user.
+  useEffect(() => {
+    if (autoFindOnMount && findInput.trim()) handleFind();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleFallbackAddressLookup = () => {
     const address = fallbackAddressInput.trim();
