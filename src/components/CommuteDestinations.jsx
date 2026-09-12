@@ -75,15 +75,15 @@ export default function CommuteDestinations({ searchId, userId, destinations, on
           </div>
         ))}
       </div>
-      {!(destinations.length === 0 && !startCollapsedWhenEmpty) && (
+      {!adding && (
         <button type="button" className="hh-btn hh-btn-ghost" onClick={() => { setDraft(blank); setError(''); setAdding(true); }}><Plus size={14} /> {destinations.length ? 'Add another place' : 'Add a place'}</button>
       )}
       {(() => {
-        const sheetOpen = editingId !== null || adding || (destinations.length === 0 && !startCollapsedWhenEmpty);
+        const sheetOpen = editingId !== null || adding;
         return !sheetOpen && error && <p role="alert" style={{ fontSize: 12, color: 'var(--brick)', margin: '8px 0 0' }}>{error}</p>;
       })()}
       <Sheet
-        open={editingId !== null || adding || (destinations.length === 0 && !startCollapsedWhenEmpty)}
+        open={editingId !== null || adding}
         onClose={cancel}
         size="compact"
         title={editingId ? 'Edit place' : 'Add a place'}

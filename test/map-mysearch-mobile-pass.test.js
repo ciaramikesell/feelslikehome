@@ -100,6 +100,36 @@ test('InviteCoBuyer, CoBuyerManagement, and the Places editor all use the shared
   }
 });
 
+test('regression: an initially-open empty Places editor can be dismissed and does not reopen solely because destinations are still empty', () => {
+  // The bug: Sheet's `open` (and the Add button's visibility) were derived
+  // live from `destinations.length === 0 && !startCollapsedWhenEmpty` in
+  // three places, not just used to seed initial state. cancel() clears
+  // `adding`/`editingId`, but that derived expression is unaffected by
+  // either — with zero destinations and startCollapsedWhenEmpty false, it
+  // stayed permanently true, so the Sheet could never actually close (and
+  // the reopen button stayed hidden the whole time, since it was gated by
+  // the same expression negated).
+  //
+  // The fix: that expression seeds `adding`'s *initial* value only — the
+  // Sheet's `open`, the error placement, and the Add button's visibility
+  // must all depend solely on live editing state afterward.
+  assert.match(commuteDestinations, /const \[adding, setAdding\] = useState\(destinations\.length === 0 && !startCollapsedWhenEmpty\);/);
+
+  const emptyCheckOccurrences = (commuteDestinations.match(/destinations\.length === 0 && !startCollapsedWhenEmpty/g) || []).length;
+  assert.equal(emptyCheckOccurrences, 1, 'the empty-state check must appear exactly once — seeding initial state — and nowhere else as a live gate');
+
+  assert.match(commuteDestinations, /<Sheet\s*\n\s*open={editingId !== null \|\| adding}\s*\n\s*onClose={cancel}/);
+  assert.match(commuteDestinations, /{!adding && \(\s*\n\s*<button type="button" className="hh-btn hh-btn-ghost" onClick={\(\) => { setDraft\(blank\); setError\(''\); setAdding\(true\); }}>/);
+  assert.match(commuteDestinations, /const cancel = \(\) => \{ setEditingId\(null\); setAdding\(false\); setDraft\(blank\); setError\(''\); \};/);
+});
+
+test('save/delete behavior and Google Places/API surface in CommuteDestinations are untouched by the dismissal fix', () => {
+  assert.match(commuteDestinations, /createCommuteDestination\(supabase, searchId, userId, values\)/);
+  assert.match(commuteDestinations, /updateCommuteDestination\(supabase, editingId, values\)/);
+  assert.match(commuteDestinations, /deleteCommuteDestination\(createClient\(\), destination\.id\)/);
+  assert.doesNotMatch(commuteDestinations, /google|places\.googleapis/i);
+});
+
 test('the collaboration philosophy copy survives the Sheet migration verbatim', () => {
   assert.match(inviteCoBuyer, /aren&apos;t hidden from the people in this search/);
   assert.match(inviteCoBuyer, /don&apos;t combine them into one score or let another person change/);
