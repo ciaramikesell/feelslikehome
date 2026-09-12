@@ -464,7 +464,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   };
 
   // Share-to-FLH preparation: when Add Home is opened pre-filled from a
-  // shared/linked listing URL (see /add?url= in HomesBoard.jsx) rather than
+  // shared/linked listing URL (see /homes?url= in HomesBoard.jsx) rather than
   // pasted by hand, run the exact same Find-a-home lookup automatically once
   // — no separate import path, just triggering the existing one for the user.
   useEffect(() => {
