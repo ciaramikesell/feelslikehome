@@ -7,11 +7,14 @@ import { ArrowLeft } from 'lucide-react';
 import AuthShell from '@/components/auth/AuthShell';
 import { PasswordField, Banner, Spinner } from '@/components/auth/AuthHelpers';
 import { createClient } from '@/lib/supabase/client';
+import { sanitizeRedirectPath } from '@/lib/safeRedirect';
 
 function SignUpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get('redirect') || '/';
+  // See sign-in's identical comment: validated so a crafted `?redirect=`
+  // can't be used to send a freshly-created account off-site.
+  const redirectTo = sanitizeRedirectPath(searchParams.get('redirect')) || '/';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');

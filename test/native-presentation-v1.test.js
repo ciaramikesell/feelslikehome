@@ -112,7 +112,7 @@ test('HomeModal.jsx (Add Home) was deliberately left off the Sheet primitive in 
 
 test('/homes?url=<listing URL> opens Add Home pre-filled and auto-looked-up, reusing the existing Find-a-home flow', () => {
   assert.match(homesBoard, /searchParams\.get\('url'\)/);
-  assert.match(homesBoard, /openHomeModal\(\{ \.\.\.emptyHome\(\), listingUrl: sharedUrl \}, \{ autoFind: true \}\)/);
+  assert.match(homesBoard, /openHomeModal\(validUrl \? \{ \.\.\.emptyHome\(\), listingUrl: rawUrl\.trim\(\) \} : emptyHome\(\), \{ autoFind: validUrl \}\)/);
   assert.match(homesBoard, /autoFindOnMount=\{modalAutoFind\}/);
 
   assert.match(homeModal, /autoFindOnMount = false/);
@@ -129,6 +129,11 @@ test('regression: clearing the ?url= query param cannot disable a shared-URL mod
   // consumed, into modalAutoFind — a value HomeModal reads once itself
   // (autoFindOnMount is only read inside a useEffect with an empty
   // dependency array), so it survives the URL being cleared right after.
+  //
+  // Since #73, that captured intent is also conditional — only a real
+  // http(s) URL earns autoFind:true (see isLikelyListingUrl) — but it's
+  // still captured once, synchronously, at consumption time; still never
+  // re-derived from a live searchParams read.
 
   // 1. autoFindOnMount is never wired straight to a searchParams read —
   //    the only place 'url' is read at all is inside the one effect that
@@ -137,24 +142,26 @@ test('regression: clearing the ?url= query param cannot disable a shared-URL mod
   assert.equal(urlReads.length, 1, 'searchParams.get(\'url\') must be read exactly once, at consumption time — not re-derived elsewhere');
   assert.doesNotMatch(homesBoard, /autoFindOnMount=\{[^}]*searchParams/);
 
-  // 2. The url-effect captures autoFind:true into state synchronously,
-  //    before/alongside the router.replace call that clears the param —
-  //    not in some later effect that could race with it.
-  const urlEffect = homesBoard.match(/useEffect\(\(\) => \{\s*const sharedUrl[\s\S]*?\n {2}\}, \[mode, searchParams, router, openHomeModal\]\);/)?.[0] || '';
+  // 2. The url-effect computes validUrl and calls openHomeModal with it
+  //    synchronously, before/alongside the router.replace call that clears
+  //    the param — not in some later effect that could race with it.
+  const urlEffect = homesBoard.match(/useEffect\(\(\) => \{\s*const rawUrl[\s\S]*?\n {2}\}, \[mode, searchParams, router, homes, openHomeModal\]\);/)?.[0] || '';
   assert.ok(urlEffect, 'expected the ?url= effect to be present');
   const openIdx = urlEffect.indexOf('openHomeModal(');
-  const replaceIdx = urlEffect.indexOf("router.replace('/homes')");
+  const replaceIdx = urlEffect.lastIndexOf("router.replace('/homes')");
   assert.ok(openIdx !== -1 && replaceIdx !== -1 && openIdx < replaceIdx, 'openHomeModal (capturing autoFind) must run before router.replace clears the param');
-  assert.match(urlEffect, /autoFind: true/);
+  assert.match(urlEffect, /const validUrl = isLikelyListingUrl\(rawUrl\);/);
+  assert.match(urlEffect, /\{ autoFind: validUrl \}/);
 
-  // 3. Every other place a home is opened explicitly does NOT request
-  //    autoFind — regular Add/Edit Home must stay autoFindOnMount=false,
-  //    confirming the flag isn't just globally stuck on.
+  // 3. Every other place a home is opened explicitly hard-codes autoFind
+  //    off (or omits it, defaulting off) — regular Add/Edit Home must stay
+  //    autoFindOnMount=false unconditionally, never a variable that could
+  //    evaluate true some other way.
   const otherOpens = [...homesBoard.matchAll(/openHomeModal\([^;]*?\)(?=[,;)])/gs)]
     .map((m) => m[0])
-    .filter((call) => !call.includes('autoFind: true'));
+    .filter((call) => !call.includes('validUrl'));
   assert.ok(otherOpens.length >= 4, 'expected multiple non-auto-find openHomeModal call sites (?add=1, ?home=, both Add buttons)');
-  for (const call of otherOpens) assert.doesNotMatch(call, /autoFind:\s*true/);
+  for (const call of otherOpens) assert.doesNotMatch(call, /autoFind:\s*(true|validUrl)/);
   // The archive/homes Edit buttons pass openHomeModal by reference — no
   // wrapper could sneak autoFind:true onto them even if someone tried.
   const onEditSites = homesBoard.match(/onEdit=\{openHomeModal\}/g) || [];

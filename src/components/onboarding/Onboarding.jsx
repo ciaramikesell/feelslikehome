@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Check, Plus } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
 import { normalizePriorities } from '@/lib/constants';
@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client';
 import { useReliableOptimisticState } from '@/lib/useReliableOptimisticState';
 import { completeOnboarding } from '@/lib/supabase/data';
 import { savePriorities } from '@/lib/supabase/collaboration';
+import { sanitizeRedirectPath } from '@/lib/safeRedirect';
 import BetaFeedback from '@/components/BetaFeedback';
 
 const criterionKey = (criterion) => `${criterion.categoryKey}:${criterion.label}`;
@@ -106,10 +107,17 @@ function DealbreakersStep({ priorities, patch, dealbreakers, setDealbreakers, on
 
 export default function Onboarding({ userId, searchId, initialPriorities, appVersion = null }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Set only when the app-group auth gate sent the user here with a pending
+  // destination (e.g. someone shared a listing URL before ever signing up) —
+  // see (app)/layout.js. That destination matters more than the usual
+  // welcome-to-My-Search landing, so it takes over `finish()` when present;
+  // otherwise nothing about onboarding's normal completion changes.
+  const pendingRedirect = sanitizeRedirectPath(searchParams.get('redirect'));
   const persistPriorities = useCallback((next) => savePriorities(createClient(), { id: searchId }, userId, next), [searchId, userId]);
   const { state: priorities, patch, saveError, retry, flush, isSaving } = useReliableOptimisticState(normalizePriorities(initialPriorities), persistPriorities);
   const [step, setStep] = useState(1); const [dealbreakers, setDealbreakers] = useState(new Set()); const [finishError, setFinishError] = useState('');
-  const finish = async () => { setFinishError(''); try { await flush(); await completeOnboarding(createClient(), userId); router.push('/search?welcome=1'); } catch { setFinishError("Couldn't finish setup. Your choices are still here—please try again."); } };
+  const finish = async () => { setFinishError(''); try { await flush(); await completeOnboarding(createClient(), userId); router.push(pendingRedirect || '/search?welcome=1'); } catch { setFinishError("Couldn't finish setup. Your choices are still here—please try again."); } };
   return <div className="hh-root"><OnboardingShell wide={step > 1}>
     {(saveError || finishError) && <p className="hh-save-error" role="alert">{saveError || finishError} <button type="button" onClick={saveError ? retry : finish}>Retry</button></p>}
     <div className="hh-onboarding-brand"><BrandMark size={30} /><span className="hh-serif"><span>Feels Like </span><b>Home</b></span></div>
