@@ -9,7 +9,7 @@ import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
 import { criterionDisplayLabel, isArchivedStatus, TOUR_RATING_KEY } from '@/lib/constants';
 import { computeMatch, parseNum } from '@/lib/matching';
 import { evaluateCommute } from '@/lib/commute';
-import { formatDateOnly, formatHomePrice, formatLotSizeDisplay, formatPropertyType, formatTriState, parseCommaList, splitAddressLines } from '@/lib/homeDisplay';
+import { formatDateOnly, formatHomePrice, formatLotSizeDisplay, formatPropertyType, formatTriState, parseCommaList } from '@/lib/homeDisplay';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { useCommuteObserver } from '@/lib/useCommuteObserver';
@@ -72,7 +72,6 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
       ['Property tax', home.propertyTaxAnnual != null && `$${Number(home.propertyTaxAnnual).toLocaleString()}/yr`],
     ] : []),
   ].filter(([, value]) => value);
-  const { line1, line2 } = splitAddressLines(home.address);
   const identity = homeIdentity(home, priorities);
   const vocabulary = homeVocabulary(priorities);
 
@@ -139,7 +138,7 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
       <div className="hh-detail-photo">{home.photoUrl ? <img src={home.photoUrl} alt={`${identity.accessible} ${vocabulary.singularLower} photo`} /> : <HomeIcon size={50} />}</div>
       <div className="hh-detail-identity">
         <div className="hh-detail-eyebrow">{vocabulary.singular} Detail</div>
-        <h1 className="hh-serif">{identity.primary}</h1>{identity.option && <p className="hh-detail-option">{identity.option}</p>}{identity.supporting ? <p className="hh-detail-locality">{identity.supporting}</p> : line2 && <p className="hh-detail-locality">{line2}</p>}
+        <h1 className="hh-serif">{identity.primary}</h1>{identity.option && <p className="hh-detail-option">{identity.option}</p>}{identity.supporting && <p className="hh-detail-locality">{identity.supporting}</p>}
         <div className="hh-detail-price">{formatHomePrice(home.price, priorities.searchType) || 'Price not added'}</div>
         <div className="hh-detail-core-facts">{[home.beds && `${home.beds} beds`, home.baths && `${home.baths} baths`, home.sqft && `${parseNum(home.sqft)?.toLocaleString()} sq ft`, home.lotSize && formatLotSizeDisplay(home.lotSize)].filter(Boolean).map((fact) => <span key={fact}>{fact}</span>)}</div>
         <div className="hh-detail-summary-row">{match?.pct != null && <strong>{match.pct}% Match</strong>}<span className="hh-detail-lifecycle">{home.status}</span>{home.isFavorite && <span className="hh-detail-favorite"><Heart size={13} fill="currentColor" aria-hidden="true" /> Favorite</span>}</div>
