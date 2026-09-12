@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Download, Share, X } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
+import { isNativeApp } from '@/lib/platform';
 
 const DISMISS_KEY = 'flh-install-dismissed';
 
@@ -22,6 +23,11 @@ export default function InstallPrompt() {
   const [dismissed, setDismissed] = useState(true); // starts hidden until we know it's safe to show
 
   useEffect(() => {
+    // Already installed, natively — no "add to home screen" prompt to show,
+    // and no need for the PWA's offline-fallback service worker inside a
+    // shell that's already a real app.
+    if (isNativeApp()) return;
+
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});
     }
