@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogOut, Home as HomeIcon, Columns, HelpCircle, X, Footprints, SlidersHorizontal, Map } from 'lucide-react';
@@ -8,6 +8,7 @@ import { BrandMark, Wordmark } from '@/components/ui';
 import { PRIMARY_TABS, MOBILE_PRIMARY_TABS } from '@/lib/constants';
 import { homeVocabulary } from '@/lib/homePresentation';
 import { createClient } from '@/lib/supabase/client';
+import { savePriorities } from '@/lib/supabase/collaboration';
 import SearchSwitcher from '@/components/SearchSwitcher';
 import BetaFeedback from '@/components/BetaFeedback';
 
@@ -40,6 +41,54 @@ function MobileNav({ pathname, vocabulary }) {
         );
       })}
     </nav>
+  );
+}
+
+// One-time orientation for the mobile bottom nav, shown once per search per
+// device class — see the mount effect in AppShell for the "mobile and not
+// already dismissed" gate. All four steps show at once (no carousel/paging
+// state to build or get stuck in); dismissing via the X or "Got it" are
+// equivalent — either persists the same flag and never blocks navigation.
+function MobileFirstTimeTour({ vocabulary, onDismiss }) {
+  const steps = [
+    { label: vocabulary.plural, icon: HomeIcon, body: `Your contenders live here. Add ${vocabulary.pluralLower} as you find them and keep everything in one place.` },
+    { label: 'Tour', icon: Footprints, body: `Save the ${vocabulary.pluralLower} you want to see in person.` },
+    { label: 'Compare', icon: Columns, body: 'See how your favorites stack up based on what matters to you.' },
+    { label: 'Search', icon: SlidersHorizontal, body: "Update your priorities anytime — your Match scores update with them." },
+  ];
+  return (
+    <div className="hh-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onDismiss()}>
+      <div className="hh-modal hh-corner" role="dialog" aria-modal="true" aria-labelledby="mobile-tour-title">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+          <h2 id="mobile-tour-title" className="hh-serif" style={{ fontSize: 20, margin: 0, fontWeight: 600 }}>Getting around</h2>
+          <button type="button" className="hh-btn hh-btn-ghost" style={{ padding: 6 }} onClick={onDismiss} aria-label="Skip">
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div style={{ display: 'grid', gap: 16, marginBottom: 20 }}>
+          {steps.map((step) => (
+            <div key={step.label} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+              <span style={{ flexShrink: 0, width: 34, height: 34, borderRadius: 10, background: 'rgba(193,89,47,.09)', color: 'var(--brick)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <step.icon size={17} aria-hidden="true" />
+              </span>
+              <div>
+                <div className="hh-serif" style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', marginBottom: 2 }}>{step.label}</div>
+                <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', lineHeight: 1.5 }}>{step.body}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <p style={{ fontSize: 13, color: 'var(--ink)', fontWeight: 500, margin: '0 0 18px' }}>
+          That&apos;s it. Add a {vocabulary.singularLower} and we&apos;ll take it from there.
+        </p>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button type="button" className="hh-btn" onClick={onDismiss}>Got it</button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -114,7 +163,26 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
   const pathname = usePathname();
   const router = useRouter();
   const [howToOpen, setHowToOpen] = useState(false);
+  const [mobileTourOpen, setMobileTourOpen] = useState(false);
   const vocabulary = homeVocabulary(priorities);
+
+  // Mobile-only, first-time-only: checked once after mount (never on resize —
+  // rotating a phone mid-session shouldn't resurface a tutorial someone
+  // already dismissed) against the same ~700px boundary the bottom nav
+  // itself switches on. Starting closed keeps the first client render
+  // identical to the server-rendered markup, so there's no hydration
+  // mismatch — this only ever opens it, never on desktop.
+  useEffect(() => {
+    if (priorities?.mobileTourDismissed) return;
+    if (window.matchMedia('(max-width: 700px)').matches) setMobileTourOpen(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const dismissMobileTour = () => {
+    setMobileTourOpen(false);
+    if (!activeSearchId) return;
+    savePriorities(createClient(), { id: activeSearchId }, userId, { ...priorities, mobileTourDismissed: true }).catch(() => {});
+  };
 
   const signOut = async () => {
     const supabase = createClient();
@@ -170,6 +238,7 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
 
       <MobileNav pathname={pathname} vocabulary={vocabulary} />
 
+      {mobileTourOpen && <MobileFirstTimeTour vocabulary={vocabulary} onDismiss={dismissMobileTour} />}
       {howToOpen && <HowToUseModal onClose={() => setHowToOpen(false)} />}
       <BetaFeedback userId={userId} searchId={activeSearchId} searchType={searchIntent} appVersion={appVersion} />
     </div>

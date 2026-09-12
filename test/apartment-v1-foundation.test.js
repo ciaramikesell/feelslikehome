@@ -22,6 +22,26 @@ test('property identity keeps canonical address separate from the selected optio
   assert.equal(home.address, '4081 Crooks Rd, Royal Oak, MI');
 });
 
+test('home identity splits the address into a street-only primary and a city/state/zip supporting line', () => {
+  const home = { address: '1396 Vernier Rd, Grosse Pointe Woods, MI 48236' };
+  assert.deepEqual(homeIdentity(home, { searchType: 'purchase' }), {
+    primary: '1396 Vernier Rd',
+    supporting: 'Grosse Pointe Woods, MI 48236',
+    option: '',
+    accessible: '1396 Vernier Rd, Grosse Pointe Woods, MI 48236',
+  });
+});
+
+test('home identity with no locality segment falls back to the full address as primary', () => {
+  const home = { address: '88 Elm St' };
+  assert.deepEqual(homeIdentity(home, { searchType: 'purchase' }), {
+    primary: '88 Elm St',
+    supporting: '',
+    option: '',
+    accessible: '88 Elm St',
+  });
+});
+
 test('migration is additive and preserves column-level ACLs', () => {
   const sql = fs.readFileSync(new URL('../supabase/migrations/2026-09-11-apartment-v1-foundation.sql', import.meta.url), 'utf8');
   for (const column of ['property_name', 'selected_floor_plan_name', 'selected_unit_label', 'floor_plan_image_url']) assert.match(sql, new RegExp(`add column ${column} text null`));
