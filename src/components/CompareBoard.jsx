@@ -3,7 +3,7 @@
 import { useState, useMemo, Fragment } from 'react';
 import Link from 'next/link';
 import { Columns, Star, Heart, Home as HomeIcon } from 'lucide-react';
-import { TOUR_RATING_KEY, criterionDisplayLabel } from '@/lib/constants';
+import { TOUR_RATING_KEY, criterionDisplayLabel, isApartmentRental } from '@/lib/constants';
 import { parseNum, computeMatch, matchColor } from '@/lib/matching';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
 import { formatDateOnly, formatHomePrice, formatLotSizeDisplay, formatPropertyType, formatTriState, parseCommaList } from '@/lib/homeDisplay';
@@ -35,10 +35,21 @@ const PHYSICAL_FACT_ROWS = [
   { key: 'dom', label: 'Days on market', betterHigh: false, get: (h) => parseNum(h.daysOnMarket), fmt: (v) => (v === null ? '—' : v) },
 ];
 
-function homeFactRows(searchType) {
+// Apartment-to-Rent communities don't have a meaningful per-listing lot,
+// assigned year built, or private garage the way a standalone home does —
+// showing them just because the shared `homes` model has the columns would
+// present irrelevant Home fields as if they were apartment facts. Beds/
+// baths/sqft/days-on-market genuinely do describe a specific unit/listing,
+// so those stay for both.
+const APARTMENT_IRRELEVANT_FACT_KEYS = new Set(['lot', 'garage', 'year']);
+
+function homeFactRows(priorities) {
+  const apartment = isApartmentRental(priorities);
+  const searchType = priorities.searchType;
   const { showsRentalFacts } = searchIntentCapabilities(searchType);
+  const physicalRows = apartment ? PHYSICAL_FACT_ROWS.filter((row) => !APARTMENT_IRRELEVANT_FACT_KEYS.has(row.key)) : PHYSICAL_FACT_ROWS;
   const price = { key: 'price', label: showsRentalFacts ? 'Monthly Rent' : 'Price', betterHigh: false, get: (h) => parseNum(h.price), fmt: (v) => (v === null ? '—' : formatHomePrice(String(v), searchType)) };
-  if (showsRentalFacts) return [price, ...PHYSICAL_FACT_ROWS,
+  if (showsRentalFacts) return [price, ...physicalRows,
     { key: 'propertyType', label: 'Property Type', betterHigh: null, get: (h) => h.propertyType || null, fmt: formatPropertyType },
     { key: 'availableOn', label: 'Available On', betterHigh: null, get: (h) => h.availableOn || null, fmt: formatDateOnly },
     { key: 'petsAllowed', label: 'Pets Allowed', betterHigh: null, get: (h) => h.petsAllowed, fmt: formatTriState },
@@ -47,7 +58,7 @@ function homeFactRows(searchType) {
   ];
   return [price,
   { key: 'estMonthly', label: 'Est. monthly payment', betterHigh: false, get: (h) => parseNum(h.estMonthly), fmt: (v) => (v === null ? '—' : formatHomePrice(String(v), searchType)) },
-  ...PHYSICAL_FACT_ROWS,
+  ...physicalRows,
   { key: 'pps', label: '$/sq ft', betterHigh: false, get: (h) => (parseNum(h.price) && parseNum(h.sqft) ? Math.round(parseNum(h.price) / parseNum(h.sqft)) : null), fmt: (v) => (v === null ? '—' : '$' + v) },
   { key: 'hoa', label: 'HOA', betterHigh: false, get: (h) => (typeof h.hoaFeeMonthly === 'number' ? h.hoaFeeMonthly : null), fmt: (v) => (v === null ? '—' : `$${v.toLocaleString()}/mo`) },
   { key: 'tax', label: 'Property tax', betterHigh: false, get: (h) => (typeof h.propertyTaxAnnual === 'number' ? h.propertyTaxAnnual : null), fmt: (v, h) => (v === null ? '—' : `$${v.toLocaleString()}/yr${h?.propertyTaxYear ? ` · ${h.propertyTaxYear}` : ''}`) },
@@ -186,6 +197,44 @@ function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective, searchTyp
   );
 }
 
+// Compact visual contender selector — a plain text chip answers "is this
+// selected" but not "which home is this, at a glance," especially once
+// several candidates have similar-sounding addresses/property names. A
+// thumbnail + identity + Match keeps that answerable without turning
+// selection into its own control surface (falls back to the same empty-photo
+// icon Home cards use elsewhere — no new placeholder system).
+function PickerChip({ home, priorities, match, isSelected, disabled, onToggle }) {
+  const [imgError, setImgError] = useState(false);
+  const identity = homeIdentity(home, priorities);
+  const showPhoto = home.photoUrl && !imgError;
+  return (
+    <button
+      type="button"
+      className={`hh-compare-picker-chip ${isSelected ? 'on' : ''}`}
+      disabled={disabled}
+      aria-pressed={isSelected}
+      onClick={onToggle}
+    >
+      <span className="hh-compare-picker-thumb">
+        {showPhoto ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={home.photoUrl} alt="" onError={() => setImgError(true)} />
+        ) : (
+          <HomeIcon size={13} color="var(--ink-soft)" style={{ opacity: 0.6 }} />
+        )}
+      </span>
+      <span className="hh-compare-picker-text">
+        <span className="hh-compare-picker-name">{identity.primary}</span>
+        {match?.pct != null ? (
+          <span className="hh-compare-picker-match" style={{ color: matchColor(match.pct) }}>{match.pct}% Match</span>
+        ) : (
+          <span className="hh-compare-picker-match is-unset">Match unavailable</span>
+        )}
+      </span>
+    </button>
+  );
+}
+
 function CommuteValue({ result, destination, emphasized }) {
   const known = result?.status === 'ok' && Number.isFinite(result.minutes);
   const overBy = known && destination.maxDriveMinutes != null
@@ -235,6 +284,53 @@ function CommuteSection({ homes, destinations, diffsOnly, getResult, priorities 
   );
 }
 
+// Shared row-comparison layout for Must-Haves, What matters to you, and
+// {Singular} facts — each is "one row per criterion/fact, one value per
+// home," which a desktop table reads fine but a 390px screen does not (see
+// CommuteSection above, which already solved exactly this: render both a
+// desktop grid and a vertical mobile grouping, then let CSS pick one per
+// breakpoint instead of reproducing the table at phone width). `renderValue`
+// stays a plain per-cell renderer so this has no opinion on what a "value"
+// looks like — CriteriaValue's met/missed/unknown treatment for priority
+// rows, or a formatted fact string for the Facts table, both pass through
+// unchanged.
+function CompareRowsSection({ title, legend, rows, homes, priorities, renderValue, labelColWidth = 200, minColWidth = 120 }) {
+  if (!rows.length) return null;
+  return (
+    <section>
+      {title && <h3 className="hh-serif" style={{ fontSize: 16, fontWeight: 600, marginBottom: legend ? 4 : 10, color: 'var(--ink)' }}>{title}</h3>}
+      {legend}
+      <div className="hh-compare-rows-desktop hh-scrollx">
+        <div style={{ display: 'grid', gridTemplateColumns: `${labelColWidth}px repeat(${homes.length}, minmax(${minColWidth}px, 1fr))`, minWidth: labelColWidth + homes.length * minColWidth }}>
+          <div />
+          {homes.map((h) => <div key={h.id} className="hh-compare-rows-heading">{homeIdentity(h, priorities).primary}</div>)}
+          {rows.map((row) => (
+            <Fragment key={row.key}>
+              <div className="hh-compare-rows-label">{row.label}</div>
+              {row.values.map((value, i) => (
+                <div key={row.key + '-' + i} className="hh-compare-rows-cell">{renderValue(value, homes[i], row)}</div>
+              ))}
+            </Fragment>
+          ))}
+        </div>
+      </div>
+      <div className="hh-compare-rows-mobile">
+        {rows.map((row) => (
+          <div key={row.key} className="hh-compare-rows-mobile-group">
+            <div className="hh-compare-rows-label">{row.label}</div>
+            {row.values.map((value, i) => (
+              <div key={row.key + '-' + i} className="hh-compare-rows-mobile-row">
+                <span>{homeIdentity(homes[i], priorities).primary}</span>
+                {renderValue(value, homes[i], row)}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function CompareBoard({ homes, priorities, coBuyerPerspectives = {}, commuteDestinations = [] }) {
   const [selectedIds, setSelectedIds] = useState(() => homes.slice(0, Math.min(2, homes.length)).map((h) => h.id));
   const [diffsOnly, setDiffsOnly] = useState(true);
@@ -246,6 +342,18 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
     return [...prev, id];
   });
 
+  // A quick Match badge for every candidate in the picker, not just the ones
+  // currently selected — deliberately without commute evaluation (that needs
+  // an active comparison's commute matrix, not a picker of homes that may
+  // never be selected); commute-based priorities just read as unevaluated
+  // here, exactly like any other not-yet-evaluated criterion. Same shared
+  // computeMatch as everywhere else, never a separate scoring path.
+  const pickerMatches = useMemo(() => {
+    const byId = new Map();
+    homes.forEach((home) => byId.set(home.id, computeMatch(home, priorities)));
+    return byId;
+  }, [homes, priorities]);
+
   const selected = useMemo(() => selectedIds.map((id) => homes.find((h) => h.id === id)).filter(Boolean), [selectedIds, homes]);
   const getCommuteResult = useCommuteMatrix(selected, commuteDestinations);
   const matches = selected.map((home) => computeMatch(
@@ -253,7 +361,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
     priorities,
     evaluateCommute(commuteDestinations, (destination) => getCommuteResult(home, destination))
   ));
-  const factRows = homeFactRows(priorities.searchType).filter((row) => {
+  const factRows = homeFactRows(priorities).filter((row) => {
     if (!diffsOnly) return true;
     const values = selected.map((home) => row.get(home));
     return new Set(values.map((value) => value == null ? 'unknown' : String(value))).size > 1;
@@ -295,21 +403,20 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div>
         <div className="hh-label" style={{ marginBottom: 8 }}>Choose {vocabulary.pluralLower} to compare {selectedIds.length >= MAX_COMPARE && <span>(max {MAX_COMPARE})</span>}</div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        <div className="hh-compare-picker">
           {homes.map((h) => {
             const isSelected = selectedIds.includes(h.id);
             const disabled = !isSelected && selectedIds.length >= MAX_COMPARE;
             return (
-              <button type="button"
+              <PickerChip
                 key={h.id}
-                className={`hh-chip ${isSelected ? 'on' : ''}`}
-                style={disabled ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+                home={h}
+                priorities={priorities}
+                match={pickerMatches.get(h.id)}
+                isSelected={isSelected}
                 disabled={disabled}
-                aria-pressed={isSelected}
-                onClick={() => toggle(h.id)}
-              >
-                {homeIdentity(h, priorities).primary}
-              </button>
+                onToggle={() => toggle(h.id)}
+              />
             );
           })}
         </div>
@@ -345,57 +452,25 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
           )}
 
           {/* Must-Haves */}
-          {mustRows.length > 0 && (
-            <section>
-              <h3 className="hh-serif" style={{ fontSize: 16, fontWeight: 600, marginBottom: 4, color: 'var(--ink)' }}>Must-Haves</h3>
-              <p className="hh-compare-legend"><span className="is-met">✓ Satisfied</span><span className="is-missed">— Confirmed mismatch</span><span className="is-unknown">? Not evaluated</span></p>
-              <div className="hh-scrollx" style={{ overflowX: 'auto' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: `200px repeat(${selected.length}, minmax(120px, 1fr))`, minWidth: 200 + selected.length * 120 }}>
-                  <div />
-                  {selected.map((h) => (
-                    <div key={h.id} style={{ padding: '6px 12px', fontSize: 12, fontWeight: 600, color: 'var(--ink-soft)', borderBottom: '1px solid var(--ink)' }}>{homeIdentity(h, priorities).primary}</div>
-                  ))}
-                  {mustRows.map((row) => (
-                    <Fragment key={row.key}>
-                      <div style={{ padding: '10px 12px', fontSize: 13, color: 'var(--ink)', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center' }}>{rowDisplayLabel(row)}</div>
-                      {row.perHome.map((c, i) => (
-                        <div key={row.key + '-' + i} style={{ padding: '10px 12px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center' }}>
-                          <CriteriaValue c={c} />
-                        </div>
-                      ))}
-                    </Fragment>
-                  ))}
-                </div>
-              </div>
-            </section>
-          )}
+          <CompareRowsSection
+            title="Must-Haves"
+            legend={<p className="hh-compare-legend"><span className="is-met">✓ Satisfied</span><span className="is-missed">— Confirmed mismatch</span><span className="is-unknown">? Not evaluated</span></p>}
+            rows={mustRows.map((row) => ({ key: row.key, label: rowDisplayLabel(row), values: row.perHome }))}
+            homes={selected}
+            priorities={priorities}
+            renderValue={(c) => <CriteriaValue c={c} />}
+          />
 
           {commuteDestinations.length > 0 && <CommuteSection homes={selected} destinations={commuteDestinations} diffsOnly={diffsOnly} getResult={getCommuteResult} priorities={priorities} />}
 
           {/* What matters to you */}
-          {otherRows.length > 0 && (
-            <section>
-              <h3 className="hh-serif" style={{ fontSize: 16, fontWeight: 600, marginBottom: 10, color: 'var(--ink)' }}>What matters to you</h3>
-              <div className="hh-scrollx" style={{ overflowX: 'auto' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: `200px repeat(${selected.length}, minmax(120px, 1fr))`, minWidth: 200 + selected.length * 120 }}>
-                  <div />
-                  {selected.map((h) => (
-                    <div key={h.id} style={{ padding: '6px 12px', fontSize: 12, fontWeight: 600, color: 'var(--ink-soft)', borderBottom: '1px solid var(--ink)' }}>{homeIdentity(h, priorities).primary}</div>
-                  ))}
-                  {otherRows.map((row) => (
-                    <Fragment key={row.key}>
-                      <div style={{ padding: '10px 12px', fontSize: 13, color: 'var(--ink)', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center' }}>{rowDisplayLabel(row)}</div>
-                      {row.perHome.map((c, i) => (
-                        <div key={row.key + '-' + i} style={{ padding: '10px 12px', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center' }}>
-                          <CriteriaValue c={c} />
-                        </div>
-                      ))}
-                    </Fragment>
-                  ))}
-                </div>
-              </div>
-            </section>
-          )}
+          <CompareRowsSection
+            title="What matters to you"
+            rows={otherRows.map((row) => ({ key: row.key, label: rowDisplayLabel(row), values: row.perHome }))}
+            homes={selected}
+            priorities={priorities}
+            renderValue={(c) => <CriteriaValue c={c} />}
+          />
 
           {mustRows.length === 0 && otherRows.length === 0 && diffsOnly && (
             <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>These homes look the same on everything you've told us matters — toggle to "show all" to see the full picture.</p>
@@ -425,29 +500,15 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
 
           <details className="hh-details">
             <summary>{vocabulary.singular} facts</summary>
-            <div className="hh-scrollx" style={{ overflowX: 'auto', marginTop: 10 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: `160px repeat(${selected.length}, minmax(100px, 1fr))`, minWidth: 160 + selected.length * 100 }}>
-                <div />
-                {selected.map((h) => (
-                  <div key={h.id} style={{ padding: '6px 12px', fontSize: 12, fontWeight: 600, color: 'var(--ink-soft)', borderBottom: '1px solid var(--ink)' }}>{homeIdentity(h, priorities).primary}</div>
-                ))}
-                {factRows.map((row) => {
-                  const values = selected.map((h) => row.get(h));
-                  return (
-                    <Fragment key={row.key}>
-                      <div style={{ padding: '8px 12px', fontSize: 12.5, color: 'var(--ink-soft)', borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center' }}>{row.label}</div>
-                      {values.map((v, i) => (
-                        <div key={row.key + '-' + i} className="hh-mono" style={{
-                          padding: '8px 12px', fontSize: 12.5, borderBottom: '1px solid var(--line)', display: 'flex', alignItems: 'center',
-                          color: 'var(--ink)', fontWeight: 500,
-                        }}>
-                          {row.fmt(v, selected[i])}
-                        </div>
-                      ))}
-                    </Fragment>
-                  );
-                })}
-              </div>
+            <div style={{ marginTop: 10 }}>
+              <CompareRowsSection
+                rows={factRows.map((row) => ({ key: row.key, label: row.label, values: selected.map((h) => row.get(h)), fmt: row.fmt }))}
+                homes={selected}
+                priorities={priorities}
+                labelColWidth={160}
+                minColWidth={100}
+                renderValue={(v, h, row) => <span className="hh-mono" style={{ color: 'var(--ink)', fontWeight: 500 }}>{row.fmt(v, h)}</span>}
+              />
             </div>
           </details>
 

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   Plus, Search, MapPin, Link2, Archive as ArchiveIcon, ExternalLink,
   Heart, Home as HomeIcon, Undo2, Trash2, Footprints, MessageCircle, Check,
-  Building2, StickyNote, Minus, ChevronDown,
+  Building2, StickyNote, Minus,
 } from 'lucide-react';
 import { MatchSummary, MatchTradeoffs } from '@/components/ui';
 import { useCommuteObserver } from '@/lib/useCommuteObserver';
@@ -15,6 +15,7 @@ import HomeModal from '@/components/HomeModal';
 import PostTourModal from '@/components/PostTourModal';
 import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
 import Sheet from '@/components/Sheet';
+import MobileDisclosure from '@/components/MobileDisclosure';
 import { STATUS_COLOR, emptyHome, isArchivedStatus } from '@/lib/constants';
 import { parseNum, fmtMoney, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint } from '@/lib/matching';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
@@ -49,35 +50,6 @@ function ConfirmModal({ title, body, cancelLabel = 'Cancel', confirmLabel, confi
 }
 
 /* --------------------------------- card view --------------------------------- */
-
-// Secondary card context (facts/commute/notes) starts open — matching every
-// existing card today, desktop included — and only collapses on a narrow
-// viewport, checked once after mount. A plain <details> can't do this: a
-// closed <details>'s non-summary content isn't laid out at all regardless of
-// its own `display`, even when forced with !important, so there's no pure-CSS
-// way to keep it permanently open on desktop while defaulting closed on
-// mobile. Defaulting `open` to true keeps the server-rendered/first-paint
-// markup identical to today's (no hydration mismatch); matchMedia only ever
-// narrows it afterward, and never touches desktop.
-function CardContextDisclosure({ children }) {
-  const [open, setOpen] = useState(true);
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 640px)');
-    const sync = () => setOpen(!mq.matches);
-    sync();
-    mq.addEventListener('change', sync);
-    return () => mq.removeEventListener('change', sync);
-  }, []);
-  return (
-    <div className="hh-card-context-details">
-      <button type="button" className="hh-card-context-summary" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-        <span>More details</span>
-        <ChevronDown size={14} className="hh-card-context-chevron" style={{ transform: open ? 'rotate(180deg)' : 'none' }} aria-hidden="true" />
-      </button>
-      {open && <div className="hh-card-context">{children}</div>}
-    </div>
-  );
-}
 
 function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour, onRemoveFromTour, onRestore, onRequestDelete }) {
   const [imgError, setImgError] = useState(false);
@@ -266,7 +238,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
           )}
 
           {hasCardContext && (
-          <CardContextDisclosure>
+          <MobileDisclosure>
           {propertyFacts.length > 0 && (
             <div className="hh-card-context-group">
               {propertyFacts.map(({ label, text }, i) => (
@@ -341,7 +313,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
               <span className="hh-card-clamp" style={{ whiteSpace: 'pre-wrap' }}>{home.notes}</span>
             </div>
           )}
-          </CardContextDisclosure>
+          </MobileDisclosure>
           )}
 
           <div className="hh-home-card-actions" style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: 6, marginTop: 4, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
