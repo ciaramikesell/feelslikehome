@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { resolveActiveSearch } from '@/lib/supabase/collaboration';
 import { addressFingerprint, coordinatesAreCurrent } from '@/lib/commute';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 
 const ROUTES_URL = 'https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix';
 const GEOCODING_URL = 'https://maps.googleapis.com/maps/api/geocode/json';
@@ -38,7 +39,7 @@ function routeRowSummary(rows) {
 
 async function geocode(address, apiKey) {
   try {
-    const response = await fetch(`${GEOCODING_URL}?address=${encodeURIComponent(address)}&key=${encodeURIComponent(apiKey)}`, { cache: 'no-store' });
+    const response = await fetchWithTimeout(`${GEOCODING_URL}?address=${encodeURIComponent(address)}&key=${encodeURIComponent(apiKey)}`, { cache: 'no-store' });
     if (!response.ok) {
       const body = await response.json().catch(() => null);
       console.error('Commute geocoding provider error', { httpStatus: response.status, ...safeProviderError(body) });
@@ -136,7 +137,7 @@ export async function POST(request) {
     const validDestinationIndexes = destinationLocations.map((x, i) => x.status === 'resolved' ? i : -1).filter((i) => i >= 0);
     if (!validHomeIndexes.length || !validDestinationIndexes.length) return NextResponse.json({ results });
 
-    const response = await fetch(ROUTES_URL, {
+    const response = await fetchWithTimeout(ROUTES_URL, {
       method: 'POST', cache: 'no-store',
       headers: { 'Content-Type': 'application/json', 'X-Goog-Api-Key': routesKey, 'X-Goog-FieldMask': 'originIndex,destinationIndex,duration,condition,status' },
       body: JSON.stringify({

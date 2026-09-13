@@ -302,16 +302,13 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
       try {
         await onSave({ ...form, photoUrl: finalPhotoUrl });
       } catch (saveErr) {
-        // TEMPORARY DIAGNOSTIC (requested explicitly) — surfaces the raw error
-        // to confirm/rule out a PostgREST schema-cache staleness hypothesis
-        // for the new Property Details columns. Revert to the friendly-only
-        // message once confirmed — do not ship this to real users long-term.
         console.error('Save home failed', saveErr);
-        const detail = saveErr?.message || saveErr?.code || '';
-        setSaveErrorMsg(
-          "We couldn't save this home. Please try again — your changes here haven't been lost."
-          + (detail ? ` (${detail})` : '')
-        );
+        // If the shared home row was already persisted before this failure
+        // (see saveHomePersonalAndShared's partialHomeId), adopt its id now —
+        // otherwise clicking Save again on this still-open modal would upsert
+        // with no id and create a second, orphaned home.
+        if (saveErr?.partialHomeId && !form.id) set('id', saveErr.partialHomeId);
+        setSaveErrorMsg("We couldn't save this home. Please try again — your changes here haven't been lost.");
         setSaving(false);
         return;
       }

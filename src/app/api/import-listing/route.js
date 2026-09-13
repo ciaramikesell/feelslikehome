@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { normalizeRentCastFields } from '@/lib/rentcast';
+import { fetchWithTimeout } from '@/lib/fetchWithTimeout';
 
 // Server-only: this file runs in a Next.js Route Handler (a Vercel serverless
 // function), never in the browser, so RENTCAST_API_KEY is safe to read from
@@ -17,7 +18,7 @@ const RENTCAST_BASE = 'https://api.rentcast.io';
 async function fetchRentCast(path, address, apiKey) {
   try {
     const url = `${RENTCAST_BASE}${path}?address=${encodeURIComponent(address)}`;
-    const res = await fetch(url, { headers: { 'X-Api-Key': apiKey, Accept: 'application/json' } });
+    const res = await fetchWithTimeout(url, { headers: { 'X-Api-Key': apiKey, Accept: 'application/json' } });
 
     if (res.status === 404) return { status: 'empty', data: null };
     if (!res.ok) return { status: 'error', data: null, rateLimited: res.status === 429, upstreamStatus: res.status };
