@@ -1,5 +1,6 @@
 import './globals.css';
 import InstallPrompt from '@/components/InstallPrompt';
+import DeepLinkBridge from '@/components/DeepLinkBridge';
 
 export const metadata = {
   title: 'Feels Like Home',
@@ -29,6 +30,7 @@ export default function RootLayout({ children }) {
       <body>
         {children}
         <InstallPrompt />
+        <DeepLinkBridge />
       </body>
     </html>
   );
