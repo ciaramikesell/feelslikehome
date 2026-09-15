@@ -25,6 +25,8 @@ test('share extension hands only a URL to the canonical web intake contract', ()
   assert.match(helper, /URLQueryItem\(name: "url", value: sharedURL\.absoluteString\)/);
   assert.match(helper, /scheme == "http" \|\| scheme == "https"/);
   assert.match(controller, /extensionContext\?\.open\(intakeURL\)/);
+  assert.match(controller, /Logger\(subsystem: "app\.feelslikehome\.mobile\.share"/);
+  assert.doesNotMatch(controller, /logger\.(?:info|error)\([^\n]*(?:sharedURL|intakeURL)/);
   assert.doesNotMatch(controller, /Zillow|Realtor|Apartments\.com|RentCast|Google Places/i);
 });
 

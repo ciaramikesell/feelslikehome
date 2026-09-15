@@ -1,12 +1,15 @@
 import UIKit
 import UniformTypeIdentifiers
+import os
 
 final class ShareViewController: UIViewController {
+    private let logger = Logger(subsystem: "app.feelslikehome.mobile.share", category: "ShareHandoff")
     private let statusLabel = UILabel()
     private let dismissButton = UIButton(type: .system)
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        logger.info("Share Extension loaded")
         configureView()
         Task { await handOffFirstUsableURL() }
     }
@@ -39,15 +42,21 @@ final class ShareViewController: UIViewController {
     private func handOffFirstUsableURL() async {
         guard let sharedURL = await loadSharedURL(),
               let intakeURL = ShareURL.intakeURL(for: sharedURL) else {
+            logger.error("No usable web URL extracted")
             showFailure("We couldn’t find a web link to open.")
             return
         }
 
+        // Deliberately omit both URLs from the log: the nested value may be a
+        // private listing and the intake path may later carry auth context.
+        logger.info("Usable URL extracted; requesting Universal Link handoff")
         extensionContext?.open(intakeURL) { [weak self] opened in
             DispatchQueue.main.async {
                 if opened {
+                    self?.logger.info("Universal Link handoff accepted by iOS")
                     self?.extensionContext?.completeRequest(returningItems: nil)
                 } else {
+                    self?.logger.error("Universal Link handoff rejected by iOS")
                     self?.showFailure("Feels Like Home couldn’t be opened. Please try again.")
                 }
             }

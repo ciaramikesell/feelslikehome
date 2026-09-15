@@ -34,8 +34,16 @@ export default function DeepLinkBridge() {
     let handle;
 
     App.addListener('appUrlOpen', ({ url }) => {
+      // Intentionally log lifecycle stages, never the URL: a deep link may
+      // contain an invitation token or a private listing URL. These messages
+      // are visible in Safari Web Inspector / Xcode's device console and make
+      // the native handoff diagnosable without adding analytics.
+      console.info('[FLH Native QA] deep-link received');
       const path = resolveDeepLinkPath(url);
-      if (!path) return;
+      if (!path) {
+        console.info('[FLH Native QA] deep-link rejected');
+        return;
+      }
       // A plain client-side navigation into the existing router — never a
       // second router, never a raw WebView reload. Auth/redirect
       // continuation for a protected destination is whatever that route
@@ -43,6 +51,7 @@ export default function DeepLinkBridge() {
       // ?redirect= handling, /invite/[token]'s own redirect). replace (not
       // push) so a deep-link open doesn't leave the app's default boot
       // landing sitting in back-button history underneath it.
+      console.info('[FLH Native QA] deep-link accepted; replacing route');
       router.replace(path);
     }).then((result) => {
       if (cancelled) result.remove();
