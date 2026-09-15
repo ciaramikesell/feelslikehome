@@ -166,9 +166,9 @@ test('no custom URL scheme was introduced', () => {
   assert.doesNotMatch(config, /feelslikehome:\/\//);
 });
 
-test('no Share Extension target or App Groups were added — that is #75', () => {
+test('#75 bridge remains free of App Groups when the #76 Share Extension is present', () => {
   const pbxproj = read('ios/App/App.xcodeproj/project.pbxproj');
-  assert.doesNotMatch(pbxproj, /ShareExtension/);
+  assert.match(pbxproj, /ShareExtension/);
   assert.doesNotMatch(pbxproj, /com\.apple\.security\.application-groups/);
 });
 
