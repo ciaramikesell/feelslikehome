@@ -41,6 +41,11 @@ export async function middleware(request) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // .well-known/ is excluded so the AASA route (see src/app/.well-known/
+    // apple-app-site-association/route.js) stays a plain, unauthenticated,
+    // publicly-cacheable 200 — it's fetched by Apple's crawler, not a user
+    // session, so running the Supabase session-refresh above on it would be
+    // pure overhead with no benefit.
+    '/((?!_next/static|_next/image|favicon.ico|\\.well-known/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
