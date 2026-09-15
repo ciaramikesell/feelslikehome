@@ -334,7 +334,16 @@ export async function saveHomePersonalAndShared(supabase, home, userId, searchId
 
   const personal = personalStateFromHome(home);
 
-  await upsertPersonalState(supabase, savedHome.id, userId, personal);
+  try {
+    await upsertPersonalState(supabase, savedHome.id, userId, personal);
+  } catch (err) {
+    // The shared `homes` row is already persisted at this point. Attach its id
+    // so a caller retrying a brand-new home (whose local home.id is still
+    // empty) can adopt it first — otherwise the retry's upsert has no id,
+    // INSERTs a second row, and orphans this one instead of finishing it.
+    err.partialHomeId = savedHome.id;
+    throw err;
+  }
 
   return { ...savedHome, ...personal };
 }

@@ -521,11 +521,15 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
       // HomeModal's own catch can show it immediately, right where the user is
       // looking, without losing anything they'd entered.
       console.error('saveHome failed', err);
+      // If the shared `homes` row was already persisted before this failure
+      // (see saveHomePersonalAndShared), adopt its id so a retry updates that
+      // row instead of inserting a duplicate for what was a brand-new home.
+      const recoveredHome = err?.partialHomeId && !home.id ? { ...home, id: err.partialHomeId } : home;
       if (mutationVersions.current.get(home.id) === version) {
         const confirmed = confirmedHomes.current.get(home.id) || previous;
         if (optimistic && confirmed) setHomes((current) => current.map((candidate) => candidate.id === home.id ? confirmed : candidate));
         setSaveError("Couldn't save that change. Try again.");
-        setRetrySave(() => () => saveHome(home, { shared, optimistic }));
+        setRetrySave(() => () => saveHome(recoveredHome, { shared, optimistic }));
       }
       throw err;
     }
