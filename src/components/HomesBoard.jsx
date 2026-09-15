@@ -22,6 +22,7 @@ import { parseNum, fmtMoney, trueCheckLabels, homeStyleSummary, computeMatch, ma
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
 import { formatHomePrice, formatLotSizeDisplay, parseCommaList } from '@/lib/homeDisplay';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
+import { isNativeApp } from '@/lib/platform';
 import { deriveFlhMoment } from '@/lib/flhMoments';
 import { applyPostTourVerdict, archiveHome, hasToured, isFavoriteHome, restoreHome as restoreLifecycleHome, toggleFavorite as toggleFavoriteState } from '@/lib/lifecycle';
 import { createClient } from '@/lib/supabase/client';
@@ -432,6 +433,17 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   const confirmedHomes = useRef(new Map(initialHomes.map((home) => [home.id, home])));
   const autoOpenedRef = useRef(false);
 
+  // The guard prevents concurrent effects / duplicate native events from
+  // opening intake twice, but it must not outlive the consumed query. Without
+  // this reset, a second Share Extension handoff while HomesBoard remained
+  // mounted was silently ignored after the first handoff cleared the URL.
+  useEffect(() => {
+    const hasAutoOpenRequest = searchParams.get('add') === '1'
+      || searchParams.get('home') !== null
+      || searchParams.has('url');
+    if (!hasAutoOpenRequest) autoOpenedRef.current = false;
+  }, [searchParams]);
+
   // Single entry point for opening Add/Edit Home — every caller states its
   // own autoFind intent explicitly (defaulting off) instead of any of them
   // reading shared, possibly-stale state, so a later, unrelated open can
@@ -476,6 +488,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     const rawUrl = searchParams.get('url');
     if (mode !== 'homes' || rawUrl === null || autoOpenedRef.current) return;
     autoOpenedRef.current = true;
+    if (isNativeApp()) console.info('[FLH Native QA] share intake received');
 
     // An already-saved home with this exact listing URL wins over creating
     // another — "the user should add the home once." Anything less certain
@@ -484,6 +497,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     // property.
     const existing = findHomeByListingUrl(homes, rawUrl);
     if (existing) {
+      if (isNativeApp()) console.info('[FLH Native QA] share intake matched existing home');
       router.replace(`/homes/${encodeURIComponent(existing.id)}`);
       return;
     }
@@ -494,6 +508,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     // text/address fallback on a value the user never actually typed. Either
     // way the existing Add Home flow still opens, ready for manual entry.
     const validUrl = isLikelyListingUrl(rawUrl);
+    if (isNativeApp()) console.info(`[FLH Native QA] share intake ${validUrl ? 'starting import' : 'using manual entry'}`);
     openHomeModal(validUrl ? { ...emptyHome(), listingUrl: rawUrl.trim() } : emptyHome(), { autoFind: validUrl });
     router.replace('/homes');
   }, [mode, searchParams, router, homes, openHomeModal]);

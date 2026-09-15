@@ -159,6 +159,12 @@ test('the intake effect is a single one-shot guard shared with ?add=1/?home=, an
   assert.doesNotMatch(homesBoard, /router\.push\('\/homes'\)/, 'consuming these params must never push a new history entry');
 });
 
+test('the one-shot guard resets after query cleanup so a later Share Extension handoff is consumed', () => {
+  assert.match(homesBoard, /const hasAutoOpenRequest = searchParams\.get\('add'\) === '1'/);
+  assert.match(homesBoard, /searchParams\.has\('url'\)/);
+  assert.match(homesBoard, /if \(!hasAutoOpenRequest\) autoOpenedRef\.current = false;/);
+});
+
 test('regression guard: importer failure/retry behavior in HomeModal is untouched by this pass', () => {
   assert.match(homeModal, /Intentionally do NOT set lastLookupAddress here/);
   assert.match(homeModal, /We couldn't look up that address right now — you can enter details manually below\./);
@@ -167,6 +173,7 @@ test('regression guard: importer failure/retry behavior in HomeModal is untouche
 
 /* ------------------------------ Part 9: mobile/native compatibility ------------------------------ */
 
-test('no native-only branch was introduced for the intake path', () => {
-  assert.doesNotMatch(homesBoard, /isNativeApp/);
+test('native intake diagnostics do not change the shared web intake decision path or log the URL', () => {
+  assert.match(homesBoard, /if \(isNativeApp\(\)\) console\.info\('\[FLH Native QA\] share intake received'\);/);
+  assert.doesNotMatch(homesBoard, /console\.(?:info|log)\([^\n]*rawUrl/);
 });

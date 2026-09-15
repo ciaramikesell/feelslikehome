@@ -111,6 +111,8 @@ test('DeepLinkBridge is gated on isNativeApp(), uses the official appUrlOpen eve
   assert.match(bridge, /if \(!isNativeApp\(\)\) return;/);
   assert.match(bridge, /App\.addListener\('appUrlOpen', \(\{ url \}\) => \{/);
   assert.match(bridge, /router\.replace\(path\)/);
+  assert.match(bridge, /\[FLH Native QA\] deep-link received/);
+  assert.doesNotMatch(bridge, /console\.(?:info|log)\([^\n]*url/);
   // Never a hard reload/second router.
   assert.doesNotMatch(bridge, /window\.location/);
   // Cleans up its own listener on unmount.

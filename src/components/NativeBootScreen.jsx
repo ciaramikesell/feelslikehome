@@ -25,6 +25,7 @@ export default function NativeBootScreen() {
 
   useEffect(() => {
     if (!isNativeApp()) return;
+    console.info('[FLH Native QA] web app hydrated; native boot fallback mounted');
     setNative(true);
     // Only reveals the secondary line if the real resolution is still going
     // after a beat — never a delay gating the boot screen or the navigation
