@@ -137,15 +137,15 @@ test('the collaboration philosophy copy survives the Sheet migration verbatim', 
 
 /* ------------------------------ My Search: Searching Together ------------------------------ */
 
-test('Searching Together is one consolidated section (alone vs. together, collaborator context, and the one appropriate action), positioned after Places that matter', () => {
+test('Searching Together is one consolidated section (connected state, collaborator summary, and the one appropriate action), positioned after Places That Matter', () => {
   assert.match(mySearchPanel, /function SearchingTogetherCard\(/);
-  assert.match(mySearchPanel, /You&apos;re searching with a collaborator\./);
+  assert.match(mySearchPanel, /Connected with \{name\}\./);
   assert.match(mySearchPanel, /You&apos;re searching alone\./);
   assert.doesNotMatch(mySearchPanel, /function CollaboratorContextCard/);
 
-  const placesIdx = mySearchPanel.indexOf('title="Places that matter"');
+  const placesIdx = mySearchPanel.indexOf('title="Places That Matter"');
   const togetherIdx = mySearchPanel.indexOf('<SearchingTogetherCard');
-  assert.ok(placesIdx !== -1 && togetherIdx !== -1 && placesIdx < togetherIdx, 'Searching Together must render after Places that matter');
+  assert.ok(placesIdx !== -1 && togetherIdx !== -1 && placesIdx < togetherIdx, 'Searching Together must render after Places That Matter');
 });
 
 test('regression guard: no Couple Match / merged-opinion language was introduced', () => {
@@ -153,8 +153,8 @@ test('regression guard: no Couple Match / merged-opinion language was introduced
   assert.doesNotMatch(mySearchPanel, /combined score|merge.*opinion|average.*match/i);
 });
 
-test('regression guard: My Search IA order is Basics, then What matters, then Places, then Searching Together', () => {
-  const order = ['<BasicsCard', '<WhatMattersCard', 'title="Places that matter"', '<SearchingTogetherCard']
+test('regression guard: My Search IA order is What Matters (primary column) then Basics, Places, Searching Together (supporting rail)', () => {
+  const order = ['<WhatMattersCard', '<BasicsCard', 'title="Places That Matter"', '<SearchingTogetherCard']
     .map((needle) => mySearchPanel.indexOf(needle));
   assert.ok(order.every((i) => i !== -1), 'expected all four sections to be present');
   for (let i = 1; i < order.length; i++) assert.ok(order[i - 1] < order[i], `expected section ${i} to follow section ${i - 1} in source order`);

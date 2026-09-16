@@ -222,7 +222,9 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-drag-handle { color: var(--ink-soft); transition: color .12s ease, transform .12s ease; }
 .hh-priority-row.draggable:hover .hh-drag-handle { color: var(--brick); }
 .hh-priority-row.dragging .hh-drag-handle { color: var(--brick); transform: scale(1.15); }
-.hh-search-layout { display: grid; gap: 20px; max-width: 1100px; }
+.hh-search-layout { display: grid; gap: 20px; max-width: 1320px; }
+.hh-search-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(300px, 1fr); gap: 24px; align-items: start; }
+.hh-search-primary, .hh-search-rail { display: grid; gap: 20px; min-width: 0; }
 .hh-search-card { background: rgba(255,255,255,.62); border-radius: 18px; padding: 22px 24px; box-shadow: 0 1px 0 rgba(46,38,33,.05); }
 .hh-search-reveal { display: grid; grid-template-columns: minmax(0,1.25fr) minmax(260px,.75fr); gap: 22px; padding: 24px; border: 1px solid rgba(193,89,47,.2); border-radius: 18px; background: linear-gradient(135deg, rgba(255,255,255,.78), rgba(198,146,69,.1)); }
 .hh-search-reveal h2 { margin: 2px 0 7px; color: var(--brick); font-size: 25px; }
@@ -280,7 +282,9 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-tier-must { border-top-color: var(--brick); }
 .hh-tier-important { border-top-color: var(--moss); }
 .hh-tier-nice { border-top-color: #a9ae8c; }
-.hh-tier-heading { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 7px; }
+.hh-tier-heading { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px; }
+.hh-tier-weight { opacity: .68; font-weight: 600; letter-spacing: .04em; }
+.hh-tier-count { margin-bottom: 7px; color: var(--ink-soft); font-size: 11px; }
 .hh-tier-description { min-height: 32px; margin: -2px 0 5px; color: var(--ink-soft); font-size: 10.5px; line-height: 1.4; }
 .hh-selected-priorities { display: grid; }
 .hh-selected-priority-wrap { min-width: 0; border-bottom: 1px solid rgba(138,124,110,.12); }
@@ -338,10 +342,10 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-collaboration-disclosure { margin: 18px 0 12px; padding: 16px; border: 1px solid rgba(193,89,47,.25); border-radius: 14px; background: rgba(193,89,47,.06); color: var(--ink); font-size: 13px; line-height: 1.55; }
 .hh-collaboration-disclosure p { margin: 8px 0 0; }
 .hh-collaboration-consent { padding: 12px 14px; border-radius: 12px; background: rgba(193,89,47,.07); color: var(--ink); font-size: 12.5px; line-height: 1.5; }
-.hh-collaborator-priorities { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
-.hh-collaborator-priorities .hh-chip { cursor: default; }
-.hh-collaborator-places { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 12.5px; }
-.hh-collaborator-places p { margin: 6px 0 0; color: var(--ink-soft); }
+.hh-collaborator-summary { display: grid; gap: 8px; margin-top: 2px; }
+.hh-collaborator-summary > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; padding: 8px 10px; border-radius: 10px; background: var(--sage); }
+.hh-collaborator-summary strong { color: var(--positive); font-size: 12px; }
+.hh-collaborator-summary span { color: var(--ink); font-size: 12px; }
 .hh-collaborator-state { color: var(--ink-soft); font-size: 11px; font-weight: 600; }
 .hh-destination-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
 .hh-destination-card { display: flex; justify-content: space-between; gap: 10px; padding: 13px; border-radius: 12px; background: var(--paper); }
@@ -451,6 +455,11 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   .hh-suggestion-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hh-how-to-steps { grid-template-columns: 1fr; }
   .hh-collaboration-entry { align-items: flex-start; flex-direction: column; }
+  /* Desktop-first two-column composition (see hh-search-grid in
+     MySearchPanel.jsx) collapses to one stacked column below this
+     boundary — the same breakpoint the priority tiers grid inside it
+     already collapses at, so nothing changes width mid-scroll twice. */
+  .hh-search-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 760px) {
   .hh-onboarding-priority-board .hh-priority-tiers { grid-template-columns: 1fr; }

@@ -3,6 +3,11 @@
 import { useEffect, useState } from 'react';
 import { ChevronRight, Plus } from 'lucide-react';
 import { DEFAULT_SELECTED_TIER, TIER_DESCRIPTIONS, TIER_META, TIER_ORDER, criterionDisplayLabel, getItemlistCategories, effectiveTier, isSchoolsSuppressed, isExperientialCriterion } from '@/lib/constants';
+
+// Presentation-only weight callout for My Search's desktop tier heading
+// ("Must have (highest weight)") — TIER_META.weight itself (4/2/1) is the
+// canonical value Match actually uses and is untouched by this label.
+const TIER_WEIGHT_LABEL = { must: 'Highest weight', important: 'Medium weight', nice: 'Lowest weight' };
 import { selectPriorityItem, splitCategoryItems } from '@/lib/matching';
 import SchoolsRelevanceGate from '@/components/SchoolsRelevanceGate';
 import Sheet from '@/components/Sheet';
@@ -179,7 +184,10 @@ export default function PriorityBoard({ priorities, patch, onboarding = false })
                   onDragLeave={(event) => !event.currentTarget.contains(event.relatedTarget) && setDropTier(null)}
                   onDrop={(event) => { event.preventDefault(); dropIntoTier(tier); }}
                 >
-                  <div className="hh-tier-heading" style={{ color: TIER_META[tier].color }}>{TIER_META[tier].label}</div>
+                  <div className="hh-tier-heading" style={{ color: TIER_META[tier].color }}>
+                    {TIER_META[tier].label} <span className="hh-tier-weight">({TIER_WEIGHT_LABEL[tier]})</span>
+                  </div>
+                  {!onboarding && <div className="hh-tier-count">{items.length} {items.length === 1 ? 'priority' : 'priorities'} active</div>}
                   {onboarding && <p className="hh-tier-description">{TIER_DESCRIPTIONS[tier]}</p>}
                   <TierItemsList
                     tier={tier}
