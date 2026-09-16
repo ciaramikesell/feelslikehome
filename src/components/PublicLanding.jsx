@@ -30,7 +30,7 @@ export default function PublicLanding() {
           <div className="pl-actions"><Link className="pl-button" href="/auth/sign-up">Create a free account <ArrowRight size={17} aria-hidden="true" /></Link><a className="pl-button is-quiet" href="#how-it-works">See how it works</a></div>
           <p className="pl-renter-note">House, condo, or apartment — compare the places you’re actually considering.</p>
         </div>
-        <figure className="pl-hero-visual"><Image src="/images/landing-hero-home.svg" alt="A welcoming cottage with a front porch at golden hour" fill priority sizes="(max-width: 900px) calc(100vw - 32px), 43vw" /></figure>
+        <figure className="pl-hero-visual"><Image src="/images/Warm Cottage.png" alt="A welcoming cottage with a front porch at golden hour" fill priority sizes="(max-width: 900px) calc(100vw - 32px), 43vw" /></figure>
       </section>
 
       <section className="pl-values" id="how-it-works" aria-labelledby="values-title">
@@ -39,7 +39,7 @@ export default function PublicLanding() {
       </section>
 
       <section className="pl-demo" aria-labelledby="demo-title">
-        <figure className="pl-demo-art"><Image src="/images/landing-product-demo.svg" alt="Representative Feels Like Home comparison showing three distinct homes, their personalized Match scores, Match Breakdown, and Want to Tour controls" width={1400} height={980} sizes="(max-width: 900px) calc(100vw - 32px), 58vw" /></figure>
+        <figure className="pl-demo-art"><Image src="/images/FLH Example.png" alt="Representative Feels Like Home comparison showing three distinct homes, their personalized Match scores, Match Breakdown, and Want to Tour controls" width={1536} height={1024} sizes="(max-width: 900px) calc(100vw - 32px), 58vw" /></figure>
         <div className="pl-section-copy"><p className="pl-eyebrow">A smarter way to choose</p><h2 id="demo-title">Real homes.<br />Real priorities.</h2><p>Bring in the homes you’re genuinely considering. Feels Like Home evaluates each one against the priorities you chose, so the tradeoffs become easier to understand.</p><ul><li>Personalized Match</li><li>Side-by-side comparison</li><li>Places that matter and commute context</li><li>Search Together</li></ul><small>Representative product illustration — not live listing data.</small></div>
       </section>
 

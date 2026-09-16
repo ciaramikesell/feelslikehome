@@ -23,8 +23,11 @@ test('public navigation exposes only truthful account and explanation entries', 
 });
 
 test('landing uses dedicated artwork and describes representative product data truthfully', () => {
-  assert.match(landing, /landing-hero-home\.svg/);
-  assert.match(landing, /landing-product-demo\.svg/);
+  assert.match(landing, /\/images\/Warm Cottage\.png/);
+  assert.match(landing, /\/images\/FLH Example\.png/);
+  assert.doesNotMatch(landing, /landing-hero-home\.svg|landing-product-demo\.svg/);
+  assert.ok(fs.existsSync('public/images/Warm Cottage.png'));
+  assert.ok(fs.existsSync('public/images/FLH Example.png'));
   assert.match(landing, /Representative product illustration — not live listing data/);
   assert.match(landing, /Unknown information stays Unknown/i);
   assert.doesNotMatch(landing, /role="tablist"/);
