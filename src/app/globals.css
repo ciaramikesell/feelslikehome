@@ -334,10 +334,32 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-specific-preferences { margin-top: 12px; color: var(--ink-soft); font-size: 12px; }
 .hh-specific-preferences summary { min-height: 34px; padding: 7px 0; cursor: pointer; font-weight: 600; }
 .hh-specific-tray { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 6px; }
-.hh-how-to { width: min(1040px, calc(100vw - 48px)); max-width: 1040px; max-height: calc(100dvh - 48px); overflow-y: auto; }
-.hh-how-to-steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 26px; margin-bottom: 18px; }
-.hh-how-to-notes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
-.hh-how-to-notes section { padding: 14px 16px; border: 1px solid rgba(138,124,110,.2); border-radius: 14px; background: rgba(255,255,255,.44); }
+.hh-sheet-journey { max-width: 1040px; }
+.hh-how-to { border: 1px solid rgba(138,124,110,.24); background: var(--paper-raised); }
+.hh-how-to .hh-sheet-header { padding: 28px 34px 0; }
+.hh-how-to .hh-sheet-title { font-size: clamp(25px, 3vw, 34px); line-height: 1.12; letter-spacing: -.025em; }
+.hh-how-to .hh-sheet-close { min-width: 40px; min-height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+.hh-how-to .hh-sheet-body { padding: 8px 34px 28px; }
+.hh-how-to-intro p { margin: 0 0 26px; color: var(--ink); font-size: 15px; font-weight: 600; }
+.hh-how-to-steps { list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 42px; margin: 0; padding: 0; }
+.hh-how-to-step { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 13px; min-width: 0; padding: 18px 0; border-top: 1px solid var(--line); }
+.hh-how-to-number { width: 28px; height: 28px; border-radius: 50%; background: var(--brick); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.hh-how-to-step-copy { position: relative; min-width: 0; padding-right: 28px; }
+.hh-how-to-icon { position: absolute; top: 2px; right: 0; color: var(--brick); opacity: .72; }
+.hh-how-to-step h3, .hh-how-to-note h3 { margin: 0; color: var(--ink); font-family: var(--font-serif); font-optical-sizing: auto; font-weight: 600; }
+.hh-how-to-step h3 { padding-right: 4px; font-size: 17px; line-height: 1.3; }
+.hh-how-to-step p { margin: 6px 0 0; color: var(--ink-soft); font-size: 12.75px; line-height: 1.6; }
+.hh-how-to-notes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 18px 0 22px; }
+.hh-how-to-note { padding: 20px 22px; border: 1px solid transparent; border-radius: 16px; }
+.hh-how-to-note h3 { margin-bottom: 8px; font-size: 18px; }
+.hh-how-to-note p { margin: 0; color: var(--ink); font-size: 12.75px; line-height: 1.65; }
+.hh-how-to-note strong { font-weight: 700; }
+.hh-how-to-match { border-color: rgba(185,83,50,.2); background: var(--peach); }
+.hh-how-to-match h3 { color: var(--brick-deep); }
+.hh-how-to-together { border-color: rgba(86,114,77,.2); background: var(--sage); }
+.hh-how-to-together h3 { color: var(--positive); }
+.hh-how-to-actions { display: flex; justify-content: flex-end; }
+.hh-how-to-actions .hh-btn { min-width: 96px; justify-content: center; }
 .hh-collaboration-entry { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px 20px; border: 1px solid rgba(193,89,47,.28); border-radius: 16px; background: rgba(193,89,47,.055); }
 .hh-collaboration-entry .hh-serif { font-size: 16px; font-weight: 700; }
 .hh-collaboration-entry p { margin: 3px 0 0; color: var(--ink-soft); font-size: 12.5px; line-height: 1.45; }
@@ -472,7 +494,6 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   .hh-basics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hh-priority-tiers { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hh-suggestion-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .hh-how-to-steps { grid-template-columns: 1fr; }
   .hh-collaboration-entry { align-items: flex-start; flex-direction: column; }
   /* Desktop-first two-column composition (see hh-search-grid in
      MySearchPanel.jsx) collapses to one stacked column below this
@@ -627,6 +648,20 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   .hh-sheet-header { padding: 10px 20px 0; }
   .hh-sheet-body { padding: 16px 20px calc(20px + env(safe-area-inset-bottom)); }
   .hh-sheet-close, .hh-sheet-body button, .hh-sheet-body .hh-btn { min-height: 40px; }
+  .hh-how-to { max-height: calc(100dvh - env(safe-area-inset-top)); }
+  .hh-how-to .hh-sheet-header { padding: 10px 18px 0; }
+  .hh-how-to .hh-sheet-title { padding-top: 4px; font-size: 25px; }
+  .hh-how-to .hh-sheet-close { min-width: 44px; min-height: 44px; margin-top: -4px; }
+  .hh-how-to .hh-sheet-body { padding: 10px 18px calc(18px + env(safe-area-inset-bottom)); }
+  .hh-how-to-intro p { margin-bottom: 22px; font-size: 14px; }
+  .hh-how-to-steps { grid-template-columns: minmax(0, 1fr); }
+  .hh-how-to-step { gap: 12px; padding: 17px 0; }
+  .hh-how-to-step h3 { font-size: 17px; }
+  .hh-how-to-step p, .hh-how-to-note p { font-size: 13px; line-height: 1.65; }
+  .hh-how-to-notes { grid-template-columns: minmax(0, 1fr); gap: 12px; margin-top: 16px; }
+  .hh-how-to-note { padding: 18px; }
+  .hh-how-to-actions { position: sticky; bottom: calc(-18px - env(safe-area-inset-bottom)); z-index: 2; margin: 0 -18px calc(-18px - env(safe-area-inset-bottom)); padding: 16px 18px calc(18px + env(safe-area-inset-bottom)); background: linear-gradient(transparent, var(--paper-raised) 18%); }
+  .hh-how-to-actions .hh-btn { width: 100%; min-height: 46px; justify-content: center; }
 }
 @keyframes hh-sheet-slide-up {
   from { transform: translateY(100%); }
@@ -683,7 +718,6 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   .hh-basics-grid { grid-template-columns: 1fr; gap: 16px; }
   .hh-priority-tiers { grid-template-columns: 1fr; }
   .hh-priority-tiers, .hh-suggestion-grid, .hh-how-to-notes { grid-template-columns: 1fr; }
-  .hh-how-to { width: 100%; max-height: none; overflow-y: visible; }
   .hh-home-photo-preview { height: min(56vw, 230px); }
   .hh-destination-grid, .hh-thoughts-grid { grid-template-columns: 1fr; }
   .hh-modal-actions { margin: 18px -16px -30px; padding: 12px 16px; border-radius: 0; }

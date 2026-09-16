@@ -107,20 +107,61 @@ test('post-tour guidance appears once and uses the central experiential classifi
   assert.doesNotMatch(board, /We&apos;ll ask after you tour/);
 });
 
-test('How to Use tells the current six-step, Match, and shared-conversation collaboration story', () => {
+test('How it works tells the six-step decision journey in accessible DOM order', () => {
   const shell = read('src/components/AppShell.jsx');
   assert.equal(shell.match(/\{ title:/g)?.length, 6);
-  for (const copy of ['Zillow', 'not a listing-search engine', 'Favorite', 'Want to Tour', 'Overall Feeling', 'Compare the survivors', 'Map is another view']) assert.match(shell, new RegExp(copy));
-  assert.match(shell, /unknown details aren&apos;t treated as misses/);
+  assert.match(shell, /HelpCircle size=\{14\} \/> How it works/);
+  assert.match(shell, /title="How Feels Like Home works"/);
+  assert.match(shell, /You found the homes\. We&apos;ll help you choose\./);
+  const headings = [
+    'Find homes wherever you already look',
+    'Bring the contenders here',
+    "Decide what's worth seeing",
+    'Go see them',
+    'Tell us how it actually felt',
+    'Compare your finalists',
+  ];
+  let previous = -1;
+  for (const heading of headings) {
+    const position = shell.indexOf(heading);
+    assert.ok(position > previous, `${heading} follows the previous step in DOM order`);
+    previous = position;
+  }
+  for (const copy of ['Zillow', 'not a listing-search engine', 'Favorite', 'Want to Tour', 'Overall Feeling', 'Compare your finalists', 'Map is another view']) assert.match(shell, new RegExp(copy));
+  assert.doesNotMatch(shell, /Compare the survivors/);
+  assert.match(shell, /unknown details don&apos;t count against a home/);
   assert.doesNotMatch(shell, /hard disqualification|dealbreaker/);
+  assert.match(shell, /Match on paper/);
   assert.match(shell, /The house is ours\. The opinion is mine\./);
   assert.match(shell, /only their author can change them/);
   assert.match(shell, /there is no combined score or winner/);
-  assert.match(shell, /<strong>Match shows how the known information about a home lines up with your priorities\.<\/strong>/);
+  assert.match(shell, /<strong>Match shows how the known information about a home lines up with what matters to you\.<\/strong>/);
   assert.match(shell, /<strong>The house is ours\. The opinion is mine\. The conversation is shared\.<\/strong>/);
-  assert.match(shell, /role="dialog" aria-modal="true"/);
-  const css = read('src/app/globals.css');
-  assert.match(css, /\.hh-how-to \{[^}]*max-width: 1040px;[^}]*max-height: calc\(100dvh - 48px\);[^}]*overflow-y: auto/);
-  assert.match(css, /\.hh-how-to-steps \{[^}]*repeat\(2/);
+  assert.match(shell, /<Sheet open onClose=\{onClose\}/);
   assert.match(shell, />Got it<\/button>/);
+});
+
+test('How it works reuses the focus-managed Sheet and has intentional desktop and mobile layouts', () => {
+  const shell = read('src/components/AppShell.jsx');
+  const sheet = read('src/components/Sheet.jsx');
+  const css = read('src/app/globals.css');
+  for (const behavior of [/role="dialog"/, /aria-modal="true"/, /event\.key === 'Escape'/, /event\.key !== 'Tab'/, /previouslyFocused\?\.focus/, /document\.body\.style\.overflow = 'hidden'/]) assert.match(sheet, behavior);
+  assert.match(sheet, /aria-label="Close"/);
+  assert.match(css, /\.hh-sheet-journey \{ max-width: 1040px; \}/);
+  assert.match(css, /\.hh-how-to-steps \{[^}]*repeat\(2/);
+  assert.match(css, /@media \(max-width: 700px\)[\s\S]*?\.hh-how-to-steps \{ grid-template-columns: minmax\(0, 1fr\); \}/);
+  assert.match(css, /\.hh-how-to-actions \{ position: sticky/);
+  assert.match(css, /\.hh-how-to-match \{[^}]*background: var\(--peach\)/);
+  assert.match(css, /\.hh-how-to-together \{[^}]*background: var\(--sage\)/);
+  assert.match(shell, /howToOpen && <HowToUseModal/);
+  assert.match(shell, /onClick=\{\(\) => setHowToOpen\(true\)\}/);
+});
+
+test('manual help does not alter first-run tour persistence or eligibility', () => {
+  const shell = read('src/components/AppShell.jsx');
+  assert.match(shell, /const MOBILE_TOUR_DISMISS_KEY = 'flh-mobile-tour-dismissed'/);
+  assert.match(shell, /localStorage\.getItem\(MOBILE_TOUR_DISMISS_KEY\) === '1'/);
+  assert.match(shell, /localStorage\.setItem\(MOBILE_TOUR_DISMISS_KEY, '1'\)/);
+  assert.match(shell, /tourEligibleDevice && !tourDismissed && pathname === '\/homes'/);
+  assert.doesNotMatch(shell, /setHowToOpen\(true\)[\s\S]{0,100}MOBILE_TOUR_DISMISS_KEY/);
 });
