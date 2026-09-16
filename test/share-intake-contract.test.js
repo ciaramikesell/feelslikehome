@@ -155,7 +155,7 @@ test('onboarding honors a pending redirect destination on completion, without ch
   assert.match(onboarding, /import \{ useRouter, useSearchParams \} from 'next\/navigation'/);
   assert.match(onboarding, /import \{ sanitizeRedirectPath \} from '@\/lib\/safeRedirect'/);
   assert.match(onboarding, /const pendingRedirect = sanitizeRedirectPath\(searchParams\.get\('redirect'\)\);/);
-  assert.match(onboarding, /router\.push\(pendingRedirect \|\| '\/search\?welcome=1'\)/);
+  assert.match(onboarding, /finish\(pendingRedirect \|\| '\/search\?welcome=1'\)/);
   // Nothing else about the onboarding steps/copy/progress model changed.
   assert.match(onboarding, /const steps = \['The basics', 'What matters', 'Dealbreakers', 'My Search'\];/);
 });

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Check, Plus } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
 import { normalizePriorities } from '@/lib/constants';
-import { NEW_SEARCH_CHOICES, ONBOARDING_SUGGESTIONS, applySearchChoice } from '@/lib/onboarding';
+import { NEW_SEARCH_CHOICES, ONBOARDING_SUGGESTIONS, applySearchChoice, onboardingOverview, onboardingPriorityCounts } from '@/lib/onboarding';
 import { selectPriorityItem } from '@/lib/matching';
 import { createClient } from '@/lib/supabase/client';
 import { useReliableOptimisticState } from '@/lib/useReliableOptimisticState';
@@ -19,8 +19,8 @@ const criterionKey = (criterion) => `${criterion.categoryKey}:${criterion.label}
 function OnboardingProgress({ step }) {
   const steps = ['The basics', 'What matters', 'Dealbreakers', 'My Search'];
   return <ol className="hh-onboarding-progress" aria-label="Setup progress">
-    {steps.map((label, index) => <li key={label} className={step >= index + 1 ? 'is-active' : ''} aria-current={step === index + 1 ? 'step' : undefined}>
-      <span>{step > index + 1 ? <Check size={12} /> : index + 1}</span><b>{label}</b>
+    {steps.map((label, index) => <li key={label} className={step === index + 1 ? 'is-current' : step > index + 1 ? 'is-complete' : ''} aria-current={step === index + 1 ? 'step' : undefined}>
+      <span>{step > index + 1 ? <><Check size={12} /><span className="sr-only">Completed: </span></> : index + 1}</span><b>{label}</b>
     </li>)}
   </ol>;
 }
@@ -39,7 +39,7 @@ function BasicsStep({ priorities, patch, onNext }) {
   return <div className="hh-onboarding-step">
     <header><h1 className="hh-serif">Let&apos;s find what feels like home.</h1><p>Start with the kind of search you&apos;re making. A few useful numbers are optional—you can change all of this later.</p></header>
     <fieldset className="hh-onboarding-fieldset"><legend className="hh-label">What are you searching for?</legend><div className="hh-choice-grid">
-      {NEW_SEARCH_CHOICES.map((choice) => <button type="button" key={choice.key} className={`hh-choice-card ${selectedChoice === choice.key ? 'on' : ''}`} aria-pressed={selectedChoice === choice.key} onClick={() => patch((next) => applySearchChoice(next, choice.key))}>{choice.label}</button>)}
+      {NEW_SEARCH_CHOICES.map((choice) => <button type="button" key={choice.key} className={`hh-choice-card ${selectedChoice === choice.key ? 'on' : ''}`} aria-pressed={selectedChoice === choice.key} onClick={() => patch((next) => applySearchChoice(next, choice.key))}>{selectedChoice === choice.key && <Check size={15} aria-hidden="true" />}{choice.label}</button>)}
     </div></fieldset>
     {selectedChoice && <div className="hh-onboarding-basics-grid">
       <BasicsField label={rental ? 'Maximum monthly rent' : 'Maximum budget'} prefix="$" placeholder={rental ? '2,200' : '450,000'} value={priorities.budget.value} onChange={(value) => patch((next) => { next.budget = { ...next.budget, value }; return next; })} />
@@ -78,7 +78,7 @@ function WhatMattersStep({ priorities, patch, onNext, onBack, dealbreakers, setD
   };
   return <div className="hh-onboarding-step">
     <header><h1 className="hh-serif">What matters to you?</h1><p>Pick everything you&apos;d care about when comparing your options. Don&apos;t overthink it—we&apos;ll start these as Important and you can change them anytime.</p></header>
-    <div className="hh-onboarding-suggestions">{categories.map(([title, items]) => <section key={title}><h2>{title}</h2><div>{items.map((criterion) => <button type="button" key={criterionKey(criterion)} className={`hh-chip ${selected(criterion) ? 'on' : ''}`} aria-pressed={selected(criterion)} onClick={() => toggle(criterion)}>{criterion.displayLabel}</button>)}</div></section>)}</div>
+    <div className="hh-onboarding-suggestions">{categories.map(([title, items]) => <section key={title}><h2>{title}</h2><div>{items.map((criterion) => <button type="button" key={criterionKey(criterion)} className={`hh-chip ${selected(criterion) ? 'on' : ''}`} aria-pressed={selected(criterion)} onClick={() => toggle(criterion)}>{selected(criterion) && <Check size={13} aria-hidden="true" />}{criterion.displayLabel}</button>)}</div></section>)}</div>
     {!customOpen ? <button type="button" className="hh-add-own" onClick={() => setCustomOpen(true)}><Plus size={14} /> Add your own</button> : <div className="hh-custom-priority hh-onboarding-custom">
       <select className="hh-input" aria-label="Custom priority category" value={customCategory} onChange={(event) => setCustomCategory(event.target.value)}>{categories.map(([title, items]) => <option key={title} value={items[0].categoryKey}>{title}</option>)}</select>
       <input autoFocus className="hh-input" aria-label="Custom priority" placeholder="What else matters?" value={customLabel} onChange={(event) => setCustomLabel(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && (event.preventDefault(), addCustom())} />
@@ -100,8 +100,22 @@ function DealbreakersStep({ priorities, patch, dealbreakers, setDealbreakers, on
   };
   return <div className="hh-onboarding-step">
     <header><h1 className="hh-serif">Okay, what are the dealbreakers?</h1><p>These all matter. Which ones would be really hard to compromise on?</p><p className="hh-onboarding-note">We&apos;ll move those to Must Have. Everything else stays Important.</p></header>
-    {selected.length ? <div className="hh-dealbreaker-chips">{selected.map((criterion) => <button type="button" key={criterionKey(criterion)} className={`hh-chip ${dealbreakers.has(criterionKey(criterion)) ? 'on' : ''}`} aria-pressed={dealbreakers.has(criterionKey(criterion))} onClick={() => toggle(criterion)}>{criterion.displayLabel}</button>)}</div> : <p className="hh-onboarding-empty">Nothing to sort here. Your search can start simple.</p>}
+    {selected.length ? <div className="hh-dealbreaker-chips">{selected.map((criterion) => <button type="button" key={criterionKey(criterion)} className={`hh-chip ${dealbreakers.has(criterionKey(criterion)) ? 'on' : ''}`} aria-pressed={dealbreakers.has(criterionKey(criterion))} onClick={() => toggle(criterion)}>{dealbreakers.has(criterionKey(criterion)) && <Check size={13} aria-hidden="true" />}{criterion.displayLabel}</button>)}</div> : <p className="hh-onboarding-empty">Nothing to sort here. Your search can start simple.</p>}
     <nav className="hh-onboarding-actions"><button type="button" className="hh-btn hh-btn-ghost" onClick={onBack}>Back</button><button type="button" className="hh-btn" disabled={isSaving} onClick={onFinish}>{isSaving ? 'Saving your search…' : 'Show me My Search'}</button></nav>
+  </div>;
+}
+
+function SummaryStep({ priorities, onBack, onAddHome, onMySearch, isSaving }) {
+  const overview = onboardingOverview(priorities);
+  const counts = onboardingPriorityCounts(priorities);
+  return <div className="hh-onboarding-step hh-onboarding-summary">
+    <header><h1 className="hh-serif">My Search Criteria</h1><p>Here&apos;s what we&apos;ll use to match your options. You can update anything anytime.</p></header>
+    <div className="hh-onboarding-summary-grid">
+      <section aria-labelledby="search-overview-heading"><h2 id="search-overview-heading">Search overview</h2><ul>{overview.map((line) => <li key={line}>{line}</li>)}</ul></section>
+      <section aria-labelledby="priority-summary-heading"><h2 id="priority-summary-heading">Your priorities</h2><ul className="hh-onboarding-counts"><li><strong>{counts.must}</strong> Must {counts.must === 1 ? 'Have' : 'Haves'}</li><li><strong>{counts.important}</strong> Important</li><li><strong>{counts.nice}</strong> Nice to {counts.nice === 1 ? 'Have' : 'Haves'}</li></ul></section>
+    </div>
+    <section className="hh-onboarding-activation"><h2 className="hh-serif">Looks good?</h2><p>Add a home you&apos;re considering and we&apos;ll show you how it stacks up.</p><button type="button" className="hh-btn hh-onboarding-primary" disabled={isSaving} onClick={onAddHome}>Add your first home</button><button type="button" className="hh-btn hh-btn-ghost" disabled={isSaving} onClick={onMySearch}>Go to My Search</button></section>
+    <nav className="hh-onboarding-actions"><button type="button" className="hh-btn hh-btn-ghost" onClick={onBack}>Back</button></nav>
   </div>;
 }
 
@@ -116,14 +130,18 @@ export default function Onboarding({ userId, searchId, initialPriorities, appVer
   const pendingRedirect = sanitizeRedirectPath(searchParams.get('redirect'));
   const persistPriorities = useCallback((next) => savePriorities(createClient(), { id: searchId }, userId, next), [searchId, userId]);
   const { state: priorities, patch, saveError, retry, flush, isSaving } = useReliableOptimisticState(normalizePriorities(initialPriorities), persistPriorities);
-  const [step, setStep] = useState(1); const [dealbreakers, setDealbreakers] = useState(new Set()); const [finishError, setFinishError] = useState('');
-  const finish = async () => { setFinishError(''); try { await flush(); await completeOnboarding(createClient(), userId); router.push(pendingRedirect || '/search?welcome=1'); } catch { setFinishError("Couldn't finish setup. Your choices are still here—please try again."); } };
+  const initial = normalizePriorities(initialPriorities);
+  const initialDealbreakers = new Set(['location', 'features', 'exterior', 'homeFeel'].flatMap((categoryKey) => Object.entries(initial[categoryKey].tiers || {}).filter(([, tier]) => tier === 'must').map(([label]) => `${categoryKey}:${label}`)));
+  const [step, setStep] = useState(1); const [dealbreakers, setDealbreakers] = useState(initialDealbreakers); const [finishError, setFinishError] = useState('');
+  const showSummary = async () => { setFinishError(''); try { await flush(); setStep(4); } catch { setFinishError("Couldn't save your search. Your choices are still here—please try again."); } };
+  const finish = async (destination) => { setFinishError(''); try { await flush(); await completeOnboarding(createClient(), userId); router.push(destination); router.refresh(); } catch { setFinishError("Couldn't finish setup. Your choices are still here—please try again."); } };
   return <div className="hh-root"><OnboardingShell wide={step > 1}>
-    {(saveError || finishError) && <p className="hh-save-error" role="alert">{saveError || finishError} <button type="button" onClick={saveError ? retry : finish}>Retry</button></p>}
+    {(saveError || finishError) && <p className="hh-save-error" role="alert">{saveError || finishError} <button type="button" onClick={saveError ? retry : () => setFinishError('')}>Dismiss</button></p>}
     <div className="hh-onboarding-brand"><BrandMark size={30} /><span className="hh-serif"><span>Feels Like </span><b>Home</b></span></div>
     <OnboardingProgress step={step} />
     {step === 1 && <BasicsStep priorities={priorities} patch={patch} onNext={() => setStep(2)} />}
     {step === 2 && <WhatMattersStep priorities={priorities} patch={patch} dealbreakers={dealbreakers} setDealbreakers={setDealbreakers} onBack={() => setStep(1)} onNext={() => setStep(3)} />}
-    {step === 3 && <DealbreakersStep priorities={priorities} patch={patch} dealbreakers={dealbreakers} setDealbreakers={setDealbreakers} onBack={() => setStep(2)} onFinish={finish} isSaving={isSaving} />}
+    {step === 3 && <DealbreakersStep priorities={priorities} patch={patch} dealbreakers={dealbreakers} setDealbreakers={setDealbreakers} onBack={() => setStep(2)} onFinish={showSummary} isSaving={isSaving} />}
+    {step === 4 && <SummaryStep priorities={priorities} onBack={() => setStep(3)} onAddHome={() => finish('/homes?add=1')} onMySearch={() => finish(pendingRedirect || '/search?welcome=1')} isSaving={isSaving} />}
   </OnboardingShell><BetaFeedback userId={userId} searchId={searchId} searchType={priorities.searchType} appVersion={appVersion} /></div>;
 }
