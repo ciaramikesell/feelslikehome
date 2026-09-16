@@ -12,6 +12,9 @@ import { sanitizeRedirectPath } from '@/lib/safeRedirect';
 function SignUpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  // `intent` is entry context, not an account role. Realtor permissions stay
+  // relationship-scoped and are granted only by accepting a client invite.
+  const isRealtorEntry = searchParams.get('intent') === 'realtor';
   // See sign-in's identical comment: validated so a crafted `?redirect=`
   // can't be used to send a freshly-created account off-site.
   const redirectTo = sanitizeRedirectPath(searchParams.get('redirect')) || '/';
@@ -32,7 +35,10 @@ function SignUpForm() {
     const { data, error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
       password,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}` },
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
+        data: isRealtorEntry ? { account_entry_intent: 'realtor' } : undefined,
+      },
     });
     if (signUpError) {
       setStatus(null);
@@ -80,8 +86,8 @@ function SignUpForm() {
         </Link>
 
         <div>
-          <h2 className="afh-serif" style={{ fontSize: 24, margin: 0, fontWeight: 600, color: 'var(--ink)' }}>Start your home search</h2>
-          <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '5px 0 0' }}>Create your account to start comparing homes.</p>
+          <h2 className="afh-serif" style={{ fontSize: 24, margin: 0, fontWeight: 600, color: 'var(--ink)' }}>{isRealtorEntry ? 'Create your Realtor account' : 'Start your home search'}</h2>
+          <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '5px 0 0', lineHeight: 1.55 }}>{isRealtorEntry ? 'Create an account with the email your client will invite. Realtor access is connected to each client relationship—not a global account role.' : 'Create your account to start comparing homes.'}</p>
         </div>
 
         <div>
@@ -100,7 +106,7 @@ function SignUpForm() {
         )}
 
         <button type="submit" className="afh-btn" disabled={status === 'loading'}>
-          {status === 'loading' ? <><Spinner /> Creating account...</> : 'Start your home search'}
+          {status === 'loading' ? <><Spinner /> Creating account...</> : isRealtorEntry ? 'Create account' : 'Start your home search'}
         </button>
       </form>
     </AuthShell>
