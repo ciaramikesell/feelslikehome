@@ -22,12 +22,12 @@ test('public navigation exposes only truthful account and explanation entries', 
   assert.doesNotMatch(landing, /Verified Listings|Walk Score|school ratings|safety score/i);
 });
 
-test('demo distinguishes matched, mismatch, and unknown sample information', () => {
-  for (const address of ['123 Main Street', '789 Prairie Lane', '545 Cannon Drive']) assert.match(landing, new RegExp(address));
-  assert.match(landing, /kind === 'miss' \? 'does not match' : 'Unknown'/);
-  assert.match(landing, /Illustrative sample data — not a live listing/);
-  assert.match(landing, /role="tablist"/);
-  assert.match(landing, /aria-selected=/);
+test('landing uses dedicated artwork and describes representative product data truthfully', () => {
+  assert.match(landing, /landing-hero-home\.svg/);
+  assert.match(landing, /landing-product-demo\.svg/);
+  assert.match(landing, /Representative product illustration — not live listing data/);
+  assert.match(landing, /Unknown information stays Unknown/i);
+  assert.doesNotMatch(landing, /role="tablist"/);
 });
 
 test('Realtor entry preserves intent without introducing an account role', () => {
