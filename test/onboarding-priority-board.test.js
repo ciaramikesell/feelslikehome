@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { TIER_META, normalizePriorities } from '../src/lib/constants.js';
 import { normalizeSearchIntent } from '../src/lib/searchIntent.js';
-import { NEW_SEARCH_CHOICES, ONBOARDING_SUGGESTIONS, applyOnboardingSelections, applySearchChoice, flatOnboardingSuggestions } from '../src/lib/onboarding.js';
+import { NEW_SEARCH_CHOICES, ONBOARDING_SUGGESTIONS, applyOnboardingSelections, applySearchChoice, flatOnboardingSuggestions, onboardingOverview, onboardingPriorityCounts } from '../src/lib/onboarding.js';
 import { selectPriorityItem } from '../src/lib/matching.js';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -45,6 +45,17 @@ test('selected priorities become Important, dealbreakers become Must Have, and N
   assert.ok(!flatOnboardingSuggestions('home_buy').some(({ categoryKey, label }) => priorities[categoryKey].tiers[label] === 'nice'));
 });
 
+test('zero dealbreakers and zero Nice to Haves remain truthful', () => {
+  let priorities = applySearchChoice({}, 'home_buy');
+  priorities = applyOnboardingSelections(priorities, new Set(['features:Fireplace']), new Set());
+  assert.deepEqual(onboardingPriorityCounts(priorities), { must: 0, important: 1, nice: 0 });
+});
+
+test('Step 4 overview only includes values the participant entered', () => {
+  const priorities = applySearchChoice({ budget: { value: '450,000', tier: 'important' }, bedsMin: { value: '', tier: 'important' } }, 'home_buy');
+  assert.deepEqual(onboardingOverview(priorities), ['Home to buy', '$450,000 max']);
+});
+
 test('custom priorities use the same canonical JSON structure and default to Important', () => {
   const priorities = normalizePriorities({ searchType: 'purchase' });
   const selected = selectPriorityItem(priorities.homeFeel, { coreItems: [], suggestedItems: [] }, { label: 'Morning coffee spot', kind: 'rating' }, 'important');
@@ -59,7 +70,8 @@ test('journey preserves choices on Back, persists before completion, and reveals
   assert.match(onboarding, /await flush\(\); await completeOnboarding/);
   // #73: a pending share-intake destination (see (app)/layout.js) takes over
   // this push when present; the plain welcome landing is still the default.
-  assert.match(onboarding, /router\.push\(pendingRedirect \|\| '\/search\?welcome=1'\)/);
+  assert.match(onboarding, /finish\(pendingRedirect \|\| '\/search\?welcome=1'\)/);
+  assert.match(onboarding, /finish\('\/homes\?add=1'\)/);
   assert.match(search, /Here&apos;s what we heard\./);
   assert.match(search, /href="\/homes\?add=1">Add your first home/);
 });

@@ -51,6 +51,36 @@ export function flatOnboardingSuggestions(choiceKey) {
   return (ONBOARDING_SUGGESTIONS[choiceKey] || []).flatMap(([, items]) => items);
 }
 
+export function onboardingPriorityCounts(raw) {
+  const priorities = normalizePriorities(raw);
+  const counts = { must: 0, important: 0, nice: 0 };
+  ['location', 'features', 'exterior', 'homeFeel'].forEach((categoryKey) => {
+    Object.values(priorities[categoryKey].tiers || {}).forEach((tier) => {
+      if (Object.hasOwn(counts, tier)) counts[tier] += 1;
+    });
+  });
+  return counts;
+}
+
+export function onboardingOverview(raw) {
+  const priorities = normalizePriorities(raw);
+  const lines = [];
+  if (priorities.onboardingSearchType) {
+    lines.push(NEW_SEARCH_CHOICES.find(({ key }) => key === priorities.onboardingSearchType)?.label);
+  }
+  const values = [
+    [priorities.budget.value, (value) => `$${value} max`],
+    [priorities.bedsMin.value, (value) => `${value}+ bedrooms`],
+    [priorities.bathsMin.value, (value) => `${value}+ bathrooms`],
+    [priorities.sqftTarget.value, (value) => `${value}+ sq ft`],
+  ];
+  values.forEach(([value, format]) => {
+    const entered = String(value ?? '').trim();
+    if (entered) lines.push(format(entered));
+  });
+  return lines.filter(Boolean);
+}
+
 export function applyOnboardingSelections(raw, selectedKeys, dealbreakerKeys = new Set()) {
   const next = normalizePriorities(raw);
   const selected = selectedKeys instanceof Set ? selectedKeys : new Set(selectedKeys);
