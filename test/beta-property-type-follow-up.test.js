@@ -37,11 +37,11 @@ test('property Notes examples remain placeholders rather than saved values', () 
   assert.doesNotMatch(persistence, new RegExp(example.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 });
 
-test('Home Card commute inset is conditional, compact, bounded, and wraps long labels', () => {
+test('Home Card commute inset is conditional, compact, primary-only, and wraps long labels', () => {
   assert.match(board, /commuteDestinations\.length > 0/);
-  assert.match(board, /commuteDestinations\.slice\(0, 2\)/);
+  assert.match(board, /commuteDestinations\.slice\(0, 1\)/);
   assert.match(board, /className="hh-card-commute"/);
-  assert.match(board, /\+\{overflow\} more/);
+  assert.doesNotMatch(board, /\+\{overflow\} more/);
   assert.match(css, /\.hh-card-commute \{[^}]*padding: 9px 11px/);
   assert.match(css, /\.hh-card-commute-route \{[^}]*overflow-wrap: anywhere/);
 });

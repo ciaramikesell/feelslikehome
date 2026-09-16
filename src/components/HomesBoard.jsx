@@ -4,9 +4,9 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Plus, Search, MapPin, Link2, Archive as ArchiveIcon, ExternalLink,
-  Heart, Home as HomeIcon, Undo2, Trash2, Footprints, MessageCircle, Check,
-  Building2, StickyNote, Minus,
+  Plus, Search, MapPin, Archive as ArchiveIcon, ExternalLink,
+  Heart, Home as HomeIcon, Undo2, Footprints, MessageCircle, Check,
+  Building2, StickyNote, Pencil,
 } from 'lucide-react';
 import { MatchSummary, MatchTradeoffs } from '@/components/ui';
 import { useCommuteObserver } from '@/lib/useCommuteObserver';
@@ -18,7 +18,7 @@ import Sheet from '@/components/Sheet';
 import MobileDisclosure from '@/components/MobileDisclosure';
 import { STATUS_COLOR, emptyHome, isArchivedStatus } from '@/lib/constants';
 import { isLikelyListingUrl, findHomeByListingUrl } from '@/lib/listingUrl';
-import { parseNum, fmtMoney, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint } from '@/lib/matching';
+import { parseNum, fmtMoney, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint, summarizeForCard } from '@/lib/matching';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
 import { formatHomePrice, formatLotSizeDisplay, parseCommaList } from '@/lib/homeDisplay';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
@@ -91,6 +91,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   const { setRef: commuteRef, getState: getCommuteState } = useCommuteObserver(home, commuteDestinations);
   const commuteEvaluation = evaluateCommute(commuteDestinations, getCommuteState);
   const match = computeMatch(home, priorities, commuteEvaluation);
+  const matchState = summarizeForCard(match);
   const { showsPurchaseFinancials } = searchIntentCapabilities(priorities.searchType);
 
   // Core property facts — beds/baths/sqft/lot only. Garage is deliberately not
@@ -111,10 +112,10 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   // Details text fields. Condition Notes is deliberately NOT included here —
   // see the separate placement near Pros/Cons/Notes below.
   const propertyFacts = [
-    home.garageSpaces && { label: 'Garage', text: home.garageSpaces },
-    home.basementNotes && { label: 'Basement', text: home.basementNotes },
+    { label: 'Garage', text: home.garageSpaces ? home.garageSpaces : 'Unknown' },
+    { label: 'Basement', text: home.basementNotes || 'Unknown' },
     home.homeCondition?.length && { label: 'Home condition', text: home.homeCondition.join(', ') },
-    home.schoolsNotes && { label: 'Schools', text: home.schoolsNotes },
+    { label: 'Schools', text: home.schoolsNotes || 'Unknown' },
   ].filter(Boolean);
 
   // Objective context rows — only ever built from data that already exists; no new
@@ -127,6 +128,13 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
 
   const pros = parseCommaList(home.pros);
   const cons = parseCommaList(home.cons);
+  const noteCount = [home.notes, home.conditionNotes, ...pros, ...cons].filter(Boolean).length;
+  const snapshot = match ? [
+    ...matchState.missing.filter((item) => item.tier === 'must'),
+    ...matchState.matches.filter((item) => item.tier === 'must'),
+    ...matchState.matches.filter((item) => item.tier !== 'must'),
+    ...matchState.notConfirmed,
+  ].filter((item, index, items) => items.findIndex((candidate) => candidate.key === item.key) === index).slice(0, 3) : [];
   // Secondary, already-known context (facts/commute/notes) — kept out of the
   // way behind "More details" on narrow viewports so a mobile card reads as
   // price/address/Match/status first, not a full restack of every field.
@@ -137,7 +145,8 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   return (
     <article className={`hh-home-card hh-corner ${mode === 'archive' ? 'is-archived' : ''}`} ref={commuteRef}>
       <div className="hh-home-card-surface">
-        <Link href={`/homes/${encodeURIComponent(home.id)}`} className={`hh-home-card-photo ${showPhoto ? '' : 'is-empty'}`} aria-label={`Open ${identity.accessible} details`}>
+        <div className={`hh-home-card-photo ${showPhoto ? '' : 'is-empty'}`}>
+        <Link href={`/homes/${encodeURIComponent(home.id)}`} className="hh-home-card-photo-link" aria-label={`Open ${identity.accessible} details`}>
           {showPhoto ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={home.photoUrl} alt={`${identity.accessible} ${homeVocabulary(priorities).singularLower} photo`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={() => setImgError(true)} />
@@ -164,6 +173,12 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
             </div>
           )}
         </Link>
+          {showQuickFavorite && (
+            <button type="button" className="hh-card-favorite hh-tooltip" onClick={handleFavorite} aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'} data-tooltip={isFavorite ? 'Remove from favorites' : 'Add to favorites'}>
+              <Heart className={favoritePop ? 'hh-favorite-pop' : undefined} size={18} color={isFavorite ? 'var(--brick)' : 'var(--ink)'} fill={isFavorite ? 'var(--brick)' : 'none'} />
+            </button>
+          )}
+        </div>
 
         <div className="hh-home-card-body" style={{ padding: '18px 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="hh-card-price-row">
@@ -194,6 +209,16 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
           {match ? (
             <div className="hh-match-panel" style={{ background: matchTint(match.pct), borderLeft: `3px solid ${matchColor(match.pct)}` }}>
               <MatchSummary match={match} />
+              {snapshot.length > 0 && <div className="hh-match-snapshot">
+                {snapshot.map((item) => {
+                  const missing = item.evaluated && item.met === false;
+                  const unknown = !item.evaluated;
+                  return <div key={item.key} className={missing ? 'is-negative' : unknown ? 'is-unknown' : 'is-positive'}>
+                    <span aria-hidden="true">{missing ? '✕' : unknown ? '?' : '✓'}</span>
+                    <span>{item.label}{missing && item.tier === 'must' ? ' — Must Have' : unknown ? ' — Unknown' : ''}</span>
+                  </div>;
+                })}
+              </div>}
               <MatchTradeoffs match={match} />
             </div>
           ) : (
@@ -254,15 +279,14 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
           )}
 
           {commuteDestinations.length > 0 && (() => {
-            const shown = commuteDestinations.slice(0, 2);
-            const overflow = commuteDestinations.length - shown.length;
+            const shown = commuteDestinations.slice(0, 1);
             return (
               <div className="hh-card-commute">
                 <div className="hh-card-commute-label">Commute</div>
                 {shown.map((d) => {
                   const state = getCommuteState(d);
                   const name = d.label;
-                  const text = state.status === 'ok' ? `${name} · ${state.minutes} min`
+                  const text = state.status === 'ok' ? `${name}: ${state.minutes} min`
                     : state.status === 'loading' ? `${name} · Calculating…`
                     : state.status === 'destination_invalid' ? `${name} · Check the address`
                     : state.status === 'destination_ambiguous' ? `${name} · Add a city or ZIP`
@@ -270,7 +294,6 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
                     : name;
                   return <div className="hh-card-commute-route" key={d.id}>{text}</div>;
                 })}
-                {overflow > 0 && <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>+{overflow} more</div>}
               </div>
             );
           })()}
@@ -285,48 +308,18 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
             </div>
           )}
 
-          {home.conditionNotes && (
-            <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', fontStyle: 'italic', lineHeight: 1.4 }}>
-              <span style={{ fontWeight: 600, fontStyle: 'normal' }}>Condition</span>{' '}
-              <span style={{
-                display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-              }}>
-                {home.conditionNotes}
-              </span>
-            </div>
-          )}
-
-          {pros.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12.5, color: 'var(--ink)' }}>
-              <Plus size={13} color="var(--moss)" strokeWidth={2.5} style={{ flexShrink: 0, marginTop: 2 }} />
-              <span className="hh-card-clamp">{pros.join(', ')}</span>
-            </div>
-          )}
-
-          {cons.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, fontSize: 12.5, color: 'var(--ink)' }}>
-              <Minus size={13} color="var(--brick)" strokeWidth={2.5} style={{ flexShrink: 0, marginTop: 2 }} />
-              <span className="hh-card-clamp">{cons.join(', ')}</span>
-            </div>
-          )}
-
-          {home.notes && (
-            <div style={{ display: 'flex', gap: 6, fontSize: 12, color: 'var(--ink-soft)', background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 10, padding: '8px 10px' }}>
-              <StickyNote size={13} style={{ flexShrink: 0, marginTop: 1 }} />
-              <span className="hh-card-clamp" style={{ whiteSpace: 'pre-wrap' }}>{home.notes}</span>
-            </div>
-          )}
+          {noteCount > 0 && <Link className="hh-notes-indicator" href={`/homes/${encodeURIComponent(home.id)}`}><StickyNote size={13} /> Notes ({noteCount})</Link>}
           </MobileDisclosure>
           )}
 
           <div className="hh-home-card-actions" style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: 6, marginTop: 4, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
             {home.listingUrl && (
-              <a href={home.listingUrl} target="_blank" rel="noreferrer" className="hh-btn hh-btn-ghost" style={{ padding: '5px 7px', flexShrink: 0 }} title="Open listing">
+              <a href={home.listingUrl} target="_blank" rel="noreferrer" className="hh-btn hh-btn-ghost hh-tooltip" data-tooltip="View original listing" aria-label="View original listing">
                 <ExternalLink size={13} />
               </a>
             )}
             {mode !== 'archive' && (
-              <button className="hh-btn hh-btn-ghost" style={{ padding: '5px 7px', flexShrink: 0 }} onClick={() => onArchiveRequest(home)} title="Archive" aria-label="Archive home">
+              <button className="hh-btn hh-btn-ghost hh-tooltip" onClick={() => onArchiveRequest(home)} data-tooltip="Archive home" aria-label="Archive home">
                 <ArchiveIcon size={13} />
               </button>
             )}
@@ -341,19 +334,6 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
                 <Undo2 size={13} /> Remove mine
               </button>
             )}
-            {showQuickFavorite && (
-              <button
-                type="button"
-                className="hh-btn hh-btn-ghost"
-                style={{ padding: '5px 7px', flexShrink: 0 }}
-                onClick={handleFavorite}
-                title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-                aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-              >
-                <Heart className={favoritePop ? 'hh-favorite-pop' : undefined} size={13} color={isFavorite ? 'var(--brick)' : undefined} fill={isFavorite ? 'var(--brick)' : 'none'} />
-              </button>
-            )}
-
             <div style={{ flex: 1 }} />
 
             {isPreTour && mode !== 'archive' && (
@@ -366,11 +346,16 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
                 <Footprints size={12} /> Want to tour
               </button>
             )}
+            {!toured && home.status === 'Want to Tour' && mode === 'homes' && (
+              <button type="button" className="hh-btn hh-card-primary-action is-selected" aria-pressed="true" onClick={() => onRemoveFromTour(home)}>
+                <Check size={13} /> Want to Tour
+              </button>
+            )}
 
             {mode === 'archive' && (
               <button className="hh-btn hh-card-primary-action" onClick={() => onRestore(home)}><Undo2 size={13} /> Restore</button>
             )}
-            <button className="hh-btn hh-card-secondary-action" onClick={() => onEdit(home)}>Edit</button>
+            <button className="hh-btn hh-card-secondary-action hh-tooltip" data-tooltip="Edit home" aria-label="Edit home" onClick={() => onEdit(home)}><Pencil size={13} /></button>
             {mode === 'archive' && (
               <button type="button" className="hh-card-text-action" onClick={() => onRequestDelete(home)}>Delete permanently</button>
             )}
@@ -723,7 +708,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     <>
       {mode === 'homes' && (
         <div className="hh-homes-primary-action">
-          <button className="hh-btn" onClick={() => openHomeModal(emptyHome())}><Plus size={15} /> Add {vocabulary.singularLower}</button>
+          <button className="hh-btn" onClick={() => openHomeModal(emptyHome())}><Plus size={15} /> Add Home Listing</button>
         </div>
       )}
 
@@ -734,7 +719,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         <div className="hh-homes-toolbar-row">
           <div className="hh-homes-search">
             <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: 'var(--ink-soft)' }} />
-            <input className="hh-input" style={{ paddingLeft: 30 }} placeholder={vocabulary.apartment ? "Search property, address, floor plan, unit..." : "Search address, layout, feature..."} value={query} onChange={(e) => setQuery(e.target.value)} />
+            <input className="hh-input" style={{ paddingLeft: 30 }} placeholder="Search address, city, or feature..." value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
           <select className="hh-input hh-homes-sort" value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label={`Sort ${vocabulary.pluralLower}`}>
             <option value="default">Sort: Date added</option>
@@ -746,7 +731,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         <div className="hh-filter-chips" aria-label="Filter homes">
           {[
             { key: 'all', label: 'All' },
-            { key: 'match90', label: '90%+ Match' },
+            { key: 'match90', label: '90%+ Matches' },
             { key: 'noMustMissing', label: 'No Must-Haves Missing' },
             { key: 'wantToTour', label: 'Want to Tour' },
             { key: 'favorites', label: 'Favorites' },

@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { getProfile } from '@/lib/supabase/data';
-import { resolveActiveSearch, getAccessibleSearches, resolvePriorities } from '@/lib/supabase/collaboration';
+import { resolveActiveSearch, getAccessibleSearches, resolvePriorities, getSearchParticipantIds } from '@/lib/supabase/collaboration';
 import { normalizeSearchIntent } from '@/lib/searchIntent';
 import { sanitizeRedirectPath } from '@/lib/safeRedirect';
 import AppShell from '@/components/AppShell';
@@ -32,14 +32,15 @@ export default async function AppGroupLayout({ children }) {
   if (!profile?.onboarding_complete) redirect(withRedirectParam('/onboarding', await currentPathForRedirect()));
 
   const { search } = await resolveActiveSearch(supabase, user.id);
-  const [accessibleSearches, priorities] = await Promise.all([
+  const [accessibleSearches, priorities, participantIds] = await Promise.all([
     getAccessibleSearches(supabase, user.id),
     resolvePriorities(supabase, search, user.id),
+    getSearchParticipantIds(supabase, search),
   ]);
   const appVersion = process.env.VERCEL_GIT_COMMIT_SHA || process.env.VERCEL_DEPLOYMENT_ID || null;
 
   return (
-    <AppShell userEmail={user.email} userId={user.id} accessibleSearches={accessibleSearches} activeSearchId={search.id} priorities={priorities} searchIntent={normalizeSearchIntent(priorities?.searchType)} appVersion={appVersion}>
+    <AppShell userEmail={user.email} userId={user.id} accessibleSearches={accessibleSearches} activeSearchId={search.id} priorities={priorities} searchIntent={normalizeSearchIntent(priorities?.searchType)} isCollaborative={participantIds.length > 1} appVersion={appVersion}>
       {children}
     </AppShell>
   );
