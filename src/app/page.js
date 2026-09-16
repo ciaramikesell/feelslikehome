@@ -1,11 +1,12 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getProfile } from '@/lib/supabase/data';
+import PublicLanding from '@/components/PublicLanding';
 
 export default async function RootPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect('/auth/sign-in');
+  if (!user) return <PublicLanding />;
 
   const profile = await getProfile(supabase, user.id);
   if (!profile?.onboarding_complete) redirect('/onboarding');
