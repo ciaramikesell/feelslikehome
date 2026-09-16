@@ -25,6 +25,7 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
   const router = useRouter();
   const [state, setState] = useState(initialPreview.valid ? 'valid' : 'invalid'); // valid | invalid | accepting | done
   const [reason, setReason] = useState(initialPreview.reason || '');
+  const isRealtorInvite = initialPreview.relationship_type === 'realtor';
 
   const signOut = async () => {
     await createClient().auth.signOut();
@@ -69,14 +70,20 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
 
         {state === 'valid' && (
           <>
-            <h1 className="hh-serif" style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', margin: '0 0 8px' }}>You&apos;ve been invited to search together</h1>
+            <h1 className="hh-serif" style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', margin: '0 0 8px' }}>{isRealtorInvite ? "You've been invited as a Realtor" : "You've been invited to search together"}</h1>
             <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', lineHeight: 1.55, margin: '0 0 20px' }}>
-              You&apos;ll share the same collection of homes and be able to see each other&apos;s search preferences and opinions. Your ratings and preferences stay under your control—no one else can change them for you.
+              {isRealtorInvite ? (
+                <>You&apos;ll be able to understand this buyer&apos;s search, homes, priorities, and opinions. You can see their decision, but you cannot make or change it for them.</>
+              ) : (
+                <>You&apos;ll share the same collection of homes and be able to see each other&apos;s search preferences and opinions. Your ratings and preferences stay under your control—no one else can change them for you.</>
+              )}
             </p>
             <p className="hh-collaboration-consent">This includes priorities, Match, Favorites, Want to Tour choices, commute destinations, notes, Overall Feeling, and post-tour ratings. Only participants in this search can see its activity.</p>
-            <button type="button" className="hh-btn" style={{ width: '100%', justifyContent: 'center' }} onClick={accept}>
-              Join search
-            </button>
+            {isRealtorInvite ? (
+              <button type="button" className="hh-btn" style={{ width: '100%', justifyContent: 'center' }} onClick={accept}>Join as Realtor</button>
+            ) : (
+              <button type="button" className="hh-btn" style={{ width: '100%', justifyContent: 'center' }} onClick={accept}>Join search</button>
+            )}
           </>
         )}
 

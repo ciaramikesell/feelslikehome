@@ -71,7 +71,7 @@ export async function resolveActiveSearch(supabase, userId) {
 export async function getAccessibleSearches(supabase, userId) {
   const [{ data: owned, error: ownedError }, { data: memberships, error: memberError }] = await Promise.all([
     supabase.from('searches').select(SEARCH_SHARED_COLUMNS).eq('user_id', userId).maybeSingle(),
-    supabase.from('search_members').select('search_id').eq('user_id', userId),
+    supabase.from('search_members').select('search_id,role').eq('user_id', userId),
   ]);
   if (ownedError) throw ownedError;
   if (memberError) throw memberError;
@@ -86,7 +86,15 @@ export async function getAccessibleSearches(supabase, userId) {
 
   const list = [];
   if (owned) list.push({ id: owned.id, label: 'My Search', isOwner: true });
-  memberSearches.forEach((s) => list.push({ id: s.id, label: 'Shared Search', isOwner: false }));
+  memberSearches.forEach((s) => {
+    const membership = memberships.find((m) => m.search_id === s.id);
+    list.push({
+      id: s.id,
+      label: membership?.role === 'realtor' ? 'Realtor Search' : 'Shared Search',
+      isOwner: false,
+      relationshipType: membership?.role || 'co_buyer',
+    });
+  });
   return list;
 }
 
@@ -362,7 +370,7 @@ export async function saveHomePersonalState(supabase, home, userId, searchId) {
 
 // Every accepted participant in a search: the owner plus every active member.
 export async function getSearchParticipantIds(supabase, search) {
-  const { data, error } = await supabase.from('search_members').select('user_id').eq('search_id', search.id);
+  const { data, error } = await supabase.from('search_members').select('user_id').eq('search_id', search.id).eq('role', 'co_buyer');
   if (error) throw error;
   return [search.user_id, ...(data || []).map((m) => m.user_id)];
 }
@@ -487,11 +495,13 @@ export function deriveWantToTourState(currentUserState, otherParticipantStates =
 // Invite creation needs no RPC — the owner already has direct INSERT rights
 // via the existing Phase A policy. Email is normalized so a later
 // case-difference doesn't accidentally block acceptance.
-export async function createInvitation(supabase, searchId, invitedBy, invitedEmail) {
+export async function createInvitation(supabase, searchId, invitedBy, invitedEmail, relationshipType = 'co_buyer') {
+  if (!['co_buyer', 'realtor'].includes(relationshipType)) throw new Error('Invalid invitation relationship.');
   const { data, error } = await supabase.from('search_invitations').insert({
     search_id: searchId,
     invited_by: invitedBy,
     invited_email: invitedEmail.trim().toLowerCase(),
+    relationship_type: relationshipType,
   }).select().single();
   if (error) throw error;
   return data;
