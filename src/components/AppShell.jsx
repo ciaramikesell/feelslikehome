@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Home as HomeIcon, Columns, HelpCircle, X, Footprints, SlidersHorizontal, Map } from 'lucide-react';
+import { LogOut, Home as HomeIcon, Columns, HelpCircle, X, Footprints, SlidersHorizontal, Map, Users } from 'lucide-react';
 import { BrandMark, Wordmark } from '@/components/ui';
 import { PRIMARY_TABS, MOBILE_PRIMARY_TABS } from '@/lib/constants';
 import { homeVocabulary } from '@/lib/homePresentation';
@@ -182,6 +182,7 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
   const [tourStep, setTourStep] = useState(0);
   const [native, setNative] = useState(false);
   const vocabulary = homeVocabulary(priorities);
+  const hasRealtorRelationships = accessibleSearches?.some((search) => search.relationshipType === 'realtor');
 
   // Centralizes the one native-vs-web chrome difference this shell needs —
   // the installed app has no browser UI pushing content below the status
@@ -241,6 +242,7 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
             {accessibleSearches && accessibleSearches.length > 1 && (
               <SearchSwitcher userId={userId} searches={accessibleSearches} activeSearchId={activeSearchId} />
             )}
+            {hasRealtorRelationships && <Link href="/people" className={`hh-shell-action hh-people-entry ${pathname.startsWith('/people') ? 'active' : ''}`}><Users size={14} /> People I’m Helping</Link>}
             <Link
               href="/search"
               className={`hh-shell-action hh-shell-action-primary hh-desktop-only ${pathname === '/search' ? 'active' : ''}`}

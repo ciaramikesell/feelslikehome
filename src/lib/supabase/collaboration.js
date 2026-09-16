@@ -103,6 +103,70 @@ export async function setActiveSearch(supabase, userId, searchId) {
   if (error) throw error;
 }
 
+// Realtor workspace reads are deliberately rooted in the caller's realtor
+// membership rows. The searches/homes/state queries remain ordinary RLS-bound
+// queries; no service client is involved and an id guessed in the URL produces
+// no membership row (and therefore no client data).
+export async function getRealtorRelationships(supabase, userId) {
+  const { data: memberships, error } = await supabase.from('search_members')
+    .select('search_id').eq('user_id', userId).eq('role', 'realtor');
+  if (error) throw error;
+  const ids = (memberships || []).map((row) => row.search_id);
+  if (!ids.length) return [];
+  const [{ data: searches, error: searchError }, { data: roster, error: rosterError }, { data: homes, error: homeError }] = await Promise.all([
+    supabase.from('searches').select(SEARCH_SHARED_COLUMNS).in('id', ids),
+    supabase.rpc('get_realtor_client_roster', { p_search_ids: ids }),
+    supabase.from('homes').select('id,search_id').in('search_id', ids),
+  ]);
+  if (searchError) throw searchError;
+  if (rosterError) throw rosterError;
+  if (homeError) throw homeError;
+  const homeIds = (homes || []).map((home) => home.id);
+  let states = [];
+  if (homeIds.length) {
+    const result = await supabase.from('home_member_state').select('home_id,status,user_id').in('home_id', homeIds);
+    if (result.error) throw result.error;
+    states = result.data || [];
+  }
+  return (searches || []).map((search) => {
+    const people = (roster || []).filter((person) => person.search_id === search.id);
+    const clientHomes = (homes || []).filter((home) => home.search_id === search.id);
+    const clientHomeIds = new Set(clientHomes.map((home) => home.id));
+    const clientStates = states.filter((state) => clientHomeIds.has(state.home_id));
+    const archived = new Set(clientHomes.filter((home) => {
+      const homeStates = clientStates.filter((state) => state.home_id === home.id);
+      return homeStates.length > 0 && homeStates.every((state) => state.status === 'Archived');
+    }).map((home) => home.id));
+    const tour = new Set(clientStates.filter((state) => state.status === 'Want to Tour').map((state) => state.home_id));
+    return { ...search, people, activeCount: clientHomes.length - archived.size, wantToTourCount: tour.size };
+  });
+}
+
+export async function getRealtorSearchContext(supabase, userId, searchId) {
+  const { data: membership, error: membershipError } = await supabase.from('search_members')
+    .select('search_id').eq('search_id', searchId).eq('user_id', userId).eq('role', 'realtor').maybeSingle();
+  if (membershipError) throw membershipError;
+  if (!membership) return null;
+  const { data: search, error: searchError } = await supabase.from('searches').select(SEARCH_SHARED_COLUMNS).eq('id', searchId).maybeSingle();
+  if (searchError) throw searchError;
+  if (!search) return null;
+  const [{ data: people, error: rosterError }, { data: priorityRows, error: priorityError }, homes] = await Promise.all([
+    supabase.rpc('get_realtor_client_roster', { p_search_ids: [searchId] }),
+    supabase.from('search_member_priorities').select('user_id,priorities').eq('search_id', searchId),
+    getHomesForUser(supabase, userId, searchId),
+  ]);
+  if (rosterError) throw rosterError;
+  if (priorityError) throw priorityError;
+  const homeIds = homes.map((home) => home.id);
+  let states = [];
+  if (homeIds.length) {
+    const result = await supabase.from('home_member_state').select('home_id,user_id,status,toured_at,is_favorite,reaction,rejection_reason,ratings,checks').in('home_id', homeIds);
+    if (result.error) throw result.error;
+    states = result.data || [];
+  }
+  return { search, people: people || [], priorities: priorityRows || [], homes, states };
+}
+
 /* -------------------------------- priorities -------------------------------- */
 
 // Resolves priorities for (current search, current user):

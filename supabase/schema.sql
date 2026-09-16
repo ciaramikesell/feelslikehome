@@ -686,6 +686,8 @@ revoke execute on function public.accept_invitation(uuid) from anon;
 revoke execute on function public.accept_invitation(uuid) from service_role;
 grant execute on function public.accept_invitation(uuid) to authenticated;
 
+
+
 -- Phase 3 refinement: property-details descriptive text fields.
 alter table public.homes
   add column if not exists basement_notes text,
@@ -2159,6 +2161,26 @@ exception when unique_violation then
 end; $$;
 revoke all on function public.accept_invitation(uuid) from public;
 grant execute on function public.accept_invitation(uuid) to authenticated;
+
+-- Realtor Search View: relationship-scoped participant display projection.
+create or replace function public.get_realtor_client_roster(p_search_ids uuid[])
+returns table (search_id uuid, user_id uuid, display_name text, relationship text)
+language sql security definer stable set search_path = '' as $$
+  select participants.search_id, participants.user_id,
+    coalesce(nullif(initcap(replace(split_part(u.email, '@', 1), '.', ' ')), ''), 'Buyer'),
+    participants.relationship
+  from (
+    select s.id as search_id, s.user_id, 'Owner'::text as relationship from public.searches s
+    union all
+    select sm.search_id, sm.user_id, 'Co-buyer'::text from public.search_members sm where sm.role = 'co_buyer'
+  ) participants
+  join auth.users u on u.id = participants.user_id
+  where participants.search_id = any(p_search_ids)
+    and public.is_search_realtor(participants.search_id, auth.uid());
+$$;
+revoke all on function public.get_realtor_client_roster(uuid[]) from public;
+revoke execute on function public.get_realtor_client_roster(uuid[]) from anon, service_role;
+grant execute on function public.get_realtor_client_roster(uuid[]) to authenticated;
 
 notify pgrst, 'reload schema';
 commit;

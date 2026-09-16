@@ -138,7 +138,7 @@ function CollaboratorState({ state }) {
   return choices.length ? <div className="hh-collaborator-state">{choices.join(' · ')}</div> : null;
 }
 
-function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective, searchType, priorities }) {
+function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective, searchType, priorities, basePath = '/homes' }) {
   const [imgError, setImgError] = useState(false);
   const showPhoto = home.photoUrl && !imgError;
   const overallRating = home.ratings?.[TOUR_RATING_KEY] || 0;
@@ -162,7 +162,7 @@ function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective, searchTyp
       </div>
 
       <div className="hh-mono hh-compare-price">{formatHomePrice(home.price, searchType) || 'Price not added'}</div>
-      <Link href={`/homes/${encodeURIComponent(home.id)}`} className="hh-address hh-compare-address hh-home-identity-link">{homeIdentity(home, priorities).primary}</Link>{homeIdentity(home, priorities).option && <div className="hh-compare-option">{homeIdentity(home, priorities).option}</div>}{homeIdentity(home, priorities).supporting && <div className="hh-compare-supporting">{homeIdentity(home, priorities).supporting}</div>}
+      <Link href={`${basePath}/${encodeURIComponent(home.id)}`} className="hh-address hh-compare-address hh-home-identity-link">{homeIdentity(home, priorities).primary}</Link>{homeIdentity(home, priorities).option && <div className="hh-compare-option">{homeIdentity(home, priorities).option}</div>}{homeIdentity(home, priorities).supporting && <div className="hh-compare-supporting">{homeIdentity(home, priorities).supporting}</div>}
       <div className="hh-mono hh-compare-facts">
         {[home.beds ? `${home.beds} bd` : null, home.baths ? `${home.baths} ba` : null, home.sqft ? `${Number(home.sqft).toLocaleString()} sqft` : null]
           .filter(Boolean).join(' · ') || '—'}
@@ -340,7 +340,7 @@ function CompareRowsSection({ title, legend, rows, homes, priorities, renderValu
   );
 }
 
-export default function CompareBoard({ homes, priorities, coBuyerPerspectives = {}, commuteDestinations = [] }) {
+export default function CompareBoard({ homes, priorities, coBuyerPerspectives = {}, commuteDestinations = [], readOnly = false, basePath = '/homes' }) {
   const [selectedIds, setSelectedIds] = useState(() => homes.slice(0, Math.min(2, homes.length)).map((h) => h.id));
   const [diffsOnly, setDiffsOnly] = useState(true);
   const vocabulary = homeVocabulary(priorities);
@@ -422,7 +422,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
         <Columns size={22} style={{ marginBottom: 8, opacity: 0.5 }} />
         <p className="hh-serif" style={{ fontSize: 18, color: 'var(--ink)', margin: '0 0 5px' }}>The showdown starts here.</p>
         <p style={{ fontSize: 13.5 }}>{vocabulary.apartment ? 'Pick 2–4 properties and see how they stack up.' : 'Pick 2–4 homes and see how they stack up.'}</p>
-        <Link className="hh-btn" href="/homes?add=1">{homes.length === 0 ? (vocabulary.apartment ? 'Add a property' : 'Add a home') : (vocabulary.apartment ? 'Add another property' : 'Add another home')}</Link>
+        {!readOnly && <Link className="hh-btn" href="/homes?add=1">{homes.length === 0 ? (vocabulary.apartment ? 'Add a property' : 'Add a home') : (vocabulary.apartment ? 'Add another property' : 'Add another home')}</Link>}
       </div>
     );
   }
@@ -462,7 +462,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
           <div className="hh-compare-identity-scroll">
             <div className="hh-compare-identity-grid" data-count={selected.length} style={{ '--compare-count': selected.length }}>
               {selected.map((h, i) => (
-                <HomeHeaderCard key={h.id} home={h} match={matches[i]} isFavorite={h.isFavorite} coBuyerPerspective={coBuyerPerspectives[h.id]} searchType={priorities.searchType} priorities={priorities} />
+                <HomeHeaderCard key={h.id} home={h} match={matches[i]} isFavorite={h.isFavorite} coBuyerPerspective={coBuyerPerspectives[h.id]} searchType={priorities.searchType} priorities={priorities} basePath={basePath} />
               ))}
             </div>
           </div>
