@@ -52,5 +52,5 @@ test('cross-intent helper copy is neutral', async () => {
   const joined = sources.join('\n');
   assert.doesNotMatch(joined, /Buying together\?|taxes too high/i);
   assert.match(joined, /Searching together\?/);
-  assert.match(joined, /Zillow, Realtor, Homes\.com, builder websites, rental sites/);
+  assert.match(joined, /Zillow, Realtor\.com, Homes\.com, builder websites, rental sites/);
 });

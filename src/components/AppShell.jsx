@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Home as HomeIcon, Columns, HelpCircle, X, Footprints, SlidersHorizontal, Map, Users } from 'lucide-react';
+import { LogOut, Home as HomeIcon, Columns, HelpCircle, Footprints, SlidersHorizontal, Map, Users, Search, Plus, Heart, DoorOpen, Sparkles, Scale } from 'lucide-react';
 import { BrandMark, Wordmark } from '@/components/ui';
 import { PRIMARY_TABS, MOBILE_PRIMARY_TABS } from '@/lib/constants';
 import { homeVocabulary } from '@/lib/homePresentation';
@@ -11,6 +11,7 @@ import { createClient } from '@/lib/supabase/client';
 import { isNativeApp } from '@/lib/platform';
 import SearchSwitcher from '@/components/SearchSwitcher';
 import BetaFeedback from '@/components/BetaFeedback';
+import Sheet from '@/components/Sheet';
 
 const TAB_ICONS = {
   homes: HomeIcon,
@@ -110,66 +111,58 @@ function MobileFirstRunTour({ vocabulary, step, onNext, onFinish }) {
 // database field, no localStorage, nothing persisted; the modal just closes on
 // its own state, so a returning user who already knows the app can ignore it.
 const HOW_TO_STEPS = [
-  { title: 'Find homes wherever you already look', body: 'Start on Zillow, Realtor, Homes.com, builder websites, rental sites — wherever you normally search. Feels Like Home is not a listing-search engine.' },
-  { title: 'Bring the contenders here', body: "Add the homes you're actually considering. We'll keep them together and help you see how each lines up with what matters to you. Map is another view of the homes already in your search." },
-  { title: "Decide what's worth seeing", body: 'Favorite the standouts and use Want to Tour to narrow the field. Fewer tabs, better contenders.' },
-  { title: 'Go see them', body: "Pictures only tell you so much. A house can check every box and still not feel like home." },
-  { title: 'Tell us how it actually felt', body: "After touring, record Overall Feeling and weigh in on the light, flow, and other things a listing couldn't really tell you." },
-  { title: 'Compare the survivors', body: "At some point, you're not looking for more homes — you're choosing between the right ones. Use Compare when the question becomes, “Which of these is actually right for me?”" },
+  { title: 'Find homes wherever you already look', body: 'Start on Zillow, Realtor.com, Homes.com, builder websites, rental sites — wherever you normally search. Feels Like Home is not a listing-search engine.', icon: Search },
+  { title: 'Bring the contenders here', body: "Add the homes you're actually considering. We'll keep them together and help you see how each lines up with what matters to you. Map is another view of the homes already in your search.", icon: Plus },
+  { title: "Decide what's worth seeing", body: 'Favorite the standouts and use Want to Tour to narrow the field. Fewer tabs, better contenders.', icon: Heart },
+  { title: 'Go see them', body: 'Pictures only tell you so much. A house can check every box and still not feel like home.', icon: DoorOpen },
+  { title: 'Tell us how it actually felt', body: "After touring, record Overall Feeling and weigh in on the light, flow, and other things a listing couldn't really tell you.", icon: Sparkles },
+  { title: 'Compare your finalists', body: "At some point, you're not looking for more homes — you're choosing between the right ones. Use Compare when the question becomes, “Which of these is actually right for me?”", icon: Scale },
 ];
 
 function HowToUseModal({ onClose }) {
   return (
-    <div className="hh-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="hh-modal hh-corner hh-how-to" role="dialog" aria-modal="true" aria-labelledby="how-to-title">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-          <h2 id="how-to-title" className="hh-serif" style={{ fontSize: 20, margin: 0, fontWeight: 600 }}>How Feels Like Home works</h2>
-          <button className="hh-btn hh-btn-ghost" style={{ padding: 6 }} onClick={onClose} aria-label="Close"><X size={16} /></button>
-        </div>
-        <p style={{ fontSize: 14, color: 'var(--ink)', fontWeight: 500, margin: '4px 0 18px' }}>
+    <Sheet open onClose={onClose} title="How Feels Like Home works" size="journey" className="hh-how-to">
+      <div className="hh-how-to-intro">
+        <p>
           You found the homes. We&apos;ll help you choose.
         </p>
-
-        <div className="hh-how-to-steps">
-          {HOW_TO_STEPS.map((step, i) => (
-            <div key={step.title} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-              <span
-                className="hh-mono"
-                style={{
-                  flexShrink: 0, width: 22, height: 22, borderRadius: '50%', background: 'var(--brick)', color: '#fff',
-                  fontSize: 11.5, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: 1,
-                }}
-              >
-                {i + 1}
-              </span>
-              <div>
-                <div className="hh-serif" style={{ fontSize: 15, fontWeight: 600, color: 'var(--ink)', marginBottom: 2 }}>{step.title}</div>
-                <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', lineHeight: 1.5 }}>{step.body}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="hh-how-to-notes">
-          <section>
-          <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--brick)', marginBottom: 4 }}>Match on paper</div>
-          <p style={{ fontSize: 12.5, color: 'var(--ink)', lineHeight: 1.5, margin: 0 }}>
-            <strong>Match shows how the known information about a home lines up with your priorities.</strong> Higher-importance preferences count more, and unknown details aren&apos;t treated as misses. It&apos;s a useful on-paper view — not a prediction of whether you&apos;ll love the home. Overall Feeling stays separate because that comes from being there.
-          </p>
-          </section>
-          <section>
-            <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--moss)', marginBottom: 4 }}>Searching together</div>
-            <p style={{ fontSize: 12.5, color: 'var(--ink)', lineHeight: 1.5, margin: 0 }}>
-              <strong>The house is ours. The opinion is mine. The conversation is shared.</strong> People in a shared search can see each other&apos;s search-specific priorities and opinions, but only their author can change them. Each person keeps an independent Match and Overall Feeling—there is no combined score or winner.
-            </p>
-          </section>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <button className="hh-btn" onClick={onClose}>Got it</button>
-        </div>
       </div>
-    </div>
+
+      <ol className="hh-how-to-steps">
+        {HOW_TO_STEPS.map((step, i) => {
+          const Icon = step.icon;
+          return (
+            <li key={step.title} className="hh-how-to-step">
+              <span className="hh-how-to-number" aria-hidden="true">{i + 1}</span>
+              <div className="hh-how-to-step-copy">
+                <span className="hh-how-to-icon" aria-hidden="true"><Icon size={16} strokeWidth={1.8} /></span>
+                <h3>{step.title}</h3>
+                <p>{step.body}</p>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+
+      <div className="hh-how-to-notes">
+        <section className="hh-how-to-note hh-how-to-match">
+          <h3>Match on paper</h3>
+          <p>
+            <strong>Match shows how the known information about a home lines up with what matters to you.</strong> Your Must Haves, Important features, and Nice to Haves shape the score, while unknown details don&apos;t count against a home. It&apos;s a useful on-paper view — not a prediction of whether you&apos;ll love the home. Overall Feeling stays separate because that comes from being there.
+          </p>
+        </section>
+        <section className="hh-how-to-note hh-how-to-together">
+          <h3>Searching together</h3>
+          <p>
+            <strong>The house is ours. The opinion is mine. The conversation is shared.</strong> People in a shared search can see each other&apos;s search-specific priorities and opinions, but only their author can change them. Each person keeps an independent Match and Overall Feeling — there is no combined score or winner.
+          </p>
+        </section>
+      </div>
+
+      <div className="hh-how-to-actions">
+        <button className="hh-btn" onClick={onClose}>Got it</button>
+      </div>
+    </Sheet>
   );
 }
 
