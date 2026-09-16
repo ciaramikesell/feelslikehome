@@ -2,7 +2,6 @@ import { createClient } from '@/lib/supabase/server';
 import HomesBoard from '@/components/HomesBoard';
 import CoBuyerHomesLine from '@/components/CoBuyerHomesLine';
 import { normalizePriorities } from '@/lib/constants';
-import { homeVocabulary } from '@/lib/homePresentation';
 import { resolveActiveSearch, resolvePriorities, resolveSharedFactPriorityAwareness, getHomesForUser, getParticipantStatusesForHomes, addCoBuyerPersonalSignals, getSearchParticipantIds, getCommuteDestinations, getSuggestions } from '@/lib/supabase/collaboration';
 
 export default async function HomesPage() {
@@ -24,20 +23,24 @@ export default async function HomesPage() {
   const statusesByHome = await getParticipantStatusesForHomes(supabase, search, homes);
   const homesWithSignal = addCoBuyerPersonalSignals(homes, statusesByHome, user.id);
   const normalizedPriorities = normalizePriorities(priorities);
-  const vocabulary = homeVocabulary(normalizedPriorities);
+  const outstandingSuggestions = suggestions.filter((item) => item.status === 'pending' && !item.dispositions.some((row) => row.userId === user.id));
 
   return (
     <main className="hh-homes-page">
       <div className="hh-homes-intro">
-        <h1 className="hh-homes-purpose">Keep the homes you&apos;re considering in one place.</h1><p className="hh-homes-instructions">
-          {vocabulary.apartment
-            ? "Keep the properties you're considering in one place. Add them as you find them, then compare the property, the option you're considering, and how well each one fits what matters to you."
-            : "Keep the homes you're considering in one place. Add them as you find them, then compare how each one lines up with what matters to you."}
-        </p>
+        <h1 className="hh-homes-purpose">My Homes</h1>
+        <p className="hh-homes-instructions">Paste Zillow, Realtor.com, Trulia, or other listings to score them against what matters to you.</p>
         <CoBuyerHomesLine searchId={search.id} userId={user.id} isOwner={isOwner} isCollaborative={isCollaborative} />
       </div>
-      {suggestions.some((item) => item.status === 'pending' && !item.dispositions.some((row) => row.userId === user.id)) && <a className="hh-suggestions-entry" href="/homes/suggestions"><strong>{suggestions.find((item) => item.status === 'pending')?.suggestedByName} suggested {suggestions.filter((item) => item.status === 'pending' && !item.dispositions.some((row) => row.userId === user.id)).length} new {suggestions.filter((item) => item.status === 'pending' && !item.dispositions.some((row) => row.userId === user.id)).length === 1 ? 'home' : 'homes'} →</strong></a>}
+      {outstandingSuggestions.length > 0 && <a className="hh-suggestions-entry" href="/homes/suggestions"><strong>{outstandingSuggestions[0].suggestedByName} suggested {outstandingSuggestions.length} {outstandingSuggestions.length === 1 ? 'home' : 'homes'} →</strong></a>}
       <HomesBoard mode="homes" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizedPriorities} initialCommuteDestinations={commuteDestinations} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} />
+      <section className="hh-match-editorial">
+        <div>
+          <h2>How Match Scores Work</h2>
+          <p>Each home is measured against your own Must Haves, Important features, Nice to Haves, and places that matter. When you&apos;re searching together, each person keeps their own Match — so you can see where your priorities line up and where they don&apos;t.</p>
+        </div>
+        <a className="hh-btn hh-btn-ghost" href="/search">Review My Criteria</a>
+      </section>
     </main>
   );
 }

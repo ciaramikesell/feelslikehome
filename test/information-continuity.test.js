@@ -69,10 +69,11 @@ test('card unknown summary separates centralized experiential criteria', () => {
   assert.doesNotMatch(ui, /need more information/);
 });
 
-test('home cards show known condition and schools without placeholders or a row cap', () => {
+test('home cards show known condition and truthful unknown property facts without a row cap', () => {
   const board = read('src/components/HomesBoard.jsx');
   assert.match(board, /label: 'Home condition', text: home\.homeCondition\.join/);
-  assert.match(board, /home\.schoolsNotes && \{ label: 'Schools'/);
+  assert.match(board, /\{ label: 'Schools', text: home\.schoolsNotes \|\| 'Unknown' \}/);
+  assert.match(board, /\{ label: 'Basement', text: home\.basementNotes \|\| 'Unknown' \}/);
   const propertyFacts = board.match(/const propertyFacts = \[[\s\S]*?\]\.filter\(Boolean\);/)?.[0];
   assert.ok(propertyFacts);
   assert.doesNotMatch(propertyFacts, /slice/);

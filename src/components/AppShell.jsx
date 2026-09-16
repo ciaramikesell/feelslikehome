@@ -173,7 +173,7 @@ function HowToUseModal({ onClose }) {
   );
 }
 
-export default function AppShell({ children, userEmail, userId, accessibleSearches, activeSearchId, priorities, searchIntent, appVersion }) {
+export default function AppShell({ children, userEmail, userId, accessibleSearches, activeSearchId, priorities, searchIntent, isCollaborative = false, appVersion }) {
   const pathname = usePathname();
   const router = useRouter();
   const [howToOpen, setHowToOpen] = useState(false);
@@ -235,10 +235,11 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
             <BrandMark size={38} />
             <div className="hh-brand-copy">
               <Wordmark size={31} />
-              {userEmail && <p className="hh-user-email">{userEmail}</p>}
+              <p className="hh-brand-tagline">THE HOME MATCHMAKER</p>
             </div>
           </div>
           <div className="hh-shell-utilities">
+            {isCollaborative && <span className="hh-collaboration-pill">Searching together</span>}
             {accessibleSearches && accessibleSearches.length > 1 && (
               <SearchSwitcher userId={userId} searches={accessibleSearches} activeSearchId={activeSearchId} />
             )}
@@ -247,10 +248,10 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
               href="/search"
               className={`hh-shell-action hh-shell-action-primary hh-desktop-only ${pathname === '/search' ? 'active' : ''}`}
             >
-              <SlidersHorizontal size={14} /> My Search
+              <SlidersHorizontal size={14} /> My Criteria
             </Link>
             <button className="hh-shell-action" onClick={() => setHowToOpen(true)}>
-              <HelpCircle size={14} /> How to use
+              <HelpCircle size={14} /> How it works
             </button>
             <button className="hh-shell-action hh-shell-action-quiet" onClick={signOut}>
               <LogOut size={14} /> Sign out
