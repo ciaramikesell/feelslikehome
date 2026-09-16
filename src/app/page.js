@@ -9,6 +9,9 @@ export default async function RootPage() {
   if (!user) return <PublicLanding />;
 
   const profile = await getProfile(supabase, user.id);
+  // Signup intent is only an entry-routing hint. Every People query remains
+  // relationship/draft-owner scoped by RLS; this metadata grants no access.
+  if (!profile?.onboarding_complete && user.user_metadata?.account_entry_intent === 'realtor') redirect('/people');
   if (!profile?.onboarding_complete) redirect('/onboarding');
 
   redirect('/homes');

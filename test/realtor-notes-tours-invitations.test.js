@@ -44,7 +44,8 @@ test('reverse invitations reuse secure tokens and require explicit buyer accepta
   assert.match(accept, /select s\.id into target_search from public\.searches s where s\.user_id=caller/);
   assert.match(accept, /values\(target_search,inv\.invited_by,'realtor'\)/);
   assert.match(accept, /on conflict\(search_id,user_id\) do nothing/);
-  assert.match(invite, /Start my search/);
+  assert.match(invite, /Review my search/);
+  assert.match(invite, /\/invite\/\$\{token\}\/confirm/);
   assert.match(invite, /This remains your search/);
   assert.match(people, /InviteBuyer/);
   assert.match(collaboration, /create_buyer_invitation/);

@@ -659,6 +659,38 @@ export async function createBuyerInvitation(supabase, invitedEmail) {
   return data?.[0];
 }
 
+export async function createProspectiveSearch(supabase, draftPriorities, clientName = '') {
+  const { data, error } = await supabase.rpc('create_prospective_search', {
+    p_draft_priorities: prioritiesForExplicitSave(draftPriorities), p_client_name: clientName.trim() || null,
+  });
+  if (error) throw error;
+  return data?.[0];
+}
+
+export async function inviteProspectiveClient(supabase, prospectiveSearchId, invitedEmail) {
+  const { data, error } = await supabase.rpc('invite_prospective_client', {
+    p_prospective_search_id: prospectiveSearchId, p_invited_email: invitedEmail.trim().toLowerCase(),
+  });
+  if (error) throw error;
+  return data?.[0];
+}
+
+export async function getProspectiveSearches(supabase) {
+  const { data, error } = await supabase.from('prospective_searches')
+    .select('id,client_name,invited_email,status,draft_priorities,created_at,updated_at')
+    .in('status', ['draft', 'invited']).order('updated_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+}
+
+export async function claimProspectiveSearch(supabase, token, confirmedPriorities) {
+  const { data, error } = await supabase.rpc('claim_prospective_search', {
+    p_token: token, p_confirmed_priorities: prioritiesForExplicitSave(confirmedPriorities),
+  });
+  if (error) throw error;
+  return data?.[0] || { success: false, reason: 'unknown', search_id: null };
+}
+
 // The invitee has zero RLS access to search_invitations before accepting —
 // preview/accept go through the two Phase D SECURITY DEFINER RPCs instead,
 // which expose only a validity boolean and (on failure) a reason code, never

@@ -36,6 +36,10 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
   };
 
   const accept = async () => {
+    if (isBuyerInvite) {
+      router.push(`/invite/${token}/confirm`);
+      return;
+    }
     setState('accepting');
     try {
       const supabase = createClient();
@@ -84,7 +88,7 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
             </p>
             <p className="hh-collaboration-consent">{isBuyerInvite ? `${inviterName} will only see your search after you accept. You own the search and every decision in it.` : 'This includes priorities, Match, Favorites, Want to Tour choices, commute destinations, notes, Overall Feeling, and post-tour ratings. Only participants in this search can see its activity.'}</p>
             {isBuyerInvite ? (
-              <button type="button" className="hh-btn" style={{ width: '100%', justifyContent: 'center' }} onClick={accept}>Start my search</button>
+              <button type="button" className="hh-btn" style={{ width: '100%', justifyContent: 'center' }} onClick={accept}>Review my search</button>
             ) : isRealtorInvite ? (
               <button type="button" className="hh-btn" style={{ width: '100%', justifyContent: 'center' }} onClick={accept}>Join as Realtor</button>
             ) : (
