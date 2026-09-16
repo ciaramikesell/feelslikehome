@@ -7,6 +7,7 @@ import { splitCategoryItems } from '@/lib/matching';
 import { computeMatch, matchColor } from '@/lib/matching';
 import { homeIdentity } from '@/lib/homePresentation';
 import { formatHomePrice } from '@/lib/homeDisplay';
+import RealtorSuggestHome from '@/components/RealtorSuggestHome';
 
 const CORE = [
   ['preferredPropertyTypes', 'Property type'], ['budget', 'Budget'], ['bedsMin', 'Bedrooms'],
@@ -79,11 +80,14 @@ export default function RealtorWorkspace({ context }) {
   const tour = active.filter((home) => stateFor(home).some((state) => state.status === 'Want to Tour'));
   const names = context.people.map((person) => person.display_name).join(' & ');
   return <main className="hh-realtor-workspace">
-    <header className="hh-realtor-client-header"><Link href="/people">← People I’m Helping</Link><div><span>Client search</span><h1>{names || 'Buyer search'}</h1><p>Understand what matters, where the contenders stand, and where perspectives differ.</p></div></header>
+    <header className="hh-realtor-client-header"><Link href="/people">← People I’m Helping</Link><div><span>Client search</span><h1>{names || 'Buyer search'}</h1><p>Understand what matters, where the contenders stand, and where perspectives differ.</p></div><RealtorSuggestHome context={context} /></header>
     <section className="hh-realtor-section"><div className="hh-realtor-section-title"><div><span>Start here</span><h2>What matters to them</h2></div><Users size={21} /></div><div className="hh-realtor-priority-people">{context.people.map((person) => <Priorities key={person.user_id} person={person} priorities={context.priorities.find((row) => row.user_id === person.user_id)?.priorities} />)}</div></section>
     {tour.length > 0 && <section className="hh-realtor-tour-strip"><Footprints size={22} /><div><strong>{tour.length} {tour.length === 1 ? 'home' : 'homes'} marked Want to Tour</strong><span>{tour.map((home) => homeIdentity(home, ownerPriorities).primary).join(' · ')}</span></div></section>}
     <section className="hh-realtor-section"><div className="hh-realtor-section-title"><div><span>Decision context</span><h2>Homes they’re considering</h2></div>{active.length > 1 && <Link className="hh-btn" href={`/people/${context.search.id}/compare`}>Compare contenders</Link>}</div>
       {active.length ? <div className="hh-realtor-home-grid">{active.map((home) => <HomeCard key={home.id} home={home} people={context.people} states={stateFor(home)} priorities={ownerPriorities} searchId={context.search.id} />)}</div> : <div className="hh-realtor-empty">No homes have been added yet. Their priorities are still available above.</div>}
+    </section>
+    <section className="hh-realtor-section"><div className="hh-realtor-section-title"><div><span>Suggestions</span><h2>Homes I’ve suggested</h2></div></div>
+      {context.suggestions.length ? <div className="hh-suggestion-history">{context.suggestions.map((suggestion) => <article key={suggestion.id}><strong>{homeIdentity(suggestion.home, ownerPriorities).primary}</strong><span>{suggestion.status === 'accepted' ? `Added to My Homes${suggestion.promotedBy ? ` by ${context.people.find((person) => person.user_id === suggestion.promotedBy)?.display_name || 'a buyer'}` : ''}` : suggestion.status === 'dismissed' ? 'Dismissed' : 'Pending'}</span>{suggestion.dispositions.map((item) => <small key={item.userId}><b>Dismissed by {context.people.find((person) => person.user_id === item.userId)?.display_name || 'buyer'}</b>{item.reasons.length ? ` · ${item.reasons.join(' · ')}` : ''}{item.otherText ? ` — ${item.otherText}` : ''}</small>)}</article>)}</div> : <p className="hh-muted">No suggestions yet.</p>}
     </section>
     {archived.length > 0 && <section className="hh-realtor-section hh-realtor-archive"><div className="hh-realtor-section-title"><div><span>Ruled out</span><h2><Archive size={18} /> Archived</h2></div></div><div className="hh-realtor-home-grid">{archived.map((home) => <HomeCard key={home.id} home={home} people={context.people} states={stateFor(home)} priorities={ownerPriorities} searchId={context.search.id} />)}</div></section>}
   </main>;

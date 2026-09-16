@@ -7,7 +7,7 @@ import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
   isArchivedStatus, isRentalType, TOUR_RATING_KEY, criterionDisplayLabel, TIER_ORDER,
 } from '@/lib/constants';
-import { visibleOrderedItems, parseListingTextFindings, selectedSubjectiveCriteria } from '@/lib/matching';
+import { visibleOrderedItems, parseListingTextFindings, selectedSubjectiveCriteria, computeMatch } from '@/lib/matching';
 import { extractAddressFromListingUrl, extractApartmentIdentityFromListingUrl, isLikelyListingUrl } from '@/lib/listingUrl';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { mergeImportFields, resolveImport } from '@/lib/importDomain';
@@ -192,7 +192,7 @@ function PropertyFacts({ form, set, priorities, sharedFactAwareness }) {
   );
 }
 
-export default function HomeModal({ initial, priorities, sharedFactAwareness = {}, isCollaborative = false, onSave, onClose, userId, onWantToTour, onArchiveRequest, presentation = 'modal', autoFindOnMount = false }) {
+export default function HomeModal({ initial, priorities, sharedFactAwareness = {}, isCollaborative = false, onSave, onClose, userId, onWantToTour, onArchiveRequest, presentation = 'modal', autoFindOnMount = false, matchPerspectives = [], saveLabel = null }) {
   const [form, setForm] = useState(initial);
   const vocabulary = homeVocabulary(priorities);
   const [pasteText, setPasteText] = useState('');
@@ -989,7 +989,12 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
 
         <div className="hh-modal-actions">
           <button className="hh-btn hh-btn-ghost" onClick={onClose}>Cancel</button>
-          <button className="hh-btn" onClick={submit} disabled={!form.address.trim() || saving}>{saving ? 'Saving...' : `Save ${vocabulary.singularLower}`}</button>
+          {matchPerspectives.length > 0 && form.address.trim() && <div className="hh-suggestion-match-preview" aria-label="Buyer Match preview">
+            <strong>How this lines up</strong>
+            <p>Based only on currently known property facts. Unknown details are not counted as misses.</p>
+            {matchPerspectives.map((perspective) => { const match = computeMatch(form, perspective.priorities); return <div key={perspective.userId}><b>{perspective.name}</b><span>{match?.pct == null ? 'Match needs more known facts' : `${match.pct}% Match`}</span><small>{match?.allSelected?.filter((item) => !item.evaluated).slice(0, 3).map((item) => `${item.label} — Unknown`).join(' · ')}</small></div>; })}
+          </div>}
+          <button className="hh-btn" onClick={submit} disabled={!form.address.trim() || saving}>{saving ? 'Saving...' : saveLabel || `Save ${vocabulary.singularLower}`}</button>
         </div>
       </div>
     </div>

@@ -172,6 +172,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
           </div>
 
           <div>
+            {home.suggestedBy && <span className="hh-provenance">Suggested by {home.suggestedBy}</span>}
             <Link href={`/homes/${encodeURIComponent(home.id)}`} className="hh-home-identity-link">
               <div className="hh-address" style={{ fontSize: 19, fontWeight: 600, lineHeight: 1.28, color: 'var(--ink)' }}>{identity.primary}</div>
               {identity.option && <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', marginTop: 2 }}>{identity.option}</div>}
