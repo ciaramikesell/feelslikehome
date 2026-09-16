@@ -2335,5 +2335,9 @@ grant execute on function public.create_realtor_suggestion(uuid,jsonb) to authen
 grant execute on function public.dismiss_realtor_suggestion(uuid,text[],text) to authenticated;
 grant execute on function public.promote_realtor_suggestion(uuid) to authenticated;
 
+-- suggestion_staged is shared workflow state. Keep the existing column-level
+-- homes boundary: authenticated may read this column, but may not set it.
+grant select (suggestion_staged) on public.homes to authenticated;
+
 notify pgrst, 'reload schema';
 commit;

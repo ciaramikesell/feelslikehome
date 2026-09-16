@@ -170,7 +170,7 @@ export async function getRealtorSearchContext(supabase, userId, searchId) {
 
 export async function getSuggestions(supabase, searchId) {
   const { data: rows, error } = await supabase.from('realtor_suggestions')
-    .select('id,search_id,home_id,suggested_by,suggested_by_display_name,status,promoted_by,promoted_at,created_at,homes(*)')
+    .select(`id,search_id,home_id,suggested_by,suggested_by_display_name,status,promoted_by,promoted_at,created_at,homes(${HOME_SHARED_COLUMNS})`)
     .eq('search_id', searchId).order('created_at', { ascending: false });
   if (error) throw error;
   const ids = (rows || []).map((row) => row.id);
