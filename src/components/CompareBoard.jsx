@@ -2,7 +2,7 @@
 
 import { useState, useMemo, Fragment } from 'react';
 import Link from 'next/link';
-import { Columns, Star, Heart, Home as HomeIcon } from 'lucide-react';
+import { Columns, Star, Heart, Home as HomeIcon, Footprints } from 'lucide-react';
 import { TOUR_RATING_KEY, criterionDisplayLabel, isApartmentRental } from '@/lib/constants';
 import { parseNum, computeMatch, matchColor } from '@/lib/matching';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
@@ -138,7 +138,7 @@ function CollaboratorState({ state }) {
   return choices.length ? <div className="hh-collaborator-state">{choices.join(' · ')}</div> : null;
 }
 
-function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective, searchType, priorities, basePath = '/homes' }) {
+function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective, searchType, priorities, basePath = '/homes', vocabulary, isCollaborative }) {
   const [imgError, setImgError] = useState(false);
   const showPhoto = home.photoUrl && !imgError;
   const overallRating = home.ratings?.[TOUR_RATING_KEY] || 0;
@@ -162,11 +162,19 @@ function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective, searchTyp
       </div>
 
       <div className="hh-mono hh-compare-price">{formatHomePrice(home.price, searchType) || 'Price not added'}</div>
+      {home.suggestedBy && <span className="hh-provenance">Suggested by {home.suggestedBy}</span>}
       <Link href={`${basePath}/${encodeURIComponent(home.id)}`} className="hh-address hh-compare-address hh-home-identity-link">{homeIdentity(home, priorities).primary}</Link>{homeIdentity(home, priorities).option && <div className="hh-compare-option">{homeIdentity(home, priorities).option}</div>}{homeIdentity(home, priorities).supporting && <div className="hh-compare-supporting">{homeIdentity(home, priorities).supporting}</div>}
       <div className="hh-mono hh-compare-facts">
         {[home.beds ? `${home.beds} bd` : null, home.baths ? `${home.baths} ba` : null, home.sqft ? `${Number(home.sqft).toLocaleString()} sqft` : null]
           .filter(Boolean).join(' · ') || '—'}
       </div>
+      {/* Existing lifecycle state, never invented for the card -- Saved is
+          the default and not worth a badge; Want to Tour/Toured are. */}
+      {home.status && home.status !== 'Saved' && (
+        <div className="hh-lifecycle-status">
+          <Footprints size={12} color="var(--moss)" /> {home.status}
+        </div>
+      )}
 
       {coBuyerPerspective ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
@@ -195,6 +203,21 @@ function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective, searchTyp
           <span style={{ fontSize: 11, color: 'var(--ink-soft)' }}>Your overall feeling</span>
         </div>
       )}
+
+      {/* Notes are a shared field on the home record itself, not a
+          per-participant one (see SHARED_FIELDS in collaboration.js) --
+          "Shared notes"/"What you want to remember" is the same truthful
+          language Home Detail already uses for this exact same tension,
+          reused here rather than a new "Your notes" label that would claim
+          personal ownership this data doesn't actually have. Clamped to two
+          lines so one long note never stretches a card past its neighbors;
+          the full text is still one tap away via View home. */}
+      <div className="hh-compare-note">
+        <span className="hh-compare-note-label">{isCollaborative ? 'Shared notes' : 'What you want to remember'}</span>
+        <p className={`hh-compare-note-text ${home.notes ? '' : 'is-empty'} hh-card-clamp`}>{home.notes || 'Nothing noted yet.'}</p>
+      </div>
+
+      <Link href={`${basePath}/${encodeURIComponent(home.id)}`} className="hh-btn hh-btn-ghost hh-compare-view-home">View {vocabulary?.singularLower || 'home'}</Link>
     </article>
   );
 }
@@ -399,7 +422,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
   // (a priority either exists for every home's computeMatch result or none, since it's
   // driven by the same shared `priorities` object) — pulled from the same shared
   // Match 2.0 calculation, never a separate scoring path.
-  const { mustRows, otherRows } = useMemo(() => {
+  const { mustRows, otherRows, allCriteriaCount } = useMemo(() => {
     const byLabel = new Map(); // label -> { tier, perHome: [c|null, ...] }
     matches.forEach((m, i) => {
       (m?.allSelected || []).forEach((c) => {
@@ -413,8 +436,15 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
     return {
       mustRows: visible.filter((r) => r.tier === 'must'),
       otherRows: visible.filter((r) => r.tier !== 'must'),
+      allCriteriaCount: rows.length,
     };
   }, [matches, selected.length, diffsOnly]);
+
+  // Compare stays participant-aware, never a merged view: coBuyerPerspectives
+  // only has entries for a home when the current search actually has another
+  // participant (see resolveCoBuyerComparePerspectives) -- this never blends
+  // Match, it just decides whether the collaboration copy below is shown at all.
+  const isCollaborative = selected.some((home) => coBuyerPerspectives[home.id]);
 
   if (homes.length < 2) {
     return (
@@ -462,28 +492,22 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
           <div className="hh-compare-identity-scroll">
             <div className="hh-compare-identity-grid" data-count={selected.length} style={{ '--compare-count': selected.length }}>
               {selected.map((h, i) => (
-                <HomeHeaderCard key={h.id} home={h} match={matches[i]} isFavorite={h.isFavorite} coBuyerPerspective={coBuyerPerspectives[h.id]} searchType={priorities.searchType} priorities={priorities} basePath={basePath} />
+                <HomeHeaderCard key={h.id} home={h} match={matches[i]} isFavorite={h.isFavorite} coBuyerPerspective={coBuyerPerspectives[h.id]} searchType={priorities.searchType} priorities={priorities} basePath={basePath} vocabulary={vocabulary} isCollaborative={isCollaborative} />
               ))}
             </div>
           </div>
 
-          {(mustRows.length > 0 || otherRows.length > 0 || commuteDestinations.length > 0 || factRows.length > 0) && (
-            <div>
-              <button
-                type="button"
-                className="hh-btn hh-btn-ghost"
-                style={{ fontSize: 11.5, padding: '5px 10px' }}
-                onClick={() => setDiffsOnly((v) => !v)}
-              >
-                {diffsOnly ? 'Showing differences only — show all' : 'Showing all — differences only'}
-              </button>
+          {(mustRows.length > 0 || otherRows.length > 0 || commuteDestinations.length > 0 || factRows.length > 0 || allCriteriaCount > 0) && (
+            <div className="hh-compare-diff-toggle" role="group" aria-label="Comparison detail level">
+              <button type="button" className={diffsOnly ? 'active' : ''} aria-pressed={diffsOnly} onClick={() => setDiffsOnly(true)}>Showing differences only</button>
+              <button type="button" className={!diffsOnly ? 'active' : ''} aria-pressed={!diffsOnly} onClick={() => setDiffsOnly(false)}>Show all ({allCriteriaCount})</button>
             </div>
           )}
 
           {/* Must-Haves */}
           <CompareRowsSection
             title="Must-Haves"
-            legend={<p className="hh-compare-legend"><span className="is-met">✓ Satisfied</span><span className="is-missed">— Confirmed mismatch</span><span className="is-unknown">? Not evaluated</span></p>}
+            legend={<p className="hh-compare-legend"><span className="is-met">✓ Meets preference</span><span className="is-missed">— Doesn't meet</span><span className="is-unknown">? Not evaluated</span></p>}
             rows={mustRows.map((row) => ({ key: row.key, label: rowDisplayLabel(row), values: row.perHome }))}
             homes={selected}
             priorities={priorities}
@@ -492,9 +516,9 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
 
           {commuteDestinations.length > 0 && <CommuteSection homes={selected} destinations={commuteDestinations} diffsOnly={diffsOnly} getResult={getCommuteResult} priorities={priorities} />}
 
-          {/* What matters to you */}
+          {/* What Matters to You */}
           <CompareRowsSection
-            title="What matters to you"
+            title="What Matters to You"
             rows={otherRows.map((row) => ({ key: row.key, label: rowDisplayLabel(row), values: row.perHome }))}
             homes={selected}
             priorities={priorities}
@@ -528,7 +552,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
           )}
 
           <details className="hh-details">
-            <summary>{vocabulary.singular} facts</summary>
+            <summary>{vocabulary.singular} Facts</summary>
             <div style={{ marginTop: 10 }}>
               <CompareRowsSection
                 rows={factRows.map((row) => ({ key: row.key, label: row.label, values: selected.map((h) => row.get(h)), fmt: row.fmt }))}
@@ -542,7 +566,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
           </details>
 
           <details className="hh-details">
-            <summary>What stood out</summary>
+            <summary>What Stood Out</summary>
             <div className="hh-compare-notes" style={{ marginTop: 10 }}>
               {selected.map((h) => {
                 const liked = parseCommaList(h.pros);
@@ -562,18 +586,11 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
               })}
             </div>
           </details>
-
-          <details className="hh-details">
-            <summary>Notes</summary>
-            <div className="hh-compare-notes" style={{ marginTop: 10 }}>
-              {selected.map((h) => (
-                <div key={h.id} style={{ border: '1px solid var(--line)', borderRadius: 14, padding: 14, background: 'var(--paper-raised)' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 6 }}>{homeIdentity(h, priorities).primary}</div>
-                  <div style={{ fontSize: 12.5, color: h.notes ? 'var(--ink)' : 'var(--ink-soft)', fontStyle: h.notes ? 'normal' : 'italic', whiteSpace: 'pre-wrap' }}>{h.notes || 'Nothing noted yet.'}</div>
-                </div>
-              ))}
-            </div>
-          </details>
+          {/* The dedicated "Notes" section that used to live here duplicated
+              the exact same home.notes text now surfaced on each contender
+              card above (see HomeHeaderCard's note excerpt) -- this was
+              presentation deduplication only, home.notes and its Home Detail
+              edit path are untouched. */}
         </>
       )}
     </div>

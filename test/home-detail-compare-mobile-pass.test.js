@@ -66,7 +66,7 @@ test('Must-Haves, What matters to you, and {Singular} facts all go through the s
   const usages = compareBoard.match(/<CompareRowsSection[\s\S]*?\/>/g) || [];
   assert.equal(usages.length, 3, 'expected exactly three CompareRowsSection usages (Must-Haves, What matters, Facts)');
   assert.match(compareBoard, /title="Must-Haves"/);
-  assert.match(compareBoard, /title="What matters to you"/);
+  assert.match(compareBoard, /title="What Matters to You"/);
 });
 
 test('CompareRowsSection renders both a desktop grid and a mobile vertical grouping, like CommuteSection', () => {
