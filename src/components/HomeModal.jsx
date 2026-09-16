@@ -192,12 +192,121 @@ function PropertyFacts({ form, set, priorities, sharedFactAwareness }) {
   );
 }
 
+function NoteSummary({ label, value }) {
+  const lines = (value || '').split(/\n+/).map((line) => line.replace(/^[-•]\s*/, '').trim()).filter(Boolean);
+  return <div className="hh-edit-note-summary"><b>{label}</b>{lines.length ? <ul>{lines.slice(0, 4).map((line, index) => <li key={`${line}-${index}`}>{line}</li>)}</ul> : <span>Nothing added yet</span>}</div>;
+}
+
+function EditHomeEditor({ form, set, priorities, sharedFactAwareness, isCollaborative, vocabulary, photoFile, photoPreviewUrl, photoInputRef, handlePhotoFileChange, handleRemovePhoto, photoError, showPhotoUrlInput, setShowPhotoUrlInput, setCheckItem, saving, submit, saveErrorMsg, onClose, dialogRef, titleRef }) {
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [allCriteriaOpen, setAllCriteriaOpen] = useState(false);
+  const apartment = vocabulary.apartment;
+  const { showsRentalFacts } = searchIntentCapabilities(priorities.searchType);
+  const criteria = getItemlistCategories(priorities.searchType).flatMap((category) =>
+    visibleOrderedItems(category, priorities).filter((item) => item.kind === 'check').map((item) => ({
+      ...item,
+      categoryKey: category.key,
+      tier: priorities[category.key]?.tiers?.[item.label] || 'dontcare',
+    })),
+  ).sort((a, b) => {
+    const aKnown = form.checks?.[`${a.categoryKey}:${a.label}`] !== undefined;
+    const bKnown = form.checks?.[`${b.categoryKey}:${b.label}`] !== undefined;
+    return (aKnown - bKnown) || (TIER_ORDER.indexOf(a.tier) - TIER_ORDER.indexOf(b.tier));
+  });
+  const shownCriteria = allCriteriaOpen ? criteria : criteria.slice(0, 6);
+  const currentPreviewSrc = photoFile ? photoPreviewUrl : (form.photoUrl || null);
+  const priorityLabel = (item) => item.tier === 'must' ? 'Must Have' : item.tier === 'important' ? 'Important' : item.tier === 'nice' ? 'Nice to Have' : item.categoryKey === 'location' ? 'Location Preference' : 'Preference';
+
+  return <div className="hh-modal-backdrop hh-edit-home-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+    <div ref={dialogRef} className="hh-modal hh-corner hh-edit-home-modal" role="dialog" aria-modal="true" aria-labelledby="edit-home-title">
+      <header className="hh-edit-home-header">
+        <div><h1 ref={titleRef} id="edit-home-title" className="hh-serif" tabIndex={-1}>Edit home</h1><p>Update this home&apos;s details. Changes to shared property information are visible to everyone in this search.</p></div>
+        <button type="button" className="hh-btn hh-btn-ghost hh-edit-home-close" onClick={onClose} aria-label="Close edit home"><X size={18} aria-hidden="true" /></button>
+      </header>
+
+      <div className="hh-edit-home-columns">
+        <div className="hh-edit-home-column">
+          <section className="hh-edit-home-card" aria-labelledby="property-address-heading">
+            <h2 id="property-address-heading" className="hh-serif">Property address</h2>
+            {apartment && <div><label className="hh-label">Property name</label><input className="hh-input" value={form.propertyName || ''} onChange={(e) => set('propertyName', e.target.value)} /></div>}
+            <div><label className="hh-label">Address *</label><AddressAutocomplete value={form.address} onChange={(value) => set('address', value)} onSelect={(value) => set('address', value)} placeholder="123 Maple St, Ann Arbor, MI" /></div>
+            <div><label className="hh-label">Original listing URL</label><input className="hh-input" type="url" value={form.listingUrl || ''} onChange={(e) => set('listingUrl', e.target.value)} placeholder="https://…" /></div>
+          </section>
+
+          <section className="hh-edit-home-card" aria-labelledby="home-photo-heading">
+            <h2 id="home-photo-heading" className="hh-serif">Home photo</h2>
+            <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhotoFileChange} hidden />
+            {currentPreviewSrc ? <div className="hh-edit-photo-frame"><img src={currentPreviewSrc} alt="Current home" /></div> : <div className="hh-edit-photo-empty"><Upload size={22} aria-hidden="true" /><span>No photo added</span></div>}
+            <div className="hh-edit-photo-actions">
+              <button type="button" className="hh-btn hh-btn-ghost" onClick={() => photoInputRef.current?.click()}>{currentPreviewSrc ? 'Change photo' : 'Upload photo'}</button>
+              {!photoFile && <button type="button" className="hh-btn hh-btn-ghost" onClick={() => setShowPhotoUrlInput((value) => !value)}><Link2 size={14} /> Paste by URL</button>}
+              {currentPreviewSrc && <button type="button" className="hh-btn hh-btn-danger" onClick={handleRemovePhoto}>Remove</button>}
+            </div>
+            {!photoFile && showPhotoUrlInput && <div><label className="hh-label">Photo URL</label><input className="hh-input" type="url" value={form.photoUrl || ''} onChange={(e) => set('photoUrl', e.target.value)} /></div>}
+            {photoError && <p className="hh-edit-error" role="alert">{photoError}</p>}
+          </section>
+
+          <section className="hh-edit-home-card" aria-labelledby="key-details-heading">
+            <h2 id="key-details-heading" className="hh-serif">Key details</h2>
+            <div className="hh-edit-fields-grid">
+              <CompactField label={showsRentalFacts ? 'Monthly rent' : 'Price'} value={form.price} isCurrency onChange={(value) => set('price', value)} placeholder="Unknown" />
+              {!showsRentalFacts && <CompactField label="Est. monthly payment" value={form.estMonthly} isCurrency onChange={(value) => set('estMonthly', value)} placeholder="Unknown" />}
+              <CompactField label="Beds" value={form.beds} onChange={(value) => set('beds', value)} placeholder="Unknown" />
+              <CompactField label="Baths" value={form.baths} onChange={(value) => set('baths', value)} placeholder="Unknown" />
+              <CompactField label="Square footage" value={form.sqft} onChange={(value) => set('sqft', value)} placeholder="Unknown" />
+              <CompactField label="Lot size" value={form.lotSize} onChange={(value) => set('lotSize', value)} placeholder="Unknown" />
+              <CompactField label="Year built" value={form.yearBuilt} onChange={(value) => set('yearBuilt', value)} placeholder="Unknown" />
+              <CompactField label="Garage" value={form.garageSpaces} onChange={(value) => set('garageSpaces', value)} placeholder="Unknown" />
+            </div>
+          </section>
+        </div>
+
+        <div className="hh-edit-home-column">
+          <section className="hh-edit-home-card" aria-labelledby="home-details-heading">
+            <h2 id="home-details-heading" className="hh-serif">Home details</h2>
+            <div className="hh-edit-fields-grid">
+              <CompactField label="Basement" value={form.basementNotes} onChange={(value) => set('basementNotes', value)} placeholder="Unknown" />
+              <CompactField label="School details" value={form.schoolsNotes} onChange={(value) => set('schoolsNotes', value)} placeholder="Unknown" />
+              {MULTISELECT_CATEGORIES.filter((definition) => sharedFactAwareness[definition.key]?.eligibleForSharedFactCapture).map((definition) => <StructuredFactSelect key={definition.key} definition={definition} value={form[definition.key]} onChange={(value) => set(definition.key, value)} />)}
+              {SINGLESELECT_CATEGORIES.filter((definition) => sharedFactAwareness[definition.key]?.eligibleForSharedFactCapture).map((definition) => <div key={definition.key}><label className="hh-label">{definition.title}</label><select className="hh-input" value={form[definition.key] || ''} onChange={(e) => set(definition.key, e.target.value)}><option value="">Unknown / not specified</option>{definition.options.filter((option) => option !== 'No Preference').map((option) => <option key={option}>{option}</option>)}</select></div>)}
+            </div>
+          </section>
+
+          <section className="hh-edit-home-card" aria-labelledby="personalized-matches-heading">
+            <div className="hh-edit-heading-row"><h2 id="personalized-matches-heading" className="hh-serif">Personalized matches</h2><span>Used in Match Score</span></div>
+            <p className="hh-edit-context">Correct the known property facts that matter to your configured criteria. Unknown is never treated as No.</p>
+            {shownCriteria.length ? <div className="hh-edit-criteria">{shownCriteria.map((item) => {
+              const key = `${item.categoryKey}:${item.label}`;
+              const value = form.checks?.[key];
+              return <div className="hh-edit-criterion" key={key}><div><b>{criterionDisplayLabel(item.categoryKey, item.label)}</b><span>{priorityLabel(item)}</span></div><div className="hh-edit-tristate" role="group" aria-label={`${criterionDisplayLabel(item.categoryKey, item.label)} property fact`}>
+                {[['yes', 'Yes', true], ['no', 'No', 'no'], ['unknown', 'Unknown', undefined]].map(([id, label, next]) => { const selected = next === undefined ? value === undefined : value === next; return <button key={id} type="button" className={`hh-chip is-${id} ${selected ? 'on' : ''}`} aria-pressed={selected} onClick={() => setCheckItem(item.categoryKey, item.label, next)}>{label}</button>; })}
+              </div></div>;
+            })}</div> : <p className="hh-edit-empty">No Match criteria are configured for this search.</p>}
+            {criteria.length > 6 && <button type="button" className="hh-btn hh-btn-ghost hh-edit-disclosure" aria-expanded={allCriteriaOpen} onClick={() => setAllCriteriaOpen((value) => !value)}>{allCriteriaOpen ? 'Show prioritized criteria' : 'View all Match criteria'}</button>}
+          </section>
+
+          <section className="hh-edit-home-card" aria-labelledby="shared-notes-heading">
+            <h2 id="shared-notes-heading" className="hh-serif">Shared notes</h2>
+            <p className="hh-edit-context">{isCollaborative ? 'Pros, cons, and notes are visible to everyone in this search.' : 'Keep the details you want to remember with this home.'}</p>
+            {!notesOpen ? <div className="hh-edit-notes"><NoteSummary label="Pros" value={form.pros} /><NoteSummary label="Cons" value={form.cons} /><NoteSummary label="Notes" value={form.notes} /></div> : <div className="hh-edit-notes-fields"><div><label className="hh-label">Pros</label><textarea className="hh-textarea" value={form.pros || ''} onChange={(e) => set('pros', e.target.value)} /></div><div><label className="hh-label">Cons</label><textarea className="hh-textarea" value={form.cons || ''} onChange={(e) => set('cons', e.target.value)} /></div><div><label className="hh-label">Notes</label><textarea className="hh-textarea" value={form.notes || ''} onChange={(e) => set('notes', e.target.value)} /></div></div>}
+            <button type="button" className="hh-btn hh-btn-ghost hh-edit-disclosure" aria-expanded={notesOpen} onClick={() => setNotesOpen((value) => !value)}>{notesOpen ? 'Show notes summary' : 'Edit notes'}</button>
+          </section>
+        </div>
+      </div>
+
+      {saveErrorMsg && <div className="hh-edit-save-error" role="alert">{saveErrorMsg}</div>}
+      <footer className="hh-edit-home-footer"><button type="button" className="hh-btn hh-btn-ghost" onClick={onClose}>Cancel</button><button type="button" className="hh-btn" onClick={submit} disabled={!form.address.trim() || saving}>{saving ? 'Saving…' : 'Save changes'}</button></footer>
+    </div>
+  </div>;
+}
+
 export default function HomeModal({ initial, priorities, sharedFactAwareness = {}, isCollaborative = false, onSave, onClose, userId, onWantToTour, onArchiveRequest, presentation = 'modal', autoFindOnMount = false, matchPerspectives = [], saveLabel = null }) {
   const [form, setForm] = useState(initial);
   const vocabulary = homeVocabulary(priorities);
   const [pasteText, setPasteText] = useState('');
   const [parseMsg, setParseMsg] = useState('');
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
   // Find-a-home flow: one input that accepts a listing URL or a plain address.
   const [findInput, setFindInput] = useState(initial.listingUrl || initial.address || '');
@@ -230,10 +339,39 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   const [saveErrorMsg, setSaveErrorMsg] = useState('');
   const [showPhotoUrlInput, setShowPhotoUrlInput] = useState(false);
   const photoInputRef = useRef(null);
+  const dialogRef = useRef(null);
+  const titleRef = useRef(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => () => {
     if (photoPreviewUrl) URL.revokeObjectURL(photoPreviewUrl);
   }, [photoPreviewUrl]);
+
+  useEffect(() => {
+    if (!initial.address) return undefined;
+    const previouslyFocused = document.activeElement;
+    titleRef.current?.focus();
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== 'Tab' || !dialogRef.current) return;
+      const focusable = [...dialogRef.current.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])')];
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      previouslyFocused?.focus?.();
+    };
+  }, [initial.address]);
 
   // Apartment to Rent has no "Unknown / not specified" property-type step in
   // Add Property — the search type already tells us it's an apartment, so a
@@ -276,7 +414,8 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const submit = async () => {
-    if (!form.address.trim()) return;
+    if (!form.address.trim() || savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setPhotoError('');
     setSaveErrorMsg('');
@@ -323,6 +462,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         }
       }
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   };
@@ -494,6 +634,15 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
 
   const visibleMultiselect = MULTISELECT_CATEGORIES.filter((def) => sharedFactAwareness[def.key]?.eligibleForSharedFactCapture);
   const visibleSingleselect = SINGLESELECT_CATEGORIES.filter((d) => sharedFactAwareness[d.key]?.eligibleForSharedFactCapture);
+
+  if (!isNewHome) return <EditHomeEditor
+    form={form} set={set} priorities={priorities} sharedFactAwareness={sharedFactAwareness}
+    isCollaborative={isCollaborative} vocabulary={vocabulary} photoFile={photoFile}
+    photoPreviewUrl={photoPreviewUrl} photoInputRef={photoInputRef} handlePhotoFileChange={handlePhotoFileChange}
+    handleRemovePhoto={handleRemovePhoto} photoError={photoError} showPhotoUrlInput={showPhotoUrlInput}
+    setShowPhotoUrlInput={setShowPhotoUrlInput} setCheckItem={setCheckItem} saving={saving}
+    submit={submit} saveErrorMsg={saveErrorMsg} onClose={onClose} dialogRef={dialogRef} titleRef={titleRef}
+  />;
 
   return (
     <div className={`hh-modal-backdrop ${presentation === 'detail-panel' ? 'hh-detail-editor-backdrop' : ''}`} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
