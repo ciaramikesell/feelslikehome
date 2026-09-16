@@ -1,15 +1,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { SlidersHorizontal, LayoutGrid, Target } from 'lucide-react';
+import Link from 'next/link';
 import { BrandMark, Wordmark } from '@/components/ui';
 import { isNativeApp } from '@/lib/platform';
 
-const BENEFITS = [
-  { icon: SlidersHorizontal, title: 'Set your priorities', desc: 'Decide what matters — and how much.' },
-  { icon: LayoutGrid, title: 'Keep your homes together', desc: 'Compare listings from anywhere.' },
-  { icon: Target, title: 'Find your best match', desc: 'See how each home measures up to what matters to you.' },
-];
+// The public landing page already explains the product (How It Works,
+// co-buyer/Realtor sections, philosophy) — repeating that here would make
+// Sign In a second landing page. This shell's left panel welcomes someone
+// back into the app they already chose, nothing more; each auth page
+// supplies its own short headline/description for that welcome (see
+// sign-in/sign-up's own copy below), with Sign In's "welcome back" framing
+// as the sensible default for the lower-stakes screens (Forgot/Reset
+// Password) that don't need their own.
+const DEFAULT_HEADLINE = <>Welcome back.<br />Your homes are right where you left them.</>;
+const DEFAULT_DESCRIPTION = 'Pick up your search, revisit your Match scores, and keep narrowing in on the place that feels like home.';
 
 // Inside the native Capacitor shell, a signed-out user should never see the
 // public marketing site (the two-column pitch below is that site — there is
@@ -32,7 +37,7 @@ function NativeAuthHeader() {
   );
 }
 
-export default function AuthShell({ children }) {
+export default function AuthShell({ children, headline = DEFAULT_HEADLINE, description = DEFAULT_DESCRIPTION }) {
   const [native, setNative] = useState(false);
   useEffect(() => { if (isNativeApp()) setNative(true); }, []);
 
@@ -49,31 +54,13 @@ export default function AuthShell({ children }) {
     <div className="afh-root">
       <div className="afh-grid">
         <div className="afh-left">
-          <div className="afh-brand" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Link href="/" className="afh-brand" aria-label="Feels Like Home home" style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
             <BrandMark size={36} />
             <Wordmark size={29} className="afh-serif" />
-          </div>
+          </Link>
 
-          <h2 className="afh-serif afh-headline">
-            Compare the homes you like.
-            <br />
-            Find the one that <span style={{ color: 'var(--brick)' }}>feels like home</span>.
-          </h2>
-          <p className="afh-description" style={{ fontSize: 14.5, color: 'var(--ink-soft)', lineHeight: 1.6, margin: '14px 0 0', maxWidth: 420 }}>
-            Organize, rate, and compare the homes you're considering based on what matters most to you.
-          </p>
-
-          <div className="afh-benefits">
-            {BENEFITS.map(({ icon: Icon, title, desc }) => (
-              <div className="afh-benefit" key={title}>
-                <div className="afh-benefit-icon"><Icon size={17} color="var(--brick)" /></div>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--ink)' }}>{title}</div>
-                  <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 2 }}>{desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <h2 className="afh-serif afh-headline">{headline}</h2>
+          <p className="afh-description">{description}</p>
         </div>
 
         <div className="afh-right">
