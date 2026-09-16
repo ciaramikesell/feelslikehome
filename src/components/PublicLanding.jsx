@@ -4,7 +4,7 @@ import { ArrowRight, Heart, MapPin, MessageSquareText } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
 
 const values = [
-  ['01', 'Bring Homes From Anywhere', 'Found a listing somewhere else? Bring that real contender into FLH and keep every option in one thoughtful place.'],
+  ['01', 'Bring Homes From Anywhere', 'Found a home you’re considering? Bring it into FLH and keep every real contender in one thoughtful place.'],
   ['02', 'Compare What Matters', 'Name your Must Haves, Important features, and Nice to Haves. Your Match reflects your priorities—not someone else’s checklist.'],
   ['03', 'Search Together', 'Co-buyers consider the same homes while each person’s priorities and perspective stay distinct.'],
   ['04', 'See the Bigger Picture', 'Understand where each home sits in relation to the places that matter to your life.'],
