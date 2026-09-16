@@ -25,7 +25,7 @@ const HOME_SHARED_COLUMNS_PRE_PASS_B = [
   'coordinate_source', 'hoa_fee_monthly', 'property_tax_annual', 'property_tax_year',
   'basement_notes', 'schools_notes', 'condition_notes', 'created_at', 'updated_at',
 ].join(',');
-export const HOME_SHARED_COLUMNS = `${HOME_SHARED_COLUMNS_PRE_PASS_B},property_type,available_on,pets_allowed,utilities_included,in_unit_laundry,property_name,selected_floor_plan_name,selected_unit_label,floor_plan_image_url`;
+export const HOME_SHARED_COLUMNS = `${HOME_SHARED_COLUMNS_PRE_PASS_B},property_type,available_on,pets_allowed,utilities_included,in_unit_laundry,property_name,selected_floor_plan_name,selected_unit_label,floor_plan_image_url,suggestion_staged`;
 
 const PASS_B_DATABASE_COLUMNS = ['property_type', 'available_on', 'pets_allowed', 'utilities_included', 'in_unit_laundry'];
 function isPrePassBSchemaError(error) {
@@ -164,7 +164,49 @@ export async function getRealtorSearchContext(supabase, userId, searchId) {
     if (result.error) throw result.error;
     states = result.data || [];
   }
-  return { search, people: people || [], priorities: priorityRows || [], homes, states };
+  const suggestions = await getSuggestions(supabase, searchId);
+  return { search, people: people || [], priorities: priorityRows || [], homes, states, suggestions, viewerId: userId };
+}
+
+export async function getSuggestions(supabase, searchId) {
+  const { data: rows, error } = await supabase.from('realtor_suggestions')
+    .select('id,search_id,home_id,suggested_by,suggested_by_display_name,status,promoted_by,promoted_at,created_at,homes(*)')
+    .eq('search_id', searchId).order('created_at', { ascending: false });
+  if (error) throw error;
+  const ids = (rows || []).map((row) => row.id);
+  let dispositions = [];
+  if (ids.length) {
+    const result = await supabase.from('suggestion_dispositions').select('suggestion_id,user_id,reasons,other_text,updated_at').in('suggestion_id', ids);
+    if (result.error) throw result.error;
+    dispositions = result.data || [];
+  }
+  return (rows || []).map((row) => ({
+    id: row.id, searchId: row.search_id, homeId: row.home_id, suggestedBy: row.suggested_by,
+    suggestedByName: row.suggested_by_display_name, status: row.status,
+    promotedBy: row.promoted_by, promotedAt: row.promoted_at, createdAt: row.created_at,
+    home: rowToHomeWithOwner(row.homes),
+    dispositions: dispositions.filter((item) => item.suggestion_id === row.id).map((item) => ({
+      userId: item.user_id, reasons: item.reasons || [], otherText: item.other_text || '', updatedAt: item.updated_at,
+    })),
+  }));
+}
+
+export async function createRealtorSuggestion(supabase, searchId, home) {
+  const { data, error } = await supabase.rpc('create_realtor_suggestion', { p_search_id: searchId, p_home: home });
+  if (error) throw error;
+  return data?.[0];
+}
+
+export async function dismissSuggestion(supabase, suggestionId, reasons = [], otherText = '') {
+  const { data, error } = await supabase.rpc('dismiss_realtor_suggestion', { p_suggestion_id: suggestionId, p_reasons: reasons, p_other_text: otherText });
+  if (error) throw error;
+  return data;
+}
+
+export async function promoteSuggestion(supabase, suggestionId) {
+  const { data, error } = await supabase.rpc('promote_realtor_suggestion', { p_suggestion_id: suggestionId });
+  if (error) throw error;
+  return data;
 }
 
 /* -------------------------------- priorities -------------------------------- */
@@ -332,7 +374,7 @@ export function resolvePersonalState(home, memberStateRow, userId) {
 // checks exactly as it always has, with zero changes needed for reading.
 export async function getHomesForUser(supabase, userId, searchId) {
   let { data: rows, error } = await supabase
-    .from('homes').select(HOME_SHARED_COLUMNS).eq('search_id', searchId).order('created_at', { ascending: true });
+    .from('homes').select(HOME_SHARED_COLUMNS).eq('search_id', searchId).eq('suggestion_staged', false).order('created_at', { ascending: true });
   // Repository merge precedes the manual production migration. Retry only the
   // recognizable missing-column response so the dormant release works on both schemas.
   if (isPrePassBSchemaError(error)) ({ data: rows, error } = await supabase
@@ -351,7 +393,13 @@ export async function getHomesForUser(supabase, userId, searchId) {
   }
   const stateByHomeId = new Map(stateRows.map((r) => [r.home_id, r]));
 
-  return homes.map((home) => ({ ...home, ...resolvePersonalState(home, stateByHomeId.get(home.id), userId) }));
+  let provenance = [];
+  if (homeIds.length) {
+    const result = await supabase.from('realtor_suggestions').select('home_id,suggested_by_display_name').eq('status', 'accepted').in('home_id', homeIds);
+    if (!result.error) provenance = result.data || [];
+  }
+  const provenanceByHome = new Map(provenance.map((row) => [row.home_id, row.suggested_by_display_name]));
+  return homes.map((home) => ({ ...home, suggestedBy: provenanceByHome.get(home.id) || null, ...resolvePersonalState(home, stateByHomeId.get(home.id), userId) }));
 }
 
 // Saves shared/objective fields to homes and the caller's personal fields to

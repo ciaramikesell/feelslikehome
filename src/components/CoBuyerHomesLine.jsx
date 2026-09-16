@@ -13,9 +13,7 @@ export default function CoBuyerHomesLine({ searchId, userId, isOwner, isCollabor
 
   if (isCollaborative) {
     return (
-      <p className="hh-cobuyer-context">
-        You&apos;re searching with a collaborator.
-      </p>
+      <aside className="hh-cobuyer-context"><strong>Searching together</strong><span>You and your co-buyer are comparing homes together.</span></aside>
     );
   }
 
