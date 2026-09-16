@@ -24,6 +24,7 @@ function SignUpForm() {
   // See sign-in's identical comment: validated so a crafted `?redirect=`
   // can't be used to send a freshly-created account off-site.
   const redirectTo = sanitizeRedirectPath(searchParams.get('redirect')) || '/';
+  const entryDestination = redirectTo === '/' && isRealtorEntry ? '/people' : redirectTo;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -42,7 +43,7 @@ function SignUpForm() {
       email: email.trim(),
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(entryDestination)}`,
         data: isRealtorEntry ? { account_entry_intent: 'realtor' } : undefined,
       },
     });
@@ -59,7 +60,7 @@ function SignUpForm() {
     if (data.session) {
       // This project has email confirmation turned off, so signUp already returned a
       // live session — take the new user straight to their destination.
-      router.push(redirectTo);
+      router.push(entryDestination);
       router.refresh();
     } else {
       // Email confirmation is required — Supabase already sent the confirmation link,

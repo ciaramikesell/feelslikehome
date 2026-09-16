@@ -11,7 +11,13 @@ export default async function AppGroupLayout({ children }) {
     const supabase = await createClient();
     const user = await requireUser(supabase);
 
-    const profile = await getProfile(supabase, user.id);
+    const storedProfile = await getProfile(supabase, user.id);
+    const isRealtorEntry = user.user_metadata?.account_entry_intent === 'realtor';
+    // Preserve incomplete buyer onboarding so this person can start a personal
+    // search later; only People routes bypass that unrelated setup gate.
+    const requestedPath = await currentPathForRedirect();
+    const isRealtorWorkspace = requestedPath.startsWith('/people');
+    const profile = isRealtorEntry && isRealtorWorkspace ? { ...storedProfile, onboarding_complete: true } : storedProfile;
     if (!profile?.onboarding_complete) redirect(withRedirectParam('/onboarding', await currentPathForRedirect()));
 
     const { search } = await resolveActiveSearch(supabase, user.id);
