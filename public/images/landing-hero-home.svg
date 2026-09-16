@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">A welcoming neighborhood bungalow</title>
+  <desc id="desc">Editorial illustration of a warm cream bungalow with a terracotta door, porch, mature trees, and a garden.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#dfe8df"/><stop offset="1" stop-color="#f4d8c8"/></linearGradient>
+    <linearGradient id="lawn" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#88977c"/><stop offset="1" stop-color="#5e725b"/></linearGradient>
+    <filter id="soft"><feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#3a3029" flood-opacity=".18"/></filter>
+  </defs>
+  <rect width="1200" height="900" fill="url(#sky)"/>
+  <circle cx="965" cy="166" r="70" fill="#fff4d8" opacity=".7"/>
+  <path d="M0 568C230 498 393 545 588 527c210-20 393-74 612-10v383H0z" fill="url(#lawn)"/>
+  <g opacity=".75" fill="#4f684f"><circle cx="65" cy="320" r="170"/><circle cx="1145" cy="335" r="202"/><circle cx="984" cy="300" r="115"/></g>
+  <g filter="url(#soft)">
+    <path d="M239 407L570 193l357 214z" fill="#67554a"/>
+    <path d="M288 390h589v350H288z" fill="#f4ead8"/>
+    <path d="M247 401h675v42H247z" fill="#4c4038"/>
+    <path d="M358 445h405v235H358z" fill="#fff8ea"/>
+    <path d="M333 493h458v28H333z" fill="#c9b79b"/>
+    <g fill="#708a8b" stroke="#fff8ea" stroke-width="13"><path d="M331 477h122v136H331z"/><path d="M659 477h122v136H659z"/></g>
+    <g stroke="#fff8ea" stroke-width="7"><path d="M392 480v130M334 545h116M720 480v130M662 545h116"/></g>
+    <path d="M514 472h96v208h-96z" fill="#b95738"/><circle cx="590" cy="575" r="7" fill="#f4d8a2"/>
+    <path d="M308 680h508v27H308z" fill="#b7a485"/><path d="M333 707h14v57h-14zm427 0h14v57h-14z" fill="#806d5b"/>
+    <path d="M478 740h166l72 160H405z" fill="#d8c6ae"/>
+  </g>
+  <g fill="#788c68"><circle cx="255" cy="683" r="54"/><circle cx="875" cy="684" r="66"/><circle cx="170" cy="727" r="42"/></g>
+  <g fill="#e4c278"><circle cx="233" cy="666" r="7"/><circle cx="276" cy="690" r="8"/><circle cx="842" cy="659" r="8"/><circle cx="895" cy="705" r="7"/><circle cx="159" cy="716" r="6"/></g>
+  <path d="M82 0h95l-8 585H97z" fill="#625347"/><path d="M1020 0h88l-3 570h-70z" fill="#625347"/>
+  <g fill="#49634c"><circle cx="128" cy="86" r="190"/><circle cx="1043" cy="98" r="188"/><circle cx="1155" cy="93" r="125"/></g>
+</svg>
