@@ -33,11 +33,22 @@ test('card placement and Favorite animation remain restrained and accessible', (
   assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{ \.hh-favorite-pop \{ animation: none; \} \}/);
 });
 
-test('decision empty states keep personality and required actions', () => {
+test('decision empty states use PR #90\'s truthful collections copy and a My Homes path — never a discovery CTA', () => {
+  // Superseded by PR #90 (Want to Tour / Favorites / Archive visual refresh):
+  // this app is a decision layer, not a listing marketplace, so the old
+  // playful copy is replaced with the spec's plainer, more truthful text,
+  // and "View my homes" becomes "Go to My Homes" on every collection empty
+  // state rather than only Want to Tour's.
   const board = read('src/components/HomesBoard.jsx');
   const compare = read('src/components/CompareBoard.jsx');
-  for (const copy of ["No favorites... yet.", "You'll know one when you see one.", 'Nothing calling your name yet.', 'Homes you want to see in person will show up here.', "The ones that weren't meant to be.", "They're still here if you change your mind."]) assert.match(board, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
-  assert.match(board, /View my homes/);
+  for (const copy of [
+    'No favorites yet.', 'Tap the heart on any home you want to keep close.',
+    'Nothing on the tour list yet.', 'When a home feels worth seeing in person, mark it Want to Tour.',
+    'Nothing archived.', 'Homes you set aside will stay here with your notes and history intact.',
+  ]) assert.match(board, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  assert.doesNotMatch(board, /Browse homes|Discover homes|Find listings|Recommended homes/i);
+  const goToMyHomes = board.match(/Go to My Homes/g) || [];
+  assert.equal(goToMyHomes.length, 2, 'expected the Go to My Homes CTA on both the Favorites and Want to Tour empty states');
   assert.match(compare, /The showdown starts here\./);
   assert.match(compare, /Pick 2–4 homes and see how they stack up\./);
   assert.match(compare, /Add a home/);

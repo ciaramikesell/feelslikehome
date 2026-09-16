@@ -206,8 +206,18 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
             </div>
           )}
 
+          {/* On an archived Home, why it was set aside is more decision-relevant than
+              whether it had an 89% Match — so this leads, and the Match panel right
+              below picks up the .is-secondary treatment instead of its usual weight. */}
+          {mode === 'archive' && (
+            <div className="hh-archive-reason">
+              <span>Why you archived it</span>
+              <p>{home.rejectionReason || 'No reason saved yet.'}</p>
+            </div>
+          )}
+
           {match ? (
-            <div className="hh-match-panel" style={{ background: matchTint(match.pct), borderLeft: `3px solid ${matchColor(match.pct)}` }}>
+            <div className={`hh-match-panel${mode === 'archive' ? ' is-secondary' : ''}`} style={{ background: matchTint(match.pct), borderLeft: `${mode === 'archive' ? 2 : 3}px solid ${matchColor(match.pct)}` }}>
               <MatchSummary match={match} />
               {snapshot.length > 0 && <div className="hh-match-snapshot">
                 {snapshot.map((item) => {
@@ -228,19 +238,6 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
           {mode === 'tour' && wantToTourState?.wantToTourLabel && (
             <div className="hh-lifecycle-status">
               <Footprints size={12} color="var(--moss)" /> {wantToTourState.wantToTourLabel}
-            </div>
-          )}
-
-          {mode === 'favorites' && (
-            <div className="hh-lifecycle-status is-favorite">
-              <Heart size={12} color="var(--brick)" fill="var(--brick)" /> Your favorite
-            </div>
-          )}
-
-          {mode === 'archive' && home.rejectionReason && (
-            <div className="hh-archive-reason">
-              <span>Why you archived it</span>
-              <p>{home.rejectionReason}</p>
             </div>
           )}
 
@@ -686,7 +683,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
       <>
         {saveError && <div className="hh-save-error" role="alert">{saveError}{retrySave && <> <button type="button" onClick={() => retrySave().catch(() => {})}>Retry</button></>}</div>}
         {archivedHomes.length === 0 ? (
-          <EmptyLifecycleState icon={ArchiveIcon} title="The ones that weren't meant to be." body="They're still here if you change your mind." />
+          <EmptyLifecycleState icon={ArchiveIcon} title="Nothing archived." body="Homes you set aside will stay here with your notes and history intact." />
         ) : (
           <CardGrid homes={archivedHomes} priorities={priorities} commuteDestinations={initialCommuteDestinations} mode={mode} onEdit={openHomeModal} onRestore={restoreHome} onRequestDelete={setDeleteTarget} />
         )}
@@ -752,10 +749,12 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
 
       {filtered.length === 0 ? (
         mode === 'favorites' ? (
-          <EmptyLifecycleState icon={Heart} title="No favorites... yet." body="You'll know one when you see one." />
+          <EmptyLifecycleState icon={Heart} title="No favorites yet." body="Tap the heart on any home you want to keep close.">
+            <Link href="/homes" className="hh-btn hh-btn-ghost">Go to My Homes</Link>
+          </EmptyLifecycleState>
         ) : mode === 'tour' ? (
-          <EmptyLifecycleState icon={Footprints} title="Nothing calling your name yet." body="Homes you want to see in person will show up here.">
-            <Link href="/homes" className="hh-btn hh-btn-ghost">View my homes →</Link>
+          <EmptyLifecycleState icon={Footprints} title="Nothing on the tour list yet." body="When a home feels worth seeing in person, mark it Want to Tour.">
+            <Link href="/homes" className="hh-btn hh-btn-ghost">Go to My Homes</Link>
           </EmptyLifecycleState>
         ) : (
           <div className="hh-corner" style={{ border: '1px dashed var(--line)', borderRadius: 16, padding: '48px 24px', textAlign: 'center', color: 'var(--ink-soft)' }}>
