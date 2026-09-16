@@ -87,7 +87,7 @@ test('Places that matter and weighted Must Have copy are user-facing', () => {
   const mySearch = fs.readFileSync(new URL('../src/components/MySearchPanel.jsx', import.meta.url), 'utf8');
   const onboarding = fs.readFileSync(new URL('../src/components/onboarding/Onboarding.jsx', import.meta.url), 'utf8');
   const constants = fs.readFileSync(new URL('../src/lib/constants.js', import.meta.url), 'utf8');
-  assert.match(mySearch, /Places that matter/);
+  assert.match(mySearch, /Places That Matter/);
   assert.match(mySearch, /Got somewhere you go all the time\?/);
   assert.doesNotMatch(onboarding, /Places that matter/);
   assert.doesNotMatch(onboarding, /CommuteDestinations/);

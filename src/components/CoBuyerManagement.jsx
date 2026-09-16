@@ -9,7 +9,7 @@ import { leaveSearch, removeMember } from '@/lib/supabase/collaboration';
 // access-management action, not a daily home-shopping one, so it lives
 // tucked into My Search rather than anywhere prominent. Renders nothing at
 // all for a non-collaborative search (the common case for most users).
-export default function CoBuyerManagement({ userId, search, isOwner, participantCount, memberUserId }) {
+export default function CoBuyerManagement({ userId, search, isOwner, participantCount, memberUserId, collaboratorName = null }) {
   const [confirming, setConfirming] = useState(false);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState('');
@@ -43,13 +43,13 @@ export default function CoBuyerManagement({ userId, search, isOwner, participant
         style={{ fontSize: 12, color: 'var(--brick)', borderColor: 'rgba(193,89,47,0.35)' }}
         onClick={() => setConfirming(true)}
       >
-        {isOwner ? 'Remove collaborator from this search' : 'Leave this search'}
+        {isOwner ? `Remove ${collaboratorName || 'collaborator'} from this search` : 'Leave this search'}
       </button>
       <Sheet
         open={confirming}
         onClose={() => !working && setConfirming(false)}
         size="compact"
-        title={isOwner ? 'Remove collaborator?' : 'Leave this search?'}
+        title={isOwner ? `Remove ${collaboratorName || 'collaborator'}?` : 'Leave this search?'}
       >
         <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '0 0 16px', lineHeight: 1.5 }}>
           {isOwner

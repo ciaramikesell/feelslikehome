@@ -145,7 +145,7 @@ function buildBasicsSummary(p) {
   return lines;
 }
 
-// "What I'm looking for" — the basic search requirements, shown as a settled summary
+// "What I'm Looking For" — the basic search requirements, shown as a settled summary
 // by default with an Edit action revealing the same underlying fields as before.
 function BasicsCard({ p, patch }) {
   const capabilities = searchIntentCapabilities(p.searchType);
@@ -154,7 +154,7 @@ function BasicsCard({ p, patch }) {
   const lines = buildBasicsSummary(p);
 
   return (
-    <SearchCard title="What I'm looking for">
+    <SearchCard title="What I'm Looking For">
       {!editOpen ? (
         <div>
           {p.searchType && <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--ink)', marginBottom: 6 }}>{searchExperienceLabel(p)}</div>}
@@ -237,10 +237,12 @@ function BasicsCard({ p, patch }) {
 }
 
 // The selected board is also the editing surface: discovery opens beneath it,
-// so its resting portrait never transforms into a configuration panel.
+// so its resting portrait never transforms into a configuration panel. This
+// is the page's primary purpose, so it renders in the wide left column (see
+// .hh-search-primary) rather than as one supporting card among several.
 function WhatMattersCard({ priorities, patch }) {
   return (
-    <SearchCard title="What matters most to me">
+    <SearchCard title="What Matters Most to Me" subtitle="Weighted decision tiers. These priorities power your Match scores.">
       <PriorityBoard priorities={priorities} patch={patch} />
     </SearchCard>
   );
@@ -248,50 +250,65 @@ function WhatMattersCard({ priorities, patch }) {
 
 // Read-only content only — this always renders nested inside the single
 // "Searching Together" card below, never as its own top-level card, so the
-// collaboration story (whether alone or together, collaborator context,
-// invite/manage action) reads as one calm section instead of three
-// separately scattered ones.
+// collaboration story (connected state, collaborator summary, invite/manage
+// action) reads as one calm section instead of three separately scattered
+// ones. Deliberately a compact count summary ("3 Must Haves · 5 Important ·
+// 6 Nice to Haves"), not an itemized list of the collaborator's actual
+// priorities/places — that stays under their own control, never rendered
+// here in detail. There is intentionally no "View {name}'s Criteria" link:
+// unlike the Realtor workspace, a co-buyer has no dedicated read-only route
+// to another participant's criteria today, and inventing one for this
+// visual pass would be a real new data path, not a presentation change.
 function CollaboratorContext({ context }) {
   if (!context) return null;
+  const name = context.displayName || 'Your collaborator';
   const priorities = normalizePriorities(context.priorities);
   const boardItems = getItemlistCategories(priorities.searchType).flatMap((category) =>
     Object.entries(priorities[category.key]?.tiers || {})
       .filter(([, tier]) => tier && tier !== 'dontcare')
-      .map(([label, tier]) => ({ label, tier }))
+      .map(([, tier]) => ({ tier }))
   );
   const structured = [
-    ['Maximum price', priorities.budget], ['Minimum bedrooms', priorities.bedsMin],
-    ['Minimum bathrooms', priorities.bathsMin], ['Minimum square footage', priorities.sqftTarget],
-    ['Minimum lot size', priorities.lotSizeTarget], ['Property type', priorities.preferredPropertyTypes],
-    ['Home layout', priorities.homeLayout], ['Home condition', priorities.homeCondition],
-  ].filter(([, value]) => value?.tier && value.tier !== 'dontcare' && (value.value || value.values?.length))
-    .map(([label, value]) => ({ label: `${label}: ${value.value || value.values.join(', ')}`, tier: value.tier }));
+    priorities.budget, priorities.bedsMin, priorities.bathsMin, priorities.sqftTarget,
+    priorities.lotSizeTarget, priorities.preferredPropertyTypes, priorities.homeLayout, priorities.homeCondition,
+  ].filter((value) => value?.tier && value.tier !== 'dontcare' && (value.value || value.values?.length))
+    .map((value) => ({ tier: value.tier }));
   const items = [...structured, ...boardItems];
   const places = context.commuteDestinations || [];
+  const countOf = (tier) => items.filter((item) => item.tier === tier).length;
+
   return (
     <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
-      <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '0 0 10px' }}>Read-only. These priorities and places remain under your collaborator&apos;s control.</p>
-      {items.length ? <div className="hh-collaborator-priorities">{items.map((item) => <span key={`${item.label}-${item.tier}`} className="hh-chip"><b>{item.label}</b> · {item.tier === 'must' ? 'Must Have' : item.tier === 'important' ? 'Important' : 'Nice to Have'}</span>)}</div> : <p className="hh-detail-context">Your collaborator hasn&apos;t added priority-board preferences yet.</p>}
-      {places.length > 0 && <div className="hh-collaborator-places"><strong>Places that matter</strong>{places.map((place) => <p key={`${place.label}-${place.address}`}><b>{place.label}</b> · {place.address}{place.maxDriveMinutes != null ? ` · ${place.maxDriveMinutes} min max` : ''}</p>)}</div>}
+      <p className="hh-serif" style={{ fontSize: 15, fontWeight: 700, color: 'var(--positive)', margin: '0 0 12px' }}>Connected with {name}.</p>
+      {items.length ? (
+        <div className="hh-collaborator-summary">
+          <div><strong>{name}&apos;s priorities</strong><span>{countOf('must')} Must {countOf('must') === 1 ? 'Have' : 'Haves'} · {countOf('important')} Important · {countOf('nice')} Nice to {countOf('nice') === 1 ? 'Have' : 'Haves'}</span></div>
+          <div><strong>{name}&apos;s places</strong><span>{places.length ? `${places.length} place${places.length === 1 ? '' : 's'} that matter` : 'No places added yet'}</span></div>
+        </div>
+      ) : (
+        <p className="hh-detail-context">{name} hasn&apos;t added priorities yet.</p>
+      )}
     </div>
   );
 }
 
-// One calm, consolidated section for the whole collaboration story: whether
-// the user is searching alone or with someone, the collaborator's read-only
-// context when present, and the one appropriate action (invite, or
-// remove/leave) — instead of three fragments scattered across the page.
-// "The house is ours. The opinion is mine. The conversation is shared."
+// One calm, consolidated section for the whole collaboration story: the
+// connected state, the collaborator's read-only summary when present, and
+// the one appropriate action (invite, or remove/leave) — instead of three
+// fragments scattered across the page. The green "Searching together" pill
+// in the canonical AppShell already says a search is collaborative; this
+// section's job is to say something useful about that relationship, not
+// repeat it. "The house is ours. The opinion is mine. The conversation is
+// shared."
 function SearchingTogetherCard({ search, userId, isOwner, participantCount, memberUserId, collaboratorContext }) {
   const isCollaborative = participantCount > 1;
   return (
     <SearchCard title="Searching Together">
       {isCollaborative ? (
         <>
-          <p style={{ fontSize: 13.5, color: 'var(--ink)', margin: 0 }}>You&apos;re searching with a collaborator.</p>
           <CollaboratorContext context={collaboratorContext} />
           <div style={{ marginTop: 14 }}>
-            <CoBuyerManagement userId={userId} search={search} isOwner={isOwner} participantCount={participantCount} memberUserId={memberUserId} />
+            <CoBuyerManagement userId={userId} search={search} isOwner={isOwner} participantCount={participantCount} memberUserId={memberUserId} collaboratorName={collaboratorContext?.displayName} />
           </div>
         </>
       ) : (
@@ -317,29 +334,55 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
 
   const p = priorities;
   return (
-    <div className="hh-search-layout">
-      {saveError && <p className="hh-save-error" role="alert">{saveError} <button type="button" onClick={retry}>Retry</button></p>}
-      {firstRun && <section className="hh-search-reveal hh-corner">
-        <div><p className="hh-label">Your search is ready</p><h2 className="hh-serif">Here&apos;s what we heard.</h2><p>This is what Feels Like Home will use to Match your options. Nothing&apos;s set in stone—you can change your mind anytime.</p></div>
-        <div className="hh-first-home-handoff"><strong>Looks good? Give us something to work with.</strong><p>Add a home you&apos;re considering and we&apos;ll show you how it stacks up.</p><Link className="hh-btn" href="/homes?add=1">Add your first home</Link></div>
-      </section>}
-      <BasicsCard p={p} patch={patch} />
+    <>
+      <div className="hh-search-layout">
+        {saveError && <p className="hh-save-error" role="alert">{saveError} <button type="button" onClick={retry}>Retry</button></p>}
+        {firstRun && <section className="hh-search-reveal hh-corner">
+          <div><p className="hh-label">Your search is ready</p><h2 className="hh-serif">Here&apos;s what we heard.</h2><p>This is what Feels Like Home will use to Match your options. Nothing&apos;s set in stone—you can change your mind anytime.</p></div>
+          <div className="hh-first-home-handoff"><strong>Looks good? Give us something to work with.</strong><p>Add a home you&apos;re considering and we&apos;ll show you how it stacks up.</p><Link className="hh-btn" href="/homes?add=1">Add your first home</Link></div>
+        </section>}
+        {/* Asymmetric two-column composition: "What Matters Most to Me" is
+            this page's central purpose and takes the wide primary column;
+            the basics summary, places, and collaboration status are
+            supporting context in the narrower rail beside it. Collapses to
+            a single stacked column at the existing @media (max-width: 900px)
+            boundary (see globals.css), same breakpoint the priority-tiers
+            grid inside it already collapses at. */}
+        <div className="hh-search-grid">
+          <div className="hh-search-primary">
+            <WhatMattersCard priorities={p} patch={patch} />
+          </div>
+          <div className="hh-search-rail">
+            <BasicsCard p={p} patch={patch} />
 
-      <WhatMattersCard priorities={p} patch={patch} />
+            <SearchCard title="Places That Matter" subtitle="We'll calculate commute times from every home to the places that matter to you.">
+              {!commuteDestinations.length && <div className="hh-places-empty"><strong>Got somewhere you go all the time?</strong><p>Add work, family, school—or anywhere else—and we&apos;ll compare the trip from every home.</p></div>}
+              <CommuteDestinations searchId={search.id} userId={userId} destinations={commuteDestinations} onChange={setCommuteDestinations} hideHeader startCollapsedWhenEmpty />
+            </SearchCard>
 
-      <SearchCard title="Places that matter" subtitle={commuteDestinations.length ? "We'll compare the trip from every home. In a shared search, collaborators can see these places, but only you can change yours." : undefined}>
-        {!commuteDestinations.length && <div className="hh-places-empty"><strong>Got somewhere you go all the time?</strong><p>Add work, family, school—or anywhere else—and we&apos;ll compare the trip from every home.</p></div>}
-        <CommuteDestinations searchId={search.id} userId={userId} destinations={commuteDestinations} onChange={setCommuteDestinations} hideHeader startCollapsedWhenEmpty />
-      </SearchCard>
+            <SearchingTogetherCard
+              search={search}
+              userId={userId}
+              isOwner={isOwner}
+              participantCount={participantCount}
+              memberUserId={memberUserId}
+              collaboratorContext={collaboratorContext}
+            />
+          </div>
+        </div>
+      </div>
 
-      <SearchingTogetherCard
-        search={search}
-        userId={userId}
-        isOwner={isOwner}
-        participantCount={participantCount}
-        memberUserId={memberUserId}
-        collaboratorContext={collaboratorContext}
-      />
-    </div>
+      {/* Reciprocal Match education, mirroring My Homes' own editorial band
+          (see .hh-match-editorial / homes/page.js) so the two pages read as
+          one application: My Homes points here ("Review My Criteria"), this
+          page points back to My Homes ("View Matching Homes"). */}
+      <section className="hh-match-editorial">
+        <div>
+          <h2>How Match Scores Work</h2>
+          <p>Each home is measured against your own Must Haves, Important features, Nice to Haves, and places that matter. When you&apos;re searching together, each person keeps their own Match — so you can see where your priorities line up and where they don&apos;t.</p>
+        </div>
+        <Link className="hh-btn hh-btn-ghost" href="/homes">View Matching Homes</Link>
+      </section>
+    </>
   );
 }

@@ -294,7 +294,7 @@ export async function resolveCollaboratorSearchContext(supabase, search) {
   const { data, error } = await supabase.rpc('resolve_collaborator_search_context', { p_search_id: search.id });
   if (error) throw error;
   const row = data?.[0];
-  return row ? { priorities: row.priorities || {}, commuteDestinations: row.commute_destinations || [], homeStates: row.home_states || [] } : null;
+  return row ? { priorities: row.priorities || {}, commuteDestinations: row.commute_destinations || [], homeStates: row.home_states || [], displayName: row.display_name || null } : null;
 }
 
 // Saves priorities only to the authenticated participant's row, for owners
