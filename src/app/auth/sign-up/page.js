@@ -9,6 +9,12 @@ import { PasswordField, Banner, Spinner } from '@/components/auth/AuthHelpers';
 import { createClient } from '@/lib/supabase/client';
 import { sanitizeRedirectPath } from '@/lib/safeRedirect';
 
+// Distinct from AuthShell's own "welcome back" default — a new visitor
+// hasn't been here before, so Sign Up gets its own editorial framing
+// instead of inheriting Sign In's copy.
+const SIGN_UP_HEADLINE = <>Start with the homes<br />you&apos;re already considering.</>;
+const SIGN_UP_DESCRIPTION = 'Bring your contenders together and compare them against what actually matters to you.';
+
 function SignUpForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -64,7 +70,7 @@ function SignUpForm() {
 
   if (status === 'check-email') {
     return (
-      <AuthShell>
+      <AuthShell headline={SIGN_UP_HEADLINE} description={SIGN_UP_DESCRIPTION}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <h2 className="afh-serif" style={{ fontSize: 24, margin: 0, fontWeight: 600, color: 'var(--ink)' }}>Check your email</h2>
           <Banner kind="success">We sent a confirmation link to {email}. Click it to finish creating your account, then come back and sign in.</Banner>
@@ -75,7 +81,7 @@ function SignUpForm() {
   }
 
   return (
-    <AuthShell>
+    <AuthShell headline={SIGN_UP_HEADLINE} description={SIGN_UP_DESCRIPTION}>
       <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <Link
           href={redirectTo !== '/' ? `/auth/sign-in?redirect=${encodeURIComponent(redirectTo)}` : '/auth/sign-in'}
