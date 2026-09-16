@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Heart, MapPin, MessageSquareText } from 'lucide-react';
+import { ArrowRight, Heart, MapPin, Menu, MessageSquareText } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
 
 const values = [
@@ -19,6 +19,15 @@ export default function PublicLanding() {
       <nav aria-label="Public navigation">
         <a href="#how-it-works">How it works</a><Link href={realtorHref}>For Realtors</Link><Link href="/auth/sign-in">Sign in</Link><Link className="pl-button is-small" href="/auth/sign-up">Get started</Link>
       </nav>
+      <details className="pl-mobile-menu">
+        <summary aria-label="Open navigation"><Menu size={20} aria-hidden="true" /><span>Menu</span></summary>
+        <nav aria-label="Mobile public navigation">
+          <a href="#how-it-works">How it works</a>
+          <Link href={realtorHref}>For Realtors</Link>
+          <Link href="/auth/sign-in">Sign in</Link>
+          <Link className="pl-button is-small" href="/auth/sign-up">Get started</Link>
+        </nav>
+      </details>
     </header>
 
     <main id="main">

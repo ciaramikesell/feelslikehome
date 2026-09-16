@@ -22,6 +22,15 @@ test('public navigation exposes only truthful account and explanation entries', 
   assert.doesNotMatch(landing, /Verified Listings|Walk Score|school ratings|safety score/i);
 });
 
+test('mobile public navigation keeps every primary destination discoverable', () => {
+  assert.match(landing, /<details className="pl-mobile-menu">/);
+  assert.match(landing, /<summary aria-label="Open navigation">/);
+  assert.match(landing, /aria-label="Mobile public navigation"/);
+  assert.match(css, /\.pl-mobile-menu summary\{[^}]*min-width:44px;min-height:44px/);
+  assert.match(css, /\.pl-header>nav\{display:none\}/);
+  assert.match(css, /\.pl-mobile-menu\{display:block/);
+});
+
 test('landing uses dedicated artwork and describes representative product data truthfully', () => {
   assert.match(landing, /\/images\/Warm Cottage\.png/);
   assert.match(landing, /\/images\/FLH Example\.png/);
