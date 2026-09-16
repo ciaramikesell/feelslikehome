@@ -26,6 +26,8 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
   const [state, setState] = useState(initialPreview.valid ? 'valid' : 'invalid'); // valid | invalid | accepting | done
   const [reason, setReason] = useState(initialPreview.reason || '');
   const isRealtorInvite = initialPreview.relationship_type === 'realtor';
+  const isBuyerInvite = initialPreview.invitation_direction === 'realtor_to_buyer';
+  const inviterName = initialPreview.inviter_display_name || 'Your Realtor';
 
   const signOut = async () => {
     await createClient().auth.signOut();
@@ -53,7 +55,7 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
         await setActiveSearch(supabase, user.id, result.search_id);
       }
       setState('done');
-      setTimeout(() => { router.push('/homes'); router.refresh(); }, 1200);
+      setTimeout(() => { router.push(isBuyerInvite ? '/onboarding' : '/homes'); router.refresh(); }, 1200);
     } catch (err) {
       console.error('Invitation acceptance failed', err);
       setState('invalid');
@@ -70,16 +72,20 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
 
         {state === 'valid' && (
           <>
-            <h1 className="hh-serif" style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', margin: '0 0 8px' }}>{isRealtorInvite ? "You've been invited as a Realtor" : "You've been invited to search together"}</h1>
+            <h1 className="hh-serif" style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', margin: '0 0 8px' }}>{isBuyerInvite ? `${inviterName} invited you to Feels Like Home` : isRealtorInvite ? "You've been invited as a Realtor" : "You've been invited to search together"}</h1>
             <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', lineHeight: 1.55, margin: '0 0 20px' }}>
-              {isRealtorInvite ? (
+              {isBuyerInvite ? (
+                <>Keep the homes you&apos;re considering in one place, see how each one matches what matters to you, and make it easier for {inviterName} to understand what you&apos;re looking for. This remains your search.</>
+              ) : isRealtorInvite ? (
                 <>You&apos;ll be able to understand this buyer&apos;s search, homes, priorities, and opinions. You can see their decision, but you cannot make or change it for them.</>
               ) : (
                 <>You&apos;ll share the same collection of homes and be able to see each other&apos;s search preferences and opinions. Your ratings and preferences stay under your control—no one else can change them for you.</>
               )}
             </p>
-            <p className="hh-collaboration-consent">This includes priorities, Match, Favorites, Want to Tour choices, commute destinations, notes, Overall Feeling, and post-tour ratings. Only participants in this search can see its activity.</p>
-            {isRealtorInvite ? (
+            <p className="hh-collaboration-consent">{isBuyerInvite ? `${inviterName} will only see your search after you accept. You own the search and every decision in it.` : 'This includes priorities, Match, Favorites, Want to Tour choices, commute destinations, notes, Overall Feeling, and post-tour ratings. Only participants in this search can see its activity.'}</p>
+            {isBuyerInvite ? (
+              <button type="button" className="hh-btn" style={{ width: '100%', justifyContent: 'center' }} onClick={accept}>Start my search</button>
+            ) : isRealtorInvite ? (
               <button type="button" className="hh-btn" style={{ width: '100%', justifyContent: 'center' }} onClick={accept}>Join as Realtor</button>
             ) : (
               <button type="button" className="hh-btn" style={{ width: '100%', justifyContent: 'center' }} onClick={accept}>Join search</button>
@@ -92,7 +98,7 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
         {state === 'done' && (
           <>
             <h1 className="hh-serif" style={{ fontSize: 20, fontWeight: 700, color: 'var(--moss)', margin: '0 0 8px' }}>You're in!</h1>
-            <p style={{ fontSize: 13.5, color: 'var(--ink-soft)' }}>Taking you to your shared search...</p>
+            <p style={{ fontSize: 13.5, color: 'var(--ink-soft)' }}>{isBuyerInvite ? `Your search is ready. ${inviterName} will be helping.` : 'Taking you to your shared search...'}</p>
           </>
         )}
 

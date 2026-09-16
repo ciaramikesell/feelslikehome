@@ -209,6 +209,34 @@ export async function promoteSuggestion(supabase, suggestionId) {
   return data;
 }
 
+export async function getRealtorContributions(supabase, searchId, homeId) {
+  const [{ data: notes, error: noteError }, { data: tours, error: tourError }] = await Promise.all([
+    supabase.from('realtor_notes').select('id,author_id,author_display_name,content,created_at,updated_at').eq('search_id', searchId).eq('home_id', homeId).order('created_at'),
+    supabase.from('tour_suggestions').select('id,suggested_by,suggested_by_display_name,created_at').eq('search_id', searchId).eq('home_id', homeId).order('created_at'),
+  ]);
+  if (noteError) throw noteError;
+  if (tourError) throw tourError;
+  return { notes: notes || [], tours: tours || [] };
+}
+
+export async function saveRealtorNote(supabase, searchId, homeId, content) {
+  const { data, error } = await supabase.rpc('save_realtor_note', { p_search_id: searchId, p_home_id: homeId, p_content: content });
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteRealtorNote(supabase, noteId) {
+  const { data, error } = await supabase.rpc('delete_realtor_note', { p_note_id: noteId });
+  if (error) throw error;
+  return data;
+}
+
+export async function suggestHomeTour(supabase, searchId, homeId) {
+  const { data, error } = await supabase.rpc('suggest_home_tour', { p_search_id: searchId, p_home_id: homeId });
+  if (error) throw error;
+  return data;
+}
+
 /* -------------------------------- priorities -------------------------------- */
 
 // Resolves priorities for (current search, current user):
@@ -617,6 +645,12 @@ export async function createInvitation(supabase, searchId, invitedBy, invitedEma
   }).select().single();
   if (error) throw error;
   return data;
+}
+
+export async function createBuyerInvitation(supabase, invitedEmail) {
+  const { data, error } = await supabase.rpc('create_buyer_invitation', { p_invited_email: invitedEmail.trim().toLowerCase() });
+  if (error) throw error;
+  return data?.[0];
 }
 
 // The invitee has zero RLS access to search_invitations before accepting —

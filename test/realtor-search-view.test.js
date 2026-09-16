@@ -23,8 +23,8 @@ test('People I’m Helping is relationship-scoped, batched, and coexists with My
 
 test('one or many authorized clients render while empty relationships are intentional', () => {
   assert.match(listPage, /relationships\.map/);
-  assert.match(listPage, /No client searches yet/);
-  assert.match(listPage, /client invites you as their Realtor/);
+  assert.match(listPage, /No buyer searches yet/);
+  assert.match(listPage, /invite someone to start searching with your help/);
 });
 
 test('URL access fails closed before any client context is returned', () => {
