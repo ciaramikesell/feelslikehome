@@ -9,7 +9,7 @@ import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
 import RealtorContributions from '@/components/RealtorContributions';
 import MobileDisclosure from '@/components/MobileDisclosure';
 import { criterionDisplayLabel, isArchivedStatus, TOUR_RATING_KEY } from '@/lib/constants';
-import { computeMatch, parseNum } from '@/lib/matching';
+import { computeMatch, matchFactualSummary, parseNum } from '@/lib/matching';
 import { evaluateCommute } from '@/lib/commute';
 import { formatDateOnly, formatHomePrice, formatLotSizeDisplay, formatPropertyType, formatTriState, parseCommaList } from '@/lib/homeDisplay';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
@@ -46,6 +46,7 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
   const { setRef, getState } = useCommuteObserver(home, commuteDestinations);
   const commuteEvaluation = evaluateCommute(commuteDestinations, getState);
   const match = computeMatch(home, priorities, commuteEvaluation);
+  const factualSummary = matchFactualSummary(match);
   const overall = home.ratings?.[TOUR_RATING_KEY] || 0;
   const experiential = (match?.allSelected || []).filter((item) => !item.objective && item.evaluated);
   const likedExperiences = experiential.filter((item) => item.met);
@@ -144,6 +145,16 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
         <div className="hh-detail-price">{formatHomePrice(home.price, priorities.searchType) || 'Price not added'}</div>
         <div className="hh-detail-core-facts">{[home.beds && `${home.beds} beds`, home.baths && `${home.baths} baths`, home.sqft && `${parseNum(home.sqft)?.toLocaleString()} sq ft`, home.lotSize && formatLotSizeDisplay(home.lotSize)].filter(Boolean).map((fact) => <span key={fact}>{fact}</span>)}</div>
         {home.suggestedBy && <span className="hh-provenance">Suggested by {home.suggestedBy}</span>}<div className="hh-detail-summary-row">{match?.pct != null && <strong>{match.pct}% Match</strong>}<span className="hh-detail-lifecycle">{home.status}</span>{home.isFavorite && <span className="hh-detail-favorite"><Heart size={13} fill="currentColor" aria-hidden="true" /> Favorite</span>}</div>
+        {/* A concise, deterministic readout of the same aggregate counts computeMatch
+            already produced — never a qualitative claim like "Great fit for your
+            family," and a missing/unknown Must-Have is always named, never smoothed
+            over by the headline percentage above. */}
+        {factualSummary && (factualSummary.mustClause || factualSummary.importantSentence) && (
+          <p className="hh-detail-match-factual">
+            {factualSummary.mustClause && <strong>{factualSummary.mustClause}.</strong>}
+            {factualSummary.importantSentence && <span> {factualSummary.importantSentence}</span>}
+          </p>
+        )}
         <div className="hh-detail-links">{home.listingUrl && <a href={home.listingUrl} target="_blank" rel="noreferrer">Original listing <ExternalLink size={13} /></a>}{!readOnly && <button type="button" onClick={() => setEditing(true)}><Pencil size={13} /> Edit {vocabulary.singularLower} information</button>}</div>
       </div>
     </header>
@@ -195,9 +206,14 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
 
     {hasCoBuyerPerspective && <Section eyebrow="Collaborator perspective" title="How your collaborator sees this home"><div className="hh-detail-cobuyer">{coBuyerPerspective.match?.pct != null && <div><strong>{coBuyerPerspective.match.pct}% Match</strong><small>Based on their priorities.</small></div>}{coBuyerPerspective.overallFeeling > 0 && <span><Stars value={coBuyerPerspective.overallFeeling} /> Overall feeling</span>}</div>{coBuyerPerspective.differentTakes?.length > 0 && <div className="hh-detail-differences"><h3>Different takes</h3>{coBuyerPerspective.differentTakes.map((take) => { const category = take.key?.split(':')[0]; return <p key={take.key}><strong>{criterionDisplayLabel(category, take.label)}</strong><span>{take.youLiked ? 'You liked it' : "You didn't like it"} · {take.coBuyerLiked ? 'Collaborator did' : "Collaborator didn't"}</span></p>; })}</div>}</Section>}
 
+    {/* Professional context and buyer/search context are two different kinds of
+        human input — never merged into one data model or card — but on wide
+        desktop they read fine side by side rather than as one long stack. */}
+    <div className="hh-detail-context-row">
     <RealtorContributions searchId={searchId} homeId={home.id} contributions={realtorContributions} viewerId={userId} realtorView={readOnly} archived={isArchivedStatus(home.status)} />
 
     <Section eyebrow="Property notes" title={isCollaborative ? "Shared notes" : "What you want to remember"}>{isCollaborative && <p className="hh-detail-context">Pros, cons, and notes are visible to both of you.</p>}{!notesOpen ? <><div className="hh-detail-notes">{parseCommaList(home.pros).length > 0 && <div><h3>Pros</h3>{parseCommaList(home.pros).map((x) => <p key={x}><span aria-hidden="true">+</span>{x}</p>)}</div>}{parseCommaList(home.cons).length > 0 && <div><h3>Cons</h3>{parseCommaList(home.cons).map((x) => <p key={x}><span aria-hidden="true">−</span>{x}</p>)}</div>}{home.notes && <div className="wide"><h3>Notes</h3><p>{home.notes}</p></div>}</div>{!readOnly && <button className="hh-btn hh-btn-ghost hh-detail-notes-action" onClick={() => setNotesOpen(true)}>{home.pros || home.cons || home.notes ? 'Edit property notes' : 'Add pros, cons, or a note'}</button>}</> : <div className="hh-detail-notes-form"><label>Pros<input className="hh-input" value={thoughts.pros} onChange={(e) => setThoughts({ ...thoughts, pros: e.target.value })} placeholder="Great kitchen, quiet street" /></label><label>Cons<input className="hh-input" value={thoughts.cons} onChange={(e) => setThoughts({ ...thoughts, cons: e.target.value })} placeholder="Busy road" /></label><label className="wide">Anything else you want to remember?<textarea className="hh-textarea" value={thoughts.notes} onChange={(e) => setThoughts({ ...thoughts, notes: e.target.value })} placeholder="HOA details, sewer/water, financing options, recent updates, listing terms, or anything else worth noting." /></label><div className="wide hh-detail-form-actions"><button className="hh-btn hh-btn-ghost" onClick={() => setNotesOpen(false)}>Cancel</button><button className="hh-btn" disabled={saving} onClick={saveThoughts}>{saving ? 'Saving…' : 'Save notes'}</button></div></div>}</Section>
+    </div>
     {!readOnly && editing && <HomeModal presentation="detail-panel" initial={home} priorities={priorities} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} userId={userId} onSave={saveWhole} onClose={() => setEditing(false)} onWantToTour={() => savePersonal({ status: 'Want to Tour' })} onArchiveRequest={setArchiveTarget} />}
     {!readOnly && archiveTarget && <ArchiveConfirmModal home={archiveTarget} onCancel={() => setArchiveTarget(null)} onConfirm={(reason) => confirmArchive(reason).catch(() => {})} />}
     {!readOnly && reflecting && <PostTourModal home={home} priorities={priorities} isCollaborative={isCollaborative} saveError={saveError} onVerdict={handleVerdict} onClose={() => setReflecting(false)} />}

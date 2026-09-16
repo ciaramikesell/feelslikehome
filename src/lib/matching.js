@@ -491,6 +491,38 @@ export function summarizeForCard(match) {
   };
 }
 
+// Home Detail's concise hero summary — a deterministic sentence built only
+// from computeMatch's own aggregate counts (mustTotal/mustEvaluated/mustMet,
+// allSelected), never a qualitative/emotional claim like "Excellent fit for
+// your family." A missing Must-Have is always reported, never smoothed over
+// by a positive percentage; an unevaluated Must-Have is reported as unknown,
+// never silently treated as met. No second scoring path — this only reads
+// values computeMatch already produced.
+export function matchFactualSummary(match) {
+  if (!match || match.pct == null) return null;
+
+  const mustMissing = match.mustEvaluated - match.mustMet;
+  const mustUnknown = match.mustTotal - match.mustEvaluated;
+  let mustClause = null;
+  if (match.mustTotal > 0) {
+    if (mustMissing > 0) mustClause = `${mustMissing} Must-Have${mustMissing > 1 ? 's' : ''} missing`;
+    else if (mustUnknown > 0) mustClause = `${mustUnknown} Must-Have${mustUnknown > 1 ? 's' : ''} still unknown`;
+    else mustClause = 'All Must-Haves met';
+  }
+
+  const important = match.allSelected.filter((c) => c.tier === 'important');
+  const importantEvaluated = important.filter((c) => c.evaluated);
+  const importantMet = importantEvaluated.filter((c) => c.met).length;
+  const importantMissed = importantEvaluated.length - importantMet;
+  let importantSentence = null;
+  if (importantEvaluated.length > 0) {
+    importantSentence = `${importantMet} of ${importantEvaluated.length} Important preference${importantEvaluated.length > 1 ? 's' : ''} match.`
+      + (importantMissed > 0 ? ` ${importantMissed} doesn't match.` : '');
+  }
+
+  return { mustClause, importantSentence };
+}
+
 export function matchColor(pct) {
   if (pct === null || pct === undefined) return 'var(--ink-soft)';
   if (pct >= 80) return 'var(--moss)';

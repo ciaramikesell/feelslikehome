@@ -844,6 +844,8 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-detail-summary-row strong { color: var(--moss); font-size: 19px; font-variant-numeric: tabular-nums; }
 .hh-detail-summary-row span { display: inline-flex; align-items: center; gap: 5px; }
 .hh-detail-lifecycle { padding: 5px 9px; border-radius: 999px; background: rgba(116,128,79,.1); color: #59633e; font-weight: 700; }
+.hh-detail-match-factual { margin: -6px 0 20px; max-width: 460px; color: var(--ink-soft); font-size: 12.5px; line-height: 1.55; }
+.hh-detail-match-factual strong { color: var(--ink); font-weight: 700; }
 .hh-detail-favorite { color: var(--brick); font-weight: 650; }
 .hh-detail-links { display: flex; flex-wrap: wrap; gap: 12px 20px; }
 .hh-detail-links a, .hh-detail-links button, .hh-detail-text-button { display: inline-flex; align-items: center; gap: 6px; padding: 5px 0; border: 0; background: none; color: var(--ink-soft); font: 650 12.5px 'Plus Jakarta Sans',sans-serif; text-decoration: none; cursor: pointer; }
@@ -1072,6 +1074,19 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 @media(max-width:380px){.hh-realtor-home-card{grid-template-columns:1fr}.hh-realtor-home-photo{height:150px;min-height:0}.hh-realtor-perspectives>div{grid-template-columns:1fr}.hh-realtor-section-title{flex-direction:column}}
 
 .hh-realtor-suggest-action{display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap}.hh-realtor-suggest-action p{font-size:12px;color:var(--ink-soft);margin:0}.hh-suggestion-history{display:grid;gap:10px}.hh-suggestion-history article{display:grid;gap:3px;padding:12px;border:1px solid var(--line);border-radius:12px}.hh-suggestion-history article>span{color:var(--brick);font-size:12px;font-weight:700}.hh-suggestion-history small{color:var(--ink-soft)}
+
+/* Home Detail's final contextual sections — professional context and
+   buyer/search notes stay two separate sections/data models (see
+   HomeDetail.jsx), but use the desktop width intelligently side by side
+   rather than as one long vertical stack. Each child keeps its own divider
+   on mobile, where they stack; on desktop the row itself carries one. */
+.hh-detail-context-row { display: grid; grid-template-columns: 1fr 1fr; align-items: start; gap: 0 40px; max-width: 960px; margin: 0 auto; padding-top: 30px; border-top: 1px solid rgba(138,124,110,.28); }
+.hh-detail-context-row .hh-detail-section { border-top: 0; padding-top: 0; max-width: none; margin: 0; }
+.hh-detail-context-row .hh-realtor-contributions { margin: 0; }
+@media (max-width: 880px) {
+  .hh-detail-context-row { grid-template-columns: 1fr; gap: 0; max-width: 100%; border-top: 0; padding-top: 0; }
+  .hh-detail-context-row .hh-detail-section { border-top: 1px solid rgba(138,124,110,.28); padding-top: 30px; margin-top: 24px; }
+}
 
 /* PR #82 — attributed professional notes, tour recommendations, acquisition. */
 .hh-realtor-contributions{margin:24px 0;padding:22px;background:rgba(116,128,79,.07);border:1px solid rgba(116,128,79,.22);border-radius:18px;display:grid;gap:14px}.hh-contribution-heading{display:flex;gap:10px;align-items:center;color:var(--moss)}.hh-contribution-heading span{font:700 10px var(--font-mono);letter-spacing:.1em;text-transform:uppercase}.hh-contribution-heading h2{font:600 22px var(--font-serif);color:var(--ink);margin:3px 0 0}.hh-realtor-note{padding:14px;background:var(--paper-raised);border:1px solid var(--line);border-radius:12px}.hh-realtor-note strong{font-size:13px;color:var(--moss)}.hh-realtor-note p{white-space:pre-wrap;line-height:1.55;margin:7px 0;color:var(--ink)}.hh-realtor-note small{color:var(--ink-soft)}.hh-realtor-note>div,.hh-note-composer>div,.hh-invite-buyer form>div{display:flex;gap:9px;flex-wrap:wrap}.hh-text-button{border:0;background:none;padding:5px 0;color:var(--moss);font:600 12px var(--font-sans);cursor:pointer}.hh-text-button+.hh-text-button{margin-left:12px}.hh-text-button.danger{color:var(--brick)}.hh-note-composer{display:grid;gap:8px}.hh-note-composer label,.hh-invite-buyer label{font-size:12px;font-weight:700}.hh-note-composer textarea{min-height:110px;resize:vertical}.hh-tour-suggestion{display:grid;grid-template-columns:auto 1fr;gap:3px 9px;align-items:center;padding:12px 14px;border-radius:12px;background:rgba(193,89,47,.09);color:var(--brick)}.hh-tour-suggestion span{grid-column:2;color:var(--ink-soft);font-size:12px}.hh-invite-buyer-button{margin-top:18px}.hh-invite-buyer{margin-top:20px;padding:18px;max-width:560px;border:1px solid var(--line);border-radius:15px;background:var(--paper-raised)}.hh-invite-buyer h2{font:600 21px var(--font-serif);margin:0 0 5px}.hh-invite-buyer p{font-size:13px}.hh-invite-buyer form,.hh-invite-buyer form label,.hh-invite-link{display:grid;gap:10px}.hh-invite-link small{color:var(--ink-soft)}
