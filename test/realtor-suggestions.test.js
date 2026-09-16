@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const migration = read('supabase/migrations/2026-09-16-realtor-suggestions.sql');
+const privilegeRepair = read('supabase/migrations/2026-09-16-realtor-suggestions-homes-select-fix.sql');
 const schema = read('supabase/schema.sql');
 const collaboration = read('src/lib/supabase/collaboration.js');
 const buyer = read('src/components/SuggestionsBoard.jsx');
@@ -24,6 +25,23 @@ test('suggestions are distinct durable records backed by staged canonical homes'
   assert.match(collaboration, /eq\('suggestion_staged', false\)/);
   assert.match(migration, /update public\.homes set suggestion_staged=false/);
   assert.match(schema, /create table if not exists public\.realtor_suggestions/);
+});
+
+test('deployed homes column ACL permits the new runtime read without widening table access', () => {
+  // Pass 3C.3 intentionally revoked table SELECT and granted only a shared
+  // column allowlist. A newly selected/filterable column therefore needs its
+  // own grant in a follow-up migration that production can apply after #80.
+  assert.match(collaboration, /HOME_SHARED_COLUMNS[\s\S]*suggestion_staged/);
+  assert.match(collaboration, /eq\('suggestion_staged', false\)/);
+  assert.match(privilegeRepair, /grant select \(suggestion_staged\) on public\.homes to authenticated/i);
+  assert.match(schema, /grant select \(suggestion_staged\) on public\.homes to authenticated/i);
+  assert.doesNotMatch(privilegeRepair, /grant select on (?:table )?public\.homes/i);
+  assert.doesNotMatch(privilegeRepair, /disable row level security|drop policy/i);
+});
+
+test('suggestion embedding respects the homes column allowlist instead of SELECT star', () => {
+  assert.doesNotMatch(collaboration, /homes\(\*\)/);
+  assert.match(collaboration, /homes\(\$\{HOME_SHARED_COLUMNS\}\)/);
 });
 
 test('Realtor creation is relationship-scoped, revoked access fails, and duplicates are idempotent', () => {
