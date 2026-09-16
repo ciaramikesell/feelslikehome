@@ -25,7 +25,13 @@ const HOME_SHARED_COLUMNS_PRE_PASS_B = [
   'coordinate_source', 'hoa_fee_monthly', 'property_tax_annual', 'property_tax_year',
   'basement_notes', 'schools_notes', 'condition_notes', 'created_at', 'updated_at',
 ].join(',');
-export const HOME_SHARED_COLUMNS = `${HOME_SHARED_COLUMNS_PRE_PASS_B},property_type,available_on,pets_allowed,utilities_included,in_unit_laundry,property_name,selected_floor_plan_name,selected_unit_label,floor_plan_image_url,suggestion_staged`;
+// floor_plan_image_url was briefly added as an apartment experiment, but never
+// became part of the supported Home editor/importer contract. In particular,
+// production databases which predate that experiment reject an otherwise
+// ordinary edit when PostgREST sees the stale key. Keep reads/writes on the
+// canonical, user-editable fields only; the historical nullable column may
+// remain in databases where its migration already ran.
+export const HOME_SHARED_COLUMNS = `${HOME_SHARED_COLUMNS_PRE_PASS_B},property_type,available_on,pets_allowed,utilities_included,in_unit_laundry,property_name,selected_floor_plan_name,selected_unit_label,suggestion_staged`;
 
 const PASS_B_DATABASE_COLUMNS = ['property_type', 'available_on', 'pets_allowed', 'utilities_included', 'in_unit_laundry'];
 function isPrePassBSchemaError(error) {
@@ -372,7 +378,7 @@ const SHARED_FIELDS = [
   'propertyTaxAnnual', 'propertyTaxYear', 'basementNotes',
   'schoolsNotes', 'conditionNotes',
   'propertyType', 'availableOn', 'petsAllowed', 'utilitiesIncluded', 'inUnitLaundry',
-  'propertyName', 'selectedFloorPlanName', 'selectedUnitLabel', 'floorPlanImageUrl',
+  'propertyName', 'selectedFloorPlanName', 'selectedUnitLabel',
 ];
 
 function emptyPersonalState() {
@@ -760,7 +766,6 @@ function rowToHomeWithOwner(row) {
     propertyName: row.property_name || '',
     selectedFloorPlanName: row.selected_floor_plan_name || '',
     selectedUnitLabel: row.selected_unit_label || '',
-    floorPlanImageUrl: row.floor_plan_image_url || '',
   };
 }
 
@@ -808,7 +813,6 @@ function homeToSharedRow(home, userId, searchId) {
     property_name: home.propertyName || null,
     selected_floor_plan_name: home.selectedFloorPlanName || null,
     selected_unit_label: home.selectedUnitLabel || null,
-    floor_plan_image_url: home.floorPlanImageUrl || null,
     updated_at: new Date().toISOString(),
   };
 }

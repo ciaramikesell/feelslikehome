@@ -330,7 +330,7 @@ export const MOBILE_PRIMARY_TABS = [
 export function emptyHome() {
   return {
     id: null,
-    propertyName: '', selectedFloorPlanName: '', selectedUnitLabel: '', floorPlanImageUrl: '',
+    propertyName: '', selectedFloorPlanName: '', selectedUnitLabel: '',
     address: '', crossroads: '', listingUrl: '', photoUrl: '',
     price: '', estMonthly: '', sqft: '', beds: '', baths: '', lotSize: '', garageSpaces: '', yearBuilt: '', daysOnMarket: '',
     homeLayout: [], homeCondition: [], primaryBedroomLocation: '', secondaryBedroomLocation: '',

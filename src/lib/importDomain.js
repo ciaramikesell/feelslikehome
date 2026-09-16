@@ -25,7 +25,7 @@ export const IMPORT_DESTINATIONS = Object.freeze([
   'hoaFeeMonthly', 'propertyTaxAnnual', 'propertyTaxYear', 'latitude', 'longitude',
   // Option fields are legal destinations only for a future explicitly-scoped
   // floor-plan/unit adapter. Community RentCast normalization never emits them.
-  'selectedFloorPlanName', 'selectedUnitLabel', 'floorPlanImageUrl',
+  'selectedFloorPlanName', 'selectedUnitLabel',
 ]);
 
 const DESTINATIONS = new Set(IMPORT_DESTINATIONS);
