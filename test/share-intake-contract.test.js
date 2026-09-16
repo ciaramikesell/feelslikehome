@@ -10,6 +10,7 @@ const homesBoard = read('src/components/HomesBoard.jsx');
 const homeModal = read('src/components/HomeModal.jsx');
 const middleware = read('src/middleware.js');
 const appLayout = read('src/app/(app)/layout.js');
+const authLib = read('src/lib/supabase/auth.js');
 const signIn = read('src/app/auth/sign-in/page.js');
 const signUp = read('src/app/auth/sign-up/page.js');
 const authCallback = read('src/app/auth/callback/route.js');
@@ -125,11 +126,20 @@ test('middleware exposes the current path/query via a header, without touching t
 });
 
 test('(app)/layout.js preserves the intended destination through both the sign-in and onboarding redirects', () => {
-  assert.match(appLayout, /import \{ headers \} from 'next\/headers'/);
-  assert.match(appLayout, /import \{ sanitizeRedirectPath \} from '@\/lib\/safeRedirect'/);
-  assert.match(appLayout, /requestHeaders\.get\('x-pathname'\)/);
-  assert.match(appLayout, /if \(!user\) redirect\(withRedirectParam\('\/auth\/sign-in', await currentPathForRedirect\(\)\)\);/);
+  // The sign-in half of this now lives in the shared requireUser() guard
+  // (src/lib/supabase/auth.js), used by every authenticated route, not just
+  // this layout — see the auth-session-recovery-hotfix suite for that.
+  // withRedirectParam/currentPathForRedirect moved there with it; the
+  // onboarding redirect (layout-specific, not shared) still calls them the
+  // same way.
+  assert.match(appLayout, /from '@\/lib\/supabase\/auth'/);
+  assert.match(appLayout, /const user = await requireUser\(supabase\);/);
   assert.match(appLayout, /if \(!profile\?\.onboarding_complete\) redirect\(withRedirectParam\('\/onboarding', await currentPathForRedirect\(\)\)\);/);
+
+  assert.match(authLib, /import \{ headers \} from 'next\/headers'/);
+  assert.match(authLib, /import \{ sanitizeRedirectPath \} from '@\/lib\/safeRedirect'/);
+  assert.match(authLib, /requestHeaders\.get\('x-pathname'\)/);
+  assert.match(authLib, /redirect\(withRedirectParam\('\/auth\/sign-in', await currentPathForRedirect\(\)\)\);/);
 });
 
 test('sign-in, sign-up, and the auth callback all validate redirect/next before trusting it', () => {
