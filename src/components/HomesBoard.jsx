@@ -18,7 +18,8 @@ import Sheet from '@/components/Sheet';
 import MobileDisclosure from '@/components/MobileDisclosure';
 import { emptyHome, isArchivedStatus } from '@/lib/constants';
 import { isLikelyListingUrl, findHomeByListingUrl } from '@/lib/listingUrl';
-import { parseNum, fmtMoney, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint, summarizeForCard } from '@/lib/matching';
+import { parseNum, fmtMoney, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint, selectHomeCardCriteria } from '@/lib/matching';
+import { homeCardSnapshot } from '@/lib/homeCardPresentation';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
 import { formatHomePrice, formatLotSizeDisplay, parseCommaList } from '@/lib/homeDisplay';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
@@ -91,7 +92,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   const { setRef: commuteRef, getState: getCommuteState } = useCommuteObserver(home, commuteDestinations);
   const commuteEvaluation = evaluateCommute(commuteDestinations, getCommuteState);
   const match = computeMatch(home, priorities, commuteEvaluation);
-  const matchState = summarizeForCard(match);
+  const cardCriteria = selectHomeCardCriteria(match);
   const { showsPurchaseFinancials } = searchIntentCapabilities(priorities.searchType);
 
   // Core property facts — beds/baths/sqft/lot only. Garage is deliberately not
@@ -105,28 +106,15 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
     home.lotSize && formatLotSizeDisplay(home.lotSize),
   ].filter(Boolean);
 
-  // Compact descriptive property-facts strip — purely descriptive shared facts
-  // ("what this home has"), never a Match input and never duplicated into the
-  // Matches/Missing/Not Confirmed section ("whether I care"). Garage reuses the
-  // existing shared descriptive field; Basement/Schools are the new Property
-  // Details text fields. Condition Notes is deliberately NOT included here —
-  // see the separate placement near Pros/Cons/Notes below.
-  const schoolName = home.schoolsNotes?.replace(/\s*(?:—|-)\s*\d+(?:\.\d+)?\s*\/\s*10\s*$/i, '').trim();
-  const propertyFacts = [
-    home.garageSpaces && { label: 'Garage', text: home.garageSpaces },
-    home.basementNotes && { label: 'Basement', text: home.basementNotes },
-    home.homeCondition?.length && { label: 'Home condition', text: home.homeCondition.join(', ') },
-    styleSummary && { label: 'Style', text: styleSummary },
-    schoolName && { label: 'Schools', text: schoolName },
-  ].filter(Boolean);
+  // Compact descriptive property fact sheet — purely descriptive shared facts
+  // ("what this home has"), separate from whether the participant cares about
+  // each feature. Condition Notes remains with Pros/Cons/Notes below.
+  const propertyFacts = homeCardSnapshot(home, styleSummary);
 
   const pros = parseCommaList(home.pros);
   const cons = parseCommaList(home.cons);
   const noteCount = [home.notes, home.conditionNotes, ...pros, ...cons].filter(Boolean).length;
-  const mustMissing = matchState.missing.filter((item) => item.tier === 'must');
-  const mustUnknown = matchState.notConfirmed.filter((item) => item.tier === 'must');
-  const positives = matchState.matches.filter((item) => item.tier !== 'must').slice(0, 3);
-  const negatives = matchState.missing.filter((item) => item.tier !== 'must').slice(0, 3);
+  const { mustHaves, mustOverflow, positives, negatives } = cardCriteria;
   // Secondary, already-known context (facts/commute/notes) — kept out of the
   // way behind "More details" on narrow viewports so a mobile card reads as
   // price/address/Match/status first, not a full restack of every field.
@@ -205,39 +193,12 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
             <div className={`hh-match-panel${mode === 'archive' ? ' is-secondary' : ''}`} style={{ background: matchTint(match.pct), borderLeft: `${mode === 'archive' ? 2 : 3}px solid ${matchColor(match.pct)}` }}>
               <div className="hh-match-eyebrow">Personalized Match</div>
               <MatchSummary match={match} />
-              {match.mustTotal > 0 && <div className="hh-must-summary"><strong>Must Haves</strong><span className={mustMissing.length ? 'is-negative' : 'is-positive'}>{mustMissing.length ? `✕ ${match.mustMet}/${match.mustTotal} met` : `✓ ${match.mustMet}/${match.mustTotal} met`}</span>{mustMissing.slice(0, 2).map((item) => <span className="is-negative" key={item.key}>✕ {item.label}</span>)}{mustUnknown.length > 0 && <span className="is-unknown">? {mustUnknown.length} Must Have{mustUnknown.length > 1 ? 's' : ''} not evaluated</span>}</div>}
-              {(positives.length > 0 || negatives.length > 0) && <div className="hh-personalized-criteria"><strong>Personalized Criteria</strong>{negatives.map((item) => <span className="is-negative" key={item.key}>✕ {item.label}</span>)}{positives.map((item) => <span className="is-positive" key={item.key}>✓ {item.label}</span>)}</div>}
+              {mustHaves.length > 0 && <div className="hh-must-summary"><strong>Must Haves</strong>{mustHaves.map((item) => <span className={item.evaluated ? (item.met ? 'is-positive' : 'is-negative') : 'is-unknown'} key={item.key}>{item.evaluated ? (item.met ? '✓' : '✕') : '?'} {item.label}</span>)}{mustOverflow > 0 && <span className="hh-criteria-overflow">+ {mustOverflow} more Must Have{mustOverflow === 1 ? '' : 's'}</span>}</div>}
+              {(positives.length > 0 || negatives.length > 0) && <div className="hh-personalized-criteria"><strong>Personalized Criteria</strong>{positives.map((item) => <span className="is-positive" key={item.key}>✓ {item.label}</span>)}{negatives.map((item) => <span className="is-negative" key={item.key}>✕ {item.label}</span>)}</div>}
               <MatchTradeoffs match={match} />
             </div>
           ) : (
             <div style={{ fontSize: 11.5, color: 'var(--ink-soft)' }}>Set your priorities in <em>My Search</em> to see a match score.</div>
-          )}
-
-          {mode === 'tour' && wantToTourState?.wantToTourLabel && (
-            <div className="hh-lifecycle-status">
-              <Footprints size={12} color="var(--moss)" /> {wantToTourState.wantToTourLabel}
-            </div>
-          )}
-
-          {!toured && home.status === 'Want to Tour' && mode === 'homes' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, color: 'var(--ink-soft)' }}>
-              <Check size={14} color="var(--moss)" /> Want to tour
-            </div>
-          )}
-          {!toured && home.status === 'Want to Tour' && mode !== 'homes' && (
-            <button type="button" className="hh-btn" style={{ fontSize: 12.5, padding: '7px 12px', justifyContent: 'center' }} onClick={() => onOpenPostTour(home)}>
-              <MessageCircle size={13} /> I toured this home
-            </button>
-          )}
-          {toured && (
-            <button
-              type="button"
-              className="hh-btn hh-btn-ghost"
-              style={{ fontSize: 12.5, padding: '7px 12px', justifyContent: 'center', borderColor: 'rgba(193,89,47,0.4)', color: 'var(--brick)' }}
-              onClick={() => onOpenPostTour(home)}
-            >
-              <MessageCircle size={13} /> Edit my thoughts
-            </button>
           )}
 
           {hasCardContext && (
@@ -245,10 +206,10 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
           {propertyFacts.length > 0 && (
             <div className="hh-card-context-group">
               <div className="hh-context-heading">Home Snapshot</div>
-              {propertyFacts.map(({ label, text }, i) => (
-                <div key={i} style={{ fontSize: 12, color: 'var(--ink-soft)', lineHeight: 1.4 }}>
-                  <span style={{ fontWeight: 600, color: 'var(--ink)' }}>{label}</span>{' '}
-                  <span>{text}</span>
+              {propertyFacts.map(({ label, value }) => (
+                <div className="hh-snapshot-fact" key={label}>
+                  <span>{label}</span>
+                  <strong>{value}</strong>
                 </div>
               ))}
             </div>
@@ -276,6 +237,32 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
 
           {noteCount > 0 && <Link className="hh-notes-indicator" href={`/homes/${encodeURIComponent(home.id)}`}><StickyNote size={13} /> Notes ({noteCount})</Link>}
           </MobileDisclosure>
+          )}
+          {mode === 'tour' && wantToTourState?.wantToTourLabel && (
+            <div className="hh-lifecycle-status">
+              <Footprints size={12} color="var(--moss)" /> {wantToTourState.wantToTourLabel}
+            </div>
+          )}
+
+          {!toured && home.status === 'Want to Tour' && mode === 'homes' && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, color: 'var(--ink-soft)' }}>
+              <Check size={14} color="var(--moss)" /> Want to tour
+            </div>
+          )}
+          {!toured && home.status === 'Want to Tour' && mode !== 'homes' && (
+            <button type="button" className="hh-btn" style={{ fontSize: 12.5, padding: '7px 12px', justifyContent: 'center' }} onClick={() => onOpenPostTour(home)}>
+              <MessageCircle size={13} /> I toured this home
+            </button>
+          )}
+          {toured && (
+            <button
+              type="button"
+              className="hh-btn hh-btn-ghost"
+              style={{ fontSize: 12.5, padding: '7px 12px', justifyContent: 'center', borderColor: 'rgba(193,89,47,0.4)', color: 'var(--brick)' }}
+              onClick={() => onOpenPostTour(home)}
+            >
+              <MessageCircle size={13} /> Edit my thoughts
+            </button>
           )}
 
           <div className="hh-home-card-actions" style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: 6, marginTop: 4, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
