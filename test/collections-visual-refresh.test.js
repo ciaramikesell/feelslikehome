@@ -141,7 +141,7 @@ test('Realtor tour-suggestion provenance (tour_suggestions) is never read or ren
   // The only "suggested" language on a card is accepted-suggestion provenance
   // (already-existing #80 behavior), which is a one-way history label, never
   // a lifecycle toggle.
-  assert.match(homesBoard, /\{home\.suggestedBy && <span className="hh-provenance">Suggested by \{home\.suggestedBy\}<\/span>\}/);
+  assert.match(homesBoard, /\{home\.suggestedBy && <span className="hh-image-provenance">Suggested by \{home\.suggestedBy\}<\/span>\}/);
 });
 
 /* ------------------------------ auth boundary: untouched ------------------------------ */
