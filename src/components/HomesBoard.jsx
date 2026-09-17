@@ -205,12 +205,11 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
           {hasCardContext && (
           <MobileDisclosure>
           {propertyFacts.length > 0 && (
-            <div className="hh-card-context-group">
-              <div className="hh-context-heading">Home Snapshot</div>
+            <div className="hh-property-facts">
               {propertyFacts.map(({ label, value }) => (
-                <div className="hh-snapshot-fact" key={label}>
-                  <span>{label}</span>
-                  <strong>{value}</strong>
+                <div className="hh-property-fact" key={label}>
+                  <strong>{label}</strong>
+                  <span>{value}</span>
                 </div>
               ))}
             </div>
