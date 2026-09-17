@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import AuthForm from '@/components/auth/AuthForm';
 
-export default function LandingAuthPopover({ mode, onModeChange, onClose, returnFocusRef }) {
+export default function LandingAuthPopover({ mode, onModeChange, onClose, returnFocusRef, isRealtorEntry = false, redirectTo = '/' }) {
   const dialogRef = useRef(null);
 
   useEffect(() => {
@@ -18,5 +18,5 @@ export default function LandingAuthPopover({ mode, onModeChange, onClose, return
     };
   }, [onClose, returnFocusRef]);
 
-  return <div ref={dialogRef} className="pl-auth-popover" role="dialog" aria-modal="false" aria-label={mode === 'sign-in' ? 'Sign in' : 'Create account'}><AuthForm initialMode={mode} inline onModeChange={onModeChange} /></div>;
+  return <div ref={dialogRef} className="pl-auth-popover" role="dialog" aria-modal="false" aria-label={mode === 'sign-in' ? 'Sign in' : isRealtorEntry ? 'Create Realtor account' : 'Create account'}><AuthForm initialMode={mode} inline onModeChange={onModeChange} isRealtorEntry={isRealtorEntry} redirectTo={redirectTo} /></div>;
 }
