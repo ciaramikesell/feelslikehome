@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { X, Upload, Link2, Footprints, Archive as ArchiveIcon, ExternalLink, Check, Users, Search, ClipboardPaste, Camera, MessageSquareText } from 'lucide-react';
+import { X, Upload, Link2, Footprints, Archive as ArchiveIcon, ExternalLink, Check, Users, Search, ClipboardPaste, Camera, MessageSquareText, House, ChevronDown } from 'lucide-react';
 import { StarInput } from '@/components/ui';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
@@ -130,7 +130,7 @@ function WhatFlhFound({ result, listingUrl, mobile = false }) {
 }
 
 function AddSectionHeading({ icon: Icon, title, children, tone = 'peach' }) {
-  return <div className="hh-add-section-heading"><span className={`is-${tone}`}><Icon size={20} aria-hidden="true" /></span><div><h3 className="hh-serif">{title}</h3>{children && <p>{children}</p>}</div></div>;
+  return <div className="hh-add-section-heading"><span className={`is-${tone}`}><Icon size={24} aria-hidden="true" /></span><div><h3 className="hh-serif">{title}</h3>{children && <p>{children}</p>}</div></div>;
 }
 
 // The compact "Property details" area: a settled, scannable summary of what's
@@ -684,18 +684,10 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         </div>
 
         {isNewHome && (
-          <div
-            style={{
-              background: 'rgba(193,89,47,0.07)',
-              border: '1px solid rgba(193,89,47,0.25)',
-              borderRadius: 16,
-              padding: '18px 20px 20px',
-              marginBottom: 16,
-            }}
-          >
+          <section className="hh-import-listing">
             <AddSectionHeading icon={Search} title="Import a listing">{vocabulary.apartment ? 'Paste a rental listing or enter the property yourself. We’ll fill in what we can.' : "Paste a listing link or enter an address. We'll fill in what we can."}</AddSectionHeading>
             <label className="hh-label">{vocabulary.apartment ? 'Listing link, property name, or address' : 'Listing link or address'}</label>
-            <div className="hh-find-home-row" style={{ display: 'flex', gap: 8 }}>
+            <div className="hh-find-home-row">
               <input
                 className="hh-input"
                 style={{ flex: 1, fontSize: 15, background: 'var(--paper-raised)' }}
@@ -714,17 +706,12 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
                 {importPhase === 'loading' ? 'Finding...' : `Find this ${vocabulary.singularLower}`}
               </button>
             </div>
-          </div>
+          </section>
         )}
 
         {/* -------------------------- Find feedback (Add Home only) -------------------------- */}
         {showFindUI && (
           <>
-            {importPhase === 'success' && importResult && (
-              <p style={{ fontSize: 13, fontWeight: 600, color: 'var(--moss)', margin: '10px 0 4px' }}>
-                ✓ We found {foundFactsCount} property detail{foundFactsCount === 1 ? '' : 's'}. Review them below.
-              </p>
-            )}
             {importPhase === 'empty' && !urlFallbackMsg && (
               <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '10px 0 4px' }}>
                 We couldn't find property data for that address — enter what you know below.
@@ -766,20 +753,12 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
           </>
         )}
 
-        {isNewHome && !vocabulary.apartment && <details className="hh-details" style={{ marginTop: 14 }}>
-          <summary><ClipboardPaste size={19} /> <span>Can&apos;t find the home? Paste listing details instead<small>Enter the details manually when a link isn&apos;t available.</small></span></summary>
-          <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '8px 0' }}>Copy the property description or listing details from the listing page and paste them here. We'll try to recognize price, beds, baths, square footage, and other details.</p>
-          <textarea className="hh-textarea" style={{ minHeight: 90 }} value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Paste the full listing text here..." />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11.5, color: parseMsg.startsWith("Couldn't") ? 'var(--brick)' : 'var(--moss)' }}>{parseMsg}</span>
-            <button type="button" className="hh-btn hh-btn-ghost" onClick={runAutofill} disabled={!pasteText.trim()}>Fill in fields</button>
-          </div>
-        </details>}
+
 
         {/* -------------------------- Found automatically -------------------------- */}
         {showCompactCard && (
-          <div style={{ border: '1px solid var(--moss)', background: 'rgba(116,128,79,0.07)', borderRadius: 14, padding: '16px 18px', margin: '16px 0' }}>
-            <span style={{ display: 'inline-block', fontSize: 11, fontWeight: 700, color: 'var(--moss)', letterSpacing: '.02em', marginBottom: 8 }}>{vocabulary.apartment ? '✓ We found the property.' : '✓ Found automatically'}</span>
+          <section className="hh-home-found">
+            <span className="hh-home-found-status"><Check size={16} />{vocabulary.apartment ? 'We found the property' : 'Home found'}</span>
             {vocabulary.apartment && form.propertyName && <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 3 }}>{form.propertyName}</div>}
             <div className="hh-address" style={{ fontSize: 17, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.35 }}>
               {addressLines.line1}
@@ -787,12 +766,21 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
             </div>
             {cardFacts.priceLine && <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', margin: '10px 0 2px' }}>{cardFacts.priceLine}</div>}
             {cardFacts.bedsBathsSqft && <div style={{ fontSize: 13.5, color: 'var(--ink)', margin: '2px 0' }}>{cardFacts.bedsBathsSqft}</div>}
-            {cardFacts.secondaryFacts && <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 6 }}>{cardFacts.secondaryFacts}</div>}
-            {!searchIntentCapabilities(priorities.searchType).showsRentalFacts && cardFacts.hoaTaxLine && <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 4 }}>{cardFacts.hoaTaxLine}</div>}
+            <div className="hh-home-found-count"><Check size={14} /> {foundFactsCount} property detail{foundFactsCount === 1 ? '' : 's'} found</div>
             <button type="button" className="hh-btn hh-btn-ghost" style={{ marginTop: 12, fontSize: 12.5, padding: '6px 12px' }} onClick={() => setEditDetailsOpen(true)}>Edit details</button>
-          </div>
+          </section>
         )}
         {showCompactCard && <div className="hh-found-mobile-wrap"><p><Check size={14} /> We found {foundFactsCount} property details</p><WhatFlhFound result={importResult} listingUrl={form.listingUrl} mobile /></div>}
+
+        {isNewHome && !vocabulary.apartment && <details className="hh-details hh-manual-fallback">
+          <summary><span className="hh-accordion-icon"><ClipboardPaste size={24} /></span><span>Can&apos;t find the home? Paste listing details instead<small>Enter the details manually when a link isn&apos;t available.</small></span><ChevronDown className="hh-accordion-chevron" size={20} /></summary>
+          <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '8px 0' }}>Copy the property description or listing details from the listing page and paste them here. We'll try to recognize price, beds, baths, square footage, and other details.</p>
+          <textarea className="hh-textarea" style={{ minHeight: 90 }} value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Paste the full listing text here..." />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, gap: 10, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 11.5, color: parseMsg.startsWith("Couldn't") ? 'var(--brick)' : 'var(--moss)' }}>{parseMsg}</span>
+            <button type="button" className="hh-btn hh-btn-ghost" onClick={runAutofill} disabled={!pasteText.trim()}>Fill in fields</button>
+          </div>
+        </details>}
 
         {/* -------------------------- Objective property fields -------------------------- */}
         {showObjectiveGrid && (
@@ -886,15 +874,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
           const currentPreviewSrc = photoFile ? photoPreviewUrl : (form.photoUrl || null);
           const urlInputVisible = !photoFile && (showPhotoUrlInput || !!form.photoUrl);
           return (
-            <div className="hh-home-photo"
-              style={{
-                background: 'rgba(198,146,69,0.08)',
-                border: '1px solid rgba(198,146,69,0.28)',
-                borderRadius: 16,
-                padding: '14px 16px 16px',
-                margin: '14px 0',
-              }}
-            >
+            <section className="hh-home-photo hh-add-home-section">
               <AddSectionHeading icon={Camera} title={vocabulary.apartment ? 'Photos & floor plan' : currentPreviewSrc ? `${vocabulary.singular} photo` : 'Add a photo'}>{vocabulary.apartment ? "Optional — add something that'll help you recognize this one later." : `Give this ${vocabulary.singularLower} a face so it's easy to spot later — you can always add or change it.`}</AddSectionHeading>
               {vocabulary.apartment && <div style={{ marginBottom: 10 }}><label className="hh-label">Floor-plan image</label><input className="hh-input" value={form.floorPlanImageUrl || ''} onChange={(e) => set('floorPlanImageUrl', e.target.value)} placeholder="Paste a floor-plan image URL" /></div>}
               <input
@@ -945,7 +925,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
                   <input className="hh-input" style={{ background: 'var(--paper-raised)' }} value={form.photoUrl} onChange={(e) => set('photoUrl', e.target.value)} placeholder="https://.../photo.jpg" />
                 </div>
               )}
-            </div>
+            </section>
           );
         })()}
 
@@ -995,20 +975,15 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         })()}
 
         {/* -------------------------- Add more details (optional, collapsed by default) -------------------------- */}
-        <div style={{ marginTop: 20, marginBottom: 8 }}>
+        <section className="hh-more-home-details">
           <button
             type="button"
             onClick={() => setMoreDetailsOpen((v) => !v)}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-              background: 'var(--paper)', border: 0, borderRadius: 12,
-              padding: '12px 14px', cursor: 'pointer', textAlign: 'left',
-            }}
+            aria-expanded={moreDetailsOpen}
+            className="hh-more-home-details-toggle"
           >
-            <div>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>{moreDetailsOpen ? `− Hide ${vocabulary.apartment ? 'property' : 'home'} details` : `+ More ${vocabulary.apartment ? 'property' : 'home'} details`}</div>
-              <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', marginTop: 2 }}>{vocabulary.apartment ? 'The unit, the property & living there' : 'Layout, condition, features & more'}</div>
-            </div>
+            <AddSectionHeading icon={House} title={moreDetailsOpen ? `Hide ${vocabulary.apartment ? 'property' : 'home'} details` : `More ${vocabulary.apartment ? 'property' : 'home'} details`} tone="sage">{vocabulary.apartment ? 'The unit, the property & living there' : 'Layout, condition, features & more.'}</AddSectionHeading>
+            <ChevronDown className="hh-accordion-chevron" size={20} />
           </button>
 
           {moreDetailsOpen && (
@@ -1104,15 +1079,15 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
 
             </div>
           )}
-        </div>
+        </section>
 
         <section className="hh-thoughts">
           <AddSectionHeading icon={MessageSquareText} title={vocabulary.apartment ? 'Anything else worth remembering?' : isCollaborative ? 'Shared notes' : 'Your thoughts'} tone="sage" />
           {isCollaborative && <p className="hh-detail-context">Pros, cons, and notes are visible to both of you.</p>}
           <p>{vocabulary.apartment ? "Fees, lease terms, parking costs, pet charges, utilities—or anything else you don't want to forget." : isCollaborative ? 'Keep the details both of you want to remember in one place.' : 'Keep the personal side of this home separate from the listing facts.'}</p>
           <div className="hh-thoughts-grid">
-            <div><label className="hh-label">Pros</label><textarea className="hh-textarea" value={form.pros} onChange={(e) => set('pros', e.target.value)} /></div>
-            <div><label className="hh-label">Cons</label><textarea className="hh-textarea" value={form.cons} onChange={(e) => set('cons', e.target.value)} /></div>
+            <div><label className="hh-label">Pros</label><textarea className="hh-textarea" value={form.pros} onChange={(e) => set('pros', e.target.value)} placeholder="What did you love? e.g. huge kitchen, great yard" /></div>
+            <div><label className="hh-label">Cons</label><textarea className="hh-textarea" value={form.cons} onChange={(e) => set('cons', e.target.value)} placeholder="Any concerns? e.g. busy street, older home" /></div>
           </div>
           <div><label className="hh-label">{vocabulary.apartment ? 'Notes' : 'Anything else you want to remember?'}</label>
             {vocabulary.apartment
