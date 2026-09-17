@@ -182,6 +182,13 @@ create table if not exists public.homes (
   updated_at timestamptz not null default now()
 );
 
+-- Immutable listing-derived evidence kept separately from user-corrected Home
+-- truth. It is shared within the search, subject to the same homes RLS policy.
+alter table public.homes add column if not exists listing_import jsonb;
+
+comment on column public.homes.listing_import is
+  'Immutable-at-edit listing import snapshot used by What FLH Found; never canonical Home truth.';
+
 alter table public.homes enable row level security;
 
 drop policy if exists "homes_select_own" on public.homes;
@@ -2338,6 +2345,13 @@ grant execute on function public.promote_realtor_suggestion(uuid) to authenticat
 -- suggestion_staged is shared workflow state. Keep the existing column-level
 -- homes boundary: authenticated may read this column, but may not set it.
 grant select (suggestion_staged) on public.homes to authenticated;
+
+-- listing_import is part of the explicit shared-home projection. Preserve the
+-- participant privacy cutover's column ACL rather than restoring table SELECT,
+-- which would also expose legacy participant-owned columns.
+grant select (listing_import) on public.homes to authenticated;
+grant insert (listing_import) on public.homes to authenticated;
+grant update (listing_import) on public.homes to authenticated;
 
 -- PR #82: search-scoped professional context, tour recommendations, and the
 -- reverse (Realtor -> buyer) entry point into the existing invitation system.
