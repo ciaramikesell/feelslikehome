@@ -56,3 +56,30 @@ test('landing includes responsive and reduced-motion-aware visual foundations', 
   assert.match(css, /@media \(max-width: 640px\)[\s\S]*\.pl-hero/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
 });
+
+test('landing is limited to the four-step workflow, product proof, and consolidated collaboration', () => {
+  for (const title of ['Set Your Preferences', 'Bring Homes From Anywhere', 'Compare What Matters', 'Search Together']) {
+    assert.match(landing, new RegExp(`'${title}'`));
+  }
+  assert.equal((landing.match(/\['0[1-4]',/g) || []).length, 4);
+  assert.doesNotMatch(landing, /pl-together|pl-philosophy|pl-final/);
+  assert.doesNotMatch(landing, /Same home\.|Ready to understand your shortlist|THE FEELS LIKE HOME PHILOSOPHY/);
+});
+
+test('product proof is static, concise, and owns the philosophy statement exactly once', () => {
+  const philosophy = 'The right home isn’t the one that checks the most boxes. It’s the one that checks the boxes that matter to you.';
+  assert.equal(landing.split(philosophy).length - 1, 1);
+  assert.match(landing, /<figure className="pl-demo-art"><Image/);
+  assert.doesNotMatch(landing, /<button[^>]*className="pl-demo|<Link[^>]*className="pl-demo/);
+  for (const benefit of ['Personalized Match Scores', 'Side-by-side comparison', 'Commute times from places that matter most', 'Built for buyers, co-buyers, and Realtors']) assert.match(landing, new RegExp(benefit));
+});
+
+test('collaboration keeps co-buyer and Realtor participation distinct', () => {
+  assert.match(landing, /Searching with a co-buyer/);
+  assert.match(landing, /Working with a Realtor/);
+  assert.match(landing, /Ciara <b>92% Match/);
+  assert.match(landing, /Andrew <b>84% Match/);
+  assert.match(landing, /Unknown information stays Unknown/);
+  assert.match(landing, /Learn more for agents/);
+  assert.doesNotMatch(landing, /combined|blended household Match|compatibility score/i);
+});
