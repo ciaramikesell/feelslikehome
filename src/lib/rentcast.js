@@ -86,6 +86,18 @@ function mostRecentPropertyTax(propertyTaxes) {
  *   /v1/listings/rental/long-term, or null
  * @returns {{ fields: object, foundAny: boolean }}
  */
+
+export function canonicalBasementNotes(value) {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().replace(/\s+/g, ' ');
+  if (!normalized || /^(?:yes|true|basement)$/i.test(normalized)) return null;
+  if (/\bpart(?:ial|ially|ly)[ -]?finished\b/i.test(normalized)) return 'Partially finished';
+  if (/\bfinished\b/i.test(normalized) && !/\bunfinished\b/i.test(normalized)) return 'Finished';
+  if (/\bunfinished\b/i.test(normalized)) return 'Unfinished';
+  if (/\bwalk[ -]?out\b/i.test(normalized)) return 'Walkout';
+  return null;
+}
+
 export function normalizeRentCastFields(property, listing, { apartmentCommunity = false } = {}) {
   const fields = {};
 
@@ -120,6 +132,9 @@ export function normalizeRentCastFields(property, listing, { apartmentCommunity 
 
   const propertyType = canonicalPropertyType(optionListing?.propertyType ?? property?.propertyType);
   if (propertyType) fields.propertyType = propertyType;
+
+  const basementNotes = apartmentCommunity ? null : canonicalBasementNotes(property?.features?.basement);
+  if (basementNotes) fields.basementNotes = basementNotes;
 
   const garageSpaces = apartmentCommunity ? null : property?.features?.garageSpaces;
   if (garageSpaces !== undefined && garageSpaces !== null) fields.garageSpaces = formatInt(garageSpaces);

@@ -43,3 +43,22 @@ test('description extraction recognizes only explicit allowlisted phrases with p
 test('detail count is computed from actual normalized results', () => {
   assert.equal(countListingDetails({ address: '1 Main', price: '' }, [{ key: 'roof' }], [{ id: 'deck' }]), 3);
 });
+
+test('canonical mapping seeds only semantically precise basement and garage facts', async () => {
+  const { canonicalBasementNotes } = await import('../src/lib/rentcast.js');
+  assert.equal(canonicalBasementNotes('Finished basement'), 'Finished');
+  assert.equal(canonicalBasementNotes('Partially finished basement'), 'Partially finished');
+  assert.equal(canonicalBasementNotes('Basement'), null);
+  assert.equal(canonicalBasementNotes(true), null);
+
+  const result = normalizeRentCastFields({
+    formattedAddress: '1 Main St', floorCount: 1,
+    features: { garage: 'Garage', cooling: true, basement: 'Finished basement' },
+  }, null);
+  assert.equal(result.fields.basementNotes, 'Finished');
+  assert.equal(result.fields.garageSpaces, undefined, 'generic garage presence does not invent a space count');
+  assert.equal(result.fields.homeLayout, undefined, 'a story count does not imply the Home Layout taxonomy');
+  assert.equal(result.fields.checks, undefined, 'generic cooling does not assert Central Air Match evidence');
+  assert.equal(result.listingFacts.find((fact) => fact.key === 'stories').value, 1);
+  assert.equal(result.listingFacts.find((fact) => fact.key === 'cooling').value, true);
+});

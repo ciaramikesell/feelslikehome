@@ -60,7 +60,7 @@ test('post-tour framing changes copy without changing the rating key or persiste
   assert.match(modal, /Forget the checklist for a second\./);
   assert.match(modal, /How did this home feel\?/);
   assert.match(modal, /setRating\(TOUR_RATING_KEY, v\)/);
-  assert.match(editor, /hasToured\(form\)[\s\S]*Forget the checklist for a second\./);
+  assert.doesNotMatch(editor, /Forget the checklist for a second\./);
 });
 
 test('Different Takes stays deferred from the card surface', () => {

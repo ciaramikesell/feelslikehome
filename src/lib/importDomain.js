@@ -19,7 +19,7 @@ export const EVIDENCE_STRENGTH = Object.freeze({
 // particular, conditionNotes and all personal ratings/checks are absent here.
 export const IMPORT_DESTINATIONS = Object.freeze([
   'listingUrl', 'address', 'price', 'beds', 'baths', 'sqft', 'lotSize',
-  'yearBuilt', 'propertyType', 'garageSpaces', 'daysOnMarket', 'homeLayout',
+  'yearBuilt', 'propertyType', 'garageSpaces', 'daysOnMarket', 'basementNotes', 'homeLayout',
   'primaryBedroomLocation', 'secondaryBedroomLocation', 'availableOn',
   'petsAllowed', 'utilitiesIncluded', 'inUnitLaundry', 'photoUrl',
   'hoaFeeMonthly', 'propertyTaxAnnual', 'propertyTaxYear', 'latitude', 'longitude',

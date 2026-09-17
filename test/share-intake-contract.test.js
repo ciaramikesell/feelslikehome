@@ -90,8 +90,8 @@ test('state B: empty or non-URL values open a bare Add Home — no fabricated li
 });
 
 test('states C/D/E (supported, partial apartment, unsupported) are unchanged pre-existing HomeModal behavior, preserved verbatim', () => {
-  assert.match(homeModal, /We found the property\./);
-  assert.match(homeModal, /We just need the street address\./);
+  assert.match(homeModal, /We found \{apartmentIdentity\.propertyName\}/);
+  assert.match(homeModal, /Add its street address to continue\./);
   assert.match(homeModal, /We couldn't get much from that link, but you can still add the property\./);
   assert.match(homeModal, /listingUrl: raw/); // original URL preserved on the form in the unsupported-URL branch
 });

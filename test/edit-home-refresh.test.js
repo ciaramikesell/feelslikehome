@@ -28,7 +28,7 @@ test('Unknown, Yes, and No use distinct explicit Match values', () => {
 
 test('Edit Home has the refreshed information architecture without decision actions', () => {
   const editor = modal.slice(modal.indexOf('function EditHomeEditor'), modal.indexOf('export default function HomeModal'));
-  for (const copy of ['Edit home', 'Property address', 'Home photo', 'Key details', 'Home details', 'Personalized matches', 'Shared notes', 'Save changes']) assert.match(editor, new RegExp(copy));
+  for (const copy of ['Edit home', 'Property address', 'Home photo', 'Key details', 'Home details', 'Personalized Match', 'Shared notes', 'Save changes']) assert.match(editor, new RegExp(copy));
   for (const unrelated of ['Want to tour', 'ArchiveIcon', 'ExternalLink']) assert.doesNotMatch(editor, new RegExp(unrelated));
   assert.doesNotMatch(editor, /RAW IMPORTED ADDRESS|STANDARDIZED GPS ADDRESS|Floor-plan image|floorPlanImageUrl/);
   assert.match(editor, /showPhotoUrlInput &&/);

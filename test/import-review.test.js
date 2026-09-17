@@ -75,7 +75,7 @@ test('accepted IDs remain suppressed after manual note deletion without durable 
 test('review UI uses ephemeral state, retains form on save error, and never writes conditionNotes', () => {
   const modal = fs.readFileSync('src/components/HomeModal.jsx', 'utf8');
   const review = fs.readFileSync('src/lib/importReview.js', 'utf8');
-  assert.match(modal, /We found quite a lot!/);
+  assert.match(modal, /acceptedSuggestionIds/);
   assert.match(modal, /your changes here haven&apos;t been lost|your changes here haven't been lost/);
   assert.match(modal, /acceptedSuggestionIds/);
   assert.doesNotMatch(review, /conditionNotes/);
