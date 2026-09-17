@@ -22,13 +22,13 @@ test('the map route gets a dedicated flex frame instead of a hard-coded mobile h
   assert.doesNotMatch(globalsCss, /height: calc\(100dvh - 200px\)/);
 });
 
-test('the map frame fills the viewport using the flex box model, not a guessed header height', () => {
+test('the mobile map uses an intentional bounded stage and lets the related sections scroll normally', () => {
   const block = globalsCss.match(/@media \(max-width: 700px\) \{\s*\n\s*\.hh-map-page-intro[\s\S]*?\n\}/)?.[0] || '';
   assert.ok(block, 'expected the map mobile breakpoint block');
   assert.match(block, /\.hh-root:has\(\.hh-map-frame\) \{ padding-bottom: 0; \}/);
-  assert.match(block, /\.hh-map-frame \{ display: flex; flex-direction: column; height: calc\(100dvh - 78px - env\(safe-area-inset-bottom\)\); \}/);
-  assert.match(block, /\.hh-map-frame \.hh-map-layout \{ flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: stretch;/);
-  assert.match(block, /\.hh-map-frame \.hh-map-stage \{ flex: 1; min-height: 0; height: auto; \}/);
+  assert.match(block, /\.hh-map-frame \{ display: flex; flex-direction: column; \}/);
+  assert.match(block, /\.hh-map-frame \.hh-map-layout \{ display: flex; flex-direction: column; align-items: stretch;/);
+  assert.match(block, /\.hh-map-frame \.hh-map-stage \{ flex: none; min-height: 320px; height: clamp\(320px, 42dvh, 360px\); \}/);
 });
 
 test('regression: the flex map frame does not inherit the base grid rule\'s align-items: start, which collapses stage width to content size', () => {

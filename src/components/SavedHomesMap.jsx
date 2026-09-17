@@ -48,7 +48,9 @@ export default function SavedHomesMap({ homes, destinations = [], collaboratorDe
   ], [destinations, collaboratorDestinations]);
   const eligibleDestinations = useMemo(() => places.filter((destination) => destination.mapPosition), [places]);
   const isCollaborativeMap = eligibleDestinations.some((destination) => destination.owner === 'collaborator');
-  const [selection, setSelection] = useState(eligible[0] ? { type: 'home', id: eligible[0].id } : null);
+  // Start with the geography unobstructed. A preview is an explicit result of
+  // choosing a marker/list row, rather than permanent furniture over the map.
+  const [selection, setSelection] = useState(null);
   const [mapState, setMapState] = useState('loading');
   const canvasRef = useRef(null);
   const mapRef = useRef(null);
@@ -150,12 +152,14 @@ export default function SavedHomesMap({ homes, destinations = [], collaboratorDe
           <strong>{eligible.length || eligibleDestinations.length ? (mapState === 'loading' ? 'Placing your homes and places…' : "The map isn't available right now.") : "Your locations couldn't be placed yet."}</strong>
           <span>{eligible.length || eligibleDestinations.length ? (mapState === 'loading' ? 'This should only take a moment.' : 'Your locations are still listed below.') : 'Check the saved addresses and try again.'}</span>
         </div>}
-        {selected && <article className="hh-map-preview">
-          {selected.photoUrl ? <img src={selected.photoUrl} alt="" /> : <div className="hh-map-preview-photo-fallback"><Home size={22} aria-hidden="true" /></div>}
+        {selected && <article className="hh-map-preview" aria-label={`Selected ${vocabulary.singularLower}: ${homeIdentity(selected, priorities).accessible}`}>
+          <div className="hh-map-preview-media" aria-hidden="true">{selected.photoUrl ? <img src={selected.photoUrl} alt="" /> : <div className="hh-map-preview-photo-fallback"><Home size={22} /></div>}</div>
           <div className="hh-map-preview-copy"><div className="hh-mono hh-map-preview-price">{formatHomePrice(selected.price, priorities.searchType) || 'Price not added'}</div><strong className="hh-address">{homeIdentity(selected, priorities).primary}</strong>{homeIdentity(selected, priorities).option && <small>{homeIdentity(selected, priorities).option}</small>}{homeIdentity(selected, priorities).supporting && <small>{homeIdentity(selected, priorities).supporting}</small>}
-            <small>{[selected.beds && `${selected.beds} beds`, selected.baths && `${selected.baths} baths`, selected.sqft && `${selected.sqft} sq ft`].filter(Boolean).join(' · ')}</small>
-            {matchTrustworthy && match?.pct !== null && match?.pct !== undefined && <span className="hh-map-match">{match.pct}% Match</span>}
-            {selected.status && <span className="hh-map-status">{selected.status}</span>}
+            <small className="hh-map-preview-facts">{[selected.beds && `${selected.beds} beds`, selected.baths && `${selected.baths} baths`, selected.sqft && `${selected.sqft} sq ft`].filter(Boolean).join(' · ')}</small>
+            <div className="hh-map-preview-summary">
+              {matchTrustworthy && match?.pct !== null && match?.pct !== undefined && <span className="hh-map-match">{match.pct}% Match</span>}
+              {selected.status && <span className="hh-map-status">{selected.status}</span>}
+            </div>
             <div className="hh-map-preview-actions">
               <Link href={`/homes/${encodeURIComponent(selected.id)}`}>View {vocabulary.singularLower}</Link>
               {selected.address && <a href={`https://maps.apple.com/?daddr=${encodeURIComponent(selected.address)}`} target="_blank" rel="noreferrer">Directions</a>}
