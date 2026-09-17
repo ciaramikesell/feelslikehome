@@ -80,17 +80,17 @@ export default function AuthForm({ initialMode = 'sign-in', redirectTo = '/', is
   return (
     <form onSubmit={submit} className="afh-form-stack" aria-label={signIn ? 'Sign in' : 'Create account'}>
       <div>
-        <h2 className="afh-serif">{signIn ? (inline ? 'Welcome back.' : 'Sign in') : isRealtorEntry ? 'Create your Realtor account' : 'Start your home search'}</h2>
-        <p className="afh-form-intro">{signIn ? 'Pick up where you left off.' : isRealtorEntry ? 'Set up a client search or join a buyer who invited you. Access to every search is connected to that client relationship—not a global account role.' : 'Create your account to start comparing homes.'}</p>
+        <h2 className="afh-serif">{signIn ? (inline && !isRealtorEntry ? 'Welcome back.' : 'Sign in') : isRealtorEntry ? 'Create your Realtor account' : 'Start your home search'}</h2>
+        <p className="afh-form-intro">{signIn ? (inline && isRealtorEntry ? 'Welcome back.' : 'Pick up where you left off.') : isRealtorEntry && inline ? 'Help buyers organize what matters, understand their options, and make clearer decisions together.' : isRealtorEntry ? 'Set up a client search or join a buyer who invited you. Access to every search is connected to that client relationship—not a global account role.' : 'Create your account to start comparing homes.'}</p>
       </div>
       <div><label className="afh-label" htmlFor={`${inline ? 'popover-' : ''}${mode}-email`}>Email</label><input autoFocus={inline} className="afh-input" id={`${inline ? 'popover-' : ''}${mode}-email`} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" /></div>
       <PasswordField id={`${inline ? 'popover-' : ''}${mode}-password`} label="Password" value={password} onChange={setPassword} placeholder={signIn ? '••••••••' : 'Create a password'} autoComplete={signIn ? 'current-password' : 'new-password'} />
       {signIn ? <div className="afh-forgot"><Link href="/auth/forgot-password" className="afh-link">Forgot password?</Link></div> : <><p className="afh-password-hint">At least 6 characters.</p><PasswordField id={`${inline ? 'popover-' : ''}sign-up-confirm`} label="Confirm password" value={confirm} onChange={setConfirm} placeholder="Re-enter your password" autoComplete="new-password" /></>}
       {error && <div aria-live="polite"><Banner kind="error">{error}</Banner></div>}
-      <button type="submit" className="afh-btn" disabled={status === 'loading'}>{status === 'loading' ? <><Spinner /> {signIn ? 'Signing in...' : 'Creating account...'}</> : signIn ? 'Sign in' : isRealtorEntry ? 'Create account' : 'Start your home search'}</button>
+      <button type="submit" className="afh-btn" disabled={status === 'loading'}>{status === 'loading' ? <><Spinner /> {signIn ? 'Signing in...' : 'Creating account...'}</> : signIn ? 'Sign in' : isRealtorEntry ? 'Create Realtor account' : 'Start your home search'}</button>
       {signIn && <div className="afh-divider"><span>or</span></div>}
       {signIn && <p className="afh-new-account">New to Feels Like Home?</p>}
-      <button type="button" className="afh-btn afh-btn-ghost" onClick={() => switchMode(signIn ? 'sign-up' : 'sign-in')}>{signIn ? 'Create an account' : 'Back to sign in'}</button>
+      <button type="button" className="afh-btn afh-btn-ghost" onClick={() => switchMode(signIn ? 'sign-up' : 'sign-in')}>{signIn ? (isRealtorEntry ? 'Create a Realtor account' : 'Create an account') : isRealtorEntry ? 'Sign in' : 'Back to sign in'}</button>
     </form>
   );
 }
