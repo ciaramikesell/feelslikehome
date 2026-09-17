@@ -8,7 +8,7 @@ import {
   Heart, Home as HomeIcon, Undo2, Footprints, MessageCircle, Check,
   StickyNote, Pencil,
 } from 'lucide-react';
-import { MatchSummary, MatchTradeoffs } from '@/components/ui';
+import { CriteriaDisclosure, MatchSummary } from '@/components/ui';
 import { useCommuteObserver } from '@/lib/useCommuteObserver';
 import { evaluateCommute } from '@/lib/commute';
 import HomeModal from '@/components/HomeModal';
@@ -60,6 +60,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   const showPhoto = home.photoUrl && !imgError;
   const isFavorite = home.isFavorite;
   const [favoritePop, setFavoritePop] = useState(false);
+  const [showAllMustHaves, setShowAllMustHaves] = useState(false);
   const favoritePopTimer = useRef(null);
   const identity = homeIdentity(home, priorities);
   // Normalize lifecycle presentation without touching stored data: any status that
@@ -114,7 +115,8 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   const pros = parseCommaList(home.pros);
   const cons = parseCommaList(home.cons);
   const noteCount = [home.notes, home.conditionNotes, ...pros, ...cons].filter(Boolean).length;
-  const { mustHaves, mustOverflow, positives, negatives } = cardCriteria;
+  const { mustHaves, hiddenMustHaves, mustOverflow, criteriaSummary } = cardCriteria;
+  const displayedMustHaves = showAllMustHaves ? [...mustHaves, ...hiddenMustHaves] : mustHaves;
   // Secondary, already-known context (facts/commute/notes) — kept out of the
   // way behind "More details" on narrow viewports so a mobile card reads as
   // price/address/Match/status first, not a full restack of every field.
@@ -193,9 +195,8 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
             <div className={`hh-match-panel${mode === 'archive' ? ' is-secondary' : ''}`} style={{ background: matchTint(match.pct), borderLeft: `${mode === 'archive' ? 2 : 3}px solid ${matchColor(match.pct)}` }}>
               <div className="hh-match-eyebrow">Personalized Match</div>
               <MatchSummary match={match} />
-              {mustHaves.length > 0 && <div className="hh-must-summary"><strong>Must Haves</strong>{mustHaves.map((item) => <span className={item.evaluated ? (item.met ? 'is-positive' : 'is-negative') : 'is-unknown'} key={item.key}>{item.evaluated ? (item.met ? '✓' : '✕') : '?'} {item.label}</span>)}{mustOverflow > 0 && <span className="hh-criteria-overflow">+ {mustOverflow} more Must Have{mustOverflow === 1 ? '' : 's'}</span>}</div>}
-              {(positives.length > 0 || negatives.length > 0) && <div className="hh-personalized-criteria"><strong>Personalized Criteria</strong>{positives.map((item) => <span className="is-positive" key={item.key}>✓ {item.label}</span>)}{negatives.map((item) => <span className="is-negative" key={item.key}>✕ {item.label}</span>)}</div>}
-              <MatchTradeoffs match={match} />
+              {mustHaves.length > 0 && <div className="hh-must-summary"><strong>Must Haves</strong>{displayedMustHaves.map((item) => <span className={item.evaluated ? (item.met ? 'is-positive' : 'is-negative') : 'is-unknown'} key={item.key}>{item.evaluated ? (item.met ? '✓' : '✕') : '?'} {item.label}</span>)}{mustOverflow > 0 && <button type="button" className="hh-criteria-overflow" aria-expanded={showAllMustHaves} onClick={() => setShowAllMustHaves((value) => !value)}>{showAllMustHaves ? 'Show fewer' : `+ ${mustOverflow} more Must Have${mustOverflow === 1 ? '' : 's'}`}</button>}</div>}
+              {criteriaSummary?.total > 0 && <div className="hh-personalized-criteria"><strong>Personalized Criteria — {criteriaSummary.evaluated}/{criteriaSummary.total} evaluated</strong><CriteriaDisclosure symbol="✓" tone="positive" heading="Matches" items={criteriaSummary.matches} label={`${criteriaSummary.matches.length} match`} /><CriteriaDisclosure symbol="✕" tone="negative" heading="Doesn’t match" items={criteriaSummary.mismatches} label={`${criteriaSummary.mismatches.length} don’t match`} /><CriteriaDisclosure symbol="?" tone="unknown" heading="Still unknown" items={criteriaSummary.unknown} label={`${criteriaSummary.unknown.length} ${criteriaSummary.unknown.length === 1 ? 'criterion' : 'criteria'} still unknown`} /></div>}
             </div>
           ) : (
             <div style={{ fontSize: 11.5, color: 'var(--ink-soft)' }}>Set your priorities in <em>My Search</em> to see a match score.</div>

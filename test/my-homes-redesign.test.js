@@ -21,10 +21,15 @@ test('card overlays expose truthful status, favorite, provenance, and co-buyer a
   assert.doesNotMatch(board, /Archived by collaborator/);
 });
 
-test('card hierarchy keeps Must Haves, weighted tradeoffs, facts, and unknown distinct', () => {
+test('card hierarchy keeps Must Haves, aggregate criteria coverage, facts, and unknown distinct', () => {
   assert.match(board, /className="hh-must-summary"/);
   assert.match(board, /selectHomeCardCriteria\(match\)/);
   assert.match(board, /mustOverflow > 0/);
+  assert.match(board, /criteriaSummary\.evaluated.*criteriaSummary\.total.*evaluated/);
+  assert.match(board, /criteriaSummary\.matches\.length/);
+  assert.match(board, /criteriaSummary\.mismatches\.length/);
+  assert.match(board, /criteriaSummary\.unknown\.length/);
+  assert.doesNotMatch(board, /positives\.map|negatives\.map/);
   assert.match(board, /Home Snapshot/);
   assert.doesNotMatch(board, /home\.crossroads &&/);
   assert.match(board, /const priorities = initialPriorities/);
