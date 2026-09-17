@@ -95,7 +95,7 @@ test('RentCast adapter keeps normalized fields, zeroes, booleans when supported,
   });
   assert.ok(result.findings.length > 0);
   assert.equal(normalizeRentCastFields({ propertyType: 'Manufactured' }, null).fields.propertyType, undefined);
-  assert.deepEqual(normalizeRentCastFields(null, null), { fields: {}, findings: [], resolutions: [], foundAny: false });
+  assert.deepEqual(normalizeRentCastFields(null, null), { fields: {}, findings: [], resolutions: [], listingFacts: [], descriptionFeatures: [], foundAny: false });
 });
 
 test('import foundation does not modify Match unknown semantics, ratings, or checks', () => {

@@ -93,7 +93,7 @@ export async function POST(request) {
       );
     }
 
-    const { fields, findings, resolutions, foundAny } = normalizeRentCastFields(
+    const { fields, findings, resolutions, listingFacts, descriptionFeatures, foundAny } = normalizeRentCastFields(
       propertyResult.data,
       listingResult.data,
       { apartmentCommunity: mode === 'apartment' },
@@ -104,6 +104,8 @@ export async function POST(request) {
       fields,
       findings,
       resolutions,
+      listingFacts,
+      descriptionFeatures,
       message: foundAny ? undefined : 'No property data was found for that address — you can enter details manually.',
     });
   } catch (err) {
