@@ -17,7 +17,7 @@ test('signed-out visitors receive the public landing while signed-in routing rem
 test('public navigation exposes only truthful account and explanation entries', () => {
   for (const label of ['How it works', 'For Realtors', 'Sign in', 'Get started']) assert.match(landing, new RegExp(label));
   assert.match(landing, /href="#how-it-works"/);
-  assert.match(landing, /\/auth\/sign-up\?intent=realtor/);
+  assert.match(landing, /const realtorHref = '\/for-realtors'/);
   assert.doesNotMatch(landing, />Buy</);
   assert.doesNotMatch(landing, />Sell</);
   assert.doesNotMatch(landing, /Verified Listings|Walk Score|school ratings|safety score/i);

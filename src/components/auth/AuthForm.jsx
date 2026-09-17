@@ -81,7 +81,7 @@ export default function AuthForm({ initialMode = 'sign-in', redirectTo = '/', is
     <form onSubmit={submit} className="afh-form-stack" aria-label={signIn ? 'Sign in' : 'Create account'}>
       <div>
         <h2 className="afh-serif">{signIn ? (inline ? 'Welcome back.' : 'Sign in') : isRealtorEntry ? 'Create your Realtor account' : 'Start your home search'}</h2>
-        <p className="afh-form-intro">{signIn ? 'Pick up where you left off.' : isRealtorEntry ? 'Create an account with the email your client will invite. Realtor access is connected to each client relationship—not a global account role.' : 'Create your account to start comparing homes.'}</p>
+        <p className="afh-form-intro">{signIn ? 'Pick up where you left off.' : isRealtorEntry ? 'Set up a client search or join a buyer who invited you. Access to every search is connected to that client relationship—not a global account role.' : 'Create your account to start comparing homes.'}</p>
       </div>
       <div><label className="afh-label" htmlFor={`${inline ? 'popover-' : ''}${mode}-email`}>Email</label><input autoFocus={inline} className="afh-input" id={`${inline ? 'popover-' : ''}${mode}-email`} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" /></div>
       <PasswordField id={`${inline ? 'popover-' : ''}${mode}-password`} label="Password" value={password} onChange={setPassword} placeholder={signIn ? '••••••••' : 'Create a password'} autoComplete={signIn ? 'current-password' : 'new-password'} />
