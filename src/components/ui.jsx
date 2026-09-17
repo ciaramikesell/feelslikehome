@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { Star, ChevronDown, Heart, Check, MinusCircle, HelpCircle } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Star, ChevronDown, Heart, Check } from 'lucide-react';
 import { TIER_ORDER, TIER_META } from '@/lib/constants';
-import { matchColor, summarizeForCard } from '@/lib/matching';
+import { matchColor } from '@/lib/matching';
 
 export function BrandMark({ size = 34 }) {
   return (
@@ -123,70 +123,51 @@ export function MatchSummary({ match }) {
     );
   }
 
-  let mustLabel = null;
-  let mustSubLabel = null;
-  if (match.mustTotal > 0) {
-    if (match.mustEvaluated === 0) mustLabel = 'Must-haves not evaluated yet';
-    else if (match.mustEvaluated === match.mustTotal && match.mustMet === match.mustTotal) mustLabel = `✓ All ${match.mustTotal} Must-Haves met`;
-    else if (match.mustEvaluated === match.mustTotal) mustLabel = `Must-Haves: ${match.mustMet}/${match.mustTotal} met`;
-    else {
-      mustLabel = `Must-haves: ${match.mustMet}/${match.mustEvaluated} met`;
-      mustSubLabel = `${match.mustTotal - match.mustEvaluated} not evaluated`;
-    }
-  }
+  return (
+    <div className="hh-match-score">
+      <BrandMark size={22} />
+      <span className="hh-mono" style={{ color: matchColor(match.pct) }}>{match.pct}% Match</span>
+    </div>
+  );
+}
+
+export function CriteriaDisclosure({ symbol, label, heading, items, tone }) {
+  const [open, setOpen] = useState(false);
+  const [pinned, setPinned] = useState(false);
+  const rootRef = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const dismiss = (event) => {
+      if (event.key === 'Escape' || (event.type === 'pointerdown' && !rootRef.current?.contains(event.target))) {
+        setOpen(false);
+        setPinned(false);
+      }
+    };
+    document.addEventListener('pointerdown', dismiss);
+    document.addEventListener('keydown', dismiss);
+    return () => {
+      document.removeEventListener('pointerdown', dismiss);
+      document.removeEventListener('keydown', dismiss);
+    };
+  }, [open]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <BrandMark size={20} />
-        <span className="hh-mono" style={{ fontSize: 17, fontWeight: 700, color: matchColor(match.pct) }}>{match.pct}% Match</span>
-      </div>
-      {mustLabel && (
-        <div style={{ fontSize: 11.5, color: 'var(--ink)' }}>{mustLabel}{mustSubLabel ? ` · ${mustSubLabel}` : ''}</div>
-      )}
-      {match.evaluatedCount < match.selectedCount && (
-        <div style={{ fontSize: 10.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>
-          Based on {match.evaluatedCount} of {match.selectedCount} priorities evaluated
+    <div
+      className={`hh-criteria-disclosure is-${tone}`}
+      ref={rootRef}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => { if (!pinned) setOpen(false); }}
+      onBlur={(event) => { if (!pinned && !event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}
+    >
+      <button type="button" aria-expanded={open} onFocus={() => setOpen(true)} onClick={() => { setOpen(!pinned); setPinned(!pinned); }}>
+        <span aria-hidden="true">{symbol}</span> {label}
+      </button>
+      {open && (
+        <div className="hh-criteria-popover" role="tooltip">
+          <strong>{heading}</strong>
+          <ul>{items.map((item) => <li key={item.key}><span aria-hidden="true">{symbol}</span> {item.label}</li>)}</ul>
         </div>
       )}
-    </div>
-  );
-}
-
-function MissingRow({ items }) {
-  if (!items.length) return null;
-  const importantMiss = items.find((item) => item.tier === 'must');
-  return (
-    <div style={{ fontSize: 12, color: 'var(--ink-soft)', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-      <MinusCircle size={13} style={{ marginTop: 2, flexShrink: 0 }} />
-      <span>
-        <strong style={{ color: 'var(--ink)' }}>{items.length} {items.length === 1 ? 'doesn\'t' : 'don\'t'} match</strong>
-        {importantMiss && <span> · Must-have: {importantMiss.label}</span>}
-      </span>
-    </div>
-  );
-}
-
-function NotConfirmedRow({ notConfirmed }) {
-  if (!notConfirmed.length) return null;
-  return (
-    <div style={{ fontSize: 12, color: 'var(--ink-soft)', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
-      <HelpCircle size={13} style={{ marginTop: 2, flexShrink: 0 }} />
-      <span>
-        <strong style={{ color: 'var(--ink)' }}>{notConfirmed.length} {notConfirmed.length === 1 ? 'criterion' : 'criteria'} still unknown</strong>
-      </span>
-    </div>
-  );
-}
-
-export function MatchTradeoffs({ match }) {
-  if (!match) return null;
-  const { missing, notConfirmed } = summarizeForCard(match);
-  if (!missing.length && !notConfirmed.length) return null;
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 2 }}>
-      <MissingRow items={missing} />
-      <NotConfirmedRow notConfirmed={notConfirmed} />
     </div>
   );
 }
