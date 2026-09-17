@@ -1,92 +1,17 @@
 'use client';
 
-import { Suspense, useState } from 'react';
-import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import AuthShell from '@/components/auth/AuthShell';
-import { PasswordField, Banner, Spinner } from '@/components/auth/AuthHelpers';
-import { createClient } from '@/lib/supabase/client';
+import AuthForm from '@/components/auth/AuthForm';
 import { sanitizeRedirectPath } from '@/lib/safeRedirect';
 
-function SignInForm() {
-  const router = useRouter();
+function SignInPageContent() {
   const searchParams = useSearchParams();
-  // Never trust this straight from the URL — validated the same way
-  // everywhere it's produced or consumed (see safeRedirect.js) so a crafted
-  // `?redirect=https://evil.com` link can't send a signed-in user off-site.
   const redirectTo = sanitizeRedirectPath(searchParams.get('redirect')) || '/';
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [status, setStatus] = useState(null);
-  const [error, setError] = useState('');
-
-  const submit = async (e) => {
-    e.preventDefault();
-    setError('');
-    if (!email.trim() || !password.trim()) { setError('Please enter both your email and password.'); return; }
-    setStatus('loading');
-    const supabase = createClient();
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    if (signInError) {
-      setStatus(null);
-      setError(signInError.message || 'Invalid login credentials.');
-      return;
-    }
-    router.push(redirectTo);
-    router.refresh();
-  };
-
-  return (
-    <AuthShell>
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div>
-          <h2 className="afh-serif" style={{ fontSize: 24, margin: 0, fontWeight: 600, color: 'var(--ink)' }}>Sign in</h2>
-          <p style={{ fontSize: 13, color: 'var(--ink-soft)', fontStyle: 'italic', margin: '5px 0 0' }}>Pick up where you left off.</p>
-        </div>
-
-        <div>
-          <label className="afh-label" htmlFor="sign-in-email">Email</label>
-          <input className="afh-input" id="sign-in-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" />
-        </div>
-
-        <div>
-          <PasswordField id="sign-in-password" label="Password" value={password} onChange={setPassword} placeholder="••••••••" autoComplete="current-password" />
-          <div style={{ textAlign: 'right', marginTop: 6 }}>
-            <Link href="/auth/forgot-password" className="afh-link" style={{ textDecoration: 'none' }}>Forgot password?</Link>
-          </div>
-        </div>
-
-        {error && <Banner kind="error">{error}</Banner>}
-
-        <button type="submit" className="afh-btn" disabled={status === 'loading'}>
-          {status === 'loading' ? <><Spinner /> Signing in...</> : 'Sign in'}
-        </button>
-
-        <div className="afh-divider"><span>or</span></div>
-
-        <p className="afh-new-account">New to Feels Like Home?</p>
-        <Link
-          href={redirectTo !== '/' ? `/auth/sign-up?redirect=${encodeURIComponent(redirectTo)}` : '/auth/sign-up'}
-          className="afh-btn afh-btn-ghost"
-          style={{ textDecoration: 'none', textAlign: 'center' }}
-        >
-          Create an account
-        </Link>
-      </form>
-    </AuthShell>
-  );
+  return <AuthShell><AuthForm redirectTo={redirectTo} /></AuthShell>;
 }
 
-// useSearchParams() requires a Suspense boundary for any route Next.js could
-// otherwise statically prerender at build time — this page has no dynamic
-// data-fetching ancestor (unlike the (app) routes, which are forced dynamic by
-// their layout reading auth cookies), so without this wrapper `next build`
-// fails outright with "useSearchParams() should be wrapped in a suspense
-// boundary." This is the fix for that build failure, not a new feature.
 export default function SignInPage() {
-  return (
-    <Suspense fallback={null}>
-      <SignInForm />
-    </Suspense>
-  );
+  return <Suspense fallback={null}><SignInPageContent /></Suspense>;
 }

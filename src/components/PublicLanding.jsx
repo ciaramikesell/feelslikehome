@@ -1,7 +1,11 @@
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
+import { useCallback, useRef, useState } from 'react';
 import { ArrowRight, Heart, HousePlus, ListChecks, MapPin, Menu, MessageSquareText, Users } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
+import LandingAuthPopover from '@/components/auth/LandingAuthPopover';
 
 const steps = [
   ['01', ListChecks, 'Set Your Preferences', 'Tell FLH what matters to you — and how much each priority matters in your decision.'],
@@ -14,12 +18,19 @@ export default function PublicLanding() {
   // This entry preserves explicit Realtor intent and lands a new account in the
   // People workspace; it does not send agents through buyer onboarding.
   const realtorHref = '/auth/sign-up?intent=realtor';
+  const [authMode, setAuthMode] = useState(null);
+  const authTriggerRef = useRef(null);
+  const closeAuth = useCallback(() => setAuthMode(null), []);
+  const openAuth = (mode, event) => {
+    authTriggerRef.current = event.currentTarget;
+    setAuthMode(mode);
+  };
   return <div className="pl-root">
     <a className="pl-skip" href="#main">Skip to content</a>
     <header className="pl-header">
       <Link className="pl-brand" href="/" aria-label="Feels Like Home home"><BrandMark size={32} /><span>Feels Like <b>Home</b></span></Link>
       <nav aria-label="Public navigation">
-        <a href="#how-it-works">How it works</a><Link href={realtorHref}>For Realtors</Link><Link href="/auth/sign-in">Sign in</Link><Link className="pl-button is-small" href="/auth/sign-up">Get started</Link>
+        <a href="#how-it-works">How it works</a><Link href={realtorHref}>For Realtors</Link><button type="button" className="pl-auth-trigger" onClick={(event) => openAuth('sign-in', event)} aria-expanded={authMode !== null}>Sign in</button><button type="button" className="pl-button is-small" onClick={(event) => openAuth('sign-up', event)} aria-expanded={authMode !== null}>Get started</button>
       </nav>
       <details className="pl-mobile-menu">
         <summary aria-label="Open navigation"><Menu size={20} aria-hidden="true" /><span>Menu</span></summary>
@@ -27,6 +38,7 @@ export default function PublicLanding() {
           <a href="#how-it-works">How it works</a><Link href={realtorHref}>For Realtors</Link><Link href="/auth/sign-in">Sign in</Link><Link className="pl-button is-small" href="/auth/sign-up">Get started</Link>
         </nav>
       </details>
+      {authMode && <LandingAuthPopover mode={authMode} onModeChange={setAuthMode} onClose={closeAuth} returnFocusRef={authTriggerRef} />}
     </header>
 
     <main id="main">
@@ -35,7 +47,7 @@ export default function PublicLanding() {
           <p className="pl-eyebrow">Real estate, reimagined</p>
           <h1><span>You’ve saved a lot of options.</span><span>Now find the one that</span><em>Feels Like Home.</em></h1>
           <p className="pl-lede">Bring the homes you’re already considering into one place, compare them against what matters to you, and make your decision with confidence.</p>
-          <div className="pl-actions"><Link className="pl-button" href="/auth/sign-up">Create a free account <ArrowRight size={17} aria-hidden="true" /></Link><a className="pl-button is-quiet" href="#how-it-works">See how it works</a></div>
+          <div className="pl-actions"><button type="button" className="pl-button pl-desktop-auth" onClick={(event) => openAuth('sign-up', event)}>Create a free account <ArrowRight size={17} aria-hidden="true" /></button><Link className="pl-button pl-mobile-auth" href="/auth/sign-up">Create a free account <ArrowRight size={17} aria-hidden="true" /></Link><a className="pl-button is-quiet" href="#how-it-works">See how it works</a></div>
           <p className="pl-renter-note">House, condo, or apartment — compare the places you’re actually considering.</p>
         </div>
         <figure className="pl-hero-visual"><Image src="/images/Warm Cottage.png" alt="A welcoming cottage with a front porch at golden hour" fill priority sizes="(max-width: 900px) 100vw, 58vw" /></figure>
@@ -59,6 +71,6 @@ export default function PublicLanding() {
         </div>
       </section>
     </main>
-    <footer className="pl-footer"><div className="pl-footer-brand"><Link className="pl-brand" href="/"><BrandMark size={27} /><span>Feels Like <b>Home</b></span></Link><p>Homes are personal. Choosing one should be, too.</p></div><nav aria-label="Footer navigation"><a href="#how-it-works">How it works</a><Link href={realtorHref}>For Realtors</Link><Link href="/auth/sign-in">Sign in</Link><Link href="/auth/sign-up">Get started</Link></nav><small>© 2026 Feels Like Home</small></footer>
+    <footer className="pl-footer"><div className="pl-footer-brand"><Link className="pl-brand" href="/"><BrandMark size={27} /><span>Feels Like <b>Home</b></span></Link><p>Homes are personal. Choosing one should be, too.</p></div><nav aria-label="Footer navigation"><a href="#how-it-works">How it works</a><Link href={realtorHref}>For Realtors</Link><button type="button" className="pl-footer-auth pl-desktop-auth" onClick={(event) => openAuth('sign-in', event)}>Sign in</button><Link className="pl-mobile-auth" href="/auth/sign-in">Sign in</Link><button type="button" className="pl-footer-auth pl-desktop-auth" onClick={(event) => openAuth('sign-up', event)}>Get started</button><Link className="pl-mobile-auth" href="/auth/sign-up">Get started</Link></nav><small>© 2026 Feels Like Home</small></footer>
   </div>;
 }

@@ -48,12 +48,13 @@ test('closed feedback control only owns its visible content-sized hit area', () 
 
 test('signed-out auth makes account creation explicit without removing recovery or sign in', () => {
   const signIn = read('src/app/auth/sign-in/page.js');
-  assert.match(signIn, />Sign in</);
-  assert.match(signIn, /href="\/auth\/forgot-password"/);
-  assert.match(signIn, /New to Feels Like Home\?/);
-  assert.match(signIn, /Create an account/);
-  assert.match(signIn, /`\/auth\/sign-up\?redirect=\$\{encodeURIComponent\(redirectTo\)\}` : '\/auth\/sign-up'/);
-  assert.match(signIn, /supabase\.auth\.signInWithPassword/);
+  const authForm = read('src/components/auth/AuthForm.jsx');
+  assert.match(signIn, /<AuthForm redirectTo=\{redirectTo\}/);
+  assert.match(authForm, /'Sign in'/);
+  assert.match(authForm, /href="\/auth\/forgot-password"/);
+  assert.match(authForm, /New to Feels Like Home\?/);
+  assert.match(authForm, /Create an account/);
+  assert.match(authForm, /supabase\.auth\.signInWithPassword/);
 });
 
 test('new onboarding search choices set an explicit, accessible rental subtype', () => {

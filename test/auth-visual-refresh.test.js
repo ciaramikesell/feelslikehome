@@ -7,6 +7,7 @@ const read = (p) => fs.readFileSync(p, 'utf8');
 const authShell = read('src/components/auth/AuthShell.jsx');
 const signIn = read('src/app/auth/sign-in/page.js');
 const signUp = read('src/app/auth/sign-up/page.js');
+const authForm = read('src/components/auth/AuthForm.jsx');
 const forgotPassword = read('src/app/auth/forgot-password/page.js');
 const resetPassword = read('src/app/auth/reset-password/page.js');
 const invitation = read('src/app/invite/[token]/AcceptInvitationClient.jsx');
@@ -45,9 +46,7 @@ test('Sign Up supplies its own distinct editorial copy rather than reusing Sign 
   assert.match(signUp, /Start with the homes<br \/>you&apos;re already considering\./);
   assert.match(signUp, /Bring your contenders together and compare them against what actually matters to you\./);
   assert.match(signUp, /<AuthShell headline=\{SIGN_UP_HEADLINE\} description=\{SIGN_UP_DESCRIPTION\}>/g);
-  // Both the primary form and the check-your-email success state use it, not just one.
-  const usages = signUp.match(/<AuthShell headline=\{SIGN_UP_HEADLINE\} description=\{SIGN_UP_DESCRIPTION\}>/g) || [];
-  assert.equal(usages.length, 2, 'expected Sign Up\'s distinct copy on both the form and the check-email state');
+  assert.match(signUp, /<AuthForm initialMode="sign-up"/);
 });
 
 test('Sign In relies on AuthShell\'s own default rather than duplicating the copy locally', () => {
@@ -119,12 +118,12 @@ test('regression guard: sanitizeRedirectPath return-path recovery is unchanged o
   assert.match(signIn, /const redirectTo = sanitizeRedirectPath\(searchParams\.get\('redirect'\)\) \|\| '\/';/);
   assert.match(signUp, /import \{ sanitizeRedirectPath \} from '@\/lib\/safeRedirect'/);
   assert.match(signUp, /const redirectTo = sanitizeRedirectPath\(searchParams\.get\('redirect'\)\) \|\| '\/';/);
-  assert.match(signIn, /supabase\.auth\.signInWithPassword\(\{ email: email\.trim\(\), password \}\)/);
+  assert.match(authForm, /supabase\.auth\.signInWithPassword\(\{ email: email\.trim\(\), password \}\)/);
 });
 
 test('regression guard: Realtor-aware signup intent is preserved as entry context, not a role, unaffected by the visual refresh', () => {
   assert.match(signUp, /const isRealtorEntry = searchParams\.get\('intent'\) === 'realtor';/);
-  assert.match(signUp, /data: isRealtorEntry \? \{ account_entry_intent: 'realtor' \} : undefined/);
+  assert.match(authForm, /data: isRealtorEntry \? \{ account_entry_intent: 'realtor' \} : undefined/);
 });
 
 test('regression guard: password reset/recovery mechanics (length + confirm-match validation, updateUser call) are untouched', () => {
