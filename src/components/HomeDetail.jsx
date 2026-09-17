@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Check, ExternalLink, Heart, Footprints, Home as HomeIcon, Minus, Pencil, RotateCcw, Star, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronRight, ExternalLink, Heart, Footprints, Home as HomeIcon, Minus, Pencil, RotateCcw, Star, X } from 'lucide-react';
 import HomeModal from '@/components/HomeModal';
 import PostTourModal from '@/components/PostTourModal';
 import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
@@ -29,6 +29,13 @@ function Section({ eyebrow, title, children, className = '' }) {
   return <section className={`hh-detail-section ${className}`}><div className="hh-detail-eyebrow">{eyebrow}</div>{title && <h2 className="hh-serif">{title}</h2>}{children}</section>;
 }
 
+function tierSummary(rows) {
+  const met = rows.filter((item) => item.evaluated && item.met).length;
+  const missed = rows.filter((item) => item.evaluated && !item.met).length;
+  const unknown = rows.filter((item) => !item.evaluated).length;
+  return [met ? `${met} met` : null, missed ? `${missed} missing` : null, unknown ? `${unknown} unknown` : null].filter(Boolean).join(' · ');
+}
+
 export default function HomeDetail({ home: initialHome, priorities, commuteDestinations = [], coBuyerPerspective, sharedFactAwareness = {}, userId, searchId, isCollaborative = false, readOnly = false, backHref = null, realtorContributions = { notes: [], tours: [] } }) {
   const router = useRouter();
   const [home, setHome] = useState(initialHome);
@@ -40,6 +47,7 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const personalQueue = useRef(Promise.resolve());
+  const matchSection = useRef(null);
   const confirmedHome = useRef(initialHome);
   const personalVersion = useRef(0);
   const retryPersonal = useRef(null);
@@ -136,15 +144,16 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
   const back = () => backHref ? router.push(backHref) : window.history.length > 1 ? router.back() : router.push('/homes');
 
   return <main className="hh-home-detail" ref={setRef}>
-    <button type="button" className="hh-detail-back" onClick={back}><ArrowLeft size={16} aria-hidden="true" /> Back</button>
+    <button type="button" className="hh-detail-back" onClick={back}><ArrowLeft size={16} aria-hidden="true" /> Back to homes</button>
     <header className="hh-detail-hero">
-      <div className="hh-detail-photo">{home.photoUrl ? <img src={home.photoUrl} alt={`${identity.accessible} ${vocabulary.singularLower} photo`} /> : <HomeIcon size={50} />}</div>
+      <div className="hh-detail-photo">{home.photoUrl ? <img src={home.photoUrl} alt={`${identity.accessible} ${vocabulary.singularLower} photo`} /> : <HomeIcon size={50} />}<span className="hh-detail-photo-status">{home.status}</span></div>
       <div className="hh-detail-identity">
-        <div className="hh-detail-eyebrow">{vocabulary.singular} Detail</div>
+        <div className="hh-detail-status-chips"><span>{home.status}</span>{home.isFavorite && <span className="favorite"><Heart size={12} fill="currentColor" aria-hidden="true" /> Favorite</span>}</div>
         <h1 className="hh-serif">{identity.primary}</h1>{identity.option && <p className="hh-detail-option">{identity.option}</p>}{identity.supporting && <p className="hh-detail-locality">{identity.supporting}</p>}
-        <div className="hh-detail-price">{formatHomePrice(home.price, priorities.searchType) || 'Price not added'}</div>
+        <div className="hh-detail-price-row"><div className="hh-detail-price">{formatHomePrice(home.price, priorities.searchType) || 'Price not added'}</div>{home.estMonthly && <span>${Number(home.estMonthly).toLocaleString()}/mo est.</span>}</div>
         <div className="hh-detail-core-facts">{[home.beds && `${home.beds} beds`, home.baths && `${home.baths} baths`, home.sqft && `${parseNum(home.sqft)?.toLocaleString()} sq ft`, home.lotSize && formatLotSizeDisplay(home.lotSize)].filter(Boolean).map((fact) => <span key={fact}>{fact}</span>)}</div>
-        {home.suggestedBy && <span className="hh-provenance">Suggested by {home.suggestedBy}</span>}<div className="hh-detail-summary-row">{match?.pct != null && <strong>{match.pct}% Match</strong>}<span className="hh-detail-lifecycle">{home.status}</span>{home.isFavorite && <span className="hh-detail-favorite"><Heart size={13} fill="currentColor" aria-hidden="true" /> Favorite</span>}</div>
+        {home.suggestedBy && <span className="hh-provenance">Suggested by {home.suggestedBy}</span>}
+        {match?.pct != null && <button type="button" className="hh-detail-match-card" onClick={() => { matchSection.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); matchSection.current?.focus({ preventScroll: true }); }} aria-label={`View why this home is a ${match.pct}% Match`}><span className="hh-detail-match-ring">{match.pct}%</span><span><strong>Your Match</strong><small>{factualSummary?.mustClause || 'Based on your known priorities'}{factualSummary?.importantSentence ? ` · ${factualSummary.importantSentence}` : ''}</small></span><ChevronRight size={20} aria-hidden="true" /></button>}
         {/* A concise, deterministic readout of the same aggregate counts computeMatch
             already produced — never a qualitative claim like "Great fit for your
             family," and a missing/unknown Must-Have is always named, never smoothed
@@ -155,11 +164,11 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
             {factualSummary.importantSentence && <span> {factualSummary.importantSentence}</span>}
           </p>
         )}
-        <div className="hh-detail-links">{home.listingUrl && <a href={home.listingUrl} target="_blank" rel="noreferrer">Original listing <ExternalLink size={13} /></a>}{!readOnly && <button type="button" onClick={() => setEditing(true)}><Pencil size={13} /> Edit {vocabulary.singularLower} information</button>}</div>
+        <div className="hh-detail-links">{home.listingUrl && <a href={home.listingUrl} target="_blank" rel="noreferrer">Original listing <ExternalLink size={15} /></a>}{!readOnly && <button type="button" onClick={() => setEditing(true)}><Pencil size={15} /> Edit {vocabulary.singularLower} information</button>}</div>
       </div>
     </header>
 
-    {facts.length > 0 && <Section eyebrow="Property facts" className="hh-detail-section-wide"><dl className="hh-detail-facts">{facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>{home.conditionNotes && <p className="hh-detail-condition">{home.conditionNotes}</p>}</Section>}
+    {facts.length > 0 && <Section eyebrow="Property facts" title="The home at a glance" className="hh-detail-section-wide hh-detail-surface"><dl className="hh-detail-facts">{facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>{home.conditionNotes && <p className="hh-detail-condition">{home.conditionNotes}</p>}</Section>}
 
     {commuteDestinations.length > 0 && (() => {
       const commutesGrid = (
@@ -180,7 +189,7 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
       // the kind of supplementary reference data worth collapsing on a phone
       // (see MobileDisclosure) — desktop always shows it in full either way.
       return (
-        <Section eyebrow="Location & commute" title="Your everyday routes">
+        <Section eyebrow="Location & commute" title="Your everyday routes" className="hh-detail-section-wide hh-detail-surface">
           {commuteDestinations.length > 2 ? (
             <MobileDisclosure label={`${commuteDestinations.length} commutes`} className="hh-detail-commutes-disclosure">
               {commutesGrid}
@@ -190,10 +199,10 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
       );
     })()}
 
-    {match && <Section eyebrow="How it fits your search" title={match.pct == null ? 'More will come into focus' : `Why this home is a ${match.pct}% Match${readOnly ? '' : ' for you'}`}><div className="hh-detail-match-groups">{['must', 'important', 'nice'].map((tier) => { const rows = match.allSelected.filter((item) => item.tier === tier); return rows.length ? <div className={`hh-detail-match-tier ${tier}`} key={tier}><h3>{TIER_LABELS[tier]}</h3>{rows.map((item) => { const detail = !item.evaluated ? (item.objective ? 'Needs more information' : 'Evaluate after tour') : item.objective ? item.detail : item.met ? 'Liked' : "Didn't like"; const stateLabel = !item.evaluated ? 'Unknown' : item.met ? 'Satisfied' : 'Missed'; return <div className={`hh-detail-criterion ${!item.evaluated ? 'unknown' : item.met ? 'met' : 'missed'}`} key={item.key}><b aria-hidden="true">{!item.evaluated ? <Minus size={14} /> : item.met ? <Check size={14} /> : <X size={14} />}</b><span><strong>{item.key.includes(':') ? criterionDisplayLabel(item.key.split(':')[0], item.label) : item.label}</strong><small>{detail}</small></span><span className="sr-only">{stateLabel}</span></div>; })}</div> : null; })}</div></Section>}
+    {match && <div ref={matchSection} tabIndex={-1} className="hh-detail-match-anchor"><Section eyebrow="How it fits your search" title={match.pct == null ? 'More will come into focus' : `Why this home is a ${match.pct}% Match${readOnly ? '' : ' for you'}`} className="hh-detail-section-wide hh-detail-surface"><div className="hh-detail-match-groups">{['must', 'important', 'nice'].map((tier) => { const rows = match.allSelected.filter((item) => item.tier === tier); return rows.length ? <div className={`hh-detail-match-tier ${tier}`} key={tier}><h3>{TIER_LABELS[tier]}<small>{tierSummary(rows)}</small></h3>{rows.map((item) => { const detail = !item.evaluated ? (item.objective ? 'Needs more information' : 'Evaluate after tour') : item.objective ? item.detail : item.met ? 'Liked' : "Didn't like"; const stateLabel = !item.evaluated ? 'Unknown' : item.met ? 'Satisfied' : 'Missed'; return <div className={`hh-detail-criterion ${!item.evaluated ? 'unknown' : item.met ? 'met' : 'missed'}`} key={item.key}><b aria-hidden="true">{!item.evaluated ? <span className="hh-detail-question">?</span> : item.met ? <Check size={14} /> : <X size={14} />}</b><span><strong>{item.key.includes(':') ? criterionDisplayLabel(item.key.split(':')[0], item.label) : item.label}</strong><small>{detail}</small></span><span className="sr-only">{stateLabel}</span></div>; })}</div> : null; })}</div></Section></div>}
 
-    <Section eyebrow={readOnly ? 'Buyer perspective' : 'Your take'} title={readOnly ? 'Their relationship with this home' : 'Your relationship with this home'} className="hh-detail-relationship hh-detail-section-wide">
-      {isCollaborative && <p className="hh-detail-context">{readOnly ? 'Each buyer’s perspective stays separate.' : 'These choices are yours to control. Your collaborator can see them and keeps their own.'}</p>}
+    <Section eyebrow={readOnly ? 'Buyer perspective' : 'Your take'} title={readOnly ? 'Their relationship with this home' : 'Your relationship with this home'} className="hh-detail-relationship hh-detail-section-wide hh-detail-surface">
+      {isCollaborative && <p className="hh-detail-context">{readOnly ? 'Each buyer’s perspective stays separate.' : 'These choices are yours. Your co-buyer can see them and keeps their own.'}</p>}
       {!readOnly && <div className="hh-detail-actions">
         {hasToured(home) ? <span className="hh-detail-toured-state"><Check size={15} aria-hidden="true" /> Toured</span> : <button className="hh-btn" aria-pressed={home.status === 'Want to Tour'} onClick={() => savePersonal({ status: home.status === 'Want to Tour' ? 'Saved' : 'Want to Tour' }).catch(() => {})}><Footprints size={15} aria-hidden="true" />{home.status === 'Want to Tour' ? 'On your Want to Tour list' : 'Want to tour'}</button>}
         <button className="hh-btn hh-btn-ghost" aria-pressed={home.isFavorite} onClick={() => savePersonal(toggleFavorite(home)).catch(() => {})}><Heart size={15} aria-hidden="true" fill={home.isFavorite ? 'currentColor' : 'none'} />{home.isFavorite ? 'Favorited' : 'Favorite'}</button>

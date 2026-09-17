@@ -20,7 +20,7 @@ test('priority and reaction chips use buttons with exposed selection state', () 
 test('contained UX recovery and truthful copy remain in place', () => {
   assert.match(read('src/components/HomeModal.jsx'), /aria-label=\{mode === 'add'/);
   assert.match(read('src/components/CompareBoard.jsx'), /href="\/homes\?add=1"/);
-  assert.doesNotMatch(read('src/components/HomeDetail.jsx'), /Back to homes/);
+  assert.match(read('src/components/HomeDetail.jsx'), /Back to homes/);
   assert.match(read('src/components/SavedHomesMap.jsx'), /map isn't available right now/);
   assert.doesNotMatch(read('src/components/SavedHomesMap.jsx'), /Map setup is needed/);
   assert.match(read('src/app/invite/[token]/AcceptInvitationClient.jsx'), /Sign in with another account/);
