@@ -170,3 +170,23 @@ test('regression guard: the existing mobile hero photo-first ordering is unchang
   assert.match(mobileHero, /\.hh-detail-photo \{[^}]*order: 1;/);
   assert.match(mobileHero, /\.hh-detail-identity \{[^}]*order: 2;/);
 });
+
+test('desktop refresh exposes the real payment, status chips, wide hero, and actionable Match summary', () => {
+  assert.match(detail, /home\.estMonthly/);
+  assert.match(detail, /hh-detail-status-chips/);
+  assert.match(detail, /hh-detail-match-card/);
+  assert.match(detail, /matchSection\.current\?\.scrollIntoView/);
+  assert.match(globalsCss, /\.hh-home-detail \{ max-width: 1320px;/);
+  assert.match(globalsCss, /grid-template-columns: minmax\(0, 1\.3fr\) minmax\(390px, 1fr\)/);
+});
+
+test('category summaries count met, missing, and unknown independently', () => {
+  assert.match(detail, /const unknown = rows\.filter\(\(item\) => !item\.evaluated\)\.length/);
+  assert.match(detail, /`\$\{unknown\} unknown`/);
+  assert.match(detail, /hh-detail-question/);
+});
+
+test('single canonical photo degrades gracefully without fake thumbnails or counts', () => {
+  assert.match(detail, /home\.photoUrl \? <img/);
+  assert.doesNotMatch(detail, /\+19|24 photos|school rating/i);
+});
