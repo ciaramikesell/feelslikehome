@@ -498,8 +498,18 @@ export function selectHomeCardCriteria(match, mustLimit = 5) {
   const source = match.allSelected || [];
   const indexed = source.map((criterion, order) => ({ criterion, order }));
   const stateRank = (criterion) => criterion.evaluated ? (criterion.met === false ? 0 : 2) : 1;
+  // The compact preview is intentionally limited to concrete property features.
+  // Baseline search constraints still live in `source` (and therefore in the
+  // canonical score), but budget, size, property type, and similar parameters
+  // should not displace feature choices in this small presentation surface.
+  const isVisibleMustHave = (criterion) => {
+    const category = criterion.key.split(':', 1)[0];
+    return criterion.tier === 'must'
+      && criterion.objective !== false
+      && (category === 'features' || category === 'exterior');
+  };
   const mustAll = indexed
-    .filter(({ criterion }) => criterion.tier === 'must')
+    .filter(({ criterion }) => isVisibleMustHave(criterion))
     .sort((a, b) => stateRank(a.criterion) - stateRank(b.criterion) || a.order - b.order)
     .map(({ criterion }) => criterion);
   const mustPreviewLimit = Math.max(mustLimit, mustAll.filter((criterion) => criterion.evaluated && criterion.met === false).length);

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import { selectHomeCardCriteria } from '../src/lib/matching.js';
 import { formatCardGarage, homeCardSnapshot } from '../src/lib/homeCardPresentation.js';
 
-const criterion = (key, tier, evaluated, met) => ({ key, label: key.split(':').at(-1), tier, evaluated, met });
+const criterion = (key, tier, evaluated, met, objective = true) => ({ key, label: key.split(':').at(-1), tier, evaluated, met, objective });
 
 test('Must Haves prioritize failed, then unknown, then met and use truthful overflow', () => {
   const match = { allSelected: [
@@ -73,14 +73,50 @@ test('Personalized Criteria derives fresh counts and exact names from current pa
   assert.equal(changed.unknown.length, 0);
 });
 
-test('Home Snapshot canonicalizes garage and omits unknown facts', () => {
+test('compact property facts use canonical values, fixed order, and omit unknown facts', () => {
   assert.equal(formatCardGarage({ garageSpaces: 'Attached side 2 car', checks: {} }), '2 Car Attached');
-  const facts = homeCardSnapshot({ garageSpaces: '2', basementNotes: 'Unknown', schoolsNotes: 'Grosse Pointe — 8/10', homeCondition: [] }, 'Two Story');
+  const facts = homeCardSnapshot({ garageSpaces: 'Attached side 2 car', basementNotes: 'Unfinished', schoolsNotes: 'Anchor Bay Schools — 8/10', homeCondition: ['Move-In Ready'] }, 'Two Story');
   assert.deepEqual(facts, [
-    { label: 'Garage', value: '2 Car' },
+    { label: 'Garage', value: '2 Car Attached' },
+    { label: 'Basement', value: 'Unfinished' },
+    { label: 'Home condition', value: 'Move-In Ready' },
+    { label: 'Schools', value: 'Anchor Bay Schools' },
     { label: 'Style', value: 'Two Story' },
-    { label: 'Schools', value: 'Grosse Pointe' },
   ]);
+  assert.deepEqual(homeCardSnapshot({ basementNotes: 'Unknown', schoolsNotes: 'N/A', homeCondition: [] }, null), []);
+});
+
+test('visible Must Haves contain feature criteria, not baseline search parameters', () => {
+  const allSelected = [
+    criterion('preferredPropertyTypes', 'must', true, false),
+    criterion('budget', 'must', true, false),
+    criterion('beds', 'must', true, false),
+    criterion('sqft', 'must', false, null),
+    criterion('homeCondition', 'must', true, true),
+    criterion('features:Home Office', 'must', true, true),
+    criterion('exterior:Fenced Yard', 'must', false, null),
+    criterion('features:Natural Light', 'must', true, true, false),
+  ];
+  const match = { allSelected, pct: 42 };
+  const result = selectHomeCardCriteria(match);
+  assert.deepEqual(result.mustHaves.map(({ label }) => label), ['Fenced Yard', 'Home Office']);
+  assert.equal(result.mustOverflow, 0);
+  assert.equal(match.allSelected, allSelected);
+  assert.equal(match.pct, 42);
+  assert.ok(match.allSelected.some(({ key }) => key === 'budget'));
+});
+
+test('card renders compact unboxed facts and preserves adjacent component contracts', () => {
+  const board = fs.readFileSync('src/components/HomesBoard.jsx', 'utf8');
+  const css = fs.readFileSync('src/app/globals.css', 'utf8');
+  assert.doesNotMatch(board, /Home Snapshot|hh-snapshot-fact|hh-card-context-group/);
+  const factListRule = css.match(/\.hh-property-facts\s*\{([^}]*)\}/)?.[1] || '';
+  assert.doesNotMatch(factListRule, /border|grid-template-columns|padding|background/);
+  assert.match(board, /className="hh-property-facts"/);
+  assert.match(board, /criteriaSummary\.evaluated.*criteriaSummary\.total.*evaluated/);
+  assert.match(board, /<CriteriaDisclosure symbol="\?"/);
+  assert.match(board, /className="hh-card-commute"/);
+  assert.match(board, /className="hh-home-card-actions"/);
 });
 
 test('card does not render crossroads or stale touring language', () => {

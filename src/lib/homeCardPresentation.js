@@ -16,9 +16,9 @@ export function homeCardSnapshot(home, styleSummary) {
   const school = clean(home.schoolsNotes)?.replace(/\s*(?:—|-)\s*\d+(?:\.\d+)?\s*\/\s*10\s*$/i, '').trim();
   return [
     { label: 'Garage', value: formatCardGarage(home) },
-    { label: 'Style', value: clean(styleSummary) },
     { label: 'Basement', value: clean(home.basementNotes) },
+    { label: 'Home condition', value: clean(home.homeCondition) },
     { label: 'Schools', value: school },
-    { label: 'Condition', value: clean(home.homeCondition) },
+    { label: 'Style', value: clean(styleSummary) },
   ].filter((fact) => fact.value && !/^(unknown|not specified|n\/a)$/i.test(fact.value));
 }

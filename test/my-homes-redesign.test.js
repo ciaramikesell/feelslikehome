@@ -30,7 +30,8 @@ test('card hierarchy keeps Must Haves, aggregate criteria coverage, facts, and u
   assert.match(board, /criteriaSummary\.mismatches\.length/);
   assert.match(board, /criteriaSummary\.unknown\.length/);
   assert.doesNotMatch(board, /positives\.map|negatives\.map/);
-  assert.match(board, /Home Snapshot/);
+  assert.match(board, /className="hh-property-facts"/);
+  assert.doesNotMatch(board, /Home Snapshot/);
   assert.doesNotMatch(board, /home\.crossroads &&/);
   assert.match(board, /const priorities = initialPriorities/);
   assert.doesNotMatch(board, /useState\(initialPriorities\)/);

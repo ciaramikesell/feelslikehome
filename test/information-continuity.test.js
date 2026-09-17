@@ -73,7 +73,7 @@ test('card unknown summary uses canonical unknown criteria without stale after-t
 
 test('home snapshot shows only known facts and strips unsupported legacy school ratings', () => {
   const presentation = read('src/lib/homeCardPresentation.js');
-  assert.match(presentation, /label: 'Condition'/);
+  assert.match(presentation, /label: 'Home condition'/);
   assert.match(presentation, /label: 'Schools'/);
   assert.match(presentation, /label: 'Basement'/);
   assert.doesNotMatch(presentation, /\|\| 'Unknown'/);
