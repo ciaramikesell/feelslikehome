@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const landing = fs.readFileSync('src/components/PublicLanding.jsx', 'utf8');
 const root = fs.readFileSync('src/app/page.js', 'utf8');
 const signup = fs.readFileSync('src/app/auth/sign-up/page.js', 'utf8');
+const authForm = fs.readFileSync('src/components/auth/AuthForm.jsx', 'utf8');
 const css = fs.readFileSync('src/app/globals.css', 'utf8');
 
 test('signed-out visitors receive the public landing while signed-in routing remains intact', () => {
@@ -43,9 +44,9 @@ test('landing uses dedicated artwork and describes representative product data t
 });
 
 test('Realtor entry preserves intent without introducing an account role', () => {
-  assert.match(signup, /account_entry_intent: 'realtor'/);
-  assert.match(signup, /relationship-scoped/);
-  assert.doesNotMatch(signup, /users\.role|profiles\.role|role:\s*'realtor'/);
+  assert.match(authForm, /account_entry_intent: 'realtor'/);
+  assert.match(authForm, /relationship-scoped/);
+  assert.doesNotMatch(authForm, /users\.role|profiles\.role|role:\s*'realtor'/);
 });
 
 test('landing includes responsive and reduced-motion-aware visual foundations', () => {

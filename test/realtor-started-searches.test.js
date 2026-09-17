@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const migration = read('supabase/migrations/2026-09-16-realtor-started-searches.sql');
 const signup = read('src/app/auth/sign-up/page.js');
+const authForm = read('src/components/auth/AuthForm.jsx');
 const root = read('src/app/page.js');
 const layout = read('src/app/(app)/layout.js');
 const onboardingPage = read('src/app/onboarding/page.js');
@@ -15,7 +16,7 @@ const collaboration = read('src/lib/supabase/collaboration.js');
 const fn = (name) => migration.match(new RegExp(`create (?:or replace )?function public\\.${name}[\\s\\S]*?end; \\$\\$;`, 'i'))?.[0] || '';
 
 test('Realtor signup intent changes routing, never relationship authorization', () => {
-  assert.match(signup, /isRealtorEntry \? '\/people' : redirectTo/);
+  assert.match(authForm, /redirectTo === '\/' && isRealtorEntry \? '\/people' : redirectTo/);
   assert.match(root, /account_entry_intent === 'realtor'\) redirect\('\/people'\)/);
   assert.doesNotMatch(onboardingPage, /account_entry_intent/);
   assert.match(layout, /isRealtorEntry && isRealtorWorkspace \? \{ \.\.\.storedProfile, onboarding_complete: true \}/);
