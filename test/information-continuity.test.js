@@ -53,7 +53,7 @@ test('layout and condition use existing weights and unknown remains excluded', (
   assert.equal(TIER_META.dontcare.weight, 0);
 });
 
-test('card unknown summary separates centralized experiential criteria', () => {
+test('card unknown summary uses canonical unknown criteria without stale after-tour copy', () => {
   const priorities = defaultPriorities();
   priorities.searchType = 'purchase';
   priorities.budget = { value: '500000', tier: 'important' };
@@ -64,7 +64,9 @@ test('card unknown summary separates centralized experiential criteria', () => {
   assert.equal(summary.afterTour.length, 1);
   assert.equal(summary.notConfirmed.length, 2);
   const ui = read('src/components/ui.jsx');
-  assert.match(ui, /'criterion' : 'criteria'\} still unknown/);
+  const board = read('src/components/HomesBoard.jsx');
+  assert.match(board, /'criterion' : 'criteria'\} still unknown/);
+  assert.doesNotMatch(board, /answer after touring|to review after touring/i);
   assert.doesNotMatch(ui, /to review after touring/);
   assert.doesNotMatch(ui, /need more information/);
 });

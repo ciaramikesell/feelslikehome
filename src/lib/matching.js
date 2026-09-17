@@ -491,14 +491,10 @@ export function summarizeForCard(match) {
   };
 }
 
-// The Homes card uses a deliberately narrower preview than Match detail.  A
-// namespaced category is durable criteria metadata (unlike a translated label),
-// so this does not rely on display-copy matching. Features and exterior/property
-// selections are the explicit, user-selected things a home can have; baseline
-// fields (price, beds, baths, square footage, type and condition) have unnamespaced
-// keys and therefore cannot leak into this preview.
-export function selectHomeCardCriteria(match, mustLimit = 3) {
-  if (!match) return { mustHaves: [], mustOverflow: 0, positives: [], negatives: [] };
+// The Homes card derives both its bounded Must Have preview and its aggregate
+// non-Must-Have coverage from the canonical Match result. No counts are stored.
+export function selectHomeCardCriteria(match, mustLimit = 5) {
+  if (!match) return { mustHaves: [], mustOverflow: 0, criteriaSummary: null };
   const source = match.allSelected || [];
   const indexed = source.map((criterion, order) => ({ criterion, order }));
   const stateRank = (criterion) => criterion.evaluated ? (criterion.met === false ? 0 : 2) : 1;
@@ -506,23 +502,33 @@ export function selectHomeCardCriteria(match, mustLimit = 3) {
     .filter(({ criterion }) => criterion.tier === 'must')
     .sort((a, b) => stateRank(a.criterion) - stateRank(b.criterion) || a.order - b.order)
     .map(({ criterion }) => criterion);
+  const mustPreviewLimit = Math.max(mustLimit, mustAll.filter((criterion) => criterion.evaluated && criterion.met === false).length);
 
   const tierRank = { must: 0, important: 1, nice: 2, dontcare: 3 };
-  const distinctive = indexed
-    .filter(({ criterion }) => {
-      const category = criterion.key?.split(':', 1)[0];
-      return criterion.tier !== 'must'
-        && criterion.evaluated
-        && (category === 'features' || category === 'exterior');
-    })
+  // Must Haves are already visible immediately above this summary. Excluding
+  // them here keeps the coverage number from reading like a second Must Have
+  // score, while every remaining item still comes directly from computeMatch's
+  // canonical participant-owned `allSelected` result.
+  const personalized = indexed
+    .filter(({ criterion }) => criterion.tier !== 'must')
     .sort((a, b) => (tierRank[a.criterion.tier] ?? 3) - (tierRank[b.criterion.tier] ?? 3) || a.order - b.order)
     .map(({ criterion }) => criterion);
 
+  const matches = personalized.filter((criterion) => criterion.evaluated && criterion.met === true);
+  const mismatches = personalized.filter((criterion) => criterion.evaluated && criterion.met === false);
+  const unknown = personalized.filter((criterion) => !criterion.evaluated);
+
   return {
-    mustHaves: mustAll.slice(0, mustLimit),
-    mustOverflow: Math.max(0, mustAll.length - mustLimit),
-    positives: distinctive.filter((criterion) => criterion.met === true).slice(0, 2),
-    negatives: distinctive.filter((criterion) => criterion.met === false).slice(0, 2),
+    mustHaves: mustAll.slice(0, mustPreviewLimit),
+    hiddenMustHaves: mustAll.slice(mustPreviewLimit),
+    mustOverflow: Math.max(0, mustAll.length - mustPreviewLimit),
+    criteriaSummary: {
+      total: personalized.length,
+      evaluated: matches.length + mismatches.length,
+      matches,
+      mismatches,
+      unknown,
+    },
   };
 }
 
