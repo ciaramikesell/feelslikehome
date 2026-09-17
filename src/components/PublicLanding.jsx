@@ -17,7 +17,7 @@ const steps = [
 export default function PublicLanding() {
   // This entry preserves explicit Realtor intent and lands a new account in the
   // People workspace; it does not send agents through buyer onboarding.
-  const realtorHref = '/auth/sign-up?intent=realtor';
+  const realtorHref = '/for-realtors';
   const [authMode, setAuthMode] = useState(null);
   const authTriggerRef = useRef(null);
   const closeAuth = useCallback(() => setAuthMode(null), []);
