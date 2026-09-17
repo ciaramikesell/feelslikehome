@@ -14,6 +14,7 @@
 // Only fields that already exist on the `homes` table are ever produced here.
 
 import { EVIDENCE_STRENGTH, findingsFromFields, resolveImport } from './importDomain.js';
+import { extractExplicitDescriptionFeatures, fact } from './listingFacts.js';
 
 function num(v) {
   if (v === null || v === undefined || v === '') return null;
@@ -162,5 +163,35 @@ export function normalizeRentCastFields(property, listing, { apartmentCommunity 
     evidenceStrength: EVIDENCE_STRENGTH.AUTHORITATIVE,
   });
   const { resolutions, fieldPatch } = resolveImport(findings);
-  return { fields: fieldPatch, findings, resolutions, foundAny: Object.keys(fieldPatch).length > 0 };
+  const features = property?.features || {};
+  const listingFacts = [
+    fact('stories', 'Stories / levels', features.floorCount ?? property?.floorCount, 'structure'),
+    fact('exterior', 'Exterior', features.exteriorType, 'structure'),
+    fact('roof', 'Roof', features.roofType, 'structure'),
+    fact('foundation', 'Foundation', features.foundationType, 'structure'),
+    fact('fireplaces', 'Fireplaces', features.fireplaceCount ?? features.fireplaces, 'structure'),
+    fact('pool', 'Pool', features.pool, 'structure'),
+    fact('basement', 'Basement', features.basement, 'structure'),
+    fact('garageType', 'Garage', features.garageType ?? features.garage, 'parking'),
+    fact('parkingSpaces', 'Parking spaces', features.parkingSpaces, 'parking'),
+    fact('parkingType', 'Parking', features.parkingType, 'parking'),
+    fact('carport', 'Carport', features.carport, 'parking'),
+    fact('hoa', 'HOA', property?.hoa?.fee === 0 ? false : (property?.hoa?.fee != null ? true : null), 'costs'),
+    fact('heating', 'Heating', features.heating, 'utilities'),
+    fact('cooling', 'Cooling', features.cooling, 'utilities'),
+    fact('water', 'Water source', features.water, 'utilities'),
+    fact('sewer', 'Sewer', features.sewer, 'utilities'),
+    fact('fuel', 'Fuel', features.fuel, 'utilities'),
+    fact('status', 'Listing status', listing?.status, 'listing'),
+    fact('mls', 'Listing ID', listing?.mlsNumber ?? listing?.id, 'listing'),
+    fact('appliances', 'Appliances', features.appliances, 'structure'),
+    fact('laundry', 'Laundry', features.laundry, 'structure'),
+    fact('fencing', 'Fencing', features.fencing, 'structure'),
+  ].filter(Boolean);
+  const description = listing?.description ?? listing?.text ?? listing?.remarks ?? listing?.publicRemarks ?? '';
+  const descriptionFeatures = extractExplicitDescriptionFeatures(description);
+  return {
+    fields: fieldPatch, findings, resolutions, listingFacts, descriptionFeatures,
+    foundAny: Object.keys(fieldPatch).length > 0 || listingFacts.length > 0 || descriptionFeatures.length > 0,
+  };
 }

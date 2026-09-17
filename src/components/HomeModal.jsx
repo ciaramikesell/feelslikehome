@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { X, Upload, Link2, Footprints, Archive as ArchiveIcon, ExternalLink, Check, Users } from 'lucide-react';
+import { X, Upload, Link2, Footprints, Archive as ArchiveIcon, ExternalLink, Check, Users, Search, ClipboardPaste, Camera, MessageSquareText } from 'lucide-react';
 import { StarInput } from '@/components/ui';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
@@ -12,12 +12,13 @@ import { extractAddressFromListingUrl, extractApartmentIdentityFromListingUrl, i
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { mergeImportFields, resolveImport } from '@/lib/importDomain';
 import { appendAllSuggestions, appendSuggestionToNotes, derivePriorityCheckPatch, extractEnrichmentSuggestions } from '@/lib/importReview';
-import { splitAddressLines, formatFoundCardFacts, countFoundFacts, formatCurrencyDisplay, digitsOnly, formatLotSizeDisplay } from '@/lib/homeDisplay';
+import { splitAddressLines, formatFoundCardFacts, formatCurrencyDisplay, digitsOnly, formatLotSizeDisplay } from '@/lib/homeDisplay';
 import { createClient } from '@/lib/supabase/client';
 import { hasToured } from '@/lib/lifecycle';
 import { HOME_PROPERTY_TYPE_OPTIONS, PROPERTY_TYPE_LABELS, searchIntentCapabilities } from '@/lib/searchIntent';
 import { homeVocabulary } from '@/lib/homePresentation';
 import { EXISTING_STRUCTURED_FACT_VALUE, structuredFactSelectValue, structuredFactValueFromSelect } from '@/lib/homeStructuredFacts';
+import { countListingDetails, groupListingFacts } from '@/lib/listingFacts';
 
 const PHOTO_BUCKET = 'home-photos';
 const ALLOWED_PHOTO_TYPES = { 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
@@ -100,6 +101,36 @@ function TriStateField({ label, value, onChange }) {
       return <button key={key} type="button" className={`hh-chip ${selected ? 'on' : ''}`} aria-pressed={selected} onClick={() => onChange(key === 'unknown' ? null : key === 'yes')}>{text}</button>;
     })}
   </div></div>;
+}
+
+const FOUND_GROUP_LABELS = { basics: 'Basics', structure: 'Home & structure', parking: 'Parking', costs: 'Costs & ownership', utilities: 'Utilities', listing: 'Listing details' };
+
+function WhatFlhFound({ result, listingUrl, mobile = false }) {
+  const fields = result?.fields || {};
+  const basicFacts = [
+    fields.price !== undefined && { key: 'price', label: 'Asking price', value: formatCurrencyDisplay(fields.price), group: 'basics' },
+    (fields.beds || fields.baths || fields.sqft) && { key: 'size', label: 'Home', value: [fields.beds && `${fields.beds} beds`, fields.baths && `${fields.baths} baths`, fields.sqft && `${Number(fields.sqft).toLocaleString()} sq ft`].filter(Boolean).join(' · '), group: 'basics' },
+    fields.yearBuilt && { key: 'yearBuilt', label: 'Built', value: fields.yearBuilt, group: 'basics' },
+    fields.lotSize && { key: 'lotSize', label: 'Lot', value: fields.lotSize, group: 'basics' },
+    fields.garageSpaces !== undefined && { key: 'garageSpaces', label: 'Garage spaces', value: fields.garageSpaces, group: 'parking' },
+    fields.hoaFeeMonthly !== undefined && { key: 'hoaFeeMonthly', label: 'HOA fee', value: `${formatCurrencyDisplay(fields.hoaFeeMonthly)}/month`, group: 'costs' },
+    fields.propertyTaxAnnual !== undefined && { key: 'propertyTaxAnnual', label: 'Property taxes', value: `${formatCurrencyDisplay(fields.propertyTaxAnnual)}/year${fields.propertyTaxYear ? ` (${fields.propertyTaxYear})` : ''}`, group: 'costs' },
+    fields.daysOnMarket !== undefined && { key: 'daysOnMarket', label: 'Days on market', value: fields.daysOnMarket, group: 'listing' },
+  ].filter(Boolean);
+  const sections = groupListingFacts([...basicFacts, ...(result?.listingFacts || [])]);
+  const features = result?.descriptionFeatures || [];
+  const content = <>
+    <header><span>What FLH found</span><p>From this listing</p></header>
+    {sections.map((section) => <section key={section.key}><h3>{FOUND_GROUP_LABELS[section.key]}</h3>{section.facts.map((item) => <div className="hh-found-fact" key={item.key}><Check size={13} aria-hidden="true" /><span><b>{item.label}</b> — {item.value === true ? 'Yes' : item.value === false ? 'No' : Array.isArray(item.value) ? item.value.join(', ') : item.value}</span></div>)}</section>)}
+    {features.length > 0 && <section><h3>Features mentioned</h3><div className="hh-found-tags">{features.map((item) => <span key={item.id}>{item.label}</span>)}</div><small>Explicitly stated in the listing description; review before relying on it.</small></section>}
+    {listingUrl && <a href={listingUrl} target="_blank" rel="noreferrer">View original listing <ExternalLink size={13} /></a>}
+  </>;
+  if (mobile) return <details className="hh-found-mobile"><summary>View what FLH found</summary>{content}</details>;
+  return <aside className="hh-found-panel" aria-label="What FLH found">{content}</aside>;
+}
+
+function AddSectionHeading({ icon: Icon, title, children, tone = 'peach' }) {
+  return <div className="hh-add-section-heading"><span className={`is-${tone}`}><Icon size={20} aria-hidden="true" /></span><div><h3 className="hh-serif">{title}</h3>{children && <p>{children}</p>}</div></div>;
 }
 
 // The compact "Property details" area: a settled, scannable summary of what's
@@ -549,7 +580,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         return;
       }
 
-      setImportResult({ fields: data.fields || {}, findings: data.findings || [], resolutions: data.resolutions || [], searchedAddress: address });
+      setImportResult({ fields: data.fields || {}, findings: data.findings || [], resolutions: data.resolutions || [], listingFacts: data.listingFacts || [], descriptionFeatures: data.descriptionFeatures || [], searchedAddress: address });
       setEditDetailsOpen(false);
       setImportPhase('success');
       setForm((f) => mergeImportFields(f, data.fields || {}));
@@ -622,7 +653,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   // straight into the classic detailed edit experience, with no re-check affordance.
   const showFindUI = isNewHome;
   const showCompactCard = isNewHome && importPhase === 'success' && !editDetailsOpen && importResult;
-  const foundFactsCount = importResult ? countFoundFacts(importResult.fields) : 0;
+  const foundFactsCount = importResult ? countListingDetails(importResult.fields, importResult.listingFacts, importResult.descriptionFeatures) : 0;
   const addressLines = showCompactCard ? splitAddressLines(importResult.fields.address || importResult.searchedAddress) : { line1: '', line2: '' };
   const cardFacts = showCompactCard ? formatFoundCardFacts(vocabulary.apartment ? {
     ...importResult.fields, price: null, beds: null, baths: null, sqft: null, daysOnMarket: null,
@@ -646,9 +677,9 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
 
   return (
     <div className={`hh-modal-backdrop ${presentation === 'detail-panel' ? 'hh-detail-editor-backdrop' : ''}`} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={`hh-modal hh-corner ${presentation === 'detail-panel' ? 'hh-detail-editor-panel' : ''}`} role="dialog" aria-modal="true" aria-label={presentation === 'detail-panel' ? `Edit ${vocabulary.singularLower} information` : undefined}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: isNewHome ? 14 : 18 }}>
-          <h2 className="hh-serif" style={{ fontSize: 20, margin: 0, fontWeight: 600 }}>{isNewHome ? `Add a ${vocabulary.singularLower}` : `Edit ${vocabulary.singularLower}`}</h2>
+      <div ref={dialogRef} className={`hh-modal hh-corner hh-add-home-modal ${presentation === 'detail-panel' ? 'hh-detail-editor-panel' : ''}`} role="dialog" aria-modal="true" aria-labelledby="add-home-title">
+        <div className="hh-add-home-title">
+          <div><h2 ref={titleRef} id="add-home-title" className="hh-serif" tabIndex={-1}>{isNewHome ? `Add a ${vocabulary.singularLower}` : `Edit ${vocabulary.singularLower}`}</h2>{isNewHome && <p>Introduce a new contender to analyze compatibility.</p>}</div>
           <button type="button" className="hh-btn hh-btn-ghost" style={{ padding: 6 }} onClick={onClose} aria-label="Close"><X size={16} aria-hidden="true" /></button>
         </div>
 
@@ -662,9 +693,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
               marginBottom: 16,
             }}
           >
-            <p style={{ fontSize: 14, color: 'var(--ink-soft)', lineHeight: 1.5, margin: '0 0 14px' }}>
-              {vocabulary.apartment ? "Paste a rental listing or enter the property yourself. We’ll fill in what we can." : "Paste a listing link or enter an address. We'll fill in what we can."}
-            </p>
+            <AddSectionHeading icon={Search} title="Import a listing">{vocabulary.apartment ? 'Paste a rental listing or enter the property yourself. We’ll fill in what we can.' : "Paste a listing link or enter an address. We'll fill in what we can."}</AddSectionHeading>
             <label className="hh-label">{vocabulary.apartment ? 'Listing link, property name, or address' : 'Listing link or address'}</label>
             <div className="hh-find-home-row" style={{ display: 'flex', gap: 8 }}>
               <input
@@ -738,7 +767,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         )}
 
         {isNewHome && !vocabulary.apartment && <details className="hh-details" style={{ marginTop: 14 }}>
-          <summary>Can&apos;t find the home? Paste listing details instead</summary>
+          <summary><ClipboardPaste size={19} /> <span>Can&apos;t find the home? Paste listing details instead<small>Enter the details manually when a link isn&apos;t available.</small></span></summary>
           <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '8px 0' }}>Copy the property description or listing details from the listing page and paste them here. We'll try to recognize price, beds, baths, square footage, and other details.</p>
           <textarea className="hh-textarea" style={{ minHeight: 90 }} value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Paste the full listing text here..." />
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, gap: 10, flexWrap: 'wrap' }}>
@@ -763,6 +792,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
             <button type="button" className="hh-btn hh-btn-ghost" style={{ marginTop: 12, fontSize: 12.5, padding: '6px 12px' }} onClick={() => setEditDetailsOpen(true)}>Edit details</button>
           </div>
         )}
+        {showCompactCard && <div className="hh-found-mobile-wrap"><p><Check size={14} /> We found {foundFactsCount} property details</p><WhatFlhFound result={importResult} listingUrl={form.listingUrl} mobile /></div>}
 
         {/* -------------------------- Objective property fields -------------------------- */}
         {showObjectiveGrid && (
@@ -865,10 +895,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
                 margin: '14px 0',
               }}
             >
-              <h3 style={{ fontSize: 13, fontWeight: 700, margin: '0 0 3px' }}>{vocabulary.apartment ? 'Photos & floor plan' : currentPreviewSrc ? `${vocabulary.singular} photo` : 'Add a photo'}</h3>
-              <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 12px', lineHeight: 1.45 }}>
-                {vocabulary.apartment ? "Optional — add something that'll help you recognize this one later." : `Give this ${vocabulary.singularLower} a face so it's easy to spot later — you can always add or change it.`}
-              </p>
+              <AddSectionHeading icon={Camera} title={vocabulary.apartment ? 'Photos & floor plan' : currentPreviewSrc ? `${vocabulary.singular} photo` : 'Add a photo'}>{vocabulary.apartment ? "Optional — add something that'll help you recognize this one later." : `Give this ${vocabulary.singularLower} a face so it's easy to spot later — you can always add or change it.`}</AddSectionHeading>
               {vocabulary.apartment && <div style={{ marginBottom: 10 }}><label className="hh-label">Floor-plan image</label><input className="hh-input" value={form.floorPlanImageUrl || ''} onChange={(e) => set('floorPlanImageUrl', e.target.value)} placeholder="Paste a floor-plan image URL" /></div>}
               <input
                 ref={photoInputRef}
@@ -1080,7 +1107,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         </div>
 
         <section className="hh-thoughts">
-          <h3 className="hh-serif">{vocabulary.apartment ? 'Anything else worth remembering?' : isCollaborative ? 'Shared notes' : 'Your thoughts'}</h3>
+          <AddSectionHeading icon={MessageSquareText} title={vocabulary.apartment ? 'Anything else worth remembering?' : isCollaborative ? 'Shared notes' : 'Your thoughts'} tone="sage" />
           {isCollaborative && <p className="hh-detail-context">Pros, cons, and notes are visible to both of you.</p>}
           <p>{vocabulary.apartment ? "Fees, lease terms, parking costs, pet charges, utilities—or anything else you don't want to forget." : isCollaborative ? 'Keep the details both of you want to remember in one place.' : 'Keep the personal side of this home separate from the listing facts.'}</p>
           <div className="hh-thoughts-grid">
@@ -1145,6 +1172,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
           </div>}
           <button className="hh-btn" onClick={submit} disabled={!form.address.trim() || saving}>{saving ? 'Saving...' : saveLabel || `Save ${vocabulary.singularLower}`}</button>
         </div>
+        {showCompactCard && <WhatFlhFound result={importResult} listingUrl={form.listingUrl} />}
       </div>
     </div>
   );
