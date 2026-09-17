@@ -23,7 +23,8 @@ test('card overlays expose truthful status, favorite, provenance, and co-buyer a
 
 test('card hierarchy keeps Must Haves, weighted tradeoffs, facts, and unknown distinct', () => {
   assert.match(board, /className="hh-must-summary"/);
-  assert.match(board, /\.filter\(\(item\) => item\.tier !== 'must'\)\.slice\(0, 3\)/);
+  assert.match(board, /selectHomeCardCriteria\(match\)/);
+  assert.match(board, /mustOverflow > 0/);
   assert.match(board, /Home Snapshot/);
   assert.doesNotMatch(board, /home\.crossroads &&/);
   assert.match(board, /const priorities = initialPriorities/);

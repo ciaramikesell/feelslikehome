@@ -491,6 +491,41 @@ export function summarizeForCard(match) {
   };
 }
 
+// The Homes card uses a deliberately narrower preview than Match detail.  A
+// namespaced category is durable criteria metadata (unlike a translated label),
+// so this does not rely on display-copy matching. Features and exterior/property
+// selections are the explicit, user-selected things a home can have; baseline
+// fields (price, beds, baths, square footage, type and condition) have unnamespaced
+// keys and therefore cannot leak into this preview.
+export function selectHomeCardCriteria(match, mustLimit = 3) {
+  if (!match) return { mustHaves: [], mustOverflow: 0, positives: [], negatives: [] };
+  const source = match.allSelected || [];
+  const indexed = source.map((criterion, order) => ({ criterion, order }));
+  const stateRank = (criterion) => criterion.evaluated ? (criterion.met === false ? 0 : 2) : 1;
+  const mustAll = indexed
+    .filter(({ criterion }) => criterion.tier === 'must')
+    .sort((a, b) => stateRank(a.criterion) - stateRank(b.criterion) || a.order - b.order)
+    .map(({ criterion }) => criterion);
+
+  const tierRank = { must: 0, important: 1, nice: 2, dontcare: 3 };
+  const distinctive = indexed
+    .filter(({ criterion }) => {
+      const category = criterion.key?.split(':', 1)[0];
+      return criterion.tier !== 'must'
+        && criterion.evaluated
+        && (category === 'features' || category === 'exterior');
+    })
+    .sort((a, b) => (tierRank[a.criterion.tier] ?? 3) - (tierRank[b.criterion.tier] ?? 3) || a.order - b.order)
+    .map(({ criterion }) => criterion);
+
+  return {
+    mustHaves: mustAll.slice(0, mustLimit),
+    mustOverflow: Math.max(0, mustAll.length - mustLimit),
+    positives: distinctive.filter((criterion) => criterion.met === true).slice(0, 2),
+    negatives: distinctive.filter((criterion) => criterion.met === false).slice(0, 2),
+  };
+}
+
 // Home Detail's concise hero summary — a deterministic sentence built only
 // from computeMatch's own aggregate counts (mustTotal/mustEvaluated/mustMet,
 // allSelected), never a qualitative/emotional claim like "Excellent fit for

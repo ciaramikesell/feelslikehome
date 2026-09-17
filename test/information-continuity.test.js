@@ -65,19 +65,16 @@ test('card unknown summary separates centralized experiential criteria', () => {
   assert.equal(summary.notConfirmed.length, 2);
   const ui = read('src/components/ui.jsx');
   assert.match(ui, /'criterion' : 'criteria'\} still unknown/);
-  assert.match(ui, /to review after touring/);
+  assert.doesNotMatch(ui, /to review after touring/);
   assert.doesNotMatch(ui, /need more information/);
 });
 
 test('home snapshot shows only known facts and strips unsupported legacy school ratings', () => {
-  const board = read('src/components/HomesBoard.jsx');
-  assert.match(board, /label: 'Home condition', text: home\.homeCondition\.join/);
-  assert.match(board, /schoolName && \{ label: 'Schools', text: schoolName \}/);
-  assert.match(board, /home\.basementNotes && \{ label: 'Basement', text: home\.basementNotes \}/);
-  assert.doesNotMatch(board, /text: home\.schoolsNotes \|\| 'Unknown'/);
-  const propertyFacts = board.match(/const propertyFacts = \[[\s\S]*?\]\.filter\(Boolean\);/)?.[0];
-  assert.ok(propertyFacts);
-  assert.doesNotMatch(propertyFacts, /slice/);
+  const presentation = read('src/lib/homeCardPresentation.js');
+  assert.match(presentation, /label: 'Condition'/);
+  assert.match(presentation, /label: 'Schools'/);
+  assert.match(presentation, /label: 'Basement'/);
+  assert.doesNotMatch(presentation, /\|\| 'Unknown'/);
 });
 
 test('map adds only current-user search-scoped destinations and distinct accessible markers', () => {

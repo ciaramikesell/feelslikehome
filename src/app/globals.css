@@ -1352,3 +1352,19 @@ details[open] > summary .hh-accordion-chevron, .hh-more-home-details:has(.hh-mor
 .hh-workspace-shell{display:grid;grid-template-columns:minmax(0,1fr);min-width:0}.hh-workspace-shell.has-inspector{grid-template-columns:minmax(0,1fr) 292px;gap:18px}.hh-workspace-inspector{position:relative;min-width:0}.hh-workspace-inspector .hh-found-panel{position:sticky;top:0;width:auto;height:auto;max-height:calc(100vh - 190px);overflow:auto}.hh-inspector-close{position:absolute;z-index:2;right:8px;top:8px;padding:5px}.hh-listing-inspector-entry{display:inline-flex;align-items:center;gap:6px;margin-top:9px;padding:5px 9px;border:1px solid rgba(116,128,79,.35);border-radius:999px;background:rgba(116,128,79,.08);color:var(--moss);font:700 11.5px var(--font-sans);cursor:pointer}.hh-listing-inspector-entry span{color:var(--brick)}.hh-add-home-discovery{max-width:760px}.hh-add-home-discovery .hh-import-listing{margin:0 24px 20px}.hh-manual-address{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;margin-top:12px}.hh-manual-address p{grid-column:1/-1;margin:0;color:var(--ink-soft);font-size:12px}
 @media(max-width:900px){.hh-workspace-shell.has-inspector{grid-template-columns:minmax(0,1fr)}.hh-workspace-inspector{order:-1}.hh-workspace-inspector .hh-found-panel{position:relative;max-height:none}}
 @media(max-width:640px){.hh-workspace-inspector .hh-found-panel{border-radius:12px}.hh-add-home-discovery .hh-import-listing{margin-inline:14px}.hh-manual-address{grid-template-columns:1fr}}
+
+/* My Homes card information hierarchy: bounded, scannable criteria and a
+   small fact-sheet treatment rather than compressed inline facts. */
+.hh-must-summary > strong,
+.hh-personalized-criteria > strong { color: var(--ink-soft); font-size: 9.5px; letter-spacing: .1em; text-transform: uppercase; }
+.hh-criteria-overflow { color: var(--ink-soft); font-size: 10.5px; font-weight: 600; }
+.hh-card-context-group { gap: 15px 22px; padding: 15px 14px; }
+.hh-snapshot-fact { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
+.hh-snapshot-fact > span { color: var(--ink-soft); font-size: 9.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.hh-snapshot-fact > strong { color: var(--ink); font-size: 12.5px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.hh-card-commute { gap: 6px; padding: 11px 13px; }
+.hh-card-commute-route::before { content: '\2192'; margin-right: 6px; color: var(--moss); }
+@media (max-width: 360px) {
+  .hh-card-context-group { grid-template-columns: minmax(0, 1fr); }
+  .hh-card-context-group .hh-context-heading { grid-column: 1; }
+}
