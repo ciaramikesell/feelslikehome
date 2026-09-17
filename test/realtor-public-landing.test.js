@@ -52,7 +52,7 @@ test('Realtor popover dismissal restores focus while mobile keeps Realtor-aware 
   assert.match(popover, /returnFocusRef\.current\?\.focus\(\)/);
   assert.match(landing, /className="rl-button rl-mobile-auth" href=\{startHref\}/);
   assert.match(landing, /className="rl-text-link rl-mobile-auth" href="\/auth\/sign-in\?redirect=\/people"/);
-  assert.match(css, /@media\(max-width:640px\)[\s\S]*\.rl-desktop-auth\{display:none\}\.rl-mobile-auth\{display:inline-flex\}/);
+  assert.match(css, /@media\(max-width:640px\)[\s\S]*\.rl-desktop-auth\{display:none\}\.rl-root \.rl-mobile-auth\{display:inline-flex\}/);
 });
 
 test('page explains draft provenance, buyer ownership, and implemented contributions', () => {
@@ -60,7 +60,19 @@ test('page explains draft provenance, buyer ownership, and implemented contribut
     assert.match(landing, new RegExp(phrase, 'i'));
   }
   assert.match(landing, /Illustrative workspace preview/);
-  assert.equal((landing.match(/\[\w+, '[^']+', '[^']+'\]/g) || []).length, 4);
+  assert.equal((landing.match(/\[\w+, '[^']+', '[^']+'\]/g) || []).length, 8);
+});
+
+test('Realtor story uses the approved photo-led card composition and copy', () => {
+  assert.match(landing, /Image src="\/images\/Warm Cottage\.png"/);
+  assert.match(landing, /People I’m Helping/);
+  assert.match(landing, /Stay connected to what matters/);
+  assert.match(landing, /Built for better collaboration/);
+  assert.match(landing, /Helping buyers make clearer home decisions/);
+  assert.match(css, /\.rl-hero-visual\{[^}]*min-height:590px/);
+  assert.match(css, /\.rl-steps>div\{[^}]*grid-template-columns:repeat\(4/);
+  assert.match(css, /\.rl-value-list article\{[^}]*border:[^}]*border-radius/);
+  assert.match(css, /\.rl-cta\{[^}]*background:#442f28/);
 });
 
 test('Realtor landing has accessible responsive navigation and full-width mobile CTAs', () => {
