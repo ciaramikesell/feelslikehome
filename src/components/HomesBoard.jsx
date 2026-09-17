@@ -4,9 +4,9 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Plus, Search, MapPin, Archive as ArchiveIcon, ExternalLink,
+  Plus, Search, Archive as ArchiveIcon, ExternalLink,
   Heart, Home as HomeIcon, Undo2, Footprints, MessageCircle, Check,
-  Building2, StickyNote, Pencil,
+  StickyNote, Pencil,
 } from 'lucide-react';
 import { MatchSummary, MatchTradeoffs } from '@/components/ui';
 import { useCommuteObserver } from '@/lib/useCommuteObserver';
@@ -16,7 +16,7 @@ import PostTourModal from '@/components/PostTourModal';
 import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
 import Sheet from '@/components/Sheet';
 import MobileDisclosure from '@/components/MobileDisclosure';
-import { STATUS_COLOR, emptyHome, isArchivedStatus } from '@/lib/constants';
+import { emptyHome, isArchivedStatus } from '@/lib/constants';
 import { isLikelyListingUrl, findHomeByListingUrl } from '@/lib/listingUrl';
 import { parseNum, fmtMoney, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint, summarizeForCard } from '@/lib/matching';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
@@ -111,36 +111,29 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   // existing shared descriptive field; Basement/Schools are the new Property
   // Details text fields. Condition Notes is deliberately NOT included here —
   // see the separate placement near Pros/Cons/Notes below.
+  const schoolName = home.schoolsNotes?.replace(/\s*(?:—|-)\s*\d+(?:\.\d+)?\s*\/\s*10\s*$/i, '').trim();
   const propertyFacts = [
-    { label: 'Garage', text: home.garageSpaces ? home.garageSpaces : 'Unknown' },
-    { label: 'Basement', text: home.basementNotes || 'Unknown' },
+    home.garageSpaces && { label: 'Garage', text: home.garageSpaces },
+    home.basementNotes && { label: 'Basement', text: home.basementNotes },
     home.homeCondition?.length && { label: 'Home condition', text: home.homeCondition.join(', ') },
-    { label: 'Schools', text: home.schoolsNotes || 'Unknown' },
+    styleSummary && { label: 'Style', text: styleSummary },
+    schoolName && { label: 'Schools', text: schoolName },
   ].filter(Boolean);
-
-  // Objective context rows — only ever built from data that already exists; no new
-  // lookups happen here. Crossroads and Home Style come from the home's own stored
-  // fields.
-  const objectiveFacts = [
-    home.crossroads && { icon: MapPin, text: home.crossroads },
-    styleSummary && { icon: Building2, text: styleSummary },
-  ].filter(Boolean).slice(0, 2);
 
   const pros = parseCommaList(home.pros);
   const cons = parseCommaList(home.cons);
   const noteCount = [home.notes, home.conditionNotes, ...pros, ...cons].filter(Boolean).length;
-  const snapshot = match ? [
-    ...matchState.missing.filter((item) => item.tier === 'must'),
-    ...matchState.matches.filter((item) => item.tier === 'must'),
-    ...matchState.matches.filter((item) => item.tier !== 'must'),
-    ...matchState.notConfirmed,
-  ].filter((item, index, items) => items.findIndex((candidate) => candidate.key === item.key) === index).slice(0, 3) : [];
+  const mustMissing = matchState.missing.filter((item) => item.tier === 'must');
+  const mustUnknown = matchState.notConfirmed.filter((item) => item.tier === 'must');
+  const positives = matchState.matches.filter((item) => item.tier !== 'must').slice(0, 3);
+  const negatives = matchState.missing.filter((item) => item.tier !== 'must').slice(0, 3);
   // Secondary, already-known context (facts/commute/notes) — kept out of the
   // way behind "More details" on narrow viewports so a mobile card reads as
   // price/address/Match/status first, not a full restack of every field.
   // Desktop keeps this always open (see .hh-card-context-details in
   // globals.css); nothing here is ever hidden from desktop.
-  const hasCardContext = propertyFacts.length > 0 || commuteDestinations.length > 0 || objectiveFacts.length > 0 || !!home.conditionNotes || pros.length > 0 || cons.length > 0 || !!home.notes;
+  const hasCardContext = propertyFacts.length > 0 || commuteDestinations.length > 0 || !!home.conditionNotes || pros.length > 0 || cons.length > 0 || !!home.notes;
+  const coBuyerActivity = home.coBuyerWantsToTour ? 'Co-buyer wants to tour' : home.coBuyerFavorited ? 'Co-buyer favorited' : null;
 
   return (
     <article className={`hh-home-card hh-corner ${mode === 'archive' ? 'is-archived' : ''}`} ref={commuteRef}>
@@ -155,23 +148,16 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
               <HomeIcon size={34} color="rgba(46,38,33,0.22)" strokeWidth={1.5} />
             </div>
           )}
-          {!isPreTour && (
-            <span className="hh-card-status hh-mono" style={{ background: STATUS_COLOR[home.status] || 'var(--ink-soft)' }}>{home.status}</span>
+          {!toured && home.status === 'Want to Tour' && (
+            <span className="hh-card-status hh-mono">WANT TO TOUR</span>
           )}
-          {moment && (
+          {moment && !coBuyerActivity && (
             <span className="hh-flh-moment" aria-label={moment.hasEyes ? `${moment.label}. Shared home signal.` : `${moment.label}.`}>
               {moment.hasEyes && <span aria-hidden="true">👀 </span>}{moment.label}
             </span>
           )}
-          {home.coBuyerArchivedCount > 0 && (
-            <div style={{ position: 'absolute', top: 10, right: 10, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
-              {home.coBuyerArchivedCount > 0 && (
-                <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--ink)', background: 'rgba(255,255,255,0.92)', padding: '4px 9px', borderRadius: 999, boxShadow: '0 2px 8px rgba(46,38,33,0.15)' }}>
-                  Archived by collaborator
-                </span>
-              )}
-            </div>
-          )}
+          {home.suggestedBy && <span className="hh-image-provenance">Suggested by {home.suggestedBy}</span>}
+          {coBuyerActivity && <span className="hh-cobuyer-activity">{coBuyerActivity}</span>}
         </Link>
           {showQuickFavorite && (
             <button type="button" className="hh-card-favorite hh-tooltip" onClick={handleFavorite} aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'} data-tooltip={isFavorite ? 'Remove from favorites' : 'Add to favorites'}>
@@ -187,7 +173,6 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
           </div>
 
           <div>
-            {home.suggestedBy && <span className="hh-provenance">Suggested by {home.suggestedBy}</span>}
             <Link href={`/homes/${encodeURIComponent(home.id)}`} className="hh-home-identity-link">
               <div className="hh-address" style={{ fontSize: 19, fontWeight: 600, lineHeight: 1.28, color: 'var(--ink)' }}>{identity.primary}</div>
               {identity.option && <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', marginTop: 2 }}>{identity.option}</div>}
@@ -218,17 +203,10 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
 
           {match ? (
             <div className={`hh-match-panel${mode === 'archive' ? ' is-secondary' : ''}`} style={{ background: matchTint(match.pct), borderLeft: `${mode === 'archive' ? 2 : 3}px solid ${matchColor(match.pct)}` }}>
+              <div className="hh-match-eyebrow">Personalized Match</div>
               <MatchSummary match={match} />
-              {snapshot.length > 0 && <div className="hh-match-snapshot">
-                {snapshot.map((item) => {
-                  const missing = item.evaluated && item.met === false;
-                  const unknown = !item.evaluated;
-                  return <div key={item.key} className={missing ? 'is-negative' : unknown ? 'is-unknown' : 'is-positive'}>
-                    <span aria-hidden="true">{missing ? '✕' : unknown ? '?' : '✓'}</span>
-                    <span>{item.label}{missing && item.tier === 'must' ? ' — Must Have' : unknown ? ' — Unknown' : ''}</span>
-                  </div>;
-                })}
-              </div>}
+              {match.mustTotal > 0 && <div className="hh-must-summary"><strong>Must Haves</strong><span className={mustMissing.length ? 'is-negative' : 'is-positive'}>{mustMissing.length ? `✕ ${match.mustMet}/${match.mustTotal} met` : `✓ ${match.mustMet}/${match.mustTotal} met`}</span>{mustMissing.slice(0, 2).map((item) => <span className="is-negative" key={item.key}>✕ {item.label}</span>)}{mustUnknown.length > 0 && <span className="is-unknown">? {mustUnknown.length} Must Have{mustUnknown.length > 1 ? 's' : ''} not evaluated</span>}</div>}
+              {(positives.length > 0 || negatives.length > 0) && <div className="hh-personalized-criteria"><strong>Personalized Criteria</strong>{negatives.map((item) => <span className="is-negative" key={item.key}>✕ {item.label}</span>)}{positives.map((item) => <span className="is-positive" key={item.key}>✓ {item.label}</span>)}</div>}
               <MatchTradeoffs match={match} />
             </div>
           ) : (
@@ -266,6 +244,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
           <MobileDisclosure>
           {propertyFacts.length > 0 && (
             <div className="hh-card-context-group">
+              <div className="hh-context-heading">Home Snapshot</div>
               {propertyFacts.map(({ label, text }, i) => (
                 <div key={i} style={{ fontSize: 12, color: 'var(--ink-soft)', lineHeight: 1.4 }}>
                   <span style={{ fontWeight: 600, color: 'var(--ink)' }}>{label}</span>{' '}
@@ -294,16 +273,6 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
               </div>
             );
           })()}
-
-          {objectiveFacts.length > 0 && (
-            <div className="hh-card-context-group">
-              {objectiveFacts.map(({ icon: Icon, text }, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--ink-soft)' }}>
-                  <Icon size={13} style={{ flexShrink: 0 }} /> <span>{text}</span>
-                </div>
-              ))}
-            </div>
-          )}
 
           {noteCount > 0 && <Link className="hh-notes-indicator" href={`/homes/${encodeURIComponent(home.id)}`}><StickyNote size={13} /> Notes ({noteCount})</Link>}
           </MobileDisclosure>
@@ -394,11 +363,13 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   const router = useRouter();
   const searchParams = useSearchParams();
   const [homes, setHomes] = useState(initialHomes);
-  const [priorities] = useState(initialPriorities);
+  // Always render from the latest server-authorized criteria. Keeping the first
+  // prop in state made unknown counts and Match summaries survive router refreshes.
+  const priorities = initialPriorities;
   const vocabulary = homeVocabulary(initialPriorities);
   const [query, setQuery] = useState('');
   const [quickFilter, setQuickFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('default');
+  const [sortBy, setSortBy] = useState('newest');
   const [modalHome, setModalHome] = useState(null);
   // Carries the "this particular modal open should auto-run Find" intent
   // separately from modalHome itself, set at the same moment as the home
@@ -641,7 +612,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     let list = baseList.filter((h) => {
       if (query.trim()) {
         const q = query.toLowerCase();
-        const hay = [h.propertyName, h.address, h.selectedFloorPlanName, h.selectedUnitLabel, h.crossroads, ...(h.homeLayout || []), h.primaryBedroomLocation, h.secondaryBedroomLocation, ...trueCheckLabels(h)].join(' ').toLowerCase();
+        const hay = [h.propertyName, h.address, h.selectedFloorPlanName, h.selectedUnitLabel, ...(h.homeLayout || []), h.primaryBedroomLocation, h.secondaryBedroomLocation, ...trueCheckLabels(h)].join(' ').toLowerCase();
         if (!hay.includes(q)) return false;
       }
       return true;
@@ -667,16 +638,27 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
       list = list.filter((h) => h.isFavorite);
     }
 
-    if (sortBy === 'match') {
+    if (sortBy === 'matchDesc' || sortBy === 'matchAsc') {
       list = [...list].sort((a, b) => (computeMatch(b, priorities)?.pct ?? -1) - (computeMatch(a, priorities)?.pct ?? -1));
-    } else if (sortBy === 'price') {
+      if (sortBy === 'matchAsc') list.reverse();
+    } else if (sortBy === 'priceAsc' || sortBy === 'priceDesc') {
       list = [...list].sort((a, b) => (parseNum(a.price) ?? Infinity) - (parseNum(b.price) ?? Infinity));
-    } else if (sortBy === 'newest') {
-      list = [...list].reverse(); // homes load oldest-first; reversing gives newest-first
+      if (sortBy === 'priceDesc') list.reverse();
+    } else if (sortBy === 'newest' || sortBy === 'oldest') {
+      list = [...list].sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+      if (sortBy === 'newest') list.reverse();
     }
 
     return list;
   }, [baseList, query, mode, quickFilter, sortBy, priorities]);
+
+  const filterCounts = useMemo(() => ({
+    all: activeHomes.length,
+    match90: activeHomes.filter((h) => (computeMatch(h, priorities)?.pct ?? -1) >= 90).length,
+    noMustMissing: activeHomes.filter((h) => { const m = computeMatch(h, priorities); return !m || m.mustMet === m.mustEvaluated; }).length,
+    wantToTour: activeHomes.filter((h) => deriveWantToTourState(h).currentUserWantsToTour).length,
+    favorites: activeHomes.filter(isFavoriteHome).length,
+  }), [activeHomes, priorities]);
 
   if (mode === 'archive') {
     return (
@@ -719,10 +701,12 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
             <input className="hh-input" style={{ paddingLeft: 30 }} placeholder="Search address, city, or feature..." value={query} onChange={(e) => setQuery(e.target.value)} />
           </div>
           <select className="hh-input hh-homes-sort" value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label={`Sort ${vocabulary.pluralLower}`}>
-            <option value="default">Sort: Date added</option>
-            <option value="newest">Sort: Newest first</option>
-            <option value="match">Sort: Match</option>
-            <option value="price">Sort: Price</option>
+            <option value="newest">Date added — newest</option>
+            <option value="oldest">Date added — oldest</option>
+            <option value="matchDesc">Match score — highest</option>
+            <option value="matchAsc">Match score — lowest</option>
+            <option value="priceAsc">Price — low to high</option>
+            <option value="priceDesc">Price — high to low</option>
           </select>
         </div>
         <div className="hh-filter-chips" aria-label="Filter homes">
@@ -740,7 +724,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
               aria-pressed={quickFilter === f.key}
               onClick={() => setQuickFilter(f.key)}
             >
-              {f.label}
+              {f.label} ({filterCounts[f.key]})
             </button>
           ))}
         </div>

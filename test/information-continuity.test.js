@@ -64,16 +64,17 @@ test('card unknown summary separates centralized experiential criteria', () => {
   assert.equal(summary.afterTour.length, 1);
   assert.equal(summary.notConfirmed.length, 2);
   const ui = read('src/components/ui.jsx');
-  assert.match(ui, /'detail' : 'details'\} still unknown/);
-  assert.match(ui, /to answer after touring/);
+  assert.match(ui, /'criterion' : 'criteria'\} still unknown/);
+  assert.match(ui, /to review after touring/);
   assert.doesNotMatch(ui, /need more information/);
 });
 
-test('home cards show known condition and truthful unknown property facts without a row cap', () => {
+test('home snapshot shows only known facts and strips unsupported legacy school ratings', () => {
   const board = read('src/components/HomesBoard.jsx');
   assert.match(board, /label: 'Home condition', text: home\.homeCondition\.join/);
-  assert.match(board, /\{ label: 'Schools', text: home\.schoolsNotes \|\| 'Unknown' \}/);
-  assert.match(board, /\{ label: 'Basement', text: home\.basementNotes \|\| 'Unknown' \}/);
+  assert.match(board, /schoolName && \{ label: 'Schools', text: schoolName \}/);
+  assert.match(board, /home\.basementNotes && \{ label: 'Basement', text: home\.basementNotes \}/);
+  assert.doesNotMatch(board, /text: home\.schoolsNotes \|\| 'Unknown'/);
   const propertyFacts = board.match(/const propertyFacts = \[[\s\S]*?\]\.filter\(Boolean\);/)?.[0];
   assert.ok(propertyFacts);
   assert.doesNotMatch(propertyFacts, /slice/);

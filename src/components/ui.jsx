@@ -170,8 +170,8 @@ function MissingRow({ items }) {
 function NotConfirmedRow({ preTourUnknown, afterTour }) {
   if (!preTourUnknown.length && !afterTour.length) return null;
   const phrases = [
-    preTourUnknown.length && `${preTourUnknown.length} ${preTourUnknown.length === 1 ? 'detail' : 'details'} still unknown`,
-    afterTour.length && `${afterTour.length} to answer after touring`,
+    preTourUnknown.length && `${preTourUnknown.length} ${preTourUnknown.length === 1 ? 'criterion' : 'criteria'} still unknown`,
+    afterTour.length && `${afterTour.length} to review after touring`,
   ].filter(Boolean);
   return (
     <div style={{ fontSize: 12, color: 'var(--ink-soft)', display: 'flex', alignItems: 'flex-start', gap: 6 }}>

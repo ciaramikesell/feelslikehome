@@ -31,8 +31,8 @@ export default async function HomesPage() {
       <main className="hh-homes-page">
         <div className="hh-homes-intro">
           <h1 className="hh-homes-purpose">My Homes</h1>
-          <p className="hh-homes-instructions">Paste Zillow, Realtor.com, Trulia, or other listings to score them against what matters to you.</p>
-          <CoBuyerHomesLine searchId={search.id} userId={user.id} isOwner={isOwner} isCollaborative={isCollaborative} />
+          <p className="hh-homes-instructions">All the places you’re considering, scored against what matters to you.</p>
+          {!isCollaborative && <CoBuyerHomesLine searchId={search.id} userId={user.id} isOwner={isOwner} isCollaborative={false} />}
         </div>
         {outstandingSuggestions.length > 0 && <a className="hh-suggestions-entry" href="/homes/suggestions"><strong>{outstandingSuggestions[0].suggestedByName} suggested {outstandingSuggestions.length} {outstandingSuggestions.length === 1 ? 'home' : 'homes'} →</strong></a>}
         <HomesBoard mode="homes" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizedPriorities} initialCommuteDestinations={commuteDestinations} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} />

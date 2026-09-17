@@ -317,6 +317,7 @@ export async function savePriorities(supabase, search, userId, priorities) {
 function rowToCommuteDestination(row) {
   return {
     id: row.id,
+    createdAt: row.created_at || null,
     label: row.label,
     address: row.address,
     maxDriveMinutes: row.max_drive_minutes,
@@ -750,6 +751,7 @@ export async function removeMember(supabase, searchId, memberUserId) {
 function rowToHomeWithOwner(row) {
   return {
     id: row.id,
+    createdAt: row.created_at || null,
     userId: row.user_id,
     address: row.address || '',
     crossroads: row.crossroads || '',
