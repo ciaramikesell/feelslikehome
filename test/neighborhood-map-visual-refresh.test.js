@@ -165,16 +165,16 @@ test('solo search: no collaboration attribution noise when there is no collabora
   assert.match(map, /\{isCollaborativeMap && `\$\{attribution\} · `\}/);
 });
 
-test('mobile: Mapped homes stays visible (not hidden) as the accessible non-marker-only alternative; Places band is bounded so nothing is pushed off the fixed-height frame', async () => {
+test('mobile: Mapped homes stays visible as the accessible non-marker alternative and page sections follow the bounded map', async () => {
   const css = await source('src/app/globals.css');
   const block = css.match(/@media \(max-width: 700px\) \{\s*\n\s*\.hh-map-page-intro[\s\S]*?\n\}/)?.[0] || '';
   assert.ok(block, 'expected the map mobile breakpoint block');
   assert.doesNotMatch(block, /\.hh-map-layout > section \{ display: none; \}/);
-  assert.match(block, /\.hh-map-frame \.hh-map-layout > section \{ flex-shrink: 0; max-height: 22vh; overflow-y: auto; \}/);
-  assert.match(block, /\.hh-map-frame \.hh-map-places-band \{ flex-shrink: 0; max-height: 30vh; overflow-y: auto;/);
-  // The existing fixed-height flex-frame mechanics (pinned by
-  // map-mysearch-mobile-pass.test.js) are untouched by this pass.
-  assert.match(block, /\.hh-map-frame \{ display: flex; flex-direction: column; height: calc\(100dvh - 78px - env\(safe-area-inset-bottom\)\); \}/);
+  assert.match(block, /\.hh-map-frame \.hh-map-layout > section \{ flex-shrink: 0; max-height: 190px; overflow-y: auto; \}/);
+  assert.match(block, /\.hh-map-frame \.hh-map-places-band \{ flex-shrink: 0; margin-top: 18px;/);
+  // The route frame remains a full-width flex column; its map stage has a
+  // deliberate bounded height, pinned by map-mysearch-mobile-pass.test.js.
+  assert.match(block, /\.hh-map-frame \{ display: flex; flex-direction: column; \}/);
 });
 
 test('mobile: no horizontal desktop rail forced onto a phone -- place cards become a horizontally-scrollable row, not a fixed grid', async () => {

@@ -829,7 +829,7 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-map-destination-marker.is-collaborator { background: var(--moss); }
 .hh-map-destination-marker.is-collaborator.selected { background: var(--moss); box-shadow: 0 0 0 3px var(--positive), 0 5px 12px rgba(46,38,33,.3); }
 .hh-map-preview { position: absolute; z-index: 2; left: 16px; bottom: 16px; width: min(390px, calc(100% - 32px)); display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; padding: 12px; border: 1px solid rgba(138,124,110,.2); border-radius: 15px; background: rgba(255,253,249,.97); box-shadow: 0 12px 30px rgba(46,38,33,.2); }
-.hh-map-preview img, .hh-map-preview-photo-fallback { width: 92px; height: 82px; object-fit: cover; border-radius: 10px; }
+.hh-map-preview-media, .hh-map-preview img, .hh-map-preview-photo-fallback { width: 92px; height: 82px; object-fit: cover; border-radius: 10px; }
 .hh-map-preview-photo-fallback { display: flex; align-items: center; justify-content: center; background: var(--line); color: var(--ink-soft); }
 .hh-map-preview-copy { min-width: 0; }
 .hh-map-preview-price { color: var(--brick); font-size: 16px; font-weight: 700; }
@@ -884,48 +884,64 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-map-edit-places { font-size: 12px; padding: 6px 12px; }
 
 /* Map becomes the primary full-width mobile surface: heading/subtitle and the
-   permanent side lists (desktop-only real estate) are dropped in favor of the
-   map itself plus the tap-to-select preview card it already has — see
-   .hh-map-preview above, unchanged. "Unresolved homes" stays — it's already
-   collapsed and isn't the side-by-side list this is about. This has to live
+   desktop side-by-side composition is replaced by a vertical flow: the map,
+   its tap-to-select compact preview, Mapped homes, and Places That Matter.
+   Unresolved homes stays collapsed between those supporting sections. This has to live
    in its own breakpoint block after the rules above rather than inside the
    earlier general-chrome @media(max-width:700px) block: at equal
    specificity the unconditional .hh-map-layout rule above wins over an
    earlier same-breakpoint override by source order alone.
-   The frame's height used to be approximated with a flat "100dvh - 200px" —
-   a guess at header + bottom-nav clearance that only happened to be close,
-   and drifted (a visible gap above the nav, or worse, an overlap) the moment
-   the header's real height differed from that guess (a second utilities row,
-   a longer email, etc). AppShell now marks the map route's frame with
-   .hh-map-frame; here it becomes a fixed-height flex column so the header
-   is measured by the browser, not guessed, and the map (flex: 1) takes
-   whatever is genuinely left. The bottom-nav clearance itself is still the
-   one already-shared constant used everywhere else (78px + the safe-area
-   inset) — .hh-root's own copy of that same reservation is suspended here
-   via :has() so the two never stack and double-reserve it. */
+   AppShell marks the route with .hh-map-frame. On a phone it becomes a
+   normal scrolling column with a bounded, useful map stage; this avoids both
+   a tiny residual map and a full-viewport map that pushes its supporting
+   lists out of reach. The root's standard bottom-nav reservation is suspended
+   because the map frame owns the route's mobile flow. */
 @media (max-width: 700px) {
   .hh-map-page-intro { display: none; }
   .hh-root:has(.hh-map-frame) { padding-bottom: 0; }
-  .hh-map-frame { display: flex; flex-direction: column; height: calc(100dvh - 78px - env(safe-area-inset-bottom)); }
+  .hh-map-frame { display: flex; flex-direction: column; }
   /* align-items: stretch overrides the base rule's align-items: start (a
      grid-alignment leftover) — without it, a column flex container leaves
      each item at its own content width instead of the full cross-axis
      width, and .hh-map-stage (whose only children are absolutely
      positioned) has no content width of its own to fall back to. */
-  .hh-map-frame .hh-map-layout { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: stretch; gap: 10px; }
-  .hh-map-frame .hh-map-stage { flex: 1; min-height: 0; height: auto; }
+  .hh-map-frame .hh-map-layout { display: flex; flex-direction: column; align-items: stretch; gap: 14px; }
+  .hh-map-frame .hh-map-stage { flex: none; min-height: 320px; height: clamp(320px, 42dvh, 360px); }
   .hh-map-frame .hh-map-layout > details { flex-shrink: 0; max-height: 40vh; overflow-y: auto; }
   /* Mapped homes stays visible (capped, scrollable) rather than hidden on
      mobile: markers alone must never be the only way to select a home (see
      the accessibility requirements on Map), and the rail is the accessible
-     alternative. Places That Matter gets the same bounded treatment so the
-     whole stack — map, rail, places — fits the fixed-height frame without
-     pushing content off-screen. */
-  .hh-map-frame .hh-map-layout > section { flex-shrink: 0; max-height: 22vh; overflow-y: auto; }
-  .hh-map-frame .hh-map-places-band { flex-shrink: 0; max-height: 30vh; overflow-y: auto; margin-top: 10px; padding: 16px 14px; }
+     alternative. The bounded rail and deliberate section spacing keep map,
+     homes, and places distinct in the normal page flow. */
+  .hh-map-frame .hh-map-layout > section { flex-shrink: 0; max-height: 190px; overflow-y: auto; }
+  .hh-map-frame .hh-map-places-band { flex-shrink: 0; margin-top: 18px; padding: 22px 14px 28px; }
   .hh-map-recenter { top: 8px; right: 8px; min-height: 40px; }
   .hh-map-places-cards { flex-wrap: nowrap; overflow-x: auto; margin: 0 -14px; padding: 1px 14px 4px; scrollbar-color: var(--line) transparent; }
   .hh-map-place-card { flex: 0 0 240px; max-width: none; min-height: 44px; }
+}
+
+/* A phone/small-tablet selection is an identifying action sheet, not the
+   desktop property card squeezed smaller. The 30px bottom reserve keeps the
+   card clear of Google's logo/data/Terms strip; required map UI remains fully
+   visible and clickable beneath it. Rich media, facts and saved state return
+   automatically once the map has enough horizontal room. */
+@media (max-width: 820px) {
+  .hh-map-preview {
+    left: 10px; bottom: 30px; width: calc(100% - 20px); display: block;
+    padding: 11px 12px 10px; border-radius: 14px;
+  }
+  .hh-map-preview-media, .hh-map-preview-facts, .hh-map-status { display: none; }
+  .hh-map-preview-copy { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; }
+  .hh-map-preview strong { grid-column: 1 / -1; grid-row: 1; padding-right: 2px; font-size: 14px; overflow-wrap: anywhere; white-space: normal; }
+  .hh-map-preview-price { grid-column: 1; grid-row: 2; align-self: center; margin-top: 3px; font-size: 14px; }
+  .hh-map-preview-copy > small { grid-column: 1 / -1; margin: 2px 0 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hh-map-preview-summary { grid-column: 2; grid-row: 2; align-self: center; }
+  .hh-map-match { margin: 3px 0 0; padding: 0; background: transparent; font-size: 12px; }
+  .hh-map-match::before { content: '\00b7'; margin-right: 5px; color: var(--ink-soft); }
+  .hh-map-preview-actions { grid-column: 1 / -1; margin: 1px -6px -6px; gap: 8px; }
+  .hh-map-preview-actions a { min-height: 44px; padding: 7px 8px; }
+  .hh-map-destination-preview { display: grid; grid-template-columns: auto minmax(0, 1fr); bottom: 30px; }
+  .hh-map-destination-preview .hh-map-preview-copy { display: block; }
 }
 
 /* Canonical home dossier. Typography and whitespace carry the grouping so the
