@@ -113,5 +113,5 @@ test('HomeModal models successful raw text separately from provider errors and u
   assert.doesNotMatch(modal, /setImportPhase\('error'\);\s*\/\/ reveal the reviewable manual form/);
   assert.match(modal, /mergeImportFields\(form, result\.fieldPatch\)/);
   assert.match(modal, /mergeImportFields\(f, data\.fields \|\| \{\}\)/);
-  assert.match(modal, /const showObjectiveGrid = !isNewHome/);
+  assert.match(modal, /workspaceReady = !isNewHome/);
 });

@@ -86,9 +86,9 @@ test('address UI keeps selection, free typing, keyboard support, RentCast, and c
   assert.match(autocomplete, /aria-live="polite"/);
   assert.match(autocomplete, /role="combobox"/);
   assert.match(autocomplete, /ArrowDown/);
-  assert.match(modal, /onKeyDown=\{\(e\) => e\.key === 'Enter'/);
+  assert.match(modal, /onKeyDown=\{\(event\) => event\.key === 'Enter'/);
   assert.match(modal, /lookupAddress\(address, \{ listingUrl: form\.listingUrl \}\)/);
   assert.match(modal, /hh-find-home-row/);
-  assert.match(modal, /We found the property\./);
-  assert.match(modal, /!vocabulary\.apartment && <CompactField label="Basement"/);
+  assert.match(modal, /We found \{apartmentIdentity\.propertyName\}/);
+  assert.match(modal, /<CompactField label="Basement"/);
 });

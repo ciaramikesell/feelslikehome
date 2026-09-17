@@ -228,9 +228,13 @@ function NoteSummary({ label, value }) {
   return <div className="hh-edit-note-summary"><b>{label}</b>{lines.length ? <ul>{lines.slice(0, 4).map((line, index) => <li key={`${line}-${index}`}>{line}</li>)}</ul> : <span>Nothing added yet</span>}</div>;
 }
 
-function EditHomeEditor({ form, set, priorities, sharedFactAwareness, isCollaborative, vocabulary, photoFile, photoPreviewUrl, photoInputRef, handlePhotoFileChange, handleRemovePhoto, photoError, showPhotoUrlInput, setShowPhotoUrlInput, setCheckItem, saving, submit, saveErrorMsg, onClose, dialogRef, titleRef }) {
+function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwareness, isCollaborative, vocabulary, photoFile, photoPreviewUrl, photoInputRef, handlePhotoFileChange, handleRemovePhoto, photoError, showPhotoUrlInput, setShowPhotoUrlInput, setCheckItem, saving, submit, saveErrorMsg, onClose, dialogRef, titleRef, importResult = null, presentation = 'modal', matchPerspectives = [] }) {
   const [notesOpen, setNotesOpen] = useState(false);
   const [allCriteriaOpen, setAllCriteriaOpen] = useState(false);
+  const [inspectorOpen, setInspectorOpen] = useState(() => mode === 'add' && !!importResult);
+  const inspectorResult = importResult || form.listingImport || null;
+  const inspectorCount = inspectorResult ? countListingDetails(inspectorResult.fields, inspectorResult.listingFacts, inspectorResult.descriptionFeatures) : 0;
+  const hasInspector = !!(form.listingUrl && inspectorResult && inspectorCount > 0);
   const apartment = vocabulary.apartment;
   const { showsRentalFacts } = searchIntentCapabilities(priorities.searchType);
   const criteria = getItemlistCategories(priorities.searchType).flatMap((category) =>
@@ -248,14 +252,14 @@ function EditHomeEditor({ form, set, priorities, sharedFactAwareness, isCollabor
   const currentPreviewSrc = photoFile ? photoPreviewUrl : (form.photoUrl || null);
   const priorityLabel = (item) => item.tier === 'must' ? 'Must Have' : item.tier === 'important' ? 'Important' : item.tier === 'nice' ? 'Nice to Have' : item.categoryKey === 'location' ? 'Location Preference' : 'Preference';
 
-  return <div className="hh-modal-backdrop hh-edit-home-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-    <div ref={dialogRef} className="hh-modal hh-corner hh-edit-home-modal" role="dialog" aria-modal="true" aria-labelledby="edit-home-title">
+  return <div className={`hh-modal-backdrop hh-edit-home-backdrop ${presentation === 'detail-panel' ? 'hh-detail-editor-backdrop' : ''}`} onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+    <div ref={dialogRef} className={`hh-modal hh-corner hh-edit-home-modal ${presentation === 'detail-panel' ? 'hh-detail-editor-panel' : ''}`} role="dialog" aria-modal="true" aria-labelledby="edit-home-title">
       <header className="hh-edit-home-header">
-        <div><h1 ref={titleRef} id="edit-home-title" className="hh-serif" tabIndex={-1}>Edit home</h1><p>Update this home&apos;s details. Changes to shared property information are visible to everyone in this search.</p></div>
-        <button type="button" className="hh-btn hh-btn-ghost hh-edit-home-close" onClick={onClose} aria-label="Close edit home"><X size={18} aria-hidden="true" /></button>
+        <div><h1 ref={titleRef} id="edit-home-title" className="hh-serif" tabIndex={-1}>{mode === 'add' ? 'Add a home' : 'Edit home'}</h1><p>{mode === 'add' ? (importResult ? 'Review what we found, fill in anything that matters, and save this contender.' : 'Review the property details before adding this home to your search.') : "Update this home's details. Changes to shared property information are visible to everyone in this search."}</p>{hasInspector && <button type="button" className="hh-listing-inspector-entry" onClick={() => setInspectorOpen(true)}><Check size={14} /> {inspectorCount} listing detail{inspectorCount === 1 ? '' : 's'} found <span>View →</span></button>}</div>
+        <button type="button" className="hh-btn hh-btn-ghost hh-edit-home-close" onClick={onClose} aria-label={mode === 'add' ? 'Close add home' : 'Close edit home'}><X size={18} aria-hidden="true" /></button>
       </header>
 
-      <div className="hh-edit-home-columns">
+      <div className={`hh-workspace-shell ${inspectorOpen && hasInspector ? 'has-inspector' : ''}`}><div className="hh-edit-home-columns">
         <div className="hh-edit-home-column">
           <section className="hh-edit-home-card" aria-labelledby="property-address-heading">
             <h2 id="property-address-heading" className="hh-serif">Property address</h2>
@@ -304,13 +308,13 @@ function EditHomeEditor({ form, set, priorities, sharedFactAwareness, isCollabor
           </section>
 
           <section className="hh-edit-home-card" aria-labelledby="personalized-matches-heading">
-            <div className="hh-edit-heading-row"><h2 id="personalized-matches-heading" className="hh-serif">Personalized matches</h2><span>Used in Match Score</span></div>
+            <div className="hh-edit-heading-row"><h2 id="personalized-matches-heading" className="hh-serif">Personalized Match</h2><span>Used in Match Score</span></div>
             <p className="hh-edit-context">Correct the known property facts that matter to your configured criteria. Unknown is never treated as No.</p>
             {shownCriteria.length ? <div className="hh-edit-criteria">{shownCriteria.map((item) => {
               const key = `${item.categoryKey}:${item.label}`;
               const value = form.checks?.[key];
               return <div className="hh-edit-criterion" key={key}><div><b>{criterionDisplayLabel(item.categoryKey, item.label)}</b><span>{priorityLabel(item)}</span></div><div className="hh-edit-tristate" role="group" aria-label={`${criterionDisplayLabel(item.categoryKey, item.label)} property fact`}>
-                {[['yes', 'Yes', true], ['no', 'No', 'no'], ['unknown', 'Unknown', undefined]].map(([id, label, next]) => { const selected = next === undefined ? value === undefined : value === next; return <button key={id} type="button" className={`hh-chip is-${id} ${selected ? 'on' : ''}`} aria-pressed={selected} onClick={() => setCheckItem(item.categoryKey, item.label, next)}>{label}</button>; })}
+                {[['yes', 'Yes', true], ['no', 'No', 'no'], ['unknown', 'Unknown', undefined]].map(([id, label, next]) => { const selected = next === undefined ? value === undefined : value === next; return <button type="button" key={id} className={`hh-chip is-${id} ${selected ? 'on' : ''}`} aria-pressed={selected} onClick={() => setCheckItem(item.categoryKey, item.label, next)}>{label}</button>; })}
               </div></div>;
             })}</div> : <p className="hh-edit-empty">No Match criteria are configured for this search.</p>}
             {criteria.length > 6 && <button type="button" className="hh-btn hh-btn-ghost hh-edit-disclosure" aria-expanded={allCriteriaOpen} onClick={() => setAllCriteriaOpen((value) => !value)}>{allCriteriaOpen ? 'Show prioritized criteria' : 'View all Match criteria'}</button>}
@@ -319,14 +323,16 @@ function EditHomeEditor({ form, set, priorities, sharedFactAwareness, isCollabor
           <section className="hh-edit-home-card" aria-labelledby="shared-notes-heading">
             <h2 id="shared-notes-heading" className="hh-serif">Shared notes</h2>
             <p className="hh-edit-context">{isCollaborative ? 'Pros, cons, and notes are visible to everyone in this search.' : 'Keep the details you want to remember with this home.'}</p>
-            {!notesOpen ? <div className="hh-edit-notes"><NoteSummary label="Pros" value={form.pros} /><NoteSummary label="Cons" value={form.cons} /><NoteSummary label="Notes" value={form.notes} /></div> : <div className="hh-edit-notes-fields"><div><label className="hh-label">Pros</label><textarea className="hh-textarea" value={form.pros || ''} onChange={(e) => set('pros', e.target.value)} /></div><div><label className="hh-label">Cons</label><textarea className="hh-textarea" value={form.cons || ''} onChange={(e) => set('cons', e.target.value)} /></div><div><label className="hh-label">Notes</label><textarea className="hh-textarea" value={form.notes || ''} onChange={(e) => set('notes', e.target.value)} /></div></div>}
+            {!notesOpen ? <div className="hh-edit-notes"><NoteSummary label="Pros" value={form.pros} /><NoteSummary label="Cons" value={form.cons} /><NoteSummary label="Notes" value={form.notes} /></div> : <div className="hh-edit-notes-fields"><div><label className="hh-label">Pros</label><textarea className="hh-textarea" value={form.pros || ''} onChange={(e) => set('pros', e.target.value)} /></div><div><label className="hh-label">Cons</label><textarea className="hh-textarea" value={form.cons || ''} onChange={(e) => set('cons', e.target.value)} /></div><div><label className="hh-label">Notes</label><textarea className="hh-textarea" value={form.notes || ''} onChange={(e) => set('notes', e.target.value)} placeholder="HOA details, sewer/water, financing options, recent updates, listing terms, or anything else worth noting." /></div></div>}
             <button type="button" className="hh-btn hh-btn-ghost hh-edit-disclosure" aria-expanded={notesOpen} onClick={() => setNotesOpen((value) => !value)}>{notesOpen ? 'Show notes summary' : 'Edit notes'}</button>
           </section>
+          {matchPerspectives.length > 0 && form.address.trim() && <section className="hh-edit-home-card hh-suggestion-match-preview" aria-label="Buyer Match preview"><h2 className="hh-serif">How this lines up</h2><p>Based only on currently known property facts. Unknown details are not counted as misses.</p>{matchPerspectives.map((perspective) => { const match = computeMatch(form, perspective.priorities); return <div key={perspective.userId}><b>{perspective.name}</b><span>{match?.pct == null ? 'Match needs more known facts' : `${match.pct}% Match`}</span><small>{match?.allSelected?.filter((item) => !item.evaluated).slice(0, 3).map((item) => `${item.label} — Unknown`).join(' · ')}</small></div>; })}</section>}
         </div>
       </div>
 
+      </div>{inspectorOpen && hasInspector && <div className="hh-workspace-inspector"><button type="button" className="hh-btn hh-btn-ghost hh-inspector-close" onClick={() => setInspectorOpen(false)} aria-label="Close listing details"><X size={16} /></button><WhatFlhFound result={inspectorResult} listingUrl={form.listingUrl} /></div>}
       {saveErrorMsg && <div className="hh-edit-save-error" role="alert">{saveErrorMsg}</div>}
-      <footer className="hh-edit-home-footer"><button type="button" className="hh-btn hh-btn-ghost" onClick={onClose}>Cancel</button><button type="button" className="hh-btn" onClick={submit} disabled={!form.address.trim() || saving}>{saving ? 'Saving…' : 'Save changes'}</button></footer>
+      <footer className="hh-edit-home-footer"><button type="button" className="hh-btn hh-btn-ghost" onClick={onClose}>Cancel</button><button type="button" className="hh-btn" onClick={submit} disabled={!form.address.trim() || saving}>{saving ? 'Saving…' : mode === 'add' ? 'Save home' : 'Save changes'}</button></footer>
     </div>
   </div>;
 }
@@ -470,7 +476,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
       }
 
       try {
-        await onSave({ ...form, photoUrl: finalPhotoUrl });
+        await onSave({ ...form, photoUrl: finalPhotoUrl, ...(importResult ? { listingImport: { fields: importResult.fields || {}, listingFacts: importResult.listingFacts || [], descriptionFeatures: importResult.descriptionFeatures || [] } } : {}) });
       } catch (saveErr) {
         console.error('Save home failed', saveErr);
         // If the shared home row was already persisted before this failure
@@ -648,507 +654,40 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   };
 
   const isNewHome = !initial.address;
-  // The Find-a-home import UI (Find bar, status messages, URL fallback, compact
-  // card, "Edit details") is Add Home only for this pass — existing homes open
-  // straight into the classic detailed edit experience, with no re-check affordance.
-  const showFindUI = isNewHome;
-  const showCompactCard = isNewHome && importPhase === 'success' && !editDetailsOpen && importResult;
-  const foundFactsCount = importResult ? countListingDetails(importResult.fields, importResult.listingFacts, importResult.descriptionFeatures) : 0;
-  const addressLines = showCompactCard ? splitAddressLines(importResult.fields.address || importResult.searchedAddress) : { line1: '', line2: '' };
-  const cardFacts = showCompactCard ? formatFoundCardFacts(vocabulary.apartment ? {
-    ...importResult.fields, price: null, beds: null, baths: null, sqft: null, daysOnMarket: null,
-  } : importResult.fields, priorities.searchType) : null;
-  // On a new home, the manual field grid only appears once there's something to
-  // resolve manually (no data found / lookup failed) or the user asks to edit an
-  // import — never during idle/loading, so idle Add Home shows only the Find bar.
-  const showObjectiveGrid = !isNewHome || importPhase === 'empty' || importPhase === 'error' || importPhase === 'text-success' || (importPhase === 'success' && editDetailsOpen);
+  const workspaceReady = !isNewHome || ['success', 'text-success', 'empty', 'error'].includes(importPhase);
 
-  const visibleMultiselect = MULTISELECT_CATEGORIES.filter((def) => sharedFactAwareness[def.key]?.eligibleForSharedFactCapture);
-  const visibleSingleselect = SINGLESELECT_CATEGORIES.filter((d) => sharedFactAwareness[d.key]?.eligibleForSharedFactCapture);
-
-  if (!isNewHome) return <EditHomeEditor
-    form={form} set={set} priorities={priorities} sharedFactAwareness={sharedFactAwareness}
-    isCollaborative={isCollaborative} vocabulary={vocabulary} photoFile={photoFile}
-    photoPreviewUrl={photoPreviewUrl} photoInputRef={photoInputRef} handlePhotoFileChange={handlePhotoFileChange}
-    handleRemovePhoto={handleRemovePhoto} photoError={photoError} showPhotoUrlInput={showPhotoUrlInput}
-    setShowPhotoUrlInput={setShowPhotoUrlInput} setCheckItem={setCheckItem} saving={saving}
-    submit={submit} saveErrorMsg={saveErrorMsg} onClose={onClose} dialogRef={dialogRef} titleRef={titleRef}
+  if (workspaceReady) return <EditHomeEditor
+    mode={isNewHome ? 'add' : 'edit'} form={form} set={set} priorities={priorities}
+    sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} vocabulary={vocabulary}
+    photoFile={photoFile} photoPreviewUrl={photoPreviewUrl} photoInputRef={photoInputRef}
+    handlePhotoFileChange={handlePhotoFileChange} handleRemovePhoto={handleRemovePhoto} photoError={photoError}
+    showPhotoUrlInput={showPhotoUrlInput} setShowPhotoUrlInput={setShowPhotoUrlInput} setCheckItem={setCheckItem}
+    saving={saving} submit={submit} saveErrorMsg={saveErrorMsg} onClose={onClose} dialogRef={dialogRef}
+    titleRef={titleRef} importResult={importResult} presentation={presentation} matchPerspectives={matchPerspectives}
   />;
 
-  return (
-    <div className={`hh-modal-backdrop ${presentation === 'detail-panel' ? 'hh-detail-editor-backdrop' : ''}`} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={dialogRef} className={`hh-modal hh-corner hh-add-home-modal ${presentation === 'detail-panel' ? 'hh-detail-editor-panel' : ''}`} role="dialog" aria-modal="true" aria-labelledby="add-home-title">
-        <div className="hh-add-home-title">
-          <div><h2 ref={titleRef} id="add-home-title" className="hh-serif" tabIndex={-1}>{isNewHome ? `Add a ${vocabulary.singularLower}` : `Edit ${vocabulary.singularLower}`}</h2>{isNewHome && <p>Introduce a new contender to analyze compatibility.</p>}</div>
-          <button type="button" className="hh-btn hh-btn-ghost" style={{ padding: 6 }} onClick={onClose} aria-label="Close"><X size={16} aria-hidden="true" /></button>
+  return <div className="hh-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+    <div ref={dialogRef} className="hh-modal hh-corner hh-add-home-modal hh-add-home-discovery" role="dialog" aria-modal="true" aria-labelledby="add-home-title">
+      <header className="hh-edit-home-header">
+        <div><h1 ref={titleRef} id="add-home-title" className="hh-serif" tabIndex={-1}>Add a home</h1><p>Introduce a new contender to analyze compatibility.</p></div>
+        <button type="button" className="hh-btn hh-btn-ghost hh-edit-home-close" onClick={onClose} aria-label="Close add home"><X size={18} /></button>
+      </header>
+      <section className="hh-import-listing">
+        <AddSectionHeading icon={Search} title="Import a listing">Paste a listing link or enter an address. We&apos;ll fill in what we can.</AddSectionHeading>
+        <label className="hh-label">Listing link or address</label>
+        <div className="hh-find-home-row">
+          <input className="hh-input" value={findInput} onChange={(event) => setFindInput(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && handleFind()} placeholder="Listing link or address" />
+          <button type="button" className="hh-btn" onClick={handleFind} disabled={!findInput.trim() || importPhase === 'loading'}>{importPhase === 'loading' ? 'Finding…' : 'Find this home'}</button>
         </div>
-
-        {isNewHome && (
-          <section className="hh-import-listing">
-            <AddSectionHeading icon={Search} title="Import a listing">{vocabulary.apartment ? 'Paste a rental listing or enter the property yourself. We’ll fill in what we can.' : "Paste a listing link or enter an address. We'll fill in what we can."}</AddSectionHeading>
-            <label className="hh-label">{vocabulary.apartment ? 'Listing link, property name, or address' : 'Listing link or address'}</label>
-            <div className="hh-find-home-row">
-              <input
-                className="hh-input"
-                style={{ flex: 1, fontSize: 15, background: 'var(--paper-raised)' }}
-                value={findInput}
-                onChange={(e) => setFindInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleFind()}
-                placeholder={vocabulary.apartment ? 'Paste a rental listing, or type a property' : 'Paste a listing link, or type an address'}
-              />
-              <button
-                type="button"
-                className="hh-btn"
-                style={{ whiteSpace: 'nowrap' }}
-                onClick={handleFind}
-                disabled={!findInput.trim() || importPhase === 'loading'}
-              >
-                {importPhase === 'loading' ? 'Finding...' : `Find this ${vocabulary.singularLower}`}
-              </button>
-            </div>
-          </section>
-        )}
-
-        {/* -------------------------- Find feedback (Add Home only) -------------------------- */}
-        {showFindUI && (
-          <>
-            {importPhase === 'empty' && !urlFallbackMsg && (
-              <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '10px 0 4px' }}>
-                We couldn't find property data for that address — enter what you know below.
-              </p>
-            )}
-            {importPhase === 'error' && importErrorMsg && (
-              <p style={{ fontSize: 13, color: 'var(--brick)', margin: '10px 0 4px' }}>{importErrorMsg}</p>
-            )}
-
-            {urlFallbackMsg && (
-              <div style={{ marginTop: 8, padding: '12px 14px', border: '1px solid var(--line)', borderRadius: 12, background: 'var(--paper-raised)' }}>
-                <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '0 0 8px' }}>{urlFallbackMsg}</p>
-                <div className="hh-find-home-row" style={{ display: 'flex', gap: 8 }}>
-                  <AddressAutocomplete value={fallbackAddressInput} onChange={setFallbackAddressInput} onSelect={(address) => { setFallbackAddressInput(address); lookupAddress(address, { listingUrl: form.listingUrl }); }} />
-                  <button
-                    type="button"
-                    className="hh-btn"
-                    onClick={handleFallbackAddressLookup}
-                    disabled={!fallbackAddressInput.trim() || importPhase === 'loading'}
-                  >
-                    Find this {vocabulary.singularLower}
-                  </button>
-                </div>
-              </div>
-            )}
-            {importPhase === 'identity' && apartmentIdentity && (
-              <section className="hh-apartment-identity" style={{ marginTop: 8, padding: '12px 14px', border: '1px solid var(--moss)', borderRadius: 12, background: 'rgba(116,128,79,0.07)' }} aria-labelledby="apartment-identity-title">
-                <p id="apartment-identity-title" style={{ fontSize: 13, fontWeight: 700, color: 'var(--moss)', margin: 0 }}>We found the property.</p>
-                <p style={{ fontSize: 14, margin: '4px 0 0' }}>{apartmentIdentity.propertyName}</p>
-                {apartmentIdentity.locality && <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '1px 0 8px' }}>{apartmentIdentity.locality}</p>}
-                <div className="hh-label">We just need the street address.</div>
-                <div className="hh-find-home-row" style={{ display: 'flex', gap: 8 }}>
-                  <AddressAutocomplete value={fallbackAddressInput} onChange={setFallbackAddressInput} onSelect={(address) => { setFallbackAddressInput(address); lookupAddress(address, { listingUrl: form.listingUrl }); }} searchHint={`${apartmentIdentity.propertyName}${apartmentIdentity.locality ? `, ${apartmentIdentity.locality}` : ''}`} />
-                  <button type="button" className="hh-btn" onClick={handleFallbackAddressLookup} disabled={!fallbackAddressInput.trim() || importPhase === 'loading'}>Use address</button>
-                </div>
-                <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '7px 0 0' }}>Choose a suggestion or type the address yourself. Add the floor plan or unit later if you know it — it can stay blank.</p>
-              </section>
-            )}
-          </>
-        )}
-
-
-
-        {/* -------------------------- Found automatically -------------------------- */}
-        {showCompactCard && (
-          <section className="hh-home-found">
-            <span className="hh-home-found-status"><Check size={16} />{vocabulary.apartment ? 'We found the property' : 'Home found'}</span>
-            {vocabulary.apartment && form.propertyName && <div style={{ fontSize: 17, fontWeight: 700, marginBottom: 3 }}>{form.propertyName}</div>}
-            <div className="hh-address" style={{ fontSize: 17, fontWeight: 600, color: 'var(--ink)', lineHeight: 1.35 }}>
-              {addressLines.line1}
-              {addressLines.line2 && <><br />{addressLines.line2}</>}
-            </div>
-            {cardFacts.priceLine && <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)', margin: '10px 0 2px' }}>{cardFacts.priceLine}</div>}
-            {cardFacts.bedsBathsSqft && <div style={{ fontSize: 13.5, color: 'var(--ink)', margin: '2px 0' }}>{cardFacts.bedsBathsSqft}</div>}
-            <div className="hh-home-found-count"><Check size={14} /> {foundFactsCount} property detail{foundFactsCount === 1 ? '' : 's'} found</div>
-            <button type="button" className="hh-btn hh-btn-ghost" style={{ marginTop: 12, fontSize: 12.5, padding: '6px 12px' }} onClick={() => setEditDetailsOpen(true)}>Edit details</button>
-          </section>
-        )}
-        {showCompactCard && <div className="hh-found-mobile-wrap"><p><Check size={14} /> We found {foundFactsCount} property details</p><WhatFlhFound result={importResult} listingUrl={form.listingUrl} mobile /></div>}
-
-        {isNewHome && !vocabulary.apartment && <details className="hh-details hh-manual-fallback">
-          <summary><span className="hh-accordion-icon"><ClipboardPaste size={24} /></span><span>Can&apos;t find the home? Paste listing details instead<small>Enter the details manually when a link isn&apos;t available.</small></span><ChevronDown className="hh-accordion-chevron" size={20} /></summary>
-          <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '8px 0' }}>Copy the property description or listing details from the listing page and paste them here. We'll try to recognize price, beds, baths, square footage, and other details.</p>
-          <textarea className="hh-textarea" style={{ minHeight: 90 }} value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder="Paste the full listing text here..." />
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8, gap: 10, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 11.5, color: parseMsg.startsWith("Couldn't") ? 'var(--brick)' : 'var(--moss)' }}>{parseMsg}</span>
-            <button type="button" className="hh-btn hh-btn-ghost" onClick={runAutofill} disabled={!pasteText.trim()}>Fill in fields</button>
-          </div>
-        </details>}
-
-        {/* -------------------------- Objective property fields -------------------------- */}
-        {showObjectiveGrid && (
-          <div style={{ marginTop: 16 }}>
-            {isNewHome && editDetailsOpen && importPhase === 'success' && (
-              <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 12.5, padding: '5px 10px', marginBottom: 10 }} onClick={() => setEditDetailsOpen(false)}>
-                ← Back to summary
-              </button>
-            )}
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 12, marginBottom: 6 }}>
-              {vocabulary.apartment && <h3 className="hh-serif" style={{ fontSize: 16, margin: '0 0 -4px' }}>What property is this?</h3>}
-              <div>
-                {vocabulary.apartment && <><label className="hh-label">Property name</label><input className="hh-input" style={{ marginBottom: 12 }} value={form.propertyName || ''} onChange={(e) => set('propertyName', e.target.value)} placeholder="Amber Apartments" /></>}
-                <label className="hh-label">Address *</label>
-                <div className="hh-find-home-row" style={{ display: 'flex', gap: 8 }}>
-                  <AddressAutocomplete value={form.address} onChange={(value) => set('address', value)} onSelect={(address) => { set('address', address); if (isNewHome) lookupAddress(address); }} placeholder="123 Maple St, Ann Arbor, MI" />
-                  {isNewHome && (
-                    <button
-                      type="button"
-                      className="hh-btn hh-btn-ghost"
-                      style={{ whiteSpace: 'nowrap' }}
-                      onClick={() => lookupAddress(form.address)}
-                      disabled={!form.address.trim() || importPhase === 'loading' || form.address.trim() === lastLookupAddress}
-                    >
-                      {importPhase === 'loading' ? 'Looking up...' : 'Look up property details'}
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div><label className="hh-label">Listing URL</label><input className="hh-input" value={form.listingUrl} onChange={(e) => set('listingUrl', e.target.value)} placeholder="https://..." /></div>
-              {vocabulary.apartment && <section style={{ border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px' }}>
-                <h3 className="hh-serif" style={{ fontSize: 16, margin: '0 0 3px' }}>Currently considering</h3>
-                <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 10px' }}>Add the floor plan or unit if you know it — you can also leave this blank.</p>
-                <div className="hh-property-facts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
-                  <CompactField label="Floor plan" value={form.selectedFloorPlanName} onChange={(v) => set('selectedFloorPlanName', v)} placeholder="B2 Plan" />
-                  <CompactField label="Unit" value={form.selectedUnitLabel} onChange={(v) => set('selectedUnitLabel', v)} placeholder="Unit 410" />
-                  <CompactField label="Monthly rent" value={form.price} isCurrency onChange={(v) => set('price', v)} placeholder="Add rent" />
-                  <CompactField label="Beds" value={form.beds} onChange={(v) => set('beds', v)} placeholder="Add beds" />
-                  <CompactField label="Baths" value={form.baths} onChange={(v) => set('baths', v)} placeholder="Add baths" />
-                  <CompactField label="Sqft" value={form.sqft} onChange={(v) => set('sqft', v)} placeholder="Add sqft" />
-                  <div><label className="hh-label" htmlFor="apartment-available">Available</label><input id="apartment-available" type="date" className="hh-input" value={form.availableOn || ''} onChange={(e) => set('availableOn', e.target.value || null)} /></div>
-                  <div><label className="hh-label" htmlFor="apartment-property-type">Property type</label><select id="apartment-property-type" className="hh-input" value={form.propertyType || ''} onChange={(e) => set('propertyType', e.target.value || null)}>{HOME_PROPERTY_TYPE_OPTIONS.map((value) => <option key={value} value={value}>{PROPERTY_TYPE_LABELS[value]}</option>)}</select></div>
-                </div>
-              </section>}
-              {isNewHome && !vocabulary.apartment && <details className="hh-details">
-                <summary>More location details</summary>
-                <div style={{ marginTop: 10 }}>
-                  <label className="hh-label">Nearby cross streets</label>
-                  <input className="hh-input" value={form.crossroads} onChange={(e) => set('crossroads', e.target.value)} placeholder="Main & 5th" />
-                </div>
-              </details>}
-            </div>
-
-            {isArchivedStatus(form.status) && (
-              <div style={{ marginBottom: 14 }}>
-                <label className="hh-label">Why did you rule this one out?</label>
-                <input className="hh-input" value={form.rejectionReason} onChange={(e) => set('rejectionReason', e.target.value)} placeholder="e.g. Too expensive, wrong location, missing a must-have" />
-              </div>
-            )}
-
-            {Object.values(sharedFactAwareness).some((fact) => fact?.coBuyerOnly) && (
-              <p className="hh-shared-note"><Users size={13} /> Some details are highlighted because they matter to either of you.</p>
-            )}
-            {!vocabulary.apartment && <PropertyFacts form={form} set={set} priorities={priorities} sharedFactAwareness={sharedFactAwareness} />}
-          </div>
-        )}
-
-        {/* -------------------------- Photo -------------------------- */}
-        {isNewHome && importResult?.suggestions?.length > 0 && (
-          <section style={{ border: '1px solid var(--line)', background: 'var(--paper)', borderRadius: 14, padding: '14px 16px', margin: '16px 0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'start' }}>
-              <div>
-                <h3 className="hh-serif" style={{ fontSize: 16, margin: 0 }}>We found quite a lot!</h3>
-                <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '4px 0 12px' }}>We filled in what we could. Here are a few other details you may want to keep.</p>
-              </div>
-              {importResult.suggestions.length >= 2 && <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 9px' }} onClick={addAllSuggestions}>Add all</button>}
-            </div>
-            <div style={{ display: 'grid', gap: 7 }}>
-              {importResult.suggestions.map((suggestion) => (
-                <div key={suggestion.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontSize: 12.5, color: 'var(--ink)' }}>{suggestion.text}</span>
-                  <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '3px 9px', flexShrink: 0 }} onClick={() => addSuggestion(suggestion)}>Add</button>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {(() => {
-          const currentPreviewSrc = photoFile ? photoPreviewUrl : (form.photoUrl || null);
-          const urlInputVisible = !photoFile && (showPhotoUrlInput || !!form.photoUrl);
-          return (
-            <section className="hh-home-photo hh-add-home-section">
-              <AddSectionHeading icon={Camera} title={vocabulary.apartment ? 'Photos & floor plan' : currentPreviewSrc ? `${vocabulary.singular} photo` : 'Add a photo'}>{vocabulary.apartment ? "Optional — add something that'll help you recognize this one later." : `Give this ${vocabulary.singularLower} a face so it's easy to spot later — you can always add or change it.`}</AddSectionHeading>
-              {vocabulary.apartment && <div style={{ marginBottom: 10 }}><label className="hh-label">Floor-plan image</label><input className="hh-input" value={form.floorPlanImageUrl || ''} onChange={(e) => set('floorPlanImageUrl', e.target.value)} placeholder="Paste a floor-plan image URL" /></div>}
-              <input
-                ref={photoInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={handlePhotoFileChange}
-                style={{ display: 'none' }}
-              />
-
-              {currentPreviewSrc ? (
-                <div>
-                  <div className="hh-home-photo-preview">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={currentPreviewSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                  </div>
-                  <div style={{ display: 'flex', gap: 10, marginTop: 10 }}>
-                    <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 12.5, padding: '6px 12px' }} onClick={() => photoInputRef.current?.click()}>Change photo</button>
-                    <button type="button" className="hh-btn hh-btn-danger" style={{ fontSize: 12.5 }} onClick={handleRemovePhoto}>Remove</button>
-                  </div>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                  <button
-                    type="button"
-                    className="hh-btn"
-                    style={{ flex: '1 1 160px', justifyContent: 'center' }}
-                    onClick={() => photoInputRef.current?.click()}
-                  >
-                    <Upload size={14} /> Upload photo
-                  </button>
-                  <button
-                    type="button"
-                    className="hh-btn hh-btn-ghost"
-                    style={{ flex: '1 1 160px', justifyContent: 'center' }}
-                    onClick={() => setShowPhotoUrlInput((v) => !v)}
-                  >
-                    <Link2 size={14} /> Paste a photo URL
-                  </button>
-                </div>
-              )}
-
-              {photoError && <p style={{ fontSize: 12, color: 'var(--brick)', margin: '8px 0 0' }}>{photoError}</p>}
-
-              {urlInputVisible && (
-                <div style={{ marginTop: 10 }}>
-                  <label className="hh-label">Photo URL</label>
-                  <input className="hh-input" style={{ background: 'var(--paper-raised)' }} value={form.photoUrl} onChange={(e) => set('photoUrl', e.target.value)} placeholder="https://.../photo.jpg" />
-                </div>
-              )}
-            </section>
-          );
-        })()}
-
-        {/* -------------------------- After your tour (post-tour, optional) -------------------------- */}
-        {hasToured(form) && (() => {
-          const subjectiveItems = selectedSubjectiveCriteria(priorities);
-          return (
-            <section className="hh-after-tour">
-              <div className="hh-section-kicker">After your tour</div>
-              <p>How did this home feel in person?</p>
-              <button
-                type="button"
-                className="hh-btn hh-btn-ghost"
-                style={{ fontSize: 13, borderColor: 'rgba(193,89,47,0.4)', color: 'var(--brick)' }}
-                onClick={() => setTourFeelOpen((v) => !v)}
-              >
-                {tourFeelOpen ? '− Hide evaluation' : 'Add your evaluation →'}
-              </button>
-
-              {tourFeelOpen && (
-                <div style={{ marginTop: 12, background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 12, padding: '14px 16px' }}>
-                  <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '0 0 12px' }}>Things you can only really know after seeing it in person. Optional — skip anything you're not sure about.</p>
-
-                  <div style={{ marginBottom: subjectiveItems.length ? 14 : 0 }}>
-                    <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '0 0 3px' }}>Forget the checklist for a second.</p>
-                    <label className="hh-label" style={{ marginBottom: 6 }}>How did this home feel?</label>
-                    <StarInput value={form.ratings[TOUR_RATING_KEY] || 0} onChange={(v) => setRatingItem('tour', 'overall', v)} size={20} />
-                  </div>
-
-                  {subjectiveItems.length > 0 && (
-                    <div style={{ display: 'grid', gap: 10 }}>
-                      {subjectiveItems.map((item) => {
-                        const must = priorities[item.categoryKey]?.tiers?.[item.label] === 'must';
-                        return (
-                          <div key={`${item.categoryKey}:${item.label}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ fontSize: 13, color: must ? 'var(--brick)' : 'var(--ink)', fontWeight: must ? 700 : 400 }}>{criterionDisplayLabel(item.categoryKey, item.label)}</span>
-                            <LikeDislikeInput value={form.ratings[nsKey(item.categoryKey, item.label)] || 0} onChange={(v) => setRatingItem(item.categoryKey, item.label, v)} />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-            </section>
-          );
-        })()}
-
-        {/* -------------------------- Add more details (optional, collapsed by default) -------------------------- */}
-        <section className="hh-more-home-details">
-          <button
-            type="button"
-            onClick={() => setMoreDetailsOpen((v) => !v)}
-            aria-expanded={moreDetailsOpen}
-            className="hh-more-home-details-toggle"
-          >
-            <AddSectionHeading icon={House} title={moreDetailsOpen ? `Hide ${vocabulary.apartment ? 'property' : 'home'} details` : `More ${vocabulary.apartment ? 'property' : 'home'} details`} tone="sage">{vocabulary.apartment ? 'The unit, the property & living there' : 'Layout, condition, features & more.'}</AddSectionHeading>
-            <ChevronDown className="hh-accordion-chevron" size={20} />
-          </button>
-
-          {moreDetailsOpen && (
-            <div style={{ marginTop: 14 }}>
-              <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 14px' }}>Optional — add anything else you already know. You can always come back to this later.</p>
-              <div className="hh-property-facts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10, marginBottom: 18 }}>
-                {!vocabulary.apartment && <CompactField label="Basement" value={form.basementNotes} onChange={(v) => set('basementNotes', v)} placeholder="e.g. Finished walkout" coBuyerOnly={sharedFactAwareness.basementNotes?.coBuyerOnly} />}
-                {(!vocabulary.apartment || !!form.schoolsNotes || ['must', 'important'].includes(priorities.location?.tiers?.Schools)) && <CompactField label="School details" value={form.schoolsNotes} onChange={(v) => set('schoolsNotes', v)} placeholder="Add school-related notes" coBuyerOnly={sharedFactAwareness.schoolsNotes?.coBuyerOnly} />}
-                {visibleMultiselect.map((def) => <StructuredFactSelect key={def.key} definition={def} value={form[def.key]} onChange={(value) => set(def.key, value)} must={priorities[def.key]?.tier === 'must'} coBuyerOnly={sharedFactAwareness[def.key]?.coBuyerOnly} />)}
-              </div>
-
-              {visibleSingleselect.length > 0 && (
-                <div style={{ marginBottom: 16 }}>
-                  {visibleSingleselect.map((d) => (
-                    <div key={d.key} style={{ marginBottom: 10 }}>
-                      <label className="hh-label">{d.title}{priorities[d.key]?.tier === 'must' && <span className="hh-must-badge">MUST</span>}{sharedFactAwareness[d.key]?.coBuyerOnly && <CoBuyerOnlyHelper />}</label>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        {d.options.filter((o) => o !== 'No Preference').map((o) => <button type="button" key={o} className={`hh-chip ${form[d.key] === o ? 'on' : ''}`} aria-pressed={form[d.key] === o} onClick={() => setForm((f) => ({ ...f, [d.key]: f[d.key] === o ? '' : o }))}>{o}</button>)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Only the objectively-observable (check-kind) items show here — things you
-                  can only judge in person (star ratings) live in "How did it feel?" instead. */}
-              {vocabulary.apartment && <><h3 className="hh-serif" style={{ fontSize: 16, marginBottom: 3 }}>A few things you care about</h3><p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 12px' }}>Know any of these already? Answer what you can. It&apos;s completely fine to leave the rest for later.</p></>}
-              {getItemlistCategories(priorities.searchType).map((def) => {
-                const visible = visibleOrderedItems(def, priorities).filter((i) => i.kind === 'check' && (!vocabulary.apartment || ['must', 'important'].includes(priorities[def.key]?.tiers?.[i.label])));
-                if (!visible.length) return null;
-                const tierOf = (item) => priorities[def.key]?.tiers?.[item.label] || 'dontcare';
-                const sorted = [...visible].sort((a, b) => TIER_ORDER.indexOf(tierOf(a)) - TIER_ORDER.indexOf(tierOf(b)));
-                const mustCount = visible.filter((i) => tierOf(i) === 'must').length;
-                return (
-                  <details key={def.key} open={mustCount > 0} className="hh-details" style={{ marginBottom: 10 }}>
-                    <summary>{vocabulary.apartment ? ({ features: 'THE UNIT', exterior: 'THE PROPERTY', feel: 'LIVING THERE' }[def.key] || def.title) : def.title}</summary>
-                    {mustCount > 0 && (
-                      <p style={{ fontSize: 12, fontWeight: 700, color: 'var(--brick)', margin: '10px 0 4px' }}>
-                        {vocabulary.apartment ? 'Must Have' : `Your Must-Have ${mustCount === 1 ? 'Feature' : 'Features'}`}
-                      </p>
-                    )}
-                    <div style={{ display: 'grid', gap: 2, marginTop: 10 }}>
-                      {sorted.map((item) => {
-                        const must = priorities[def.key]?.tiers?.[item.label] === 'must';
-                        const value = form.checks[nsKey(def.key, item.label)];
-                        const isYes = value === true;
-                        const isNo = value === 'no';
-                        // Schools gets one narrowly-scoped exception: showing the
-                        // user's own saved preference note as context so "Yes"/"No"
-                        // actually means something while deciding. This note comes
-                        // from priorities (personal, per-user) — never from the
-                        // shared homes.schools_notes field, and never duplicated
-                        // into it.
-                        const schoolsNote = def.key === 'location' && item.label === 'Schools'
-                          ? priorities.location?.notes?.Schools : null;
-                        return (
-                          <div key={item.label} style={{ padding: '6px 0' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                              <span style={{ fontSize: 13.5, fontWeight: must ? 700 : 400, color: must ? 'var(--brick)' : 'var(--ink)' }}>
-                                {criterionDisplayLabel(def.key, item.label)}
-                              </span>
-                              <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-                                <button
-                                  type="button"
-                                  onClick={() => setCheckItem(def.key, item.label, isYes ? undefined : true)}
-                                  className="hh-chip"
-                                  style={{ fontSize: 11.5, padding: '4px 10px', borderColor: 'var(--moss)', background: isYes ? 'var(--moss)' : 'transparent', color: isYes ? '#fff' : 'var(--moss)' }}
-                                >
-                                  Yes
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setCheckItem(def.key, item.label, isNo ? undefined : 'no')}
-                                  className="hh-chip"
-                                  style={{ fontSize: 11.5, padding: '4px 10px', borderColor: 'var(--brick)', background: isNo ? 'var(--brick)' : 'transparent', color: isNo ? '#fff' : 'var(--brick)' }}
-                                >
-                                  No
-                                </button>
-                              </div>
-                            </div>
-                            {schoolsNote && (
-                              <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', fontStyle: 'italic', margin: '2px 0 0' }}>
-                                &ldquo;{schoolsNote}&rdquo;
-                              </p>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </details>
-                );
-              })}
-
-            </div>
-          )}
-        </section>
-
-        <section className="hh-thoughts">
-          <AddSectionHeading icon={MessageSquareText} title={vocabulary.apartment ? 'Anything else worth remembering?' : isCollaborative ? 'Shared notes' : 'Your thoughts'} tone="sage" />
-          {isCollaborative && <p className="hh-detail-context">Pros, cons, and notes are visible to both of you.</p>}
-          <p>{vocabulary.apartment ? "Fees, lease terms, parking costs, pet charges, utilities—or anything else you don't want to forget." : isCollaborative ? 'Keep the details both of you want to remember in one place.' : 'Keep the personal side of this home separate from the listing facts.'}</p>
-          <div className="hh-thoughts-grid">
-            <div><label className="hh-label">Pros</label><textarea className="hh-textarea" value={form.pros} onChange={(e) => set('pros', e.target.value)} placeholder="What did you love? e.g. huge kitchen, great yard" /></div>
-            <div><label className="hh-label">Cons</label><textarea className="hh-textarea" value={form.cons} onChange={(e) => set('cons', e.target.value)} placeholder="Any concerns? e.g. busy street, older home" /></div>
-          </div>
-          <div><label className="hh-label">{vocabulary.apartment ? 'Notes' : 'Anything else you want to remember?'}</label>
-            {vocabulary.apartment
-              ? <textarea className="hh-textarea" value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Fees, lease terms, parking costs, pet charges, utilities—or anything else you don't want to forget." />
-              : <textarea className="hh-textarea" value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="HOA details, sewer/water, financing options, recent updates, listing terms, or anything else worth noting." />}
-          </div>
-        </section>
-
-        {!isNewHome && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
-            {form.listingUrl && (
-              <a href={form.listingUrl} target="_blank" rel="noreferrer" className="hh-btn hh-btn-ghost" style={{ padding: '5px 8px' }} title="Open listing">
-                <ExternalLink size={13} />
-              </a>
-            )}
-            {onArchiveRequest && !isArchivedStatus(form.status) && (
-              <button
-                type="button"
-                className="hh-btn hh-btn-ghost"
-                style={{ padding: '5px 8px' }}
-                onClick={() => { onArchiveRequest(form); onClose(); }}
-                title="Archive"
-              >
-                <ArchiveIcon size={13} />
-              </button>
-            )}
-            {onWantToTour && form.status !== 'Want to Tour' && !hasToured(form) && !isArchivedStatus(form.status) && (
-              <button
-                type="button"
-                className="hh-btn"
-                style={{ fontSize: 12.5, padding: '6px 12px' }}
-                onClick={() => onWantToTour(form)}
-              >
-                <Footprints size={13} /> Want to tour
-              </button>
-            )}
-            {form.status === 'Want to Tour' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 12.5, fontWeight: 600, color: 'var(--ink-soft)' }}>
-                <Check size={13} color="var(--moss)" /> Want to tour
-              </div>
-            )}
-          </div>
-        )}
-
-        {saveErrorMsg && (
-          <div style={{ background: 'rgba(193,89,47,0.09)', border: '1px solid var(--brick)', color: 'var(--brick)', fontSize: 12.5, padding: '9px 14px', borderRadius: 12, marginTop: 16 }}>
-            {saveErrorMsg}
-          </div>
-        )}
-
-        <div className="hh-modal-actions">
-          <button className="hh-btn hh-btn-ghost" onClick={onClose}>Cancel</button>
-          {matchPerspectives.length > 0 && form.address.trim() && <div className="hh-suggestion-match-preview" aria-label="Buyer Match preview">
-            <strong>How this lines up</strong>
-            <p>Based only on currently known property facts. Unknown details are not counted as misses.</p>
-            {matchPerspectives.map((perspective) => { const match = computeMatch(form, perspective.priorities); return <div key={perspective.userId}><b>{perspective.name}</b><span>{match?.pct == null ? 'Match needs more known facts' : `${match.pct}% Match`}</span><small>{match?.allSelected?.filter((item) => !item.evaluated).slice(0, 3).map((item) => `${item.label} — Unknown`).join(' · ')}</small></div>; })}
-          </div>}
-          <button className="hh-btn" onClick={submit} disabled={!form.address.trim() || saving}>{saving ? 'Saving...' : saveLabel || `Save ${vocabulary.singularLower}`}</button>
-        </div>
-        {showCompactCard && <WhatFlhFound result={importResult} listingUrl={form.listingUrl} />}
-      </div>
+        {importPhase === 'identity' && apartmentIdentity && <div className="hh-manual-address"><p>We found {apartmentIdentity.propertyName}. Add its street address to continue.</p><AddressAutocomplete value={fallbackAddressInput} onChange={setFallbackAddressInput} onSelect={setFallbackAddressInput} /><button type="button" className="hh-btn" onClick={handleFallbackAddressLookup}>Use address</button></div>}
+        {urlFallbackMsg && <p className="hh-edit-error">{urlFallbackMsg}</p>}
+      </section>
+      <details className="hh-details hh-manual-fallback">
+        <summary><span className="hh-accordion-icon"><ClipboardPaste size={24} /></span><span>Can&apos;t find the home? Paste listing details instead<small>Enter the details manually when a link isn&apos;t available.</small></span><ChevronDown className="hh-accordion-chevron" size={20} /></summary>
+        <textarea className="hh-textarea" value={pasteText} onChange={(event) => setPasteText(event.target.value)} placeholder="Paste listing details (optional)" />
+        {parseMsg && <p className="hh-edit-context">{parseMsg}</p>}
+        <div className="hh-modal-actions"><button type="button" className="hh-btn hh-btn-ghost" onClick={() => setImportPhase('empty')}>Enter manually</button><button type="button" className="hh-btn" onClick={runAutofill} disabled={!pasteText.trim()}>Fill in details</button></div>
+      </details>
     </div>
-  );
+  </div>;
 }

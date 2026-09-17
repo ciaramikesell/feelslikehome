@@ -1342,3 +1342,8 @@ details[open] > summary .hh-accordion-chevron, .hh-more-home-details:has(.hh-mor
   .hh-manual-fallback > summary { min-height: 86px; padding: 16px; }
   .hh-thoughts-grid { grid-template-columns: 1fr; }
 }
+
+/* Unified Add/Edit Home Workspace and intentional listing inspector. */
+.hh-workspace-shell{display:grid;grid-template-columns:minmax(0,1fr);min-width:0}.hh-workspace-shell.has-inspector{grid-template-columns:minmax(0,1fr) 292px;gap:18px}.hh-workspace-inspector{position:relative;min-width:0}.hh-workspace-inspector .hh-found-panel{position:sticky;top:0;width:auto;height:auto;max-height:calc(100vh - 190px);overflow:auto}.hh-inspector-close{position:absolute;z-index:2;right:8px;top:8px;padding:5px}.hh-listing-inspector-entry{display:inline-flex;align-items:center;gap:6px;margin-top:9px;padding:5px 9px;border:1px solid rgba(116,128,79,.35);border-radius:999px;background:rgba(116,128,79,.08);color:var(--moss);font:700 11.5px var(--font-sans);cursor:pointer}.hh-listing-inspector-entry span{color:var(--brick)}.hh-add-home-discovery{max-width:760px}.hh-add-home-discovery .hh-import-listing{margin:0 24px 20px}.hh-manual-address{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end;margin-top:12px}.hh-manual-address p{grid-column:1/-1;margin:0;color:var(--ink-soft);font-size:12px}
+@media(max-width:900px){.hh-workspace-shell.has-inspector{grid-template-columns:minmax(0,1fr)}.hh-workspace-inspector{order:-1}.hh-workspace-inspector .hh-found-panel{position:relative;max-height:none}}
+@media(max-width:640px){.hh-workspace-inspector .hh-found-panel{border-radius:12px}.hh-add-home-discovery .hh-import-listing{margin-inline:14px}.hh-manual-address{grid-template-columns:1fr}}

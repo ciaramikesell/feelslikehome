@@ -23,7 +23,7 @@ const HOME_SHARED_COLUMNS_PRE_PASS_B = [
   'primary_bedroom_location', 'secondary_bedroom_location', 'notes', 'pros', 'cons',
   'latitude', 'longitude', 'coordinate_address_fingerprint', 'coordinate_status',
   'coordinate_source', 'hoa_fee_monthly', 'property_tax_annual', 'property_tax_year',
-  'basement_notes', 'schools_notes', 'condition_notes', 'created_at', 'updated_at',
+  'basement_notes', 'schools_notes', 'condition_notes', 'listing_import', 'created_at', 'updated_at',
 ].join(',');
 // floor_plan_image_url was briefly added as an apartment experiment, but never
 // became part of the supported Home editor/importer contract. In particular,
@@ -756,6 +756,7 @@ function rowToHomeWithOwner(row) {
     address: row.address || '',
     crossroads: row.crossroads || '',
     listingUrl: row.listing_url || '',
+    listingImport: row.listing_import && typeof row.listing_import === 'object' ? row.listing_import : null,
     photoUrl: row.photo_url || '',
     price: row.price || '',
     estMonthly: row.est_monthly || '',
@@ -811,6 +812,7 @@ function homeToSharedRow(home, userId, searchId) {
     address: home.address || '',
     crossroads: home.crossroads || '',
     listing_url: home.listingUrl || '',
+    listing_import: home.listingImport || null,
     photo_url: home.photoUrl || '',
     price: home.price || '',
     est_monthly: home.estMonthly || '',
