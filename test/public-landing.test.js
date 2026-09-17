@@ -62,7 +62,8 @@ test('landing is limited to the four-step workflow, product proof, and consolida
   for (const title of ['Set Your Preferences', 'Bring Homes From Anywhere', 'Compare What Matters', 'Search Together']) {
     assert.match(landing, new RegExp(`'${title}'`));
   }
-  assert.equal((landing.match(/\['0[1-4]',/g) || []).length, 4);
+  assert.doesNotMatch(landing, /\['0[1-4]',|pl-step-number/);
+  assert.equal((landing.match(/\[(ListChecks|HousePlus|Heart|Users),/g) || []).length, 4);
   assert.doesNotMatch(landing, /pl-together|pl-philosophy|pl-final/);
   assert.doesNotMatch(landing, /Same home\.|Ready to understand your shortlist|THE FEELS LIKE HOME PHILOSOPHY/);
 });

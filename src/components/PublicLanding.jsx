@@ -8,10 +8,10 @@ import { BrandMark } from '@/components/ui';
 import LandingAuthPopover from '@/components/auth/LandingAuthPopover';
 
 const steps = [
-  ['01', ListChecks, 'Set Your Preferences', 'Tell FLH what matters to you — and how much each priority matters in your decision.'],
-  ['02', HousePlus, 'Bring Homes From Anywhere', 'Add the listings you’re actually considering and keep every contender in one place.'],
-  ['03', Heart, 'Compare What Matters', 'See how each home fits your Must Haves, Nice to Haves, and everything in between.'],
-  ['04', Users, 'Search Together', 'Add a co-buyer, invite your Realtor, and make decisions with clarity — and less back-and-forth.'],
+  [ListChecks, 'Set Your Preferences', 'Tell FLH what matters to you — and how much each priority matters in your decision.'],
+  [HousePlus, 'Bring Homes From Anywhere', 'Add the listings you’re actually considering and keep every contender in one place.'],
+  [Heart, 'Compare What Matters', 'See how each home fits your Must Haves, Nice to Haves, and everything in between.'],
+  [Users, 'Search Together', 'Add a co-buyer, invite your Realtor, and make decisions with clarity — and less back-and-forth.'],
 ];
 
 export default function PublicLanding() {
@@ -28,9 +28,9 @@ export default function PublicLanding() {
   return <div className="pl-root">
     <a className="pl-skip" href="#main">Skip to content</a>
     <header className="pl-header">
-      <Link className="pl-brand" href="/" aria-label="Feels Like Home home"><BrandMark size={32} /><span>Feels Like <b>Home</b></span></Link>
+      <Link className="pl-brand" href="/" aria-label="Feels Like Home home"><BrandMark size={44} /><span>Feels Like <b>Home</b></span></Link>
       <nav aria-label="Public navigation">
-        <a href="#how-it-works">How it works</a><Link href={realtorHref}>For Realtors</Link><button type="button" className="pl-auth-trigger" onClick={(event) => openAuth('sign-in', event)} aria-expanded={authMode !== null}>Sign in</button><button type="button" className="pl-button is-small" onClick={(event) => openAuth('sign-up', event)} aria-expanded={authMode !== null}>Get started</button>
+        <div className="pl-nav-surface"><a href="#how-it-works">How it works</a><Link href={realtorHref}>For Realtors</Link><button type="button" className="pl-auth-trigger" onClick={(event) => openAuth('sign-in', event)} aria-expanded={authMode !== null}>Sign in</button></div><button type="button" className="pl-button is-small" onClick={(event) => openAuth('sign-up', event)} aria-expanded={authMode !== null}>Get started</button>
       </nav>
       <details className="pl-mobile-menu">
         <summary aria-label="Open navigation"><Menu size={20} aria-hidden="true" /><span>Menu</span></summary>
@@ -55,7 +55,7 @@ export default function PublicLanding() {
 
       <section className="pl-values" id="how-it-works" aria-labelledby="values-title">
         <h2 className="pl-eyebrow" id="values-title">How it works</h2>
-        <div className="pl-value-grid">{steps.map(([number, Icon, title, copy]) => <article key={number}><div className="pl-step-heading"><span>{number}</span><span className="pl-step-icon"><Icon size={22} strokeWidth={1.7} aria-hidden="true" /></span></div><h3>{title}</h3><p>{copy}</p></article>)}</div>
+        <div className="pl-value-grid">{steps.map(([Icon, title, copy]) => <article key={title}><span className="pl-step-icon"><Icon size={30} strokeWidth={1.7} aria-hidden="true" /></span><h3>{title}</h3><p>{copy}</p></article>)}</div>
       </section>
 
       <section className="pl-demo" aria-labelledby="demo-title">
