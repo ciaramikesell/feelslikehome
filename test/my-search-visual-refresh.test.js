@@ -135,12 +135,14 @@ test('mobile: the desktop two-column grid collapses to one stacked column; Prior
   assert.match(board, /const \[mobileCompact, setMobileCompact\] = useState\(false\);/);
 });
 
-test('reciprocal Match education: My Search links to Homes ("View Matching Homes"), mirroring Homes\' own "Review My Search" link back', async () => {
+test('Match education uses the editorial asset and opens the My Search catalog meaningfully', async () => {
   const panel = await source('src/components/MySearchPanel.jsx');
   const homes = await source('src/app/(app)/homes/page.js');
   assert.match(panel, /className="hh-match-editorial"/);
   assert.match(panel, /<h2>How Match Scores Work<\/h2>/);
-  assert.match(panel, /<Link className="hh-btn hh-btn-ghost" href="\/homes">View Matching Homes<\/Link>/);
+  assert.match(panel, /FWFLH%20Transparent\.png/);
+  assert.match(panel, /onClick=\{reviewSearch\}>Review My Search<\/button>/);
+  assert.match(panel, /setCatalogOpen\(true\)/);
   assert.match(homes, /href="\/search">Review My Search<\/a>/);
 });
 

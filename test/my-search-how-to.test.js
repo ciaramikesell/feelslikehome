@@ -23,7 +23,7 @@ test('My Search keeps one compact canonical board while add choices are progress
   assert.match(board, /\{choicesOpen && \(/);
   assert.match(board, /\+ Add another priority/);
   assert.match(board, /Close choices/);
-  assert.match(panel, /<PriorityBoard priorities=\{priorities\} patch=\{patch\} \/>/);
+  assert.match(panel, /<PriorityBoard priorities=\{priorities\} patch=\{patch\} catalogOpen=\{catalogOpen\} onCatalogOpenChange=\{onCatalogOpenChange\} \/>/);
   assert.doesNotMatch(panel, /showHeader=!editOpen/);
   assert.match(css, /\.hh-selected-priority \{[^}]*background: transparent/);
   assert.doesNotMatch(board, /<TierPicker|aria-label=\{`Remove /);

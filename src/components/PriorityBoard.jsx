@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ChevronRight, Plus } from 'lucide-react';
-import { DEFAULT_SELECTED_TIER, TIER_DESCRIPTIONS, TIER_META, TIER_ORDER, criterionDisplayLabel, getItemlistCategories, effectiveTier, isSchoolsSuppressed, isExperientialCriterion, isCriterionApplicable } from '@/lib/constants';
+import { DEFAULT_SELECTED_TIER, TIER_DESCRIPTIONS, TIER_META, TIER_ORDER, criterionDisplayLabel, getItemlistCategories, effectiveTier, isSchoolsSuppressed, isExperientialCriterion, isCriterionApplicable, isRetiredPurchaseBuiltIn } from '@/lib/constants';
 
 // Presentation-only weight callout for My Search's desktop tier heading
 // ("Must have (highest weight)") — TIER_META.weight itself (4/2/1) is the
@@ -39,6 +39,7 @@ function TierItemsList({ tier, items, activeItem, setActiveItem, setTier, priori
               onDragEnd={onItemDragEnd}
             >
               <span>{criterionDisplayLabel(item.categoryKey, item.label)}</span>
+              {isRetiredPurchaseBuiltIn(item.categoryKey, item, priorities.searchType) && <sup className="hh-legacy-priority" title="Saved legacy priority; no longer included in pre-tour Match">Legacy</sup>}
               {isExperientialCriterion(item.categoryKey, item.label) && <sup className="hh-experiential-marker" title="You'll evaluate this after touring the home" aria-label="After tour">◷</sup>}
               <small className="hh-priority-change">Change</small>
             </button>
@@ -63,9 +64,11 @@ function TierItemsList({ tier, items, activeItem, setActiveItem, setTier, priori
 // The selected board has one canonical appearance. Adding reveals discovery
 // controls beneath it; it never swaps the board for a configuration surface.
 // Tier changes use the existing category tier map, with no within-tier order.
-export default function PriorityBoard({ priorities, patch, onboarding = false }) {
+export default function PriorityBoard({ priorities, patch, onboarding = false, catalogOpen, onCatalogOpenChange }) {
   const categories = getItemlistCategories(priorities.searchType);
-  const [addOpen, setAddOpen] = useState(false);
+  const [localAddOpen, setLocalAddOpen] = useState(false);
+  const addOpen = catalogOpen ?? localAddOpen;
+  const setAddOpen = onCatalogOpenChange ?? setLocalAddOpen;
   const [activeItem, setActiveItem] = useState(null);
   const [dragged, setDragged] = useState(null);
   const [dropTier, setDropTier] = useState(null);
@@ -246,6 +249,7 @@ export default function PriorityBoard({ priorities, patch, onboarding = false })
               const propertyTypes = priorities.preferredPropertyTypes?.values || [];
               const tray = [...unselected, ...catalogSuggestions]
                 .filter((item) => isCriterionApplicable(def.key, item.label, propertyTypes))
+                .filter((item) => !isRetiredPurchaseBuiltIn(def.key, item, priorities.searchType))
                 .filter((item, index, items) => tierOf(def, item.label) === 'dontcare' && items.findIndex((candidate) => candidate.label === item.label) === index);
               return (
                 <section key={def.key}>

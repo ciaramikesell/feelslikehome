@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import Link from 'next/link';
 import { TierPicker } from '@/components/ui';
 import PriorityBoard from '@/components/PriorityBoard';
@@ -240,11 +240,13 @@ function BasicsCard({ p, patch }) {
 // so its resting portrait never transforms into a configuration panel. This
 // is the page's primary purpose, so it renders in the wide left column (see
 // .hh-search-primary) rather than as one supporting card among several.
-function WhatMattersCard({ priorities, patch }) {
+function WhatMattersCard({ priorities, patch, catalogOpen, onCatalogOpenChange, sectionRef }) {
   return (
+    <div ref={sectionRef}>
     <SearchCard title="What Matters Most to Me" subtitle="Choose what matters and how strongly it should shape your Match.">
-      <PriorityBoard priorities={priorities} patch={patch} />
+      <PriorityBoard priorities={priorities} patch={patch} catalogOpen={catalogOpen} onCatalogOpenChange={onCatalogOpenChange} />
     </SearchCard>
+    </div>
   );
 }
 
@@ -331,6 +333,12 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
   const persistPriorities = useCallback((next) => savePriorities(createClient(), search, userId, next), [search, userId]);
   const { state: priorities, patch, saveError, retry } = useReliableOptimisticState(initial, persistPriorities);
   const [commuteDestinations, setCommuteDestinations] = useState(initialCommuteDestinations || []);
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const prioritiesSection = useRef(null);
+  const reviewSearch = () => {
+    setCatalogOpen(true);
+    requestAnimationFrame(() => prioritiesSection.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  };
 
   const p = priorities;
   return (
@@ -350,7 +358,7 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
             grid inside it already collapses at. */}
         <div className="hh-search-grid">
           <div className="hh-search-primary">
-            <WhatMattersCard priorities={p} patch={patch} />
+            <WhatMattersCard priorities={p} patch={patch} catalogOpen={catalogOpen} onCatalogOpenChange={setCatalogOpen} sectionRef={prioritiesSection} />
           </div>
           <div className="hh-search-rail">
             <BasicsCard p={p} patch={patch} />
@@ -379,9 +387,9 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
       <section className="hh-match-editorial">
         <div>
           <h2>How Match Scores Work</h2>
-          <p>Must Haves, Important priorities, and Nice to Haves carry different weights. Match uses only reliable pre-tour information, and details the listing does not establish remain Unknown—not mismatches. Each participant keeps their own Match.</p><img className="hh-match-editorial-art" src="/images/FWFLH%20Transparent.png" alt="" aria-hidden="true" />
+          <p>Each home is measured against your own Must Haves, Important features, Nice to Haves, and places that matter. When you’re searching together, each person keeps their own Match — so you can see where your priorities line up and where they don’t.</p><img className="hh-match-editorial-art" src="/images/FWFLH%20Transparent.png" alt="" aria-hidden="true" />
         </div>
-        <Link className="hh-btn hh-btn-ghost" href="/homes">View Matching Homes</Link>
+        <button type="button" className="hh-btn hh-btn-ghost" onClick={reviewSearch}>Review My Search</button>
       </section>
     </>
   );

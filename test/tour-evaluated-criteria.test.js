@@ -37,9 +37,12 @@ test('explicit custom criteria remain supported even when their label resembles 
 test('post-tour V2 is reaction-first, optional, fixed to four evaluations, and has no stars/archive action', () => {
   const modal=readFileSync(new URL('../src/components/PostTourModal.jsx',import.meta.url),'utf8');
   assert.ok(modal.indexOf('Where are you at with this home?') < modal.indexOf('How did it feel in person?'));
-  for (const label of ['Curb Appeal','Layout','Privacy','Neighborhood',"Didn’t like it",'Neutral','Loved it','Save my take','Keep reviewing']) assert.match(modal,new RegExp(label));
+  for (const label of ['Curb Appeal','Layout','Privacy','Neighborhood',"Didn’t like it",'Neutral','Loved it','Save my take','That’s enough to save your take']) assert.match(modal,new RegExp(label));
   assert.doesNotMatch(modal,/StarInput|TOUR_RATING_KEY|Archive home|StandOutGroup/);
   assert.match(modal,/role="radiogroup"/);
+  assert.match(modal,/verdict === 'not_for_me'[\s\S]*?Save my take/);
+  assert.doesNotMatch(modal,/keepReviewing/);
+  assert.match(modal,/hh-tour-evaluations/);
 });
 
 test('post-tour evaluations cannot affect Match and note appending is non-destructive', () => {
