@@ -18,9 +18,9 @@ const RESPONSES = [
 ];
 
 const VERDICTS = [
-  { key: 'love', icon: Heart, filled: true, title: 'Love it', body: 'This is a real contender.' },
-  { key: 'considering', icon: CircleDashed, title: 'Still considering', body: 'I’m not sure yet.' },
-  { key: 'not_for_me', icon: XCircle, title: 'Definitely not', body: 'I can rule this one out.' },
+  { key: 'love', icon: Heart, filled: true, title: 'Love it', body: 'Real contender.' },
+  { key: 'considering', icon: CircleDashed, title: 'Still considering', body: 'Not sure yet.' },
+  { key: 'not_for_me', icon: XCircle, title: 'Definitely not', body: 'Rule this one out.' },
 ];
 
 function Evaluation({ item, value, onChange }) {
@@ -40,7 +40,6 @@ export default function PostTourModal({ home, isCollaborative = false, saveError
   const [verdict, setVerdict] = useState(postTourVerdict(home));
   const [ratings, setRatings] = useState(home.ratings || {});
   const [noteEntry, setNoteEntry] = useState('');
-  const [keepReviewing, setKeepReviewing] = useState(postTourVerdict(home) !== 'not_for_me');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(null);
   const evaluationCount = useMemo(() => POST_TOUR_EVALUATIONS.filter(({ key }) => ratings[key]).length, [ratings]);
@@ -48,7 +47,6 @@ export default function PostTourModal({ home, isCollaborative = false, saveError
   const chooseVerdict = (next) => {
     setVerdict(next);
     setSaved(null);
-    setKeepReviewing(next !== 'not_for_me');
   };
   const save = async () => {
     if (!verdict || saving) return;
@@ -83,13 +81,11 @@ export default function PostTourModal({ home, isCollaborative = false, saveError
         <div className="hh-post-tour-verdicts">{VERDICTS.map((item) => { const Icon = item.icon; const selected = verdict === item.key; return <button key={item.key} type="button" aria-pressed={selected} className={selected ? 'is-selected' : ''} onClick={() => chooseVerdict(item.key)}><Icon size={21} fill={selected && item.filled ? 'currentColor' : 'none'} /><strong>{item.title}</strong><span>{item.body}</span></button>; })}</div>
       </section>
 
-      {verdict === 'not_for_me' && !keepReviewing && <aside className="hh-tour-fast-exit"><p><strong>Got it.</strong> You can finish here, or tell us what didn’t work so you remember later.</p><div><button className="hh-btn" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save my take'}</button><button className="hh-btn hh-btn-ghost" onClick={() => setKeepReviewing(true)}>Keep reviewing</button></div></aside>}
+      {verdict === 'not_for_me' && <aside className="hh-tour-fast-exit"><p>That’s enough to save your take. Add details below if you want to remember why.</p><div><button className="hh-btn" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save my take'}</button></div></aside>}
 
-      {(verdict !== 'not_for_me' || keepReviewing) && <>
-        <section className="hh-tour-section"><h3>How did it feel in person?</h3><p className="hh-tour-optional">Optional — answer only what stood out.</p><div>{POST_TOUR_EVALUATIONS.map((item) => <Evaluation key={item.key} item={item} value={ratings[item.key]} onChange={(value) => setRatings((current) => { const next = { ...current }; if (value) next[item.key] = value; else delete next[item.key]; return next; })} />)}</div></section>
-        <section className="hh-tour-section hh-tour-note"><h3>Anything you want to remember?</h3><p>Get your thoughts down while they’re fresh. Type them here, or use your phone’s microphone to talk them out.</p><textarea className="hh-textarea" value={noteEntry} onChange={(event) => setNoteEntry(event.target.value)} placeholder="Walkability, home condition, natural light, any concerns?" /></section>
-        <footer className="hh-tour-actions"><button className="hh-btn hh-btn-ghost" onClick={onClose}>Cancel</button><button className="hh-btn" disabled={!verdict || saving} onClick={save}>{saving ? 'Saving…' : 'Save my take'}</button></footer>
-      </>}
+      <section className="hh-tour-section"><h3>How did it feel in person?</h3><p className="hh-tour-optional">Optional — answer only what stood out.</p><div className="hh-tour-evaluations">{POST_TOUR_EVALUATIONS.map((item) => <Evaluation key={item.key} item={item} value={ratings[item.key]} onChange={(value) => setRatings((current) => { const next = { ...current }; if (value) next[item.key] = value; else delete next[item.key]; return next; })} />)}</div></section>
+      <section className="hh-tour-section hh-tour-note"><h3>Anything you want to remember?</h3><p>Get your thoughts down while they’re fresh. Type them here, or use your phone’s microphone to talk them out.</p><textarea className="hh-textarea" value={noteEntry} onChange={(event) => setNoteEntry(event.target.value)} placeholder="Walkability, home condition, natural light, any concerns?" /></section>
+      <footer className="hh-tour-actions"><button className="hh-btn hh-btn-ghost" onClick={onClose}>Cancel</button><button className="hh-btn" disabled={!verdict || saving} onClick={save}>{saving ? 'Saving…' : 'Save my take'}</button></footer>
     </div>
   </div>;
 }
