@@ -8,6 +8,8 @@ const shell = fs.readFileSync('src/components/AppShell.jsx', 'utf8');
 const detail = fs.readFileSync('src/components/HomeDetail.jsx', 'utf8');
 const listPage = fs.readFileSync('src/app/(app)/people/page.js', 'utf8');
 const contextPage = fs.readFileSync('src/app/(app)/people/[searchId]/page.js', 'utf8');
+const peopleError = fs.readFileSync('src/app/(app)/people/error.js', 'utf8');
+const appLayout = fs.readFileSync('src/app/(app)/layout.js', 'utf8');
 const migration = fs.readFileSync('supabase/migrations/2026-09-16-realtor-search-view.sql', 'utf8');
 const css = fs.readFileSync('src/app/globals.css', 'utf8');
 
@@ -24,8 +26,17 @@ test('People I’m Helping is relationship-scoped, batched, and coexists with My
 test('one or many authorized clients render while empty relationships are intentional', () => {
   assert.match(listPage, /relationships\.map/);
   assert.match(listPage, /People I’m Helping/);
-  assert.match(listPage, /Set up what you already know/);
+  assert.match(listPage, /You don&apos;t have any client searches yet/);
   assert.match(listPage, /prospective\.length === 0/);
+});
+
+test('Realtor context hides buyer navigation without changing dual-role permissions', () => {
+  assert.match(appLayout, /workspace="realtor"/);
+  assert.match(shell, /workspace = 'buyer'/);
+  assert.match(shell, /!isRealtorWorkspace && <nav className="hh-tabs"/);
+  assert.match(shell, /!isRealtorWorkspace && <MobileNav/);
+  assert.match(shell, /\(isRealtorWorkspace \|\| hasRealtorRelationships\).*People I’m Helping/);
+  assert.match(shell, /!isRealtorWorkspace && <Link[\s\S]*?My Search/);
 });
 
 test('URL access fails closed before any client context is returned', () => {
@@ -34,6 +45,8 @@ test('URL access fails closed before any client context is returned', () => {
   assert.match(contextPage, /if \(!context\) notFound\(\)/);
   assert.match(migration, /is_search_realtor\(participants\.search_id, auth\.uid\(\)\)/);
   assert.match(migration, /revoke execute.*anon, service_role/);
+  assert.match(peopleError, /We couldn’t load this client search/);
+  assert.match(peopleError, /Back to People I’m Helping/);
 });
 
 test('priorities preserve tiers and participant attribution rather than consensus', () => {
