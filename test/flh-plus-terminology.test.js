@@ -43,7 +43,10 @@ test('FLH+ is spelled exactly one way everywhere it appears in product copy', ()
 });
 
 test('no SaaS/subscription monetization language was introduced as consumer-facing copy', () => {
-  const banned = /\bsubscription\b|\bsubscribe\b|\bsubscriber\b|premium (user|realtor|plan)|\bmembership tier\b|\bupgrade your\b|\bunlock powerful\b/i;
+  // "not a subscription" is the one legitimate, explicitly-requested use —
+  // the public FLH+ page states the negative to rule out recurring billing.
+  // Any other/affirmative use of "subscription" is still banned.
+  const banned = /(?<!not a )\bsubscription\b|\bsubscribe\b|\bsubscriber\b|premium (user|realtor|plan)|\bmembership tier\b|\bupgrade your\b|\bunlock powerful\b/i;
   for (const { file, content } of srcContents) {
     assert.doesNotMatch(content, banned, `${file} introduces banned monetization language`);
   }
@@ -56,22 +59,32 @@ test('copy never establishes a global "user has FLH+" mental model — FLH+ belo
   }
 });
 
-test('no legacy $6.99 pricing remains, and $7.99 stays confined to the Account Settings FLH+ card', () => {
+test('no legacy $6.99 pricing remains, and $7.99 stays confined to the approved FLH+ pricing surfaces', () => {
   for (const { file, content } of srcContents) {
     assert.doesNotMatch(content, /\$6\.99/, `${file} still shows the old $6.99 figure`);
   }
-  // The account-settings pass introduced the one legitimate, mockup-required
-  // $7.99 display (a static price on an intentionally non-functional "Unlock
-  // FLH+" button — see test/account-settings.test.js). It must not spread
-  // anywhere else in the product ahead of real checkout/paywall work.
+  // $7.99 is a legitimate static display value in exactly these places: the
+  // Account Settings FLH+ card, the shared Free/FLH+ pricing cards (used by
+  // both the homepage bridge section and the dedicated /flh-plus page), and
+  // the homepage bridge's own headline. None of these are a working
+  // purchase flow — see test/account-settings.test.js and
+  // test/public-homepage-flh-plus.test.js for the "no real checkout" guards.
+  const allowed = new Set([
+    'src/components/account/SearchAccess.jsx',
+    'src/components/FlhPlusCards.jsx',
+    'src/components/FlhPlusLanding.jsx',
+    'src/components/PublicLanding.jsx',
+  ]);
   for (const { file, content } of srcContents) {
-    if (file === 'src/components/account/SearchAccess.jsx') continue;
+    if (allowed.has(file)) continue;
     assert.doesNotMatch(content, /\$7\.99/, `${file} introduces pricing ahead of checkout/paywall work`);
   }
 });
 
 test('FLH+ is introduced only where collaboration/full-search functionality is actually described', () => {
-  assert.match(publicLanding, /With FLH\+, invite your co-buyer and Realtor/);
+  // Superseded by the public-homepage FLH+ pass's own copy — see
+  // test/public-homepage-flh-plus.test.js for the current exact wording.
+  assert.match(publicLanding, /FLH\+/);
   assert.match(publicLanding, /Thoughtful collaboration · FLH\+/);
   assert.match(realtorLanding, /their FLH\+ search/);
   assert.match(realtorHome, /their FLH\+ search/);

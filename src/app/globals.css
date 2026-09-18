@@ -1710,3 +1710,69 @@ details[open] > summary .hh-accordion-chevron, .hh-more-home-details:has(.hh-mor
   .hh-account-unlock-price { text-align: left; }
   .hh-account-unlock-price small { text-align: left; }
 }
+
+/* Public homepage — FLH+ "how it works" badge + the Start-for-free bridge
+   section (between the Match demo and the sage collaboration section). Same
+   .pl-* design language as the rest of the public landing page — cream
+   canvas, terracotta action color, editorial serif headings. */
+.pl-step-badge { display: inline-flex; align-items: center; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: var(--brick); color: #fff; font: 700 9.5px var(--font-sans); letter-spacing: .04em; vertical-align: middle; }
+
+.pl-flh-bridge { width: min(100% - 48px, 1280px); margin: 0 auto; padding: 68px 0 76px; display: grid; grid-template-columns: 1.05fr 1fr 1fr; gap: clamp(28px, 4vw, 48px); align-items: start; }
+.pl-flh-bridge-intro h2 { margin: 6px 0 16px; font-size: clamp(28px, 3vw, 38px); font-weight: 600; line-height: 1.18; letter-spacing: -.02em; }
+.pl-flh-bridge-intro h2 em { color: var(--brick); font-style: normal; }
+.pl-flh-bridge-intro > p:not(.pl-eyebrow) { margin: 0 0 18px; max-width: 380px; color: var(--ink-soft); font-size: 14px; line-height: 1.65; }
+
+.flh-cards { display: contents; }
+.flh-card { padding: 24px 22px; border: 1px solid var(--line); border-radius: 18px; background: var(--paper-raised); display: flex; flex-direction: column; }
+.flh-card.is-plus { border-color: rgba(193,89,47,.35); background: var(--peach); box-shadow: 0 14px 30px -22px rgba(46,38,33,.5); }
+.flh-card-icon { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 11px; margin-bottom: 12px; background: var(--sage); color: var(--moss); }
+.flh-card.is-plus .flh-card-icon { background: rgba(255,255,255,.6); color: var(--brick); }
+.flh-card h3 { margin: 0; font-size: 19px; font-weight: 600; }
+.flh-card-price { margin: 4px 0 16px; font: 700 28px var(--font-mono); color: var(--ink); }
+.flh-card.is-plus .flh-card-price { color: var(--brick); }
+.flh-card-price span { font: 600 13px var(--font-sans); color: var(--ink-soft); margin-left: 3px; }
+.flh-card ul { margin: 0 0 16px; padding: 0; list-style: none; display: grid; gap: 9px; flex: 1; }
+.flh-card li { display: flex; align-items: flex-start; gap: 7px; font-size: 12.5px; line-height: 1.45; color: var(--ink); }
+.flh-card li svg { flex-shrink: 0; margin-top: 2px; color: var(--positive); }
+.flh-card li small { display: block; color: var(--ink-soft); font-size: 11px; }
+.flh-card > small { color: var(--ink-soft); font-size: 10.5px; line-height: 1.55; }
+.flh-card.is-plus > small { color: rgba(46,38,33,.68); }
+
+.pl-collaboration-footnote { margin: 30px 0 0; padding-top: 22px; border-top: 1px solid rgba(71,91,65,.2); color: var(--ink-soft); font-size: 12.5px; }
+.pl-collaboration-footnote a { display: inline-flex; align-items: center; gap: 5px; margin-left: 6px; color: var(--moss) !important; font-weight: 800; text-decoration: none; }
+.pl-collaboration-footnote a:hover { text-decoration: underline; }
+
+@media (max-width: 900px) {
+  .pl-flh-bridge { grid-template-columns: 1fr; width: calc(100% - 48px); padding: 52px 0 60px; }
+  .flh-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+}
+@media (max-width: 640px) {
+  .pl-flh-bridge { width: calc(100% - 32px); padding: 44px 0 50px; gap: 26px; }
+  .flh-cards { grid-template-columns: 1fr; gap: 16px; }
+  .pl-flh-bridge-intro > p:not(.pl-eyebrow) { max-width: none; }
+}
+
+/* Dedicated /flh-plus informational page. Reuses .pl-root/.pl-header/
+   .pl-footer/.pl-button/.pl-text-link/.pl-eyebrow/.pl-lede and the shared
+   .flh-card(s) styling above — this only adds the page's own section
+   layout, not a second design system. */
+.flh-page { width: min(100% - 48px, 900px); margin: 0 auto; padding: 40px 0 80px; }
+.flh-page-hero { max-width: 620px; margin-bottom: 56px; }
+.flh-page-hero h1 { margin: 6px 0 16px; font-size: clamp(34px, 4.5vw, 48px); font-weight: 600; line-height: 1.1; letter-spacing: -.02em; }
+.flh-page-cards { margin-bottom: 60px; }
+.flh-page-cards > .pl-eyebrow { margin-bottom: 18px; }
+.flh-page-cards-grid { display: grid !important; grid-template-columns: 1fr 1fr; gap: 20px; }
+.flh-page-model { margin-bottom: 48px; }
+.flh-page-model > h2 { margin: 0 0 24px; font-size: clamp(24px, 3vw, 30px); font-weight: 600; }
+.flh-page-model-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.flh-page-model-grid article { padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper-raised); }
+.flh-page-model-grid svg { color: var(--moss); margin-bottom: 10px; }
+.flh-page-model-grid h3 { margin: 0 0 6px; font-size: 16px; }
+.flh-page-model-grid p { margin: 0; color: var(--ink-soft); font-size: 13px; line-height: 1.6; }
+.flh-page-model-note { margin: 22px 0 0; color: var(--ink-soft); font-size: 12.5px; }
+.flh-page-cta { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding-top: 32px; border-top: 1px solid var(--line); }
+@media (max-width: 640px) {
+  .flh-page { width: calc(100% - 32px); padding: 24px 0 56px; }
+  .flh-page-cards-grid, .flh-page-model-grid { grid-template-columns: 1fr; }
+  .flh-page-cta { flex-direction: column; align-items: flex-start; }
+}
