@@ -1,4 +1,4 @@
 'use client';
 export default function ErrorState({ reset }) {
-  return <main className="hh-people-page"><div className="hh-realtor-empty"><h1>We couldn’t load this client search</h1><p>Your access may have changed, or the connection may be unavailable. No client information was shown.</p><button className="hh-btn" onClick={reset}>Try again</button><a className="hh-btn hh-btn-ghost" href="/people">Back to People I’m Helping</a></div></main>;
+  return <main className="hh-people-page"><div className="hh-realtor-empty"><h1>We couldn’t load People I’m Helping</h1><p>The workspace is temporarily unavailable. No client information was shown.</p><button className="hh-btn" onClick={reset}>Try again</button></div></main>;
 }

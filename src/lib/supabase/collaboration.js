@@ -11,6 +11,7 @@ import { defaultPriorities } from '@/lib/constants';
 import { deriveSharedFactPriorityAwareness } from '@/lib/sharedFactPriorityAwareness';
 import { hasOutstandingWantToTour } from '@/lib/lifecycle';
 import { prioritiesForExplicitSave } from '@/lib/searchIntent';
+import { loadRealtorWorkspace } from '@/lib/realtorWorkspace';
 
 // Application allowlists for the shared records. Personal legacy columns are
 // intentionally absent so a later column-privilege cutover cannot change the
@@ -145,6 +146,20 @@ export async function getRealtorRelationships(supabase, userId) {
     }).map((home) => home.id));
     const tour = new Set(clientStates.filter((state) => state.status === 'Want to Tour').map((state) => state.home_id));
     return { ...search, people, activeCount: clientHomes.length - archived.size, wantToTourCount: tour.size };
+  });
+}
+
+// Root Realtor-workspace composition is intentionally distinct from client
+// detail loading. Empty membership and draft results are both successful
+// values; only an actual database error rejects this loader.
+export async function getRealtorWorkspace(supabase, userId, loaders = {}) {
+  const relationshipsLoader = loaders.relationships || getRealtorRelationships;
+  const draftsLoader = loaders.drafts || getProspectiveSearches;
+  return loadRealtorWorkspace({
+    supabase,
+    userId,
+    loadRelationships: relationshipsLoader,
+    loadDrafts: draftsLoader,
   });
 }
 
