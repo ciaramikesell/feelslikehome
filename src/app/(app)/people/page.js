@@ -4,12 +4,18 @@ import { createClient } from '@/lib/supabase/server';
 import { requireUser, withAuthRecovery } from '@/lib/supabase/auth';
 import { getRealtorRelationships, getProspectiveSearches } from '@/lib/supabase/collaboration';
 import InviteBuyer from '@/components/InviteBuyer';
+import peopleWorkspace from '@/lib/supabase/peopleWorkspace.cjs';
+
+const { loadPeopleWorkspace } = peopleWorkspace;
 
 export default async function PeoplePage() {
   return withAuthRecovery(async () => {
     const supabase = await createClient();
     const user = await requireUser(supabase);
-    const [relationships, prospective] = await Promise.all([getRealtorRelationships(supabase, user.id), getProspectiveSearches(supabase)]);
+    const { clients: relationships, drafts: prospective } = await loadPeopleWorkspace(supabase, user.id, {
+      getRealtorRelationships,
+      getProspectiveSearches,
+    });
     return <main className="hh-people-page">
       <header className="hh-people-header"><span>Realtor workspace</span><h1>People I’m Helping</h1><p>Help a buyer get their search organized from the start.</p><div className="hh-people-actions"><Link className="hh-btn" href="/people/start"><Search size={16} /> Start a client search</Link><InviteBuyer /></div></header>
       {prospective.length > 0 && <section className="hh-pending-searches" aria-labelledby="pending-searches-heading"><h2 id="pending-searches-heading">Searches waiting for a buyer</h2>{prospective.map((draft) => <article key={draft.id} className="hh-client-card"><div className="hh-client-avatar"><Users size={20} /></div><div><h3>{draft.client_name || draft.invited_email || 'Client search'}</h3><p>{draft.status === 'invited' ? 'Invitation pending' : 'Not invited yet'} <span>·</span> Search started</p></div><Link href={`/people/start?id=${draft.id}`} aria-label="Edit draft search"><ChevronRight size={20} /></Link></article>)}</section>}

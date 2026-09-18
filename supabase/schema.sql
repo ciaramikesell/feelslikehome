@@ -2556,7 +2556,9 @@ alter table public.prospective_searches enable row level security;
 create policy "prospective_searches_owner_select" on public.prospective_searches for select to authenticated using (started_by = auth.uid());
 create policy "prospective_searches_owner_update" on public.prospective_searches for update to authenticated using (started_by = auth.uid()) with check (started_by = auth.uid() and status in ('draft','invited'));
 revoke all on public.prospective_searches from public, anon;
-grant select, update (client_name, draft_priorities, updated_at) on public.prospective_searches to authenticated;
+revoke select on table public.prospective_searches from authenticated;
+grant select (id, client_name, invited_email, status, draft_priorities, created_at, updated_at) on public.prospective_searches to authenticated;
+grant update (client_name, draft_priorities, updated_at) on public.prospective_searches to authenticated;
 create trigger prospective_searches_set_updated_at before update on public.prospective_searches for each row execute function public.set_updated_at();
 
 alter table public.search_invitations add column prospective_search_id uuid unique references public.prospective_searches(id) on delete set null;
