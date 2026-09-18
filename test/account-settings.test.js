@@ -16,6 +16,7 @@ const authForm = read('src/components/auth/AuthForm.jsx');
 const rootPage = read('src/app/page.js');
 const migration = read('supabase/migrations/2026-09-20-account-settings-foundation.sql');
 const css = read('src/app/globals.css');
+const schema = read('supabase/schema.sql');
 
 test('/account requires authentication like every other (app) page', () => {
   assert.match(page, /const user = await requireUser\(supabase\)/);
@@ -57,9 +58,19 @@ test('profile name editing reuses the canonical profiles.first_name/last_name up
   assert.match(data, /export async function updateProfileName/);
 });
 
-test('email change goes through Supabase Auth directly, never a parallel profile-email column', () => {
-  assert.match(accountSettings, /supabase\.auth\.updateUser\(\{ email: email\.trim\(\) \}\)/);
+test('email is shown read-only from Supabase Auth (not the profiles table) and is never written by the profile form', () => {
+  assert.match(accountSettings, /value=\{initialEmail \|\| ''\} readOnly disabled/);
+  assert.doesNotMatch(accountSettings, /auth\.updateUser\(\{ email/);
   assert.doesNotMatch(accountSettings, /\.from\('profiles'\)\.update\(\{[^}]*email/);
+});
+
+test('saving the profile name never also depends on an email-change call — the two are decoupled', () => {
+  const form = accountSettings.match(/function ProfileForm[\s\S]*?\n}\n/)?.[0] || '';
+  assert.match(form, /await updateProfileName\(supabase, userId, firstName, lastName\);/);
+  assert.doesNotMatch(form, /auth\.updateUser/);
+  // The real error is logged (not just swallowed into the generic banner),
+  // so a production failure is diagnosable from server/browser logs.
+  assert.match(form, /console\.error\('Account Settings: could not save profile name', nameError\)/);
 });
 
 test('a legacy account with no name yet can still open and use Profile without being blocked', () => {
@@ -205,6 +216,23 @@ test('root cause: /account/page.js isolates the optional FLH+/Connections fetch 
   assert.match(page, /searchDataError=\{searchDataError\}/);
 });
 
+test('homeCount and relationships are fetched in independent try/catch blocks — a homeCount failure alone never blocks real relationship data', () => {
+  const homeCountBlock = page.match(/try \{\s*homeCount = await getEligibleHomeCount\(supabase, ownedSearch\.id\);\s*\} catch \(error\) \{[\s\S]*?\}/)?.[0] || '';
+  assert.ok(homeCountBlock, 'expected an isolated try/catch around getEligibleHomeCount');
+  assert.doesNotMatch(homeCountBlock, /searchDataError = true/);
+
+  const relationshipsBlock = page.match(/try \{\s*relationships = await resolveSearchRelationships\(supabase, ownedSearch\.id\);\s*\} catch \(error\) \{[\s\S]*?searchDataError = true;\s*\}/)?.[0] || '';
+  assert.ok(relationshipsBlock, 'expected an isolated try/catch around resolveSearchRelationships that sets searchDataError');
+});
+
+test('resolveSearchRelationships falls back to a plain search_members read when the RPC is unavailable, without fabricating a name', () => {
+  const fn = collaboration.match(/export async function resolveSearchRelationships[\s\S]*?\n\}/)?.[0] || '';
+  assert.match(fn, /supabase\.rpc\('resolve_search_relationships', \{ p_search_id: searchId \}\)/);
+  assert.match(fn, /if \(!rpcResult\.error\) return rpcResult\.data \|\| \[\];/);
+  assert.match(fn, /supabase\.from\('search_members'\)\.select\('user_id, role'\)\.eq\('search_id', searchId\)/);
+  assert.match(fn, /display_name: row\.role === 'realtor' \? 'Your Realtor' : 'Your co-buyer'/);
+});
+
 test('when the FLH+/Connections fetch fails, AccountSettings renders an honest error notice instead of a fabricated Free/0-relationships state', () => {
   assert.match(accountSettings, /searchDataError = false/);
   assert.match(accountSettings, /searchDataError \? \(/);
@@ -250,4 +278,40 @@ test('no fake entitlement, fake collaborators, or fake payment state is ever cre
   assert.doesNotMatch(page, /is_plus|isPlus|global.{0,10}entitlement/i);
   assert.doesNotMatch(searchAccess, /is_plus|isPlus/i);
   assert.match(searchAccess, /persisted "this search purchased FLH\+" flag/);
+});
+
+/* ------------------------------ data-repair pass: profile writes + connections resilience ------------------------------ */
+
+test('profiles RLS lets a user read and update only their own row, scoped by auth.uid() on both using and with check', () => {
+  assert.match(schema, /create policy "profiles_select_own" on public\.profiles\s*\n\s*for select using \(auth\.uid\(\) = id\);/);
+  assert.match(schema, /create policy "profiles_update_own" on public\.profiles\s*\n\s*for update using \(auth\.uid\(\) = id\) with check \(auth\.uid\(\) = id\);/);
+});
+
+test('updateProfileName writes only first_name/last_name, scoped to the given userId — no other column, no cross-user write path', () => {
+  const fn = data.match(/export async function updateProfileName[\s\S]*?\n\}/)?.[0] || '';
+  assert.match(fn, /\.from\('profiles'\)\.update\(\{/);
+  assert.match(fn, /first_name: firstName\.trim\(\) \|\| null/);
+  assert.match(fn, /last_name: lastName\.trim\(\) \|\| null/);
+  assert.match(fn, /\.eq\('id', userId\)/);
+  assert.equal((fn.match(/\.eq\('id',/g) || []).length, 1, 'expected exactly one .eq(\'id\', ...) filter, scoped to userId');
+});
+
+test('Realtor onboarding (AppShell NameCompletionPrompt) and Account Settings (ProfileForm) both call the one canonical updateProfileName write — no second/duplicate name-write implementation exists', () => {
+  const nameWriters = [...data.matchAll(/export async function updateProfileName/g)];
+  assert.equal(nameWriters.length, 1, 'updateProfileName must be defined exactly once');
+  assert.match(appShell, /import \{ updateProfileName \} from '@\/lib\/supabase\/data'/);
+  assert.match(appShell, /await updateProfileName\(createClient\(\), userId, firstName, lastName\)/);
+  assert.match(accountSettings, /import \{ updateProfileName \} from '@\/lib\/supabase\/data'/);
+  assert.match(accountSettings, /await updateProfileName\(supabase, userId, firstName, lastName\)/);
+  assert.doesNotMatch(appShell, /\.from\('profiles'\)\.update\(/);
+  assert.doesNotMatch(accountSettings, /\.from\('profiles'\)\.update\(/);
+});
+
+test('a missing/undeployed resolve_search_relationships RPC does not crash Account Settings — real search_members rows still load via the fallback', () => {
+  const fn = collaboration.match(/export async function resolveSearchRelationships[\s\S]*?\n\}/)?.[0] || '';
+  assert.match(fn, /if \(fallback\.error\) throw fallback\.error;/);
+  // Only a genuine fallback failure (e.g. RLS truly denying access) still
+  // surfaces as searchDataError — an RPC-not-found is recovered from, not
+  // treated as a hard failure.
+  assert.doesNotMatch(fn, /throw rpcResult\.error/);
 });

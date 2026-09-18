@@ -27,23 +27,27 @@ export default async function AccountSettingsPage() {
     ]);
 
     const hasBuyerSearch = Boolean(profile?.onboarding_complete && ownedSearch);
-    // Profile/Password/Delete Account never depend on this — only the FLH+
-    // and Connections sections do — so a failure fetching it (a transient
-    // Supabase hiccup, or genuinely anything else) must never take down the
-    // rest of the page. It renders an honest "couldn't load" notice for just
-    // those two sections instead of either crashing or fabricating a fake
-    // Free/no-relationships state that isn't necessarily true.
+    // Profile/Password/Delete Account never depend on either of these reads.
+    // homeCount and relationships are fetched independently — a home-count
+    // hiccup (purely a Free-tier progress display) must never hide real,
+    // already-loadable relationship data, and vice versa. hasFlhPlus is
+    // derived from relationships (see AccountSettings), so only a
+    // relationships failure needs to surface as an honest "couldn't load"
+    // notice rather than a fabricated Free/no-relationships state; a
+    // homeCount failure alone just falls back to 0 silently.
     let homeCount = 0;
     let relationships = [];
     let searchDataError = false;
     if (hasBuyerSearch) {
       try {
-        [homeCount, relationships] = await Promise.all([
-          getEligibleHomeCount(supabase, ownedSearch.id),
-          resolveSearchRelationships(supabase, ownedSearch.id),
-        ]);
+        homeCount = await getEligibleHomeCount(supabase, ownedSearch.id);
       } catch (error) {
-        console.error('Account Settings: could not load search access/connections', error);
+        console.error('Account Settings: could not load eligible home count', error);
+      }
+      try {
+        relationships = await resolveSearchRelationships(supabase, ownedSearch.id);
+      } catch (error) {
+        console.error('Account Settings: could not load search relationships', error);
         searchDataError = true;
       }
     }

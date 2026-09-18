@@ -29,10 +29,15 @@ function CollapsibleRow({ icon: Icon, title, summary, children }) {
   );
 }
 
+// Email is auth-controlled (Supabase Auth, not the profiles table) and is
+// shown read-only rather than wired to auth.updateUser({email}) here — that
+// call requires its own confirmation-link flow and email-provider config
+// that this settings pass doesn't own, and coupling it to the name save
+// meant one failing silently masked the other. Name changes are a plain,
+// independent write to profiles.first_name/last_name.
 function ProfileForm({ userId, initialFirstName, initialLastName, initialEmail }) {
   const [firstName, setFirstName] = useState(initialFirstName || '');
   const [lastName, setLastName] = useState(initialLastName || '');
-  const [email, setEmail] = useState(initialEmail || '');
   const [status, setStatus] = useState(null);
   const [error, setError] = useState('');
 
@@ -43,14 +48,9 @@ function ProfileForm({ userId, initialFirstName, initialLastName, initialEmail }
     try {
       const supabase = createClient();
       await updateProfileName(supabase, userId, firstName, lastName);
-      let emailPending = false;
-      if (email.trim() && email.trim() !== initialEmail) {
-        const { error: emailError } = await supabase.auth.updateUser({ email: email.trim() });
-        if (emailError) throw emailError;
-        emailPending = true;
-      }
-      setStatus(emailPending ? 'email-pending' : 'saved');
-    } catch {
+      setStatus('saved');
+    } catch (nameError) {
+      console.error('Account Settings: could not save profile name', nameError);
       setError("We couldn't save those changes. Please try again.");
       setStatus(null);
     }
@@ -62,8 +62,7 @@ function ProfileForm({ userId, initialFirstName, initialLastName, initialEmail }
         <div><label className="afh-label" htmlFor="account-first-name">First name</label><input className="afh-input" id="account-first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="given-name" /></div>
         <div><label className="afh-label" htmlFor="account-last-name">Last name</label><input className="afh-input" id="account-last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="family-name" /></div>
       </div>
-      <div><label className="afh-label" htmlFor="account-email">Email</label><input className="afh-input" id="account-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" /></div>
-      {status === 'email-pending' && <Banner kind="success">Your name is saved. Check your new email address for a link to confirm the change.</Banner>}
+      <div><label className="afh-label" htmlFor="account-email">Email</label><input className="afh-input" id="account-email" type="email" value={initialEmail || ''} readOnly disabled autoComplete="email" /></div>
       {status === 'saved' && <Banner kind="success">Saved.</Banner>}
       {error && <Banner kind="error">{error}</Banner>}
       <button type="submit" className="hh-btn" disabled={status === 'saving'}>{status === 'saving' ? <><Spinner /> Saving…</> : 'Save changes'}</button>
@@ -165,7 +164,7 @@ export default function AccountSettings({ userId, userEmail, firstName, lastName
       </header>
 
       <section className="hh-account-card hh-account-plain">
-        <CollapsibleRow icon={User} title="Profile" summary="Update your name and email address.">
+        <CollapsibleRow icon={User} title="Profile" summary="Update your name.">
           <ProfileForm userId={userId} initialFirstName={firstName} initialLastName={lastName} initialEmail={userEmail} />
         </CollapsibleRow>
         <CollapsibleRow icon={Lock} title="Password" summary="Change your password.">

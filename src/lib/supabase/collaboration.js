@@ -764,12 +764,25 @@ export async function removeMember(supabase, searchId, memberUserId) {
 /* ---------------------------- account settings ---------------------------- */
 
 // Owner-only roster of who is connected to a search (co-buyer and/or
-// Realtor), for the /account page's Connections section. See
-// resolve_search_relationships — the RPC itself enforces ownership.
+// Realtor), for the /account page's Connections section. Prefers the
+// resolve_search_relationships RPC (SECURITY DEFINER — resolves real
+// display names), but that RPC ships in a migration that may not have
+// reached every environment yet. Falls back to a plain search_members read,
+// which only relies on the long-standing search_members_select RLS policy
+// (owner can read their own search's membership rows directly) and a
+// generic role label instead of a resolved name — still real relationship
+// data, never fabricated.
 export async function resolveSearchRelationships(supabase, searchId) {
-  const { data, error } = await supabase.rpc('resolve_search_relationships', { p_search_id: searchId });
-  if (error) throw error;
-  return data || [];
+  const rpcResult = await supabase.rpc('resolve_search_relationships', { p_search_id: searchId });
+  if (!rpcResult.error) return rpcResult.data || [];
+  console.error('resolve_search_relationships RPC failed, falling back to plain search_members read', rpcResult.error);
+  const fallback = await supabase.from('search_members').select('user_id, role').eq('search_id', searchId);
+  if (fallback.error) throw fallback.error;
+  return (fallback.data || []).map((row) => ({
+    user_id: row.user_id,
+    role: row.role,
+    display_name: row.role === 'realtor' ? 'Your Realtor' : 'Your co-buyer',
+  }));
 }
 
 // A cheap, count-only read for the Free-tier "X of 3 homes" presentation —
