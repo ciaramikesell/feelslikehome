@@ -7,13 +7,18 @@ import { loadGoogleMaps } from '@/lib/googleMaps';
 // free-form entry working when Google is unavailable and lets the same native
 // input remain accessible and usable on small screens.
 export default function AddressAutocomplete({ value, onChange, onSelect, searchHint = '', placeholder = 'Search for an address...' }) {
+  const rootRef = useRef(null);
   const onSelectRef = useRef(onSelect);
   const requestId = useRef(0);
   const sessionRef = useRef(null);
+  // A value supplied by the parent (including the value written by `choose`)
+  // is not, by itself, a search request. Only direct input edits enable lookup.
+  const userEditedRef = useRef(false);
   const listId = useId();
   const helpId = useId();
   const [places, setPlaces] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [announcement, setAnnouncement] = useState('');
   const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -30,8 +35,9 @@ export default function AddressAutocomplete({ value, onChange, onSelect, searchH
 
   useEffect(() => {
     const query = value.trim();
-    if (!places?.AutocompleteSuggestion || query.length < 3) {
+    if (!userEditedRef.current || !places?.AutocompleteSuggestion || query.length < 3) {
       setSuggestions([]);
+      setMenuOpen(false);
       return undefined;
     }
     const currentRequest = ++requestId.current;
@@ -44,7 +50,9 @@ export default function AddressAutocomplete({ value, onChange, onSelect, searchH
           sessionToken: sessionRef.current || undefined,
         });
         if (currentRequest === requestId.current) {
-          setSuggestions(next.filter((item) => item.placePrediction));
+          const filtered = next.filter((item) => item.placePrediction);
+          setSuggestions(filtered);
+          setMenuOpen(filtered.length > 0);
           setActiveIndex(-1);
         }
       } catch {
@@ -54,13 +62,31 @@ export default function AddressAutocomplete({ value, onChange, onSelect, searchH
     return () => clearTimeout(timer);
   }, [places, value]);
 
+  const closeMenu = () => {
+    requestId.current += 1;
+    setSuggestions([]);
+    setActiveIndex(-1);
+    setMenuOpen(false);
+  };
+
+  useEffect(() => {
+    const dismissOutside = (event) => {
+      if (!rootRef.current?.contains(event.target)) closeMenu();
+    };
+    document.addEventListener('pointerdown', dismissOutside);
+    return () => document.removeEventListener('pointerdown', dismissOutside);
+  }, []);
+
   const choose = async (suggestion) => {
+    // Close before awaiting Places details so pointer and keyboard selection
+    // both give immediate feedback and an in-flight prediction cannot reopen it.
+    userEditedRef.current = false;
+    closeMenu();
     try {
       const place = suggestion.placePrediction.toPlace();
       await place.fetchFields({ fields: ['formattedAddress'] });
       if (!place.formattedAddress) return;
       onSelectRef.current(place.formattedAddress);
-      setSuggestions([]);
       sessionRef.current = null;
       setAnnouncement(`Address selected: ${place.formattedAddress}`);
     } catch {
@@ -69,7 +95,11 @@ export default function AddressAutocomplete({ value, onChange, onSelect, searchH
   };
 
   const onKeyDown = (event) => {
-    if (!suggestions.length) return;
+    if (event.key === 'Escape') {
+      closeMenu();
+      return;
+    }
+    if (!menuOpen || !suggestions.length) return;
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
       const direction = event.key === 'ArrowDown' ? 1 : -1;
@@ -77,30 +107,30 @@ export default function AddressAutocomplete({ value, onChange, onSelect, searchH
     } else if (event.key === 'Enter' && activeIndex >= 0) {
       event.preventDefault();
       choose(suggestions[activeIndex]);
-    } else if (event.key === 'Escape') {
-      setSuggestions([]);
-      setActiveIndex(-1);
     }
   };
 
-  return <div className="hh-address-autocomplete" style={{ flex: 1, position: 'relative', minWidth: 0 }}>
+  return <div ref={rootRef} className="hh-address-autocomplete" style={{ flex: 1, position: 'relative', minWidth: 0 }}>
     <input
       className="hh-input"
       style={{ width: '100%' }}
       value={value}
-      onChange={(event) => onChange(event.target.value)}
+      onChange={(event) => onChange((userEditedRef.current = true, event.target.value))}
       onKeyDown={onKeyDown}
+      onBlur={(event) => {
+        if (!rootRef.current?.contains(event.relatedTarget)) closeMenu();
+      }}
       placeholder={searchHint || placeholder}
       autoComplete="off"
       role="combobox"
       aria-autocomplete="list"
-      aria-expanded={suggestions.length > 0}
+      aria-expanded={menuOpen}
       aria-controls={listId}
       aria-activedescendant={activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined}
       aria-label="Search for or enter the street address"
       aria-describedby={helpId}
     />
-    {suggestions.length > 0 && <ul id={listId} role="listbox" className="hh-address-suggestions" style={{ position: 'absolute', zIndex: 20, inset: '100% 0 auto', margin: '4px 0 0', padding: 4, listStyle: 'none', background: 'var(--paper-raised)', border: '1px solid var(--line)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.14)', maxHeight: 240, overflowY: 'auto' }}>
+    {menuOpen && suggestions.length > 0 && <ul id={listId} role="listbox" className="hh-address-suggestions" style={{ position: 'absolute', zIndex: 20, inset: '100% 0 auto', margin: '4px 0 0', padding: 4, listStyle: 'none', background: 'var(--paper-raised)', border: '1px solid var(--line)', borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,.14)', maxHeight: 240, overflowY: 'auto' }}>
       {suggestions.map((suggestion, index) => <li key={`${suggestion.placePrediction.placeId || index}`} id={`${listId}-${index}`} role="option" aria-selected={index === activeIndex}>
         <button type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => choose(suggestion)} style={{ width: '100%', border: 0, borderRadius: 7, padding: '9px 10px', textAlign: 'left', background: index === activeIndex ? 'var(--paper)' : 'transparent', color: 'var(--ink)', cursor: 'pointer' }}>
           {suggestion.placePrediction.text?.toString() || suggestion.placePrediction.mainText?.toString()}
