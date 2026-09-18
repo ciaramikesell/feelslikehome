@@ -6,13 +6,13 @@ import { computeMatch } from '../src/lib/matching.js';
 
 const priorities = {
   searchType: 'purchase',
-  features: { tiers: { Basement: 'must', Fireplace: 'important', 'Central Air': 'nice', 'Home Office': 'nice' }, customItems: [{ label: 'Sauna', kind: 'check' }] },
-  exterior: { tiers: { 'Fenced Yard': 'important', Garage: 'must' } },
+  features: { tiers: { 'Finished basement': 'must', Fireplace: 'important', 'Central air': 'nice', 'Home office': 'nice' }, customItems: [{ label: 'Sauna', kind: 'check' }] },
+  exterior: { tiers: { 'Fenced yard': 'important', 'Attached garage': 'must' } },
 };
 
 test('selected allowlisted objective criteria receive explicit Yes and No only', () => {
   assert.deepEqual(derivePriorityCheckPatch('Finished basement. No fireplace.', priorities), {
-    'features:Basement': true,
+    'features:Finished basement': true,
     'features:Fireplace': 'no',
   });
   assert.deepEqual(derivePriorityCheckPatch('A comfortable home.', priorities), {});
@@ -23,7 +23,7 @@ test('unselected, existing, rating, custom, and collaborator checks remain untou
   const mine = { 'features:Fireplace': true };
   const collaborator = { 'features:Basement': 'no' };
   const patch = derivePriorityCheckPatch('No fireplace. Fully fenced yard. Turnkey. Great schools. Open concept. Spacious rooms. Close to everything. Sauna.', priorities, mine);
-  assert.deepEqual(patch, { 'exterior:Fenced Yard': true });
+  assert.deepEqual(patch, { 'exterior:Fenced yard': true });
   assert.deepEqual(mine, { 'features:Fireplace': true });
   assert.deepEqual(collaborator, { 'features:Basement': 'no' });
   assert.equal(Object.hasOwn(patch, 'features:Sauna'), false);

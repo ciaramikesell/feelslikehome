@@ -15,38 +15,32 @@ export const HOME_CONDITION_OPTIONS = ['New Construction', 'Move-In Ready', 'Ren
 // Being check-kind means it automatically routes through home_member_state
 // for Co-Buyer isolation via the same mechanism every other check-kind
 // criterion already uses — no new architecture needed for this change.
-export const LOCATION_CORE = [
-  { label: 'Neighborhood', kind: 'rating' },
-];
+export const LOCATION_CORE = [];
 // "Overall Location" is intentionally retired from future selection (2026 criteria
 // audit: no meaningfully distinct job from "Neighborhood" was found in how either is
 // used). Existing users who already selected it keep it — splitCategoryItems reads a
 // user's already-selected suggested items from their own stored `customItems`, never
 // from this list, so removing it here only stops it being *offered* to new selections;
 // nothing is deleted, renamed, or migrated.
-export const LOCATION_SUGGESTED = ['Walkability', 'Immediate Street / Surroundings', 'Parks Nearby', 'Dog Parks Nearby', 'Groceries Nearby', 'Restaurants / Coffee / Shopping Nearby'].map((label) => ({ label, kind: 'rating' }));
+export const LOCATION_SUGGESTED = ['Near downtown area', 'Groceries nearby', 'Parks nearby', 'Walkable schools', 'Near waterfront', 'Quiet street', 'Tree-lined street'].map((label) => ({ label, kind: 'check' }));
 
-export const HOME_FEEL_CORE = ['Overall Condition', 'Layout / Flow'].map((label) => ({ label, kind: 'rating' }));
-export const HOME_FEEL_SUGGESTED = ['Natural Light', 'Character / Charm', 'Room Sizes', 'Openness / Ceiling Height', 'Privacy', 'Social Community', 'On-Site Management'].map((label) => ({ label, kind: 'rating' }));
+export const HOME_FEEL_CORE = [];
+export const HOME_FEEL_SUGGESTED = [];
+const LEGACY_HOME_FEEL_CORE = ['Overall Condition', 'Layout / Flow'].map((label) => ({ label, kind: 'rating' }));
+const LEGACY_HOME_FEEL_SUGGESTED = ['Natural Light', 'Character / Charm', 'Room Sizes', 'Openness / Ceiling Height', 'Privacy', 'Social Community', 'On-Site Management'].map((label) => ({ label, kind: 'rating' }));
 
-export const EXTERIOR_CORE = [{ label: 'Yard', kind: 'rating' }, { label: 'Garage', kind: 'check' }, { label: 'Privacy', kind: 'rating' }];
+export const EXTERIOR_CORE = [];
 export const EXTERIOR_SUGGESTED = [
-  { label: 'Fenced Yard', kind: 'check' }, { label: 'Sidewalks', kind: 'check' },
-  { label: 'Exterior Condition', kind: 'rating' }, { label: 'Landscaping', kind: 'rating' },
-  { label: 'Curb Appeal', kind: 'rating' }, { label: 'Outdoor Space', kind: 'rating' },
-  { label: 'Noise Level', kind: 'rating' },
-  { label: 'Patio / Deck / Outdoor Living', kind: 'check' }, { label: 'Attached Garage', kind: 'check' },
-  { label: 'Driveway / Off-Street Parking', kind: 'check' },
-  { label: 'Pool', kind: 'check' }, { label: 'Fitness Center', kind: 'check' },
-  { label: 'Secure Entry', kind: 'check' }, { label: 'Elevator', kind: 'check' },
-];
+  'Fenced yard', 'Pool', 'Patio / deck', 'Detached garage', 'Attached garage',
+  'Large backyard', 'Landscaping', 'Front porch',
+].map((label) => ({ label, kind: 'check' }));
 
-export const FEATURES_CORE = ['Basement', 'Fireplace', 'Primary Ensuite'].map((label) => ({ label, kind: 'check' }));
-export const FEATURES_SUGGESTED = ['Central Air', 'Home Office', 'Finished Basement', 'Walkout Basement', 'First-Floor Laundry', 'Mudroom', 'Pantry', 'Storage', 'Updated Kitchen', 'Updated Bathrooms', 'Walk-In Closet', 'Additional Living Space', 'Hardwood Floors', 'Dishwasher', 'In-Unit Laundry', 'Updated Interior', 'Pets Allowed', 'Utilities Included'].map((label) => ({ label, kind: label === 'Storage' ? 'rating' : 'check' }));
+export const FEATURES_CORE = [];
+export const FEATURES_SUGGESTED = ['First-floor laundry', 'Guest suite', 'Fireplace', 'Home office', 'Primary ensuite', 'Central air', 'Finished basement', 'Walkout basement'].map((label) => ({ label, kind: 'check' }));
 // These remain part of the canonical catalog. PriorityBoard combines them with
 // the regular suggestion tray so both onboarding and My Search discover the same
 // criteria without an additional generic disclosure.
-export const FEATURES_SPECIFIC = ['Guest / In-Law Suite', 'Basement Bedroom'].map((label) => ({ label, kind: 'check' }));
+export const FEATURES_SPECIFIC = [];
 
 // "Privacy" exists as two independent criteria (Exterior & Property, and Home Feel) —
 // a legitimate distinction (outdoor/yard privacy vs. privacy from neighbors' sightlines
@@ -132,6 +126,32 @@ export function criterionDisplayLabel(categoryKey, label) {
   return CRITERION_DISPLAY_LABEL_OVERRIDES[`${categoryKey}:${label}`] || label;
 }
 
+// Historical built-ins remain untouched in saved priority JSON, but no longer
+// appear as active purchase-search criteria or contribute Unknowns. An item the
+// buyer explicitly created carries `source: 'custom'` and is always preserved.
+const RETIRED_PURCHASE_BUILT_INS = new Set([
+  'location:Neighborhood', 'location:Walkability', 'location:Immediate Street / Surroundings',
+  'location:Dog Parks Nearby', 'location:Restaurants / Coffee / Shopping Nearby',
+  'homeFeel:Overall Condition', 'homeFeel:Layout / Flow', 'homeFeel:Natural Light',
+  'homeFeel:Character / Charm', 'homeFeel:Room Sizes', 'homeFeel:Openness / Ceiling Height',
+  'homeFeel:Privacy', 'homeFeel:Social Community', 'homeFeel:On-Site Management',
+  'exterior:Yard', 'exterior:Garage', 'exterior:Privacy', 'exterior:Sidewalks',
+  'exterior:Exterior Condition', 'exterior:Curb Appeal', 'exterior:Outdoor Space',
+  'exterior:Noise Level', 'exterior:Driveway / Off-Street Parking', 'exterior:Fitness Center',
+  'exterior:Secure Entry', 'exterior:Elevator', 'features:Basement', 'features:Mudroom',
+  'features:Pantry', 'features:Storage', 'features:Updated Kitchen', 'features:Updated Bathrooms',
+  'features:Walk-In Closet', 'features:Additional Living Space', 'features:Hardwood Floors',
+  'features:Dishwasher', 'features:In-Unit Laundry', 'features:Updated Interior',
+  'features:Pets Allowed', 'features:Utilities Included', 'features:Guest / In-Law Suite',
+  'features:Basement Bedroom',
+]);
+
+export function isRetiredPurchaseBuiltIn(categoryKey, item, searchType) {
+  return normalizeSearchIntent(searchType) === 'purchase'
+    && item?.source !== 'custom'
+    && RETIRED_PURCHASE_BUILT_INS.has(`${categoryKey}:${item?.label}`);
+}
+
 // Which selected criteria are genuinely experiential — things a person can only really
 // judge by being in the home, as opposed to a fact the property already has (Garage),
 // a category preference (Home Condition), or a context/lifestyle priority that simply
@@ -166,7 +186,10 @@ export function effectiveTier(categoryKey, label, priorities, rawTier) {
   return rawTier || 'dontcare';
 }
 
-const RENTAL_FEATURES = [...FEATURES_CORE, ...FEATURES_SUGGESTED];
+const LEGACY_FEATURES = ['Basement', 'Fireplace', 'Primary Ensuite', 'Central Air', 'Home Office', 'Finished Basement', 'Walkout Basement', 'First-Floor Laundry', 'Mudroom', 'Pantry', 'Storage', 'Updated Kitchen', 'Updated Bathrooms', 'Walk-In Closet', 'Additional Living Space', 'Hardwood Floors', 'Dishwasher', 'In-Unit Laundry', 'Updated Interior', 'Pets Allowed', 'Utilities Included'].map((label) => ({ label, kind: label === 'Storage' ? 'rating' : 'check' }));
+const LEGACY_LOCATION = ['Walkability', 'Immediate Street / Surroundings', 'Parks Nearby', 'Dog Parks Nearby', 'Groceries Nearby', 'Restaurants / Coffee / Shopping Nearby'].map((label) => ({ label, kind: 'rating' }));
+const LEGACY_EXTERIOR = [{ label: 'Yard', kind: 'rating' }, { label: 'Garage', kind: 'check' }, { label: 'Privacy', kind: 'rating' }, { label: 'Fenced Yard', kind: 'check' }, { label: 'Sidewalks', kind: 'check' }, { label: 'Exterior Condition', kind: 'rating' }, { label: 'Landscaping', kind: 'rating' }, { label: 'Curb Appeal', kind: 'rating' }, { label: 'Outdoor Space', kind: 'rating' }, { label: 'Noise Level', kind: 'rating' }, { label: 'Patio / Deck / Outdoor Living', kind: 'check' }, { label: 'Attached Garage', kind: 'check' }, { label: 'Driveway / Off-Street Parking', kind: 'check' }, { label: 'Pool', kind: 'check' }, { label: 'Fitness Center', kind: 'check' }, { label: 'Secure Entry', kind: 'check' }, { label: 'Elevator', kind: 'check' }];
+const RENTAL_FEATURES = LEGACY_FEATURES;
 const RENTAL_EXTERIOR = [
   { label: 'Parking', kind: 'check' }, { label: 'Garage', kind: 'check' },
   { label: 'Driveway / Off-Street Parking', kind: 'check' }, { label: 'Fenced Yard', kind: 'check' },
@@ -198,11 +221,11 @@ export function getItemlistCategories(searchType) {
   const isInvestment = intent === 'investment';
 
   const location = {
-    key: 'location', title: 'Location',
-    blurb: "How you feel about where the home sits and what's nearby. You'll rate each per home with stars.",
-    coreItems: isInvestment ? [{ label: 'Schools', kind: 'check' }, { label: 'Commute', kind: 'rating' }, { label: 'Neighborhood', kind: 'rating' }] : LOCATION_CORE,
+    key: 'location', title: 'Location & Surroundings',
+    blurb: 'Useful location details that can be established before a tour.',
+    coreItems: isInvestment ? [{ label: 'Schools', kind: 'check' }, { label: 'Commute', kind: 'rating' }, { label: 'Neighborhood', kind: 'rating' }] : isRental ? [{ label: 'Neighborhood', kind: 'rating' }] : LOCATION_CORE,
     suggestedItems: [
-      ...LOCATION_SUGGESTED,
+      ...(intent === 'purchase' ? LOCATION_SUGGESTED : LEGACY_LOCATION),
       ...(isInvestment ? [{ label: 'Proximity to Family / Friends', kind: 'rating' }] : []),
       ...(isInvestment ? [{ label: 'Tenant Appeal', kind: 'rating' }] : []),
     ],
@@ -216,9 +239,9 @@ export function getItemlistCategories(searchType) {
       }
     : {
         key: 'features', title: 'Home Features', blurb: "Specific things the home either has or doesn't.",
-        coreItems: FEATURES_CORE,
+        coreItems: isInvestment ? LEGACY_FEATURES.slice(0, 3) : FEATURES_CORE,
         suggestedItems: [
-          ...FEATURES_SUGGESTED,
+          ...(isInvestment ? LEGACY_FEATURES.slice(3) : FEATURES_SUGGESTED),
           ...(isInvestment ? [{ label: 'Separate Utilities', kind: 'check' }, { label: 'Unit Configuration', kind: 'check' }] : []),
         ],
         specificItems: isInvestment ? [] : FEATURES_SPECIFIC,
@@ -232,9 +255,9 @@ export function getItemlistCategories(searchType) {
       }
     : {
         key: 'exterior', title: 'Exterior & Property', blurb: 'The yard, parking, and outdoor spaces.',
-        coreItems: EXTERIOR_CORE,
+        coreItems: isInvestment ? LEGACY_EXTERIOR.slice(0, 3) : EXTERIOR_CORE,
         suggestedItems: [
-          ...EXTERIOR_SUGGESTED,
+          ...(isInvestment ? LEGACY_EXTERIOR.slice(3) : EXTERIOR_SUGGESTED),
           ...(isInvestment ? [{ label: 'Parking', kind: 'check' }] : []),
         ],
         defaultCustomKind: 'check',
@@ -243,15 +266,18 @@ export function getItemlistCategories(searchType) {
   const homeFeel = {
     key: 'homeFeel', title: 'Home Feel',
     blurb: "Some things can't really be known from a listing — we'll remind you to weigh in on these after you tour.",
-    coreItems: HOME_FEEL_CORE,
+    coreItems: intent === 'purchase' ? HOME_FEEL_CORE : LEGACY_HOME_FEEL_CORE,
     suggestedItems: [
-      ...HOME_FEEL_SUGGESTED,
+      ...(intent === 'purchase' ? HOME_FEEL_SUGGESTED : LEGACY_HOME_FEEL_SUGGESTED),
       ...(isInvestment ? [{ label: 'Rental Income Potential', kind: 'rating' }, { label: 'Property Condition', kind: 'rating' }, { label: 'Owner-Occupancy Suitability', kind: 'rating' }] : []),
     ],
     defaultCustomKind: 'rating',
   };
 
-  return [location, features, exterior, homeFeel];
+  // Purchase searches intentionally expose only pre-tour, listing-verifiable
+  // families. Stored legacy Home Feel priorities remain in the JSON document,
+  // but are no longer offered or counted as unfinished pre-tour work.
+  return intent === 'purchase' ? [location, features, exterior] : [location, features, exterior, homeFeel];
 }
 
 // Toured remains readable as a legacy status, but new writes store tour history in

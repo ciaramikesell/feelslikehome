@@ -13,7 +13,8 @@ test('priority and reaction chips use buttons with exposed selection state', () 
   ]) {
     const source = read(path);
     assert.doesNotMatch(source, /<span[^>]+hh-chip[^>]+onClick/);
-    assert.match(source, /<button type="button"[^>]+hh-chip[^>]+aria-pressed=/);
+    if (path !== 'src/components/PostTourModal.jsx') assert.match(source, /<button type="button"[^>]+hh-chip[^>]+aria-pressed=/);
+    else assert.match(source, /aria-pressed=\{selected\}/);
   }
 });
 

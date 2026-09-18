@@ -37,9 +37,9 @@ test('Favorites path preserves verdict independently from Favorite membership', 
   }
 });
 
-test('Love It records a tour, saves, and favorites', () => {
+test('Love It records a tour without changing status or favorite', () => {
   const result = applyPostTourVerdict({ ...base(), status: 'Want to Tour' }, 'love', {}, '2026-09-09T12:00:00.000Z');
-  assert.deepEqual([result.status, result.reaction, result.isFavorite, result.touredAt], ['Saved', 'love', true, '2026-09-09T12:00:00.000Z']);
+  assert.deepEqual([result.status, result.reaction, result.isFavorite, result.touredAt], ['Want to Tour', 'love', false, '2026-09-09T12:00:00.000Z']);
 });
 
 test('Still Considering records a tour and preserves Favorite', () => {
@@ -47,15 +47,15 @@ test('Still Considering records a tour and preserves Favorite', () => {
   assert.deepEqual([result.status, result.reaction, result.isFavorite, result.touredAt], ['Saved', 'considering', true, 'now']);
 });
 
-test('Not for Me stays active until archive confirmation and preserves evaluation', () => {
-  const draft = applyPostTourVerdict({ ...base(), isFavorite: true }, 'not_for_me', { notes: 'Quiet', ratings: { 'tour:overall': 2 } }, 'now');
+test('Definitely Not stays active and separate from explicit archive', () => {
+  const draft = applyPostTourVerdict({ ...base(), isFavorite: true }, 'not_for_me', { noteEntry: 'Quiet', ratings: { 'tour-v2:layout': 'negative' } }, 'now');
   assert.equal(draft.status, 'Saved');
   assert.equal(draft.reaction, 'not_for_me');
   const confirmed = archiveHome(draft, 'Too far');
   assert.equal(confirmed.status, 'Archived');
   assert.equal(confirmed.touredAt, 'now');
   assert.equal(confirmed.isFavorite, true);
-  assert.deepEqual(confirmed.ratings, { 'tour:overall': 2 });
+  assert.deepEqual(confirmed.ratings, { 'tour-v2:layout': 'negative' });
   assert.equal(confirmed.notes, 'Quiet');
 });
 
@@ -89,7 +89,7 @@ test('application sources keep ownership, household union, modal initialization,
   assert.match(collaboration, /currentUserWantsToTour \|\| coBuyerWantsToTour/);
   assert.doesNotMatch(board, /h\.status === 'Toured' && h\.reaction !== 'love'/);
   assert.match(board, /applyPostTourVerdict\(home, verdict, patch\)/);
-  assert.match(detail, /setArchiveTarget\(next\)/);
+  assert.doesNotMatch(detail, /verdict === 'not_for_me'[\s\S]*setArchiveTarget/);
   assert.match(detail, /<ArchiveConfirmModal/);
   assert.match(modal, /postTourVerdict\(home\)/);
   assert.doesNotMatch(modal, /home\.isFavorite.*initialVerdict/);

@@ -105,7 +105,7 @@ test('legacy rental values resolve the unified canonical catalog while Investmen
   assert.ok(labels('investment', 'features', 'suggestedItems').includes('Unit Configuration'));
   assert.ok(!labels('buy', 'features', 'suggestedItems').includes('Pet Policy'));
   for (const type of legacyTypes) {
-    assert.deepEqual(getItemlistCategories(type).map(({ key }) => key), ['location', 'features', 'exterior', 'homeFeel']);
+    assert.deepEqual(getItemlistCategories(type).map(({ key }) => key), normalizeSearchIntent(type) === 'purchase' ? ['location', 'features', 'exterior'] : ['location', 'features', 'exterior', 'homeFeel']);
   }
 });
 

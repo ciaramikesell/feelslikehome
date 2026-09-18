@@ -11,12 +11,12 @@ const contextPage = fs.readFileSync('src/app/(app)/people/[searchId]/page.js', '
 const migration = fs.readFileSync('supabase/migrations/2026-09-16-realtor-search-view.sql', 'utf8');
 const css = fs.readFileSync('src/app/globals.css', 'utf8');
 
-test('People I’m Helping is relationship-scoped, batched, and coexists with My Criteria', () => {
+test('People I’m Helping is relationship-scoped, batched, and coexists with My Search', () => {
   assert.match(data, /eq\('user_id', userId\)\.eq\('role', 'realtor'\)/);
   assert.match(data, /\.in\('search_id', ids\)/);
   assert.doesNotMatch(data, /service.role|service_role/i);
   assert.match(shell, /People I’m Helping/);
-  assert.match(shell, /My Criteria/);
+  assert.match(shell, /My Search/);
   assert.match(listPage, /activeCount/);
   assert.match(listPage, /wantToTourCount/);
 });

@@ -529,22 +529,11 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     saveHome({ ...home, status: 'Saved' }, { shared: false, optimistic: true }).catch(() => {});
   }, [saveHome]);
 
-  // What the post-tour verdict means, conceptually:
-  //   Love it          -> durable tour history + verdict + Favorite
-  //   Still considering -> durable tour history + considering verdict
-  //   Not for me        -> NOT saved immediately — routed into the existing
-  //                        archive-confirmation flow so the destructive step still
-  //                        gets a confirm, with all the collected ratings/notes/
-  //                        impressions carried along so nothing is lost.
+  // A tour reaction is participant-owned feedback, not a home-status command.
+  // In particular, "Definitely not" never archives implicitly.
   const handleVerdict = useCallback((home, verdict, patch) => {
-    if (verdict === 'not_for_me') {
-      setPostTourTarget(null);
-      setArchiveTarget(applyPostTourVerdict(home, verdict, patch));
-      return;
-    }
-    setPostTourTarget(null);
     const next = applyPostTourVerdict(home, verdict, patch);
-    saveHome(next, { shared: hasSharedHomeChanges(next, home) }).catch(() => {});
+    return saveHome(next, { shared: hasSharedHomeChanges(next, home) });
   }, [saveHome]);
 
   const confirmArchive = useCallback((reason) => {

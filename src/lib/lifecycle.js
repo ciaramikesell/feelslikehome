@@ -21,15 +21,24 @@ export function postTourVerdict(home) {
 }
 
 export function applyPostTourVerdict(home, verdict, patch = {}, recordedAt = new Date().toISOString()) {
+  const { noteEntry, ...personalPatch } = patch;
+  const notes = appendPostTourNote(home.notes, noteEntry);
   const next = {
     ...home,
-    ...patch,
+    ...personalPatch,
+    ...(notes !== home.notes ? { notes } : {}),
     touredAt: home.touredAt || recordedAt,
-    status: 'Saved',
     reaction: verdict,
   };
-  if (verdict === 'love') next.isFavorite = true;
   return next;
+}
+
+export function appendPostTourNote(existing, entry) {
+  const previous = (existing || '').trim();
+  const addition = (entry || '').trim();
+  if (!addition) return existing || '';
+  if (!previous) return addition;
+  return `${previous}\n\n${addition}`;
 }
 
 export function archiveHome(home, reason = home.rejectionReason || '') {

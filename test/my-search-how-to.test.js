@@ -6,21 +6,9 @@ import { computeMatch, splitCategoryItems } from '../src/lib/matching.js';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('specific defaults are demoted without losing legacy selections or canonical tiers', () => {
+test('purchase catalog has only the three pre-tour families', () => {
   assert.equal(DEFAULT_SELECTED_TIER, 'important');
-  assert.equal(TIER_META.must.weight, 4);
-  assert.deepEqual(FEATURES_SPECIFIC.map(({ label }) => label), ['Guest / In-Law Suite', 'Basement Bedroom']);
-  for (const intent of ['purchase', 'rental']) {
-    const features = getItemlistCategories(intent).find(({ key }) => key === 'features');
-    assert.ok(!features.suggestedItems.some(({ label }) => FEATURES_SPECIFIC.some((item) => item.label === label)));
-    assert.deepEqual(features.specificItems, FEATURES_SPECIFIC);
-  }
-  const priorities = normalizePriorities({ searchType: 'purchase', features: { tiers: { 'Basement Bedroom': 'must' } } });
-  const before = structuredClone(priorities);
-  const split = splitCategoryItems(getItemlistCategories('purchase')[1], priorities);
-  assert.ok(split.custom.some(({ label }) => label === 'Basement Bedroom'));
-  assert.deepEqual(priorities, before);
-  assert.equal(computeMatch({ checks: { 'features:Basement Bedroom': true } }, priorities).pct, 100);
+  assert.deepEqual(getItemlistCategories('purchase').map(({ title }) => title), ['Location & Surroundings', 'Home Features', 'Exterior & Property']);
 });
 
 test('My Search keeps one compact canonical board while add choices are progressively disclosed', () => {
@@ -99,12 +87,11 @@ test('available suggestions use four, two, and one-column responsive layouts', (
   assert.match(css, /@media \(max-width: 640px\)[\s\S]*?\.hh-priority-tiers, \.hh-suggestion-grid, \.hh-how-to-notes \{ grid-template-columns: 1fr; \}/);
 });
 
-test('post-tour guidance appears once and uses the central experiential classification accessibly', () => {
+test('My Search guidance is pre-tour only', () => {
   const board = read('src/components/PriorityBoard.jsx');
-  assert.match(board, /Some preferences can be matched from listing details/);
+  assert.match(board, /Choose the pre-tour details/);
   assert.doesNotMatch(board, /Best answered after you tour<\/div>/);
-  assert.match(board, /isExperientialCriterion\(item\.categoryKey, item\.label\)/);
-  assert.match(board, /aria-label="After tour"/);
+  assert.doesNotMatch(board, /experiential priorities stay Unknown/);
   assert.doesNotMatch(board, /We&apos;ll ask after you tour/);
 });
 
