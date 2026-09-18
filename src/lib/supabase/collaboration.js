@@ -516,7 +516,11 @@ export async function saveHomePersonalState(supabase, home, userId, searchId) {
 /* -------------------------------- archive -------------------------------- */
 
 // Every accepted participant in a search: the owner plus every active member.
+// search can legitimately be null (an account whose owned `searches` row is
+// missing/not yet created — see resolvePriorities' identical guard above),
+// so this must never assume a truthy search the way it previously did.
 export async function getSearchParticipantIds(supabase, search) {
+  if (!search) return [];
   const { data, error } = await supabase.from('search_members').select('user_id').eq('search_id', search.id).eq('role', 'co_buyer');
   if (error) throw error;
   return [search.user_id, ...(data || []).map((m) => m.user_id)];

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, User, Lock, ChevronRight, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, User, Lock, ChevronRight, AlertTriangle, RefreshCcw } from 'lucide-react';
 import Sheet from '@/components/Sheet';
 import { PasswordField, Banner, Spinner } from '@/components/auth/AuthHelpers';
 import { createClient } from '@/lib/supabase/client';
@@ -152,7 +152,7 @@ function DeleteAccountSection() {
 // > 0), not a persisted entitlement flag — see SearchAccess for why. search
 // is null for an account with no legitimate buyer search yet (Realtor-only,
 // or mid-onboarding) — FLH+/Connections simply don't render for them.
-export default function AccountSettings({ userId, userEmail, firstName, lastName, search, homeCount, initialRelationships }) {
+export default function AccountSettings({ userId, userEmail, firstName, lastName, search, homeCount, initialRelationships, searchDataError = false }) {
   const [relationships, setRelationships] = useState(initialRelationships || []);
   const hasFlhPlus = relationships.length > 0;
 
@@ -161,7 +161,7 @@ export default function AccountSettings({ userId, userEmail, firstName, lastName
       <Link href="/search" className="hh-account-back"><ArrowLeft size={14} /> Back to My Search</Link>
       <header className="hh-account-header">
         <h1>Account Settings</h1>
-        <p>Manage your profile, search access, and connections.</p>
+        <p>Manage your profile, FLH+ access, and connections.</p>
       </header>
 
       <section className="hh-account-card hh-account-plain">
@@ -174,10 +174,23 @@ export default function AccountSettings({ userId, userEmail, firstName, lastName
       </section>
 
       {search && (
-        <>
-          <SearchAccess hasFlhPlus={hasFlhPlus} homeCount={homeCount} />
-          <Connections hasFlhPlus={hasFlhPlus} relationships={relationships} searchId={search.id} userId={userId} onRelationshipsChange={setRelationships} />
-        </>
+        searchDataError ? (
+          // A real failure fetching search access/connections (never a
+          // fabricated Free/no-relationships state) — Profile, Password, and
+          // Delete Account above and below are unaffected by it.
+          <section className="hh-account-card hh-account-data-error" role="alert">
+            <RefreshCcw size={18} aria-hidden="true" />
+            <div>
+              <strong>Couldn&apos;t load your FLH+ access and connections</strong>
+              <p>Your profile and password settings above still work. Try refreshing the page — if this keeps happening, let us know.</p>
+            </div>
+          </section>
+        ) : (
+          <>
+            <SearchAccess hasFlhPlus={hasFlhPlus} homeCount={homeCount} />
+            <Connections hasFlhPlus={hasFlhPlus} relationships={relationships} searchId={search.id} userId={userId} onRelationshipsChange={setRelationships} />
+          </>
+        )
       )}
 
       <DeleteAccountSection />

@@ -177,3 +177,77 @@ test('responsive: the account page itself stacks cleanly on mobile with no force
   assert.match(css, /\.hh-account-access-row \{ flex-direction: column;/);
   assert.match(css, /\.hh-account-unlock-card \{ flex-direction: column; \}/);
 });
+
+/* ------------------------------ loading-failure repair pass ------------------------------ */
+
+test('root cause: getSearchParticipantIds no longer assumes a truthy search — the exact crash a null owned search would cause', () => {
+  const fn = collaboration.match(/export async function getSearchParticipantIds\(supabase, search\) \{[\s\S]*?\n\}/)?.[0] || '';
+  assert.match(fn, /if \(!search\) return \[\];/);
+  // Must guard before ever touching search.id/search.user_id.
+  const guardIndex = fn.indexOf('if (!search)');
+  const firstDotId = fn.indexOf('search.id');
+  assert.ok(guardIndex > -1 && firstDotId > -1 && guardIndex < firstDotId);
+});
+
+test('root cause: (app)/layout.js never dereferences .id on a possibly-null search', () => {
+  assert.doesNotMatch(layout, /activeSearchId=\{search\.id\}/);
+  assert.match(layout, /activeSearchId=\{search\?\.id \?\? null\}/);
+});
+
+test('root cause: /account/page.js isolates the optional FLH+/Connections fetch so a failure there cannot take down Profile/Password/Delete Account', () => {
+  assert.match(page, /try \{/);
+  assert.match(page, /getEligibleHomeCount\(supabase, ownedSearch\.id\)/);
+  assert.match(page, /resolveSearchRelationships\(supabase, ownedSearch\.id\)/);
+  assert.match(page, /catch \(error\) \{/);
+  assert.match(page, /searchDataError = true/);
+  // The failure path must never fabricate a fake Free/no-relationships state
+  // as if it were real — searchDataError is passed through, not swallowed.
+  assert.match(page, /searchDataError=\{searchDataError\}/);
+});
+
+test('when the FLH+/Connections fetch fails, AccountSettings renders an honest error notice instead of a fabricated Free/0-relationships state', () => {
+  assert.match(accountSettings, /searchDataError = false/);
+  assert.match(accountSettings, /searchDataError \? \(/);
+  assert.match(accountSettings, /Couldn&apos;t load your FLH\+ access and connections/);
+  // The error branch must not also render SearchAccess/Connections with the
+  // (necessarily fake, in this failure case) homeCount=0/relationships=[]
+  // defaults.
+  const errorBranch = accountSettings.match(/searchDataError \? \([\s\S]*?\) : \(/)?.[0] || '';
+  assert.doesNotMatch(errorBranch, /<SearchAccess|<Connections/);
+  // Profile/Password/Delete Account are siblings of the {search && (...)}
+  // block, not nested inside it, so they render regardless of this failure.
+  assert.match(accountSettings, /<ProfileForm /);
+  assert.match(accountSettings, /<DeleteAccountSection \/>/);
+});
+
+test('FLH+ Access section never uses subscription/premium/monthly language, and matches the canonical benefit list', () => {
+  assert.doesNotMatch(searchAccess, /\bsubscription\b|\bpremium\b|\bmonthly plan\b/i);
+  assert.match(searchAccess, /Individual Match perspectives/);
+  assert.match(searchAccess, /Realtor suggestions and professional context/);
+  assert.match(searchAccess, /Shared home-search experience/);
+  assert.match(searchAccess, /One purchase\. One search\. Everyone you invite\./);
+  assert.match(searchAccess, /Your co-buyer and Realtor don&apos;t purchase separately for this FLH\+ search\./);
+  assert.doesNotMatch(searchAccess, /\bchat\b|\btour bookings\b/i);
+});
+
+test('Account Settings header describes FLH+ access, not a subscription', () => {
+  assert.match(accountSettings, /Manage your profile, FLH\+ access, and connections\./);
+  assert.doesNotMatch(accountSettings, /\bsubscription\b/i);
+});
+
+test('the outdated "co-buyer upgrade automatically grants full access" claim is never present — FLH+ belongs to the search, not a person', () => {
+  assert.doesNotMatch(searchAccess, /automatically gains? full access/i);
+  assert.doesNotMatch(connections, /automatically gains? full access/i);
+});
+
+test('the Realtor relationship description never overclaims — no buyer-side Match, no tour booking, no control over buyer decisions', () => {
+  assert.doesNotMatch(connections, /favorited matches?/i);
+  assert.doesNotMatch(connections, /\bbook(s|ing)? tours?\b/i);
+  assert.match(connections, /while your decisions stay yours/);
+});
+
+test('no fake entitlement, fake collaborators, or fake payment state is ever created to make the page render', () => {
+  assert.doesNotMatch(page, /is_plus|isPlus|global.{0,10}entitlement/i);
+  assert.doesNotMatch(searchAccess, /is_plus|isPlus/i);
+  assert.match(searchAccess, /persisted "this search purchased FLH\+" flag/);
+});

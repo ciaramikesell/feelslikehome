@@ -126,7 +126,7 @@ test('regression guard: Favorites/Want to Tour/Archive ownership stays scoped to
 });
 
 test('regression guard: a Realtor is never counted as a co-buyer participant', () => {
-  assert.match(collaboration, /export async function getSearchParticipantIds\(supabase, search\) \{\s*\n\s*const \{ data, error \} = await supabase\.from\('search_members'\)\.select\('user_id'\)\.eq\('search_id', search\.id\)\.eq\('role', 'co_buyer'\);/);
+  assert.match(collaboration, /export async function getSearchParticipantIds\(supabase, search\) \{\s*\n\s*if \(!search\) return \[\];\s*\n\s*const \{ data, error \} = await supabase\.from\('search_members'\)\.select\('user_id'\)\.eq\('search_id', search\.id\)\.eq\('role', 'co_buyer'\);/);
 });
 
 /* ------------------------------ Want to Tour: primary action + no Realtor conflation ------------------------------ */

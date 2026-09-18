@@ -1695,6 +1695,12 @@ details[open] > summary .hh-accordion-chevron, .hh-more-home-details:has(.hh-mor
 .hh-account-invite-form, .hh-account-invite-link { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 .hh-account-invite-form input, .hh-account-invite-link input { flex: 1 1 200px; }
 
+/* FLH+/Connections data-load failure — never a fake Free/empty state */
+.hh-account-data-error { display: flex; align-items: flex-start; gap: 12px; color: var(--ink); }
+.hh-account-data-error > svg { flex-shrink: 0; margin-top: 2px; color: var(--brick); }
+.hh-account-data-error strong { display: block; margin-bottom: 4px; font-size: 14.5px; }
+.hh-account-data-error p { margin: 0; color: var(--ink-soft); font-size: 12.5px; line-height: 1.55; }
+
 /* Delete account */
 .hh-account-warning { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding: 10px 12px; border-radius: 10px; background: rgba(193,89,47,.08); color: var(--brick); font-size: 12.5px; font-weight: 600; }
 .hh-account-delete-cta { background: var(--paper-raised); color: var(--brick); border-color: rgba(193,89,47,.4); }

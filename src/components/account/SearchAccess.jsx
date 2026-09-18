@@ -49,6 +49,9 @@ export default function SearchAccess({ hasFlhPlus, homeCount, homeLimit = 3 }) {
           <li><Check size={15} /> Unlimited homes</li>
           <li><Check size={15} /> Co-buyer collaboration</li>
           <li><Check size={15} /> Realtor collaboration</li>
+          <li><Check size={15} /> Individual Match perspectives</li>
+          <li><Check size={15} /> Realtor suggestions and professional context</li>
+          <li><Check size={15} /> Shared home-search experience</li>
         </ul>
       ) : (
         <div id="unlock-flh-plus" className="hh-account-unlock-card">
@@ -58,9 +61,12 @@ export default function SearchAccess({ hasFlhPlus, homeCount, homeLimit = 3 }) {
               <h3>Unlock FLH+ for this search</h3>
               <p>Keep your search going and make it a shared experience.</p>
               <ul className="hh-account-flh-benefits">
-                <li><Check size={15} /> Add unlimited homes</li>
-                <li><Check size={15} /> Search together with a co-buyer</li>
-                <li><Check size={15} /> Collaborate with your Realtor</li>
+                <li><Check size={15} /> Unlimited homes</li>
+                <li><Check size={15} /> Invite a co-buyer</li>
+                <li><Check size={15} /> Connect your Realtor</li>
+                <li><Check size={15} /> Individual Match perspectives</li>
+                <li><Check size={15} /> Realtor suggestions and professional context</li>
+                <li><Check size={15} /> Shared home-search experience</li>
               </ul>
             </div>
           </div>
@@ -71,7 +77,7 @@ export default function SearchAccess({ hasFlhPlus, homeCount, homeLimit = 3 }) {
                 intentional, honest placeholder rather than a fake purchase.
                 A future pass wires this to real checkout. */}
             <button type="button" className="hh-btn" disabled title="Purchasing isn't available yet">Unlock FLH+</button>
-            <small>One purchase unlocks this search for everyone you invite. No additional cost for your co-buyer or Realtor.</small>
+            <small>One purchase. One search. Everyone you invite. Your co-buyer and Realtor don&apos;t purchase separately for this FLH+ search.</small>
           </div>
         </div>
       )}

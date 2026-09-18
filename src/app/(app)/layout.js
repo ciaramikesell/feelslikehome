@@ -44,13 +44,13 @@ export default async function AppGroupLayout({ children }) {
     }
 
     // /account also falls through here (it is not a Realtor workspace route),
-    // which is intentional: resolveActiveSearch always resolves to the
-    // person's own owned search (every account gets one at signup) even when
-    // it's still an untouched, pre-onboarding row, so this never throws for
-    // a Realtor-only account visiting /account — it just resolves a search
-    // that account's Account Settings page won't render FLH+/Connections
-    // content for (see isAccountSettings above and profile.onboarding_complete
-    // in account/page.js).
+    // so the full buyer nav (tabs, My Search, Searching together) stays
+    // visible there per the approved design. resolveActiveSearch resolves to
+    // the person's own owned search for virtually every account (one is
+    // auto-created at signup), but search can still legitimately come back
+    // null — a Realtor-only account, or any historical account whose row
+    // never got created — so every read below (and the prop passed to
+    // AppShell) has to tolerate that instead of assuming a truthy search.
     const { search } = await resolveActiveSearch(supabase, user.id);
     const [accessibleSearches, priorities, participantIds] = await Promise.all([
       getAccessibleSearches(supabase, user.id),
@@ -59,7 +59,7 @@ export default async function AppGroupLayout({ children }) {
     ]);
 
     return (
-      <AppShell userEmail={user.email} userId={user.id} firstName={firstName} lastName={lastName} accessibleSearches={accessibleSearches} activeSearchId={search.id} priorities={priorities} searchIntent={normalizeSearchIntent(priorities?.searchType)} isCollaborative={participantIds.length > 1} appVersion={appVersion}>
+      <AppShell userEmail={user.email} userId={user.id} firstName={firstName} lastName={lastName} accessibleSearches={accessibleSearches} activeSearchId={search?.id ?? null} priorities={priorities} searchIntent={normalizeSearchIntent(priorities?.searchType)} isCollaborative={participantIds.length > 1} appVersion={appVersion}>
         {children}
       </AppShell>
     );

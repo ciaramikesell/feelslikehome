@@ -27,12 +27,26 @@ export default async function AccountSettingsPage() {
     ]);
 
     const hasBuyerSearch = Boolean(profile?.onboarding_complete && ownedSearch);
-    const [homeCount, relationships] = hasBuyerSearch
-      ? await Promise.all([
+    // Profile/Password/Delete Account never depend on this — only the FLH+
+    // and Connections sections do — so a failure fetching it (a transient
+    // Supabase hiccup, or genuinely anything else) must never take down the
+    // rest of the page. It renders an honest "couldn't load" notice for just
+    // those two sections instead of either crashing or fabricating a fake
+    // Free/no-relationships state that isn't necessarily true.
+    let homeCount = 0;
+    let relationships = [];
+    let searchDataError = false;
+    if (hasBuyerSearch) {
+      try {
+        [homeCount, relationships] = await Promise.all([
           getEligibleHomeCount(supabase, ownedSearch.id),
           resolveSearchRelationships(supabase, ownedSearch.id),
-        ])
-      : [0, []];
+        ]);
+      } catch (error) {
+        console.error('Account Settings: could not load search access/connections', error);
+        searchDataError = true;
+      }
+    }
 
     return (
       <AccountSettings
@@ -43,6 +57,7 @@ export default async function AccountSettingsPage() {
         search={hasBuyerSearch ? ownedSearch : null}
         homeCount={homeCount}
         initialRelationships={relationships}
+        searchDataError={searchDataError}
       />
     );
   });
