@@ -14,6 +14,18 @@ export async function completeOnboarding(supabase, userId) {
   if (error) throw error;
 }
 
+// Lightweight profile completion for existing accounts that predate name
+// capture at signup — see AppShell's dismissible name prompt. Trimmed and
+// null-if-blank so an accidental blank submit can't overwrite a real name
+// with an empty string.
+export async function updateProfileName(supabase, userId, firstName, lastName) {
+  const { error } = await supabase.from('profiles').update({
+    first_name: firstName.trim() || null,
+    last_name: lastName.trim() || null,
+  }).eq('id', userId);
+  if (error) throw error;
+}
+
 // Every user has exactly one row here in V1 (enforced by a unique constraint on user_id).
 // The table itself supports more than one search per user, so multi-search is a future
 // UI feature, not a future migration.

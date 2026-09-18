@@ -123,7 +123,8 @@ test('regression guard: sanitizeRedirectPath return-path recovery is unchanged o
 
 test('regression guard: Realtor-aware signup intent is preserved as entry context, not a role, unaffected by the visual refresh', () => {
   assert.match(signUp, /const isRealtorEntry = searchParams\.get\('intent'\) === 'realtor';/);
-  assert.match(authForm, /data: isRealtorEntry \? \{ account_entry_intent: 'realtor' \} : undefined/);
+  assert.match(authForm, /account_entry_intent: 'realtor'/);
+  assert.doesNotMatch(authForm, /users\.role|profiles\.role|role:\s*'realtor'/);
 });
 
 test('regression guard: password reset/recovery mechanics (length + confirm-match validation, updateUser call) are untouched', () => {

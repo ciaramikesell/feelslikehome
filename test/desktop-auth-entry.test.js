@@ -49,7 +49,7 @@ test('explicit shell sign out returns to the public root while auth-error recove
 
 test('shared auth preserves safe continuations and non-authorizing Realtor entry metadata', () => {
   assert.match(authForm, /router\.push\(redirectTo\)/);
-  assert.match(authForm, /entryDestination = redirectTo === '\/' && isRealtorEntry \? '\/people' : redirectTo/);
+  assert.match(authForm, /entryDestination = redirectTo === '\/' && isRealtorEntry \? '\/realtor' : redirectTo/);
   assert.match(authForm, /account_entry_intent: 'realtor'/);
   assert.doesNotMatch(authForm, /users\.role|profiles\.role|role:\s*'realtor'/);
 });

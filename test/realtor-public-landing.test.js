@@ -19,8 +19,8 @@ test('For Realtors navigation leads to a public explanation before auth', () => 
 });
 
 test('CTA routing respects session while signup intent remains non-authorizing', () => {
-  assert.match(landing, /isAuthenticated \? '\/people' : '\/auth\/sign-up\?intent=realtor'/);
-  assert.match(landing, /\/auth\/sign-in\?redirect=\/people/);
+  assert.match(landing, /isAuthenticated \? '\/realtor' : '\/auth\/sign-up\?intent=realtor'/);
+  assert.match(landing, /\/auth\/sign-in\?redirect=\/realtor/);
   assert.match(auth, /account_entry_intent: 'realtor'/);
   assert.match(auth, /Access to every search is connected to that client relationship/);
   assert.doesNotMatch(auth, /Create an account with the email your client will invite/);
@@ -28,11 +28,11 @@ test('CTA routing respects session while signup intent remains non-authorizing',
 });
 
 test('header Realtor auth actions retain the shared popover while hero CTAs use canonical routes', () => {
-  assert.match(landing, /<LandingAuthPopover mode=\{authMode\}[\s\S]*isRealtorEntry redirectTo="\/people"/);
+  assert.match(landing, /<LandingAuthPopover mode=\{authMode\}[\s\S]*isRealtorEntry redirectTo="\/realtor"/);
   assert.ok((landing.match(/openAuth\('sign-in', event\)/g) || []).length >= 2);
   assert.ok((landing.match(/openAuth\('sign-up', event\)/g) || []).length >= 2);
   assert.match(landing, /href=\{startHref\}>Start helping a buyer/);
-  assert.match(landing, /href=\{startHref\}>\{isAuthenticated \? 'Go to People I’m Helping' : 'Create Realtor account'\}/);
+  assert.match(landing, /href=\{startHref\}>\{isAuthenticated \? 'Go to Realtor Home' : 'Create Realtor account'\}/);
   assert.match(popover, /isRealtorEntry=\{isRealtorEntry\} redirectTo=\{redirectTo\}/);
 });
 
@@ -41,7 +41,7 @@ test('Realtor panel switches in context and preserves Realtor copy, intent, and 
   assert.match(auth, /isRealtorEntry \? 'Create a Realtor account'/);
   assert.match(auth, /isRealtorEntry \? 'Sign in' : 'Back to sign in'/);
   assert.match(auth, /Help buyers organize what matters, understand their options, and make clearer decisions together/);
-  assert.match(auth, /entryDestination = redirectTo === '\/' && isRealtorEntry \? '\/people' : redirectTo/);
+  assert.match(auth, /entryDestination = redirectTo === '\/' && isRealtorEntry \? '\/realtor' : redirectTo/);
   assert.match(auth, /router\.push\(entryDestination\)/);
   assert.doesNotMatch(auth, /users\.role|profiles\.role|role:\s*'realtor'/);
 });
@@ -51,7 +51,7 @@ test('Realtor popover dismissal restores focus while all viewport sizes keep Rea
   assert.match(popover, /contains\(event\.target\)/);
   assert.match(popover, /returnFocusRef\.current\?\.focus\(\)/);
   assert.match(landing, /className="rl-button" href=\{startHref\}>Start helping a buyer/);
-  assert.match(landing, /className="rl-text-link" href="\/auth\/sign-in\?redirect=\/people"/);
+  assert.match(landing, /className="rl-text-link" href="\/auth\/sign-in\?redirect=\/realtor"/);
   assert.match(css, /@media\(max-width:640px\)[\s\S]*\.rl-desktop-auth\{display:none\}\.rl-root \.rl-mobile-auth\{display:inline-flex\}/);
 });
 

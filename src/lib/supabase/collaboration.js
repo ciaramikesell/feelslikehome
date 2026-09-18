@@ -660,6 +660,17 @@ export async function createBuyerInvitation(supabase, invitedEmail) {
   return data?.[0];
 }
 
+// Realtor Home option 1 ("Connect with a buyer who already uses FLH"). Unlike
+// createBuyerInvitation, this never creates a prospective_searches draft —
+// there is nothing to confirm, since the buyer already has their own search
+// and priorities. The resulting invitation only grants access once the buyer
+// explicitly accepts it (see accept_invitation's direct realtor_to_buyer path).
+export async function createRealtorConnectionRequest(supabase, invitedEmail) {
+  const { data, error } = await supabase.rpc('create_realtor_connection_request', { p_invited_email: invitedEmail.trim().toLowerCase() });
+  if (error) throw error;
+  return data?.[0];
+}
+
 export async function createProspectiveSearch(supabase, draftPriorities, clientName = '') {
   const { data, error } = await supabase.rpc('create_prospective_search', {
     p_draft_priorities: prioritiesForExplicitSave(draftPriorities), p_client_name: clientName.trim() || null,
