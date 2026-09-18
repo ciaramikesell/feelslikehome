@@ -105,7 +105,7 @@ function TriStateField({ label, value, onChange }) {
 
 const FOUND_GROUP_LABELS = { basics: 'Basics', structure: 'Home & structure', parking: 'Parking', costs: 'Costs & ownership', utilities: 'Utilities', listing: 'Listing details' };
 
-function WhatFlhFound({ result, listingUrl, mobile = false }) {
+function WhatFlhFound({ result, listingUrl, mobile = false, panelRef }) {
   const fields = result?.fields || {};
   const basicFacts = [
     fields.price !== undefined && { key: 'price', label: 'Asking price', value: formatCurrencyDisplay(fields.price), group: 'basics' },
@@ -126,7 +126,7 @@ function WhatFlhFound({ result, listingUrl, mobile = false }) {
     {listingUrl && <a href={listingUrl} target="_blank" rel="noreferrer">View original listing <ExternalLink size={13} /></a>}
   </>;
   if (mobile) return <details className="hh-found-mobile"><summary>View what FLH found</summary>{content}</details>;
-  return <aside className="hh-found-panel" aria-label="What FLH found">{content}</aside>;
+  return <aside ref={panelRef} id="flh-listing-details" className="hh-found-panel" aria-label="What FLH found" tabIndex={-1}>{content}</aside>;
 }
 
 function AddSectionHeading({ icon: Icon, title, children, tone = 'peach' }) {
@@ -232,9 +232,17 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
   const [notesOpen, setNotesOpen] = useState(false);
   const [allCriteriaOpen, setAllCriteriaOpen] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(() => mode === 'add' && !!importResult);
+  const inspectorRef = useRef(null);
   const inspectorResult = importResult || form.listingImport || null;
   const inspectorCount = inspectorResult ? countListingDetails(inspectorResult.fields, inspectorResult.listingFacts, inspectorResult.descriptionFeatures) : 0;
   const hasInspector = !!(form.listingUrl && inspectorResult && inspectorCount > 0);
+  const showInspector = () => {
+    setInspectorOpen(true);
+    requestAnimationFrame(() => {
+      inspectorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      inspectorRef.current?.focus({ preventScroll: true });
+    });
+  };
   const apartment = vocabulary.apartment;
   const { showsRentalFacts } = searchIntentCapabilities(priorities.searchType);
   const criteria = getItemlistCategories(priorities.searchType).flatMap((category) =>
@@ -255,7 +263,7 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
   return <div className={`hh-modal-backdrop hh-edit-home-backdrop ${presentation === 'detail-panel' ? 'hh-detail-editor-backdrop' : ''}`} onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
     <div ref={dialogRef} className={`hh-modal hh-corner hh-edit-home-modal ${presentation === 'detail-panel' ? 'hh-detail-editor-panel' : ''}`} role="dialog" aria-modal="true" aria-labelledby="edit-home-title">
       <header className="hh-edit-home-header">
-        <div><h1 ref={titleRef} id="edit-home-title" className="hh-serif" tabIndex={-1}>{mode === 'add' ? 'Add a home' : 'Edit home'}</h1><p>{mode === 'add' ? (importResult ? 'Review what we found, fill in anything that matters, and save this contender.' : 'Review the property details before adding this home to your search.') : "Update this home's details. Changes to shared property information are visible to everyone in this search."}</p>{hasInspector && <button type="button" className="hh-listing-inspector-entry" onClick={() => setInspectorOpen(true)}><Check size={14} /> {inspectorCount} listing detail{inspectorCount === 1 ? '' : 's'} found <span>View →</span></button>}</div>
+        <div><h1 ref={titleRef} id="edit-home-title" className="hh-serif" tabIndex={-1}>{mode === 'add' ? 'Add a home' : 'Edit home'}</h1><p>{mode === 'add' ? (importResult ? 'Review what we found, fill in anything that matters, and save this contender.' : 'Review the property details before adding this home to your search.') : "Update this home's details. Changes to shared property information are visible to everyone in this search."}</p>{hasInspector && <button type="button" className="hh-listing-inspector-entry" aria-controls="flh-listing-details" onClick={showInspector}><Check size={14} /> {inspectorCount} listing detail{inspectorCount === 1 ? '' : 's'} found <span>View →</span></button>}</div>
         <button type="button" className="hh-btn hh-btn-ghost hh-edit-home-close" onClick={onClose} aria-label={mode === 'add' ? 'Close add home' : 'Close edit home'}><X size={18} aria-hidden="true" /></button>
       </header>
 
@@ -330,7 +338,7 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
         </div>
       </div>
 
-      </div>{inspectorOpen && hasInspector && <div className="hh-workspace-inspector"><button type="button" className="hh-btn hh-btn-ghost hh-inspector-close" onClick={() => setInspectorOpen(false)} aria-label="Close listing details"><X size={16} /></button><WhatFlhFound result={inspectorResult} listingUrl={form.listingUrl} /></div>}
+      {inspectorOpen && hasInspector && <div className="hh-workspace-inspector"><button type="button" className="hh-btn hh-btn-ghost hh-inspector-close" onClick={() => setInspectorOpen(false)} aria-label="Close listing details"><X size={16} /></button><WhatFlhFound panelRef={inspectorRef} result={inspectorResult} listingUrl={form.listingUrl} /></div>}</div>
       {saveErrorMsg && <div className="hh-edit-save-error" role="alert">{saveErrorMsg}</div>}
       <footer className="hh-edit-home-footer"><button type="button" className="hh-btn hh-btn-ghost" onClick={onClose}>Cancel</button><button type="button" className="hh-btn" onClick={submit} disabled={!form.address.trim() || saving}>{saving ? 'Saving…' : mode === 'add' ? 'Save home' : 'Save changes'}</button></footer>
     </div>
