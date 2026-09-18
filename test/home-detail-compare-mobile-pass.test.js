@@ -26,9 +26,9 @@ test('HomesBoard reuses the shared MobileDisclosure instead of a local CardConte
   assert.match(homesBoard, /<MobileDisclosure>/);
 });
 
-test('Home Detail reuses the same shared disclosure for a long commute list, not a parallel implementation', () => {
-  assert.match(homeDetail, /import MobileDisclosure from '@\/components\/MobileDisclosure'/);
-  assert.match(homeDetail, /commuteDestinations\.length > 2 \?[\s\S]{0,120}<MobileDisclosure/);
+test('Home Detail delegates commute selection and truthful map fallback to its location workspace', () => {
+  assert.match(homeDetail, /import HomeDetailLocation from '@\/components\/HomeDetailLocation'/);
+  assert.match(homeDetail, /<HomeDetailLocation home=\{home\} destinations=\{commuteDestinations\} getState=\{getState\}/);
 });
 
 /* -------------------------------- Home Detail hero -------------------------------- */

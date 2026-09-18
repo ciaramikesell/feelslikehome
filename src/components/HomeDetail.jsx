@@ -7,7 +7,7 @@ import HomeModal from '@/components/HomeModal';
 import PostTourModal from '@/components/PostTourModal';
 import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
 import RealtorContributions from '@/components/RealtorContributions';
-import MobileDisclosure from '@/components/MobileDisclosure';
+import HomeDetailLocation from '@/components/HomeDetailLocation';
 import { criterionDisplayLabel, isArchivedStatus, TOUR_RATING_KEY } from '@/lib/constants';
 import { computeMatch, matchFactualSummary, parseNum } from '@/lib/matching';
 import { evaluateCommute } from '@/lib/commute';
@@ -146,7 +146,7 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
   return <main className="hh-home-detail" ref={setRef}>
     <button type="button" className="hh-detail-back" onClick={back}><ArrowLeft size={16} aria-hidden="true" /> Back to homes</button>
     <header className="hh-detail-hero">
-      <div className="hh-detail-photo">{home.photoUrl ? <img src={home.photoUrl} alt={`${identity.accessible} ${vocabulary.singularLower} photo`} /> : <HomeIcon size={50} />}<span className="hh-detail-photo-status">{home.status}</span></div>
+      <div className="hh-detail-photo">{home.photoUrl ? <img src={home.photoUrl} alt={`${identity.accessible} ${vocabulary.singularLower} photo`} /> : <HomeIcon size={50} />}</div>
       <div className="hh-detail-identity">
         <div className="hh-detail-status-chips"><span>{home.status}</span>{home.isFavorite && <span className="favorite"><Heart size={12} fill="currentColor" aria-hidden="true" /> Favorite</span>}</div>
         <h1 className="hh-serif">{identity.primary}</h1>{identity.option && <p className="hh-detail-option">{identity.option}</p>}{identity.supporting && <p className="hh-detail-locality">{identity.supporting}</p>}
@@ -168,33 +168,12 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
       </div>
     </header>
 
-    {facts.length > 0 && <Section eyebrow="Property facts" title="The home at a glance" className="hh-detail-section-wide hh-detail-surface"><dl className="hh-detail-facts">{facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>{home.conditionNotes && <p className="hh-detail-condition">{home.conditionNotes}</p>}</Section>}
+    {facts.length > 0 && <Section eyebrow="The home" title="Property Facts" className="hh-detail-section-wide hh-detail-surface"><dl className="hh-detail-facts">{facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>{home.conditionNotes && <p className="hh-detail-condition">{home.conditionNotes}</p>}</Section>}
 
     {commuteDestinations.length > 0 && (() => {
-      const commutesGrid = (
-        <div className="hh-detail-commutes">
-          {commuteDestinations.map((destination) => {
-            const state = getState(destination);
-            const resolved = state.status === 'ok';
-            return (
-              <div className={resolved ? 'resolved' : 'unresolved'} key={destination.id}>
-                <span>{destination.label}</span>
-                <strong>{resolved ? `${state.minutes} min drive` : state.status === 'loading' || state.status === 'idle' ? 'Calculating…' : 'Not available yet'}</strong>
-              </div>
-            );
-          })}
-        </div>
-      );
-      // A couple of commutes read fine at a glance; a longer list is exactly
-      // the kind of supplementary reference data worth collapsing on a phone
-      // (see MobileDisclosure) — desktop always shows it in full either way.
       return (
-        <Section eyebrow="Location & commute" title="Your everyday routes" className="hh-detail-section-wide hh-detail-surface">
-          {commuteDestinations.length > 2 ? (
-            <MobileDisclosure label={`${commuteDestinations.length} commutes`} className="hh-detail-commutes-disclosure">
-              {commutesGrid}
-            </MobileDisclosure>
-          ) : commutesGrid}
+        <Section eyebrow="Places that matter" title="Location & Commute" className="hh-detail-section-wide hh-detail-surface">
+          <HomeDetailLocation home={home} destinations={commuteDestinations} getState={getState} />
         </Section>
       );
     })()}
@@ -208,12 +187,12 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
         <button className="hh-btn hh-btn-ghost" aria-pressed={home.isFavorite} onClick={() => savePersonal(toggleFavorite(home)).catch(() => {})}><Heart size={15} aria-hidden="true" fill={home.isFavorite ? 'currentColor' : 'none'} />{home.isFavorite ? 'Favorited' : 'Favorite'}</button>
         <button className="hh-detail-archive-action" onClick={() => isArchivedStatus(home.status) ? savePersonal(restoreHome(home)).catch(() => {}) : setArchiveTarget(home)}>{isArchivedStatus(home.status) ? <><RotateCcw size={14} aria-hidden="true" /> Restore</> : 'Archive'}</button>
       </div>}
-      {home.coBuyerWantsToTour && <p className="hh-detail-context">Your collaborator still wants to tour this home.</p>}
+      {home.coBuyerWantsToTour && <p className="hh-detail-context">Your co-buyer still wants to tour this home.</p>}
       {saveError && <p className="hh-save-error" role="alert">{saveError}{retryPersonal.current && <> <button type="button" onClick={() => savePersonal(retryPersonal.current).catch(() => {})}>Retry</button></>}</p>}
       {hasToured(home) ? <div className="hh-detail-evaluation">{overall > 0 && <div className="hh-detail-overall"><h3>Overall feeling</h3><Stars value={overall} /></div>}{experiential.length > 0 && <div className="hh-detail-reactions">{likedExperiences.length > 0 && <div><h3 className="liked">Liked</h3>{likedExperiences.map((item) => <p key={item.key}>{criterionDisplayLabel(item.key.split(':')[0], item.label)}</p>)}</div>}{dislikedExperiences.length > 0 && <div><h3 className="disliked">Didn't like</h3>{dislikedExperiences.map((item) => <p key={item.key}>{criterionDisplayLabel(item.key.split(':')[0], item.label)}</p>)}</div>}</div>}<div className="hh-detail-after-tour"><strong>After your tour</strong><p>{hasPostTourFeedback ? 'Keep your take current as this home stays in consideration.' : 'Come back to record how the home actually felt.'}</p>{!readOnly && <button className="hh-btn hh-btn-ghost hh-detail-take-action" onClick={() => setReflecting(true)}>{hasPostTourFeedback ? 'Edit your take' : 'Record your take'}</button>}</div></div> : <div className="hh-detail-after-tour"><strong>After your tour</strong><p>Come back after seeing this home to record how it actually felt.</p>{!readOnly && <button className="hh-btn hh-btn-ghost hh-detail-take-action" onClick={() => setReflecting(true)}>Record your take</button>}</div>}
     </Section>
 
-    {hasCoBuyerPerspective && <Section eyebrow="Collaborator perspective" title="How your collaborator sees this home"><div className="hh-detail-cobuyer">{coBuyerPerspective.match?.pct != null && <div><strong>{coBuyerPerspective.match.pct}% Match</strong><small>Based on their priorities.</small></div>}{coBuyerPerspective.overallFeeling > 0 && <span><Stars value={coBuyerPerspective.overallFeeling} /> Overall feeling</span>}</div>{coBuyerPerspective.differentTakes?.length > 0 && <div className="hh-detail-differences"><h3>Different takes</h3>{coBuyerPerspective.differentTakes.map((take) => { const category = take.key?.split(':')[0]; return <p key={take.key}><strong>{criterionDisplayLabel(category, take.label)}</strong><span>{take.youLiked ? 'You liked it' : "You didn't like it"} · {take.coBuyerLiked ? 'Collaborator did' : "Collaborator didn't"}</span></p>; })}</div>}</Section>}
+    {hasCoBuyerPerspective && <Section eyebrow="Co-buyer perspective" title="How your co-buyer sees this home"><div className="hh-detail-cobuyer">{coBuyerPerspective.match?.pct != null && <div><strong>{coBuyerPerspective.match.pct}% Match</strong><small>Based on their priorities.</small></div>}{coBuyerPerspective.overallFeeling > 0 && <span><Stars value={coBuyerPerspective.overallFeeling} /> Overall feeling</span>}</div>{coBuyerPerspective.differentTakes?.length > 0 && <div className="hh-detail-differences"><h3>Different takes</h3>{coBuyerPerspective.differentTakes.map((take) => { const category = take.key?.split(':')[0]; return <p key={take.key}><strong>{criterionDisplayLabel(category, take.label)}</strong><span>{take.youLiked ? 'You liked it' : "You didn't like it"} · {take.coBuyerLiked ? 'Co-buyer did' : "Co-buyer didn't"}</span></p>; })}</div>}</Section>}
 
     {/* Professional context and buyer/search context are two different kinds of
         human input — never merged into one data model or card — but on wide
