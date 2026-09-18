@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ChevronRight, Plus } from 'lucide-react';
-import { DEFAULT_SELECTED_TIER, TIER_DESCRIPTIONS, TIER_META, TIER_ORDER, criterionDisplayLabel, getItemlistCategories, effectiveTier, isSchoolsSuppressed, isExperientialCriterion } from '@/lib/constants';
+import { DEFAULT_SELECTED_TIER, TIER_DESCRIPTIONS, TIER_META, TIER_ORDER, criterionDisplayLabel, getItemlistCategories, effectiveTier, isSchoolsSuppressed, isExperientialCriterion, isCriterionApplicable } from '@/lib/constants';
 
 // Presentation-only weight callout for My Search's desktop tier heading
 // ("Must have (highest weight)") — TIER_META.weight itself (4/2/1) is the
@@ -39,7 +39,7 @@ function TierItemsList({ tier, items, activeItem, setActiveItem, setTier, priori
               onDragEnd={onItemDragEnd}
             >
               <span>{criterionDisplayLabel(item.categoryKey, item.label)}</span>
-              {isExperientialCriterion(item.categoryKey, item.label) && <sup className="hh-experiential-marker" title="Best answered after you tour" aria-label="Best answered after you tour">*</sup>}
+              {isExperientialCriterion(item.categoryKey, item.label) && <sup className="hh-experiential-marker" title="You'll evaluate this after touring the home" aria-label="After tour">◷</sup>}
               <small className="hh-priority-change">Change</small>
             </button>
             {open && (
@@ -158,7 +158,8 @@ export default function PriorityBoard({ priorities, patch, onboarding = false })
     <div>
       {selected.length || choicesOpen ? (
         <>
-          {hasExperiential && <div className="hh-priority-legend"><span aria-hidden="true">*</span> Best answered after you tour</div>}
+          <p className="hh-priority-explainer">Some preferences can be matched from listing details. Others are yours to judge after a tour.</p>
+          {hasExperiential && <div className="hh-priority-legend"><span aria-hidden="true">◷</span> After tour</div>}
           {mobileCompact ? (
             <div className="hh-tier-summary-list" aria-label="Selected preferences by importance">
               {buckets.map(({ tier, items }) => (
@@ -242,13 +243,15 @@ export default function PriorityBoard({ priorities, patch, onboarding = false })
               // suggestion directly discoverable without changing its stored label.
               const catalogSuggestions = [...suggestions, ...(def.specificItems || [])]
                 .filter((item) => !customLabels.has(item.label));
+              const propertyTypes = priorities.preferredPropertyTypes?.values || [];
               const tray = [...unselected, ...catalogSuggestions]
+                .filter((item) => isCriterionApplicable(def.key, item.label, propertyTypes))
                 .filter((item, index, items) => tierOf(def, item.label) === 'dontcare' && items.findIndex((candidate) => candidate.label === item.label) === index);
               return (
                 <section key={def.key}>
                   <h4 className="hh-suggestion-heading">{def.title}</h4>
                   <div className="hh-suggestion-tray">
-                    {tray.map((item) => <button key={item.label} type="button" draggable className="hh-chip" onClick={() => selectItem(def, item)} onDragStart={(event) => { setDragged({ type: 'available', def, item }); event.dataTransfer.effectAllowed = 'copy'; event.dataTransfer.setData('text/plain', `${def.key}:${item.label}`); }} onDragEnd={() => { setDragged(null); setDropTier(null); }}>{criterionDisplayLabel(def.key, item.label)}</button>)}
+                    {tray.map((item) => <button key={item.label} type="button" draggable className="hh-chip" onClick={() => selectItem(def, item)} onDragStart={(event) => { setDragged({ type: 'available', def, item }); event.dataTransfer.effectAllowed = 'copy'; event.dataTransfer.setData('text/plain', `${def.key}:${item.label}`); }} onDragEnd={() => { setDragged(null); setDropTier(null); }}>{criterionDisplayLabel(def.key, item.label)}{isExperientialCriterion(def.key, item.label) && <span className="hh-picker-tour-mark" aria-label="Evaluate after tour" title="You'll evaluate this after touring the home"> ◷</span>}</button>)}
                   </div>
                 </section>
               );

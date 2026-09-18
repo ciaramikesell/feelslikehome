@@ -93,10 +93,10 @@ test('the hero factual summary only renders when a real Match percentage exists'
   assert.match(detail, /\{factualSummary && \(factualSummary\.mustClause \|\| factualSummary\.importantSentence\) && \(/);
 });
 
-test('regression guard: missing/unknown criterion semantics in the full "How it fits your search" breakdown are untouched', () => {
+test('full Match breakdown distinguishes missing, unknown, and neutral tour evaluations', () => {
   assert.match(detail, /!item\.evaluated \? \(item\.objective \? 'Needs more information' : 'Evaluate after tour'\)/);
-  assert.match(detail, /const stateLabel = !item\.evaluated \? 'Unknown' : item\.met \? 'Satisfied' : 'Missed';/);
-  assert.match(detail, /className=\{`hh-detail-criterion \$\{!item\.evaluated \? 'unknown' : item\.met \? 'met' : 'missed'\}`\}/);
+  assert.match(detail, /const stateLabel = !item\.evaluated \? 'Unknown' : neutral \? 'Neutral' : item\.met \? 'Satisfied' : 'Missed';/);
+  assert.match(detail, /neutral \? 'neutral' : item\.met \? 'met' : 'missed'/);
   assert.match(detail, /<span className="sr-only">\{stateLabel\}<\/span>/);
 });
 

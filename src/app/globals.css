@@ -1457,3 +1457,18 @@ details[open] > summary .hh-accordion-chevron, .hh-more-home-details:has(.hh-mor
   .hh-detail-match-card { transition: none; }
   html:focus-within { scroll-behavior: auto; }
 }
+
+/* Tour-evaluated criteria foundation */
+.hh-priority-explainer { margin: 0 0 10px; color: var(--ink-soft); font-size: 12.5px; line-height: 1.45; }
+.hh-picker-tour-mark, .hh-experiential-marker { color: var(--brick); font-weight: 800; }
+.hh-tour-response-group { border: 0; border-bottom: 1px solid var(--line); margin: 0; padding: 12px 0; min-width: 0; }
+.hh-tour-response-group legend { color: var(--ink); font-size: 13.5px; font-weight: 700; padding: 0; margin-bottom: 8px; }
+.hh-tour-response-group [role="radiogroup"] { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.hh-tour-response-group label { position: relative; display: flex; min-height: 44px; align-items: center; justify-content: center; padding: 8px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; text-align: center; font-size: 12px; line-height: 1.25; }
+.hh-tour-response-group label.is-selected { border-color: var(--brick); background: rgba(193,89,47,.08); color: var(--brick); font-weight: 700; }
+.hh-tour-response-group input { position: absolute; opacity: 0; }
+.hh-tour-response-group label:focus-within { outline: 3px solid color-mix(in srgb, var(--brick) 35%, transparent); outline-offset: 2px; }
+.hh-clear-tour-response { margin-top: 7px; padding: 4px 0; border: 0; background: none; color: var(--ink-soft); text-decoration: underline; cursor: pointer; }
+.hh-detail-criterion.neutral b, .hh-must-summary .is-neutral { color: var(--ochre, #8b6d34); }
+@media (max-width: 560px) { .hh-tour-response-group [role="radiogroup"] { grid-template-columns: 1fr; } }
+@media (prefers-reduced-motion: reduce) { .hh-tour-response-group label { transition: none; } }

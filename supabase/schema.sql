@@ -1021,6 +1021,13 @@ begin
         v_raw := coalesce(v_state.ratings, v_legacy_ratings) -> v_key;
         if v_raw is not null and jsonb_typeof(v_raw) = 'number' and (v_raw #>> '{}')::numeric > 0 then
           v_score := (v_raw #>> '{}')::numeric / 5; v_evaluated := v_evaluated + 1;
+        elsif v_raw = '"positive"'::jsonb then
+          v_score := 1; v_evaluated := v_evaluated + 1;
+        elsif v_raw = '"negative"'::jsonb then
+          v_score := 0; v_evaluated := v_evaluated + 1;
+        elsif v_raw = '"neutral"'::jsonb then
+          -- Evaluated, but deliberately excluded from the V1 score denominator.
+          v_evaluated := v_evaluated + 1; continue;
         elsif v_category = 'exterior' and v_label = 'Garage' and coalesce(v_home.garage_spaces, '') <> '' then
           v_score := (nullif(regexp_replace(v_home.garage_spaces, '[^0-9.]', '', 'g'), '')::numeric > 0)::integer; v_evaluated := v_evaluated + 1;
         else
@@ -1892,6 +1899,13 @@ begin
         v_raw := coalesce(v_state.ratings, v_legacy_ratings) -> v_key;
         if v_raw is not null and jsonb_typeof(v_raw) = 'number' and (v_raw #>> '{}')::numeric > 0 then
           v_score := (v_raw #>> '{}')::numeric / 5; v_evaluated := v_evaluated + 1;
+        elsif v_raw = '"positive"'::jsonb then
+          v_score := 1; v_evaluated := v_evaluated + 1;
+        elsif v_raw = '"negative"'::jsonb then
+          v_score := 0; v_evaluated := v_evaluated + 1;
+        elsif v_raw = '"neutral"'::jsonb then
+          -- Evaluated, but deliberately excluded from the V1 score denominator.
+          v_evaluated := v_evaluated + 1; continue;
         elsif v_category = 'exterior' and v_label = 'Garage' and coalesce(v_home.garage_spaces, '') <> '' then
           v_score := (nullif(regexp_replace(v_home.garage_spaces, '[^0-9.]', '', 'g'), '')::numeric > 0)::integer; v_evaluated := v_evaluated + 1;
         else

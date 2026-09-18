@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { X, Heart, CircleDashed, XCircle } from 'lucide-react';
 import { StarInput } from '@/components/ui';
-import { TOUR_RATING_KEY, criterionDisplayLabel } from '@/lib/constants';
-import { selectedSubjectiveCriteria, curatedAdditionalSubjectiveCriteria } from '@/lib/matching';
+import { TOUR_RATING_KEY, criterionDisplayLabel, TOUR_RESPONSE, tourResponseOptions } from '@/lib/constants';
+import { selectedSubjectiveCriteria } from '@/lib/matching';
 import { postTourVerdict } from '@/lib/lifecycle';
 
 // A small set of things people commonly notice on a tour that DON'T correspond to a
@@ -46,48 +46,23 @@ function addToList(text, word) {
   return [...items, word].join(', ');
 }
 
-// Liked/Didn't Like for a specific, exactly-identified criterion (never a loosely-worded
-// guess) — writes the SAME ratings[key] storage Match 2.0 already reads, using sentinel
-// values (5=Liked, 2=Didn't like) that land on the correct side of the existing
-// met = value >= 3 threshold. This is why no change to matching.js was needed: Match
-// already treats a coarse 5/2 exactly the same way it always treated a fine-grained
-// star rating. A historical 1-5 star value from before this UI existed still displays
-// correctly here (>=3 shows as Liked, <3 as Didn't Like) WITHOUT being rewritten unless
-// the user actually taps something — old data is read, never silently reinterpreted in
-// storage.
-function LikeDislikeRow({ label, must, value, onChange }) {
-  const liked = value >= 3;
-  const disliked = value > 0 && value < 3;
+// A criterion-specific, semantic response group. Stable sentiment values are stored;
+// human labels remain centralized in constants and can evolve independently.
+function TourResponseRow({ categoryKey, criterionLabel, must, value, onChange }) {
+  const label = criterionDisplayLabel(categoryKey, criterionLabel);
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 34, gap: 10 }}>
-      <span style={{ fontSize: 13.5, color: must ? 'var(--brick)' : 'var(--ink)', fontWeight: must ? 700 : 400, flex: 1 }}>{label}</span>
-      <div style={{ display: 'flex', gap: 5, flexShrink: 0 }}>
-        <button
-          type="button"
-          aria-pressed={liked}
-          onClick={() => onChange(liked ? 0 : 5)}
-          className="hh-chip"
-          style={{
-            fontSize: 11.5, padding: '4px 10px', borderColor: 'var(--moss)',
-            background: liked ? 'var(--moss)' : 'transparent', color: liked ? '#fff' : 'var(--moss)',
-          }}
-        >
-          Liked
-        </button>
-        <button
-          type="button"
-          aria-pressed={disliked}
-          onClick={() => onChange(disliked ? 0 : 2)}
-          className="hh-chip"
-          style={{
-            fontSize: 11.5, padding: '4px 10px', borderColor: 'var(--brick)',
-            background: disliked ? 'var(--brick)' : 'transparent', color: disliked ? '#fff' : 'var(--brick)',
-          }}
-        >
-          Didn't like
-        </button>
+    <fieldset className="hh-tour-response-group">
+      <legend>{label}{must ? ' — Must Have' : ''}</legend>
+      <div role="radiogroup" aria-label={`${label} tour evaluation`}>
+        {tourResponseOptions(categoryKey, criterionLabel).map((option) => (
+          <label key={option.value} className={value === option.value ? 'is-selected' : ''}>
+            <input type="radio" name={`tour-${categoryKey}-${criterionLabel}`} value={option.value} checked={value === option.value} onChange={() => onChange(option.value)} />
+            <span>{option.label}</span>
+          </label>
+        ))}
       </div>
-    </div>
+      {value && value !== TOUR_RESPONSE.NOT_EVALUATED && <button type="button" className="hh-clear-tour-response" onClick={() => onChange(TOUR_RESPONSE.NOT_EVALUATED)}>Clear answer</button>}
+    </fieldset>
   );
 }
 
@@ -163,13 +138,12 @@ export default function PostTourModal({ home, priorities, isCollaborative = fals
   const [notes, setNotes] = useState(home.notes || '');
 
   const subjectiveItems = selectedSubjectiveCriteria(priorities);
-  const additionalItems = curatedAdditionalSubjectiveCriteria(priorities);
 
   // Open by default only if there's already something back there — editing an
   // existing tour reflection shouldn't feel like your detailed answers vanished.
   const [detailsOpen, setDetailsOpen] = useState(() => {
-    const anyRated = [...subjectiveItems, ...additionalItems]
-      .some((item) => (home.ratings?.[`${item.categoryKey}:${item.label}`] || 0) > 0);
+    const anyRated = subjectiveItems
+      .some((item) => ![undefined, 0, TOUR_RESPONSE.NOT_EVALUATED].includes(home.ratings?.[`${item.categoryKey}:${item.label}`]));
     return anyRated || !!home.pros || !!home.cons;
   });
 
@@ -255,24 +229,12 @@ export default function PostTourModal({ home, priorities, isCollaborative = fals
             <div style={{ marginTop: 14 }}>
               {subjectiveItems.length > 0 && (
                 <div style={{ marginBottom: 18 }}>
-                  <label className="hh-label" style={{ marginBottom: 6 }}>You said these matter to you</label>
+                  <div className="hh-label" style={{ marginBottom: 6 }}>How did this home feel in person?</div>
                   <div style={{ display: 'grid', gap: 4 }}>
                     {subjectiveItems.map((item) => {
                       const key = `${item.categoryKey}:${item.label}`;
                       const must = priorities[item.categoryKey]?.tiers?.[item.label] === 'must';
-                      return <LikeDislikeRow key={key} label={criterionDisplayLabel(item.categoryKey, item.label)} must={must} value={ratings[key] || 0} onChange={(v) => setRating(key, v)} />;
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {additionalItems.length > 0 && (
-                <div style={{ marginBottom: 18 }}>
-                  <label className="hh-label" style={{ marginBottom: 6 }}>Anything else stand out?</label>
-                  <div style={{ display: 'grid', gap: 4 }}>
-                    {additionalItems.map((item) => {
-                      const key = `${item.categoryKey}:${item.label}`;
-                      return <LikeDislikeRow key={key} label={criterionDisplayLabel(item.categoryKey, item.label)} value={ratings[key] || 0} onChange={(v) => setRating(key, v)} />;
+                      return <TourResponseRow key={key} categoryKey={item.categoryKey} criterionLabel={item.label} must={must} value={ratings[key] || TOUR_RESPONSE.NOT_EVALUATED} onChange={(v) => setRating(key, v)} />;
                     })}
                   </div>
                 </div>
