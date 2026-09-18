@@ -9,6 +9,9 @@ const layout = read('src/app/(app)/layout.js');
 const collaboration = read('src/lib/supabase/collaboration.js');
 const migration = read('supabase/migrations/2026-09-18-realtor-workspace-draft-select-privilege.sql');
 const detail = read('src/app/(app)/people/[searchId]/page.js');
+const shell = read('src/components/AppShell.jsx');
+const peopleError = read('src/app/(app)/people/error.js');
+const detailError = read('src/app/(app)/people/[searchId]/error.js');
 
 async function executeWorkspace({ relationships = [], drafts = [] } = {}) {
   const calls = [];
@@ -53,6 +56,10 @@ test('root loader is distinct from fail-closed client detail loading', () => {
   assert.match(detail, /getRealtorSearchContext/);
   assert.match(detail, /if \(!context\) notFound\(\)/);
   assert.doesNotMatch(page, /getRealtorSearchContext/);
+  assert.match(detailError, /We couldn’t load this client search/);
+  assert.match(detailError, /Back to People I’m Helping/);
+  assert.doesNotMatch(peopleError, /this client search/);
+  assert.match(peopleError, /We couldn’t load People I’m Helping/);
 });
 
 test('draft ACL repair grants only the projected columns and retains owner RLS', () => {
@@ -69,4 +76,8 @@ test('buyer and dual-role routing remain context-derived', () => {
   assert.match(layout, /workspace="realtor"/);
   assert.match(layout, /const \{ search \} = await resolveActiveSearch/);
   assert.match(layout, /activeSearchId=\{search\.id\}/);
+  assert.match(shell, /workspace = 'buyer'/);
+  assert.match(shell, /!isRealtorWorkspace && <nav className="hh-tabs"/);
+  assert.match(shell, /!isRealtorWorkspace && <MobileNav/);
+  assert.match(shell, /\(isRealtorWorkspace \|\| hasRealtorRelationships\).*People I’m Helping/);
 });
