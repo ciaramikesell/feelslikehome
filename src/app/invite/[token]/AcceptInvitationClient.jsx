@@ -27,6 +27,11 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
   const [reason, setReason] = useState(initialPreview.reason || '');
   const isRealtorInvite = initialPreview.relationship_type === 'realtor';
   const isBuyerInvite = initialPreview.invitation_direction === 'realtor_to_buyer';
+  // A realtor_to_buyer invite only needs the confirm/priorities-review step
+  // when it carries a Realtor-authored draft (prospective_searches) to
+  // review. A direct connection request to an existing buyer has no draft —
+  // accepting it only grants access to the search the buyer already has.
+  const requiresConfirmation = isBuyerInvite && Boolean(initialPreview.requires_confirmation);
   const inviterName = initialPreview.inviter_display_name || 'Your Realtor';
 
   const signOut = async () => {
@@ -36,7 +41,7 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
   };
 
   const accept = async () => {
-    if (isBuyerInvite) {
+    if (requiresConfirmation) {
       router.push(`/invite/${token}/confirm`);
       return;
     }
@@ -76,19 +81,23 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
 
         {state === 'valid' && (
           <>
-            <h1 className="hh-serif" style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', margin: '0 0 8px' }}>{isBuyerInvite ? `${inviterName} invited you to Feels Like Home` : isRealtorInvite ? "You've been invited as a Realtor" : "You've been invited to search together"}</h1>
+            <h1 className="hh-serif" style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', margin: '0 0 8px' }}>{!isBuyerInvite ? (isRealtorInvite ? "You've been invited as a Realtor" : "You've been invited to search together") : requiresConfirmation ? `${inviterName} invited you to Feels Like Home` : `${inviterName} wants to connect as your Realtor`}</h1>
             <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', lineHeight: 1.55, margin: '0 0 20px' }}>
-              {isBuyerInvite ? (
+              {!isBuyerInvite ? (
+                isRealtorInvite ? (
+                  <>You&apos;ll be able to understand this buyer&apos;s search, homes, priorities, and opinions. You can see their decision, but you cannot make or change it for them.</>
+                ) : (
+                  <>You&apos;ll share the same collection of homes and be able to see each other&apos;s search preferences and opinions. Your ratings and preferences stay under your control—no one else can change them for you.</>
+                )
+              ) : requiresConfirmation ? (
                 <>Keep the homes you&apos;re considering in one place, see how each one matches what matters to you, and make it easier for {inviterName} to understand what you&apos;re looking for. This remains your search.</>
-              ) : isRealtorInvite ? (
-                <>You&apos;ll be able to understand this buyer&apos;s search, homes, priorities, and opinions. You can see their decision, but you cannot make or change it for them.</>
               ) : (
-                <>You&apos;ll share the same collection of homes and be able to see each other&apos;s search preferences and opinions. Your ratings and preferences stay under your control—no one else can change them for you.</>
+                <>{inviterName} will be able to see your search, priorities, and homes so they can help — nothing changes about your search itself, and you can remove them anytime.</>
               )}
             </p>
             <p className="hh-collaboration-consent">{isBuyerInvite ? `${inviterName} will only see your search after you accept. You own the search and every decision in it.` : 'This includes priorities, Match, Favorites, Want to Tour choices, commute destinations, notes, Overall Feeling, and post-tour ratings. Only participants in this search can see its activity.'}</p>
             {isBuyerInvite ? (
-              <button type="button" className="hh-btn" style={{ width: '100%', justifyContent: 'center' }} onClick={accept}>Review my search</button>
+              <button type="button" className="hh-btn" style={{ width: '100%', justifyContent: 'center' }} onClick={accept}>{requiresConfirmation ? 'Review my search' : 'Approve access'}</button>
             ) : isRealtorInvite ? (
               <button type="button" className="hh-btn" style={{ width: '100%', justifyContent: 'center' }} onClick={accept}>Join as Realtor</button>
             ) : (

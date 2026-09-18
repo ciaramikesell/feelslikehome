@@ -9,12 +9,14 @@ import { createClient } from '@/lib/supabase/client';
 export default function AuthForm({ initialMode = 'sign-in', redirectTo = '/', isRealtorEntry = false, inline = false, onModeChange }) {
   const router = useRouter();
   const [mode, setMode] = useState(initialMode);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [status, setStatus] = useState(null);
   const [error, setError] = useState('');
-  const entryDestination = redirectTo === '/' && isRealtorEntry ? '/people' : redirectTo;
+  const entryDestination = redirectTo === '/' && isRealtorEntry ? '/realtor' : redirectTo;
 
   const switchMode = (nextMode) => {
     setMode(nextMode);
@@ -26,6 +28,10 @@ export default function AuthForm({ initialMode = 'sign-in', redirectTo = '/', is
   const submit = async (event) => {
     event.preventDefault();
     setError('');
+    if (mode === 'sign-up' && (!firstName.trim() || !lastName.trim())) {
+      setError('Please enter your first and last name.');
+      return;
+    }
     if (!email.trim() || !password.trim() || (mode === 'sign-up' && !confirm.trim())) {
       setError(mode === 'sign-in' ? 'Please enter both your email and password.' : 'Please fill in every field.');
       return;
@@ -53,7 +59,9 @@ export default function AuthForm({ initialMode = 'sign-in', redirectTo = '/', is
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(entryDestination)}`,
         // Entry context is deliberately non-authorizing. Access remains relationship-scoped by RLS.
-        data: isRealtorEntry ? { account_entry_intent: 'realtor' } : undefined,
+        // first_name/last_name seed profiles.first_name/last_name via handle_new_user — the
+        // canonical name record — not a second, unsynchronized source of truth.
+        data: { first_name: firstName.trim(), last_name: lastName.trim(), ...(isRealtorEntry ? { account_entry_intent: 'realtor' } : {}) },
       },
     });
     if (signUpError) {
@@ -83,7 +91,11 @@ export default function AuthForm({ initialMode = 'sign-in', redirectTo = '/', is
         <h2 className="afh-serif">{signIn ? (inline && !isRealtorEntry ? 'Welcome back.' : 'Sign in') : isRealtorEntry ? 'Create your Realtor account' : 'Start your home search'}</h2>
         <p className="afh-form-intro">{signIn ? (inline && isRealtorEntry ? 'Welcome back.' : 'Pick up where you left off.') : isRealtorEntry && inline ? 'Help buyers organize what matters, understand their options, and make clearer decisions together.' : isRealtorEntry ? 'Set up a client search or join a buyer who invited you. Access to every search is connected to that client relationship—not a global account role.' : 'Create your account to start comparing homes.'}</p>
       </div>
-      <div><label className="afh-label" htmlFor={`${inline ? 'popover-' : ''}${mode}-email`}>Email</label><input autoFocus={inline} className="afh-input" id={`${inline ? 'popover-' : ''}${mode}-email`} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" /></div>
+      {!signIn && <div className="afh-name-row">
+        <div><label className="afh-label" htmlFor={`${inline ? 'popover-' : ''}${mode}-first-name`}>First name</label><input autoFocus={inline} className="afh-input" id={`${inline ? 'popover-' : ''}${mode}-first-name`} type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Ciara" autoComplete="given-name" /></div>
+        <div><label className="afh-label" htmlFor={`${inline ? 'popover-' : ''}${mode}-last-name`}>Last name</label><input className="afh-input" id={`${inline ? 'popover-' : ''}${mode}-last-name`} type="text" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Cannon" autoComplete="family-name" /></div>
+      </div>}
+      <div><label className="afh-label" htmlFor={`${inline ? 'popover-' : ''}${mode}-email`}>Email</label><input autoFocus={inline && signIn} className="afh-input" id={`${inline ? 'popover-' : ''}${mode}-email`} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" autoComplete="email" /></div>
       <PasswordField id={`${inline ? 'popover-' : ''}${mode}-password`} label="Password" value={password} onChange={setPassword} placeholder={signIn ? '••••••••' : 'Create a password'} autoComplete={signIn ? 'current-password' : 'new-password'} />
       {signIn ? <div className="afh-forgot"><Link href="/auth/forgot-password" className="afh-link">Forgot password?</Link></div> : <><p className="afh-password-hint">At least 6 characters.</p><PasswordField id={`${inline ? 'popover-' : ''}sign-up-confirm`} label="Confirm password" value={confirm} onChange={setConfirm} placeholder="Re-enter your password" autoComplete="new-password" /></>}
       {error && <div aria-live="polite"><Banner kind="error">{error}</Banner></div>}

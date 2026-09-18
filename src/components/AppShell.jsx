@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Home as HomeIcon, Columns, HelpCircle, Footprints, SlidersHorizontal, Map, Users, Search, Plus, Heart, DoorOpen, Sparkles, Scale } from 'lucide-react';
+import { LogOut, Home as HomeIcon, Columns, HelpCircle, Footprints, SlidersHorizontal, Map, Users, Search, Plus, Heart, DoorOpen, Sparkles, Scale, Compass, X } from 'lucide-react';
 import { BrandMark, Wordmark } from '@/components/ui';
 import { PRIMARY_TABS, MOBILE_PRIMARY_TABS } from '@/lib/constants';
 import { homeVocabulary } from '@/lib/homePresentation';
 import { createClient } from '@/lib/supabase/client';
+import { updateProfileName } from '@/lib/supabase/data';
 import { isNativeApp } from '@/lib/platform';
 import SearchSwitcher from '@/components/SearchSwitcher';
 import BetaFeedback from '@/components/BetaFeedback';
@@ -166,7 +167,66 @@ function HowToUseModal({ onClose }) {
   );
 }
 
-export default function AppShell({ children, userEmail, userId, accessibleSearches, activeSearchId, priorities, searchIntent, isCollaborative = false, appVersion, workspace = 'buyer' }) {
+// Existing beta accounts predate name capture at signup (see the account
+// name-capture migration) and must keep working with no forced re-auth and
+// no manual backfill — so this is a dismissible, non-blocking nudge, not a
+// gate. Same localStorage-dismiss mechanism as the mobile tour/install
+// banner: per-device, no schema change, no risk of a redirect loop.
+const NAME_PROMPT_DISMISS_KEY = 'flh-name-prompt-dismissed';
+
+function NameCompletionPrompt({ userId, onSaved }) {
+  const [dismissed, setDismissed] = useState(true);
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    try { setDismissed(localStorage.getItem(NAME_PROMPT_DISMISS_KEY) === '1'); } catch { setDismissed(false); }
+  }, []);
+
+  const dismiss = () => {
+    setDismissed(true);
+    try { localStorage.setItem(NAME_PROMPT_DISMISS_KEY, '1'); } catch { /* best-effort; never blocks dismissal */ }
+  };
+
+  const save = async (event) => {
+    event.preventDefault();
+    if (!firstName.trim() || !lastName.trim()) { setError('Please enter your first and last name.'); return; }
+    setBusy(true); setError('');
+    try {
+      await updateProfileName(createClient(), userId, firstName, lastName);
+      onSaved?.();
+      dismiss();
+    } catch {
+      setError("We couldn't save that. Please try again.");
+      setBusy(false);
+    }
+  };
+
+  if (dismissed) return null;
+  return (
+    <div className="hh-name-prompt" role="region" aria-label="Add your name">
+      <form onSubmit={save}>
+        <div>
+          <strong>Add your name</strong>
+          <p>Helps the people you&apos;re searching or working with know who they&apos;re talking to.</p>
+        </div>
+        <div className="hh-name-prompt-fields">
+          <input className="afh-input hh-name-prompt-input" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First name" autoComplete="given-name" aria-label="First name" />
+          <input className="afh-input hh-name-prompt-input" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last name" autoComplete="family-name" aria-label="Last name" />
+          <button type="submit" className="hh-btn" disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>
+        </div>
+        {error && <p className="hh-error-text" role="alert">{error}</p>}
+      </form>
+      <button type="button" className="hh-name-prompt-dismiss" onClick={dismiss} aria-label="Dismiss">
+        <X size={15} />
+      </button>
+    </div>
+  );
+}
+
+export default function AppShell({ children, userEmail, userId, firstName = null, accessibleSearches, activeSearchId, priorities, searchIntent, isCollaborative = false, appVersion, workspace = 'buyer' }) {
   const pathname = usePathname();
   const router = useRouter();
   const [howToOpen, setHowToOpen] = useState(false);
@@ -237,6 +297,7 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
             {!isRealtorWorkspace && accessibleSearches && accessibleSearches.length > 1 && (
               <SearchSwitcher userId={userId} searches={accessibleSearches} activeSearchId={activeSearchId} />
             )}
+            {(isRealtorWorkspace || hasRealtorRelationships) && <Link href="/realtor" className={`hh-shell-action hh-people-entry ${pathname === '/realtor' ? 'active' : ''}`}><Compass size={14} /> Realtor Home</Link>}
             {(isRealtorWorkspace || hasRealtorRelationships) && <Link href="/people" className={`hh-shell-action hh-people-entry ${pathname.startsWith('/people') ? 'active' : ''}`}><Users size={14} /> People I’m Helping</Link>}
             {!isRealtorWorkspace && <Link
               href="/search"
@@ -252,6 +313,8 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
             </button>
           </div>
         </header>
+
+        {!firstName && <NameCompletionPrompt userId={userId} onSaved={() => router.refresh()} />}
 
         {!isRealtorWorkspace && <nav className="hh-tabs" aria-label="Primary navigation">
           {PRIMARY_TABS.map(({ key, label, href }) => {

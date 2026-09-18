@@ -82,7 +82,7 @@ test('requireUser() runs, and its user is resolved, before any Supabase data que
     // The first call into the data layer after the guard -- resolveActiveSearch,
     // getRealtorSearchContext, getRealtorRelationships are this app's entry points
     // into collaboration.js/data.js from a page.
-    const firstDataCall = afterGuard.search(/resolveActiveSearch\(|getRealtorSearchContext\(|getRealtorRelationships\(|loadPeopleWorkspace\(|\.from\('prospective_searches'\)/);
+    const firstDataCall = afterGuard.search(/resolveActiveSearch\(|getRealtorSearchContext\(|getRealtorRelationships\(|loadPeopleWorkspace\(|getProfile\(|\.from\('prospective_searches'\)/);
     assert.ok(firstDataCall > 0, `${path.relative(rootDir, file)} has no data call after requireUser, or it precedes the guard`);
   }
 });
