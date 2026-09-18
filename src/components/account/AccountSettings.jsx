@@ -51,7 +51,12 @@ function ProfileForm({ userId, initialFirstName, initialLastName, initialEmail }
       setStatus('saved');
     } catch (nameError) {
       console.error('Account Settings: could not save profile name', nameError);
-      setError("We couldn't save those changes. Please try again.");
+      // Surface the real Supabase/Postgres message (same pattern PasswordForm
+      // already uses below) rather than a generic line — this is the user's
+      // own action on their own row, so there's nothing sensitive in it, and
+      // a generic message here was actively hiding which layer (RLS, a
+      // column grant, a constraint) is rejecting the write.
+      setError(nameError?.message ? `We couldn't save those changes: ${nameError.message}` : "We couldn't save those changes. Please try again.");
       setStatus(null);
     }
   };
