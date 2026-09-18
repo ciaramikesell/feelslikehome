@@ -757,6 +757,29 @@ export async function removeMember(supabase, searchId, memberUserId) {
   // next time they load the app — this is not new behavior, just relied upon.
 }
 
+/* ---------------------------- account settings ---------------------------- */
+
+// Owner-only roster of who is connected to a search (co-buyer and/or
+// Realtor), for the /account page's Connections section. See
+// resolve_search_relationships — the RPC itself enforces ownership.
+export async function resolveSearchRelationships(supabase, searchId) {
+  const { data, error } = await supabase.rpc('resolve_search_relationships', { p_search_id: searchId });
+  if (error) throw error;
+  return data || [];
+}
+
+// A cheap, count-only read for the Free-tier "X of 3 homes" presentation —
+// deliberately not reusing getHomesForUser, which also loads every shared
+// field and each home's personal state to build full Home objects. Excludes
+// staged Realtor suggestions the same way getHomesForUser does; those are
+// not ordinary contenders until accepted.
+export async function getEligibleHomeCount(supabase, searchId) {
+  const { count, error } = await supabase
+    .from('homes').select('id', { count: 'exact', head: true }).eq('search_id', searchId).eq('suggestion_staged', false);
+  if (error) throw error;
+  return count || 0;
+}
+
 /* -------------------------------- internal -------------------------------- */
 
 function rowToHomeWithOwner(row) {

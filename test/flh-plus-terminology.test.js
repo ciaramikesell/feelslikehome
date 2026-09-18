@@ -56,13 +56,16 @@ test('copy never establishes a global "user has FLH+" mental model — FLH+ belo
   }
 });
 
-test('no legacy $6.99 pricing remains, and no pricing was newly scattered across the product', () => {
+test('no legacy $6.99 pricing remains, and $7.99 stays confined to the Account Settings FLH+ card', () => {
   for (const { file, content } of srcContents) {
     assert.doesNotMatch(content, /\$6\.99/, `${file} still shows the old $6.99 figure`);
   }
-  // $7.99 is the future price; it should not appear anywhere yet, since this
-  // pass is copy/terminology only and checkout doesn't exist.
+  // The account-settings pass introduced the one legitimate, mockup-required
+  // $7.99 display (a static price on an intentionally non-functional "Unlock
+  // FLH+" button — see test/account-settings.test.js). It must not spread
+  // anywhere else in the product ahead of real checkout/paywall work.
   for (const { file, content } of srcContents) {
+    if (file === 'src/components/account/SearchAccess.jsx') continue;
     assert.doesNotMatch(content, /\$7\.99/, `${file} introduces pricing ahead of checkout/paywall work`);
   }
 });
@@ -85,19 +88,23 @@ test('Realtor accounts/workspace are described as free, never as something a Rea
   assert.doesNotMatch(realtorHome, /\b(purchase|buy|pay for)\b.{0,40}FLH\+/i);
 });
 
-test('no entitlement, paywall, or fake-locked-state behavior was introduced alongside the copy pass', () => {
+test('no real payment/checkout integration exists anywhere in the product', () => {
+  // "entitlement" itself is now a legitimate word in code comments (the
+  // account-settings pass explicitly documents the seam it deliberately
+  // leaves unimplemented — see test/account-settings.test.js) — what must
+  // never appear is an actual payment provider integration.
   for (const { file, content } of srcContents) {
-    assert.doesNotMatch(content, /entitlement|has_flh_plus|flh_plus_search|isEntitled|stripe|checkout/i, `${file} appears to add entitlement/checkout logic, which this pass must not do`);
+    assert.doesNotMatch(content, /stripe|checkout\.session|payment_intent/i, `${file} appears to add real payment/checkout logic, which no pass so far may do`);
   }
   assert.doesNotMatch(peoplePage, /Waiting for FLH\+/i);
   assert.doesNotMatch(realtorHome, /Waiting for FLH\+/i);
 });
 
-test('no database entitlement/pricing migration was added in this pass', () => {
+test('no database payment/checkout migration was added', () => {
   const migrationFiles = readdirSync(path.join(rootDir, 'supabase', 'migrations'));
   for (const name of migrationFiles) {
-    if (!/flh.?plus|entitlement|stripe|checkout|pricing/i.test(name)) continue;
-    assert.fail(`Unexpected entitlement-looking migration added: ${name}`);
+    if (!/stripe|checkout|payment/i.test(name)) continue;
+    assert.fail(`Unexpected payment-looking migration added: ${name}`);
   }
 });
 

@@ -92,8 +92,10 @@ test('the (app) layout resolves the user through requireUser() and still gates o
   assert.match(layout, /from ['"]@\/lib\/supabase\/auth['"]/);
   assert.match(layout, /const user = await requireUser\(supabase\)/);
   assert.match(layout, /withAuthRecovery/);
-  // Onboarding-incomplete still redirects, unchanged from before this hotfix.
-  assert.match(layout, /if \(!profile\?\.onboarding_complete\) redirect/);
+  // Onboarding-incomplete still redirects, unchanged from before this hotfix
+  // (Account Settings additionally bypasses this gate — see the account
+  // settings pass — but the gate itself still exists for everything else).
+  assert.match(layout, /if \(!isAccountSettings && !profile\?\.onboarding_complete\) redirect/);
   // No leftover duplicate of the logic now centralized in auth.js.
   assert.doesNotMatch(layout, /function currentPathForRedirect/);
   assert.doesNotMatch(layout, /function withRedirectParam/);

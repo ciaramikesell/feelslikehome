@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Home as HomeIcon, Columns, HelpCircle, Footprints, SlidersHorizontal, Map, Users, Search, Plus, Heart, DoorOpen, Sparkles, Scale, Compass, X } from 'lucide-react';
+import { LogOut, Home as HomeIcon, Columns, HelpCircle, Footprints, SlidersHorizontal, Map, Users, Search, Plus, Heart, DoorOpen, Sparkles, Scale, Compass, X, ChevronDown, Settings } from 'lucide-react';
 import { BrandMark, Wordmark } from '@/components/ui';
 import { PRIMARY_TABS, MOBILE_PRIMARY_TABS } from '@/lib/constants';
 import { homeVocabulary } from '@/lib/homePresentation';
@@ -226,7 +226,47 @@ function NameCompletionPrompt({ userId, onSaved }) {
   );
 }
 
-export default function AppShell({ children, userEmail, userId, firstName = null, accessibleSearches, activeSearchId, priorities, searchIntent, isCollaborative = false, appVersion, workspace = 'buyer' }) {
+// Same last-resort "guess a name from the email" convention already used
+// server-side (see resolve_display_name in the account-name-capture
+// migration) — kept in parity so the nav label never contradicts what the
+// rest of the app would call this person. Never shows the raw email itself.
+function emailDerivedNameGuess(email) {
+  const prefix = (email || '').split('@')[0] || '';
+  const cleaned = prefix.replace(/\./g, ' ').trim();
+  if (!cleaned) return '';
+  return cleaned.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function accountInitials(firstName, lastName, email) {
+  const first = (firstName || '')[0];
+  const last = (lastName || '')[0];
+  if (first || last) return `${first || ''}${last || ''}`.toUpperCase();
+  const guess = emailDerivedNameGuess(email);
+  return guess ? guess.slice(0, 2).toUpperCase() : '·';
+}
+
+// The person-level account control — avatar/initials, name, Account
+// Settings, Sign out. Replaces the old standalone desktop Sign out button;
+// signOut lives here now instead of a second copy.
+function AccountMenu({ firstName, lastName, userEmail, pathname, signOut }) {
+  const label = firstName || emailDerivedNameGuess(userEmail) || 'Account';
+  const initials = accountInitials(firstName, lastName, userEmail);
+  return (
+    <details className="hh-account-menu">
+      <summary className="hh-shell-action hh-account-trigger">
+        <span className="hh-account-avatar" aria-hidden="true">{initials}</span>
+        <span className="hh-account-name">{label}</span>
+        <ChevronDown size={13} aria-hidden="true" />
+      </summary>
+      <nav className="hh-account-menu-panel" aria-label="Account">
+        <Link href="/account" className={pathname === '/account' ? 'active' : ''}><Settings size={14} aria-hidden="true" /> Account Settings</Link>
+        <button type="button" onClick={signOut}><LogOut size={14} aria-hidden="true" /> Sign out</button>
+      </nav>
+    </details>
+  );
+}
+
+export default function AppShell({ children, userEmail, userId, firstName = null, lastName = null, accessibleSearches, activeSearchId, priorities, searchIntent, isCollaborative = false, appVersion, workspace = 'buyer' }) {
   const pathname = usePathname();
   const router = useRouter();
   const [howToOpen, setHowToOpen] = useState(false);
@@ -308,9 +348,7 @@ export default function AppShell({ children, userEmail, userId, firstName = null
             <button className="hh-shell-action" onClick={() => setHowToOpen(true)}>
               <HelpCircle size={14} /> How it works
             </button>
-            <button className="hh-shell-action hh-shell-action-quiet" onClick={signOut}>
-              <LogOut size={14} /> Sign out
-            </button>
+            <AccountMenu firstName={firstName} lastName={lastName} userEmail={userEmail} pathname={pathname} signOut={signOut} />
           </div>
         </header>
 

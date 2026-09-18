@@ -134,7 +134,7 @@ test('(app)/layout.js preserves the intended destination through both the sign-i
   // same way.
   assert.match(appLayout, /from '@\/lib\/supabase\/auth'/);
   assert.match(appLayout, /const user = await requireUser\(supabase\);/);
-  assert.match(appLayout, /if \(!profile\?\.onboarding_complete\) redirect\(withRedirectParam\('\/onboarding', await currentPathForRedirect\(\)\)\);/);
+  assert.match(appLayout, /if \(!isAccountSettings && !profile\?\.onboarding_complete\) redirect\(withRedirectParam\('\/onboarding', await currentPathForRedirect\(\)\)\);/);
 
   assert.match(authLib, /import \{ headers \} from 'next\/headers'/);
   assert.match(authLib, /import \{ sanitizeRedirectPath \} from '@\/lib\/safeRedirect'/);

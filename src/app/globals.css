@@ -43,6 +43,15 @@ html { scroll-behavior: smooth; }
 .hh-shell-action-primary:hover, .hh-shell-action-primary.active { color: var(--brick); background: rgba(193,89,47,.08); }
 .hh-shell-action-quiet { font-weight: 500; }
 .hh-search-switcher { max-width: 190px; min-height: 36px; border: 0; border-radius: 9px; padding: 7px 30px 7px 10px; background: rgba(116,128,79,.09); color: var(--ink); cursor: pointer; font: 600 12px 'Plus Jakarta Sans', sans-serif; }
+.hh-account-menu { position: relative; }
+.hh-account-menu > summary { list-style: none; }
+.hh-account-menu > summary::-webkit-details-marker { display: none; }
+.hh-account-trigger { padding: 6px 10px 6px 6px; }
+.hh-account-avatar { width: 26px; height: 26px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: rgba(193,89,47,.14); color: var(--brick); font: 700 11px 'Plus Jakarta Sans', sans-serif; }
+.hh-account-menu[open] .hh-account-trigger { color: var(--ink); background: rgba(46,38,33,.045); }
+.hh-account-menu-panel { position: absolute; z-index: 30; top: calc(100% + 4px); right: 0; display: grid; gap: 2px; width: 190px; padding: 6px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper-raised); box-shadow: 0 18px 40px -22px rgba(46,38,33,.55); }
+.hh-account-menu-panel a, .hh-account-menu-panel button { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 10px; border: 0; border-radius: 8px; background: none; color: var(--ink); font: 600 13px 'Plus Jakarta Sans', sans-serif; text-decoration: none; cursor: pointer; text-align: left; }
+.hh-account-menu-panel a:hover, .hh-account-menu-panel a.active, .hh-account-menu-panel button:hover { background: rgba(46,38,33,.05); }
 .hh-name-prompt { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 16px 34px 0; padding: 14px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper-raised); }
 .hh-name-prompt form { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; flex: 1; }
 .hh-name-prompt strong { font-size: 13.5px; color: var(--ink); }
@@ -642,6 +651,10 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   .hh-shell-utilities { width: 100%; justify-content: flex-start; gap: 2px; }
   .hh-shell-action { min-height: 40px; }
   .hh-shell-action-quiet { margin-left: auto; }
+  .hh-account-menu { margin-left: auto; }
+  .hh-account-trigger { padding: 6px; }
+  .hh-account-name { display: none; }
+  .hh-account-menu-panel { width: 170px; }
   /* Desktop's top tab bar and the header's My Search link are replaced by
      .hh-mobile-nav below — see the base-rule comment near .hh-tabs. */
   .hh-tabs { display: none; }
@@ -1606,4 +1619,94 @@ details[open] > summary .hh-accordion-chevron, .hh-more-home-details:has(.hh-mor
   .hh-realtor-home-steps { grid-template-columns: 1fr; }
   .hh-realtor-home-callout { flex-direction: column; align-items: flex-start; }
   .hh-realtor-home-callout-cta { margin-left: 0; }
+}
+
+/* Account Settings (/account) — person/account, search access, and
+   connections kept as clearly separate cards, reusing the same tokens/card
+   language as Realtor Home and People rather than a new visual system. */
+.hh-account-page { padding: 28px 34px 90px; max-width: 760px; margin: 0 auto; }
+.hh-account-back { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 14px; color: var(--brick); font-size: 12.5px; font-weight: 700; text-decoration: none; }
+.hh-account-back:hover { text-decoration: underline; text-underline-offset: 3px; }
+.hh-account-header { margin-bottom: 26px; }
+.hh-account-header h1 { margin: 0; font: 600 clamp(28px,4.4vw,38px)/1.1 var(--font-serif); color: var(--ink); }
+.hh-account-header p { margin: 8px 0 0; color: var(--ink-soft); font-size: 13.5px; }
+.hh-account-card { margin-bottom: 22px; padding: 26px 24px; background: var(--paper-raised); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 8px 24px -20px rgba(71,51,35,.4); }
+.hh-account-card.hh-account-plain { padding: 8px; }
+.hh-account-eyebrow { display: block; font: 700 10px/1.2 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--brick); margin-bottom: 6px; }
+.hh-account-card h2 { margin: 0 0 8px; font: 600 21px/1.2 var(--font-serif); color: var(--ink); }
+.hh-account-card-intro { margin: 0 0 18px; color: var(--ink-soft); font-size: 13px; line-height: 1.6; max-width: 520px; }
+
+/* Profile/Password collapsible rows */
+.hh-account-row + .hh-account-row { border-top: 1px solid var(--line); }
+.hh-account-row-summary { width: 100%; display: flex; align-items: center; gap: 14px; padding: 16px 14px; border: 0; background: none; cursor: pointer; text-align: left; border-radius: 12px; }
+.hh-account-row-summary:hover { background: rgba(46,38,33,.03); }
+.hh-account-row-icon { width: 38px; height: 38px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: var(--sage); color: var(--moss); }
+.hh-account-row-copy { flex: 1; display: grid; gap: 2px; }
+.hh-account-row-copy strong { font-size: 14.5px; color: var(--ink); }
+.hh-account-row-copy span { font-size: 12.5px; color: var(--ink-soft); }
+.hh-account-row-chevron { color: var(--ink-soft); transition: transform .15s ease; flex-shrink: 0; }
+.hh-account-row.is-open .hh-account-row-chevron { transform: rotate(90deg); }
+.hh-account-row-body { padding: 4px 14px 20px 66px; }
+.hh-account-form { display: grid; gap: 14px; max-width: 420px; }
+
+/* FLH+ / Your search access */
+.hh-account-access-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; padding: 16px; margin-bottom: 16px; background: var(--paper); border-radius: 14px; }
+.hh-account-access-icon { width: 42px; height: 42px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px; background: var(--sage); color: var(--moss); }
+.hh-account-access-icon.is-flh-plus { background: var(--peach); color: var(--brick); }
+.hh-account-access-copy { display: grid; gap: 1px; }
+.hh-account-access-label { font-size: 11px; color: var(--ink-soft); }
+.hh-account-access-copy strong { font-size: 18px; color: var(--ink); }
+.hh-account-access-sub { font-size: 12px; color: var(--ink-soft); }
+.hh-account-progress { display: grid; gap: 5px; min-width: 150px; }
+.hh-account-progress span { font-size: 11.5px; color: var(--ink-soft); }
+.hh-account-progress-bar { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.hh-account-progress-bar span { display: block; height: 100%; background: var(--moss); }
+.hh-account-access-row .hh-btn { margin-left: auto; }
+.hh-account-flh-benefits { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 7px; }
+.hh-account-flh-benefits.is-confirmed { margin-top: 0; }
+.hh-account-flh-benefits li { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink); }
+.hh-account-flh-benefits li svg { color: var(--positive); flex-shrink: 0; }
+.hh-account-unlock-card { display: flex; flex-wrap: wrap; gap: 20px; justify-content: space-between; padding: 22px; border: 1px solid rgba(193,89,47,.28); border-radius: 16px; background: var(--peach); }
+.hh-account-unlock-copy { display: flex; gap: 14px; flex: 1 1 280px; min-width: 0; }
+.hh-account-unlock-icon { width: 40px; height: 40px; flex-shrink: 0; display: grid; place-items: center; border-radius: 12px; background: rgba(255,255,255,.6); color: var(--brick); }
+.hh-account-unlock-copy h3 { margin: 0 0 4px; font: 600 17px/1.2 var(--font-serif); color: var(--ink); }
+.hh-account-unlock-copy p { margin: 0; color: var(--ink-soft); font-size: 12.5px; }
+.hh-account-unlock-price { display: grid; gap: 3px; text-align: right; min-width: 190px; }
+.hh-account-unlock-price strong { font: 700 30px var(--font-mono); color: var(--brick); }
+.hh-account-unlock-price > span { font-size: 11px; color: var(--ink-soft); margin-bottom: 6px; }
+.hh-account-unlock-price .hh-btn { justify-content: center; }
+.hh-account-unlock-price .hh-btn:disabled { opacity: .55; cursor: not-allowed; }
+.hh-account-unlock-price small { color: var(--ink-soft); font-size: 10.5px; line-height: 1.5; text-align: left; }
+
+/* Connections */
+.hh-account-relationships { display: grid; gap: 14px; }
+.hh-account-relationship { padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
+.hh-account-relationship-head { display: flex; align-items: flex-start; gap: 12px; }
+.hh-account-relationship-icon { width: 38px; height: 38px; flex-shrink: 0; display: grid; place-items: center; border-radius: 50%; background: var(--line); color: var(--ink-soft); }
+.hh-account-relationship-icon.is-active { background: var(--sage); color: var(--moss); }
+.hh-account-relationship-copy { flex: 1; min-width: 0; }
+.hh-account-relationship-copy h3 { margin: 0 0 3px; font-size: 14.5px; color: var(--ink); }
+.hh-account-relationship-copy p { margin: 0; font-size: 12px; color: var(--ink-soft); line-height: 1.55; }
+.hh-account-badge { display: inline-flex; align-items: center; gap: 4px; flex-shrink: 0; padding: 4px 9px; border-radius: 999px; background: var(--peach); color: var(--brick); font-size: 10.5px; font-weight: 700; }
+.hh-account-relationship-unlock { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.hh-account-relationship-unlock strong { display: block; font-size: 12.5px; color: var(--ink); margin-bottom: 2px; }
+.hh-account-relationship-unlock p { margin: 0; font-size: 11.5px; color: var(--ink-soft); max-width: 380px; }
+.hh-account-relationship .hh-btn { margin-top: 12px; }
+.hh-account-invite-form, .hh-account-invite-link { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.hh-account-invite-form input, .hh-account-invite-link input { flex: 1 1 200px; }
+
+/* Delete account */
+.hh-account-warning { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; padding: 10px 12px; border-radius: 10px; background: rgba(193,89,47,.08); color: var(--brick); font-size: 12.5px; font-weight: 600; }
+.hh-account-delete-cta { background: var(--paper-raised); color: var(--brick); border-color: rgba(193,89,47,.4); }
+.hh-account-delete-cta:hover { background: rgba(193,89,47,.08); }
+
+@media (max-width: 700px) {
+  .hh-account-page { padding: 18px 16px 70px; }
+  .hh-account-card { padding: 18px 16px; }
+  .hh-account-row-body { padding-left: 14px; }
+  .hh-account-access-row { flex-direction: column; align-items: flex-start; }
+  .hh-account-access-row .hh-btn { margin-left: 0; }
+  .hh-account-unlock-card { flex-direction: column; }
+  .hh-account-unlock-price { text-align: left; }
+  .hh-account-unlock-price small { text-align: left; }
 }
