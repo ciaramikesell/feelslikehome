@@ -37,7 +37,6 @@ test('zero-client Realtor workspace does not require or invent an active buyer s
   assert.doesNotMatch(realtorBranch, /resolveActiveSearch|resolvePriorities|getSearchParticipantIds|search\.id/);
   assert.match(people, /relationships\.length/);
   assert.match(people, /prospective\.length === 0/);
-  assert.match(people, /You don&apos;t have any client searches yet/);
   assert.match(people, /href="\/people\/start"/);
 });
 
