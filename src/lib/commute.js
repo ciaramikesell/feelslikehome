@@ -15,6 +15,17 @@ export function coordinatesAreCurrent(record, fingerprint) {
     && Number.isFinite(Number(record.longitude));
 }
 
+// Provider responses and persisted records both pass through this guard before
+// becoming a browser map position. Keeping it here prevents either pipeline
+// from accidentally centering a map on coercible, missing, or out-of-range data.
+export function validMapPoint(value) {
+  const lat = value?.lat ?? value?.latitude;
+  const lng = value?.lng ?? value?.longitude;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return { lat, lng };
+}
+
 // One canonical trust decision for every consumer of a home's resolved location.
 // Coordinate source is intentionally not restricted: both RentCast and the
 // server-side Google resolver are valid when provenance matches the current address.
@@ -27,10 +38,7 @@ export async function currentHomeCoordinates(home) {
     longitude: home?.longitude,
   };
   if (!coordinatesAreCurrent(record, fingerprint)) return null;
-  const lat = Number(home.latitude);
-  const lng = Number(home.longitude);
-  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
-  return { lat, lng };
+  return validMapPoint({ lat: Number(home.latitude), lng: Number(home.longitude) });
 }
 
 // Destinations use the same address-provenance contract as homes, so an edited
@@ -44,10 +52,7 @@ export async function currentDestinationCoordinates(destination) {
     longitude: destination?.longitude,
   };
   if (!coordinatesAreCurrent(record, fingerprint)) return null;
-  const lat = Number(destination.latitude);
-  const lng = Number(destination.longitude);
-  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
-  return { lat, lng };
+  return validMapPoint({ lat: Number(destination.latitude), lng: Number(destination.longitude) });
 }
 
 // All thresholded destinations form one boolean Commute criterion. A single

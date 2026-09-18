@@ -41,14 +41,19 @@ async function flushBatch() {
     });
     const data = res.ok ? await res.json() : { results: {} };
     const results = data.results || {};
+    const coordinates = data.coordinates || {};
     // Write every requested pair into the cache, even on failure/omission —
     // an "unavailable" result is still cached for the session so a card
     // scrolling back into view doesn't refire the same failed pair.
     for (const [pairKey, meta] of batch.keyToPair.entries()) {
       const { home, destination } = meta;
       const homeResult = results[home.id]?.[destination.id];
+      const mapCoordinates = {
+        homeCoordinates: coordinates.homes?.[home.id] || null,
+        destinationCoordinates: coordinates.destinations?.[destination.id] || null,
+      };
       resultCache.set(pairKey, homeResult
-        ? { minutes: homeResult.status === 'ok' ? homeResult.minutes : null, status: homeResult.status || 'unavailable' }
+        ? { minutes: homeResult.status === 'ok' ? homeResult.minutes : null, status: homeResult.status || 'unavailable', ...mapCoordinates }
         : { minutes: null, status: 'unavailable' });
       inFlightKeys.delete(pairKey);
     }

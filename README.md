@@ -242,13 +242,31 @@ first real end-to-end test happens when *you* run Part 3. If anything errors out
 expected to be possible on a first pass of a project this size — send me the exact error text
 or a screenshot, and I'll fix it.
 
-## Saved homes map configuration
+## Google Maps configuration
 
-The saved-homes Map uses the browser-only Google Maps JavaScript API and cloud styling. Set:
+The saved-homes Map and Home Detail location preview use the browser-only Google
+Maps JavaScript API. Set the browser key at **build time** (Next.js inlines
+`NEXT_PUBLIC_*` values into the client bundle):
 
 ```bash
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_referrer_restricted_browser_key
-NEXT_PUBLIC_GOOGLE_MAP_ID=your_google_map_id
+NEXT_PUBLIC_GOOGLE_MAP_ID=your_optional_google_map_id
 ```
 
-Use a dedicated browser key restricted to the **Maps JavaScript API** and approved HTTP referrers. Never use `GOOGLE_ROUTES_API_KEY` or `GOOGLE_GEOCODING_API_KEY` here; those credentials remain server-only. Attach the warm, low-POI Feels Like Home cloud style to the Map ID in Google Cloud.
+Use a dedicated browser key restricted to the **Maps JavaScript API** and these
+HTTP referrers (plus localhost entries used for development):
+
+```text
+https://feelslikehome.app/*
+https://www.feelslikehome.app/*
+```
+
+Add any actual preview/custom production subdomains explicitly; do not replace
+the list with an unrestricted wildcard. `NEXT_PUBLIC_GOOGLE_MAP_ID` enables the
+warm, low-POI cloud style and advanced markers, but is optional: without it the
+maps remain functional with standard Google markers.
+
+Commute calculation is server-side and separately requires
+`GOOGLE_ROUTES_API_KEY` (Routes API) and `GOOGLE_GEOCODING_API_KEY` (Geocoding
+API). Never use either server credential in a `NEXT_PUBLIC_*` variable. Changes
+to any `NEXT_PUBLIC_*` setting on Vercel require a production rebuild/redeploy.
