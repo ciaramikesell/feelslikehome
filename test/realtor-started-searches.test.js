@@ -25,9 +25,20 @@ test('Realtor signup intent changes routing, never relationship authorization', 
 });
 
 test('People workspace has professional empty and pending states without CRM language', () => {
-  for (const phrase of ["People I’m Helping", 'Keep your clients&apos; searches organized without taking over their decision', "Start a client&apos;s search", 'Invitation pending', 'Search started']) assert.ok(people.includes(phrase));
+  for (const phrase of ["People I’m Helping", 'Help a buyer get their search organized from the start', 'Start a client search', 'Invitation pending', 'Search started']) assert.ok(people.includes(phrase));
   assert.match(people, /InviteBuyer/);
   assert.doesNotMatch(people, /Leads|Prospects|Pipeline|Conversion|Client database/i);
+});
+
+test('zero-client Realtor workspace does not require or invent an active buyer search', () => {
+  const realtorBranch = layout.match(/if \(isRealtorWorkspace\) \{[\s\S]*?^    \}/m)?.[0] || '';
+  assert.match(realtorBranch, /workspace="realtor"/);
+  assert.match(realtorBranch, /activeSearchId=\{null\}/);
+  assert.doesNotMatch(realtorBranch, /resolveActiveSearch|resolvePriorities|getSearchParticipantIds|search\.id/);
+  assert.match(people, /relationships\.length/);
+  assert.match(people, /prospective\.length === 0/);
+  assert.match(people, /You don&apos;t have any client searches yet/);
+  assert.match(people, /href="\/people\/start"/);
 });
 
 test('prospective criteria are isolated draft state with owner-only RLS', () => {

@@ -166,7 +166,7 @@ function HowToUseModal({ onClose }) {
   );
 }
 
-export default function AppShell({ children, userEmail, userId, accessibleSearches, activeSearchId, priorities, searchIntent, isCollaborative = false, appVersion }) {
+export default function AppShell({ children, userEmail, userId, accessibleSearches, activeSearchId, priorities, searchIntent, isCollaborative = false, appVersion, workspace = 'buyer' }) {
   const pathname = usePathname();
   const router = useRouter();
   const [howToOpen, setHowToOpen] = useState(false);
@@ -176,6 +176,7 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
   const [native, setNative] = useState(false);
   const vocabulary = homeVocabulary(priorities);
   const hasRealtorRelationships = accessibleSearches?.some((search) => search.relationshipType === 'realtor');
+  const isRealtorWorkspace = workspace === 'realtor';
 
   // Centralizes the one native-vs-web chrome difference this shell needs —
   // the installed app has no browser UI pushing content below the status
@@ -232,17 +233,17 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
             </div>
           </div>
           <div className="hh-shell-utilities">
-            {isCollaborative && <span className="hh-collaboration-pill">Searching together</span>}
-            {accessibleSearches && accessibleSearches.length > 1 && (
+            {!isRealtorWorkspace && isCollaborative && <span className="hh-collaboration-pill">Searching together</span>}
+            {!isRealtorWorkspace && accessibleSearches && accessibleSearches.length > 1 && (
               <SearchSwitcher userId={userId} searches={accessibleSearches} activeSearchId={activeSearchId} />
             )}
-            {hasRealtorRelationships && <Link href="/people" className={`hh-shell-action hh-people-entry ${pathname.startsWith('/people') ? 'active' : ''}`}><Users size={14} /> People I’m Helping</Link>}
-            <Link
+            {(isRealtorWorkspace || hasRealtorRelationships) && <Link href="/people" className={`hh-shell-action hh-people-entry ${pathname.startsWith('/people') ? 'active' : ''}`}><Users size={14} /> People I’m Helping</Link>}
+            {!isRealtorWorkspace && <Link
               href="/search"
               className={`hh-shell-action hh-shell-action-primary hh-desktop-only ${pathname === '/search' ? 'active' : ''}`}
             >
               <SlidersHorizontal size={14} /> My Search
-            </Link>
+            </Link>}
             <button className="hh-shell-action" onClick={() => setHowToOpen(true)}>
               <HelpCircle size={14} /> How it works
             </button>
@@ -252,7 +253,7 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
           </div>
         </header>
 
-        <nav className="hh-tabs" aria-label="Primary navigation">
+        {!isRealtorWorkspace && <nav className="hh-tabs" aria-label="Primary navigation">
           {PRIMARY_TABS.map(({ key, label, href }) => {
             const Icon = TAB_ICONS[key];
             const presentationLabel = key === 'homes' ? vocabulary.plural : label;
@@ -262,12 +263,12 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
               </Link>
             );
           })}
-        </nav>
+        </nav>}
 
         {children}
       </div>
 
-      <MobileNav pathname={pathname} vocabulary={vocabulary} highlightKey={tourOpen ? mobileTourSteps(vocabulary)[tourStep]?.key : undefined} />
+      {!isRealtorWorkspace && <MobileNav pathname={pathname} vocabulary={vocabulary} highlightKey={tourOpen ? mobileTourSteps(vocabulary)[tourStep]?.key : undefined} />}
 
       {tourOpen && (
         <MobileFirstRunTour
@@ -278,7 +279,7 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
         />
       )}
       {howToOpen && <HowToUseModal onClose={() => setHowToOpen(false)} />}
-      <BetaFeedback userId={userId} searchId={activeSearchId} searchType={searchIntent} appVersion={appVersion} />
+      <BetaFeedback userId={userId} searchId={activeSearchId || undefined} searchType={searchIntent || undefined} appVersion={appVersion} />
     </div>
   );
 }
