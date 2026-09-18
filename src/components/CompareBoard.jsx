@@ -85,6 +85,9 @@ function CriteriaValue({ c }) {
   if (!c || !c.evaluated) {
     return <span className="hh-criteria-value is-unknown"><b aria-hidden="true">?</b><span>Not evaluated</span></span>;
   }
+  if (c.met === null) {
+    return <span className="hh-criteria-value is-neutral"><b aria-hidden="true">—</b><span>{c.detail || 'Neutral'}</span></span>;
+  }
   // Subjective/experiential criteria are captured in Post-Tour as Liked/Didn't Like,
   // not a star scale — showing stars here would be a stale artifact of a UI that no
   // longer exists. c.met is already exactly "value >= 3" from the shared Match
@@ -100,6 +103,7 @@ function CriteriaValue({ c }) {
 // they're both unevaluated, or both evaluated with the same met/rating outcome.
 function rowSignature(c) {
   if (!c || !c.evaluated) return 'unevaluated';
+  if (c.met === null) return 'neutral';
   if (!c.objective) return `r${Math.round((c.score || 0) * 5)}`;
   return c.met ? 'met' : 'missed';
 }

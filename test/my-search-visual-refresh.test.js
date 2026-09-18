@@ -92,9 +92,10 @@ test('Match weighting is unchanged: PriorityBoard\'s weight callout is presentat
   assert.match(board, /<TierItemsList/);
 });
 
-test('the after-tour "Best answered after you tour" guidance is unchanged (restrained legend + marker, not decorative, appears once)', async () => {
+test('tour guidance is contextual and uses a restrained accessible marker', async () => {
   const board = await source('src/components/PriorityBoard.jsx');
-  assert.equal(board.match(/Best answered after you tour<\/div>/g)?.length, 1);
+  assert.match(board, /Some preferences can be matched from listing details/);
+  assert.doesNotMatch(board, /Best answered after you tour<\/div>/);
   assert.match(board, /isExperientialCriterion\(item\.categoryKey, item\.label\)/);
 });
 

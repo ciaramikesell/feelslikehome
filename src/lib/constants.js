@@ -33,6 +33,8 @@ export const EXTERIOR_CORE = [{ label: 'Yard', kind: 'rating' }, { label: 'Garag
 export const EXTERIOR_SUGGESTED = [
   { label: 'Fenced Yard', kind: 'check' }, { label: 'Sidewalks', kind: 'check' },
   { label: 'Exterior Condition', kind: 'rating' }, { label: 'Landscaping', kind: 'rating' },
+  { label: 'Curb Appeal', kind: 'rating' }, { label: 'Outdoor Space', kind: 'rating' },
+  { label: 'Noise Level', kind: 'rating' },
   { label: 'Patio / Deck / Outdoor Living', kind: 'check' }, { label: 'Attached Garage', kind: 'check' },
   { label: 'Driveway / Off-Street Parking', kind: 'check' },
   { label: 'Pool', kind: 'check' }, { label: 'Fitness Center', kind: 'check' },
@@ -40,7 +42,7 @@ export const EXTERIOR_SUGGESTED = [
 ];
 
 export const FEATURES_CORE = ['Basement', 'Fireplace', 'Primary Ensuite'].map((label) => ({ label, kind: 'check' }));
-export const FEATURES_SUGGESTED = ['Central Air', 'Home Office', 'Finished Basement', 'Walkout Basement', 'First-Floor Laundry', 'Mudroom', 'Pantry', 'Storage', 'Updated Kitchen', 'Updated Bathrooms', 'Walk-In Closet', 'Additional Living Space', 'Hardwood Floors', 'Dishwasher', 'In-Unit Laundry', 'Updated Interior', 'Pets Allowed', 'Utilities Included'].map((label) => ({ label, kind: 'check' }));
+export const FEATURES_SUGGESTED = ['Central Air', 'Home Office', 'Finished Basement', 'Walkout Basement', 'First-Floor Laundry', 'Mudroom', 'Pantry', 'Storage', 'Updated Kitchen', 'Updated Bathrooms', 'Walk-In Closet', 'Additional Living Space', 'Hardwood Floors', 'Dishwasher', 'In-Unit Laundry', 'Updated Interior', 'Pets Allowed', 'Utilities Included'].map((label) => ({ label, kind: label === 'Storage' ? 'rating' : 'check' }));
 // These remain part of the canonical catalog. PriorityBoard combines them with
 // the regular suggestion tray so both onboarding and My Search discover the same
 // criteria without an additional generic disclosure.
@@ -58,6 +60,74 @@ const CRITERION_DISPLAY_LABEL_OVERRIDES = {
   'homeFeel:Privacy': 'Privacy from Neighbors',
 };
 
+// Additive catalog metadata. Stored priority identities remain `category:label`;
+// this registry classifies those durable identities without migrating or renaming
+// any participant documents already in production.
+export const EVALUATION_MODE = Object.freeze({ PRE_TOUR: 'pre_tour', TOUR: 'tour' });
+export const TOUR_RESPONSE = Object.freeze({ NOT_EVALUATED: 'not_evaluated', NEGATIVE: 'negative', NEUTRAL: 'neutral', POSITIVE: 'positive' });
+const ALL_PROPERTY_TYPES = Object.freeze(['apartment', 'house', 'townhome', 'condo', 'multifamily', 'other']);
+const ATTACHED_PROPERTY_TYPES = Object.freeze(['apartment', 'condo', 'multifamily']);
+const RENTAL_PROPERTY_TYPES = Object.freeze(['apartment']);
+
+const TOUR_CRITERIA = new Set([
+  'homeFeel:Overall Condition', 'homeFeel:Layout / Flow', 'homeFeel:Natural Light',
+  'homeFeel:Character / Charm', 'homeFeel:Room Sizes', 'homeFeel:Openness / Ceiling Height',
+  'homeFeel:Privacy', 'location:Immediate Street / Surroundings', 'exterior:Yard',
+  'exterior:Privacy', 'exterior:Exterior Condition', 'exterior:Landscaping',
+  'exterior:Curb Appeal', 'exterior:Outdoor Space', 'exterior:Noise Level', 'features:Storage',
+]);
+
+const PROPERTY_TYPE_APPLICABILITY = Object.freeze({
+  'homeFeel:On-Site Management': ATTACHED_PROPERTY_TYPES,
+  'exterior:Fitness Center': ATTACHED_PROPERTY_TYPES,
+  'exterior:Elevator': ATTACHED_PROPERTY_TYPES,
+  'exterior:Secure Entry': ATTACHED_PROPERTY_TYPES,
+  'features:Pets Allowed': RENTAL_PROPERTY_TYPES,
+  'features:Utilities Included': RENTAL_PROPERTY_TYPES,
+  'features:In-Unit Laundry': ['apartment', 'condo'],
+  'exterior:Building Amenities': ATTACHED_PROPERTY_TYPES,
+});
+
+export function criterionMetadata(categoryKey, label) {
+  const key = `${categoryKey}:${label}`;
+  return Object.freeze({
+    evaluationMode: TOUR_CRITERIA.has(key) ? EVALUATION_MODE.TOUR : EVALUATION_MODE.PRE_TOUR,
+    applicablePropertyTypes: PROPERTY_TYPE_APPLICABILITY[key] || ALL_PROPERTY_TYPES,
+  });
+}
+
+export function isCriterionApplicable(categoryKey, label, propertyTypes = []) {
+  if (!propertyTypes?.length) return true;
+  const applicable = criterionMetadata(categoryKey, label).applicablePropertyTypes;
+  return propertyTypes.some((type) => applicable.includes(type));
+}
+
+export const TOUR_RESPONSE_LABELS = Object.freeze({
+  'homeFeel:Natural Light': ['Disappointing', 'Fine', 'Great'],
+  'homeFeel:Layout / Flow': ["Doesn't work", 'Could work', 'Love it'],
+  'homeFeel:Overall Condition': ['More work than expected', 'About what I expected', 'Better than expected'],
+  'homeFeel:Character / Charm': ['Missing it', 'Some', 'Lots of character'],
+  'homeFeel:Room Sizes': ['Feels too tight', 'Works', 'Feels spacious'],
+  'features:Storage': ['Not enough', 'Probably enough', 'Plenty'],
+  'exterior:Noise Level': ['Too noisy', 'Noticeable', 'Comfortable'],
+  'exterior:Curb Appeal': ['Not for me', 'Fine', 'Love it'],
+  'homeFeel:Privacy': ['Not private enough', 'Fine', 'Very private'],
+  'exterior:Privacy': ['Not private enough', 'Fine', 'Very private'],
+  'exterior:Outdoor Space': ["Doesn't work for me", 'Works', 'Love it'],
+  'exterior:Yard': ["Doesn't work for me", 'Works', 'Love it'],
+  'location:Immediate Street / Surroundings': ['Concern', 'Fine', 'Love it'],
+});
+
+export function tourResponseOptions(categoryKey, label) {
+  const labels = TOUR_RESPONSE_LABELS[`${categoryKey}:${label}`] || ['Not for me', 'Fine', 'Great'];
+  return [TOUR_RESPONSE.NEGATIVE, TOUR_RESPONSE.NEUTRAL, TOUR_RESPONSE.POSITIVE]
+    .map((value, index) => ({ value, label: labels[index] }));
+}
+
+export function tourResponseLabel(categoryKey, label, value) {
+  return tourResponseOptions(categoryKey, label).find((option) => option.value === value)?.label || null;
+}
+
 export function criterionDisplayLabel(categoryKey, label) {
   return CRITERION_DISPLAY_LABEL_OVERRIDES[`${categoryKey}:${label}`] || label;
 }
@@ -69,16 +139,8 @@ export function criterionDisplayLabel(categoryKey, label) {
 // place this classification lives — Onboarding, My Search, and Post-Tour all read from
 // here rather than each keeping their own list, so a change here never goes stale in
 // one surface while being fixed in another.
-const EXPERIENTIAL_CRITERIA = new Set([
-  'homeFeel:Overall Condition', 'homeFeel:Layout / Flow', 'homeFeel:Natural Light',
-  'homeFeel:Character / Charm', 'homeFeel:Room Sizes', 'homeFeel:Openness / Ceiling Height', 'homeFeel:Privacy',
-  'location:Neighborhood', 'location:Immediate Street / Surroundings',
-  'exterior:Yard', 'exterior:Privacy', 'exterior:Exterior Condition', 'exterior:Landscaping',
-  'exterior:Outdoor Space', 'exterior:Noise Level',
-]);
-
 export function isExperientialCriterion(categoryKey, label) {
-  return EXPERIENTIAL_CRITERIA.has(`${categoryKey}:${label}`);
+  return criterionMetadata(categoryKey, label).evaluationMode === EVALUATION_MODE.TOUR;
 }
 
 // Schools relevance gate (Phase 6). 'no' means the user explicitly said

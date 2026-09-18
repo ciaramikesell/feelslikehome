@@ -101,9 +101,10 @@ test('available suggestions use four, two, and one-column responsive layouts', (
 
 test('post-tour guidance appears once and uses the central experiential classification accessibly', () => {
   const board = read('src/components/PriorityBoard.jsx');
-  assert.equal(board.match(/Best answered after you tour<\/div>/g)?.length, 1);
+  assert.match(board, /Some preferences can be matched from listing details/);
+  assert.doesNotMatch(board, /Best answered after you tour<\/div>/);
   assert.match(board, /isExperientialCriterion\(item\.categoryKey, item\.label\)/);
-  assert.match(board, /aria-label="Best answered after you tour"/);
+  assert.match(board, /aria-label="After tour"/);
   assert.doesNotMatch(board, /We&apos;ll ask after you tour/);
 });
 

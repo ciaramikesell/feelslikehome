@@ -242,7 +242,7 @@ function BasicsCard({ p, patch }) {
 // .hh-search-primary) rather than as one supporting card among several.
 function WhatMattersCard({ priorities, patch }) {
   return (
-    <SearchCard title="What Matters Most to Me" subtitle="Weighted decision tiers. These priorities power your Match scores.">
+    <SearchCard title="What Matters Most to Me" subtitle="Choose what matters and how strongly it should shape your Match.">
       <PriorityBoard priorities={priorities} patch={patch} />
     </SearchCard>
   );
@@ -379,7 +379,7 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
       <section className="hh-match-editorial">
         <div>
           <h2>How Match Scores Work</h2>
-          <p>Each home is measured against your own Must Haves, Important features, Nice to Haves, and places that matter. When you&apos;re searching together, each person keeps their own Match — so you can see where your priorities line up and where they don&apos;t.</p>
+          <p>Must Haves, Important priorities, and Nice to Haves carry different weights. Listing-verifiable details can be evaluated before touring; experiential priorities stay Unknown until you evaluate them after a tour. When you&apos;re searching together, each participant keeps their own Match.</p>
         </div>
         <Link className="hh-btn hh-btn-ghost" href="/homes">View Matching Homes</Link>
       </section>

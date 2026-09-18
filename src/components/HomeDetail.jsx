@@ -31,9 +31,10 @@ function Section({ eyebrow, title, children, className = '' }) {
 
 function tierSummary(rows) {
   const met = rows.filter((item) => item.evaluated && item.met).length;
-  const missed = rows.filter((item) => item.evaluated && !item.met).length;
+  const missed = rows.filter((item) => item.evaluated && item.met === false).length;
+  const neutral = rows.filter((item) => item.evaluated && item.met === null).length;
   const unknown = rows.filter((item) => !item.evaluated).length;
-  return [met ? `${met} met` : null, missed ? `${missed} missing` : null, unknown ? `${unknown} unknown` : null].filter(Boolean).join(' · ');
+  return [met ? `${met} met` : null, missed ? `${missed} missing` : null, neutral ? `${neutral} neutral` : null, unknown ? `${unknown} unknown` : null].filter(Boolean).join(' · ');
 }
 
 export default function HomeDetail({ home: initialHome, priorities, commuteDestinations = [], coBuyerPerspective, sharedFactAwareness = {}, userId, searchId, isCollaborative = false, readOnly = false, backHref = null, realtorContributions = { notes: [], tours: [] } }) {
@@ -58,7 +59,7 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
   const overall = home.ratings?.[TOUR_RATING_KEY] || 0;
   const experiential = (match?.allSelected || []).filter((item) => !item.objective && item.evaluated);
   const likedExperiences = experiential.filter((item) => item.met);
-  const dislikedExperiences = experiential.filter((item) => !item.met);
+  const dislikedExperiences = experiential.filter((item) => item.met === false);
   const hasPostTourFeedback = Boolean(home.reaction || overall > 0 || experiential.length > 0);
   const hasCoBuyerPerspective = Boolean(coBuyerPerspective && (
     coBuyerPerspective.match ||
@@ -178,7 +179,7 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
       );
     })()}
 
-    {match && <div ref={matchSection} tabIndex={-1} className="hh-detail-match-anchor"><Section eyebrow="How it fits your search" title={match.pct == null ? 'More will come into focus' : `Why this home is a ${match.pct}% Match${readOnly ? '' : ' for you'}`} className="hh-detail-section-wide hh-detail-surface"><div className="hh-detail-match-groups">{['must', 'important', 'nice'].map((tier) => { const rows = match.allSelected.filter((item) => item.tier === tier); return rows.length ? <div className={`hh-detail-match-tier ${tier}`} key={tier}><h3>{TIER_LABELS[tier]}<small>{tierSummary(rows)}</small></h3>{rows.map((item) => { const detail = !item.evaluated ? (item.objective ? 'Needs more information' : 'Evaluate after tour') : item.objective ? item.detail : item.met ? 'Liked' : "Didn't like"; const stateLabel = !item.evaluated ? 'Unknown' : item.met ? 'Satisfied' : 'Missed'; return <div className={`hh-detail-criterion ${!item.evaluated ? 'unknown' : item.met ? 'met' : 'missed'}`} key={item.key}><b aria-hidden="true">{!item.evaluated ? <span className="hh-detail-question">?</span> : item.met ? <Check size={14} /> : <X size={14} />}</b><span><strong>{item.key.includes(':') ? criterionDisplayLabel(item.key.split(':')[0], item.label) : item.label}</strong><small>{detail}</small></span><span className="sr-only">{stateLabel}</span></div>; })}</div> : null; })}</div></Section></div>}
+    {match && <div ref={matchSection} tabIndex={-1} className="hh-detail-match-anchor"><Section eyebrow="How it fits your search" title={match.pct == null ? 'More will come into focus' : `Why this home is a ${match.pct}% Match${readOnly ? '' : ' for you'}`} className="hh-detail-section-wide hh-detail-surface"><div className="hh-detail-match-groups">{['must', 'important', 'nice'].map((tier) => { const rows = match.allSelected.filter((item) => item.tier === tier); return rows.length ? <div className={`hh-detail-match-tier ${tier}`} key={tier}><h3>{TIER_LABELS[tier]}<small>{tierSummary(rows)}</small></h3>{rows.map((item) => { const neutral = item.evaluated && item.met === null; const detail = !item.evaluated ? (item.objective ? 'Needs more information' : 'Evaluate after tour') : item.detail || (item.objective ? 'Evaluated' : neutral ? 'Neutral' : item.met ? 'Matches' : 'Does not match'); const stateLabel = !item.evaluated ? 'Unknown' : neutral ? 'Neutral' : item.met ? 'Satisfied' : 'Missed'; return <div className={`hh-detail-criterion ${!item.evaluated ? 'unknown' : neutral ? 'neutral' : item.met ? 'met' : 'missed'}`} key={item.key}><b aria-hidden="true">{!item.evaluated ? <span className="hh-detail-question">?</span> : neutral ? <span>—</span> : item.met ? <Check size={14} /> : <X size={14} />}</b><span><strong>{item.key.includes(':') ? criterionDisplayLabel(item.key.split(':')[0], item.label) : item.label}</strong><small>{detail}</small></span><span className="sr-only">{stateLabel}</span></div>; })}</div> : null; })}</div></Section></div>}
 
     <Section eyebrow={readOnly ? 'Buyer perspective' : 'Your take'} title={readOnly ? 'Their relationship with this home' : 'Your relationship with this home'} className="hh-detail-relationship hh-detail-section-wide hh-detail-surface">
       {isCollaborative && <p className="hh-detail-context">{readOnly ? 'Each buyer’s perspective stays separate.' : 'These choices are yours. Your co-buyer can see them and keeps their own.'}</p>}

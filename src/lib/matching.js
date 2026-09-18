@@ -1,4 +1,4 @@
-import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier, isExperientialCriterion } from './constants.js';
+import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier, isExperientialCriterion, TOUR_RESPONSE, tourResponseLabel } from './constants.js';
 import { normalizeSearchIntent } from './searchIntent.js';
 import { EVIDENCE_STRENGTH, findingsFromFields } from './importDomain.js';
 
@@ -92,7 +92,7 @@ export const visibleOrderedItems = selectedOrderedItems;
 export function hasSelectedSubjectiveCriteria(priorities) {
   if (!priorities) return false;
   return getItemlistCategories(priorities.searchType).some((def) =>
-    selectedOrderedItems(def, priorities).some((item) => item.kind === 'rating')
+    selectedOrderedItems(def, priorities).some((item) => isExperientialCriterion(def.key, item.label))
   );
 }
 
@@ -103,7 +103,7 @@ export function selectedSubjectiveCriteria(priorities) {
   if (!priorities) return [];
   return getItemlistCategories(priorities.searchType).flatMap((def) =>
     selectedOrderedItems(def, priorities)
-      .filter((item) => item.kind === 'rating')
+      .filter((item) => isExperientialCriterion(def.key, item.label))
       .map((item) => ({ ...item, categoryKey: def.key }))
   );
 }
@@ -380,10 +380,17 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
         return;
       }
 
-      if (item.kind === 'rating') {
+      if (item.kind === 'rating' || isExperientialCriterion(def.key, item.label)) {
         const val = home.ratings?.[ns] || 0;
-        if (val > 0) push(ns, item.label, tier, true, val / 5, val >= 3, `${val}/5`, false);
-        else notEvaluated(ns, item.label, tier, false);
+        if (isExperientialCriterion(def.key, item.label) && typeof val === 'string') {
+          if (val === TOUR_RESPONSE.POSITIVE) push(ns, item.label, tier, true, 1, true, tourResponseLabel(def.key, item.label, val), false);
+          else if (val === TOUR_RESPONSE.NEGATIVE) push(ns, item.label, tier, true, 0, false, tourResponseLabel(def.key, item.label, val), false);
+          else if (val === TOUR_RESPONSE.NEUTRAL) push(ns, item.label, tier, true, null, null, tourResponseLabel(def.key, item.label, val), false);
+          else notEvaluated(ns, item.label, tier, false);
+        } else if (typeof val === 'number' && val > 0) {
+          // Backward compatibility: historical 1–5 ratings keep their established score.
+          push(ns, item.label, tier, true, val / 5, val >= 3, `${val}/5`, false);
+        } else notEvaluated(ns, item.label, tier, false);
         return;
       }
 
@@ -436,9 +443,12 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
   const selectedCount = all.length;
   const evaluatedCount = evaluated.length;
 
-  const totalWeight = evaluated.reduce((s, c) => s + TIER_META[c.tier].weight, 0);
-  const weightedSum = evaluated.reduce((s, c) => s + c.score * TIER_META[c.tier].weight, 0);
-  const pct = evaluatedCount > 0 && totalWeight > 0 ? Math.round((weightedSum / totalWeight) * 100) : null;
+  // Neutral is deliberately evaluated but unscored in V1: it is displayed and no
+  // longer counted Unknown, yet cannot be coerced into either a pass or a failure.
+  const scorable = evaluated.filter((c) => typeof c.score === 'number');
+  const totalWeight = scorable.reduce((s, c) => s + TIER_META[c.tier].weight, 0);
+  const weightedSum = scorable.reduce((s, c) => s + c.score * TIER_META[c.tier].weight, 0);
+  const pct = scorable.length > 0 && totalWeight > 0 ? Math.round((weightedSum / totalWeight) * 100) : null;
 
   const mustAll = all.filter((c) => c.tier === 'must');
   const mustEvaluated = mustAll.filter((c) => c.evaluated);
