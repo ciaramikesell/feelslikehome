@@ -27,12 +27,12 @@ test('CTA routing respects session while signup intent remains non-authorizing',
   assert.doesNotMatch(landing, /close rate|conversion|lead generation|pipeline/i);
 });
 
-test('desktop Realtor auth actions open the shared popover in their direct modes', () => {
+test('header Realtor auth actions retain the shared popover while hero CTAs use canonical routes', () => {
   assert.match(landing, /<LandingAuthPopover mode=\{authMode\}[\s\S]*isRealtorEntry redirectTo="\/people"/);
-  assert.ok((landing.match(/openAuth\('sign-in', event\)/g) || []).length >= 3);
-  assert.ok((landing.match(/openAuth\('sign-up', event\)/g) || []).length >= 3);
-  assert.match(landing, /openAuth\('sign-up', event\)[^>]*>Start helping a buyer/);
-  assert.match(landing, /openAuth\('sign-up', event\)[^>]*>Create Realtor account/);
+  assert.ok((landing.match(/openAuth\('sign-in', event\)/g) || []).length >= 2);
+  assert.ok((landing.match(/openAuth\('sign-up', event\)/g) || []).length >= 2);
+  assert.match(landing, /href=\{startHref\}>Start helping a buyer/);
+  assert.match(landing, /href=\{startHref\}>\{isAuthenticated \? 'Go to People I’m Helping' : 'Create Realtor account'\}/);
   assert.match(popover, /isRealtorEntry=\{isRealtorEntry\} redirectTo=\{redirectTo\}/);
 });
 
@@ -46,30 +46,30 @@ test('Realtor panel switches in context and preserves Realtor copy, intent, and 
   assert.doesNotMatch(auth, /users\.role|profiles\.role|role:\s*'realtor'/);
 });
 
-test('Realtor popover dismissal restores focus while mobile keeps Realtor-aware routes', () => {
+test('Realtor popover dismissal restores focus while all viewport sizes keep Realtor-aware routes', () => {
   assert.match(popover, /event\.key === 'Escape'/);
   assert.match(popover, /contains\(event\.target\)/);
   assert.match(popover, /returnFocusRef\.current\?\.focus\(\)/);
-  assert.match(landing, /className="rl-button rl-mobile-auth" href=\{startHref\}/);
-  assert.match(landing, /className="rl-text-link rl-mobile-auth" href="\/auth\/sign-in\?redirect=\/people"/);
+  assert.match(landing, /className="rl-button" href=\{startHref\}>Start helping a buyer/);
+  assert.match(landing, /className="rl-text-link" href="\/auth\/sign-in\?redirect=\/people"/);
   assert.match(css, /@media\(max-width:640px\)[\s\S]*\.rl-desktop-auth\{display:none\}\.rl-root \.rl-mobile-auth\{display:inline-flex\}/);
 });
 
 test('page explains draft provenance, buyer ownership, and implemented contributions', () => {
-  for (const phrase of ['Realtor-entered draft context', 'Match always belongs to the buyer', 'make changes', 'Suggest a listing', 'recommend tours', 'Buyers keep their own priorities and Match']) {
+  for (const phrase of ['Realtor-entered draft context', 'Match always belongs to the buyer', 'make changes', 'Suggest a listing', 'recommend tours', 'buyer retains control of their priorities']) {
     assert.match(landing, new RegExp(phrase, 'i'));
   }
-  assert.match(landing, /Illustrative workspace preview/);
+  assert.doesNotMatch(landing, /Illustrative workspace preview|rl-product-card/);
   assert.equal((landing.match(/\[\w+, '[^']+', '[^']+'\]/g) || []).length, 8);
 });
 
 test('Realtor story uses the approved photo-led card composition and copy', () => {
-  assert.match(landing, /Image src="\/images\/Warm Cottage\.png"/);
-  assert.match(landing, /People I’m Helping/);
-  assert.match(landing, /Stay connected to what matters/);
+  assert.match(landing, /Image src="\/images\/Realtor\.png"/);
+  assert.match(landing, /Real estate agent touring a home with buyers, alongside an illustrative Feels Like Home Realtor workspace/);
+  assert.match(landing, /Help your buyers find the right fit/);
   assert.match(landing, /Built for better collaboration/);
   assert.match(landing, /Helping buyers make clearer home decisions/);
-  assert.match(css, /\.rl-hero-visual\{[^}]*min-height:590px/);
+  assert.match(css, /\.rl-hero-visual\{[^}]*aspect-ratio:3\/2/);
   assert.match(css, /\.rl-steps>div\{[^}]*grid-template-columns:repeat\(4/);
   assert.match(css, /\.rl-value-list article\{[^}]*border:[^}]*border-radius/);
   assert.match(css, /\.rl-cta\{[^}]*background:#442f28/);
