@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { getItemlistCategories, normalizePriorities } from '../src/lib/constants.js';
+import { criterionMetadata, getItemlistCategories, normalizePriorities } from '../src/lib/constants.js';
 import { computeMatch } from '../src/lib/matching.js';
 import { appendPostTourNote, applyPostTourVerdict } from '../src/lib/lifecycle.js';
 
@@ -16,6 +16,11 @@ test('purchase catalog is the exact pre-tour My Search catalog', () => {
   assert.deepEqual(Object.fromEntries(categories.map((c) => [c.title, [...c.coreItems,...c.suggestedItems].map((i) => i.label)])), expected);
   const labels = Object.values(expected).flat();
   for (const removed of ['On-Site Management','Fitness Center','Secure Entry','Elevator','Pets Allowed','Utilities Included','Curb Appeal','Layout / Flow','Privacy','Natural Light']) assert.ok(!labels.includes(removed));
+});
+
+test('Landscaping is a normal pre-tour criterion while Curb Appeal remains post-tour only', () => {
+  assert.equal(criterionMetadata('exterior', 'Landscaping').evaluationMode, 'pre_tour');
+  assert.equal(criterionMetadata('exterior', 'Curb Appeal').evaluationMode, 'tour');
 });
 
 test('legacy subjective built-ins are preserved in JSON but excluded from Match Unknowns', () => {

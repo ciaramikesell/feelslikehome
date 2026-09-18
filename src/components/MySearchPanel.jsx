@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import Link from 'next/link';
 import { TierPicker } from '@/components/ui';
 import PriorityBoard from '@/components/PriorityBoard';
@@ -240,10 +240,10 @@ function BasicsCard({ p, patch }) {
 // so its resting portrait never transforms into a configuration panel. This
 // is the page's primary purpose, so it renders in the wide left column (see
 // .hh-search-primary) rather than as one supporting card among several.
-function WhatMattersCard({ priorities, patch, catalogOpen, onCatalogOpenChange, sectionRef }) {
+function WhatMattersCard({ priorities, patch, catalogOpen, onCatalogOpenChange }) {
   return (
-    <div ref={sectionRef}>
-    <SearchCard title="What Matters Most to Me" subtitle="Choose what matters and how strongly it should shape your Match.">
+    <div>
+    <SearchCard title="What Matters Most to Me">
       <PriorityBoard priorities={priorities} patch={patch} catalogOpen={catalogOpen} onCatalogOpenChange={onCatalogOpenChange} />
     </SearchCard>
     </div>
@@ -334,11 +334,6 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
   const { state: priorities, patch, saveError, retry } = useReliableOptimisticState(initial, persistPriorities);
   const [commuteDestinations, setCommuteDestinations] = useState(initialCommuteDestinations || []);
   const [catalogOpen, setCatalogOpen] = useState(false);
-  const prioritiesSection = useRef(null);
-  const reviewSearch = () => {
-    setCatalogOpen(true);
-    requestAnimationFrame(() => prioritiesSection.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
-  };
 
   const p = priorities;
   return (
@@ -358,7 +353,7 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
             grid inside it already collapses at. */}
         <div className="hh-search-grid">
           <div className="hh-search-primary">
-            <WhatMattersCard priorities={p} patch={patch} catalogOpen={catalogOpen} onCatalogOpenChange={setCatalogOpen} sectionRef={prioritiesSection} />
+            <WhatMattersCard priorities={p} patch={patch} catalogOpen={catalogOpen} onCatalogOpenChange={setCatalogOpen} />
           </div>
           <div className="hh-search-rail">
             <BasicsCard p={p} patch={patch} />
@@ -380,16 +375,16 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
         </div>
       </div>
 
-      {/* Reciprocal Match education, mirroring My Homes' own editorial band
-          (see .hh-match-editorial / homes/page.js) so the two pages read as
-          one application: My Homes points here ("Review My Criteria"), this
-          page points back to My Homes ("View Matching Homes"). */}
-      <section className="hh-match-editorial">
-        <div>
-          <h2>How Match Scores Work</h2>
-          <p>Each home is measured against your own Must Haves, Important features, Nice to Haves, and places that matter. When you’re searching together, each person keeps their own Match — so you can see where your priorities line up and where they don’t.</p><img className="hh-match-editorial-art" src="/images/FWFLH%20Transparent.png" alt="" aria-hidden="true" />
+      <section className="hh-match-editorial hh-match-editorial-search">
+        <div className="hh-match-editorial-inner">
+          <div className="hh-match-editorial-copy">
+            <h2>How Match Scores Work</h2>
+            <p>Each home is measured against your Must Haves, Important priorities, Nice to Haves, and places that matter. When you&apos;re searching together, each person keeps their own Match — so you can see where your priorities line up and where they don&apos;t.</p>
+          </div>
+          <div className="hh-match-editorial-visual">
+            <img className="hh-match-editorial-art" src="/images/FWFLH%20Transparent.png" alt="" aria-hidden="true" />
+          </div>
         </div>
-        <button type="button" className="hh-btn hh-btn-ghost" onClick={reviewSearch}>Review My Search</button>
       </section>
     </>
   );

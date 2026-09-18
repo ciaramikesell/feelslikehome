@@ -67,7 +67,7 @@ const TOUR_CRITERIA = new Set([
   'homeFeel:Overall Condition', 'homeFeel:Layout / Flow', 'homeFeel:Natural Light',
   'homeFeel:Character / Charm', 'homeFeel:Room Sizes', 'homeFeel:Openness / Ceiling Height',
   'homeFeel:Privacy', 'location:Immediate Street / Surroundings', 'exterior:Yard',
-  'exterior:Privacy', 'exterior:Exterior Condition', 'exterior:Landscaping',
+  'exterior:Privacy', 'exterior:Exterior Condition',
   'exterior:Curb Appeal', 'exterior:Outdoor Space', 'exterior:Noise Level', 'features:Storage',
 ]);
 
