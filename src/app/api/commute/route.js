@@ -87,6 +87,15 @@ function unavailableResults(homes, destinations, status = 'unavailable') {
     Object.fromEntries(destinations.map((destination) => [destination.id, { minutes: null, status }]))]));
 }
 
+function resolvedCoordinates(records, locations) {
+  return Object.fromEntries(records.flatMap((record, index) => {
+    const location = locations[index];
+    return location?.status === 'resolved'
+      ? [[record.id, { latitude: location.latitude, longitude: location.longitude }]]
+      : [];
+  }));
+}
+
 export async function POST(request) {
   try {
     const supabase = await createClient();
@@ -135,7 +144,11 @@ export async function POST(request) {
 
     const validHomeIndexes = homeLocations.map((x, i) => x.status === 'resolved' ? i : -1).filter((i) => i >= 0);
     const validDestinationIndexes = destinationLocations.map((x, i) => x.status === 'resolved' ? i : -1).filter((i) => i >= 0);
-    if (!validHomeIndexes.length || !validDestinationIndexes.length) return NextResponse.json({ results });
+    const coordinates = {
+      homes: resolvedCoordinates(homes, homeLocations),
+      destinations: resolvedCoordinates(destinations, destinationLocations),
+    };
+    if (!validHomeIndexes.length || !validDestinationIndexes.length) return NextResponse.json({ results, coordinates });
 
     const response = await fetchWithTimeout(ROUTES_URL, {
       method: 'POST', cache: 'no-store',
@@ -149,7 +162,7 @@ export async function POST(request) {
     if (!response.ok) {
       const body = await response.json().catch(() => null);
       console.error('Google Routes provider error', { httpStatus: response.status, ...safeProviderError(body) });
-      return NextResponse.json({ results, providerStatus: 'unavailable' });
+      return NextResponse.json({ results, coordinates, providerStatus: 'unavailable' });
     }
     const rows = await response.json();
     console.info('Google Routes response received', {
@@ -166,7 +179,7 @@ export async function POST(request) {
         : { status: row.condition === 'ROUTE_NOT_FOUND' ? 'no_route' : 'unavailable', minutes: null };
     });
     // Durations, distances, and route content are returned only; no route cache/table exists.
-    return NextResponse.json({ results });
+    return NextResponse.json({ results, coordinates });
   } catch (error) {
     console.error('Commute route failed', { errorName: error?.name || 'Error', message: error?.message || null });
     return NextResponse.json({ error: 'Commute time isn’t available right now.' }, { status: 500 });

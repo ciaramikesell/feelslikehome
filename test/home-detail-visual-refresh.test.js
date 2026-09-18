@@ -201,9 +201,32 @@ test('Location and Commute reuses trusted coordinates and the existing Google Ma
   assert.doesNotMatch(detailLocation, /Polyline|DirectionsService|routePath|routeGeometry/);
 });
 
-test('the map has honest coordinate and provider fallbacks while commute text remains outside it', () => {
+test('the map keeps its canvas mounted through async coordinate loading and has honest fallbacks', () => {
+  assert.match(detailLocation, /const \[coordinatesReady, setCoordinatesReady\] = useState\(false\)/);
+  assert.match(detailLocation, /if \(!coordinatesReady && !transientHomePoint && !transientDestinationPoint\) \{ setMapState\('loading'\)/);
+  assert.match(detailLocation, /<div ref=\{canvasRef\} className="hh-detail-map-canvas"/);
+  assert.doesNotMatch(detailLocation, /mapState !== 'empty' && <div className="hh-detail-map-wrap"/);
   assert.match(detailLocation, /if \(!visiblePoints\.length\) \{ setMapState\('empty'\)/);
-  assert.match(detailLocation, /if \(!key \|\| !mapId\) \{ setMapState\('unconfigured'\)/);
+  assert.match(detailLocation, /if \(!key\) \{ setMapState\('unconfigured'\)/);
+  assert.match(detailLocation, /mapId \? maps\.importLibrary\('marker'\) : Promise\.resolve\(null\)/);
   assert.match(detailLocation, /Commute details remain available alongside the map\./);
   assert.match(detailLocation, /state\.status === 'ok'/);
+});
+
+test('commute response coordinates bridge server geocoding to Home Detail without a duplicate client geocoder', () => {
+  const observer = read('src/lib/useCommuteObserver.js');
+  const commuteRoute = read('src/app/api/commute/route.js');
+  assert.match(commuteRoute, /coordinates = \{[\s\S]*homes: resolvedCoordinates\(homes, homeLocations\)[\s\S]*destinations: resolvedCoordinates\(destinations, destinationLocations\)/);
+  assert.match(observer, /homeCoordinates: coordinates\.homes\?\.\[home\.id\] \|\| null/);
+  assert.match(observer, /destinationCoordinates: coordinates\.destinations\?\.\[destination\.id\] \|\| null/);
+  assert.match(detailLocation, /validMapPoint\(selectedCommute\?\.homeCoordinates\)/);
+  assert.match(detailLocation, /validMapPoint\(selectedCommute\?\.destinationCoordinates\)/);
+  assert.doesNotMatch(detailLocation, /geocode|\/api\/commute/);
+});
+
+test('selected place drives both the displayed commute and map destination without retaining a stale marker', () => {
+  assert.match(detailLocation, /const selected = destinations\.find\(\(item\) => item\.id === selectedId\) \|\| destinations\[0\]/);
+  assert.match(detailLocation, /const selectedCommute = selected \? getState\(selected\) : null/);
+  assert.match(detailLocation, /return \(\) => \{[\s\S]*markers\.forEach/);
+  assert.match(detailLocation, /onClick=\{\(\) => setSelectedId\(destination\.id\)\}/);
 });

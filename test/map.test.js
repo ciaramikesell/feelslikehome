@@ -26,3 +26,12 @@ test('rejects stale, unresolved, nonnumeric, and out-of-range coordinates', asyn
   assert.equal(await currentHomeCoordinates(await resolvedHome({ latitude: 'not-a-number' })), null);
   assert.equal(await currentHomeCoordinates(await resolvedHome({ latitude: 91 })), null);
 });
+
+test('provider map points require finite in-range numbers and never coerce missing data', async () => {
+  const { validMapPoint } = await commute();
+  assert.deepEqual(validMapPoint({ latitude: 42.448, longitude: -82.924 }), { lat: 42.448, lng: -82.924 });
+  assert.deepEqual(validMapPoint({ lat: 0, lng: 0 }), { lat: 0, lng: 0 });
+  assert.equal(validMapPoint({ latitude: '42.448', longitude: '-82.924' }), null);
+  assert.equal(validMapPoint({ latitude: null, longitude: null }), null);
+  assert.equal(validMapPoint({ latitude: 42.448, longitude: 181 }), null);
+});
