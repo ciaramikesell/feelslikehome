@@ -87,9 +87,9 @@ test('available suggestions use four, two, and one-column responsive layouts', (
   assert.match(css, /@media \(max-width: 640px\)[\s\S]*?\.hh-priority-tiers, \.hh-suggestion-grid, \.hh-how-to-notes \{ grid-template-columns: 1fr; \}/);
 });
 
-test('My Search guidance is pre-tour only', () => {
+test('My Search omits redundant guidance while retaining contextual tour language only', () => {
   const board = read('src/components/PriorityBoard.jsx');
-  assert.match(board, /Choose the pre-tour details/);
+  assert.doesNotMatch(board, /Choose the pre-tour details/);
   assert.doesNotMatch(board, /Best answered after you tour<\/div>/);
   assert.doesNotMatch(board, /experiential priorities stay Unknown/);
   assert.doesNotMatch(board, /We&apos;ll ask after you tour/);

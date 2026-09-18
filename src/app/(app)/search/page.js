@@ -23,7 +23,7 @@ export default async function SearchPage({ searchParams }) {
 
     return (
       <>
-        <PageIntro title="My Search" subtitle="Describe the home you want. Only what you choose here shapes your personalized Match." />
+        <PageIntro title="My Search" subtitle="Describe the home you want and what matters most. Feels Like Home uses the priorities you choose here — along with reliable property information — to calculate your personalized Match." />
         <MySearchPanel
           search={search}
           userId={user.id}

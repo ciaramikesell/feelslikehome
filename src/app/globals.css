@@ -1484,3 +1484,64 @@ details[open] > summary .hh-accordion-chevron, .hh-more-home-details:has(.hh-mor
 .hh-match-editorial{position:relative;overflow:hidden;min-height:250px;background:#faeee5;border-radius:24px 24px 0 0}.hh-match-editorial>div,.hh-match-editorial>button{position:relative;z-index:1}.hh-match-editorial-art{position:absolute!important;z-index:0!important;right:1%;bottom:-25%;width:min(52%,520px);height:auto;object-fit:contain;opacity:.55;pointer-events:none}
 @media(max-width:700px){.hh-tour-evaluations{grid-template-columns:1fr}}
 @media(max-width:560px){.hh-post-tour-modal{width:100vw;max-height:94dvh;border-radius:20px 20px 0 0!important;margin-top:auto}.hh-post-tour-verdicts{grid-template-columns:1fr}.hh-post-tour-verdicts>button{min-height:78px!important;grid-template-columns:26px 1fr;text-align:left;justify-items:start;align-items:center}.hh-post-tour-verdicts>button span{grid-column:2}.hh-tour-response-group [role="radiogroup"]{grid-template-columns:repeat(3,minmax(0,1fr))}.hh-tour-response-group label{padding:7px 4px;font-size:11px}.hh-tour-fast-exit>div .hh-btn,.hh-tour-actions .hh-btn{flex:1;min-height:46px}.hh-match-editorial-art{width:82%;opacity:.28}}
+
+/* My Search uses the shared warm editorial band, but keeps its illustration
+   in normal document flow so the full artwork remains legible and can never
+   compete with or overlap the Match explanation. */
+.hh-match-editorial.hh-match-editorial-search {
+  display: block;
+  min-height: 0;
+  padding-block: 30px;
+  border-radius: 24px 24px 0 0;
+}
+.hh-match-editorial-search .hh-match-editorial-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(320px, .92fr);
+  align-items: center;
+  gap: clamp(28px, 5vw, 72px);
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+}
+.hh-match-editorial-search .hh-match-editorial-copy { max-width: 680px; }
+.hh-match-editorial-search .hh-match-editorial-visual {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+}
+.hh-match-editorial-search .hh-match-editorial-art {
+  position: static !important;
+  z-index: auto !important;
+  display: block;
+  width: 100%;
+  max-width: 560px;
+  height: clamp(180px, 20vw, 270px);
+  object-fit: contain;
+  object-position: center;
+  opacity: 1;
+}
+@media (max-width: 760px) {
+  .hh-match-editorial.hh-match-editorial-search { padding-block: 26px; }
+  .hh-match-editorial-search .hh-match-editorial-inner {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .hh-match-editorial-search .hh-match-editorial-art {
+    width: min(100%, 520px);
+    height: auto;
+    max-height: 230px;
+  }
+}
+@media (max-width: 560px) {
+  .hh-match-editorial.hh-match-editorial-search {
+    gap: 0;
+    padding: 24px 18px calc(24px + env(safe-area-inset-bottom));
+  }
+  .hh-match-editorial-search .hh-match-editorial-inner { gap: 14px; }
+  .hh-match-editorial-search .hh-match-editorial-art {
+    width: 100%;
+    max-height: 190px;
+    opacity: 1;
+  }
+}

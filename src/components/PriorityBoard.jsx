@@ -161,7 +161,6 @@ export default function PriorityBoard({ priorities, patch, onboarding = false, c
     <div>
       {selected.length || choicesOpen ? (
         <>
-          <p className="hh-priority-explainer">Choose the pre-tour details you want Feels Like Home to evaluate from reliable property information.</p>
           {hasExperiential && <div className="hh-priority-legend"><span aria-hidden="true">◷</span> After tour</div>}
           {mobileCompact ? (
             <div className="hh-tier-summary-list" aria-label="Selected preferences by importance">

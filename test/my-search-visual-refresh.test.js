@@ -92,9 +92,9 @@ test('Match weighting is unchanged: PriorityBoard\'s weight callout is presentat
   assert.match(board, /<TierItemsList/);
 });
 
-test('tour guidance is contextual and uses a restrained accessible marker', async () => {
+test('priority groups omit redundant Match copy while retaining contextual tour markers', async () => {
   const board = await source('src/components/PriorityBoard.jsx');
-  assert.match(board, /Choose the pre-tour details you want Feels Like Home to evaluate from reliable property information/);
+  assert.doesNotMatch(board, /Choose the pre-tour details you want Feels Like Home to evaluate from reliable property information/);
   assert.doesNotMatch(board, /Best answered after you tour<\/div>/);
   assert.match(board, /isExperientialCriterion\(item\.categoryKey, item\.label\)/);
 });
@@ -135,20 +135,22 @@ test('mobile: the desktop two-column grid collapses to one stacked column; Prior
   assert.match(board, /const \[mobileCompact, setMobileCompact\] = useState\(false\);/);
 });
 
-test('Match education uses the editorial asset and opens the My Search catalog meaningfully', async () => {
+test('Match education uses a non-overlapping editorial asset and has no redundant My Search CTA', async () => {
   const panel = await source('src/components/MySearchPanel.jsx');
   const homes = await source('src/app/(app)/homes/page.js');
-  assert.match(panel, /className="hh-match-editorial"/);
+  const css = await source('src/app/globals.css');
+  assert.match(panel, /className="hh-match-editorial hh-match-editorial-search"/);
   assert.match(panel, /<h2>How Match Scores Work<\/h2>/);
   assert.match(panel, /FWFLH%20Transparent\.png/);
-  assert.match(panel, /onClick=\{reviewSearch\}>Review My Search<\/button>/);
-  assert.match(panel, /setCatalogOpen\(true\)/);
+  assert.match(panel, /hh-match-editorial-inner/);
+  assert.doesNotMatch(panel, /Review My Search/);
+  assert.match(css, /\.hh-match-editorial-search \.hh-match-editorial-art \{[\s\S]*?position: static !important;[\s\S]*?object-fit: contain;[\s\S]*?opacity: 1;/);
   assert.match(homes, /href="\/search">Review My Search<\/a>/);
 });
 
 test('page identity copy matches the approved spec', async () => {
   const page = await source('src/app/(app)/search/page.js');
-  assert.match(page, /title="My Search" subtitle="Describe the home you want\. Only what you choose here shapes your personalized Match\."/);
+  assert.match(page, /Describe the home you want and what matters most\. Feels Like Home uses the priorities you choose here — along with reliable property information — to calculate your personalized Match\./);
 });
 
 test('data/loader change is additive and minimal: resolveCollaboratorSearchContext gains only a display name, using the same already-verified relationship', async () => {
