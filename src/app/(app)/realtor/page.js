@@ -59,6 +59,7 @@ export default async function RealtorHomePage() {
         <section className="hh-realtor-home-editorial" aria-labelledby="realtor-home-how-title">
           <span className="hh-realtor-home-eyebrow">Once you&apos;re connected</span>
           <h2 id="realtor-home-how-title">Here&apos;s how it works</h2>
+          <p className="hh-realtor-home-editorial-intro">This is what full collaboration looks like once a buyer brings you into their FLH+ search.</p>
           <div className="hh-realtor-home-steps">
             <article><span className="hh-realtor-home-step-number">01</span><span className="hh-realtor-home-step-icon"><SlidersHorizontal size={19} /></span><h3>Understand what matters</h3><p>See the priorities your buyer has chosen and how each contender fits them.</p></article>
             <article><span className="hh-realtor-home-step-number">02</span><span className="hh-realtor-home-step-icon"><HomeIcon size={19} /></span><h3>Suggest homes with context</h3><p>Bring a home into their consideration and explain why you think it&apos;s worth a look.</p></article>

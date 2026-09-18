@@ -318,7 +318,7 @@ function SearchingTogetherCard({ search, userId, isOwner, participantCount, memb
           <p style={{ fontSize: 13.5, color: 'var(--ink)', margin: '0 0 4px' }}>You&apos;re searching alone.</p>
           {isOwner && (
             <>
-              <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '0 0 12px' }}>Invite someone to compare the same homes while keeping each person&apos;s perspective under their own control.</p>
+              <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '0 0 12px' }}>Invite someone to compare the same homes while keeping each person&apos;s perspective under their own control. That&apos;s what FLH+ unlocks for this search.</p>
               <InviteCoBuyer searchId={search.id} userId={userId} />
             </>
           )}

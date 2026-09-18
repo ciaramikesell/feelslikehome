@@ -59,7 +59,7 @@ export default function InviteCoBuyer({ searchId, userId, embedded = false, onCl
 
   return (
     <Sheet open onClose={close} title="The house is ours. The opinion is mine." size="default" className="hh-collaboration-modal">
-      <p>Invite someone as a co-buyer who is choosing with you, or as the Realtor professionally helping with your search.</p>
+      <p>Invite someone as a co-buyer who is choosing with you, or as the Realtor professionally helping with your search. This is what FLH+ is for.</p>
       <div className="hh-collaboration-disclosure">
         <strong>Your opinions stay yours, but they aren&apos;t hidden from the people in this search.</strong>
         <p>People you search with may see your priorities, Match, Favorites, Want to Tour choices, commute destinations, notes, Overall Feeling, and how you rated a home after touring.</p>

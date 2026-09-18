@@ -11,7 +11,7 @@ const steps = [
   [ListChecks, 'Set Your Preferences', 'Tell FLH what matters to you — and how much each priority matters in your decision.'],
   [HousePlus, 'Bring Homes From Anywhere', 'Add the listings you’re actually considering and keep every contender in one place.'],
   [Heart, 'Compare What Matters', 'See how each home fits your Must Haves, Nice to Haves, and everything in between.'],
-  [Users, 'Search Together', 'Add a co-buyer, invite your Realtor, and make decisions with clarity — and less back-and-forth.'],
+  [Users, 'Search Together', 'With FLH+, invite your co-buyer and Realtor into the search so everyone can contribute without losing their own perspective.'],
 ];
 
 export default function PublicLanding() {
@@ -64,7 +64,7 @@ export default function PublicLanding() {
       </section>
 
       <section className="pl-collaboration" aria-labelledby="collaboration-title">
-        <header><p className="pl-eyebrow">Thoughtful collaboration</p><h2 id="collaboration-title">Choosing a home doesn’t happen alone.</h2></header>
+        <header><p className="pl-eyebrow">Thoughtful collaboration · FLH+</p><h2 id="collaboration-title">Choosing a home doesn’t happen alone.</h2><p className="pl-collaboration-intro">FLH+ turns your search into a shared workspace — while keeping each person’s Match, priorities, and decisions their own.</p></header>
         <div className="pl-collaboration-grid">
           <article className="pl-collaboration-story"><p className="pl-role">Co-buyer</p><h3>Searching with a co-buyer</h3><p>Compare the same homes without pretending you have the same priorities. Each person keeps their own Match, preferences, and perspective. Unknown information stays Unknown.</p><div className="pl-people-card"><div className="pl-home-label"><Heart size={17} fill="currentColor" aria-hidden="true" /> 123 Main Street</div><div className="pl-person"><span>C</span><div><h4>Ciara <b>92% Match</b></h4><p>✓ Character &amp; charm · ✓ Fenced yard<br />? Commute at rush hour — Unknown</p></div></div><div className="pl-person"><span>A</span><div><h4>Andrew <b>84% Match</b></h4><p>✓ Home office · ✓ Garage<br />✕ Main-floor bedroom</p></div></div></div></article>
           <article className="pl-collaboration-story"><p className="pl-role">Realtor</p><h3>Working with a Realtor</h3><p>Invite your Realtor to understand what matters, suggest homes, add professional context, and recommend tours — while your decisions stay yours.</p><div className="pl-realtor-scene"><div className="pl-realtor-top"><span>Suggested by Whitney</span><small>Realtor contribution</small></div><div className="pl-note"><MessageSquareText size={19} aria-hidden="true" /><div><b>From Whitney</b><p>“The layout could work well for the way you described your weekdays.”</p></div></div><div className="pl-tour"><MapPin size={17} aria-hidden="true" /><b>Whitney suggests touring this home</b></div></div><Link className="pl-text-link" href={realtorHref}>Learn more for agents <ArrowRight size={16} aria-hidden="true" /></Link></article>
