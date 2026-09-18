@@ -26,9 +26,8 @@ export default async function AppGroupLayout({ children }) {
     // legitimately have no owned search and no client membership, so this
     // route must not depend on resolving an active buyer search.
     if (isRealtorWorkspace) {
-      const accessibleSearches = await getAccessibleSearches(supabase, user.id);
       return (
-        <AppShell userEmail={user.email} userId={user.id} accessibleSearches={accessibleSearches} activeSearchId={null} priorities={null} searchIntent={null} isCollaborative={false} appVersion={appVersion} workspace="realtor">
+        <AppShell userEmail={user.email} userId={user.id} accessibleSearches={[]} activeSearchId={null} priorities={null} searchIntent={null} isCollaborative={false} appVersion={appVersion} workspace="realtor">
           {children}
         </AppShell>
       );

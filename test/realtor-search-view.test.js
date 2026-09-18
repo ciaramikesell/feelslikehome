@@ -9,6 +9,7 @@ const detail = fs.readFileSync('src/components/HomeDetail.jsx', 'utf8');
 const listPage = fs.readFileSync('src/app/(app)/people/page.js', 'utf8');
 const contextPage = fs.readFileSync('src/app/(app)/people/[searchId]/page.js', 'utf8');
 const peopleError = fs.readFileSync('src/app/(app)/people/error.js', 'utf8');
+const clientError = fs.readFileSync('src/app/(app)/people/[searchId]/error.js', 'utf8');
 const appLayout = fs.readFileSync('src/app/(app)/layout.js', 'utf8');
 const migration = fs.readFileSync('supabase/migrations/2026-09-16-realtor-search-view.sql', 'utf8');
 const css = fs.readFileSync('src/app/globals.css', 'utf8');
@@ -45,8 +46,10 @@ test('URL access fails closed before any client context is returned', () => {
   assert.match(contextPage, /if \(!context\) notFound\(\)/);
   assert.match(migration, /is_search_realtor\(participants\.search_id, auth\.uid\(\)\)/);
   assert.match(migration, /revoke execute.*anon, service_role/);
-  assert.match(peopleError, /We couldn’t load this client search/);
-  assert.match(peopleError, /Back to People I’m Helping/);
+  assert.match(peopleError, /We couldn’t load People I’m Helping/);
+  assert.doesNotMatch(peopleError, /this client search/);
+  assert.match(clientError, /We couldn’t load this client search/);
+  assert.match(clientError, /Back to People I’m Helping/);
 });
 
 test('priorities preserve tiers and participant attribution rather than consensus', () => {
