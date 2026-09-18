@@ -1,4 +1,4 @@
-import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier, isExperientialCriterion, TOUR_RESPONSE, tourResponseLabel } from './constants.js';
+import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier, isExperientialCriterion, isRetiredPurchaseBuiltIn, TOUR_RESPONSE, tourResponseLabel } from './constants.js';
 import { normalizeSearchIntent } from './searchIntent.js';
 import { EVIDENCE_STRENGTH, findingsFromFields } from './importDomain.js';
 
@@ -74,7 +74,8 @@ export function applyOrder(items, order) {
 export function selectedOrderedItems(def, priorities) {
   const { catState, core, custom } = splitCategoryItems(def, priorities);
   const ordered = applyOrder([...core, ...custom], catState.order || []);
-  return ordered.filter((item) => effectiveTier(def.key, item.label, priorities, catState.tiers?.[item.label]) !== 'dontcare');
+  return ordered.filter((item) => !isRetiredPurchaseBuiltIn(def.key, item, priorities.searchType)
+    && effectiveTier(def.key, item.label, priorities, catState.tiers?.[item.label]) !== 'dontcare');
 }
 
 // Backwards-compatible alias.
@@ -367,6 +368,7 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
   getItemlistCategories(priorities.searchType).forEach((def) => {
     const { catState, core, custom } = splitCategoryItems(def, priorities);
     [...core, ...custom].forEach((item) => {
+      if (isRetiredPurchaseBuiltIn(def.key, item, priorities.searchType)) return;
       const tier = effectiveTier(def.key, item.label, priorities, catState.tiers?.[item.label]);
       if (tier === 'dontcare') return;
       const ns = `${def.key}:${item.label}`;

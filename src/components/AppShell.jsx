@@ -241,7 +241,7 @@ export default function AppShell({ children, userEmail, userId, accessibleSearch
               href="/search"
               className={`hh-shell-action hh-shell-action-primary hh-desktop-only ${pathname === '/search' ? 'active' : ''}`}
             >
-              <SlidersHorizontal size={14} /> My Criteria
+              <SlidersHorizontal size={14} /> My Search
             </Link>
             <button className="hh-shell-action" onClick={() => setHowToOpen(true)}>
               <HelpCircle size={14} /> How it works

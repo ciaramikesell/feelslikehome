@@ -379,7 +379,7 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
       <section className="hh-match-editorial">
         <div>
           <h2>How Match Scores Work</h2>
-          <p>Must Haves, Important priorities, and Nice to Haves carry different weights. Listing-verifiable details can be evaluated before touring; experiential priorities stay Unknown until you evaluate them after a tour. When you&apos;re searching together, each participant keeps their own Match.</p>
+          <p>Must Haves, Important priorities, and Nice to Haves carry different weights. Match uses only reliable pre-tour information, and details the listing does not establish remain Unknown—not mismatches. Each participant keeps their own Match.</p><img className="hh-match-editorial-art" src="/images/FWFLH%20Transparent.png" alt="" aria-hidden="true" />
         </div>
         <Link className="hh-btn hh-btn-ghost" href="/homes">View Matching Homes</Link>
       </section>

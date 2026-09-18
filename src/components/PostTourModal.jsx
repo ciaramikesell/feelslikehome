@@ -1,269 +1,95 @@
 'use client';
 
-import { useState } from 'react';
-import { X, Heart, CircleDashed, XCircle } from 'lucide-react';
-import { StarInput } from '@/components/ui';
-import { TOUR_RATING_KEY, criterionDisplayLabel, TOUR_RESPONSE, tourResponseOptions } from '@/lib/constants';
-import { selectedSubjectiveCriteria } from '@/lib/matching';
+import { useMemo, useState } from 'react';
+import { Check, CircleDashed, Heart, X, XCircle } from 'lucide-react';
 import { postTourVerdict } from '@/lib/lifecycle';
 
-// A small set of things people commonly notice on a tour that DON'T correspond to a
-// formal rating criterion at all — deliberately short. Anything that maps onto a real
-// criterion (Natural Light, Layout / Flow, Yard, Privacy, Room Sizes, Character / Charm,
-// Condition, Street, Noise) is now handled exactly and unambiguously via LikeDislikeRow
-// above instead, since several of those names are genuinely ambiguous on their own
-// (e.g. "Privacy" and "Condition" each refer to two different real criteria) or don't
-// match the stored label closely enough to safely tie back to Match. These just toggle
-// a word in the existing Pros/Cons text fields; there's no criterion behind them.
-const IMPRESSION_CHIPS = ['Kitchen', 'Storage'];
-
-// Equivalent structural treatment for all three verdicts (same icon size/position),
-// each semantically distinct: a filled heart for Love it, a neutral dashed circle for
-// genuine ambivalence, and a clear X for ruling a home out.
-const VERDICTS = [
-  { key: 'love', icon: Heart, filled: true, title: 'Love it', body: 'This is a real contender.' },
-  { key: 'considering', icon: CircleDashed, filled: false, title: 'Still considering', body: "I'm not sure yet." },
-  { key: 'not_for_me', icon: XCircle, filled: false, title: 'Not for me', body: 'I can rule this one out.' },
+export const POST_TOUR_EVALUATIONS = [
+  { key: 'tour-v2:curb_appeal', label: 'Curb Appeal' },
+  { key: 'tour-v2:layout', label: 'Layout' },
+  { key: 'tour-v2:privacy', label: 'Privacy' },
+  { key: 'tour-v2:neighborhood', label: 'Neighborhood' },
 ];
 
-// Pros/Cons stay a plain comma-separated string — these three helpers are the only
-// thing that knows that convention, so both preset chips (toggle on/off) and custom
-// "+ Add your own" entries (always add, never silently remove something you typed)
-// can share it without a new tagging model.
-function isInList(text, word) {
-  return (text || '').split(',').map((s) => s.trim().toLowerCase()).includes(word.toLowerCase());
-}
-function toggleInList(text, word) {
-  const items = (text || '').split(',').map((s) => s.trim()).filter(Boolean);
-  const idx = items.findIndex((i) => i.toLowerCase() === word.toLowerCase());
-  if (idx === -1) return [...items, word].join(', ');
-  items.splice(idx, 1);
-  return items.join(', ');
-}
-function addToList(text, word) {
-  const items = (text || '').split(',').map((s) => s.trim()).filter(Boolean);
-  if (items.some((i) => i.toLowerCase() === word.toLowerCase())) return text;
-  return [...items, word].join(', ');
-}
+const RESPONSES = [
+  { value: 'negative', label: 'Didn’t like it' },
+  { value: 'neutral', label: 'Neutral' },
+  { value: 'positive', label: 'Loved it' },
+];
 
-// A criterion-specific, semantic response group. Stable sentiment values are stored;
-// human labels remain centralized in constants and can evolve independently.
-function TourResponseRow({ categoryKey, criterionLabel, must, value, onChange }) {
-  const label = criterionDisplayLabel(categoryKey, criterionLabel);
-  return (
-    <fieldset className="hh-tour-response-group">
-      <legend>{label}{must ? ' — Must Have' : ''}</legend>
-      <div role="radiogroup" aria-label={`${label} tour evaluation`}>
-        {tourResponseOptions(categoryKey, criterionLabel).map((option) => (
-          <label key={option.value} className={value === option.value ? 'is-selected' : ''}>
-            <input type="radio" name={`tour-${categoryKey}-${criterionLabel}`} value={option.value} checked={value === option.value} onChange={() => onChange(option.value)} />
-            <span>{option.label}</span>
-          </label>
-        ))}
-      </div>
-      {value && value !== TOUR_RESPONSE.NOT_EVALUATED && <button type="button" className="hh-clear-tour-response" onClick={() => onChange(TOUR_RESPONSE.NOT_EVALUATED)}>Clear answer</button>}
-    </fieldset>
-  );
-}
+const VERDICTS = [
+  { key: 'love', icon: Heart, filled: true, title: 'Love it', body: 'This is a real contender.' },
+  { key: 'considering', icon: CircleDashed, title: 'Still considering', body: 'I’m not sure yet.' },
+  { key: 'not_for_me', icon: XCircle, title: 'Definitely not', body: 'I can rule this one out.' },
+];
 
-// One "Liked" or "Didn't like" group: independently-toggleable preset chips, plus a
-// small "+ Add your own" reveal for a custom thought not covered by the presets.
-// Both read/write the same Pros or Cons string the rest of the app already uses.
-function StandOutGroup({ title, color, value, onChange }) {
-  const [customOpen, setCustomOpen] = useState(false);
-  const [customValue, setCustomValue] = useState('');
-
-  const submitCustom = () => {
-    const v = customValue.trim();
-    if (v) onChange(addToList(value, v));
-    setCustomValue('');
-    setCustomOpen(false);
-  };
-
-  return (
-    <div>
-      <div style={{ fontSize: 11.5, fontWeight: 600, color, marginBottom: 6 }}>{title}</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: 8 }}>
-        {IMPRESSION_CHIPS.map((c) => {
-          const on = isInList(value, c);
-          return (
-            <button type="button" key={c} className={`hh-chip ${on ? 'on' : ''}`} style={{ fontSize: 11 }} aria-pressed={on} onClick={() => onChange(toggleInList(value, c))}>
-              {c}
-            </button>
-          );
-        })}
-      </div>
-      {customOpen ? (
-        <div style={{ display: 'flex', gap: 6 }}>
-          <input
-            className="hh-input"
-            style={{ fontSize: 11.5, padding: '5px 8px' }}
-            value={customValue}
-            onChange={(e) => setCustomValue(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && submitCustom()}
-            placeholder="Type your own..."
-            autoFocus
-          />
-          <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11, padding: '5px 10px', whiteSpace: 'nowrap' }} onClick={submitCustom}>Add</button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setCustomOpen(true)}
-          style={{ background: 'none', border: 'none', padding: 0, fontSize: 11, color: 'var(--ink-soft)', cursor: 'pointer', textDecoration: 'underline' }}
-        >
-          + Add your own
-        </button>
-      )}
+function Evaluation({ item, value, onChange }) {
+  return <fieldset className="hh-tour-response-group">
+    <legend>{item.label}</legend>
+    <div role="radiogroup" aria-label={`${item.label} in-person evaluation`}>
+      {RESPONSES.map((option) => <label key={option.value} className={value === option.value ? 'is-selected' : ''}>
+        <input type="radio" name={item.key} checked={value === option.value} onChange={() => onChange(option.value)} />
+        <span>{option.label}</span>
+      </label>)}
     </div>
-  );
+    {value && <button type="button" className="hh-clear-tour-response" onClick={() => onChange(undefined)}>Clear answer</button>}
+  </fieldset>;
 }
 
-/**
- * onVerdict(home, verdict, patch) — called when the user commits their evaluation.
- * `patch` carries the ratings/notes/pros/cons collected here; the caller decides what
- * status/reaction change the verdict implies and how to persist it (including the
- * separate archive confirmation for "Not for me").
- *
- * Fast path (what most users see and need): overall feeling -> a note -> a verdict ->
- * Done. Everything else lives behind one collapsed "+ Add tour details" disclosure for
- * meticulous users, and is entirely optional.
- */
-export default function PostTourModal({ home, priorities, isCollaborative = false, saveError = '', onVerdict, onClose }) {
-  const initialVerdict = postTourVerdict(home);
-  const [verdict, setVerdict] = useState(initialVerdict);
+export default function PostTourModal({ home, isCollaborative = false, saveError = '', onVerdict, onClose }) {
+  const [verdict, setVerdict] = useState(postTourVerdict(home));
   const [ratings, setRatings] = useState(home.ratings || {});
-  const [pros, setPros] = useState(home.pros || '');
-  const [cons, setCons] = useState(home.cons || '');
-  const [notes, setNotes] = useState(home.notes || '');
+  const [noteEntry, setNoteEntry] = useState('');
+  const [keepReviewing, setKeepReviewing] = useState(postTourVerdict(home) !== 'not_for_me');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(null);
+  const evaluationCount = useMemo(() => POST_TOUR_EVALUATIONS.filter(({ key }) => ratings[key]).length, [ratings]);
 
-  const subjectiveItems = selectedSubjectiveCriteria(priorities);
-
-  // Open by default only if there's already something back there — editing an
-  // existing tour reflection shouldn't feel like your detailed answers vanished.
-  const [detailsOpen, setDetailsOpen] = useState(() => {
-    const anyRated = subjectiveItems
-      .some((item) => ![undefined, 0, TOUR_RESPONSE.NOT_EVALUATED].includes(home.ratings?.[`${item.categoryKey}:${item.label}`]));
-    return anyRated || !!home.pros || !!home.cons;
-  });
-
-  const setRating = (key, v) => setRatings((r) => ({ ...r, [key]: v }));
-  const patch = { ratings, pros, cons, notes };
-
-  const handleDone = () => {
-    if (!verdict) return;
-    Promise.resolve(onVerdict(home, verdict, patch)).catch(() => {});
+  const chooseVerdict = (next) => {
+    setVerdict(next);
+    setSaved(null);
+    setKeepReviewing(next !== 'not_for_me');
+  };
+  const save = async () => {
+    if (!verdict || saving) return;
+    setSaving(true);
+    try {
+      await onVerdict(home, verdict, { ratings, noteEntry: noteEntry.trim() });
+      setSaved({ verdict, noteAdded: Boolean(noteEntry.trim()), evaluationCount });
+    } catch {} finally { setSaving(false); }
   };
 
-  return (
-    <div className="hh-modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="hh-modal hh-corner" style={{ maxWidth: 560 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-          <h2 className="hh-serif" style={{ fontSize: 20, margin: 0, fontWeight: 600 }}>How did it feel?</h2>
-          <button className="hh-btn hh-btn-ghost" style={{ padding: 6 }} onClick={onClose} aria-label="Close"><X size={16} /></button>
-        </div>
-        <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: '2px 0 20px' }}>Capture your first impression while it's fresh.</p>
-        {isCollaborative && <p className="hh-detail-context">Your feelings and reactions stay under your control. In a shared search, your collaborator can see them. Notes, pros, and cons are shared.</p>}
-        {saveError && <p className="hh-save-error" role="alert">{saveError} Use Done to try again.</p>}
+  if (saved) return <div className="hh-modal-backdrop"><div className="hh-modal hh-corner hh-post-tour-modal" role="dialog" aria-modal="true" aria-labelledby="tour-saved-title">
+    <button className="hh-modal-close" onClick={onClose} aria-label="Close"><X size={18} /></button>
+    <Check className="hh-tour-saved-icon" size={28} aria-hidden="true" />
+    <h2 id="tour-saved-title" className="hh-serif">Your tour take is saved.</h2>
+    <p className="hh-tour-confirmation-reaction">{VERDICTS.find((item) => item.key === saved.verdict)?.title}</p>
+    <ul className="hh-tour-confirmation-list">
+      <li>✓ Tour feedback saved</li>
+      {saved.noteAdded && <li>✓ Note added</li>}
+      {saved.evaluationCount > 0 && <li>✓ {saved.evaluationCount} in-person {saved.evaluationCount === 1 ? 'detail' : 'details'} recorded</li>}
+    </ul>
+    <button className="hh-btn" onClick={onClose}>Done</button>
+  </div></div>;
 
-        {/* 1. Overall feeling — the user's gut reaction, kept separate from Match. */}
-        <div style={{ marginBottom: 20 }}>
-          <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 3px' }}>Forget the checklist for a second.</p>
-          <label className="hh-label" style={{ marginBottom: 8 }}>How did this home feel?</label>
-          <StarInput value={ratings[TOUR_RATING_KEY] || 0} onChange={(v) => setRating(TOUR_RATING_KEY, v)} size={26} />
-        </div>
+  return <div className="hh-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+    <div className="hh-modal hh-corner hh-post-tour-modal" role="dialog" aria-modal="true" aria-labelledby="tour-take-title">
+      <header className="hh-tour-header"><div><h2 id="tour-take-title" className="hh-serif">Record your take</h2><p>Capture what only being there could tell you.</p></div><button className="hh-modal-close" onClick={onClose} aria-label="Close"><X size={18} /></button></header>
+      {isCollaborative && <p className="hh-detail-context">Your reaction and in-person evaluations belong to you. Your co-buyer may see them; notes remain shared with this search.</p>}
+      {saveError && <p className="hh-save-error" role="alert">{saveError}</p>}
 
-        {/* 2. The note — likely typed or dictated standing outside the house. */}
-        <div style={{ marginBottom: 22 }}>
-          <label className="hh-label" style={{ marginBottom: 6 }}>Anything you want to remember?</label>
-          <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '0 0 8px', lineHeight: 1.45 }}>
-            Get your thoughts down while they're fresh. Type them here, or use your phone's microphone to talk them out.
-          </p>
-          <textarea className="hh-textarea" style={{ minHeight: 100 }} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything else worth remembering..." />
-        </div>
+      <section className="hh-tour-section">
+        <h3>Where are you at with this home?</h3>
+        <div className="hh-post-tour-verdicts">{VERDICTS.map((item) => { const Icon = item.icon; const selected = verdict === item.key; return <button key={item.key} type="button" aria-pressed={selected} className={selected ? 'is-selected' : ''} onClick={() => chooseVerdict(item.key)}><Icon size={21} fill={selected && item.filled ? 'currentColor' : 'none'} /><strong>{item.title}</strong><span>{item.body}</span></button>; })}</div>
+      </section>
 
-        {/* 3. The decision — large, tappable, unambiguous. */}
-        <label className="hh-label" style={{ marginBottom: 8 }}>Where are you at with this home?</label>
-        <div className="hh-post-tour-verdicts">
-          {VERDICTS.map((v) => {
-            const selected = verdict === v.key;
-            const Icon = v.icon;
-            return (
-              <button
-                key={v.key}
-                type="button"
-                aria-pressed={selected}
-                onClick={() => setVerdict(v.key)}
-                style={{
-                  textAlign: 'center', padding: '16px 8px', borderRadius: 14, cursor: 'pointer', minHeight: 76,
-                  border: `1.5px solid ${selected ? 'var(--brick)' : 'var(--line)'}`,
-                  background: selected ? 'rgba(193,89,47,0.08)' : 'var(--paper-raised)',
-                }}
-              >
-                <Icon size={20} style={{ marginBottom: 4 }} color={selected ? 'var(--brick)' : 'var(--ink-soft)'} fill={selected && v.filled ? 'var(--brick)' : 'none'} />
-                <div style={{ fontSize: 14, fontWeight: 700, color: selected ? 'var(--brick)' : 'var(--ink)' }}>{v.title}</div>
-                <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginTop: 2, lineHeight: 1.35 }}>{v.body}</div>
-              </button>
-            );
-          })}
-        </div>
+      {verdict === 'not_for_me' && !keepReviewing && <aside className="hh-tour-fast-exit"><p><strong>Got it.</strong> You can finish here, or tell us what didn’t work so you remember later.</p><div><button className="hh-btn" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save my take'}</button><button className="hh-btn hh-btn-ghost" onClick={() => setKeepReviewing(true)}>Keep reviewing</button></div></aside>}
 
-        {/* Optional deeper section — for the meticulous user, never required for Done. */}
-        <div style={{ marginBottom: 22 }}>
-          <button
-            type="button"
-            onClick={() => setDetailsOpen((v) => !v)}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-              background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 12,
-              padding: '12px 14px', cursor: 'pointer', textAlign: 'left',
-            }}
-          >
-            <div>
-              <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)' }}>{detailsOpen ? '− Hide tour details' : '+ Add tour details'}</div>
-              <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', marginTop: 2 }}>Tell us what stood out about the things you said matter to you.</div>
-            </div>
-          </button>
-
-          {detailsOpen && (
-            <div style={{ marginTop: 14 }}>
-              {subjectiveItems.length > 0 && (
-                <div style={{ marginBottom: 18 }}>
-                  <div className="hh-label" style={{ marginBottom: 6 }}>How did this home feel in person?</div>
-                  <div style={{ display: 'grid', gap: 4 }}>
-                    {subjectiveItems.map((item) => {
-                      const key = `${item.categoryKey}:${item.label}`;
-                      const must = priorities[item.categoryKey]?.tiers?.[item.label] === 'must';
-                      return <TourResponseRow key={key} categoryKey={item.categoryKey} criterionLabel={item.label} must={must} value={ratings[key] || TOUR_RESPONSE.NOT_EVALUATED} onChange={(v) => setRating(key, v)} />;
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <div>
-                <label className="hh-label" style={{ marginBottom: 4 }}>Anything else worth remembering?</label>
-                <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '0 0 10px' }}>For things that aren't in the list above — the kitchen, the neighbors, anything.</p>
-                <div className="hh-post-tour-standouts">
-                  <StandOutGroup title="Liked" color="var(--moss)" value={pros} onChange={setPros} />
-                  <StandOutGroup title="Didn't like" color="var(--brick)" value={cons} onChange={setCons} />
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-          <button className="hh-btn hh-btn-ghost" onClick={onClose}>Cancel</button>
-          <button
-            className="hh-btn"
-            style={verdict === 'not_for_me' ? { background: 'var(--brick)', borderColor: 'var(--brick)' } : undefined}
-            onClick={handleDone}
-            disabled={!verdict}
-          >
-            {verdict === 'not_for_me' ? 'Archive home' : 'Done'}
-          </button>
-        </div>
-      </div>
+      {(verdict !== 'not_for_me' || keepReviewing) && <>
+        <section className="hh-tour-section"><h3>How did it feel in person?</h3><p className="hh-tour-optional">Optional — answer only what stood out.</p><div>{POST_TOUR_EVALUATIONS.map((item) => <Evaluation key={item.key} item={item} value={ratings[item.key]} onChange={(value) => setRatings((current) => { const next = { ...current }; if (value) next[item.key] = value; else delete next[item.key]; return next; })} />)}</div></section>
+        <section className="hh-tour-section hh-tour-note"><h3>Anything you want to remember?</h3><p>Get your thoughts down while they’re fresh. Type them here, or use your phone’s microphone to talk them out.</p><textarea className="hh-textarea" value={noteEntry} onChange={(event) => setNoteEntry(event.target.value)} placeholder="Walkability, home condition, natural light, any concerns?" /></section>
+        <footer className="hh-tour-actions"><button className="hh-btn hh-btn-ghost" onClick={onClose}>Cancel</button><button className="hh-btn" disabled={!verdict || saving} onClick={save}>{saving ? 'Saving…' : 'Save my take'}</button></footer>
+      </>}
     </div>
-  );
+  </div>;
 }

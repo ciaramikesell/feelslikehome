@@ -41,7 +41,7 @@ export default async function HomesPage() {
             <h2>How Match Scores Work</h2>
             <p>Each home is measured against your own Must Haves, Important features, Nice to Haves, and places that matter. When you&apos;re searching together, each person keeps their own Match — so you can see where your priorities line up and where they don&apos;t.</p>
           </div>
-          <a className="hh-btn hh-btn-ghost" href="/search">Review My Criteria</a>
+          <a className="hh-btn hh-btn-ghost" href="/search">Review My Search</a>
         </section>
       </main>
     );

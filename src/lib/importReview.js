@@ -5,10 +5,14 @@ const SHARED_CRITERIA = new Set([
 ]);
 
 const RULES = {
+  'features:Finished basement': { yes: [/\bfinished basement\b/i], no: [/\bunfinished basement\b/i] },
+  'features:Walkout basement': { yes: [/\bwalk[ -]?out basement\b/i], no: [/\bno walk[ -]?out(?: basement)?\b/i] },
   'features:Basement': { yes: [/(?:\bfinished\b|\bwalkout\b)?\s*\bbasement\b/i], no: [/\bno basement\b/i, /\bslab[^.\n]{0,30}\bno basement\b/i], blockers: [/\bcrawlspace\b/i] },
   'features:Finished Basement': { yes: [/\bfinished basement\b/i], no: [/\bunfinished basement\b/i] },
   'features:Walkout Basement': { yes: [/\bwalk[ -]?out basement\b/i, /\bbasement[^.\n]{0,35}(?:exterior (?:door|egress)|separate entrance)\b/i], no: [/\bno walk[ -]?out(?: basement)?\b/i] },
   'features:Fireplace': { yes: [/\b(?:wood[- ]burning|gas|electric)?\s*fireplaces?\b/i, /\b[1-9]\d*\s+fireplaces?\b/i], no: [/\bno fireplaces?\b/i, /\bfireplaces?\s*[:\-]?\s*0\b/i] },
+  'features:Central air': { yes: [/\bcentral (?:air|a\/?c|air conditioning)\b/i], no: [/\bno central (?:air|a\/?c)\b/i] },
+  'features:Home office': { yes: [/\b(?:dedicated|private|separate) (?:home )?(?:office|study|den)\b/i, /\bhome office\b/i], no: [/\bno (?:home )?(?:office|study|den)\b/i] },
   'features:Central Air': { yes: [/\bcentral (?:air|a\/?c|air conditioning)\b/i], no: [/\bno central (?:air|a\/?c)\b/i, /\bwindow units? only\b/i] },
   'features:Home Office': { yes: [/\b(?:dedicated|private|separate) (?:home )?(?:office|study|den)\b/i, /\bhome office\b/i], no: [/\bno (?:home )?(?:office|study|den)\b/i], blockers: [/\b(?:office potential|potential office|space for (?:an )?office)\b/i] },
   'features:Primary Ensuite': { yes: [/\b(?:primary|master)[^.\n]{0,35}\b(?:en[ -]?suite|private (?:full )?bath)\b/i], no: [/\bno (?:primary|master) en[ -]?suite\b/i] },
@@ -19,6 +23,7 @@ const RULES = {
   'features:Walk-In Closet': { yes: [/\bwalk[ -]?in closets?\b/i], no: [/\bno walk[ -]?in closets?\b/i] },
   'features:Additional Living Space': { yes: [/\b(?:bonus|family|recreation|rec) room\b/i, /\bsecond living (?:room|area|space)\b/i], no: [/\bno additional living space\b/i] },
   'exterior:Fenced Yard': { yes: [/\bfully fenced (?:back)?yard\b/i], no: [/\b(?:unfenced|no fence|no fenced yard)\b/i], blockers: [/\b(?:partially fenced|partial fence|fence allowed)\b/i] },
+  'exterior:Fenced yard': { yes: [/\bfully fenced (?:back)?yard\b/i], no: [/\b(?:unfenced|no fence|no fenced yard)\b/i], blockers: [/\b(?:partially fenced|partial fence|fence allowed)\b/i] },
   'exterior:Patio / Deck / Outdoor Living': { yes: [/\bprivate (?:patio|deck|terrace)\b/i], no: [/\bno (?:patio|deck|terrace|outdoor space)\b/i], blockers: [/\b(?:community|shared) (?:patio|deck|terrace)\b/i] },
   'exterior:Attached Garage': { yes: [/\battached garage\b/i], no: [/\bdetached garage only\b/i, /\bno garage\b/i] },
   'exterior:Driveway / Off-Street Parking': { yes: [/\bdriveway\b/i, /\b(?:private|assigned) off[ -]street parking\b/i], no: [/\b(?:street parking only|no off[ -]street parking)\b/i] },

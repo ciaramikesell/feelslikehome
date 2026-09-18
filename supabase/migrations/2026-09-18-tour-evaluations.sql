@@ -165,7 +165,16 @@ begin
     foreach v_category in array array['location','features','exterior','homeFeel'] loop
       for v_label, v_tier in select key, value #>> '{}' from jsonb_each(coalesce(v_priorities #> array[v_category, 'tiers'], '{}'::jsonb)) loop
         if v_tier = 'dontcare' or (v_category = 'location' and v_label = 'Schools' and v_priorities #>> '{location,schoolsRelevance}' = 'no') then continue; end if;
-        v_selected := v_selected + 1; v_key := v_category || ':' || v_label;
+        v_key := v_category || ':' || v_label;
+        -- Retired purchase built-ins remain in participant JSON for history but
+        -- cannot create artificial Unknowns or affect the sanitized co-buyer Match.
+        if coalesce(v_priorities ->> 'searchType', '') in ('purchase', 'buy') and v_key = any(array[
+          'location:Neighborhood','location:Walkability','location:Immediate Street / Surroundings','location:Dog Parks Nearby','location:Restaurants / Coffee / Shopping Nearby',
+          'homeFeel:Overall Condition','homeFeel:Layout / Flow','homeFeel:Natural Light','homeFeel:Character / Charm','homeFeel:Room Sizes','homeFeel:Openness / Ceiling Height','homeFeel:Privacy','homeFeel:Social Community','homeFeel:On-Site Management',
+          'exterior:Yard','exterior:Garage','exterior:Privacy','exterior:Sidewalks','exterior:Exterior Condition','exterior:Curb Appeal','exterior:Outdoor Space','exterior:Noise Level','exterior:Driveway / Off-Street Parking','exterior:Fitness Center','exterior:Secure Entry','exterior:Elevator',
+          'features:Basement','features:Mudroom','features:Pantry','features:Storage','features:Updated Kitchen','features:Updated Bathrooms','features:Walk-In Closet','features:Additional Living Space','features:Hardwood Floors','features:Dishwasher','features:In-Unit Laundry','features:Updated Interior','features:Pets Allowed','features:Utilities Included','features:Guest / In-Law Suite','features:Basement Bedroom'
+        ]) then continue; end if;
+        v_selected := v_selected + 1;
         -- These shared facts are authoritative. NULL is unevaluated and never
         -- falls back to participant-private historical checks.
         if v_key = any(array['features:Pets Allowed','features:Utilities Included','features:In-Unit Laundry']) then

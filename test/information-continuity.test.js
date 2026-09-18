@@ -61,8 +61,8 @@ test('card unknown summary uses canonical unknown criteria without stale after-t
   priorities.homeFeel.customItems = [{ label: 'Natural Light', kind: 'rating' }];
   const summary = summarizeForCard(computeMatch(emptyHome(), priorities));
   assert.equal(summary.preTourUnknown.length, 1);
-  assert.equal(summary.afterTour.length, 1);
-  assert.equal(summary.notConfirmed.length, 2);
+  assert.equal(summary.afterTour.length, 0);
+  assert.equal(summary.notConfirmed.length, 1);
   const ui = read('src/components/ui.jsx');
   const board = read('src/components/HomesBoard.jsx');
   assert.match(board, /'criterion' : 'criteria'\} still unknown/);

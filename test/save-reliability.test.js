@@ -47,5 +47,5 @@ test('collaboration copy distinguishes visible search activity from participant 
   assert.match(detail, /These choices are yours/);
   assert.match(modal, /isCollaborative \? 'Pros, cons, and notes are visible to everyone in this search.'/);
   assert.match(invite, /see each other&apos;s search preferences and opinions/);
-  assert.match(postTour, /Your feelings and reactions stay under your control/);
+  assert.match(postTour, /Your reaction and in-person evaluations belong to you/);
 });

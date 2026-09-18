@@ -1,93 +1,60 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import {
-  criterionMetadata, EVALUATION_MODE, isCriterionApplicable, TOUR_RESPONSE,
-  tourResponseLabel, getItemlistCategories, normalizePriorities,
-} from '../src/lib/constants.js';
-import { computeMatch, selectedSubjectiveCriteria } from '../src/lib/matching.js';
+import { getItemlistCategories, normalizePriorities } from '../src/lib/constants.js';
+import { computeMatch } from '../src/lib/matching.js';
+import { appendPostTourNote, applyPostTourVerdict } from '../src/lib/lifecycle.js';
 
-const prioritiesWith = (tier = 'must') => normalizePriorities({
-  searchType: 'purchase', preferredPropertyTypes: { values: ['house'], tier: 'important' },
-  homeFeel: { tiers: { 'Natural Light': tier }, customItems: [{ label: 'Natural Light', kind: 'rating' }] },
+const expected = {
+  'Location & Surroundings': ['Near downtown area','Groceries nearby','Parks nearby','Walkable schools','Near waterfront','Quiet street','Tree-lined street'],
+  'Home Features': ['First-floor laundry','Guest suite','Fireplace','Home office','Primary ensuite','Central air','Finished basement','Walkout basement'],
+  'Exterior & Property': ['Fenced yard','Pool','Patio / deck','Detached garage','Attached garage','Large backyard','Landscaping','Front porch'],
+};
+
+test('purchase catalog is the exact pre-tour My Search catalog', () => {
+  const categories = getItemlistCategories('purchase');
+  assert.deepEqual(Object.fromEntries(categories.map((c) => [c.title, [...c.coreItems,...c.suggestedItems].map((i) => i.label)])), expected);
+  const labels = Object.values(expected).flat();
+  for (const removed of ['On-Site Management','Fitness Center','Secure Entry','Elevator','Pets Allowed','Utilities Included','Curb Appeal','Layout / Flow','Privacy','Natural Light']) assert.ok(!labels.includes(removed));
 });
 
-test('catalog metadata distinguishes tour criteria and canonical property applicability', () => {
-  assert.equal(criterionMetadata('homeFeel', 'Natural Light').evaluationMode, EVALUATION_MODE.TOUR);
-  assert.equal(criterionMetadata('features', 'Fireplace').evaluationMode, EVALUATION_MODE.PRE_TOUR);
-  for (const label of ['On-Site Management', 'Fitness Center', 'Elevator', 'Secure Entry']) {
-    const category = label === 'On-Site Management' ? 'homeFeel' : 'exterior';
-    assert.equal(isCriterionApplicable(category, label, ['house']), false);
-    assert.equal(isCriterionApplicable(category, label, ['condo']), true);
-  }
-  assert.equal(isCriterionApplicable('features', 'Utilities Included', ['house']), false);
-  assert.equal(isCriterionApplicable('features', 'Utilities Included', ['apartment']), true);
+test('legacy subjective built-ins are preserved in JSON but excluded from Match Unknowns', () => {
+  const p = normalizePriorities({ searchType:'purchase', homeFeel:{ tiers:{'Natural Light':'must'}, customItems:[{label:'Natural Light',kind:'rating'}] }, features:{tiers:{Fireplace:'important'},customItems:[{label:'Fireplace',kind:'check'}]} });
+  assert.equal(p.homeFeel.tiers['Natural Light'], 'must');
+  const match = computeMatch({checks:{}}, p);
+  assert.deepEqual(match.allSelected.map((item) => item.key), ['features:Fireplace']);
+  assert.equal(match.allSelected[0].evaluated, false);
+  assert.equal(match.allSelected[0].met, null);
 });
 
-test('tour criteria retain ordinary Must, Important, and Nice tiers', () => {
-  for (const tier of ['must', 'important', 'nice']) {
-    assert.equal(computeMatch({ ratings: {} }, prioritiesWith(tier)).allSelected.find((x) => x.key === 'homeFeel:Natural Light').tier, tier);
-  }
+test('explicit custom criteria remain supported even when their label resembles a retired built-in', () => {
+  const p = normalizePriorities({searchType:'purchase',homeFeel:{tiers:{Privacy:'nice'},customItems:[{label:'Privacy',kind:'check',source:'custom'}]}});
+  // Home Feel is intentionally not an active purchase family; custom choices use one of the three visible families.
+  p.exterior.tiers.Privacy='nice'; p.exterior.customItems=[{label:'Privacy',kind:'check',source:'custom'}];
+  assert.ok(computeMatch({checks:{}},p).allSelected.some((item)=>item.key==='exterior:Privacy'));
 });
 
-test('unanswered tour Must Have is Unknown and not missing', () => {
-  const match = computeMatch({ propertyType: 'house', ratings: {} }, prioritiesWith());
-  const light = match.allSelected.find((x) => x.key === 'homeFeel:Natural Light');
-  assert.equal(light.evaluated, false);
-  assert.equal(light.met, null);
-  assert.equal(match.mustEvaluated, 0);
-  assert.equal(match.mustMet, 0);
+test('post-tour V2 is reaction-first, optional, fixed to four evaluations, and has no stars/archive action', () => {
+  const modal=readFileSync(new URL('../src/components/PostTourModal.jsx',import.meta.url),'utf8');
+  assert.ok(modal.indexOf('Where are you at with this home?') < modal.indexOf('How did it feel in person?'));
+  for (const label of ['Curb Appeal','Layout','Privacy','Neighborhood',"Didn’t like it",'Neutral','Loved it','Save my take','Keep reviewing']) assert.match(modal,new RegExp(label));
+  assert.doesNotMatch(modal,/StarInput|TOUR_RATING_KEY|Archive home|StandOutGroup/);
+  assert.match(modal,/role="radiogroup"/);
 });
 
-test('semantic positive and negative responses resolve without persisting UI copy', () => {
-  const positive = computeMatch({ propertyType: 'house', ratings: { 'homeFeel:Natural Light': TOUR_RESPONSE.POSITIVE } }, prioritiesWith());
-  const negative = computeMatch({ propertyType: 'house', ratings: { 'homeFeel:Natural Light': TOUR_RESPONSE.NEGATIVE } }, prioritiesWith());
-  assert.equal(positive.allSelected.find((x) => x.key.endsWith('Natural Light')).met, true);
-  assert.equal(negative.allSelected.find((x) => x.key.endsWith('Natural Light')).met, false);
-  assert.equal(tourResponseLabel('homeFeel', 'Natural Light', TOUR_RESPONSE.POSITIVE), 'Great');
+test('post-tour evaluations cannot affect Match and note appending is non-destructive', () => {
+  const p=normalizePriorities({searchType:'purchase',features:{tiers:{Fireplace:'important'},customItems:[{label:'Fireplace',kind:'check'}]}});
+  const before=computeMatch({checks:{'features:Fireplace':true},ratings:{}},p).pct;
+  const after=computeMatch({checks:{'features:Fireplace':true},ratings:{'tour-v2:layout':'negative'}},p).pct;
+  assert.equal(after,before);
+  assert.equal(appendPostTourNote('Existing note','Fresh note'),'Existing note\n\nFresh note');
+  const result=applyPostTourVerdict({status:'Want to Tour',notes:'Existing note',ratings:{}},'not_for_me',{noteEntry:'Fresh note',ratings:{'tour-v2:layout':'negative'}},'now');
+  assert.equal(result.status,'Want to Tour'); assert.equal(result.notes,'Existing note\n\nFresh note'); assert.equal(result.reaction,'not_for_me');
 });
 
-test('neutral is evaluated but neither No nor part of the score denominator', () => {
-  const match = computeMatch({ propertyType: 'house', ratings: { 'homeFeel:Natural Light': TOUR_RESPONSE.NEUTRAL } }, prioritiesWith());
-  const light = match.allSelected.find((x) => x.key.endsWith('Natural Light'));
-  assert.equal(light.evaluated, true);
-  assert.equal(light.met, null);
-  assert.equal(light.score, null);
-  assert.equal(match.mustMet, 0);
-  assert.equal(match.pct, 100, 'only the known preferred property type is scored');
-});
-
-test('current active criteria dynamically control unresolved counts and removed criteria contribution', () => {
-  const oldHome = { propertyType: 'house', ratings: { 'homeFeel:Natural Light': TOUR_RESPONSE.POSITIVE } };
-  assert.equal(computeMatch(oldHome, prioritiesWith()).allSelected.some((x) => x.key.endsWith('Natural Light')), true);
-  const removed = prioritiesWith(); removed.homeFeel.tiers['Natural Light'] = 'dontcare';
-  assert.equal(computeMatch(oldHome, removed).allSelected.some((x) => x.key.endsWith('Natural Light')), false);
-  const added = prioritiesWith(); added.homeFeel.tiers.Privacy = 'important'; added.homeFeel.customItems.push({ label: 'Privacy', kind: 'rating' });
-  assert.equal(computeMatch(oldHome, added).allSelected.find((x) => x.key === 'homeFeel:Privacy').evaluated, false);
-});
-
-test('legacy selected criteria survive catalog filtering and structured parameters are not picker items', () => {
-  const p = prioritiesWith();
-  p.homeFeel.tiers['On-Site Management'] = 'important';
-  p.homeFeel.customItems.push({ label: 'On-Site Management', kind: 'rating' });
-  assert.ok(computeMatch({ ratings: {} }, p).allSelected.some((x) => x.key === 'homeFeel:On-Site Management'));
-  const labels = getItemlistCategories('purchase').flatMap((c) => [...c.coreItems, ...c.suggestedItems].map((i) => i.label.toLowerCase()));
-  for (const duplicate of ['budget', 'bedrooms', 'bathrooms', 'square footage', 'lot size', 'property type']) assert.ok(!labels.includes(duplicate));
-});
-
-test('Record Your Take is active-tour-only, semantic, accessible, and participant persistence is caller-owned', () => {
-  const modal = readFileSync(new URL('../src/components/PostTourModal.jsx', import.meta.url), 'utf8');
-  const collaboration = readFileSync(new URL('../src/lib/supabase/collaboration.js', import.meta.url), 'utf8');
-  assert.match(modal, /selectedSubjectiveCriteria\(priorities\)/);
-  assert.doesNotMatch(modal, /curatedAdditionalSubjectiveCriteria/);
-  assert.match(modal, /role="radiogroup"/);
-  assert.match(modal, /type="radio"/);
-  assert.match(collaboration, /user_id: userId/);
-  assert.match(collaboration, /from\('home_member_state'\)\.upsert/);
-});
-
-test('Realtor view cannot open or author Record Your Take', () => {
-  const detail = readFileSync(new URL('../src/components/HomeDetail.jsx', import.meta.url), 'utf8');
-  assert.match(detail, /!readOnly && <button[^>]*hh-detail-take-action/);
-  assert.match(detail, /!readOnly && reflecting && <PostTourModal/);
+test('participant and Realtor mutation boundaries remain enforced by the existing owner path', () => {
+  const collaboration=readFileSync(new URL('../src/lib/supabase/collaboration.js',import.meta.url),'utf8');
+  const detail=readFileSync(new URL('../src/components/HomeDetail.jsx',import.meta.url),'utf8');
+  assert.match(collaboration,/user_id: userId/); assert.match(collaboration,/from\('home_member_state'\)\.upsert/);
+  assert.match(detail,/!readOnly && reflecting && <PostTourModal/);
 });

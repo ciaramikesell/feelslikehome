@@ -94,7 +94,7 @@ test('the hero factual summary only renders when a real Match percentage exists'
 });
 
 test('full Match breakdown distinguishes missing, unknown, and neutral tour evaluations', () => {
-  assert.match(detail, /!item\.evaluated \? \(item\.objective \? 'Needs more information' : 'Evaluate after tour'\)/);
+  assert.match(detail, /!item\.evaluated \? 'Some listing details couldn’t be determined reliably\.'/);
   assert.match(detail, /const stateLabel = !item\.evaluated \? 'Unknown' : neutral \? 'Neutral' : item\.met \? 'Satisfied' : 'Missed';/);
   assert.match(detail, /neutral \? 'neutral' : item\.met \? 'met' : 'missed'/);
   assert.match(detail, /<span className="sr-only">\{stateLabel\}<\/span>/);
@@ -124,7 +124,7 @@ test('regression guard: Favorite/Want to Tour/Archive/post-tour mutations remain
   assert.match(detail, /savePersonal\(toggleFavorite\(home\)\)/);
   assert.match(detail, /savePersonal\(\{ status: home\.status === 'Want to Tour'/);
   assert.match(detail, /saveHomePersonalState\(createClient\(\), next, userId, searchId\)/);
-  assert.match(detail, /setArchiveTarget\(next\)/);
+  assert.doesNotMatch(detail, /verdict === 'not_for_me'[\s\S]*setArchiveTarget/);
   assert.match(detail, /<ArchiveConfirmModal/);
   assert.match(detail, /<PostTourModal/);
   assert.match(detail, /applyPostTourVerdict\(current, verdict, patch\)/);

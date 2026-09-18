@@ -94,7 +94,7 @@ test('Match weighting is unchanged: PriorityBoard\'s weight callout is presentat
 
 test('tour guidance is contextual and uses a restrained accessible marker', async () => {
   const board = await source('src/components/PriorityBoard.jsx');
-  assert.match(board, /Some preferences can be matched from listing details/);
+  assert.match(board, /Choose the pre-tour details you want Feels Like Home to evaluate from reliable property information/);
   assert.doesNotMatch(board, /Best answered after you tour<\/div>/);
   assert.match(board, /isExperientialCriterion\(item\.categoryKey, item\.label\)/);
 });
@@ -135,13 +135,13 @@ test('mobile: the desktop two-column grid collapses to one stacked column; Prior
   assert.match(board, /const \[mobileCompact, setMobileCompact\] = useState\(false\);/);
 });
 
-test('reciprocal Match education: My Search links to Homes ("View Matching Homes"), mirroring Homes\' own "Review My Criteria" link back', async () => {
+test('reciprocal Match education: My Search links to Homes ("View Matching Homes"), mirroring Homes\' own "Review My Search" link back', async () => {
   const panel = await source('src/components/MySearchPanel.jsx');
   const homes = await source('src/app/(app)/homes/page.js');
   assert.match(panel, /className="hh-match-editorial"/);
   assert.match(panel, /<h2>How Match Scores Work<\/h2>/);
   assert.match(panel, /<Link className="hh-btn hh-btn-ghost" href="\/homes">View Matching Homes<\/Link>/);
-  assert.match(homes, /href="\/search">Review My Criteria<\/a>/);
+  assert.match(homes, /href="\/search">Review My Search<\/a>/);
 });
 
 test('page identity copy matches the approved spec', async () => {

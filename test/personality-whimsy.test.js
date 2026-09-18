@@ -54,13 +54,10 @@ test('decision empty states use PR #90\'s truthful collections copy and a My Hom
   assert.match(compare, /Add a home/);
 });
 
-test('post-tour framing changes copy without changing the rating key or persistence path', () => {
+test('post-tour framing uses reaction-first V2 without stars', () => {
   const modal = read('src/components/PostTourModal.jsx');
-  const editor = read('src/components/HomeModal.jsx');
-  assert.match(modal, /Forget the checklist for a second\./);
-  assert.match(modal, /How did this home feel\?/);
-  assert.match(modal, /setRating\(TOUR_RATING_KEY, v\)/);
-  assert.doesNotMatch(editor, /Forget the checklist for a second\./);
+  assert.match(modal, /Where are you at with this home/);
+  assert.doesNotMatch(modal, /StarInput|TOUR_RATING_KEY/);
 });
 
 test('Different Takes stays deferred from the card surface', () => {
