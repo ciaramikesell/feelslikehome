@@ -8,7 +8,7 @@ const compare = fs.readFileSync('src/components/CompareBoard.jsx', 'utf8');
 const css = fs.readFileSync('src/app/globals.css', 'utf8');
 
 test('Home Detail gives facts and personal relationship regions usable responsive width', () => {
-  assert.match(detail, /Section eyebrow="Property facts"[^>]*className="hh-detail-section-wide hh-detail-surface"/);
+  assert.match(detail, /Section eyebrow="The home" title="Property Facts"[^>]*className="hh-detail-section-wide hh-detail-surface"/);
   assert.match(detail, /className="hh-detail-relationship hh-detail-section-wide hh-detail-surface"/);
   assert.match(css, /\.hh-detail-section-wide \{ max-width: 960px; \}/);
   assert.match(css, /@media\(max-width:960px\)[\s\S]*\.hh-detail-section-wide \{ max-width: 100%; \}/);

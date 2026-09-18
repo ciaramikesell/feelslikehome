@@ -9,6 +9,7 @@ const detailPage = read('src/app/(app)/homes/[homeId]/page.js');
 const matching = read('src/lib/matching.js');
 const globalsCss = read('src/app/globals.css');
 const realtorContributions = read('src/components/RealtorContributions.jsx');
+const detailLocation = read('src/components/HomeDetailLocation.jsx');
 
 /* ------------------------------ canonical loader/auth boundary ------------------------------ */
 
@@ -129,8 +130,8 @@ test('regression guard: Favorite/Want to Tour/Archive/post-tour mutations remain
   assert.match(detail, /applyPostTourVerdict\(current, verdict, patch\)/);
 });
 
-test('regression guard: collaborator perspective stays a distinct, separately-labeled section — never merged into the current participant\'s own state', () => {
-  assert.match(detail, /hasCoBuyerPerspective && <Section eyebrow="Collaborator perspective" title="How your collaborator sees this home">/);
+test('regression guard: co-buyer perspective stays a distinct, separately-labeled section — never merged into the current participant\'s own state', () => {
+  assert.match(detail, /hasCoBuyerPerspective && <Section eyebrow="Co-buyer perspective" title="How your co-buyer sees this home">/);
   assert.match(detail, /Different takes/);
   assert.match(detail, /take\.youLiked \? 'You liked it' : "You didn't like it"/);
 });
@@ -189,4 +190,20 @@ test('category summaries count met, missing, and unknown independently', () => {
 test('single canonical photo degrades gracefully without fake thumbnails or counts', () => {
   assert.match(detail, /home\.photoUrl \? <img/);
   assert.doesNotMatch(detail, /\+19|24 photos|school rating/i);
+});
+
+test('Location and Commute reuses trusted coordinates and the existing Google Maps loader without fabricating route geometry', () => {
+  assert.match(detail, /title="Location & Commute"/);
+  assert.match(detailLocation, /currentHomeCoordinates\(home\)/);
+  assert.match(detailLocation, /currentDestinationCoordinates\(destination\)/);
+  assert.match(detailLocation, /loadGoogleMaps\(key\)/);
+  assert.match(detailLocation, /setSelectedId\(destination\.id\)/);
+  assert.doesNotMatch(detailLocation, /Polyline|DirectionsService|routePath|routeGeometry/);
+});
+
+test('the map has honest coordinate and provider fallbacks while commute text remains outside it', () => {
+  assert.match(detailLocation, /if \(!visiblePoints\.length\) \{ setMapState\('empty'\)/);
+  assert.match(detailLocation, /if \(!key \|\| !mapId\) \{ setMapState\('unconfigured'\)/);
+  assert.match(detailLocation, /Commute details remain available alongside the map\./);
+  assert.match(detailLocation, /state\.status === 'ok'/);
 });

@@ -1024,6 +1024,25 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-detail-commutes strong { color: var(--moss); font-size: 12px; font-weight: 650; }
 .hh-detail-commutes .unresolved span { color: var(--ink-soft); }
 .hh-detail-commutes .unresolved strong { color: rgba(138,124,110,.72); font-weight: 500; }
+.hh-detail-location-grid { display:grid; grid-template-columns:minmax(220px,.42fr) minmax(0,1fr); gap:20px; align-items:stretch; }
+.hh-detail-location-grid.without-map { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.hh-detail-route-list { display:grid; align-content:start; gap:9px; }
+.hh-detail-route-list button { display:grid; grid-template-columns:22px minmax(0,1fr); gap:11px; width:100%; padding:15px; border:1px solid rgba(138,124,110,.18); border-radius:13px; background:rgba(241,235,224,.52); color:var(--ink-soft); text-align:left; cursor:pointer; }
+.hh-detail-route-list button:hover, .hh-detail-route-list button.selected { border-color:rgba(116,128,79,.5); background:rgba(116,128,79,.1); color:var(--moss); }
+.hh-detail-route-list button:focus-visible { outline:3px solid var(--focus-ring); outline-offset:2px; }
+.hh-detail-route-list strong, .hh-detail-route-list small { display:block; }
+.hh-detail-route-list strong { color:var(--ink); font-size:13px; line-height:1.35; }
+.hh-detail-route-list small { margin-top:4px; color:var(--moss); font-size:11.5px; font-weight:650; }
+.hh-detail-map-wrap { position:relative; min-height:260px; overflow:hidden; border:1px solid rgba(138,124,110,.2); border-radius:15px; background:#e9e3d8; }
+.hh-detail-map-canvas { position:absolute; inset:0; }
+.hh-detail-map-fallback { position:absolute; inset:0; display:grid; place-content:center; justify-items:center; gap:7px; padding:25px; color:var(--ink-soft); text-align:center; }
+.hh-detail-map-fallback strong { color:var(--ink); font-size:13px; }
+.hh-detail-map-fallback span { font-size:11px; }
+.hh-detail-map-key { position:absolute; z-index:2; left:10px; bottom:10px; display:flex; flex-wrap:wrap; gap:6px; pointer-events:none; }
+.hh-detail-map-key span { display:inline-flex; align-items:center; gap:4px; padding:5px 8px; border-radius:999px; background:rgba(255,253,248,.94); box-shadow:0 3px 12px rgba(46,38,33,.12); color:var(--ink); font-size:9px; font-weight:750; }
+.hh-detail-map-marker { display:grid; place-items:center; width:34px; height:34px; border:3px solid white; border-radius:50% 50% 50% 8px; box-shadow:0 4px 12px rgba(46,38,33,.28); transform:rotate(-45deg); background:var(--brick); color:white; }
+.hh-detail-map-marker span { transform:rotate(45deg); font-size:17px; font-weight:800; }
+.hh-detail-map-marker.destination { background:var(--moss); }
 .hh-detail-match-groups { display: grid; grid-template-columns: repeat(3,1fr); gap: 32px; }
 .hh-detail-match-tier { min-width: 0; border-top: 2px solid var(--line); padding-top: 13px; }
 .hh-detail-match-tier.must { border-color: var(--brick); }
@@ -1100,6 +1119,9 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   .hh-detail-facts { grid-template-columns: 1fr 1fr; gap: 22px 18px; }
   .hh-detail-match-groups { grid-template-columns: 1fr; gap: 26px; }
   .hh-detail-commutes { grid-template-columns: 1fr; }
+  .hh-detail-location-grid, .hh-detail-location-grid.without-map { grid-template-columns:1fr; }
+  .hh-detail-route-list { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .hh-detail-map-wrap { min-height:230px; }
   .hh-detail-evaluation { grid-template-columns: 1fr; gap: 25px; }
   .hh-detail-reactions { gap: 20px; }
   .hh-detail-notes, .hh-detail-notes-form { grid-template-columns: 1fr; gap: 22px; }
@@ -1117,6 +1139,7 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   .hh-detail-facts, .hh-detail-reactions { grid-template-columns: 1fr; }
   .hh-detail-core-facts { line-height: 1.55; }
   .hh-detail-actions { align-items: stretch; }
+  .hh-detail-route-list { grid-template-columns:1fr; }
   .hh-detail-actions .hh-btn { justify-content: center; flex: 1 1 calc(50% - 5px); }
   .hh-detail-archive-action { flex-basis: 100%; justify-content: flex-start; }
 }
