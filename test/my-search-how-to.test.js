@@ -145,6 +145,61 @@ test('How it works reuses the focus-managed Sheet and has intentional desktop an
   assert.match(shell, /onClick=\{\(\) => setHowToOpen\(true\)\}/);
 });
 
+/* ------------------------------ global buyer-shell availability + Realtor exclusion ------------------------------ */
+
+test('the How it works trigger and modal are owned by the single shared AppShell, not any individual page — every buyer route that renders through it inherits it automatically', () => {
+  const shell = read('src/components/AppShell.jsx');
+  // One canonical component/content source — no per-page duplicates.
+  assert.equal((shell.match(/function HowToUseModal/g) || []).length, 1);
+  for (const other of [
+    'src/app/(app)/homes/page.js', 'src/app/(app)/homes/[homeId]/page.js', 'src/app/(app)/tour/page.js',
+    'src/app/(app)/compare/page.js', 'src/app/(app)/map/page.js', 'src/app/(app)/search/page.js',
+    'src/app/(app)/account/page.js', 'src/app/(app)/favorites/page.js', 'src/app/(app)/archive/page.js',
+  ]) {
+    const src = read(other);
+    assert.doesNotMatch(src, /HowToUseModal|How Feels Like Home works/, `${other} must not own its own copy of the modal`);
+  }
+});
+
+test('How it works is excluded from Realtor workspace — the trigger and the modal itself are both gated on !isRealtorWorkspace', () => {
+  const shell = read('src/components/AppShell.jsx');
+  assert.match(shell, /\{!isRealtorWorkspace && \(\s*<button className="hh-shell-action" onClick=\{\(\) => setHowToOpen\(true\)\}>/);
+  assert.match(shell, /\{!isRealtorWorkspace && howToOpen && <HowToUseModal onClose=\{\(\) => setHowToOpen\(false\)\} \/>\}/);
+});
+
+test('Realtor-workspace exclusion is route-scoped (/people, /realtor), not a global account label — the same isRealtorWorkspace flag every other Realtor-only shell element already uses', () => {
+  const layout = read('src/app/(app)/layout.js');
+  assert.match(layout, /isRealtorWorkspace = requestedPath\.startsWith\('\/people'\) \|\| requestedPath\.startsWith\('\/realtor'\)/);
+  assert.doesNotMatch(layout, /account_entry_intent.*isRealtorWorkspace|users\.role/);
+  // /account never takes the isRealtorWorkspace branch — a Realtor-only
+  // account visiting Account Settings still gets the buyer shell (and so
+  // still gets How it works), matching every other buyer-shell utility
+  // (My Search, tabs, mobile nav) that Account Settings already inherits.
+  const realtorBranch = layout.match(/if \(isRealtorWorkspace\) \{[\s\S]*?\n    \}/)?.[0] || '';
+  assert.doesNotMatch(realtorBranch, /\/account/);
+});
+
+test('a dual-role person (owns a buyer search and assists as a Realtor) sees How it works on their own buyer routes but not on /people or /realtor — context is route-scoped, matching the existing Realtor Home/People I’m Helping links', () => {
+  const shell = read('src/components/AppShell.jsx');
+  // Same isRealtorWorkspace flag already gates every other Realtor-only
+  // shell affordance (tabs, mobile nav, My Search) — How it works now
+  // follows that identical, already-proven pattern rather than inventing a
+  // new one.
+  assert.match(shell, /!isRealtorWorkspace && <nav className="hh-tabs"/);
+  assert.match(shell, /!isRealtorWorkspace && <MobileNav/);
+  assert.match(shell, /!isRealtorWorkspace && howToOpen/);
+});
+
+test('opening/closing How it works never navigates, writes to the database, or touches search/participant/Match state — it is local UI state only', () => {
+  const shell = read('src/components/AppShell.jsx');
+  const modalFn = shell.match(/function HowToUseModal[\s\S]*?\n}\n/)?.[0] || '';
+  assert.doesNotMatch(modalFn, /router\.push|router\.replace|supabase|await |onboarding_complete/i);
+  // The trigger/state live in AppShell itself, not behind a route change —
+  // clicking it is a plain useState toggle, so the current URL/route is
+  // never touched.
+  assert.match(shell, /const \[howToOpen, setHowToOpen\] = useState\(false\)/);
+});
+
 test('manual help does not alter first-run tour persistence or eligibility', () => {
   const shell = read('src/components/AppShell.jsx');
   assert.match(shell, /const MOBILE_TOUR_DISMISS_KEY = 'flh-mobile-tour-dismissed'/);

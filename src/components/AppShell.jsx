@@ -345,9 +345,11 @@ export default function AppShell({ children, userEmail, userId, firstName = null
             >
               <SlidersHorizontal size={14} /> My Search
             </Link>}
-            <button className="hh-shell-action" onClick={() => setHowToOpen(true)}>
-              <HelpCircle size={14} /> How it works
-            </button>
+            {!isRealtorWorkspace && (
+              <button className="hh-shell-action" onClick={() => setHowToOpen(true)}>
+                <HelpCircle size={14} /> How it works
+              </button>
+            )}
             <AccountMenu firstName={firstName} lastName={lastName} userEmail={userEmail} pathname={pathname} signOut={signOut} />
           </div>
         </header>
@@ -379,7 +381,7 @@ export default function AppShell({ children, userEmail, userId, firstName = null
           onFinish={finishTour}
         />
       )}
-      {howToOpen && <HowToUseModal onClose={() => setHowToOpen(false)} />}
+      {!isRealtorWorkspace && howToOpen && <HowToUseModal onClose={() => setHowToOpen(false)} />}
       <BetaFeedback userId={userId} searchId={activeSearchId || undefined} searchType={searchIntent || undefined} appVersion={appVersion} />
     </div>
   );
