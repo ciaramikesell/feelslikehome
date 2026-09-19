@@ -45,8 +45,11 @@ test('FLH+ is spelled exactly one way everywhere it appears in product copy', ()
 test('no SaaS/subscription monetization language was introduced as consumer-facing copy', () => {
   // "not a subscription" is the one legitimate, explicitly-requested use —
   // the public FLH+ page states the negative to rule out recurring billing.
+  // `data: { subscription: ... }` is destructuring Supabase's own
+  // onAuthStateChange() return shape (an unsubscribe handle), not
+  // consumer-facing copy — also excepted.
   // Any other/affirmative use of "subscription" is still banned.
-  const banned = /(?<!not a )\bsubscription\b|\bsubscribe\b|\bsubscriber\b|premium (user|realtor|plan)|\bmembership tier\b|\bupgrade your\b|\bunlock powerful\b/i;
+  const banned = /(?<!not a )(?<!data: \{ )\bsubscription\b|\bsubscribe\b|\bsubscriber\b|premium (user|realtor|plan)|\bmembership tier\b|\bupgrade your\b|\bunlock powerful\b/i;
   for (const { file, content } of srcContents) {
     assert.doesNotMatch(content, banned, `${file} introduces banned monetization language`);
   }

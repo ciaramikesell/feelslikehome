@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogOut, Home as HomeIcon, Columns, HelpCircle, Footprints, SlidersHorizontal, Map, Users, Search, Plus, Heart, DoorOpen, Sparkles, Scale, Compass, X, ChevronDown, Settings } from 'lucide-react';
@@ -314,7 +314,34 @@ export default function AppShell({ children, userEmail, userId, firstName = null
     try { localStorage.setItem(MOBILE_TOUR_DISMISS_KEY, '1'); } catch { /* best-effort; never blocks dismissal */ }
   };
 
+  // Recovers from the browser client's own background session refresh
+  // dying — e.g. a rotated/invalid refresh token (AuthApiError: "Invalid
+  // Refresh Token: Refresh Token Not Found"), commonly hit when a second
+  // account signs in in the same browser and invalidates the first
+  // session's stored token. supabase-js's own auto-refresh loop is what
+  // determines this, not application code; it gives up and fires a
+  // SIGNED_OUT event once, which this listens for — this reacts to that
+  // authoritative signal rather than papering over the error. An explicit,
+  // user-initiated signOut() below also fires SIGNED_OUT, so
+  // intentionalSignOutRef distinguishes "I asked to sign out" (goes home,
+  // handled by signOut() itself) from "the session died under me" (goes to
+  // sign-in, preserving the page the user was on to return to after
+  // reauthenticating).
+  const intentionalSignOutRef = useRef(false);
+  useEffect(() => {
+    const supabase = createClient();
+    const { data: { subscription: authListener } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT' && !intentionalSignOutRef.current) {
+        router.push(`/auth/sign-in?redirect=${encodeURIComponent(pathname)}`);
+        router.refresh();
+      }
+      intentionalSignOutRef.current = false;
+    });
+    return () => authListener.unsubscribe();
+  }, [router, pathname]);
+
   const signOut = async () => {
+    intentionalSignOutRef.current = true;
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push('/');
