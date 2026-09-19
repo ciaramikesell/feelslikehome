@@ -17,6 +17,8 @@ const rootPage = read('src/app/page.js');
 const migration = read('supabase/migrations/2026-09-20-account-settings-foundation.sql');
 const css = read('src/app/globals.css');
 const schema = read('supabase/schema.sql');
+const nameSchemaCacheFix = read('supabase/migrations/2026-09-21-profiles-name-schema-cache-fix.sql');
+const nameCaptureMigration = read('supabase/migrations/2026-09-19-account-name-capture-and-realtor-home.sql');
 
 test('/account requires authentication like every other (app) page', () => {
   assert.match(page, /const user = await requireUser\(supabase\)/);
@@ -314,4 +316,31 @@ test('a missing/undeployed resolve_search_relationships RPC does not crash Accou
   // surfaces as searchDataError — an RPC-not-found is recovered from, not
   // treated as a hard failure.
   assert.doesNotMatch(fn, /throw rpcResult\.error/);
+});
+
+/* ------------------------------ data repair pass 2: PostgREST schema-cache fix ------------------------------ */
+
+test('production root cause: profiles.first_name/last_name are re-asserted idempotently and PostgREST is told to reload its schema cache', () => {
+  assert.match(nameSchemaCacheFix, /alter table public\.profiles\s*\n\s*add column if not exists first_name text,\s*\n\s*add column if not exists last_name text;/);
+  assert.match(nameSchemaCacheFix, /notify pgrst, 'reload schema';/);
+});
+
+test('the schema-cache fix reasserts the same first/last name length constraints as the original migration — no drift between the two', () => {
+  for (const src of [nameCaptureMigration, nameSchemaCacheFix]) {
+    assert.match(src, /check \(first_name is null or char_length\(first_name\) <= 100\)/);
+    assert.match(src, /check \(last_name is null or char_length\(last_name\) <= 100\)/);
+  }
+});
+
+test('the schema-cache fix never touches RLS policies, grants, or any other table — it only repairs profiles.first_name/last_name', () => {
+  assert.doesNotMatch(nameSchemaCacheFix, /create policy|drop policy|alter policy/i);
+  assert.doesNotMatch(nameSchemaCacheFix, /^\s*grant |^\s*revoke /im);
+  assert.doesNotMatch(nameSchemaCacheFix, /create table|drop table/i);
+});
+
+test('no second/duplicate name-storage location was introduced to work around the schema-cache error — profiles.first_name/last_name remain the only canonical columns', () => {
+  assert.doesNotMatch(nameSchemaCacheFix, /create table/i);
+  assert.doesNotMatch(data, /full_name|display_name.{0,20}column/i);
+  const fn = data.match(/export async function updateProfileName[\s\S]*?\n\}/)?.[0] || '';
+  assert.match(fn, /\.from\('profiles'\)\.update\(\{/);
 });
