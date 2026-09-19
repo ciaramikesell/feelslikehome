@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { ArrowLeft, User, Lock, ChevronRight, AlertTriangle, RefreshCcw } from 'lucide-react';
 import Sheet from '@/components/Sheet';
 import { PasswordField, Banner, Spinner } from '@/components/auth/AuthHelpers';
@@ -36,6 +37,7 @@ function CollapsibleRow({ icon: Icon, title, summary, children }) {
 // meant one failing silently masked the other. Name changes are a plain,
 // independent write to profiles.first_name/last_name.
 function ProfileForm({ userId, initialFirstName, initialLastName, initialEmail }) {
+  const router = useRouter();
   const [firstName, setFirstName] = useState(initialFirstName || '');
   const [lastName, setLastName] = useState(initialLastName || '');
   const [status, setStatus] = useState(null);
@@ -49,6 +51,11 @@ function ProfileForm({ userId, initialFirstName, initialLastName, initialEmail }
       const supabase = createClient();
       await updateProfileName(supabase, userId, firstName, lastName);
       setStatus('saved');
+      // The account menu/header get their name from the (app) layout's
+      // server-side profile fetch, not this form's local state — without a
+      // refresh they'd keep showing the pre-save value (or the
+      // email-derived guess) until the next full navigation.
+      router.refresh();
     } catch (nameError) {
       console.error('Account Settings: could not save profile name', nameError);
       // Surface the real Supabase/Postgres message (same pattern PasswordForm

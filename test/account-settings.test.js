@@ -75,10 +75,21 @@ test('saving the profile name never also depends on an email-change call — the
   assert.match(form, /console\.error\('Account Settings: could not save profile name', nameError\)/);
 });
 
+test('saving the profile name refreshes the route so the header/account menu (sourced from the (app) layout\'s server-side profile fetch) picks up the new name immediately, not just after the next navigation', () => {
+  assert.match(accountSettings, /import \{ useRouter \} from 'next\/navigation'/);
+  const form = accountSettings.match(/function ProfileForm[\s\S]*?\n}\n/)?.[0] || '';
+  assert.match(form, /const router = useRouter\(\);/);
+  const saveFn = form.match(/const save = async[\s\S]*?\n  \};/)?.[0] || '';
+  assert.match(saveFn, /setStatus\('saved'\);\s*\n\s*\/\/[\s\S]*?\n\s*router\.refresh\(\);/);
+});
+
 test('a legacy account with no name yet can still open and use Profile without being blocked', () => {
   assert.match(page, /firstName=\{profile\?\.first_name \|\| ''\}/);
   assert.match(page, /lastName=\{profile\?\.last_name \|\| ''\}/);
-  assert.doesNotMatch(accountSettings, /redirect\(|next\/navigation/);
+  // useRouter (for router.refresh() after a save) is fine — it's next/navigation
+  // that never performs a redirect/navigation away from the page.
+  assert.doesNotMatch(accountSettings, /redirect\(/);
+  assert.doesNotMatch(accountSettings, /router\.push\(|router\.replace\(/);
 });
 
 test('password change reuses Supabase Auth updateUser, the same mechanism as the existing reset-password page — no parallel password system', () => {
