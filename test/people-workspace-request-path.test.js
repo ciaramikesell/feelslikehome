@@ -9,15 +9,17 @@ const detailPage = fs.readFileSync('src/app/(app)/people/[searchId]/page.js', 'u
 const collaboration = fs.readFileSync('src/lib/supabase/collaboration.js', 'utf8');
 const migration = fs.readFileSync('supabase/migrations/2026-09-18-people-workspace-draft-select-privileges.sql', 'utf8');
 
-function routeLoad({ clients = [], drafts = [] } = {}) {
+function routeLoad({ clients = [], drafts = [], clientsThrows = null, draftsThrows = null } = {}) {
   const calls = [];
   const loaders = {
     getRealtorRelationships: async (_supabase, userId) => {
       calls.push(['roster', userId]);
+      if (clientsThrows) throw clientsThrows;
       return clients;
     },
     getProspectiveSearches: async () => {
       calls.push(['drafts']);
+      if (draftsThrows) throw draftsThrows;
       return drafts;
     },
   };
@@ -27,7 +29,7 @@ function routeLoad({ clients = [], drafts = [] } = {}) {
 
 test('actual /people request loader accepts a first-run Realtor zero state', async () => {
   const { result, calls } = await routeLoad();
-  assert.deepEqual(result, { clients: [], drafts: [] });
+  assert.deepEqual(result, { clients: [], clientsError: false, drafts: [], draftsError: false });
   assert.deepEqual(calls, [['roster', 'realtor-1'], ['drafts']]);
   assert.match(page, /loadPeopleWorkspace\(supabase, user\.id/);
   assert.match(page, /Your workspace is ready/);
@@ -39,13 +41,38 @@ test('actual /people request loader accepts a first-run Realtor zero state', asy
 test('actual /people request loader returns a Realtor-owned draft', async () => {
   const draft = { id: 'draft-1', client_name: 'Casey', status: 'draft' };
   const { result } = await routeLoad({ drafts: [draft] });
-  assert.deepEqual(result, { clients: [], drafts: [draft] });
+  assert.deepEqual(result, { clients: [], clientsError: false, drafts: [draft], draftsError: false });
 });
 
 test('actual /people request loader returns an authorized client', async () => {
   const client = { id: 'search-1', people: [{ display_name: 'Casey' }], activeCount: 0, wantToTourCount: 0 };
   const { result } = await routeLoad({ clients: [client] });
-  assert.deepEqual(result, { clients: [client], drafts: [] });
+  assert.deepEqual(result, { clients: [client], clientsError: false, drafts: [], draftsError: false });
+});
+
+test('a client-roster query failure is isolated: drafts still load, and the failure is distinguishable from a legitimate empty roster', async () => {
+  const draft = { id: 'draft-1', client_name: 'Casey', status: 'draft' };
+  const { result, calls } = await routeLoad({ drafts: [draft], clientsThrows: new Error('roster boom') });
+  assert.deepEqual(result, { clients: [], clientsError: true, drafts: [draft], draftsError: false });
+  assert.deepEqual(calls, [['roster', 'realtor-1'], ['drafts']]);
+  assert.match(page, /clientsError \? \(/);
+  assert.match(page, /We couldn&apos;t load your clients/);
+});
+
+test('a drafts query failure is isolated: the client roster still loads', async () => {
+  const client = { id: 'search-1', people: [{ display_name: 'Casey' }], activeCount: 0, wantToTourCount: 0 };
+  const { result } = await routeLoad({ clients: [client], draftsThrows: new Error('drafts boom') });
+  assert.deepEqual(result, { clients: [client], clientsError: false, drafts: [], draftsError: true });
+  assert.match(page, /draftsError && <section className="hh-realtor-empty" role="alert">/);
+  assert.match(page, /Couldn&apos;t load searches waiting for a buyer/);
+});
+
+test('a client-roster failure never falls back to the "Your workspace is ready" empty state — a real error is never presented as a legitimate zero state', async () => {
+  const { result } = await routeLoad({ clientsThrows: new Error('roster boom') });
+  assert.equal(result.clientsError, true);
+  const clientsBranch = page.match(/clientsError \? \([\s\S]*?\) : relationships\.length \?/)?.[0] || '';
+  assert.ok(clientsBranch, 'expected an explicit clientsError branch before the relationships.length check');
+  assert.doesNotMatch(clientsBranch, /Your workspace is ready/);
 });
 
 test('specific client routes still fail closed for absent or revoked membership', () => {

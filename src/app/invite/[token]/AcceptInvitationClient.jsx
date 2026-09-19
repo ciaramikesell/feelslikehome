@@ -60,11 +60,27 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
         return;
       }
       const { data: { user } } = await supabase.auth.getUser();
-      if (user && result.search_id) {
+      // A Realtor accepting joins a CLIENT's search, not one of their own —
+      // setActiveSearch (which points this account's own "current search"
+      // pointer at it) only makes sense for a buyer/co-buyer joining a
+      // shared search, never for a Realtor.
+      if (user && result.search_id && !isRealtorInvite) {
         await setActiveSearch(supabase, user.id, result.search_id);
       }
       setState('done');
-      setTimeout(() => { router.push(isBuyerInvite ? '/onboarding' : '/homes'); router.refresh(); }, 1200);
+      // isBuyerInvite: a Realtor invited THIS buyer — they land in buyer
+      // onboarding to set up their own search, same as always. isRealtorInvite:
+      // THIS person just joined a client's search as Realtor — they must land
+      // in Realtor workspace, never buyer onboarding (an account that only
+      // ever accepted Realtor invitations has no completed buyer onboarding,
+      // so /homes would bounce them straight into it). Otherwise (co_buyer) —
+      // they joined an existing shared search, so /homes is correct.
+      const destination = isBuyerInvite
+        ? '/onboarding'
+        : isRealtorInvite
+          ? (result.search_id ? `/people/${result.search_id}` : '/people')
+          : '/homes';
+      setTimeout(() => { router.push(destination); router.refresh(); }, 1200);
     } catch (err) {
       console.error('Invitation acceptance failed', err);
       setState('invalid');
