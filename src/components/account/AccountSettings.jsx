@@ -159,13 +159,14 @@ function DeleteAccountSection() {
   );
 }
 
-// hasFlhPlus is derived from real search_members data (relationships.length
-// > 0), not a persisted entitlement flag — see SearchAccess for why. search
-// is null for an account with no legitimate buyer search yet (Realtor-only,
-// or mid-onboarding) — FLH+/Connections simply don't render for them.
-export default function AccountSettings({ userId, userEmail, firstName, lastName, search, homeCount, initialRelationships, searchDataError = false }) {
+// hasFlhPlus/entitlementSource come from resolve_search_entitlement (see
+// account/page.js) — the one canonical "does this search have FLH+" check,
+// never re-derived here from unrelated signals like relationships.length.
+// search is null for an account with no legitimate buyer search yet
+// (Realtor-only, or mid-onboarding) — FLH+/Connections simply don't render
+// for them.
+export default function AccountSettings({ userId, userEmail, firstName, lastName, search, homeCount, initialRelationships, hasFlhPlus = false, entitlementSource = null, searchDataError = false }) {
   const [relationships, setRelationships] = useState(initialRelationships || []);
-  const hasFlhPlus = relationships.length > 0;
 
   return (
     <main className="hh-account-page">
@@ -198,7 +199,7 @@ export default function AccountSettings({ userId, userEmail, firstName, lastName
           </section>
         ) : (
           <>
-            <SearchAccess hasFlhPlus={hasFlhPlus} homeCount={homeCount} />
+            <SearchAccess hasFlhPlus={hasFlhPlus} entitlementSource={entitlementSource} homeCount={homeCount} />
             <Connections hasFlhPlus={hasFlhPlus} relationships={relationships} searchId={search.id} userId={userId} onRelationshipsChange={setRelationships} />
           </>
         )

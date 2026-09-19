@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { requireUser, withAuthRecovery } from '@/lib/supabase/auth';
 import { getProfile, getSearch } from '@/lib/supabase/data';
-import { getEligibleHomeCount, resolveSearchRelationships } from '@/lib/supabase/collaboration';
+import { getEligibleHomeCount, resolveSearchRelationships, resolveSearchEntitlement } from '@/lib/supabase/collaboration';
 import AccountSettings from '@/components/account/AccountSettings';
 
 // Person-level Account Settings. Deliberately does not use resolveActiveSearch
@@ -38,6 +38,8 @@ export default async function AccountSettingsPage() {
     let homeCount = 0;
     let relationships = [];
     let searchDataError = false;
+    let hasFlhPlus = false;
+    let entitlementSource = null;
     if (hasBuyerSearch) {
       try {
         homeCount = await getEligibleHomeCount(supabase, ownedSearch.id);
@@ -48,6 +50,18 @@ export default async function AccountSettingsPage() {
         relationships = await resolveSearchRelationships(supabase, ownedSearch.id);
       } catch (error) {
         console.error('Account Settings: could not load search relationships', error);
+        searchDataError = true;
+      }
+      // A failure here also surfaces the shared error notice, rather than
+      // silently defaulting to Free — misrepresenting a beta/purchased
+      // search as needing to "unlock FLH+" is a worse mistake than an
+      // honest "couldn't load".
+      try {
+        const entitlement = await resolveSearchEntitlement(supabase, ownedSearch.id);
+        hasFlhPlus = entitlement.hasFlhPlus;
+        entitlementSource = entitlement.source;
+      } catch (error) {
+        console.error('Account Settings: could not load FLH+ entitlement', error);
         searchDataError = true;
       }
     }
@@ -61,6 +75,8 @@ export default async function AccountSettingsPage() {
         search={hasBuyerSearch ? ownedSearch : null}
         homeCount={homeCount}
         initialRelationships={relationships}
+        hasFlhPlus={hasFlhPlus}
+        entitlementSource={entitlementSource}
         searchDataError={searchDataError}
       />
     );

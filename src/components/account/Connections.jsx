@@ -136,7 +136,14 @@ export default function Connections({ hasFlhPlus, relationships, searchId, userI
       <p className="hh-account-card-intro">Bring the people you&apos;re making decisions with into your search.</p>
 
       <div className="hh-account-relationships">
-        {!hasFlhPlus ? (
+        {/* An already-connected relationship is always shown and manageable
+            here, regardless of hasFlhPlus — gating only ever applies to
+            starting a NEW invite. This also means a transient entitlement-
+            read hiccup can never hide someone this search is really
+            connected to. */}
+        {coBuyer ? (
+          <ConnectedRelationship icon={Users} title="Co-buyer" person={coBuyer} searchId={searchId} onRemoved={dropRelationship} />
+        ) : !hasFlhPlus ? (
           <GatedRelationship
             icon={Users}
             title="Co-Buyer"
@@ -144,13 +151,13 @@ export default function Connections({ hasFlhPlus, relationships, searchId, userI
             unlockTitle="Unlock FLH+ to invite a co-buyer"
             unlockCopy="FLH+ lets you invite a co-buyer so you can compare the same homes while keeping your individual priorities and Match."
           />
-        ) : coBuyer ? (
-          <ConnectedRelationship icon={Users} title="Co-buyer" person={coBuyer} searchId={searchId} onRemoved={dropRelationship} />
         ) : (
           <InviteRelationship icon={Users} title="Co-Buyer" description="Search together without combining your perspectives. Each of you keeps your own priorities, Match, Favorites, and reactions." searchId={searchId} userId={userId} relationshipType="co_buyer" />
         )}
 
-        {!hasFlhPlus ? (
+        {realtor ? (
+          <ConnectedRelationship icon={HomeIcon} title="Realtor" person={realtor} searchId={searchId} onRemoved={dropRelationship} />
+        ) : !hasFlhPlus ? (
           <GatedRelationship
             icon={HomeIcon}
             title="Your Realtor"
@@ -158,8 +165,6 @@ export default function Connections({ hasFlhPlus, relationships, searchId, userI
             unlockTitle="Unlock Realtor collaboration with FLH+"
             unlockCopy="FLH+ lets you invite your Realtor so you can search together and get their professional context alongside your own decision-making."
           />
-        ) : realtor ? (
-          <ConnectedRelationship icon={HomeIcon} title="Realtor" person={realtor} searchId={searchId} onRemoved={dropRelationship} />
         ) : (
           <InviteRelationship icon={HomeIcon} title="Your Realtor" description="Bring the Realtor you're already working with into your search." searchId={searchId} userId={userId} relationshipType="realtor" />
         )}

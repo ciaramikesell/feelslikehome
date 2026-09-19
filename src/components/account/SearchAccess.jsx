@@ -3,15 +3,16 @@
 import { Check, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
-// "Your search access" — the FLH+ card. hasFlhPlus is a PRESENTATION-ONLY
-// signal (see account/page.js): whether this search already has a co-buyer
-// and/or Realtor connected, which is real, existing data. There is no
-// persisted "this search purchased FLH+" flag yet — no payment/entitlement
-// architecture exists — so "Unlock FLH+" is an intentional, non-destructive
-// placeholder rather than a working purchase flow. A future payment pass
-// replaces hasFlhPlus with a real entitlement read; this component already
-// renders both states so that swap is the only change it needs.
-export default function SearchAccess({ hasFlhPlus, homeCount, homeLimit = 3 }) {
+// "Your search access" — the FLH+ card. hasFlhPlus/entitlementSource come
+// from resolve_search_entitlement (see account/page.js): a real, persisted
+// per-search entitlement row, not a derived heuristic. entitlementSource
+// distinguishes how access was granted ('beta' during the current beta
+// period, 'purchase' once real $7.99 checkout exists, 'admin'/'promo' for
+// future grants) purely for truthful copy — it never changes what unlocks.
+// "Unlock FLH+" for a Free search is still an intentional, non-destructive
+// placeholder — purchasing isn't wired up yet — but a search that already
+// has access (beta or otherwise) never shows that CTA.
+export default function SearchAccess({ hasFlhPlus, entitlementSource = null, homeCount, homeLimit = 3 }) {
   const pct = Math.min(100, Math.round((homeCount / homeLimit) * 100));
   return (
     <section className="hh-account-card hh-account-flh" aria-labelledby="search-access-title">
@@ -25,7 +26,7 @@ export default function SearchAccess({ hasFlhPlus, homeCount, homeLimit = 3 }) {
           <div className="hh-account-access-copy">
             <span className="hh-account-access-label">Current access</span>
             <strong>FLH+</strong>
-            <span className="hh-account-access-sub">Unlocked for this search</span>
+            <span className="hh-account-access-sub">{entitlementSource === 'beta' ? 'Included during beta' : 'Unlocked for this search'}</span>
           </div>
         </div>
       ) : (

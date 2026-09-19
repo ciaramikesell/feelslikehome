@@ -112,9 +112,7 @@ test('FLH+ unlocked-state presentation exists and is driven by a component prop,
   assert.match(searchAccess, /Realtor collaboration/);
 });
 
-test('no persisted FLH+ purchase/entitlement flag was created — the boundary is explicit and commented, not pretended', () => {
-  assert.doesNotMatch(migration, /add column|create table|alter table public\.searches/i);
-  assert.match(searchAccess, /persisted "this search purchased FLH\+" flag/);
+test('purchasing remains an honest, non-working placeholder — a Free search never fakes a purchase button that does anything', () => {
   assert.match(searchAccess, /disabled title="Purchasing isn't available yet"/);
   assert.match(searchAccess, /button type="button" className="hh-btn" disabled/);
 });
@@ -287,10 +285,10 @@ test('the Realtor relationship description never overclaims — no buyer-side Ma
   assert.match(connections, /while your decisions stay yours/);
 });
 
-test('no fake entitlement, fake collaborators, or fake payment state is ever created to make the page render', () => {
-  assert.doesNotMatch(page, /is_plus|isPlus|global.{0,10}entitlement/i);
+test('no global/account-level entitlement flag is ever used — entitlement stays search-scoped via resolve_search_entitlement', () => {
+  assert.doesNotMatch(page, /is_plus|isPlus|global.{0,10}entitlement|profile.{0,10}entitlement|profiles\.is_plus|users\.is_plus/i);
   assert.doesNotMatch(searchAccess, /is_plus|isPlus/i);
-  assert.match(searchAccess, /persisted "this search purchased FLH\+" flag/);
+  assert.match(page, /resolveSearchEntitlement\(supabase, ownedSearch\.id\)/);
 });
 
 /* ------------------------------ data-repair pass: profile writes + connections resilience ------------------------------ */

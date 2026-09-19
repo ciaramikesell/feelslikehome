@@ -785,6 +785,27 @@ export async function resolveSearchRelationships(supabase, searchId) {
   }));
 }
 
+// The single canonical "does this search have FLH+" check — every
+// FLH+-gated surface (SearchAccess, Connections) must call this rather than
+// deriving access from unrelated signals (e.g. whether a co-buyer/Realtor
+// happens to already be connected). Same RPC-then-fallback resilience
+// pattern as resolveSearchRelationships above, since resolve_search_
+// entitlement ships in a migration that may not have reached every
+// environment yet: falls back to a plain search_entitlements read, relying
+// only on the search_entitlements_select RLS policy (can_access_search —
+// owner, co-buyer, or Realtor).
+export async function resolveSearchEntitlement(supabase, searchId) {
+  const rpcResult = await supabase.rpc('resolve_search_entitlement', { p_search_id: searchId });
+  if (!rpcResult.error) {
+    const row = rpcResult.data?.[0];
+    return { hasFlhPlus: Boolean(row?.has_flh_plus), source: row?.source || null };
+  }
+  console.error('resolve_search_entitlement RPC failed, falling back to plain search_entitlements read', rpcResult.error);
+  const fallback = await supabase.from('search_entitlements').select('source').eq('search_id', searchId).maybeSingle();
+  if (fallback.error) throw fallback.error;
+  return { hasFlhPlus: Boolean(fallback.data), source: fallback.data?.source || null };
+}
+
 // A cheap, count-only read for the Free-tier "X of 3 homes" presentation —
 // deliberately not reusing getHomesForUser, which also loads every shared
 // field and each home's personal state to build full Home objects. Excludes
