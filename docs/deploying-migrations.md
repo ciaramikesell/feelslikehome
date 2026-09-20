@@ -30,9 +30,40 @@ here, for two concrete, tested reasons:
    to inspect current state, decide what's already applied, and mark it
    without re-running it.
 
-Setting this up properly is possible, but it's a deliberate, separate
-project (renaming ~30 files, then reconciling history against the live
-database) — not something to do unilaterally alongside an unrelated bug fix.
+Confirmed directly, not assumed: running `supabase migration list --db-url
+<connection>` against a database with this repo's actual filenames and an
+empty history table returns `{"migrations":[],"message":"Migrations
+listed"}` — every local file is skipped, and there is nothing to compare
+against. `supabase db push` behaves the same way (reports "up to date"
+while silently skipping every file). Neither command can currently tell you
+anything about this project's migration state — use `npm run db:check`
+below instead, which asks the database directly.
+
+Setting the CLI workflow up properly is possible, but it's a deliberate,
+separate project (renaming ~30 files, then reconciling history against the
+live database) — not something to do unilaterally alongside an unrelated
+bug fix.
+
+## Checking what's actually live: `npm run db:check`
+
+`scripts/check-migration-state.mjs` is read-only — it connects and queries
+`pg_proc`/`information_schema`/`pg_constraint` directly for the specific
+objects this session's repairs depend on, and prints a plain pass/fail per
+object. This is the only way to know what's live; GitHub commit state, the
+web host's build log, and the Supabase CLI's migration-tracking (per above)
+all say nothing about database state.
+
+```bash
+export SUPABASE_DB_URL="postgresql://postgres:[password]@[host]:5432/postgres"
+npm run db:check
+```
+
+It checks: `profiles.first_name`/`last_name`, `resolve_search_relationships`,
+`search_entitlements` + `resolve_search_entitlement`, and — specifically,
+by inspecting the live function source text — whether `accept_invitation`
+and `claim_prospective_search` contain the fixed `ON CONFLICT ON
+CONSTRAINT ...` form or the known-ambiguous `ON CONFLICT (search_id,
+user_id)` form.
 
 ## Applying a migration now: `npm run db:migrate`
 

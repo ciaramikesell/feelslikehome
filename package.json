@@ -7,7 +7,8 @@
     "build": "next build",
     "test": "node --test test/*.test.js",
     "start": "next start",
-    "db:migrate": "node scripts/apply-migration.mjs"
+    "db:migrate": "node scripts/apply-migration.mjs",
+    "db:check": "node scripts/check-migration-state.mjs"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.1",
