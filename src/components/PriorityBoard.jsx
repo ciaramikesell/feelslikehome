@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ChevronRight, Plus } from 'lucide-react';
+import { ChevronRight, GripVertical, Plus } from 'lucide-react';
 import { DEFAULT_SELECTED_TIER, TIER_DESCRIPTIONS, TIER_META, TIER_ORDER, criterionDisplayLabel, getItemlistCategories, effectiveTier, isSchoolsSuppressed, isExperientialCriterion, isCriterionApplicable, isRetiredPurchaseBuiltIn } from '@/lib/constants';
 
 // Presentation-only weight callout for My Search's desktop tier heading
@@ -38,6 +38,7 @@ function TierItemsList({ tier, items, activeItem, setActiveItem, setTier, priori
               }}
               onDragEnd={onItemDragEnd}
             >
+              <GripVertical className="hh-priority-grip" size={14} aria-hidden="true" />
               <span>{criterionDisplayLabel(item.categoryKey, item.label)}</span>
               {isRetiredPurchaseBuiltIn(item.categoryKey, item, priorities.searchType) && <sup className="hh-legacy-priority" title="Saved legacy priority; no longer included in pre-tour Match">Legacy</sup>}
               {isExperientialCriterion(item.categoryKey, item.label) && <sup className="hh-experiential-marker" title="You'll evaluate this after touring the home" aria-label="After tour">◷</sup>}
@@ -161,6 +162,12 @@ export default function PriorityBoard({ priorities, patch, onboarding = false, c
     <div>
       {selected.length || choicesOpen ? (
         <>
+          {!onboarding && (
+            <div className="hh-priority-instructions">
+              <h3 className="hh-priority-instructions-heading">Rank what matters to you</h3>
+              <p className="hh-priority-instructions-copy">Drag and drop to move priorities between Must Have, Important, and Nice to Have.</p>
+            </div>
+          )}
           {hasExperiential && <div className="hh-priority-legend"><span aria-hidden="true">◷</span> After tour</div>}
           {mobileCompact ? (
             <div className="hh-tier-summary-list" aria-label="Selected preferences by importance">

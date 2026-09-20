@@ -76,6 +76,21 @@ test('product proof is static, concise, and owns the philosophy statement exactl
   for (const benefit of ['Personalized Match Scores', 'Side-by-side comparison', 'Commute times from places that matter most', 'Built for buyers, co-buyers, and Realtors']) assert.match(landing, new RegExp(benefit));
 });
 
+test('hero makes the find-elsewhere/bring-here product model explicit, without losing the existing headline or workflow copy', () => {
+  assert.match(landing, /Find homes wherever you already search\. Bring the ones you.re considering here\./);
+  assert.match(landing, /Feels Like Home isn.t a listing search engine\. It.s where you compare the homes you.ve already found and figure out which one fits you best\./);
+  assert.match(landing, /className="pl-model-explainer"/);
+  // The approved headline, hero image, and downstream sections (How it
+  // works -> product proof -> FLH+ bridge -> collaboration -> footer) are
+  // untouched by this comprehension-only addition.
+  assert.match(landing, /Now find the one that<\/span><em>Feels Like Home\.<\/em>/);
+  assert.match(landing, /id="how-it-works"/);
+  assert.match(landing, /id="demo-title"/);
+  assert.match(landing, /id="flh-bridge-title"/);
+  assert.match(landing, /id="collaboration-title"/);
+  assert.match(landing, /<footer className="pl-footer">/);
+});
+
 test('collaboration keeps co-buyer and Realtor participation distinct', () => {
   assert.match(landing, /Searching with a co-buyer/);
   assert.match(landing, /Working with a Realtor/);

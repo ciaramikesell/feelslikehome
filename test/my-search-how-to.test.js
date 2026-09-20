@@ -67,6 +67,49 @@ test('drag education explicitly covers suggestions, destination tiers, and exist
   assert.match(board, /className="hh-chip" onClick=\{\(\) => selectItem\(def, item\)\} onDragStart/);
 });
 
+test('My Search gives the priority board its own always-visible "drag to rank" heading, not buried in the collapsed add-priority panel', () => {
+  const board = read('src/components/PriorityBoard.jsx');
+  const css = read('src/app/globals.css');
+  assert.match(board, /\{!onboarding && \(\s*<div className="hh-priority-instructions">/);
+  assert.match(board, /<h3 className="hh-priority-instructions-heading">Rank what matters to you<\/h3>/);
+  assert.match(board, /<p className="hh-priority-instructions-copy">Drag and drop to move priorities between Must Have, Important, and Nice to Have\.<\/p>/);
+  assert.match(css, /\.hh-priority-instructions-heading \{[^}]*font: 600 18px var\(--font-serif\)/);
+  // The instructions render ahead of both the desktop tier columns and the
+  // mobile tier-summary rows, not nested inside either branch.
+  const instructionsIndex = board.indexOf('hh-priority-instructions">');
+  const mobileBranchIndex = board.indexOf('mobileCompact ? (');
+  assert.ok(instructionsIndex > -1 && instructionsIndex < mobileBranchIndex);
+});
+
+test('each selected priority card carries a decorative grip handle that visually signals drag, without becoming a second drag target or changing the click-to-open-menu behavior', () => {
+  const board = read('src/components/PriorityBoard.jsx');
+  const css = read('src/app/globals.css');
+  assert.match(board, /import \{ ChevronRight, GripVertical, Plus \} from 'lucide-react'/);
+  assert.match(board, /<GripVertical className="hh-priority-grip" size=\{14\} aria-hidden="true" \/>\s*<span>\{criterionDisplayLabel/);
+  // The grip has no handlers of its own — the whole existing button stays
+  // the one draggable + clickable target (Section 9's "decorative only" rule).
+  assert.equal((board.match(/onDragStart=/g) || []).length, 2);
+  assert.equal((board.match(/GripVertical/g) || []).length, 2);
+  assert.match(css, /\.hh-priority-grip \{[^}]*color: var\(--ink-soft\)/);
+});
+
+test('desktop drag affordance: existing grab/grabbing cursor is preserved and the grip stays neutral (not orange) even on hover', () => {
+  const css = read('src/app/globals.css');
+  assert.match(css, /\.hh-selected-priority \{[^}]*cursor: grab;/);
+  assert.match(css, /\.hh-selected-priority:active \{ cursor: grabbing; \}/);
+  assert.match(css, /\.hh-selected-priority:hover \.hh-priority-grip, \.hh-selected-priority:focus-visible \.hh-priority-grip \{ color: var\(--ink-soft\); \}/);
+});
+
+test('the pre-existing tap-to-open "Move to X" / "Remove priority" menu remains the accessible non-drag alternative for touch and keyboard, unchanged by the new grip affordance', () => {
+  const board = read('src/components/PriorityBoard.jsx');
+  assert.match(board, /aria-expanded=\{open\}/);
+  assert.match(board, /onClick=\{\(\) => setActiveItem\(open \? null : key\)\}/);
+  assert.match(board, /Move to \{TIER_META\[target\]\.label\}/);
+  assert.match(board, />Remove priority<\/button>/);
+  // Clicking the card still only opens the menu — no navigation was introduced.
+  assert.doesNotMatch(board, /router\.push|router\.replace|href=\{.*item\.label/);
+});
+
 test('structured basics use a compact responsive grid and quieter importance controls', () => {
   const panel = read('src/components/MySearchPanel.jsx');
   const css = read('src/app/globals.css');
