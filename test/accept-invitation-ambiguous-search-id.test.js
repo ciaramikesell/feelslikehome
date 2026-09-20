@@ -7,7 +7,7 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 const fix = read('supabase/migrations/2026-09-25-accept-invitation-ambiguous-search-id-fix.sql');
 const collaboration = read('src/lib/supabase/collaboration.js');
 
-function fn(name) { return fix.match(new RegExp(`create (?:or replace )?function public\\.${name}[\\s\\S]*?end; \\$\\$;`, 'i'))?.[0] || ''; }
+function fn(name) { return fix.match(new RegExp(`create (?:or replace )?function public\\.${name}[\\s\\S]*?end; (?:\\$\\$|\\$${name}\\$);`, 'i'))?.[0] || ''; }
 
 test('root cause: neither search_members insert uses the ambiguous ON CONFLICT column-list form — both reference the unique constraint by name instead', () => {
   const accept = fn('accept_invitation');

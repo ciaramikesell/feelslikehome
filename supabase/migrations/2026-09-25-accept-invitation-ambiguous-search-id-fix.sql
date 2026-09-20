@@ -38,10 +38,25 @@
 -- locally: co-buyer acceptance, Realtor acceptance, and idempotent
 -- re-acceptance (no duplicate row, "already_member") all succeed with
 -- this fix and reproduce the exact 42702 without it.
+--
+-- Tagged the function body's dollar-quote as $accept_invitation$ instead
+-- of bare $$ (functionally identical to Postgres either way): a prior
+-- attempt to apply this exact, verified-valid file through the Supabase
+-- dashboard's SQL editor came back as "42601: unterminated dollar-quoted
+-- string", with the editor's pasted-query view showing bogus `ALTER TABLE
+-- inv/caller_email/target_search ENABLE ROW LEVEL SECURITY` statements
+-- injected mid-function — the editor's own "enable RLS on new tables"
+-- assistant misreading this function's local variable declarations as
+-- table definitions, corrupting what actually reached Postgres. A unique
+-- tag makes truncation/corruption immediately visible (the closing tag
+-- would no longer match) and may avoid whatever pattern that assistant
+-- keyed on. Applying via a direct connection (psql/Supabase CLI) rather
+-- than pasting into the dashboard editor avoids this class of corruption
+-- entirely, since the file's bytes reach Postgres unmodified.
 begin;
 
 create or replace function public.accept_invitation(p_token uuid)
-returns table(success boolean, reason text, search_id uuid) language plpgsql security definer set search_path = '' as $$
+returns table(success boolean, reason text, search_id uuid) language plpgsql security definer set search_path = '' as $accept_invitation$
 declare inv public.search_invitations%rowtype; caller uuid:=auth.uid(); caller_email text; target_search uuid; stage text := 'start';
 begin
   if caller is null then return query select false,'not_authenticated',null::uuid; return; end if;
@@ -80,7 +95,7 @@ begin
     return query select false, ('error_' || stage || '_' || sqlstate), null::uuid;
     return;
   end;
-end; $$;
+end; $accept_invitation$;
 
 revoke all on function public.accept_invitation(uuid) from public;
 revoke execute on function public.accept_invitation(uuid) from anon, service_role;

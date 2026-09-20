@@ -21,7 +21,10 @@ const BROKEN_MIGRATION = read('supabase/migrations/2026-09-22-realtor-invitation
 const FIXED_MIGRATION = read('supabase/migrations/2026-09-25-accept-invitation-ambiguous-search-id-fix.sql');
 
 function extractFunction(source) {
-  const match = source.match(/create or replace function public\.accept_invitation\(p_token uuid\)[\s\S]*?end; \$\$;/);
+  // The fixed migration tags its dollar-quote $accept_invitation$ instead
+  // of bare $$ (see that file's header comment) — match either so this
+  // still finds the pre-fix (bare $$) and fixed (tagged) bodies alike.
+  const match = source.match(/create or replace function public\.accept_invitation\(p_token uuid\)[\s\S]*?end; (?:\$\$|\$accept_invitation\$);/);
   if (!match) throw new Error('accept_invitation definition not found in migration source');
   return match[0];
 }
