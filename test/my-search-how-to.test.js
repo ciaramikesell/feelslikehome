@@ -60,10 +60,10 @@ test('Schools configuration and specific/custom preference discovery remain avai
   assert.match(board, /addCustomItem\(newItemCategory/);
 });
 
-test('drag education explicitly covers suggestions, destination tiers, and existing priorities', () => {
+test('drag education is concise and non-redundant: the top heading teaches rearranging, the lower panel teaches adding', () => {
   const board = read('src/components/PriorityBoard.jsx');
-  assert.match(board, /Drag any preference below into Must Have, Important, or Nice to Have\./);
-  assert.match(board, /drag your existing priorities between columns to change how much they matter\./);
+  assert.match(board, /Drag a preference below into a column to add it to your priorities\./);
+  assert.doesNotMatch(board, /drag your existing priorities between columns to change how much they matter/);
   assert.match(board, /className="hh-chip" onClick=\{\(\) => selectItem\(def, item\)\} onDragStart/);
 });
 
@@ -72,7 +72,9 @@ test('My Search gives the priority board its own always-visible "drag to rank" h
   const css = read('src/app/globals.css');
   assert.match(board, /\{!onboarding && \(\s*<div className="hh-priority-instructions">/);
   assert.match(board, /<h3 className="hh-priority-instructions-heading">Rank what matters to you<\/h3>/);
-  assert.match(board, /<p className="hh-priority-instructions-copy">Drag and drop to move priorities between Must Have, Important, and Nice to Have\.<\/p>/);
+  // Simplified per round-2 feedback: the column names are already visibly
+  // labeled immediately below, so the instruction no longer re-lists them.
+  assert.match(board, /<p className="hh-priority-instructions-copy">Drag any priority to move it between the three columns\.<\/p>/);
   assert.match(css, /\.hh-priority-instructions-heading \{[^}]*font: 600 18px var\(--font-serif\)/);
   // The instructions render ahead of both the desktop tier columns and the
   // mobile tier-summary rows, not nested inside either branch.
@@ -81,11 +83,15 @@ test('My Search gives the priority board its own always-visible "drag to rank" h
   assert.ok(instructionsIndex > -1 && instructionsIndex < mobileBranchIndex);
 });
 
-test('each selected priority card carries a decorative grip handle that visually signals drag, without becoming a second drag target or changing the click-to-open-menu behavior', () => {
+test('each selected priority card carries a decorative grip handle that visually signals drag, without a competing "Change" action or a second drag target', () => {
   const board = read('src/components/PriorityBoard.jsx');
   const css = read('src/app/globals.css');
   assert.match(board, /import \{ ChevronRight, GripVertical, Plus \} from 'lucide-react'/);
-  assert.match(board, /<GripVertical className="hh-priority-grip" size=\{14\} aria-hidden="true" \/>\s*<span>\{criterionDisplayLabel/);
+  assert.match(board, /<GripVertical className="hh-priority-grip" size=\{16\} aria-hidden="true" \/>\s*<span>\{criterionDisplayLabel/);
+  // "Change" competed visually with the grip and implied clicking was how you
+  // moved a priority — removed since the row itself has no separate handler
+  // for it (aria-label already says "Open priority actions").
+  assert.doesNotMatch(board, /hh-priority-change|>Change<\/small>/);
   // The grip has no handlers of its own — the whole existing button stays
   // the one draggable + clickable target (Section 9's "decorative only" rule).
   assert.equal((board.match(/onDragStart=/g) || []).length, 2);
@@ -98,6 +104,14 @@ test('desktop drag affordance: existing grab/grabbing cursor is preserved and th
   assert.match(css, /\.hh-selected-priority \{[^}]*cursor: grab;/);
   assert.match(css, /\.hh-selected-priority:active \{ cursor: grabbing; \}/);
   assert.match(css, /\.hh-selected-priority:hover \.hh-priority-grip, \.hh-selected-priority:focus-visible \.hh-priority-grip \{ color: var\(--ink-soft\); \}/);
+});
+
+test('the card-level label is visually subordinate to the actionable "Rank what matters to you" heading', () => {
+  const panel = read('src/components/MySearchPanel.jsx');
+  assert.match(panel, /<SearchCard showHeader=\{false\}>\s*<p className="hh-label"[^>]*>What Matters Most to Me<\/p>/);
+  // hh-label is the app's existing small/muted caption style (see e.g. field
+  // labels in BasicsCard) — reused here rather than inventing a new one.
+  assert.match(read('src/app/globals.css'), /\.hh-label \{ font-size: 12\.5px; color: var\(--ink-soft\)/);
 });
 
 test('the pre-existing tap-to-open "Move to X" / "Remove priority" menu remains the accessible non-drag alternative for touch and keyboard, unchanged by the new grip affordance', () => {

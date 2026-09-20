@@ -76,10 +76,16 @@ test('product proof is static, concise, and owns the philosophy statement exactl
   for (const benefit of ['Personalized Match Scores', 'Side-by-side comparison', 'Commute times from places that matter most', 'Built for buyers, co-buyers, and Realtors']) assert.match(landing, new RegExp(benefit));
 });
 
-test('hero makes the find-elsewhere/bring-here product model explicit, without losing the existing headline or workflow copy', () => {
-  assert.match(landing, /Find homes wherever you already search\. Bring the ones you.re considering here\./);
-  assert.match(landing, /Feels Like Home isn.t a listing search engine\. It.s where you compare the homes you.ve already found and figure out which one fits you best\./);
-  assert.match(landing, /className="pl-model-explainer"/);
+test('hero makes the find-elsewhere/bring-here product model scannable as a compact FIND -> BRING -> DECIDE workflow, not a paragraph to read', () => {
+  assert.match(landing, /className="pl-hero-workflow"/);
+  assert.match(landing, /Find homes anywhere/);
+  assert.match(landing, /Bring your contenders here/);
+  assert.match(landing, /Compare what fits you best/);
+  // Three steps, not four — the badge/step count wasn't duplicated from the
+  // How it works section below.
+  assert.equal((landing.match(/pl-hero-workflow-label/g) || []).length, 3);
+  assert.match(landing, /Feels Like Home is your home decision tool—not another listing search engine\./);
+  assert.match(landing, /className="pl-hero-clarify"/);
   // The approved headline, hero image, and downstream sections (How it
   // works -> product proof -> FLH+ bridge -> collaboration -> footer) are
   // untouched by this comprehension-only addition.
@@ -89,6 +95,19 @@ test('hero makes the find-elsewhere/bring-here product model explicit, without l
   assert.match(landing, /id="flh-bridge-title"/);
   assert.match(landing, /id="collaboration-title"/);
   assert.match(landing, /<footer className="pl-footer">/);
+});
+
+test('hero supporting copy is not artificially narrowed to the headline\'s measure, and the mini workflow stacks (no bare connector arrows) on mobile', () => {
+  assert.match(css, /\.pl-hero-workflow\{[^}]*max-width:820px/);
+  assert.match(css, /\.pl-hero-clarify\{[^}]*max-width:640px/);
+  assert.match(css, /@media\(max-width:640px\)[\s\S]*?\.pl-hero-workflow\{flex-direction:column[^}]*\}\.pl-hero-workflow \.pl-hero-workflow-arrow\{display:none\}/);
+});
+
+test('How it works keeps all four steps but uses less vertical space (tighter padding, icon size, and title/description spacing) than the previous, taller pass', () => {
+  assert.match(css, /\.pl-values\{padding:42px[^;]*46px;/);
+  assert.match(css, /\.pl-step-icon\{width:60px;height:60px/);
+  assert.match(css, /\.pl-value-grid h3\{margin:12px 0 6px;font-size:22px/);
+  assert.match(css, /\.pl-value-grid p\{max-width:300px/);
 });
 
 test('collaboration keeps co-buyer and Realtor participation distinct', () => {

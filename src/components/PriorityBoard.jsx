@@ -38,11 +38,10 @@ function TierItemsList({ tier, items, activeItem, setActiveItem, setTier, priori
               }}
               onDragEnd={onItemDragEnd}
             >
-              <GripVertical className="hh-priority-grip" size={14} aria-hidden="true" />
+              <GripVertical className="hh-priority-grip" size={16} aria-hidden="true" />
               <span>{criterionDisplayLabel(item.categoryKey, item.label)}</span>
               {isRetiredPurchaseBuiltIn(item.categoryKey, item, priorities.searchType) && <sup className="hh-legacy-priority" title="Saved legacy priority; no longer included in pre-tour Match">Legacy</sup>}
               {isExperientialCriterion(item.categoryKey, item.label) && <sup className="hh-experiential-marker" title="You'll evaluate this after touring the home" aria-label="After tour">◷</sup>}
-              <small className="hh-priority-change">Change</small>
             </button>
             {open && (
               <div className="hh-priority-context" role="group" aria-label={`Actions for ${criterionDisplayLabel(item.categoryKey, item.label)}`}>
@@ -165,7 +164,7 @@ export default function PriorityBoard({ priorities, patch, onboarding = false, c
           {!onboarding && (
             <div className="hh-priority-instructions">
               <h3 className="hh-priority-instructions-heading">Rank what matters to you</h3>
-              <p className="hh-priority-instructions-copy">Drag and drop to move priorities between Must Have, Important, and Nice to Have.</p>
+              <p className="hh-priority-instructions-copy">Drag any priority to move it between the three columns.</p>
             </div>
           )}
           {hasExperiential && <div className="hh-priority-legend"><span aria-hidden="true">◷</span> After tour</div>}
@@ -243,7 +242,7 @@ export default function PriorityBoard({ priorities, patch, onboarding = false, c
           {!onboarding && <div className="hh-schools-gate"><SchoolsRelevanceGate priorities={priorities} patch={patch} /></div>}
           <p className="hh-add-priority-help">{onboarding
             ? 'Drag a preference into the column that matches how much it matters to you. You can move it later if you change your mind. You can also click a preference to add it.'
-            : 'Drag any preference below into Must Have, Important, or Nice to Have. You can also drag your existing priorities between columns to change how much they matter.'}</p>
+            : 'Drag a preference below into a column to add it to your priorities.'}</p>
           <div className="hh-suggestion-grid">
             {pools.map(({ def, core, custom, suggestions }) => {
               const unselected = [...core, ...custom].filter((item) => tierOf(def, item.label) === 'dontcare');

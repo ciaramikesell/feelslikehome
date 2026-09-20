@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useCallback, useRef, useState } from 'react';
-import { ArrowRight, Heart, HousePlus, ListChecks, MapPin, Menu, MessageSquareText, Users } from 'lucide-react';
+import { ArrowRight, Heart, HousePlus, ListChecks, MapPin, Menu, MessageSquareText, Search, Users } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
 import LandingAuthPopover from '@/components/auth/LandingAuthPopover';
 import FlhPlusCards from '@/components/FlhPlusCards';
@@ -47,8 +47,14 @@ export default function PublicLanding() {
         <div className="pl-hero-copy">
           <p className="pl-eyebrow">Real estate, reimagined</p>
           <h1><span>You’ve saved a lot of options.</span><span>Now find the one that</span><em>Feels Like Home.</em></h1>
-          <p className="pl-lede">Find homes wherever you already search. Bring the ones you’re considering here.</p>
-          <p className="pl-model-explainer">Feels Like Home isn’t a listing search engine. It’s where you compare the homes you’ve already found and figure out which one fits you best.</p>
+          <ul className="pl-hero-workflow" aria-label="How Feels Like Home works: find, bring, decide">
+            <li><span className="pl-hero-workflow-icon"><Search size={16} aria-hidden="true" /></span><span className="pl-hero-workflow-label">Find homes anywhere</span></li>
+            <li className="pl-hero-workflow-arrow" aria-hidden="true"><ArrowRight size={14} /></li>
+            <li><span className="pl-hero-workflow-icon"><HousePlus size={16} aria-hidden="true" /></span><span className="pl-hero-workflow-label">Bring your contenders here</span></li>
+            <li className="pl-hero-workflow-arrow" aria-hidden="true"><ArrowRight size={14} /></li>
+            <li><span className="pl-hero-workflow-icon"><Heart size={16} aria-hidden="true" /></span><span className="pl-hero-workflow-label">Compare what fits you best</span></li>
+          </ul>
+          <p className="pl-hero-clarify">Feels Like Home is your home decision tool—not another listing search engine.</p>
           <div className="pl-actions"><button type="button" className="pl-button pl-desktop-auth" onClick={(event) => openAuth('sign-up', event)}>Create a free account <ArrowRight size={17} aria-hidden="true" /></button><Link className="pl-button pl-mobile-auth" href="/auth/sign-up">Create a free account <ArrowRight size={17} aria-hidden="true" /></Link><a className="pl-button is-quiet" href="#how-it-works">See how it works</a></div>
           <p className="pl-renter-note">House, condo, or apartment — compare the places you’re actually considering.</p>
         </div>

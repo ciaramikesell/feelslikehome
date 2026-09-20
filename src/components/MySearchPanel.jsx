@@ -243,7 +243,8 @@ function BasicsCard({ p, patch }) {
 function WhatMattersCard({ priorities, patch, catalogOpen, onCatalogOpenChange }) {
   return (
     <div>
-    <SearchCard title="What Matters Most to Me">
+    <SearchCard showHeader={false}>
+      <p className="hh-label" style={{ marginBottom: 10 }}>What Matters Most to Me</p>
       <PriorityBoard priorities={priorities} patch={patch} catalogOpen={catalogOpen} onCatalogOpenChange={onCatalogOpenChange} />
     </SearchCard>
     </div>
