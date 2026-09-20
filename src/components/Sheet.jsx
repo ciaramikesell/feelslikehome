@@ -31,6 +31,17 @@ export default function Sheet({
   const dialogRef = useRef(null);
   const titleId = useId();
 
+  // Read the latest onClose from a ref rather than the effect's own
+  // closure. Most callers pass an inline arrow function as onClose, which
+  // is a new reference on every render; if onClose were a dependency here,
+  // any parent re-render (e.g. typing into a field the dialog owns) would
+  // re-run this whole effect — including the initial-focus line below —
+  // and steal focus back to the first focusable element (typically the
+  // close button) after every keystroke. Only `open` should ever re-trigger
+  // mount/focus/keydown-listener setup.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
   useEffect(() => {
     if (!open) return undefined;
     const previouslyFocused = document.activeElement;
@@ -41,7 +52,7 @@ export default function Sheet({
     const onKeyDown = (event) => {
       if (event.key === 'Escape') {
         event.stopPropagation();
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (event.key !== 'Tab') return;
@@ -69,7 +80,7 @@ export default function Sheet({
       document.body.style.overflow = previousOverflow;
       previouslyFocused?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

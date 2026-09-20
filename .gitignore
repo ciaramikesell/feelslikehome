@@ -26,3 +26,6 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# test/helpers/importJsx.mjs compiles .jsx on the fly here for component tests
+/test/.jsx-cache/

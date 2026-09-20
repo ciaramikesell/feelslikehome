@@ -82,7 +82,20 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
           : '/homes';
       setTimeout(() => { router.push(destination); router.refresh(); }, 1200);
     } catch (err) {
-      console.error('Invitation acceptance failed', err);
+      // Logged with each PostgREST/Postgres field pulled out explicitly —
+      // not just the error object — because some browser consoles collapse
+      // a thrown error's own enumerable properties (code/details/hint) when
+      // logged as a single value, and those fields are exactly what
+      // distinguishes "the RPC itself couldn't be found" (PGRST202) from a
+      // real in-function failure. The user-facing message stays generic;
+      // this is for development/production log inspection only.
+      console.error('Invitation acceptance failed', {
+        message: err?.message,
+        code: err?.code,
+        details: err?.details,
+        hint: err?.hint,
+        error: err,
+      });
       setState('invalid');
       setReason('unknown');
     }
