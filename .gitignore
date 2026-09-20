@@ -29,3 +29,6 @@ yarn-error.log*
 
 # test/helpers/importJsx.mjs compiles .jsx on the fly here for component tests
 /test/.jsx-cache/
+
+# Supabase CLI's own local cache/version-check marker
+/supabase/.temp/
