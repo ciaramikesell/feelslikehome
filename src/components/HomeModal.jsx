@@ -6,6 +6,7 @@ import { StarInput } from '@/components/ui';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
   isArchivedStatus, isRentalType, TOUR_RATING_KEY, criterionDisplayLabel, TIER_ORDER, foldLegacyCheckAliases,
+  qualifierFactRows,
 } from '@/lib/constants';
 import { visibleOrderedItems, parseListingTextFindings, selectedSubjectiveCriteria, computeMatch } from '@/lib/matching';
 import { extractAddressFromListingUrl, extractApartmentIdentityFromListingUrl, isLikelyListingUrl } from '@/lib/listingUrl';
@@ -250,11 +251,18 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
   // search's own priority has folded onto the canonical label.
   const foldedChecks = foldLegacyCheckAliases(form.checks, priorities.searchType);
   const criteria = getItemlistCategories(priorities.searchType).flatMap((category) =>
-    visibleOrderedItems(category, priorities).filter((item) => item.kind === 'check').map((item) => ({
-      ...item,
-      categoryKey: category.key,
-      tier: priorities[category.key]?.tiers?.[item.label] || 'dontcare',
-    })),
+    visibleOrderedItems(category, priorities)
+      // Garage's base "any garage" fact is already collected by the Garage field
+      // in Key details (garageSpaces) — showing a second, redundant manual
+      // yes/no/unknown row here would be confusing since it plays no part in
+      // Match. Its Attached/Detached qualifier facts (below) still need one.
+      .filter((item) => item.kind === 'check' && !(category.key === 'exterior' && item.label === 'Garage'))
+      .flatMap((item) => {
+        const tier = priorities[category.key]?.tiers?.[item.label] || 'dontcare';
+        const base = { ...item, categoryKey: category.key, tier };
+        const qualifierRows = qualifierFactRows(category.key, item.label, priorities).map((row) => ({ ...row, tier }));
+        return [base, ...qualifierRows];
+      }),
   ).sort((a, b) => {
     const aKnown = foldedChecks[`${a.categoryKey}:${a.label}`] !== undefined;
     const bKnown = foldedChecks[`${b.categoryKey}:${b.label}`] !== undefined;
@@ -325,7 +333,8 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
             {shownCriteria.length ? <div className="hh-edit-criteria">{shownCriteria.map((item) => {
               const key = `${item.categoryKey}:${item.label}`;
               const value = foldedChecks[key];
-              return <div className="hh-edit-criterion" key={key}><div><b>{criterionDisplayLabel(item.categoryKey, item.label)}</b><span>{priorityLabel(item)}</span></div><div className="hh-edit-tristate" role="group" aria-label={`${criterionDisplayLabel(item.categoryKey, item.label)} property fact`}>
+              const displayLabel = item.qualifierDisplayLabel || criterionDisplayLabel(item.categoryKey, item.label);
+              return <div className="hh-edit-criterion" key={key}><div><b>{displayLabel}</b><span>{priorityLabel(item)}</span></div><div className="hh-edit-tristate" role="group" aria-label={`${displayLabel} property fact`}>
                 {[['yes', 'Yes', true], ['no', 'No', 'no'], ['unknown', 'Unknown', undefined]].map(([id, label, next]) => { const selected = next === undefined ? value === undefined : value === next; return <button type="button" key={id} className={`hh-chip is-${id} ${selected ? 'on' : ''}`} aria-pressed={selected} onClick={() => setCheckItem(item.categoryKey, item.label, next)}>{label}</button>; })}
               </div></div>;
             })}</div> : <p className="hh-edit-empty">No Match criteria are configured for this search.</p>}

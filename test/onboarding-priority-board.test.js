@@ -24,14 +24,14 @@ test('new choices map to canonical intents and existing property-type preference
   assert.deepEqual([buy.preferredPropertyTypes.values, homeRent.preferredPropertyTypes.values, apartment.preferredPropertyTypes.values], [['house'], ['house'], ['apartment']]);
 });
 
-test('Home to Buy curated suggestions are exactly the canonical purchase taxonomy — one shared catalog with My Search, no Home Feel group', () => {
+test('Home to Buy curated suggestions are exactly the canonical purchase taxonomy — one shared catalog with My Search, no Home Feel group, parent/child criteria collapsed to their parent', () => {
   assert.deepEqual(displayed('home_buy'), [
     'Charming Neighborhood', 'Reputable Schools', 'Walkable to Town', 'Parks Nearby', 'Quiet Street', 'Bustling Street', 'Near Waterfront', 'Walkable Schools', 'No HOA',
-    'Finished Basement', 'Walkout Basement', 'First-Floor Primary', 'Primary Ensuite', 'First-Floor Laundry', 'Home Office', 'Central Air', 'Fireplace', 'Move-in Ready', 'Renovation Potential', 'New Construction', 'Guest / In-Law Suite',
-    'Deck / Patio', 'Fenced Yard', 'Privacy Fencing', 'Attached Garage', 'Detached Garage', 'Large Backyard', 'Front Porch', 'Pool', 'Landscaping',
+    'Finished Basement', 'Walkout Basement', 'First-Floor Bedroom', 'Primary Ensuite', 'First-Floor Laundry', 'Home Office', 'Central Air', 'Fireplace', 'Move-in Ready', 'Renovation Potential', 'New Construction', 'Guest / In-Law Suite',
+    'Deck / Patio', 'Fenced Yard', 'Garage', 'Large Backyard', 'Front Porch', 'Pool', 'Landscaping',
   ]);
   assert.deepEqual(ONBOARDING_SUGGESTIONS.home_buy.map(([title]) => title), ['Location', 'Home Features', 'Exterior & Property']);
-  for (const retired of ['Neighborhood', 'Walkability', 'Garage', 'Immediate Street / Surroundings', 'Basement', 'Yard', 'Overall Condition', 'Layout / Flow', 'Natural Light', 'Character / Charm']) {
+  for (const retired of ['Neighborhood', 'Walkability', 'Immediate Street / Surroundings', 'Basement', 'Yard', 'Overall Condition', 'Layout / Flow', 'Natural Light', 'Character / Charm', 'Attached Garage', 'Detached Garage', 'Privacy Fencing', 'First-Floor Primary']) {
     assert.ok(!displayed('home_buy').includes(retired));
   }
 });

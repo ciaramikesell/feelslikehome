@@ -32,16 +32,22 @@ test('one canonical Home Office, Fenced Yard, and Guest / In-Law Suite — no ca
   assert.equal(criterionDisplayLabel('exterior', 'Fenced yard'), 'Fenced Yard');
 });
 
-test('Immediate Street / Surroundings, generic Walkability, and generic Garage can never be newly created for purchase', () => {
+test('Immediate Street / Surroundings and generic Walkability can never be newly created for purchase; Garage is the sole canonical parent (no flat Attached/Detached chips)', () => {
   const labels = purchaseLabels();
   assert.ok(!labels.includes('location:Immediate Street / Surroundings'));
   assert.ok(!labels.includes('location:Walkability'));
-  assert.ok(!labels.includes('exterior:Garage'));
+  assert.ok(labels.includes('exterior:Garage'));
+  assert.ok(!labels.includes('exterior:Attached garage'));
+  assert.ok(!labels.includes('exterior:Detached garage'));
+  assert.ok(!labels.includes('exterior:Privacy Fencing'));
+  assert.ok(!labels.includes('features:First-Floor Primary'));
   // Onboarding derives from the exact same catalog, so it can't offer them either.
   const onboardingBuyLabels = ONBOARDING_SUGGESTIONS.home_buy.flatMap(([, items]) => items.map((item) => `${item.categoryKey}:${item.label}`));
   assert.ok(!onboardingBuyLabels.includes('location:Immediate Street / Surroundings'));
   assert.ok(!onboardingBuyLabels.includes('location:Walkability'));
-  assert.ok(!onboardingBuyLabels.includes('exterior:Garage'));
+  assert.ok(onboardingBuyLabels.includes('exterior:Garage'));
+  assert.ok(!onboardingBuyLabels.includes('exterior:Attached garage'));
+  assert.ok(!onboardingBuyLabels.includes('exterior:Detached garage'));
 });
 
 test('No HOA exists under Location; Reputable Schools and Walkable Schools are distinct', () => {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ChevronRight, Plus } from 'lucide-react';
-import { DEFAULT_SELECTED_TIER, TIER_DESCRIPTIONS, TIER_META, TIER_ORDER, criterionDisplayLabel, getItemlistCategories, effectiveTier, isSchoolsSuppressed, isExperientialCriterion, isCriterionApplicable, isRetiredPurchaseBuiltIn } from '@/lib/constants';
+import { DEFAULT_SELECTED_TIER, TIER_DESCRIPTIONS, TIER_META, TIER_ORDER, criterionDisplayLabel, criterionCompactLabel, hasQualifierOptions, getItemlistCategories, effectiveTier, isSchoolsSuppressed, isExperientialCriterion, isCriterionApplicable, isRetiredPurchaseBuiltIn } from '@/lib/constants';
 
 // Presentation-only weight callout for My Search's desktop tier heading
 // ("Must have (highest weight)") — TIER_META.weight itself (4/2/1) is the
@@ -10,12 +10,13 @@ import { DEFAULT_SELECTED_TIER, TIER_DESCRIPTIONS, TIER_META, TIER_ORDER, criter
 const TIER_WEIGHT_LABEL = { must: 'Highest weight', important: 'Medium weight', nice: 'Lowest weight' };
 import { selectPriorityItem, splitCategoryItems } from '@/lib/matching';
 import Sheet from '@/components/Sheet';
+import QualifierPicker from '@/components/QualifierPicker';
 
 // The list of one tier's selected priorities — tap a priority to reveal
 // "Move to X" / "Remove" actions (already the real interaction; drag is a
 // bonus for a mouse, not a requirement). Shared verbatim between the desktop
 // column layout and the mobile per-tier Sheet below so the two never drift.
-function TierItemsList({ tier, items, activeItem, setActiveItem, setTier, priorities, setSchoolsNote, onItemDragStart, onItemDragEnd }) {
+function TierItemsList({ tier, items, activeItem, setActiveItem, setTier, priorities, patch, setSchoolsNote, onItemDragStart, onItemDragEnd }) {
   return (
     <div className="hh-selected-priorities">
       {items.map((item) => {
@@ -37,7 +38,7 @@ function TierItemsList({ tier, items, activeItem, setActiveItem, setTier, priori
               }}
               onDragEnd={onItemDragEnd}
             >
-              <span>{criterionDisplayLabel(item.categoryKey, item.label)}</span>
+              <span>{criterionCompactLabel(item.categoryKey, item.label, priorities)}</span>
               {isRetiredPurchaseBuiltIn(item.categoryKey, item, priorities.searchType) && <sup className="hh-legacy-priority" title="Saved legacy priority; no longer included in pre-tour Match">Legacy</sup>}
               {isExperientialCriterion(item.categoryKey, item.label) && <sup className="hh-experiential-marker" title="You'll evaluate this after touring the home" aria-label="After tour">◷</sup>}
               <small className="hh-priority-change">Change</small>
@@ -50,6 +51,9 @@ function TierItemsList({ tier, items, activeItem, setActiveItem, setTier, priori
                 <button type="button" onClick={() => { setTier(item.categoryKey, item.label, 'dontcare'); setActiveItem(null); }}>Remove priority</button>
                 {item.categoryKey === 'location' && item.label === 'Schools' && (
                   <label>School preference<input className="hh-input" value={priorities.location?.notes?.Schools || ''} onChange={(event) => setSchoolsNote(event.target.value)} placeholder="School, district, or rating" /></label>
+                )}
+                {hasQualifierOptions(item.categoryKey, item.label) && (
+                  <QualifierPicker categoryKey={item.categoryKey} label={item.label} displayLabel={criterionDisplayLabel(item.categoryKey, item.label)} priorities={priorities} patch={patch} />
                 )}
               </div>
             )}
@@ -161,7 +165,7 @@ export default function PriorityBoard({ priorities, patch, onboarding = false, c
     return next;
   });
 
-  const tierItemsProps = { activeItem, setActiveItem, setTier, priorities, setSchoolsNote };
+  const tierItemsProps = { activeItem, setActiveItem, setTier, priorities, patch, setSchoolsNote };
 
   return (
     <div>

@@ -64,7 +64,7 @@ test('regression guard: fit/bounds and marker-click-select logic in SavedHomesMa
 /* ------------------------------ My Search: priorities ------------------------------ */
 
 test('PriorityBoard extracts a shared TierItemsList so desktop and the mobile Sheet never drift apart', () => {
-  assert.match(priorityBoard, /function TierItemsList\(\{ tier, items, activeItem, setActiveItem, setTier, priorities, setSchoolsNote, onItemDragStart, onItemDragEnd \}\)/);
+  assert.match(priorityBoard, /function TierItemsList\(\{ tier, items, activeItem, setActiveItem, setTier, priorities, patch, setSchoolsNote, onItemDragStart, onItemDragEnd \}\)/);
   const usages = priorityBoard.match(/<TierItemsList\b/g) || [];
   assert.equal(usages.length, 2, 'expected TierItemsList used once for the desktop column and once inside the mobile Sheet');
 });

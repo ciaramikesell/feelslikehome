@@ -1,4 +1,4 @@
-import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier, isExperientialCriterion, isRetiredPurchaseBuiltIn, foldLegacyCheckAliases, TOUR_RESPONSE, tourResponseLabel } from './constants.js';
+import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier, isExperientialCriterion, isRetiredPurchaseBuiltIn, foldLegacyCheckAliases, isGarageQualifierAny, qualifierFactKey, TOUR_RESPONSE, tourResponseLabel } from './constants.js';
 import { normalizeSearchIntent } from './searchIntent.js';
 import { EVIDENCE_STRENGTH, findingsFromFields } from './importDomain.js';
 
@@ -413,16 +413,81 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
         return;
       }
 
-      // Garage: a reliable numeric field already exists (garageSpaces), so use it
-      // directly instead of the separate manual checkbox — see comment above.
+      // Garage: the priority weight lives only on this parent; Attached/Detached are
+      // optional qualifiers, never separate weighted criteria (see CRITERION_QUALIFIERS).
+      // "Any" (no qualifier, or both selected — semantically identical, see
+      // isGarageQualifierAny) still uses the reliable numeric garageSpaces field
+      // exactly as before. A specific qualifier needs its own reliably-recorded fact:
+      // confirming ONE type is enough to rule out the other (a garage cannot be both),
+      // but an unconfirmed type on a garage known to exist stays Unknown — it is never
+      // inferred from "a garage exists" alone.
       if (def.key === 'exterior' && item.label === 'Garage') {
+        const qualifiers = catState.qualifiers?.Garage;
         const spaces = parseNum(home.garageSpaces);
-        if (spaces !== null) {
-          const met = spaces > 0;
-          push(ns, item.label, tier, true, met ? 1 : 0, met, met ? `${spaces}-car garage` : 'No garage', true);
+        const hasGarage = spaces === null ? null : spaces > 0;
+        if (isGarageQualifierAny(qualifiers)) {
+          if (hasGarage === null) notEvaluated(ns, item.label, tier, true);
+          else push(ns, item.label, tier, true, hasGarage ? 1 : 0, hasGarage, hasGarage ? `${spaces}-car garage` : 'No garage', true);
+          return;
+        }
+        const wanted = qualifiers[0];
+        const other = wanted === 'attached' ? 'detached' : 'attached';
+        const wantedRaw = checks[qualifierFactKey(def.key, item.label, wanted)];
+        const otherRaw = checks[qualifierFactKey(def.key, item.label, other)];
+        if (hasGarage === false) push(ns, item.label, tier, true, 0, false, 'No garage', true);
+        else if (wantedRaw === true) push(ns, item.label, tier, true, 1, true, `Confirmed ${wanted}`, true);
+        else if (wantedRaw === 'no' || otherRaw === true) push(ns, item.label, tier, true, 0, false, `Confirmed ${other}`, true);
+        else notEvaluated(ns, item.label, tier, true);
+        return;
+      }
+
+      // Fenced Yard: Privacy Fence is an optional qualifier of the same weighted
+      // priority, not a second criterion. A reliable privacy-fence answer also implies
+      // the base "has a fenced yard" fact (Privacy Fence inherently implies Fenced
+      // Yard), since the base fact is otherwise fully manual (there is no objective
+      // field like garageSpaces backing it).
+      if (def.key === 'exterior' && item.label === 'Fenced yard') {
+        const qualifiers = catState.qualifiers?.['Fenced yard'] || [];
+        const baseRaw = checks[ns];
+        const privacyRaw = checks[qualifierFactKey(def.key, item.label, 'privacy')];
+        const effectiveBase = privacyRaw === true ? true : baseRaw;
+        if (!qualifiers.includes('privacy')) {
+          if (effectiveBase === true) push(ns, item.label, tier, true, 1, true, 'Yes', true);
+          else if (effectiveBase === 'no') push(ns, item.label, tier, true, 0, false, 'No', true);
+          else notEvaluated(ns, item.label, tier, true);
+        } else if (effectiveBase === 'no') {
+          push(ns, item.label, tier, true, 0, false, 'No fence', true);
+        } else if (privacyRaw === true) {
+          push(ns, item.label, tier, true, 1, true, 'Privacy fence confirmed', true);
+        } else if (privacyRaw === 'no') {
+          push(ns, item.label, tier, true, 0, false, 'Not a privacy fence', true);
         } else {
           notEvaluated(ns, item.label, tier, true);
         }
+        return;
+      }
+
+      // First-Floor Bedroom: Primary and Guest are optional qualifiers of the same
+      // weighted priority and, unlike Garage, may both be requested together — every
+      // requested qualifier must have a reliably recorded fact before this criterion
+      // scores at all (never partially guessed from an incomplete answer); the score
+      // is the fraction of requested qualifiers confirmed present.
+      if (def.key === 'features' && item.label === 'First-Floor Bedroom') {
+        const qualifiers = catState.qualifiers?.['First-Floor Bedroom'] || [];
+        if (!qualifiers.length) {
+          const baseRaw = checks[ns];
+          if (baseRaw === true) push(ns, item.label, tier, true, 1, true, 'Yes', true);
+          else if (baseRaw === 'no') push(ns, item.label, tier, true, 0, false, 'No', true);
+          else notEvaluated(ns, item.label, tier, true);
+          return;
+        }
+        const results = qualifiers.map((qualifier) => checks[qualifierFactKey(def.key, item.label, qualifier)]);
+        const allKnown = results.every((raw) => raw === true || raw === 'no');
+        if (!allKnown) { notEvaluated(ns, item.label, tier, true); return; }
+        const metCount = results.filter((raw) => raw === true).length;
+        const score = metCount / qualifiers.length;
+        const detail = qualifiers.map((qualifier, index) => `${qualifier}: ${results[index] === true ? 'yes' : 'no'}`).join(', ');
+        push(ns, item.label, tier, true, score, score === 1, detail, true);
         return;
       }
 

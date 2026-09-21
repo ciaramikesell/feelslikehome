@@ -375,6 +375,14 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-onboarding-suggestions h2 { margin: 0 0 6px; color: var(--ink-soft); font-size: 10.5px; text-transform: uppercase; letter-spacing: .065em; }
 .hh-onboarding-suggestions section > div, .hh-dealbreaker-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .hh-onboarding-suggestions .hh-chip, .hh-dealbreaker-chips .hh-chip { min-height: 40px; padding: 7px 11px; font-size: 12px; }
+/* Qualifier refinement row — a deliberate full-width flex break (see the
+   Pool break in the My Search suggestion tray for the same technique) so a
+   parent's optional qualifiers always land on their own line under it,
+   never mid-row between unrelated chips. Visually lighter than the main
+   chips: this is a secondary, optional decision, not a second question. */
+.hh-qualifier-row { display: flex; flex-wrap: wrap; gap: 5px; flex-basis: 100%; width: 100%; margin: 2px 0 2px 4px; }
+.hh-chip-qualifier { min-height: 32px; padding: 4px 10px; font-size: 11px; opacity: .82; }
+.hh-chip-qualifier.on { opacity: 1; }
 .hh-add-own { display: inline-flex; width: fit-content; min-height: 40px; align-items: center; gap: 5px; padding: 7px 11px; border: 1px dashed var(--brick); border-radius: 999px; background: transparent; color: var(--brick); cursor: pointer; font: 650 12px 'Plus Jakarta Sans',sans-serif; }
 .hh-onboarding-custom { margin-top: 0; }
 .hh-onboarding-empty { margin: 0; padding: 14px; border-radius: 12px; background: rgba(116,128,79,.08); color: var(--ink-soft); font-size: 13px; }

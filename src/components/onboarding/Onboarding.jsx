@@ -4,7 +4,8 @@ import { useCallback, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Check, Plus } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
-import { normalizePriorities } from '@/lib/constants';
+import { normalizePriorities, hasQualifierOptions } from '@/lib/constants';
+import QualifierPicker from '@/components/QualifierPicker';
 import { NEW_SEARCH_CHOICES, ONBOARDING_SUGGESTIONS, applySearchChoice } from '@/lib/onboarding';
 import { selectPriorityItem } from '@/lib/matching';
 import { createClient } from '@/lib/supabase/client';
@@ -86,7 +87,11 @@ function WhatMattersStep({ priorities, patch, onNext, onBack, isSaving }) {
   };
   return <div className="hh-onboarding-step">
     <header><h1 className="hh-serif">What matters to you?</h1><p>Choose everything you&apos;d care about when comparing homes. Don&apos;t worry about ranking them yet—you&apos;ll do that next.</p></header>
-    <div className="hh-onboarding-suggestions">{categories.map(([title, items]) => <section key={title}><h2>{title}</h2><div>{items.map((criterion) => <button type="button" key={criterionKey(criterion)} className={`hh-chip ${selected(criterion) ? 'on' : ''}`} aria-pressed={selected(criterion)} onClick={() => toggle(criterion)}>{selected(criterion) && <Check size={13} aria-hidden="true" />}{criterion.displayLabel}</button>)}</div></section>)}</div>
+    <div className="hh-onboarding-suggestions">{categories.map(([title, items]) => <section key={title}><h2>{title}</h2><div>{items.flatMap((criterion) => {
+      const chip = <button type="button" key={criterionKey(criterion)} className={`hh-chip ${selected(criterion) ? 'on' : ''}`} aria-pressed={selected(criterion)} onClick={() => toggle(criterion)}>{selected(criterion) && <Check size={13} aria-hidden="true" />}{criterion.displayLabel}</button>;
+      if (!selected(criterion) || !hasQualifierOptions(criterion.categoryKey, criterion.label)) return [chip];
+      return [chip, <QualifierPicker key={`${criterionKey(criterion)}-qualifiers`} categoryKey={criterion.categoryKey} label={criterion.label} displayLabel={criterion.displayLabel} priorities={priorities} patch={patch} />];
+    })}</div></section>)}</div>
     {!customOpen ? <button type="button" className="hh-add-own" onClick={() => setCustomOpen(true)}><Plus size={14} /> Add your own</button> : <div className="hh-custom-priority hh-onboarding-custom">
       <select className="hh-input" aria-label="Custom priority category" value={customCategory} onChange={(event) => setCustomCategory(event.target.value)}>{categories.map(([title, items]) => <option key={title} value={items[0].categoryKey}>{title}</option>)}</select>
       <input autoFocus className="hh-input" aria-label="Custom priority" placeholder="What else matters?" value={customLabel} onChange={(event) => setCustomLabel(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && (event.preventDefault(), addCustom())} />

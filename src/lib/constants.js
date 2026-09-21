@@ -42,24 +42,30 @@ const LEGACY_HOME_FEEL_CORE = ['Overall Condition', 'Layout / Flow'].map((label)
 const LEGACY_HOME_FEEL_SUGGESTED = ['Natural Light', 'Character / Charm', 'Room Sizes', 'Openness / Ceiling Height', 'Privacy', 'Social Community', 'On-Site Management'].map((label) => ({ label, kind: 'rating' }));
 
 export const EXTERIOR_CORE = [];
-// 'Privacy Fencing' is new — a purely factual yes/no fact, deliberately distinct from
-// the subjective post-tour 'exterior:Privacy' ("Yard Privacy") rating below.
+// REVISION (parent/child criteria): 'Attached garage'/'Detached garage' and
+// 'Privacy Fencing' are no longer independent chips. 'Garage' (qualifiers:
+// Attached/Detached) and 'Fenced yard' (qualifier: Privacy Fence) are the sole
+// weighted parent criteria — see CRITERION_QUALIFIERS. The priority weight
+// belongs only to the parent; a qualifier narrows which fact must be true to
+// satisfy that same weighted priority, and is never itself draggable/weighted.
 export const EXTERIOR_SUGGESTED = [
-  'Patio / deck', 'Fenced yard', 'Privacy Fencing', 'Attached garage', 'Detached garage',
+  'Patio / deck', 'Fenced yard', 'Garage',
   'Large backyard', 'Front porch', 'Pool', 'Landscaping',
 ].map((label) => ({ label, kind: 'check' }));
 
 // 'Guest suite' is retired in favor of the canonical 'Guest / In-Law Suite' identity
 // (previously dead — see RETIRED_PURCHASE_BUILT_INS's history — now restored as a real
 // canonical item; see PURCHASE_LEGACY_LABEL_ALIASES for the safe fold from 'Guest suite').
-// 'First-Floor Primary', 'Move-in Ready', 'Renovation Potential', and 'New Construction'
-// are new. 'Move-in Ready'/'Renovation Potential'/'New Construction' are deliberately
-// separate from the existing Home Condition multiselect (priorities.homeCondition) —
-// that remains an unrelated, single-tier structural field; these are independently
-// rankable Must/Important/Nice priorities, per the 2026 taxonomy.
+// 'Move-in Ready', 'Renovation Potential', and 'New Construction' are new and
+// deliberately separate from the existing Home Condition multiselect
+// (priorities.homeCondition) — that remains an unrelated, single-tier structural
+// field; these are independently rankable Must/Important/Nice priorities.
+// REVISION (parent/child criteria): 'First-Floor Primary' is no longer an
+// independent chip. 'First-Floor Bedroom' (qualifiers: Primary/Guest) is the
+// sole weighted parent — see CRITERION_QUALIFIERS.
 export const FEATURES_CORE = [];
 export const FEATURES_SUGGESTED = [
-  'Finished basement', 'Walkout basement', 'First-Floor Primary', 'Primary ensuite',
+  'Finished basement', 'Walkout basement', 'First-Floor Bedroom', 'Primary ensuite',
   'First-floor laundry', 'Home office', 'Central air', 'Fireplace', 'Move-in Ready',
   'Renovation Potential', 'New Construction', 'Guest / In-Law Suite',
 ].map((label) => ({ label, kind: 'check' }));
@@ -173,6 +179,135 @@ export function criterionDisplayLabel(categoryKey, label) {
   return CRITERION_DISPLAY_LABEL_OVERRIDES[`${categoryKey}:${label}`] || label;
 }
 
+/* ------------------------- Parent/child criteria (qualifiers) -------------------------
+ * "Criteria represent what matters. Qualifiers describe what would satisfy it." The
+ * priority WEIGHT (Must/Important/Nice) always belongs to the parent criterion alone.
+ * A qualifier only narrows which specific fact must be true to satisfy that same
+ * weighted priority — it is never a separate draggable/weighted priority, never appears
+ * as its own catalog entry, and is stored in its own `qualifiers` map alongside `tiers`
+ * so selecting/clearing one never touches the parent's tier.
+ * ---------------------------------------------------------------------------------- */
+export const CRITERION_QUALIFIERS = Object.freeze({
+  'exterior:Garage': Object.freeze([
+    { key: 'attached', label: 'Attached' },
+    { key: 'detached', label: 'Detached' },
+  ]),
+  'exterior:Fenced yard': Object.freeze([
+    { key: 'privacy', label: 'Privacy fence' },
+  ]),
+  'features:First-Floor Bedroom': Object.freeze([
+    { key: 'primary', label: 'Primary' },
+    { key: 'guest', label: 'Guest' },
+  ]),
+});
+
+export function qualifierOptions(categoryKey, label) {
+  return CRITERION_QUALIFIERS[`${categoryKey}:${label}`] || null;
+}
+
+export function hasQualifierOptions(categoryKey, label) {
+  return !!CRITERION_QUALIFIERS[`${categoryKey}:${label}`];
+}
+
+export function selectedQualifiers(priorities, categoryKey, label) {
+  return priorities?.[categoryKey]?.qualifiers?.[label] || [];
+}
+
+// Garage is the one case where selecting both qualifiers together is
+// semantically identical to selecting neither: "either type is acceptable"
+// is exactly what "no specific type" already means.
+export function isGarageQualifierAny(qualifiers) {
+  const set = qualifiers || [];
+  return set.length === 0 || (set.includes('attached') && set.includes('detached'));
+}
+
+// A qualifier's underlying home fact is stored in the same flexible `checks`
+// map every other check-kind criterion already uses — `#` cannot appear in a
+// real `category:label` identity, so it can never collide with one.
+export function qualifierFactKey(categoryKey, label, qualifierKey) {
+  return `${categoryKey}:${label}#${qualifierKey}`;
+}
+
+// "Any" is an explicit, first-class choice (not merely "nothing chosen yet"),
+// so it always fully replaces whatever was selected. Every other qualifier key
+// toggles independently within the array — this is what lets First-Floor
+// Bedroom's Primary and Guest both be selected together (AND semantics) while
+// Garage/Fenced Yard's UI presents its qualifiers as effectively single-select
+// (see PriorityBoard/Onboarding — they always pass an exclusive replacement
+// rather than toggling for those two).
+export function toggleCriterionQualifier(catState, label, qualifierKey) {
+  const current = catState.qualifiers?.[label] || [];
+  const next = qualifierKey === null
+    ? []
+    : (current.includes(qualifierKey) ? current.filter((key) => key !== qualifierKey) : [...current, qualifierKey]);
+  return { ...catState, qualifiers: { ...catState.qualifiers, [label]: next } };
+}
+
+// Garage/Fenced Yard's qualifier row behaves as single-select in the UI (a
+// garage realistically has exactly one type) — clicking a qualifier replaces
+// the whole selection rather than adding to it; clicking the explicit "Any"
+// option clears it. Distinct from toggleCriterionQualifier's additive
+// behavior, which First-Floor Bedroom's Primary/Guest pair needs instead.
+export function setExclusiveQualifier(catState, label, qualifierKey) {
+  const next = qualifierKey === null ? [] : [qualifierKey];
+  return { ...catState, qualifiers: { ...catState.qualifiers, [label]: next } };
+}
+
+// Compact "Parent · Qualifier" text for My Search's resting board, e.g.
+// "Garage · Attached", "Fenced Yard · Privacy Fence", "First-Floor Bedroom ·
+// Primary + Guest". Returns null for a criterion with no qualifier options.
+export function qualifierSummaryLabel(categoryKey, label, qualifiers) {
+  const options = qualifierOptions(categoryKey, label);
+  if (!options) return null;
+  const set = qualifiers || [];
+  if (categoryKey === 'exterior' && label === 'Garage' && isGarageQualifierAny(set)) return 'Any';
+  if (categoryKey === 'exterior' && label === 'Fenced yard') return set.includes('privacy') ? 'Privacy Fence' : 'Any Fence';
+  if (!set.length) return 'Any';
+  return options.filter((option) => set.includes(option.key)).map((option) => option.label).join(' + ');
+}
+
+// The display text My Search/Edit Home actually render for a selected
+// criterion — the plain display label for an unqualified one, or "Parent ·
+// Qualifier" for one of the three parent criteria.
+export function criterionCompactLabel(categoryKey, label, priorities) {
+  const base = criterionDisplayLabel(categoryKey, label);
+  const summary = qualifierSummaryLabel(categoryKey, label, selectedQualifiers(priorities, categoryKey, label));
+  return summary ? `${base} · ${summary}` : base;
+}
+
+// Which extra tri-state (Yes/No/Unknown) fact rows Edit Home should collect
+// for a selected parent criterion, given the searcher's own chosen
+// qualifier(s) — never more than what was actually asked about, and never
+// anything for "Any" (an unqualified want has nothing further to confirm
+// beyond the parent's own fact, or, for Garage, the existing garageSpaces
+// field). Each row's `label` doubles as its checks-map identity via
+// qualifierFactKey, so the existing generic tri-state control (and
+// setCheckItem's `${categoryKey}:${label}` key construction) needs no change
+// to read or write it.
+export function qualifierFactRows(categoryKey, label, priorities) {
+  const options = qualifierOptions(categoryKey, label);
+  if (!options) return [];
+  const selected = selectedQualifiers(priorities, categoryKey, label);
+  const rowFor = (qualifierKey, displayLabel) => ({
+    categoryKey, label: `${label}#${qualifierKey}`, kind: 'check', qualifierDisplayLabel: displayLabel,
+  });
+  if (categoryKey === 'exterior' && label === 'Garage') {
+    if (isGarageQualifierAny(selected)) return [];
+    const meta = options.find((option) => option.key === selected[0]);
+    return meta ? [rowFor(meta.key, `Garage — ${meta.label}?`)] : [];
+  }
+  if (categoryKey === 'exterior' && label === 'Fenced yard') {
+    return selected.includes('privacy') ? [rowFor('privacy', 'Fenced Yard — Privacy fence?')] : [];
+  }
+  if (categoryKey === 'features' && label === 'First-Floor Bedroom') {
+    return selected
+      .map((key) => options.find((option) => option.key === key))
+      .filter(Boolean)
+      .map((meta) => rowFor(meta.key, `First-Floor Bedroom — ${meta.label}?`));
+  }
+  return [];
+}
+
 // Historical built-ins remain untouched in saved priority JSON, but no longer
 // appear as active purchase-search criteria or contribute Unknowns. An item the
 // buyer explicitly created carries `source: 'custom'` and is always preserved.
@@ -182,14 +317,16 @@ export function criterionDisplayLabel(categoryKey, label) {
 // that never counted toward Match; see FEATURES_SUGGESTED and
 // PURCHASE_LEGACY_LABEL_ALIASES). Restoring it here means anyone who already selected it
 // starts counting toward Match again — a restoration of their original intent, not a
-// change to their stored choice.
+// change to their stored choice. 'exterior:Garage' is restored the same way, now as the
+// parent of the Attached/Detached qualifier (see CRITERION_QUALIFIERS) rather than a
+// standalone criterion.
 const RETIRED_PURCHASE_BUILT_INS = new Set([
   'location:Neighborhood', 'location:Walkability', 'location:Immediate Street / Surroundings',
   'location:Dog Parks Nearby', 'location:Restaurants / Coffee / Shopping Nearby',
   'homeFeel:Overall Condition', 'homeFeel:Layout / Flow', 'homeFeel:Natural Light',
   'homeFeel:Character / Charm', 'homeFeel:Room Sizes', 'homeFeel:Openness / Ceiling Height',
   'homeFeel:Privacy', 'homeFeel:Social Community', 'homeFeel:On-Site Management',
-  'exterior:Yard', 'exterior:Garage', 'exterior:Privacy', 'exterior:Sidewalks',
+  'exterior:Yard', 'exterior:Privacy', 'exterior:Sidewalks',
   'exterior:Exterior Condition', 'exterior:Curb Appeal', 'exterior:Outdoor Space',
   'exterior:Noise Level', 'exterior:Driveway / Off-Street Parking', 'exterior:Fitness Center',
   'exterior:Secure Entry', 'exterior:Elevator', 'features:Basement', 'features:Mudroom',
@@ -277,6 +414,81 @@ function foldLegacyLabelAliases(priorities) {
   return next;
 }
 
+/* --------------------- Flat criteria folded into parent + qualifier ---------------------
+ * REVISION: before this pass, Attached/Detached garage were independent live purchase
+ * criteria (and, briefly, only on this branch and never deployed, so were Privacy
+ * Fencing and First-Floor Primary). Each has exactly one unambiguous meaning under the
+ * new parent/qualifier model — "Attached garage" can only ever have meant "wants the
+ * garage specifically attached" — so this is a safe direct fold, not a semantic guess
+ * like Immediate Street/Surroundings would be. Folds in memory inside normalizePriorities,
+ * exactly like foldLegacyLabelAliases above, so no SQL migration is required.
+ * ------------------------------------------------------------------------------------- */
+const FLAT_TO_QUALIFIED_PURCHASE_CRITERIA = {
+  exterior: [
+    {
+      parent: 'Garage', collapseWhenAllPresent: true, flat: [
+        { label: 'Attached garage', qualifier: 'attached' },
+        { label: 'Detached garage', qualifier: 'detached' },
+      ],
+    },
+    { parent: 'Fenced yard', flat: [{ label: 'Privacy Fencing', qualifier: 'privacy' }] },
+  ],
+  features: [
+    { parent: 'First-Floor Bedroom', flat: [{ label: 'First-Floor Primary', qualifier: 'primary' }] },
+  ],
+};
+
+function strongerTier(a, b) {
+  if (!a) return b;
+  if (!b) return a;
+  const rank = (tier) => { const index = TIER_ORDER.indexOf(tier); return index === -1 ? TIER_ORDER.length : index; };
+  return rank(a) <= rank(b) ? a : b;
+}
+
+function foldFlatCriteriaIntoParent(catState, rules, coreLabels) {
+  let changed = false;
+  const tiers = { ...catState?.tiers };
+  const qualifiers = { ...catState?.qualifiers };
+  const customItems = (catState?.customItems || []).slice();
+
+  rules.forEach(({ parent, flat, collapseWhenAllPresent }) => {
+    const present = flat.filter(({ label }) => catState?.tiers && Object.hasOwn(catState.tiers, label));
+    if (!present.length) return;
+    changed = true;
+    let parentTier = tiers[parent];
+    const parentQualifiers = new Set(qualifiers[parent] || []);
+    present.forEach(({ label, qualifier }) => {
+      const flatTier = tiers[label];
+      if (flatTier && flatTier !== 'dontcare') {
+        parentTier = strongerTier(parentTier, flatTier);
+        parentQualifiers.add(qualifier);
+      }
+      delete tiers[label];
+      const index = customItems.findIndex((entry) => entry.label === label);
+      if (index !== -1) customItems.splice(index, 1);
+    });
+    const allQualifierKeys = flat.map((entry) => entry.qualifier);
+    qualifiers[parent] = (collapseWhenAllPresent && allQualifierKeys.every((key) => parentQualifiers.has(key)))
+      ? []
+      : [...parentQualifiers];
+    if (parentTier && parentTier !== 'dontcare') tiers[parent] = parentTier;
+    const alreadyRenderable = coreLabels.has(parent) || customItems.some((entry) => entry.label === parent);
+    if (!alreadyRenderable) customItems.push({ label: parent, kind: 'check' });
+  });
+
+  return changed ? { ...catState, tiers, qualifiers, customItems } : catState;
+}
+
+function foldFlatCriteriaIntoParents(priorities) {
+  if (normalizeSearchIntent(priorities.searchType) !== 'purchase') return priorities;
+  let next = priorities;
+  Object.entries(FLAT_TO_QUALIFIED_PURCHASE_CRITERIA).forEach(([categoryKey, rules]) => {
+    const folded = foldFlatCriteriaIntoParent(next[categoryKey], rules, PURCHASE_CATEGORY_CORE_LABELS[categoryKey]);
+    if (folded !== next[categoryKey]) next = { ...next, [categoryKey]: folded };
+  });
+  return next;
+}
+
 // The per-home analog of the fold above — a check-kind fact (Yes/No/Unknown) is stored
 // on the home under the same `category:label` identity used for the search's priority.
 // Read-only and additive: never writes the alias back, so an already-recorded fact under
@@ -286,6 +498,19 @@ function foldLegacyLabelAliases(priorities) {
 export function foldLegacyCheckAliases(checks, searchType) {
   if (!checks || normalizeSearchIntent(searchType) !== 'purchase') return checks || {};
   let folded = null;
+  const foldInto = (canonicalKey, legacyKey) => {
+    if (checks[canonicalKey] === undefined && checks[legacyKey] !== undefined) {
+      folded = folded || { ...checks };
+      folded[canonicalKey] = checks[legacyKey];
+    }
+  };
+  // The flat criteria's own former fact keys become the new qualifier fact keys —
+  // an "Attached garage: Yes" recorded on a home is exactly the same fact as
+  // "Garage, Attached qualifier: Yes" under the new model.
+  foldInto(qualifierFactKey('exterior', 'Garage', 'attached'), 'exterior:Attached garage');
+  foldInto(qualifierFactKey('exterior', 'Garage', 'detached'), 'exterior:Detached garage');
+  foldInto(qualifierFactKey('exterior', 'Fenced yard', 'privacy'), 'exterior:Privacy Fencing');
+  foldInto(qualifierFactKey('features', 'First-Floor Bedroom', 'primary'), 'features:First-Floor Primary');
   Object.entries(PURCHASE_LEGACY_LABEL_ALIASES).forEach(([categoryKey, aliases]) => {
     Object.entries(aliases).forEach(([legacyLabel, canonicalLabel]) => {
       const canonicalKey = `${categoryKey}:${canonicalLabel}`;
@@ -605,10 +830,10 @@ export function defaultPriorities() {
     homeCondition: { values: [], tier: 'dontcare' },
     primaryBedroomLocation: { value: '', tier: 'dontcare' },
     secondaryBedroomLocation: { value: '', tier: 'dontcare' },
-    location: { customItems: [], tiers: {}, order: [], hiddenCore: [], commuteDestinations: [] },
-    homeFeel: { customItems: [], tiers: {}, order: [], hiddenCore: [] },
-    exterior: { customItems: [], tiers: {}, order: [], hiddenCore: [] },
-    features: { customItems: [], tiers: {}, order: [], hiddenCore: [] },
+    location: { customItems: [], tiers: {}, order: [], hiddenCore: [], commuteDestinations: [], qualifiers: {} },
+    homeFeel: { customItems: [], tiers: {}, order: [], hiddenCore: [], qualifiers: {} },
+    exterior: { customItems: [], tiers: {}, order: [], hiddenCore: [], qualifiers: {} },
+    features: { customItems: [], tiers: {}, order: [], hiddenCore: [], qualifiers: {} },
   };
 }
 
@@ -645,5 +870,5 @@ export function normalizePriorities(raw) {
   ['homeLayout', 'homeCondition', 'preferredPropertyTypes'].forEach((key) => {
     if (!Array.isArray(merged[key].values)) merged[key] = { ...merged[key], values: [] };
   });
-  return foldLegacyLabelAliases(merged);
+  return foldFlatCriteriaIntoParents(foldLegacyLabelAliases(merged));
 }

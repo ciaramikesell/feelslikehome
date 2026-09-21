@@ -7,8 +7,8 @@ import { appendPostTourNote, applyPostTourVerdict } from '../src/lib/lifecycle.j
 
 const expected = {
   'Location & Surroundings': ['Charming Neighborhood','Reputable Schools','Walkable to Town','Parks nearby','Quiet street','Bustling Street','Near waterfront','Walkable schools','No HOA'],
-  'Home Features': ['Finished basement','Walkout basement','First-Floor Primary','Primary ensuite','First-floor laundry','Home office','Central air','Fireplace','Move-in Ready','Renovation Potential','New Construction','Guest / In-Law Suite'],
-  'Exterior & Property': ['Patio / deck','Fenced yard','Privacy Fencing','Attached garage','Detached garage','Large backyard','Front porch','Pool','Landscaping'],
+  'Home Features': ['Finished basement','Walkout basement','First-Floor Bedroom','Primary ensuite','First-floor laundry','Home office','Central air','Fireplace','Move-in Ready','Renovation Potential','New Construction','Guest / In-Law Suite'],
+  'Exterior & Property': ['Patio / deck','Fenced yard','Garage','Large backyard','Front porch','Pool','Landscaping'],
 };
 
 test('purchase catalog is the exact pre-tour My Search catalog', () => {
