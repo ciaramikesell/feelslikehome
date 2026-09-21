@@ -101,12 +101,13 @@ export const APARTMENT_AMENITIES = [
   'Rooftop', 'Recycling', 'Trash Valet', 'Clubhouse', 'Playground',
 ].map((label) => ({ label, kind: 'check' }));
 
-// 'Guest suite' is retired in favor of the canonical 'Guest / In-Law Suite' identity
-// (previously dead — see RETIRED_PURCHASE_BUILT_INS's history — now restored as a real
-// canonical item; see PURCHASE_LEGACY_LABEL_ALIASES for the safe fold from 'Guest suite').
-// 'Guest / In-Law Suite' and 'Guest Bedroom' are deliberately different concepts and are
-// never merged: Guest Bedroom is simply an additional bedroom, while Guest / In-Law Suite
-// is a more substantial, more self-contained guest/in-law accommodation.
+// REVISION (small criteria cleanup): 'Guest / In-Law Suite' is retired in favor of one
+// canonical 'Guest Bedroom' criterion — product decided the two concepts (an additional
+// bedroom vs. a more substantial, self-contained guest/in-law accommodation) weren't
+// worth exposing as two separate selectable criteria. Both 'Guest suite' (the original
+// pre-2026 legacy label) and 'Guest / In-Law Suite' (the more recent canonical identity
+// this replaces) safely fold onto 'Guest Bedroom' — see PURCHASE_LEGACY_LABEL_ALIASES/
+// RENTAL_HOME_LEGACY_LABEL_ALIASES — preserving whatever tier was already selected.
 //
 // REVISION (2026 Basics/taxonomy correction): 'Move-in Ready', 'Renovation Potential',
 // and 'New Construction' are removed from this weighted, selectable catalog — their
@@ -130,7 +131,7 @@ export const APARTMENT_AMENITIES = [
 export const FEATURES_CORE = [];
 export const FEATURES_SUGGESTED = [
   'Finished basement', 'Walkout basement', 'First-Floor Primary', 'Guest Bedroom', 'Primary ensuite',
-  'First-floor laundry', 'Home office', 'Central air', 'Fireplace', 'Guest / In-Law Suite',
+  'First-floor laundry', 'Home office', 'Central air', 'Fireplace',
 ].map((label) => ({ label, kind: 'check' }));
 // These remain part of the canonical catalog. PriorityBoard combines them with
 // the regular suggestion tray so both onboarding and My Search discover the same
@@ -366,15 +367,14 @@ export function qualifierFactRows(categoryKey, label, priorities) {
 // Historical built-ins remain untouched in saved priority JSON, but no longer
 // appear as active purchase-search criteria or contribute Unknowns. An item the
 // buyer explicitly created carries `source: 'custom'` and is always preserved.
-// 'features:Guest / In-Law Suite' was previously retired here but is restored as the
-// canonical Guest / In-Law Suite identity in the 2026 taxonomy unification (it had been
-// wrongly retired in favor of nothing — onboarding kept offering it as a dead selection
-// that never counted toward Match; see FEATURES_SUGGESTED and
-// PURCHASE_LEGACY_LABEL_ALIASES). Restoring it here means anyone who already selected it
-// starts counting toward Match again — a restoration of their original intent, not a
-// change to their stored choice. 'exterior:Garage' is restored the same way, now as the
-// parent of the Attached/Detached qualifier (see CRITERION_QUALIFIERS) rather than a
-// standalone criterion.
+// 'features:Guest / In-Law Suite' was previously retired here, then restored as its own
+// canonical identity in the 2026 taxonomy unification, and is now retired from new
+// offering a second time (small criteria cleanup) — but still deliberately absent from
+// this set: it now folds onto 'Guest Bedroom' instead (see PURCHASE_LEGACY_LABEL_ALIASES/
+// RENTAL_HOME_LEGACY_LABEL_ALIASES), which keeps counting toward Match under the merged
+// identity rather than being silently retired from Match entirely. 'exterior:Garage' is
+// restored the same way, now as the parent of the Attached/Detached qualifier (see
+// CRITERION_QUALIFIERS) rather than a standalone criterion.
 const RETIRED_PURCHASE_BUILT_INS = new Set([
   'location:Neighborhood', 'location:Walkability', 'location:Immediate Street / Surroundings',
   'location:Dog Parks Nearby', 'location:Restaurants / Coffee / Shopping Nearby',
@@ -421,7 +421,12 @@ const PURCHASE_LEGACY_LABEL_ALIASES = {
   location: { 'Parks Nearby': 'Parks nearby' },
   features: {
     'Home Office': 'Home office', 'Central Air': 'Central air', 'Primary Ensuite': 'Primary ensuite',
-    'First-Floor Laundry': 'First-floor laundry', 'Guest suite': 'Guest / In-Law Suite',
+    'First-Floor Laundry': 'First-floor laundry',
+    // Small criteria cleanup: both the original pre-2026 legacy label and the more
+    // recent (now also retired) 'Guest / In-Law Suite' canonical identity fold
+    // directly onto the single remaining canonical 'Guest Bedroom' — same `kind`
+    // ('check') both times, so this is a safe, non-guessed 1:1 identity fold.
+    'Guest suite': 'Guest Bedroom', 'Guest / In-Law Suite': 'Guest Bedroom',
   },
   exterior: { 'Fenced Yard': 'Fenced yard', 'Patio / Deck / Outdoor Living': 'Patio / deck' },
 };
@@ -445,6 +450,11 @@ const RENTAL_HOME_LEGACY_LABEL_ALIASES = {
     'Home Office': 'Home office', 'Central Air': 'Central air', 'Primary Ensuite': 'Primary ensuite',
     'First-Floor Laundry': 'First-floor laundry', 'Finished Basement': 'Finished basement',
     'Walkout Basement': 'Walkout basement',
+    // Small criteria cleanup: Home to Rent shared the same (now retired)
+    // 'Guest / In-Law Suite' identity Home to Buy did, so it needs the same fold onto
+    // the single remaining canonical 'Guest Bedroom'. Home to Rent never offered the
+    // older 'Guest suite' label, so there's nothing to fold from that one here.
+    'Guest / In-Law Suite': 'Guest Bedroom',
   },
   exterior: { 'Fenced Yard': 'Fenced yard', 'Patio / Deck / Outdoor Living': 'Patio / deck' },
 };

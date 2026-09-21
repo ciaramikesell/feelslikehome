@@ -20,16 +20,24 @@ const purchaseLabels = () => getItemlistCategories('purchase').flatMap((def) => 
 
 /* ------------------------------ Taxonomy ------------------------------ */
 
-test('one canonical Home Office, Fenced Yard, and Guest / In-Law Suite — no casing-drift duplicates in the purchase catalog', () => {
+test('one canonical Home Office and Fenced Yard — no casing-drift duplicates in the purchase catalog', () => {
   const labels = purchaseLabels();
   assert.equal(labels.filter((key) => key.toLowerCase() === 'features:home office').length, 1);
   assert.equal(labels.filter((key) => key.toLowerCase() === 'exterior:fenced yard').length, 1);
-  assert.equal(labels.filter((key) => key.toLowerCase() === 'features:guest / in-law suite').length, 1);
   assert.ok(labels.includes('features:Home office'));
   assert.ok(labels.includes('exterior:Fenced yard'));
-  assert.ok(labels.includes('features:Guest / In-Law Suite'));
   assert.equal(criterionDisplayLabel('features', 'Home office'), 'Home Office');
   assert.equal(criterionDisplayLabel('exterior', 'Fenced yard'), 'Fenced Yard');
+});
+
+// Small criteria cleanup: 'Guest / In-Law Suite' is retired a second time (it was
+// briefly restored during the 2026 taxonomy unification) in favor of one canonical
+// 'Guest Bedroom' — no longer its own selectable identity, but the two concepts
+// weren't distinct enough to justify separately keeping both.
+test('Guest / In-Law Suite is no longer a selectable canonical criterion — only Guest Bedroom is', () => {
+  const labels = purchaseLabels();
+  assert.ok(!labels.includes('features:Guest / In-Law Suite'));
+  assert.ok(labels.includes('features:Guest Bedroom'));
 });
 
 test('Immediate Street / Surroundings and generic Walkability can never be newly created for purchase; Garage is the sole remaining parent (no flat Attached/Detached chips)', () => {
@@ -142,10 +150,32 @@ test('a legacy-labeled home fact stays visible to Match once the search priority
   assert.equal(folded['features:Home office'], false);
 });
 
-test('un-retiring Guest / In-Law Suite restores Match credit for anyone who already selected it — a restoration of intent, not a new choice', () => {
+// Small criteria cleanup: an existing 'Guest / In-Law Suite' priority now folds onto
+// the single canonical 'Guest Bedroom' at read time (never a SQL migration), preserving
+// the buyer's tier — a merge of stored identity, not a loss of Match credit.
+test('an existing Guest / In-Law Suite priority folds onto Guest Bedroom, preserving its tier and still counting toward Match', () => {
   const priorities = normalizePriorities({ searchType: 'purchase', features: { tiers: { 'Guest / In-Law Suite': 'important' }, customItems: [{ label: 'Guest / In-Law Suite', kind: 'check' }] } });
+  assert.equal(priorities.features.tiers['Guest Bedroom'], 'important');
+  assert.equal(priorities.features.tiers['Guest / In-Law Suite'], undefined);
+  assert.ok(!priorities.features.customItems.some((item) => item.label === 'Guest / In-Law Suite'));
   const match = computeMatch({ checks: { 'features:Guest / In-Law Suite': true } }, priorities);
-  assert.ok(match.allSelected.some((item) => item.key === 'features:Guest / In-Law Suite' && item.evaluated && item.met));
+  assert.ok(match.allSelected.some((item) => item.key === 'features:Guest Bedroom' && item.evaluated && item.met));
+});
+
+test('an explicit current Guest Bedroom selection is never overwritten by a stale legacy Guest / In-Law Suite tier — current intent wins, no duplicate row', () => {
+  const priorities = normalizePriorities({
+    searchType: 'purchase',
+    features: { tiers: { 'Guest / In-Law Suite': 'nice', 'Guest Bedroom': 'must' }, customItems: [{ label: 'Guest / In-Law Suite', kind: 'check' }, { label: 'Guest Bedroom', kind: 'check' }] },
+  });
+  assert.equal(priorities.features.tiers['Guest Bedroom'], 'must');
+  assert.equal(priorities.features.tiers['Guest / In-Law Suite'], undefined);
+  assert.equal(priorities.features.customItems.filter((item) => item.label === 'Guest Bedroom').length, 1);
+});
+
+test('a legacy "Guest suite" (the original pre-2026 label) also folds onto Guest Bedroom directly', () => {
+  const priorities = normalizePriorities({ searchType: 'purchase', features: { tiers: { 'Guest suite': 'nice' } } });
+  assert.equal(priorities.features.tiers['Guest Bedroom'], 'nice');
+  assert.equal(priorities.features.tiers['Guest suite'], undefined);
 });
 
 /* ------------------------------ My Search / schools ------------------------------ */

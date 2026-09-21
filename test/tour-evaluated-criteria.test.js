@@ -7,7 +7,7 @@ import { appendPostTourNote, applyPostTourVerdict } from '../src/lib/lifecycle.j
 
 const expected = {
   'Location & Surroundings': ['Reputable Schools','Walkable to Town','Parks nearby','Quiet street','Bustling Street','Near waterfront','Walkable schools','No HOA'],
-  'Home Features': ['Finished basement','Walkout basement','First-Floor Primary','Guest Bedroom','Primary ensuite','First-floor laundry','Home office','Central air','Fireplace','Guest / In-Law Suite'],
+  'Home Features': ['Finished basement','Walkout basement','First-Floor Primary','Guest Bedroom','Primary ensuite','First-floor laundry','Home office','Central air','Fireplace'],
   'Exterior & Property': ['Patio / deck','Fenced yard','Privacy Fencing','Garage','Large backyard','Front porch','Pool','Landscaping'],
 };
 
