@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { CriteriaDisclosure, MatchSummary } from '@/components/ui';
 import { useCommuteObserver } from '@/lib/useCommuteObserver';
-import { evaluateCommute } from '@/lib/commute';
+import { evaluateCommute, commuteRowLabel } from '@/lib/commute';
 import HomeModal from '@/components/HomeModal';
 import PostTourModal from '@/components/PostTourModal';
 import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
@@ -196,7 +196,14 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
               <div className="hh-match-eyebrow">Personalized Match</div>
               <MatchSummary match={match} />
               {mustHaves.length > 0 && <div className="hh-must-summary"><strong>Must Haves</strong>{displayedMustHaves.map((item) => { const neutral = item.evaluated && item.met === null; return <span className={!item.evaluated ? 'is-unknown' : neutral ? 'is-neutral' : item.met ? 'is-positive' : 'is-negative'} key={item.key}>{!item.evaluated ? '?' : neutral ? '—' : item.met ? '✓' : '✕'} {item.label}</span>; })}{mustOverflow > 0 && <button type="button" className="hh-criteria-overflow" aria-expanded={showAllMustHaves} onClick={() => setShowAllMustHaves((value) => !value)}>{showAllMustHaves ? 'Show fewer' : `+ ${mustOverflow} more Must Have${mustOverflow === 1 ? '' : 's'}`}</button>}</div>}
-              {criteriaSummary?.total > 0 && <div className="hh-personalized-criteria"><strong>Personalized Criteria — {criteriaSummary.evaluated}/{criteriaSummary.total} evaluated</strong><CriteriaDisclosure symbol="✓" tone="positive" heading="Matches" items={criteriaSummary.matches} label={`${criteriaSummary.matches.length} match`} /><CriteriaDisclosure symbol="✕" tone="negative" heading="Doesn’t match" items={criteriaSummary.mismatches} label={`${criteriaSummary.mismatches.length} don’t match`} /><CriteriaDisclosure symbol="?" tone="unknown" heading="Still unknown" items={criteriaSummary.unknown} label={`${criteriaSummary.unknown.length} ${criteriaSummary.unknown.length === 1 ? 'criterion' : 'criteria'} still unknown`} /></div>}
+              {/* Deliberately excludes Must Haves (see selectHomeCardCriteria) — they
+                  already have their own dedicated list immediately above, so folding
+                  them in here too would both double-display them and silently change
+                  what "evaluated" means between the two blocks. The heading says
+                  "Other Priorities" (not "Personalized Criteria") specifically so this
+                  count is never read as a second, contradicting verdict on a Must Have
+                  already shown as a mismatch above. */}
+              {criteriaSummary?.total > 0 && <div className="hh-personalized-criteria"><strong>Other Priorities — {criteriaSummary.evaluated}/{criteriaSummary.total} evaluated</strong><CriteriaDisclosure symbol="✓" tone="positive" heading="Matches" items={criteriaSummary.matches} label={`${criteriaSummary.matches.length} match`} /><CriteriaDisclosure symbol="✕" tone="negative" heading="Doesn’t match" items={criteriaSummary.mismatches} label={`${criteriaSummary.mismatches.length} don’t match`} /><CriteriaDisclosure symbol="?" tone="unknown" heading="Still unknown" items={criteriaSummary.unknown} label={`${criteriaSummary.unknown.length} ${criteriaSummary.unknown.length === 1 ? 'criterion' : 'criteria'} still unknown`} /></div>}
             </div>
           ) : (
             <div style={{ fontSize: 11.5, color: 'var(--ink-soft)' }}>Set your priorities in <em>My Search</em> to see a match score.</div>
@@ -215,25 +222,19 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
             </div>
           )}
 
-          {commuteDestinations.length > 0 && (() => {
-            const shown = commuteDestinations.slice(0, 1);
-            return (
-              <div className="hh-card-commute">
-                <div className="hh-card-commute-label">Commute</div>
-                {shown.map((d) => {
-                  const state = getCommuteState(d);
-                  const name = d.label;
-                  const text = state.status === 'ok' ? `${name}: ${state.minutes} min`
-                    : state.status === 'loading' ? `${name} · Calculating…`
-                    : state.status === 'destination_invalid' ? `${name} · Check the address`
-                    : state.status === 'destination_ambiguous' ? `${name} · Add a city or ZIP`
-                    : ['unavailable', 'no_route', 'home_unavailable', 'destination_unavailable'].includes(state.status) ? `${name} · Not available`
-                    : name;
-                  return <div className="hh-card-commute-route" key={d.id}>{text}</div>;
-                })}
-              </div>
-            );
-          })()}
+          {commuteDestinations.length > 0 && (
+            <div className="hh-card-commute">
+              <div className="hh-card-commute-label">Commute</div>
+              {/* Every saved Place That Matters gets its own row, in the same saved
+                  order (commuteDestinations is already fetched ordered by created_at —
+                  see getCommuteDestinations), never truncated to a single destination.
+                  One destination's commute being unavailable/still loading must never
+                  remove any other destination's row. */}
+              {commuteDestinations.map((d) => (
+                <div className="hh-card-commute-route" key={d.id}>{commuteRowLabel(d, getCommuteState(d))}</div>
+              ))}
+            </div>
+          )}
 
           {noteCount > 0 && <Link className="hh-notes-indicator" href={`/homes/${encodeURIComponent(home.id)}`}><StickyNote size={13} /> Notes ({noteCount})</Link>}
           </MobileDisclosure>

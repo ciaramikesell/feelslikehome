@@ -14,13 +14,18 @@ let pendingBatch = null; // { homeIds: Set, destinationIds: Set, keyToPair: Map 
 let batchTimer = null;
 const batchListeners = new Set(); // callbacks to notify when a batch resolves
 
-function locationIdentity(home) {
+export function locationIdentity(home) {
   // Address is authoritative. Server-side provenance decides whether stored
   // coordinates may be reused; an address edit therefore always gets a new key.
   return home.address || '';
 }
 
-function cacheKey(home, destination) {
+// Exported (alongside locationIdentity) so a plain unit test can prove a commute
+// result can never be associated with the wrong destination: this key always
+// includes the destination's own id/address, never just the home's, so two
+// different saved Places That Matter for the same home always get distinct cache
+// entries — see cacheKey usages below and in commute-consistency.test.js.
+export function cacheKey(home, destination) {
   return `${home.id}:${locationIdentity(home)}:${destination.id}:${destination.address || ''}`;
 }
 

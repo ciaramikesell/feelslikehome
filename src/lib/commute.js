@@ -55,6 +55,21 @@ export async function currentDestinationCoordinates(destination) {
   return validMapPoint({ lat: Number(destination.latitude), lng: Number(destination.longitude) });
 }
 
+// The exact text a My Homes card shows for one saved Place That Matters, given its
+// current commute state — extracted as a pure function (rather than inlined per-row
+// JSX) so the "every saved place gets its own row, using its saved label, distinguishing
+// calculated/pending/unavailable, never inventing a time" contract can be proven with a
+// plain unit test instead of only a source-text regex against the card component.
+export function commuteRowLabel(destination, state) {
+  const name = destination.label;
+  if (state?.status === 'ok') return `${name}: ${state.minutes} min`;
+  if (state?.status === 'loading' || state?.status === 'idle' || !state) return `${name} · Calculating…`;
+  if (state.status === 'destination_invalid') return `${name} · Check the address`;
+  if (state.status === 'destination_ambiguous') return `${name} · Add a city or ZIP`;
+  if (['unavailable', 'no_route', 'home_unavailable', 'destination_unavailable'].includes(state.status)) return `${name} · Not available`;
+  return name;
+}
+
 // All thresholded destinations form one boolean Commute criterion. A single
 // unknown makes the whole criterion unknown; confirmed failures are never averaged.
 export function evaluateCommute(destinations, getResult) {

@@ -538,7 +538,15 @@ export function summarizeForCard(match) {
 }
 
 // The Homes card derives both its bounded Must Have preview and its aggregate
-// non-Must-Have coverage from the canonical Match result. No counts are stored.
+// non-Must-Have coverage from the ONE canonical Match result (match.allSelected) — no
+// counts are stored, and there is no second scoring path. `mustAll` and `personalized`
+// below are complementary partitions of that same array by `criterion.tier` (every
+// criterion is exactly must/important/nice — computeMatch already drops 'dontcare'
+// entirely), so a given criterion (e.g. Fenced Yard) can never appear as a mismatch in
+// one bucket and a match in the other: it is the exact same object, read once. The
+// card's "Other Priorities" heading deliberately says "Other," not a name that could be
+// read as covering every selected criterion, precisely because Must Haves are excluded
+// on purpose (see the comment below) and shown in their own list instead.
 export function selectHomeCardCriteria(match, mustLimit = 5) {
   if (!match) return { mustHaves: [], mustOverflow: 0, criteriaSummary: null };
   const source = match.allSelected || [];

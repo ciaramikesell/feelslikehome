@@ -44,9 +44,15 @@ test('property Notes examples remain placeholders rather than saved values', () 
   assert.doesNotMatch(persistence, /Anything else you want to remember\?/);
 });
 
-test('Home Card commute inset is conditional, compact, primary-only, and wraps long labels', () => {
+// REVISION (My Homes card data consistency repair): the card previously showed only
+// the first saved Place That Matters via a hardcoded slice(0, 1), even when several
+// destinations had calculated commute results — beta testing surfaced this as a bug
+// (a saved landmark silently missing from the card), not an intentional simplification.
+// The card now renders every saved destination's commute row, in saved order.
+test('Home Card commute inset is conditional, compact, shows every saved destination, and wraps long labels', () => {
   assert.match(board, /commuteDestinations\.length > 0/);
-  assert.match(board, /commuteDestinations\.slice\(0, 1\)/);
+  assert.doesNotMatch(board, /commuteDestinations\.slice\(0,\s*1\)/);
+  assert.match(board, /commuteDestinations\.map\(\(d\) => \(/);
   assert.match(board, /className="hh-card-commute"/);
   assert.doesNotMatch(board, /\+\{overflow\} more/);
   assert.match(css, /\.hh-card-commute \{[^}]*padding: 9px 11px/);
