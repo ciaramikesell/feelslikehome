@@ -49,12 +49,24 @@ test('preferred property type is optional and follows unknown/satisfied/mismatch
   assert.equal(TIER_META.must.weight, 4);
 });
 
-test('canonical Rental has one duplicate-free approved suggestion bank', () => {
+// 2026 Home-to-Rent parity pass: a bare 'rental' string (no priorities object to read
+// isApartmentRental from) defaults to the Home-to-Rent-parity catalog — Home to Rent,
+// not Apartment to Rent, is the taxonomy that now mirrors Home to Buy. See
+// getItemlistCategories's `isApartment` option for how a real caller (which always has
+// the full priorities object) distinguishes the two.
+test('canonical Home-to-Rent-parity Rental catalog is duplicate-free and matches Home to Buy, minus No HOA', () => {
   const categories = getItemlistCategories('rental');
   const all = categories.flatMap((def) => [...def.coreItems, ...def.suggestedItems].map((item) => `${def.key}:${item.label}`));
   assert.equal(new Set(all).size, all.length);
-  for (const required of ['Neighborhood', 'Walkability', 'Dog Parks Nearby', 'Groceries Nearby']) assert.ok(labels('rental', 'location').includes(required));
-  for (const required of ['Dishwasher', 'Pets Allowed', 'Utilities Included', 'In-Unit Laundry']) assert.ok(labels('rental', 'features').includes(required));
+  assert.deepEqual(labels('rental', 'location'), labels('purchase', 'location').filter((label) => label !== 'No HOA'));
+  assert.deepEqual(labels('rental', 'features'), labels('purchase', 'features'));
+  assert.deepEqual(labels('rental', 'exterior'), labels('purchase', 'exterior'));
+  for (const removed of ['Neighborhood', 'Walkability', 'Dog Parks Nearby', 'Groceries Nearby', 'Restaurants / Coffee / Shopping Nearby']) {
+    assert.ok(!labels('rental', 'location').includes(removed), `${removed} is no longer offered to new Home-to-Rent selections`);
+  }
+  for (const removed of ['Dishwasher', 'Pets Allowed', 'Utilities Included', 'In-Unit Laundry']) {
+    assert.ok(!labels('rental', 'features').includes(removed), `${removed} is no longer offered to new Home-to-Rent selections`);
+  }
   for (const removed of ['Commute', 'Proximity to Family / Friends', 'Schools']) {
     assert.ok(!labels('rental', 'location').includes(removed));
     assert.ok(!labels('purchase', 'location').includes(removed));
@@ -62,6 +74,17 @@ test('canonical Rental has one duplicate-free approved suggestion bank', () => {
   for (const removed of ['Pet Policy', 'Pet Rent / Fees', 'Lease Terms', 'Maintenance Responsibility']) {
     assert.ok(!categories.flatMap((def) => [...def.coreItems, ...def.suggestedItems]).some((item) => item.label === removed));
   }
+});
+
+test('canonical Apartment-to-Rent catalog is its own distinct, duplicate-free taxonomy', () => {
+  const categories = getItemlistCategories('rental', { isApartment: true });
+  const all = categories.flatMap((def) => [...def.coreItems, ...def.suggestedItems].map((item) => `${def.key}:${item.label}`));
+  assert.equal(new Set(all).size, all.length);
+  assert.deepEqual(categories.map(({ title }) => title), ['Living There', 'Apartment Features', 'Amenities']);
+  const apartmentLabels = (category) => getItemlistCategories('rental', { isApartment: true }).find(({ key }) => key === category).suggestedItems.map(({ label }) => label);
+  assert.ok(apartmentLabels('features').includes('In-Unit Laundry'));
+  assert.ok(!apartmentLabels('location').includes('Neighborhood'));
+  assert.ok(!apartmentLabels('features').includes('Basement'));
 });
 
 test('removed legacy selections and custom criteria remain renderable without mutation', () => {

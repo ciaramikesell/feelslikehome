@@ -36,12 +36,33 @@ test('Home to Buy curated suggestions are exactly the canonical purchase taxonom
   }
 });
 
-test('Home to Rent curated suggestions are exact', () => {
-  assert.deepEqual(displayed('home_rent'), ['Neighborhood','Walkability','Parks Nearby','Quiet Street','Basement','Fireplace','Primary Ensuite','Home Office','Central Air','Hardwood Floors','Garage','Fenced Yard','Outdoor Space','Patio / Deck','Yard Privacy','Pets Allowed','Utilities Included','Overall Condition','Layout','Natural Light','Privacy','Noise Level']);
+// 2026 Home-to-Rent parity pass: Home to Rent now shares Home to Buy's exact canonical
+// catalog, minus No HOA — one shared taxonomy, not a separately hand-authored list.
+test('Home to Rent curated suggestions match Home to Buy exactly, minus No HOA', () => {
+  assert.deepEqual(displayed('home_rent'), [
+    'Reputable Schools', 'Walkable to Town', 'Parks Nearby', 'Quiet Street', 'Bustling Street', 'Near Waterfront', 'Walkable Schools',
+    'Finished Basement', 'Walkout Basement', 'First-Floor Primary', 'Guest Bedroom', 'Primary Ensuite', 'First-Floor Laundry', 'Home Office', 'Central Air', 'Fireplace', 'Guest / In-Law Suite',
+    'Deck / Patio', 'Fenced Yard', 'Privacy Fencing', 'Garage', 'Large Backyard', 'Front Porch', 'Pool', 'Landscaping',
+  ]);
+  assert.ok(!displayed('home_rent').includes('No HOA'), 'No HOA is Home to Buy only');
+  assert.deepEqual(ONBOARDING_SUGGESTIONS.home_rent.map(([title]) => title), ['Location', 'Home Features', 'Exterior & Property']);
+  for (const removed of ['Neighborhood', 'Walkability', 'Dog Parks Nearby', 'Groceries Nearby', 'Restaurants / Coffee / Shopping Nearby', 'Basement', 'Hardwood Floors', 'Pets Allowed', 'Utilities Included', 'In-Unit Laundry']) {
+    assert.ok(!displayed('home_rent').includes(removed), `${removed} is no longer offered to new Home-to-Rent selections`);
+  }
 });
 
-test('Apartment to Rent curated suggestions are exact', () => {
-  assert.deepEqual(displayed('apartment_rent'), ['In-Unit Laundry','Central Air','Dishwasher','Updated Interior','Balcony / Patio','Home Office Space','Parking','Fitness Center','Pool','Secure Entry','Outdoor Space','Elevator','Pet-Friendly','Quiet Community','Social Community','On-Site Management','Privacy','Surrounding Neighborhood']);
+// 2026 apartment taxonomy replacement: Apartment to Rent's own dedicated catalog —
+// Living There / Apartment Features / Amenities — replaces the old four-group list.
+test('Apartment to Rent curated suggestions are the approved Living There / Apartment Features / Amenities taxonomy', () => {
+  assert.deepEqual(displayed('apartment_rent'), [
+    'Parks Nearby', 'Near Public Transit', 'On-Site Management', 'Pet-Friendly', 'Secure Entry', 'Utilities Included', 'Furnished', 'Guest Parking',
+    'Patio / Balcony', 'Fireplace', 'Central Air', 'Independent Thermostat', 'Ample Outlets', 'Dishwasher', 'In-Unit Laundry', 'Home Office Space', 'Counter Space', 'No Neighbors Above',
+    'Pool', 'Elevator', 'Dog Park', 'Fitness Center', 'Storage', 'Designated Parking', 'Rooftop', 'Recycling', 'Trash Valet', 'Clubhouse', 'Playground',
+  ]);
+  assert.deepEqual(ONBOARDING_SUGGESTIONS.apartment_rent.map(([title]) => title), ['Living There', 'Apartment Features', 'Amenities']);
+  for (const removed of ['Neighborhood', 'Walkability', 'Immediate Street / Surroundings', 'Groceries Nearby', 'Restaurants / Coffee / Shopping Nearby', 'Basement', 'Primary Ensuite', 'Finished Basement', 'Walkout Basement', 'First-Floor Laundry', 'Mudroom', 'Pantry', 'Updated Kitchen', 'Updated Bathrooms', 'Walk-In Closet', 'Additional Living Space', 'Hardwood Floors', 'Updated Interior', 'Parking', 'Garage', 'Driveway / Off-Street Parking', 'Fenced Yard', 'Patio / Deck / Outdoor Living', 'Yard Privacy', 'Building Amenities', 'Noise Level', 'Overall Condition', 'Layout / Flow', 'Natural Light', 'Character / Charm', 'Room Sizes', 'Openness / Ceiling Height', 'Privacy from Neighbors']) {
+    assert.ok(!displayed('apartment_rent').includes(removed), `${removed} is no longer offered to new Apartment-to-Rent selections`);
+  }
 });
 
 test('selected priorities become Important, dealbreakers become Must Have, and Nice is not assigned', () => {

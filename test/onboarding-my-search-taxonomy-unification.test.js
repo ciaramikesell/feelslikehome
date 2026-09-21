@@ -109,10 +109,24 @@ test('an explicit canonical choice always wins over a stale legacy tier when bot
   assert.equal(priorities.features.tiers['Home Office'], undefined);
 });
 
-test('legacy aliasing never fires for Rental/Investment, whose own real canonical identity uses the Title Case spelling', () => {
-  const rentalPriorities = normalizePriorities({ searchType: 'rental', features: { tiers: { 'Home Office': 'important' } } });
-  assert.equal(rentalPriorities.features.tiers['Home Office'], 'important');
-  assert.equal(rentalPriorities.features.tiers['Home office'], undefined);
+test('legacy aliasing never fires for Investment, whose own real canonical identity uses the Title Case spelling', () => {
+  const investmentPriorities = normalizePriorities({ searchType: 'investment', features: { tiers: { 'Home Office': 'important' } } });
+  assert.equal(investmentPriorities.features.tiers['Home Office'], 'important');
+  assert.equal(investmentPriorities.features.tiers['Home office'], undefined);
+});
+
+// 2026 Home-to-Rent parity pass: a rented HOUSE now shares Home to Buy's exact
+// canonical identity, so it needs the same safe casing fold purchase already had —
+// see RENTAL_HOME_LEGACY_LABEL_ALIASES — or re-selecting the new canonical chip from
+// My Search would silently create a visible duplicate for the same idea.
+test('legacy aliasing now fires for Home to Rent (a rented house), which shares Home to Buy\'s canonical identity — but never for Apartment to Rent, whose old catalog is retired by its own new taxonomy', () => {
+  const homeRentalPriorities = normalizePriorities({ searchType: 'rental', features: { tiers: { 'Home Office': 'important' } } });
+  assert.equal(homeRentalPriorities.features.tiers['Home office'], 'important');
+  assert.equal(homeRentalPriorities.features.tiers['Home Office'], undefined);
+
+  const apartmentPriorities = normalizePriorities({ searchType: 'rental', onboardingSearchType: 'apartment_rent', features: { tiers: { 'Home Office': 'important' } } });
+  assert.equal(apartmentPriorities.features.tiers['Home Office'], 'important');
+  assert.equal(apartmentPriorities.features.tiers['Home office'], undefined);
 });
 
 test('a legacy-labeled home fact stays visible to Match once the search priority has folded onto the canonical label', () => {

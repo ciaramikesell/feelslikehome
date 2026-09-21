@@ -92,20 +92,26 @@ test('legacy UI helpers now present canonical intent behavior without mutating r
   assert.notDeepEqual(terminology('rental'), terminology(''));
 });
 
-test('legacy rental values resolve the unified canonical catalog while Investment remains unchanged', () => {
+// 2026 Home-to-Rent parity pass: a bare legacy string (no priorities object) can't
+// distinguish Apartment to Rent from a rented house — that distinction now needs the
+// full priorities object (see isApartmentRental) — so every bare rental-ish string
+// still resolves identically, to the Home-to-Rent-parity catalog. Real callers always
+// have that object and pass `{ isApartment: isApartmentRental(priorities) }` instead.
+test('legacy rental values resolve the Home-to-Rent-parity catalog while Investment remains unchanged', () => {
   const labels = (type, key, part) => getItemlistCategories(type)
     .find((category) => category.key === key)[part].map((item) => item.label);
 
   assert.deepEqual(getItemlistCategories('rent_apartment'), getItemlistCategories('rental'));
   assert.deepEqual(getItemlistCategories('rent_home'), getItemlistCategories('rental'));
-  assert.ok(labels('rental', 'features', 'suggestedItems').includes('In-Unit Laundry'));
+  assert.deepEqual(labels('rental', 'features', 'suggestedItems'), labels('buy', 'features', 'suggestedItems'));
+  assert.ok(!labels('rental', 'features', 'suggestedItems').includes('In-Unit Laundry'));
   assert.ok(!labels('rental', 'features', 'suggestedItems').includes('Pet Policy'));
-  assert.ok(!labels('rental', 'homeFeel', 'suggestedItems').includes('Lease Terms'));
   assert.ok(labels('investment', 'location', 'suggestedItems').includes('Tenant Appeal'));
   assert.ok(labels('investment', 'features', 'suggestedItems').includes('Unit Configuration'));
+  assert.ok(!labels('investment', 'homeFeel', 'suggestedItems').includes('Lease Terms'));
   assert.ok(!labels('buy', 'features', 'suggestedItems').includes('Pet Policy'));
   for (const type of legacyTypes) {
-    assert.deepEqual(getItemlistCategories(type).map(({ key }) => key), normalizeSearchIntent(type) === 'purchase' ? ['location', 'features', 'exterior'] : ['location', 'features', 'exterior', 'homeFeel']);
+    assert.deepEqual(getItemlistCategories(type).map(({ key }) => key), normalizeSearchIntent(type) === 'investment' ? ['location', 'features', 'exterior', 'homeFeel'] : ['location', 'features', 'exterior']);
   }
 });
 

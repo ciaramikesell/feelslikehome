@@ -3,12 +3,34 @@
 import { useMemo, useState } from 'react';
 import { Check, CircleDashed, Heart, X, XCircle } from 'lucide-react';
 import { postTourVerdict } from '@/lib/lifecycle';
+import { isApartmentRental } from '@/lib/constants';
 
-export const POST_TOUR_EVALUATIONS = [
+// Home to Buy / Home to Rent / Investment's Post-Tour Big 4 — unchanged by this pass.
+export const HOME_POST_TOUR_EVALUATIONS = [
   { key: 'tour-v2:curb_appeal', label: 'Curb Appeal' },
   { key: 'tour-v2:layout', label: 'Layout' },
   { key: 'tour-v2:privacy', label: 'Privacy' },
   { key: 'tour-v2:neighborhood', label: 'Neighborhood' },
+];
+// Backward-compatible alias for the Home Big 4 — kept so nothing outside this file
+// that already imports POST_TOUR_EVALUATIONS needs to change.
+export const POST_TOUR_EVALUATIONS = HOME_POST_TOUR_EVALUATIONS;
+
+// Apartment to Rent's approved 2026 Post-Tour Big 4. 'Layout' intentionally reuses the
+// exact same stable key/concept as the Home Big 4's Layout — it means the same thing
+// for an apartment, so this is not a new dimension. Location/Condition/Amenities are
+// genuinely new concepts and get NEW stable keys: 'Neighborhood' is related to but not
+// identical to 'Location', so an old Home Neighborhood response is never silently
+// reinterpreted as a Location answer, and 'Curb Appeal'/'Privacy' are not the same
+// concepts as 'Condition'/'Amenities' either. Any historical response already recorded
+// under a Home-dimension key on an apartment's ratings simply stays there, untouched
+// and unread by this array — ratings is a flexible JSONB map, so no migration is
+// needed to introduce these new keys.
+export const APARTMENT_POST_TOUR_EVALUATIONS = [
+  { key: 'tour-v2:layout', label: 'Layout' },
+  { key: 'tour-v2:location', label: 'Location' },
+  { key: 'tour-v2:condition', label: 'Condition' },
+  { key: 'tour-v2:amenities', label: 'Amenities' },
 ];
 
 const RESPONSES = [
@@ -36,13 +58,15 @@ function Evaluation({ item, value, onChange }) {
   </fieldset>;
 }
 
-export default function PostTourModal({ home, isCollaborative = false, saveError = '', onVerdict, onClose }) {
+export default function PostTourModal({ home, priorities, isCollaborative = false, saveError = '', onVerdict, onClose }) {
+  const isApartment = isApartmentRental(priorities);
+  const evaluations = isApartment ? APARTMENT_POST_TOUR_EVALUATIONS : HOME_POST_TOUR_EVALUATIONS;
   const [verdict, setVerdict] = useState(postTourVerdict(home));
   const [ratings, setRatings] = useState(home.ratings || {});
   const [noteEntry, setNoteEntry] = useState('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(null);
-  const evaluationCount = useMemo(() => POST_TOUR_EVALUATIONS.filter(({ key }) => ratings[key]).length, [ratings]);
+  const evaluationCount = useMemo(() => evaluations.filter(({ key }) => ratings[key]).length, [ratings, evaluations]);
 
   const chooseVerdict = (next) => {
     setVerdict(next);
@@ -83,8 +107,8 @@ export default function PostTourModal({ home, isCollaborative = false, saveError
 
       {verdict === 'not_for_me' && <aside className="hh-tour-fast-exit"><p>That’s enough to save your take. Add details below if you want to remember why.</p><div><button className="hh-btn" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save my take'}</button></div></aside>}
 
-      <section className="hh-tour-section"><h3>How did it feel in person?</h3><p className="hh-tour-optional">Optional — answer only what stood out.</p><div className="hh-tour-evaluations">{POST_TOUR_EVALUATIONS.map((item) => <Evaluation key={item.key} item={item} value={ratings[item.key]} onChange={(value) => setRatings((current) => { const next = { ...current }; if (value) next[item.key] = value; else delete next[item.key]; return next; })} />)}</div></section>
-      <section className="hh-tour-section hh-tour-note"><h3>Anything you want to remember?</h3><p>Get your thoughts down while they’re fresh. Type them here, or use your phone’s microphone to talk them out.</p><textarea className="hh-textarea" value={noteEntry} onChange={(event) => setNoteEntry(event.target.value)} placeholder="Walkability, home condition, natural light, any concerns?" /></section>
+      <section className="hh-tour-section"><h3>How did it feel in person?</h3><p className="hh-tour-optional">Optional — answer only what stood out.</p><div className="hh-tour-evaluations">{evaluations.map((item) => <Evaluation key={item.key} item={item} value={ratings[item.key]} onChange={(value) => setRatings((current) => { const next = { ...current }; if (value) next[item.key] = value; else delete next[item.key]; return next; })} />)}</div></section>
+      <section className="hh-tour-section hh-tour-note"><h3>Anything you want to remember?</h3><p>Get your thoughts down while they’re fresh. Type them here, or use your phone’s microphone to talk them out.</p><textarea className="hh-textarea" value={noteEntry} onChange={(event) => setNoteEntry(event.target.value)} placeholder={isApartment ? 'Noise level, water pressure, walkability, or anything else you want to remember?' : 'Walkability, home condition, natural light, any concerns?'} /></section>
       <footer className="hh-tour-actions"><button className="hh-btn hh-btn-ghost" onClick={onClose}>Cancel</button><button className="hh-btn" disabled={!verdict || saving} onClick={save}>{saving ? 'Saving…' : 'Save my take'}</button></footer>
     </div>
   </div>;

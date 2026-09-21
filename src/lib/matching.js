@@ -1,6 +1,15 @@
-import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier, isExperientialCriterion, isRetiredPurchaseBuiltIn, foldLegacyCheckAliases, isGarageQualifierAny, qualifierFactKey, TOUR_RESPONSE, tourResponseLabel } from './constants.js';
+import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier, isExperientialCriterion, isRetiredPurchaseBuiltIn, foldLegacyCheckAliases, isGarageQualifierAny, qualifierFactKey, isApartmentRental, TOUR_RESPONSE, tourResponseLabel } from './constants.js';
 import { normalizeSearchIntent } from './searchIntent.js';
 import { EVIDENCE_STRENGTH, findingsFromFields } from './importDomain.js';
+
+// getItemlistCategories can't tell Home to Rent from Apartment to Rent from searchType
+// alone (both are the 'rental' intent) — only the full priorities object can, via
+// isApartmentRental. Every real caller here has that object in scope, so this one
+// helper keeps the distinction from being forgotten or re-derived inconsistently
+// at any of this file's several call sites.
+function categoriesFor(priorities) {
+  return getItemlistCategories(priorities.searchType, { isApartment: isApartmentRental(priorities) });
+}
 
 export function parseNum(v) {
   if (v === '' || v === null || v === undefined) return null;
@@ -92,7 +101,7 @@ export const visibleOrderedItems = selectedOrderedItems;
 // anything worth a "How did it feel?" prompt.
 export function hasSelectedSubjectiveCriteria(priorities) {
   if (!priorities) return false;
-  return getItemlistCategories(priorities.searchType).some((def) =>
+  return categoriesFor(priorities).some((def) =>
     selectedOrderedItems(def, priorities).some((item) => isExperientialCriterion(def.key, item.label))
   );
 }
@@ -102,7 +111,7 @@ export function hasSelectedSubjectiveCriteria(priorities) {
 // flow asks about, since these are the ones that can't be reliably judged pre-tour.
 export function selectedSubjectiveCriteria(priorities) {
   if (!priorities) return [];
-  return getItemlistCategories(priorities.searchType).flatMap((def) =>
+  return categoriesFor(priorities).flatMap((def) =>
     selectedOrderedItems(def, priorities)
       .filter((item) => isExperientialCriterion(def.key, item.label))
       .map((item) => ({ ...item, categoryKey: def.key }))
@@ -127,7 +136,7 @@ export function curatedAdditionalSubjectiveCriteria(priorities) {
   const selectedKeys = new Set(selectedSubjectiveCriteria(priorities).map((i) => `${i.categoryKey}:${i.label}`));
   const seen = new Set();
   const out = [];
-  getItemlistCategories(priorities.searchType).forEach((def) => {
+  categoriesFor(priorities).forEach((def) => {
     [...def.coreItems, ...def.suggestedItems].forEach((item) => {
       if (item.kind !== 'rating' || !CURATED_TOUR_LABELS.includes(item.label)) return;
       const key = `${def.key}:${item.label}`;
@@ -283,7 +292,7 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
   // See foldLegacyCheckAliases: a home fact recorded under a pre-taxonomy-unification
   // legacy label (e.g. 'features:Home Office') still counts once the search's own
   // priority has folded onto the canonical label — never silently forgotten.
-  const checks = foldLegacyCheckAliases(home.checks, priorities.searchType);
+  const checks = foldLegacyCheckAliases(home.checks, priorities.searchType, isApartmentRental(priorities));
   const all = []; // every priority the user actually selected, evaluated or not
   const push = (key, label, tier, evaluated, score, met, detail, objective) => {
     all.push({ key, label, tier, evaluated, score, met, detail, objective });
@@ -369,7 +378,7 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
     push(key, title, pref.tier, true, met ? 1 : 0, met, met ? pref.value : `${actual} (wanted ${pref.value})`, true);
   });
 
-  getItemlistCategories(priorities.searchType).forEach((def) => {
+  categoriesFor(priorities).forEach((def) => {
     const { catState, core, custom } = splitCategoryItems(def, priorities);
     [...core, ...custom].forEach((item) => {
       if (isRetiredPurchaseBuiltIn(def.key, item, priorities.searchType)) return;
@@ -400,11 +409,17 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
         return;
       }
 
+      // Keyed by label alone, not the full categoryKey:label namespace — these three
+      // are universal home-level facts (home.petsAllowed/utilitiesIncluded/
+      // inUnitLaundry), and Apartment to Rent's 2026 taxonomy groups 'Pets Allowed'/
+      // 'Utilities Included' under its 'location'-keyed "Living There" section rather
+      // than 'features' (see APARTMENT_LIVING_THERE), so this must keep matching
+      // regardless of which visual category the item is currently displayed under.
       const sharedBooleanField = {
-        'features:Pets Allowed': 'petsAllowed',
-        'features:Utilities Included': 'utilitiesIncluded',
-        'features:In-Unit Laundry': 'inUnitLaundry',
-      }[ns];
+        'Pets Allowed': 'petsAllowed',
+        'Utilities Included': 'utilitiesIncluded',
+        'In-Unit Laundry': 'inUnitLaundry',
+      }[item.label];
       if (sharedBooleanField) {
         const actual = home[sharedBooleanField];
         if (actual === true) push(ns, item.label, tier, true, 1, true, 'Yes', true);

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ChevronRight, Plus } from 'lucide-react';
-import { DEFAULT_SELECTED_TIER, TIER_DESCRIPTIONS, TIER_META, TIER_ORDER, criterionDisplayLabel, criterionCompactLabel, hasQualifierOptions, getItemlistCategories, effectiveTier, isSchoolsSuppressed, isExperientialCriterion, isCriterionApplicable, isRetiredPurchaseBuiltIn } from '@/lib/constants';
+import { DEFAULT_SELECTED_TIER, TIER_DESCRIPTIONS, TIER_META, TIER_ORDER, criterionDisplayLabel, criterionCompactLabel, hasQualifierOptions, getItemlistCategories, effectiveTier, isSchoolsSuppressed, isExperientialCriterion, isCriterionApplicable, isRetiredPurchaseBuiltIn, isApartmentRental } from '@/lib/constants';
 
 // Presentation-only weight callout for My Search's desktop tier heading
 // ("Must have (highest weight)") — TIER_META.weight itself (4/2/1) is the
@@ -71,7 +71,7 @@ function TierItemsList({ tier, items, activeItem, setActiveItem, setTier, priori
 // controls beneath it; it never swaps the board for a configuration surface.
 // Tier changes use the existing category tier map, with no within-tier order.
 export default function PriorityBoard({ priorities, patch, onboarding = false, catalogOpen, onCatalogOpenChange, firstRun = false }) {
-  const categories = getItemlistCategories(priorities.searchType);
+  const categories = getItemlistCategories(priorities.searchType, { isApartment: isApartmentRental(priorities) });
   // One-time drag teaching moment for the first appropriate arrival after
   // onboarding (see MySearchPanel's `firstRun`, itself gated on the ?welcome=1
   // handoff) — never onboarding itself, which has no drag board at all.

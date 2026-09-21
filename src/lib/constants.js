@@ -71,6 +71,36 @@ export const EXTERIOR_SUGGESTED = [
   'Large backyard', 'Front porch', 'Pool', 'Landscaping',
 ].map((label) => ({ label, kind: 'check' }));
 
+// 2026 Home-to-Rent parity pass: a rented HOUSE (as opposed to Apartment to Rent) now
+// shares this exact same canonical Exterior & Property catalog directly — no separate
+// rental-specific array — so the two never drift apart again. See getItemlistCategories.
+
+// Home to Rent's Location catalog: identical to Home to Buy's, minus No HOA (a
+// financed-purchase HOA concern that doesn't carry the same weight for a renter).
+export const LOCATION_SUGGESTED_HOME_RENTAL = LOCATION_SUGGESTED.filter((entry) => entry.label !== 'No HOA');
+
+// Apartment to Rent's 2026 taxonomy — deliberately its own catalog, not forced into the
+// house taxonomy: apartment evaluation spans the unit itself, the building/property,
+// apartment-specific amenities, and the day-to-day experience of living there. 'Pets
+// Allowed' and 'Utilities Included' keep their existing exact label spelling (see the
+// sharedBooleanField lookup in matching.js, now keyed by label alone) so they continue
+// to read from the same universal home.petsAllowed/utilitiesIncluded/inUnitLaundry
+// facts regardless of which category they're grouped under for display.
+export const APARTMENT_LIVING_THERE = [
+  'Parks Nearby', 'Near Public Transit', 'On-Site Management', 'Pets Allowed',
+  'Secure Entry', 'Utilities Included', 'Furnished', 'Guest Parking',
+].map((label) => ({ label, kind: 'check' }));
+
+export const APARTMENT_FEATURES = [
+  'Patio / Balcony', 'Fireplace', 'Central Air', 'Independent Thermostat', 'Ample Outlets',
+  'Dishwasher', 'In-Unit Laundry', 'Home Office Space', 'Counter Space', 'No Neighbors Above',
+].map((label) => ({ label, kind: 'check' }));
+
+export const APARTMENT_AMENITIES = [
+  'Pool', 'Elevator', 'Dog Park', 'Fitness Center', 'Storage', 'Designated Parking',
+  'Rooftop', 'Recycling', 'Trash Valet', 'Clubhouse', 'Playground',
+].map((label) => ({ label, kind: 'check' }));
+
 // 'Guest suite' is retired in favor of the canonical 'Guest / In-Law Suite' identity
 // (previously dead — see RETIRED_PURCHASE_BUILT_INS's history — now restored as a real
 // canonical item; see PURCHASE_LEGACY_LABEL_ALIASES for the safe fold from 'Guest suite').
@@ -138,6 +168,10 @@ const CRITERION_DISPLAY_LABEL_OVERRIDES = {
   'exterior:Detached garage': 'Detached Garage',
   'exterior:Large backyard': 'Large Backyard',
   'exterior:Front porch': 'Front Porch',
+  // Apartment to Rent's Living There group displays 'Pets Allowed' as 'Pet-Friendly' —
+  // the stored identity stays 'Pets Allowed' so it keeps matching the shared
+  // home.petsAllowed boolean fact exactly like every other search type.
+  'location:Pets Allowed': 'Pet-Friendly',
 };
 
 // Additive catalog metadata. Stored priority identities remain `category:label`;
@@ -392,6 +426,29 @@ const PURCHASE_LEGACY_LABEL_ALIASES = {
   exterior: { 'Fenced Yard': 'Fenced yard', 'Patio / Deck / Outdoor Living': 'Patio / deck' },
 };
 
+// 2026 Home-to-Rent parity pass: a rented HOUSE now shares Home to Buy's exact
+// canonical catalog (see LOCATION_SUGGESTED_HOME_RENTAL/FEATURES_SUGGESTED/
+// EXTERIOR_SUGGESTED in getItemlistCategories), so an existing Home-to-Rent search
+// that already selected one of its OLD Title-Case rental-legacy labels needs the same
+// safe casing fold purchase already had, or re-selecting the new canonical chip would
+// silently create a second, visibly duplicate priority for the same idea. Only the
+// pairs with an identical `kind` (both 'check') are included — 'Parks Nearby' is
+// deliberately excluded: the old rental catalog stored it as a 'rating' (a 1-5 star
+// evaluation on the home), while the new canonical 'Parks nearby' is 'check' (a plain
+// Yes/No fact); a home's already-recorded star rating has no clean, non-guessed
+// translation into a Yes/No fact, so that one stays un-folded and preserved under its
+// own old identity instead (see splitCategoryItems' legacySelected fallback).
+// Deliberately scoped to Home to Rent only — Apartment to Rent's own legacy catalog is
+// retired by a different, apartment-specific taxonomy replacement, not aliased here.
+const RENTAL_HOME_LEGACY_LABEL_ALIASES = {
+  features: {
+    'Home Office': 'Home office', 'Central Air': 'Central air', 'Primary Ensuite': 'Primary ensuite',
+    'First-Floor Laundry': 'First-floor laundry', 'Finished Basement': 'Finished basement',
+    'Walkout Basement': 'Walkout basement',
+  },
+  exterior: { 'Fenced Yard': 'Fenced yard', 'Patio / Deck / Outdoor Living': 'Patio / deck' },
+};
+
 // Every purchase category's coreItems is always empty (see LOCATION_CORE/
 // FEATURES_CORE/EXTERIOR_CORE) — every canonical item, including alias targets,
 // is a "suggested" item that only renders as a selected priority once it has
@@ -426,10 +483,13 @@ function foldLegacyLabelAliasesInCategory(catState, aliases, coreLabels) {
 }
 
 function foldLegacyLabelAliases(priorities) {
-  if (normalizeSearchIntent(priorities.searchType) !== 'purchase') return priorities;
+  const intent = normalizeSearchIntent(priorities.searchType);
+  const isHomeRental = intent === 'rental' && !isApartmentRental(priorities);
+  if (intent !== 'purchase' && !isHomeRental) return priorities;
+  const aliasTable = intent === 'purchase' ? PURCHASE_LEGACY_LABEL_ALIASES : RENTAL_HOME_LEGACY_LABEL_ALIASES;
   let next = priorities;
-  Object.entries(PURCHASE_LEGACY_LABEL_ALIASES).forEach(([categoryKey, aliases]) => {
-    const folded = foldLegacyLabelAliasesInCategory(next[categoryKey], aliases, PURCHASE_CATEGORY_CORE_LABELS[categoryKey]);
+  Object.entries(aliasTable).forEach(([categoryKey, aliases]) => {
+    const folded = foldLegacyLabelAliasesInCategory(next[categoryKey], aliases, PURCHASE_CATEGORY_CORE_LABELS[categoryKey] || new Set());
     if (folded !== next[categoryKey]) next = { ...next, [categoryKey]: folded };
   });
   return next;
@@ -603,8 +663,10 @@ function foldQualifiedCriteriaBackToFlat(priorities) {
 // the legacy key stays visible (falls back to it only when the canonical key itself is
 // unset) without ever overwriting an explicit canonical-key answer. Used wherever a
 // home's checks are read for Match or for the Edit Home tri-state control.
-export function foldLegacyCheckAliases(checks, searchType) {
-  if (!checks || normalizeSearchIntent(searchType) !== 'purchase') return checks || {};
+export function foldLegacyCheckAliases(checks, searchType, isApartment = false) {
+  const intent = normalizeSearchIntent(searchType);
+  const isHomeRental = intent === 'rental' && !isApartment;
+  if (!checks || (intent !== 'purchase' && !isHomeRental)) return checks || {};
   let folded = null;
   const foldInto = (canonicalKey, legacyKey) => {
     if (checks[canonicalKey] === undefined && checks[legacyKey] !== undefined) {
@@ -612,27 +674,28 @@ export function foldLegacyCheckAliases(checks, searchType) {
       folded[canonicalKey] = checks[legacyKey];
     }
   };
-  // Garage stays a parent/qualifier criterion, so its old flat fact keys still fold
-  // forward into the qualifier fact keys — an "Attached garage: Yes" recorded on a
-  // home is exactly the same fact as "Garage, Attached qualifier: Yes."
-  foldInto(qualifierFactKey('exterior', 'Garage', 'attached'), 'exterior:Attached garage');
-  foldInto(qualifierFactKey('exterior', 'Garage', 'detached'), 'exterior:Detached garage');
-  // REVISION (2026 Basics/taxonomy correction): Fenced Yard and First-Floor Bedroom are
-  // reverted to flat independent criteria, so this direction is reversed from the fold
-  // above — a fact recorded under the PARENT+QUALIFIER key during the period that model
-  // was live (e.g. "Fenced yard, Privacy qualifier: Yes") now folds forward onto the new
-  // flat canonical fact key, so it stays visible to Match without ever being overwritten.
-  foldInto('exterior:Privacy Fencing', qualifierFactKey('exterior', 'Fenced yard', 'privacy'));
-  foldInto('features:First-Floor Primary', qualifierFactKey('features', 'First-Floor Bedroom', 'primary'));
-  foldInto('features:Guest Bedroom', qualifierFactKey('features', 'First-Floor Bedroom', 'guest'));
-  Object.entries(PURCHASE_LEGACY_LABEL_ALIASES).forEach(([categoryKey, aliases]) => {
+  if (intent === 'purchase') {
+    // Garage stays a parent/qualifier criterion, so its old flat fact keys still fold
+    // forward into the qualifier fact keys — an "Attached garage: Yes" recorded on a
+    // home is exactly the same fact as "Garage, Attached qualifier: Yes."
+    foldInto(qualifierFactKey('exterior', 'Garage', 'attached'), 'exterior:Attached garage');
+    foldInto(qualifierFactKey('exterior', 'Garage', 'detached'), 'exterior:Detached garage');
+    // REVISION (2026 Basics/taxonomy correction): Fenced Yard and First-Floor Bedroom are
+    // reverted to flat independent criteria, so this direction is reversed from the fold
+    // above — a fact recorded under the PARENT+QUALIFIER key during the period that model
+    // was live (e.g. "Fenced yard, Privacy qualifier: Yes") now folds forward onto the new
+    // flat canonical fact key, so it stays visible to Match without ever being overwritten.
+    foldInto('exterior:Privacy Fencing', qualifierFactKey('exterior', 'Fenced yard', 'privacy'));
+    foldInto('features:First-Floor Primary', qualifierFactKey('features', 'First-Floor Bedroom', 'primary'));
+    foldInto('features:Guest Bedroom', qualifierFactKey('features', 'First-Floor Bedroom', 'guest'));
+  }
+  // Home to Rent (2026 parity pass) needs the same label-casing fact fold purchase
+  // already had — see RENTAL_HOME_LEGACY_LABEL_ALIASES. Apartment to Rent is
+  // deliberately excluded: its old catalog is retired by a new, unrelated taxonomy.
+  const aliasTable = intent === 'purchase' ? PURCHASE_LEGACY_LABEL_ALIASES : RENTAL_HOME_LEGACY_LABEL_ALIASES;
+  Object.entries(aliasTable).forEach(([categoryKey, aliases]) => {
     Object.entries(aliases).forEach(([legacyLabel, canonicalLabel]) => {
-      const canonicalKey = `${categoryKey}:${canonicalLabel}`;
-      const legacyKey = `${categoryKey}:${legacyLabel}`;
-      if (checks[canonicalKey] === undefined && checks[legacyKey] !== undefined) {
-        folded = folded || { ...checks };
-        folded[canonicalKey] = checks[legacyKey];
-      }
+      foldInto(`${categoryKey}:${canonicalLabel}`, `${categoryKey}:${legacyLabel}`);
     });
   });
   return folded || checks;
@@ -675,16 +738,14 @@ export function effectiveTier(categoryKey, label, priorities, rawTier) {
 const LEGACY_FEATURES = ['Basement', 'Fireplace', 'Primary Ensuite', 'Central Air', 'Home Office', 'Finished Basement', 'Walkout Basement', 'First-Floor Laundry', 'Mudroom', 'Pantry', 'Storage', 'Updated Kitchen', 'Updated Bathrooms', 'Walk-In Closet', 'Additional Living Space', 'Hardwood Floors', 'Dishwasher', 'In-Unit Laundry', 'Updated Interior', 'Pets Allowed', 'Utilities Included'].map((label) => ({ label, kind: label === 'Storage' ? 'rating' : 'check' }));
 const LEGACY_LOCATION = ['Walkability', 'Immediate Street / Surroundings', 'Parks Nearby', 'Dog Parks Nearby', 'Groceries Nearby', 'Restaurants / Coffee / Shopping Nearby'].map((label) => ({ label, kind: 'rating' }));
 const LEGACY_EXTERIOR = [{ label: 'Yard', kind: 'rating' }, { label: 'Garage', kind: 'check' }, { label: 'Privacy', kind: 'rating' }, { label: 'Fenced Yard', kind: 'check' }, { label: 'Sidewalks', kind: 'check' }, { label: 'Exterior Condition', kind: 'rating' }, { label: 'Landscaping', kind: 'rating' }, { label: 'Curb Appeal', kind: 'rating' }, { label: 'Outdoor Space', kind: 'rating' }, { label: 'Noise Level', kind: 'rating' }, { label: 'Patio / Deck / Outdoor Living', kind: 'check' }, { label: 'Attached Garage', kind: 'check' }, { label: 'Driveway / Off-Street Parking', kind: 'check' }, { label: 'Pool', kind: 'check' }, { label: 'Fitness Center', kind: 'check' }, { label: 'Secure Entry', kind: 'check' }, { label: 'Elevator', kind: 'check' }];
-const RENTAL_FEATURES = LEGACY_FEATURES;
-const RENTAL_EXTERIOR = [
-  { label: 'Parking', kind: 'check' }, { label: 'Garage', kind: 'check' },
-  { label: 'Driveway / Off-Street Parking', kind: 'check' }, { label: 'Fenced Yard', kind: 'check' },
-  { label: 'Outdoor Space', kind: 'rating' }, { label: 'Patio / Deck / Outdoor Living', kind: 'check' },
-  { label: 'Privacy', kind: 'rating' }, { label: 'Elevator', kind: 'check' },
-  { label: 'Building Amenities', kind: 'check' }, { label: 'Noise Level', kind: 'rating' },
-  { label: 'Pool', kind: 'check' }, { label: 'Fitness Center', kind: 'check' },
-  { label: 'Secure Entry', kind: 'check' },
-];
+// RENTAL_FEATURES/RENTAL_EXTERIOR (formerly the single shared catalog for both
+// Home to Rent and Apartment to Rent) are retired by the 2026 Home-to-Rent parity /
+// Apartment taxonomy pass: Home to Rent now uses FEATURES_SUGGESTED/EXTERIOR_SUGGESTED
+// directly (shared with Home to Buy), and Apartment to Rent uses its own
+// APARTMENT_FEATURES/APARTMENT_AMENITIES catalog above. Neither array is deleted from
+// history — see RENTAL_HOME_LEGACY_LABEL_ALIASES and the generic legacySelected
+// fallback in splitCategoryItems for how already-selected old labels stay visible and
+// keep scoring without being offered to new selections.
 
 export const MULTISELECT_CATEGORIES = [
   { key: 'homeLayout', title: 'Home Layout', optional: true, options: LAYOUT_OPTIONS },
@@ -727,29 +788,49 @@ export const SINGLESELECT_CATEGORIES = [
 ];
 
 // Category order per product spec: Location, Home Features, Exterior & Property, Home Feel (last).
-// Purchase uses the established catalog, Rental uses one unified suggestion bank,
-// and Investment keeps its established additions.
-export function getItemlistCategories(searchType) {
+// Purchase and Home to Rent share one canonical Home catalog (see the 2026 Home-to-Rent
+// parity pass); Apartment to Rent has its own dedicated Living There / Apartment
+// Features / Amenities catalog; Investment keeps its established additions.
+//
+// `isApartment` distinguishes Apartment to Rent from a rented HOUSE within the single
+// 'rental' intent (searchType alone can't — see isApartmentRental, which needs the full
+// priorities object). Every real call site already has that object in scope and passes
+// `{ isApartment: isApartmentRental(priorities) }`; omitting it (as bare-string test
+// callers and onboarding's purchase-only helper do) defaults to the Home-to-Rent-parity
+// behavior for a plain 'rental' string, since Home to Rent — not Apartment to Rent — is
+// the taxonomy that now mirrors Home to Buy.
+export function getItemlistCategories(searchType, { isApartment = false } = {}) {
   const intent = normalizeSearchIntent(searchType);
   const isRental = intent === 'rental';
   const isInvestment = intent === 'investment';
+  const isApartmentRentalIntent = isRental && isApartment;
+  const isHomeRental = isRental && !isApartment;
 
   const location = {
-    key: 'location', title: 'Location & Surroundings',
-    blurb: 'Useful location details that can be established before a tour.',
-    coreItems: isInvestment ? [{ label: 'Schools', kind: 'check' }, { label: 'Commute', kind: 'rating' }, { label: 'Neighborhood', kind: 'rating' }] : isRental ? [{ label: 'Neighborhood', kind: 'rating' }] : LOCATION_CORE,
-    suggestedItems: [
-      ...(intent === 'purchase' ? LOCATION_SUGGESTED : LEGACY_LOCATION),
-      ...(isInvestment ? [{ label: 'Proximity to Family / Friends', kind: 'rating' }] : []),
-      ...(isInvestment ? [{ label: 'Tenant Appeal', kind: 'rating' }] : []),
-    ],
-    defaultCustomKind: 'rating',
+    key: 'location',
+    title: isApartmentRentalIntent ? 'Living There' : 'Location & Surroundings',
+    blurb: isApartmentRentalIntent ? 'What day-to-day life is like at this property.' : 'Useful location details that can be established before a tour.',
+    coreItems: isInvestment ? [{ label: 'Schools', kind: 'check' }, { label: 'Commute', kind: 'rating' }, { label: 'Neighborhood', kind: 'rating' }] : LOCATION_CORE,
+    suggestedItems: isApartmentRentalIntent ? APARTMENT_LIVING_THERE
+      : intent === 'purchase' ? LOCATION_SUGGESTED
+      : isHomeRental ? LOCATION_SUGGESTED_HOME_RENTAL
+      : [
+          ...LEGACY_LOCATION,
+          ...(isInvestment ? [{ label: 'Proximity to Family / Friends', kind: 'rating' }] : []),
+          ...(isInvestment ? [{ label: 'Tenant Appeal', kind: 'rating' }] : []),
+        ],
+    defaultCustomKind: isApartmentRentalIntent ? 'check' : 'rating',
   };
 
-  const features = isRental
+  const features = isApartmentRentalIntent
+    ? {
+        key: 'features', title: 'Apartment Features', blurb: "Specific things the apartment either has or doesn't.",
+        coreItems: [], suggestedItems: APARTMENT_FEATURES, defaultCustomKind: 'check',
+      }
+    : isHomeRental
     ? {
         key: 'features', title: 'Home Features', blurb: "Specific things the home either has or doesn't.",
-        coreItems: [], suggestedItems: RENTAL_FEATURES, specificItems: FEATURES_SPECIFIC, defaultCustomKind: 'check',
+        coreItems: [], suggestedItems: FEATURES_SUGGESTED, specificItems: FEATURES_SPECIFIC, defaultCustomKind: 'check',
       }
     : {
         key: 'features', title: 'Home Features', blurb: "Specific things the home either has or doesn't.",
@@ -762,10 +843,15 @@ export function getItemlistCategories(searchType) {
         defaultCustomKind: 'check',
       };
 
-  const exterior = isRental
+  const exterior = isApartmentRentalIntent
     ? {
-        key: 'exterior', title: 'Exterior & Building', blurb: 'Parking, outdoor space, and how the building feels.',
-        coreItems: [], suggestedItems: RENTAL_EXTERIOR, defaultCustomKind: 'check',
+        key: 'exterior', title: 'Amenities', blurb: 'Building and property amenities.',
+        coreItems: [], suggestedItems: APARTMENT_AMENITIES, defaultCustomKind: 'check',
+      }
+    : isHomeRental
+    ? {
+        key: 'exterior', title: 'Exterior & Property', blurb: 'The yard, parking, and outdoor spaces.',
+        coreItems: [], suggestedItems: EXTERIOR_SUGGESTED, defaultCustomKind: 'check',
       }
     : {
         key: 'exterior', title: 'Exterior & Property', blurb: 'The yard, parking, and outdoor spaces.',
@@ -788,10 +874,11 @@ export function getItemlistCategories(searchType) {
     defaultCustomKind: 'rating',
   };
 
-  // Purchase searches intentionally expose only pre-tour, listing-verifiable
-  // families. Stored legacy Home Feel priorities remain in the JSON document,
-  // but are no longer offered or counted as unfinished pre-tour work.
-  return intent === 'purchase' ? [location, features, exterior] : [location, features, exterior, homeFeel];
+  // Purchase, Home to Rent, and Apartment to Rent all intentionally expose only
+  // pre-tour, listing-verifiable families — Home Feel is Investment-only now. Stored
+  // legacy Home Feel priorities remain in the JSON document for every intent, but are
+  // no longer offered or counted as unfinished pre-tour work once dropped here.
+  return (intent === 'purchase' || isHomeRental || isApartmentRentalIntent) ? [location, features, exterior] : [location, features, exterior, homeFeel];
 }
 
 // Toured remains readable as a legacy status, but new writes store tour history in

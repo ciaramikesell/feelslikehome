@@ -244,7 +244,7 @@ function CollaboratorContext({ context }) {
   if (!context) return null;
   const name = context.displayName || 'Your collaborator';
   const priorities = normalizePriorities(context.priorities);
-  const boardItems = getItemlistCategories(priorities.searchType).flatMap((category) =>
+  const boardItems = getItemlistCategories(priorities.searchType, { isApartment: isApartmentRental(priorities) }).flatMap((category) =>
     Object.entries(priorities[category.key]?.tiers || {})
       .filter(([, tier]) => tier && tier !== 'dontcare')
       .map(([, tier]) => ({ tier }))

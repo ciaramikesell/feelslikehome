@@ -6,7 +6,7 @@ import { StarInput } from '@/components/ui';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
   isArchivedStatus, isRentalType, TOUR_RATING_KEY, criterionDisplayLabel, TIER_ORDER, foldLegacyCheckAliases,
-  qualifierFactRows,
+  qualifierFactRows, isApartmentRental,
 } from '@/lib/constants';
 import { visibleOrderedItems, parseListingTextFindings, selectedSubjectiveCriteria, computeMatch } from '@/lib/matching';
 import { extractAddressFromListingUrl, extractApartmentIdentityFromListingUrl, isLikelyListingUrl } from '@/lib/listingUrl';
@@ -243,8 +243,8 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
   // See foldLegacyCheckAliases: a fact recorded on this home under a pre-taxonomy-
   // unification legacy label (e.g. 'features:Home Office') stays visible here once the
   // search's own priority has folded onto the canonical label.
-  const foldedChecks = foldLegacyCheckAliases(form.checks, priorities.searchType);
-  const criteria = getItemlistCategories(priorities.searchType).flatMap((category) =>
+  const foldedChecks = foldLegacyCheckAliases(form.checks, priorities.searchType, isApartmentRental(priorities));
+  const criteria = getItemlistCategories(priorities.searchType, { isApartment: isApartmentRental(priorities) }).flatMap((category) =>
     visibleOrderedItems(category, priorities)
       // Garage's base "any garage" fact is already collected by the Garage field
       // in Key details (garageSpaces) — showing a second, redundant manual

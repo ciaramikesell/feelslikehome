@@ -9,18 +9,18 @@ export const NEW_SEARCH_CHOICES = Object.freeze([
 
 const item = (categoryKey, label, kind = 'rating', displayLabel = label) => Object.freeze({ categoryKey, label, kind, displayLabel });
 
-// Home to Buy's suggestions are derived directly from the same canonical purchase
-// catalog My Search itself reads (getItemlistCategories) — one shared taxonomy, not a
-// second hand-authored list that can silently drift out of sync with it (see
-// PURCHASE_LEGACY_LABEL_ALIASES in constants.js for the history of what that drift
-// already caused: duplicate Home Office/Fenced Yard selections, and onboarding
-// offering several built-ins — Neighborhood, Walkability, Garage, Immediate Street/
-// Surroundings, generic Basement/Yard, the old Guest / In-Law Suite — that had been
-// retired from purchase Match entirely, so picking them in onboarding silently did
-// nothing). Home Feel is intentionally absent: it is not part of the purchase pre-tour
-// catalog at all (Post-Tour owns those experiential dimensions instead).
-function purchaseOnboardingGroup(categoryKey, groupTitle) {
-  const def = getItemlistCategories('purchase').find((category) => category.key === categoryKey);
+// Home to Buy's, Home to Rent's, and Apartment to Rent's suggestions are all derived
+// directly from the same canonical catalog My Search itself reads (getItemlistCategories)
+// — one shared taxonomy per search type, never a second hand-authored list that can
+// silently drift out of sync with it (see PURCHASE_LEGACY_LABEL_ALIASES/
+// RENTAL_HOME_LEGACY_LABEL_ALIASES in constants.js for the history of what that drift
+// already caused: duplicate Home Office/Fenced Yard selections, and onboarding offering
+// several built-ins that had been retired from Match entirely, so picking them in
+// onboarding silently did nothing). Home Feel is intentionally absent for all three: it
+// is not part of any of their pre-tour catalogs (Post-Tour owns those experiential
+// dimensions instead).
+function onboardingGroup(intentSearchType, isApartment, categoryKey, groupTitle) {
+  const def = getItemlistCategories(intentSearchType, { isApartment }).find((category) => category.key === categoryKey);
   const items = [...def.coreItems, ...def.suggestedItems]
     .map((entry) => item(categoryKey, entry.label, entry.kind, criterionDisplayLabel(categoryKey, entry.label)));
   return [groupTitle, items];
@@ -28,20 +28,26 @@ function purchaseOnboardingGroup(categoryKey, groupTitle) {
 
 export const ONBOARDING_SUGGESTIONS = Object.freeze({
   home_buy: Object.freeze([
-    purchaseOnboardingGroup('location', 'Location'),
-    purchaseOnboardingGroup('features', 'Home Features'),
-    purchaseOnboardingGroup('exterior', 'Exterior & Property'),
+    onboardingGroup('purchase', false, 'location', 'Location'),
+    onboardingGroup('purchase', false, 'features', 'Home Features'),
+    onboardingGroup('purchase', false, 'exterior', 'Exterior & Property'),
   ]),
+  // 2026 Home-to-Rent parity pass: a rented HOUSE now shares Home to Buy's exact
+  // canonical catalog (minus No HOA — see LOCATION_SUGGESTED_HOME_RENTAL), rather than
+  // a separately hand-authored rental list.
   home_rent: Object.freeze([
-    ['Location', [item('location', 'Neighborhood'), item('location', 'Walkability'), item('location', 'Parks Nearby'), item('location', 'Immediate Street / Surroundings', 'rating', 'Quiet Street')]],
-    ['Home Features', [item('features', 'Basement', 'check'), item('features', 'Fireplace', 'check'), item('features', 'Primary Ensuite', 'check'), item('features', 'Home Office', 'check'), item('features', 'Central Air', 'check'), item('features', 'Hardwood Floors', 'check')]],
-    ['Exterior & Property', [item('exterior', 'Garage', 'check'), item('exterior', 'Fenced Yard', 'check'), item('exterior', 'Outdoor Space'), item('exterior', 'Patio / Deck / Outdoor Living', 'check', 'Patio / Deck'), item('exterior', 'Privacy', 'rating', 'Yard Privacy')]],
-    ['Living There', [item('features', 'Pets Allowed', 'check'), item('features', 'Utilities Included', 'check'), item('homeFeel', 'Overall Condition'), item('homeFeel', 'Layout / Flow', 'rating', 'Layout'), item('homeFeel', 'Natural Light'), item('homeFeel', 'Privacy', 'rating', 'Privacy'), item('exterior', 'Noise Level')]],
+    onboardingGroup('rental', false, 'location', 'Location'),
+    onboardingGroup('rental', false, 'features', 'Home Features'),
+    onboardingGroup('rental', false, 'exterior', 'Exterior & Property'),
   ]),
+  // 2026 apartment taxonomy replacement: Apartment to Rent has its own dedicated
+  // catalog — apartment evaluation spans the unit, the building/property,
+  // apartment-specific amenities, and the day-to-day living experience, so it is
+  // deliberately never forced into the house taxonomy above.
   apartment_rent: Object.freeze([
-    ['The Unit', [item('features', 'In-Unit Laundry', 'check'), item('features', 'Central Air', 'check'), item('features', 'Dishwasher', 'check'), item('features', 'Updated Interior', 'check'), item('exterior', 'Patio / Deck / Outdoor Living', 'check', 'Balcony / Patio'), item('features', 'Home Office', 'check', 'Home Office Space')]],
-    ['The Property', [item('exterior', 'Parking', 'check'), item('exterior', 'Fitness Center', 'check'), item('exterior', 'Pool', 'check'), item('exterior', 'Secure Entry', 'check'), item('exterior', 'Outdoor Space'), item('exterior', 'Elevator', 'check'), item('features', 'Pets Allowed', 'check', 'Pet-Friendly')]],
-    ['Living There', [item('exterior', 'Noise Level', 'rating', 'Quiet Community'), item('homeFeel', 'Social Community'), item('homeFeel', 'On-Site Management'), item('homeFeel', 'Privacy'), item('location', 'Neighborhood', 'rating', 'Surrounding Neighborhood')]],
+    onboardingGroup('rental', true, 'location', 'Living There'),
+    onboardingGroup('rental', true, 'features', 'Apartment Features'),
+    onboardingGroup('rental', true, 'exterior', 'Amenities'),
   ]),
 });
 

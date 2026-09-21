@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Heart, Footprints, Star, Archive, Users } from 'lucide-react';
-import { normalizePriorities, TIER_META, TOUR_RATING_KEY, getItemlistCategories, effectiveTier, criterionDisplayLabel } from '@/lib/constants';
+import { normalizePriorities, TIER_META, TOUR_RATING_KEY, getItemlistCategories, effectiveTier, criterionDisplayLabel, isApartmentRental } from '@/lib/constants';
 import { splitCategoryItems } from '@/lib/matching';
 import { computeMatch, matchColor } from '@/lib/matching';
 import { homeIdentity } from '@/lib/homePresentation';
@@ -25,7 +25,7 @@ function priorityBuckets(raw) {
     const detail = value?.value || value?.values?.join(', ') || '';
     return [{ key, label, detail, tier }];
   });
-  getItemlistCategories(p.searchType).forEach((definition) => {
+  getItemlistCategories(p.searchType, { isApartment: isApartmentRental(p) }).forEach((definition) => {
     const { core, custom } = splitCategoryItems(definition, p);
     [...core, ...custom].forEach((item) => {
       const tier = effectiveTier(definition.key, item.label, p, p[definition.key]?.tiers?.[item.label]);

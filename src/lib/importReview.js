@@ -1,4 +1,4 @@
-import { getItemlistCategories } from './constants.js';
+import { getItemlistCategories, isApartmentRental } from './constants.js';
 
 const SHARED_CRITERIA = new Set([
   'exterior:Garage', 'features:Pets Allowed', 'features:Utilities Included', 'features:In-Unit Laundry',
@@ -36,7 +36,7 @@ const MARKETING_OR_AMBIGUOUS = /\b(?:possible|potential|space for|ready for|near
 
 export function derivePriorityCheckPatch(text, priorities, currentChecks = {}) {
   const patch = {};
-  const catalog = new Map(getItemlistCategories(priorities?.searchType).flatMap((category) =>
+  const catalog = new Map(getItemlistCategories(priorities?.searchType, { isApartment: isApartmentRental(priorities) }).flatMap((category) =>
     [...category.coreItems, ...category.suggestedItems, ...(category.specificItems || [])]
       .map((item) => [`${category.key}:${item.label}`, item])));
 
