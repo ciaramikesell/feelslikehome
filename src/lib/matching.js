@@ -1,4 +1,4 @@
-import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier, isExperientialCriterion, isRetiredPurchaseBuiltIn, TOUR_RESPONSE, tourResponseLabel } from './constants.js';
+import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier, isExperientialCriterion, isRetiredPurchaseBuiltIn, foldLegacyCheckAliases, TOUR_RESPONSE, tourResponseLabel } from './constants.js';
 import { normalizeSearchIntent } from './searchIntent.js';
 import { EVIDENCE_STRENGTH, findingsFromFields } from './importDomain.js';
 
@@ -280,6 +280,10 @@ export function parseListingTextFindings(text, searchType = null) {
 
 export function computeMatch(home, priorities, commuteEvaluation = null) {
   if (!priorities) return null;
+  // See foldLegacyCheckAliases: a home fact recorded under a pre-taxonomy-unification
+  // legacy label (e.g. 'features:Home Office') still counts once the search's own
+  // priority has folded onto the canonical label — never silently forgotten.
+  const checks = foldLegacyCheckAliases(home.checks, priorities.searchType);
   const all = []; // every priority the user actually selected, evaluated or not
   const push = (key, label, tier, evaluated, score, met, detail, objective) => {
     all.push({ key, label, tier, evaluated, score, met, detail, objective });
@@ -432,7 +436,7 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
       // touched" — both rendered identically) is deliberately still treated
       // as Unknown here, preserving today's exact Match behavior for every
       // home that predates this UI. UNKNOWN MUST NOT PRODUCE MISSING.
-      const raw = home.checks?.[ns];
+      const raw = checks[ns];
       if (raw === true) { push(ns, item.label, tier, true, 1, true, 'Yes', true); return; }
       if (raw === 'no') { push(ns, item.label, tier, true, 0, false, 'No', true); return; }
       notEvaluated(ns, item.label, tier, true);

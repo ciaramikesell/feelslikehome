@@ -9,7 +9,6 @@ import { DEFAULT_SELECTED_TIER, TIER_DESCRIPTIONS, TIER_META, TIER_ORDER, criter
 // canonical value Match actually uses and is untouched by this label.
 const TIER_WEIGHT_LABEL = { must: 'Highest weight', important: 'Medium weight', nice: 'Lowest weight' };
 import { selectPriorityItem, splitCategoryItems } from '@/lib/matching';
-import SchoolsRelevanceGate from '@/components/SchoolsRelevanceGate';
 import Sheet from '@/components/Sheet';
 
 // The list of one tier's selected priorities — tap a priority to reveal
@@ -147,7 +146,14 @@ export default function PriorityBoard({ priorities, patch, onboarding = false, c
     const label = newItem.trim();
     if (!label || !newItemCategory) return;
     const def = categories.find((category) => category.key === newItemCategory);
-    addCustomItem(newItemCategory, { label, kind: def?.defaultCustomKind || 'check', source: 'custom' });
+    // A typed label matching an existing canonical/custom item in the chosen
+    // category (case-insensitive) selects that item instead of creating a
+    // visibly duplicate custom priority alongside it.
+    const normalized = label.toLowerCase();
+    const pool = pools.find((candidate) => candidate.def.key === newItemCategory);
+    const existing = pool && [...pool.core, ...pool.custom, ...pool.suggestions].find((item) => item.label.toLowerCase() === normalized);
+    if (existing) selectItem(def, existing);
+    else addCustomItem(newItemCategory, { label, kind: def?.defaultCustomKind || 'check', source: 'custom' });
     setNewItem('');
   };
   const setSchoolsNote = (note) => patch((next) => {
@@ -159,6 +165,12 @@ export default function PriorityBoard({ priorities, patch, onboarding = false, c
 
   return (
     <div>
+      {!onboarding && (
+        <div className="hh-priority-board-intro">
+          <h4 className="hh-priority-board-heading">Rank what matters to you</h4>
+          <p className="hh-priority-board-instruction">Drag any priority to move it between the three columns.</p>
+        </div>
+      )}
       {selected.length || choicesOpen ? (
         <>
           {hasExperiential && <div className="hh-priority-legend"><span aria-hidden="true">◷</span> After tour</div>}
@@ -233,10 +245,9 @@ export default function PriorityBoard({ priorities, patch, onboarding = false, c
 
       {choicesOpen && (
         <div className="hh-add-priority-panel">
-          {!onboarding && <div className="hh-schools-gate"><SchoolsRelevanceGate priorities={priorities} patch={patch} /></div>}
           <p className="hh-add-priority-help">{onboarding
             ? 'Drag a preference into the column that matches how much it matters to you. You can move it later if you change your mind. You can also click a preference to add it.'
-            : 'Drag any preference below into Must Have, Important, or Nice to Have. You can also drag your existing priorities between columns to change how much they matter.'}</p>
+            : 'Drag a preference below into a column to add it to your priorities.'}</p>
           <div className="hh-suggestion-grid">
             {pools.map(({ def, core, custom, suggestions }) => {
               const unselected = [...core, ...custom].filter((item) => tierOf(def, item.label) === 'dontcare');
@@ -254,7 +265,17 @@ export default function PriorityBoard({ priorities, patch, onboarding = false, c
                 <section key={def.key}>
                   <h4 className="hh-suggestion-heading">{def.title}</h4>
                   <div className="hh-suggestion-tray">
-                    {tray.map((item) => <button key={item.label} type="button" draggable className="hh-chip" onClick={() => selectItem(def, item)} onDragStart={(event) => { setDragged({ type: 'available', def, item }); event.dataTransfer.effectAllowed = 'copy'; event.dataTransfer.setData('text/plain', `${def.key}:${item.label}`); }} onDragEnd={() => { setDragged(null); setDropTier(null); }}>{criterionDisplayLabel(def.key, item.label)}{isExperientialCriterion(def.key, item.label) && <span className="hh-picker-tour-mark" aria-label="Evaluate after tour" title="You'll evaluate this after touring the home"> ◷</span>}</button>)}
+                    {tray.flatMap((item) => {
+                      const chip = <button key={item.label} type="button" draggable className="hh-chip" onClick={() => selectItem(def, item)} onDragStart={(event) => { setDragged({ type: 'available', def, item }); event.dataTransfer.effectAllowed = 'copy'; event.dataTransfer.setData('text/plain', `${def.key}:${item.label}`); }} onDragEnd={() => { setDragged(null); setDropTier(null); }}>{criterionDisplayLabel(def.key, item.label)}{isExperientialCriterion(def.key, item.label) && <span className="hh-picker-tour-mark" aria-label="Evaluate after tour" title="You'll evaluate this after touring the home"> ◷</span>}</button>;
+                      // A deliberate, deterministic line break (not brittle absolute
+                      // positioning) so Pool — the start of the yard-amenity group —
+                      // always begins its own visual row in the Exterior & Property
+                      // tray, at any width, instead of wrapping wherever it happens
+                      // to land after the longer parking/fencing labels above it.
+                      return def.key === 'exterior' && item.label === 'Pool'
+                        ? [<span key="pool-break" className="hh-suggestion-tray-break" aria-hidden="true" />, chip]
+                        : [chip];
+                    })}
                   </div>
                 </section>
               );

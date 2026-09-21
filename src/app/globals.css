@@ -326,6 +326,10 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-search-reveal { display: grid; grid-template-columns: minmax(0,1.25fr) minmax(260px,.75fr); gap: 22px; padding: 24px; border: 1px solid rgba(193,89,47,.2); border-radius: 18px; background: linear-gradient(135deg, rgba(255,255,255,.78), rgba(198,146,69,.1)); }
 .hh-search-reveal h2 { margin: 2px 0 7px; color: var(--brick); font-size: 25px; }
 .hh-search-reveal p { margin: 0; color: var(--ink-soft); font-size: 13.5px; line-height: 1.55; }
+/* Beta testing showed the drag-and-drop instruction got missed when styled as
+   quiet helper text — this is the one paragraph in the reveal that must read
+   as instructional, not fine print. */
+.hh-search-reveal-instruction { color: var(--ink); font-size: 15px; font-weight: 500; line-height: 1.6; }
 .hh-first-home-handoff { padding-left: 22px; border-left: 1px solid var(--line); }
 .hh-first-home-handoff strong { display: block; margin-bottom: 4px; color: var(--ink); }
 .hh-first-home-handoff .hh-btn { margin-top: 13px; }
@@ -341,6 +345,11 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-onboarding-brand { display: flex; justify-content: center; align-items: center; gap: 9px; margin-bottom: 17px; font-size: 18px; }
 .hh-onboarding-brand b { color: var(--brick); }
 .hh-onboarding-progress { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; padding: 0; margin: 0 0 22px; list-style: none; }
+/* The buyer's own onboarding is three stages (Basics, What Matters, Rank
+   Priorities — see Onboarding.jsx); the separate Realtor client-search-setup
+   flow (ClientSearchSetup.jsx, out of scope for this pass) still has four and
+   keeps the base rule above. */
+.hh-onboarding-progress-3 { grid-template-columns: repeat(3,1fr); }
 .hh-onboarding-progress li { display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--ink-soft); font-size: 11px; }
 .hh-onboarding-progress li > span { display: inline-flex; flex: 0 0 22px; width: 22px; height: 22px; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%; font-weight: 700; }
 .hh-onboarding-progress li b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -424,11 +433,14 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-tier-summary-row > svg { flex-shrink: 0; color: var(--ink-soft); }
 .hh-add-priority-toggle { margin-top: 16px; padding: 4px 10px; font-size: 11.5px; }
 .hh-add-priority-panel { margin-top: 16px; padding-top: 18px; border-top: 1px solid var(--line); }
-.hh-schools-gate { margin-bottom: 16px; }
 .hh-add-priority-help { margin: 0 0 14px; color: var(--ink-soft); font-size: 11.5px; }
+.hh-priority-board-intro { margin: -2px 0 14px; }
+.hh-priority-board-heading { margin: 0 0 3px; color: var(--ink); font-size: 14.5px; font-weight: 700; }
+.hh-priority-board-instruction { margin: 0; color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
 .hh-suggestion-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px 24px; align-items: start; }
 .hh-suggestion-heading { margin: 0 0 8px; color: var(--ink-soft); font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
 .hh-suggestion-tray { display: flex; flex-wrap: wrap; gap: 6px; }
+.hh-suggestion-tray-break { flex-basis: 100%; width: 0; height: 0; }
 .hh-suggestion-tray .hh-chip { cursor: grab; }
 .hh-suggestion-tray .hh-chip:active { cursor: grabbing; }
 .hh-custom-priority { display: flex; gap: 6px; margin-top: 16px; flex-wrap: wrap; }

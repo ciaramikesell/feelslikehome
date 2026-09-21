@@ -60,10 +60,11 @@ test('Schools configuration and specific/custom preference discovery remain avai
   assert.match(board, /addCustomItem\(newItemCategory/);
 });
 
-test('drag education explicitly covers suggestions, destination tiers, and existing priorities', () => {
+test('drag education distinguishes moving existing priorities from adding new ones', () => {
   const board = read('src/components/PriorityBoard.jsx');
-  assert.match(board, /Drag any preference below into Must Have, Important, or Nice to Have\./);
-  assert.match(board, /drag your existing priorities between columns to change how much they matter\./);
+  assert.match(board, /Rank what matters to you/);
+  assert.match(board, /Drag any priority to move it between the three columns\./);
+  assert.match(board, /Drag a preference below into a column to add it to your priorities\./);
   assert.match(board, /className="hh-chip" onClick=\{\(\) => selectItem\(def, item\)\} onDragStart/);
 });
 

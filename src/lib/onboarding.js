@@ -1,4 +1,4 @@
-import { normalizePriorities } from './constants.js';
+import { normalizePriorities, getItemlistCategories, criterionDisplayLabel } from './constants.js';
 import { selectPriorityItem } from './matching.js';
 
 export const NEW_SEARCH_CHOICES = Object.freeze([
@@ -9,12 +9,28 @@ export const NEW_SEARCH_CHOICES = Object.freeze([
 
 const item = (categoryKey, label, kind = 'rating', displayLabel = label) => Object.freeze({ categoryKey, label, kind, displayLabel });
 
+// Home to Buy's suggestions are derived directly from the same canonical purchase
+// catalog My Search itself reads (getItemlistCategories) — one shared taxonomy, not a
+// second hand-authored list that can silently drift out of sync with it (see
+// PURCHASE_LEGACY_LABEL_ALIASES in constants.js for the history of what that drift
+// already caused: duplicate Home Office/Fenced Yard selections, and onboarding
+// offering several built-ins — Neighborhood, Walkability, Garage, Immediate Street/
+// Surroundings, generic Basement/Yard, the old Guest / In-Law Suite — that had been
+// retired from purchase Match entirely, so picking them in onboarding silently did
+// nothing). Home Feel is intentionally absent: it is not part of the purchase pre-tour
+// catalog at all (Post-Tour owns those experiential dimensions instead).
+function purchaseOnboardingGroup(categoryKey, groupTitle) {
+  const def = getItemlistCategories('purchase').find((category) => category.key === categoryKey);
+  const items = [...def.coreItems, ...def.suggestedItems]
+    .map((entry) => item(categoryKey, entry.label, entry.kind, criterionDisplayLabel(categoryKey, entry.label)));
+  return [groupTitle, items];
+}
+
 export const ONBOARDING_SUGGESTIONS = Object.freeze({
   home_buy: Object.freeze([
-    ['Location', [item('location', 'Neighborhood'), item('location', 'Walkability'), item('location', 'Parks Nearby'), item('location', 'Immediate Street / Surroundings', 'rating', 'Quiet Street')]],
-    ['Home Features', [item('features', 'Basement', 'check'), item('features', 'Fireplace', 'check'), item('features', 'Primary Ensuite', 'check'), item('features', 'Home Office', 'check'), item('features', 'Central Air', 'check'), item('features', 'Guest / In-Law Suite', 'check', 'Guest Suite'), item('features', 'Hardwood Floors', 'check')]],
-    ['Exterior & Property', [item('exterior', 'Garage', 'check'), item('exterior', 'Fenced Yard', 'check'), item('exterior', 'Yard', 'rating', 'Yard Space'), item('exterior', 'Patio / Deck / Outdoor Living', 'check', 'Deck / Patio'), item('exterior', 'Privacy', 'rating', 'Yard Privacy'), item('exterior', 'Pool', 'check'), item('exterior', 'Landscaping')]],
-    ['Home Feel', [item('homeFeel', 'Overall Condition'), item('homeFeel', 'Layout / Flow', 'rating', 'Layout'), item('homeFeel', 'Natural Light'), item('homeFeel', 'Character / Charm'), item('homeFeel', 'Privacy', 'rating', 'Privacy from Neighbors')]],
+    purchaseOnboardingGroup('location', 'Location'),
+    purchaseOnboardingGroup('features', 'Home Features'),
+    purchaseOnboardingGroup('exterior', 'Exterior & Property'),
   ]),
   home_rent: Object.freeze([
     ['Location', [item('location', 'Neighborhood'), item('location', 'Walkability'), item('location', 'Parks Nearby'), item('location', 'Immediate Street / Surroundings', 'rating', 'Quiet Street')]],

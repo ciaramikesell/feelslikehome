@@ -24,8 +24,16 @@ test('new choices map to canonical intents and existing property-type preference
   assert.deepEqual([buy.preferredPropertyTypes.values, homeRent.preferredPropertyTypes.values, apartment.preferredPropertyTypes.values], [['house'], ['house'], ['apartment']]);
 });
 
-test('Home to Buy curated suggestions are exact', () => {
-  assert.deepEqual(displayed('home_buy'), ['Neighborhood','Walkability','Parks Nearby','Quiet Street','Basement','Fireplace','Primary Ensuite','Home Office','Central Air','Guest Suite','Hardwood Floors','Garage','Fenced Yard','Yard Space','Deck / Patio','Yard Privacy','Pool','Landscaping','Overall Condition','Layout','Natural Light','Character / Charm','Privacy from Neighbors']);
+test('Home to Buy curated suggestions are exactly the canonical purchase taxonomy — one shared catalog with My Search, no Home Feel group', () => {
+  assert.deepEqual(displayed('home_buy'), [
+    'Charming Neighborhood', 'Reputable Schools', 'Walkable to Town', 'Parks Nearby', 'Quiet Street', 'Bustling Street', 'Near Waterfront', 'Walkable Schools', 'No HOA',
+    'Finished Basement', 'Walkout Basement', 'First-Floor Primary', 'Primary Ensuite', 'First-Floor Laundry', 'Home Office', 'Central Air', 'Fireplace', 'Move-in Ready', 'Renovation Potential', 'New Construction', 'Guest / In-Law Suite',
+    'Deck / Patio', 'Fenced Yard', 'Privacy Fencing', 'Attached Garage', 'Detached Garage', 'Large Backyard', 'Front Porch', 'Pool', 'Landscaping',
+  ]);
+  assert.deepEqual(ONBOARDING_SUGGESTIONS.home_buy.map(([title]) => title), ['Location', 'Home Features', 'Exterior & Property']);
+  for (const retired of ['Neighborhood', 'Walkability', 'Garage', 'Immediate Street / Surroundings', 'Basement', 'Yard', 'Overall Condition', 'Layout / Flow', 'Natural Light', 'Character / Charm']) {
+    assert.ok(!displayed('home_buy').includes(retired));
+  }
 });
 
 test('Home to Rent curated suggestions are exact', () => {
@@ -38,10 +46,10 @@ test('Apartment to Rent curated suggestions are exact', () => {
 
 test('selected priorities become Important, dealbreakers become Must Have, and Nice is not assigned', () => {
   let priorities = applySearchChoice({}, 'home_buy');
-  const keys = new Set(['features:Fireplace', 'homeFeel:Natural Light']);
+  const keys = new Set(['features:Fireplace', 'exterior:Pool']);
   priorities = applyOnboardingSelections(priorities, keys, new Set(['features:Fireplace']));
   assert.equal(priorities.features.tiers.Fireplace, 'must');
-  assert.equal(priorities.homeFeel.tiers['Natural Light'], 'important');
+  assert.equal(priorities.exterior.tiers.Pool, 'important');
   assert.ok(!flatOnboardingSuggestions('home_buy').some(({ categoryKey, label }) => priorities[categoryKey].tiers[label] === 'nice'));
 });
 
@@ -63,16 +71,20 @@ test('custom priorities use the same canonical JSON structure and default to Imp
   assert.deepEqual(selected.customItems.at(-1), { label: 'Morning coffee spot', kind: 'rating' });
 });
 
-test('journey preserves choices on Back, persists before completion, and reveals actual My Search', () => {
+test('two-screen journey preserves choices on Back, persists before completion, and finishes straight into My Search', () => {
   const onboarding = read('src/components/onboarding/Onboarding.jsx');
   const search = read('src/components/MySearchPanel.jsx');
-  assert.match(onboarding, /onBack=\{\(\) => setStep\(2\)\}/);
+  // No Dealbreakers screen, no separate "My Search Criteria" summary screen —
+  // step 2's own CTA is the only forward action left in onboarding.
+  assert.doesNotMatch(onboarding, /Dealbreaker|dealbreaker/);
+  assert.doesNotMatch(onboarding, /SummaryStep|My Search Criteria/);
+  assert.match(onboarding, /onBack=\{\(\) => setStep\(1\)\}/);
+  assert.match(onboarding, /Rank my priorities/);
   assert.match(onboarding, /await flush\(\); await completeOnboarding/);
   // #73: a pending share-intake destination (see (app)/layout.js) takes over
   // this push when present; the plain welcome landing is still the default.
-  assert.match(onboarding, /finish\(pendingRedirect \|\| '\/search\?welcome=1'\)/);
-  assert.match(onboarding, /finish\('\/homes\?add=1'\)/);
-  assert.match(search, /Here&apos;s what we heard\./);
+  assert.match(onboarding, /onNext=\{\(\) => finish\(pendingRedirect \|\| '\/search\?welcome=1'\)\}/);
+  assert.match(search, /Your priorities are ready\. Now make them yours\./);
   assert.match(search, /href="\/homes\?add=1">Add your first home/);
 });
 
@@ -80,11 +92,24 @@ test('onboarding is tap-first and responsive while My Search retains tier action
   const onboarding = read('src/components/onboarding/Onboarding.jsx');
   const board = read('src/components/PriorityBoard.jsx');
   const css = read('src/app/globals.css');
-  assert.doesNotMatch(onboarding, /draggable|PriorityBoard|CommuteDestinations/);
+  assert.doesNotMatch(onboarding, /draggable|CommuteDestinations/);
+  assert.doesNotMatch(onboarding, /<PriorityBoard/);
   assert.match(onboarding, /aria-pressed=\{selected\(criterion\)\}/);
   assert.match(board, /Move to \{TIER_META\[target\]\.label\}/);
   assert.match(board, />Remove priority<\/button>/);
   assert.match(css, /\.hh-onboarding-suggestions \.hh-chip[^}]*min-height: 40px/);
   assert.match(css, /@media \(max-width: 640px\)[\s\S]*\.hh-onboarding-suggestions \{ grid-template-columns: 1fr/);
   assert.deepEqual(Object.fromEntries(Object.entries(TIER_META).map(([tier, meta]) => [tier, meta.weight])), { must: 4, important: 2, nice: 1, dontcare: 0 });
+});
+
+test('the old Dealbreakers onboarding state cannot trap an existing user', () => {
+  // Onboarding gating is a single boolean (profiles.onboarding_complete) — see
+  // completeOnboarding — never a persisted step number, so there is no stored
+  // "step 3" value an existing user could be stuck on. Every visit to
+  // /onboarding starts this same two-screen flow from step 1.
+  const dataLib = read('src/lib/supabase/data.js');
+  assert.match(dataLib, /onboarding_complete/);
+  const onboarding = read('src/components/onboarding/Onboarding.jsx');
+  assert.match(onboarding, /const \[step, setStep\] = useState\(1\);/);
+  assert.doesNotMatch(onboarding, /setStep\(3\)|setStep\(4\)/);
 });

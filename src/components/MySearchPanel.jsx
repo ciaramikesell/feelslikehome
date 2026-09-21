@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { TierPicker } from '@/components/ui';
 import PriorityBoard from '@/components/PriorityBoard';
 import CommuteDestinations from '@/components/CommuteDestinations';
-import SchoolsRelevanceGate from '@/components/SchoolsRelevanceGate';
 import CoBuyerManagement from '@/components/CoBuyerManagement';
 import InviteCoBuyer from '@/components/InviteCoBuyer';
 import {
@@ -341,8 +340,12 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
       <div className="hh-search-layout">
         {saveError && <p className="hh-save-error" role="alert">{saveError} <button type="button" onClick={retry}>Retry</button></p>}
         {firstRun && <section className="hh-search-reveal hh-corner">
-          <div><p className="hh-label">Your search is ready</p><h2 className="hh-serif">Here&apos;s what we heard.</h2><p>This is what Feels Like Home will use to Match your options. Nothing&apos;s set in stone—you can change your mind anytime.</p></div>
-          <div className="hh-first-home-handoff"><strong>Looks good? Give us something to work with.</strong><p>Add a home you&apos;re considering and we&apos;ll show you how it stacks up.</p><Link className="hh-btn" href="/homes?add=1">Add your first home</Link></div>
+          <div>
+            <p className="hh-label">Your search is ready</p>
+            <h2 className="hh-serif">Your priorities are ready. Now make them yours.</h2>
+            <p className="hh-search-reveal-instruction">We started everything you chose as Important. Drag your priorities between Must Have, Important, and Nice to Have to show us what matters most. You can change them anytime.</p>
+          </div>
+          <div className="hh-first-home-handoff"><strong>When this looks right, add your first home.</strong><p>We&apos;ll compare it against these priorities and show you your personalized Match.</p><Link className="hh-btn" href="/homes?add=1">Add your first home</Link></div>
         </section>}
         {/* Asymmetric two-column composition: "What Matters Most to Me" is
             this page's central purpose and takes the wide primary column;
