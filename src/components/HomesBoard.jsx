@@ -196,14 +196,13 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
               <div className="hh-match-eyebrow">Personalized Match</div>
               <MatchSummary match={match} />
               {mustHaves.length > 0 && <div className="hh-must-summary"><strong>Must Haves</strong>{displayedMustHaves.map((item) => { const neutral = item.evaluated && item.met === null; return <span className={!item.evaluated ? 'is-unknown' : neutral ? 'is-neutral' : item.met ? 'is-positive' : 'is-negative'} key={item.key}>{!item.evaluated ? '?' : neutral ? '—' : item.met ? '✓' : '✕'} {item.label}</span>; })}{mustOverflow > 0 && <button type="button" className="hh-criteria-overflow" aria-expanded={showAllMustHaves} onClick={() => setShowAllMustHaves((value) => !value)}>{showAllMustHaves ? 'Show fewer' : `+ ${mustOverflow} more Must Have${mustOverflow === 1 ? '' : 's'}`}</button>}</div>}
-              {/* Deliberately excludes Must Haves (see selectHomeCardCriteria) — they
-                  already have their own dedicated list immediately above, so folding
-                  them in here too would both double-display them and silently change
-                  what "evaluated" means between the two blocks. The heading says
-                  "Other Priorities" (not "Personalized Criteria") specifically so this
-                  count is never read as a second, contradicting verdict on a Must Have
-                  already shown as a mismatch above. */}
-              {criteriaSummary?.total > 0 && <div className="hh-personalized-criteria"><strong>Other Priorities — {criteriaSummary.evaluated}/{criteriaSummary.total} evaluated</strong><CriteriaDisclosure symbol="✓" tone="positive" heading="Matches" items={criteriaSummary.matches} label={`${criteriaSummary.matches.length} match`} /><CriteriaDisclosure symbol="✕" tone="negative" heading="Doesn’t match" items={criteriaSummary.mismatches} label={`${criteriaSummary.mismatches.length} don’t match`} /><CriteriaDisclosure symbol="?" tone="unknown" heading="Still unknown" items={criteriaSummary.unknown} label={`${criteriaSummary.unknown.length} ${criteriaSummary.unknown.length === 1 ? 'criterion' : 'criteria'} still unknown`} /></div>}
+              {/* Includes every selected criterion, Must Haves included (see
+                  selectHomeCardCriteria) — a Must Have is a highlighted subset of this
+                  same total, not excluded from it, precisely so this count can never
+                  read "0 don't match" while a Must Have mismatch is visibly shown
+                  above it. Must Haves still get their own dedicated list above for
+                  visibility; they simply aren't subtracted out of the aggregate too. */}
+              {criteriaSummary?.total > 0 && <div className="hh-personalized-criteria"><strong>All Priorities — {criteriaSummary.evaluated}/{criteriaSummary.total} evaluated</strong><CriteriaDisclosure symbol="✓" tone="positive" heading="Matches" items={criteriaSummary.matches} label={`${criteriaSummary.matches.length} match`} /><CriteriaDisclosure symbol="✕" tone="negative" heading="Doesn’t match" items={criteriaSummary.mismatches} label={`${criteriaSummary.mismatches.length} don’t match`} /><CriteriaDisclosure symbol="?" tone="unknown" heading="Still unknown" items={criteriaSummary.unknown} label={`${criteriaSummary.unknown.length} ${criteriaSummary.unknown.length === 1 ? 'criterion' : 'criteria'} still unknown`} /></div>}
             </div>
           ) : (
             <div style={{ fontSize: 11.5, color: 'var(--ink-soft)' }}>Set your priorities in <em>My Search</em> to see a match score.</div>

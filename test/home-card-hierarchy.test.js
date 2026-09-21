@@ -31,7 +31,13 @@ test('Must Have preview never hides a failure to enforce its visual limit', () =
   assert.deepEqual(result.hiddenMustHaves.map((item) => item.label), ['Known good']);
 });
 
-test('Personalized Criteria excludes Must Haves, reconciles all states, and preserves importance order', () => {
+// REVISION (My Homes card data-consistency repair): a prior version excluded Must
+// Haves from this aggregate entirely (they have their own dedicated list above), which
+// let a card show a Must Have mismatch above a "0 don't match" aggregate that silently
+// didn't count it — confusing rather than merely redundant. The aggregate now includes
+// every selected criterion, Must Haves included, so it can never disagree with the
+// Must Haves list shown above it.
+test('the aggregate includes Must Haves too, reconciles all states, and preserves importance order', () => {
   const match = { allSelected: [
     criterion('budget', 'important', true, true),
     criterion('beds', 'important', true, true),
@@ -50,17 +56,30 @@ test('Personalized Criteria excludes Must Haves, reconciles all states, and pres
   ] };
   const result = selectHomeCardCriteria(match);
   const summary = result.criteriaSummary;
-  assert.equal(summary.total, 13);
-  assert.equal(summary.evaluated, 12);
-  assert.equal(summary.matches.length, 8);
+  assert.equal(summary.total, 14);
+  assert.equal(summary.evaluated, 13);
+  assert.equal(summary.matches.length, 9);
   assert.equal(summary.mismatches.length, 4);
   assert.equal(summary.unknown.length, 1);
   assert.equal(summary.evaluated, summary.matches.length + summary.mismatches.length);
   assert.equal(summary.total, summary.evaluated + summary.unknown.length);
-  assert.ok([...summary.matches, ...summary.mismatches, ...summary.unknown].every((item) => item.tier !== 'must'));
+  assert.ok(summary.matches.some((item) => item.tier === 'must'), 'a Must Have match is counted in the aggregate, not excluded');
   assert.deepEqual(summary.mismatches.map((item) => item.label), [
     'Important negative one', 'Important negative two', 'Nice negative', 'Extra negative',
   ]);
+});
+
+test('a Must Have mismatch is counted in the aggregate too — the card can never show it in the Must Haves list while the aggregate claims 0 don\'t match', () => {
+  const match = { allSelected: [
+    criterion('exterior:Fenced Yard', 'must', true, false),
+    criterion('features:Central air', 'must', true, true),
+    criterion('exterior:Garage', 'must', true, true),
+  ] };
+  const { mustHaves, criteriaSummary } = selectHomeCardCriteria(match);
+  assert.ok(mustHaves.some((item) => item.label === 'Fenced Yard' && item.met === false));
+  assert.ok(criteriaSummary.mismatches.some((item) => item.label === 'Fenced Yard'));
+  assert.equal(criteriaSummary.mismatches.length, 1);
+  assert.equal(criteriaSummary.total, 3);
 });
 
 test('Personalized Criteria derives fresh counts and exact names from current participant state', () => {

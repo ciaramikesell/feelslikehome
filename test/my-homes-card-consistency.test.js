@@ -82,7 +82,7 @@ function purchasePriorities(overrides = {}) {
   });
 }
 
-test('Case D: Must Have Fenced Yard = No — the Must Have shows a mismatch, "Other Priorities" never contradicts it, the filter excludes the home, and the percentage reflects the miss', () => {
+test('Case D: Must Have Fenced Yard = No — the Must Have shows a mismatch, the aggregate also counts it (never "0 don\'t match"), the filter excludes the home, and the percentage reflects the miss', () => {
   const priorities = purchasePriorities();
   // features:Central air = Yes, exterior:Garage = Yes (via garageSpaces), exterior:Fenced yard = No.
   const home = { garageSpaces: '2', checks: { 'features:Central air': true, 'exterior:Fenced yard': 'no' } };
@@ -95,11 +95,13 @@ test('Case D: Must Have Fenced Yard = No — the Must Have shows a mismatch, "Ot
 
   const { mustHaves, criteriaSummary } = selectHomeCardCriteria(match);
   assert.ok(mustHaves.some((item) => item.key === 'exterior:Fenced yard' && item.met === false));
-  // The single canonical Fenced Yard record is either the one shown as a Must Have
-  // mismatch, or (impossible here, since it's tier 'must') counted in Other
-  // Priorities — never both, and never contradicting itself between the two.
+  // Beta bug reproduction: Fenced Yard is a Must-Have mismatch, so the aggregate must
+  // count it as a mismatch too — it must never show 0 don't-match while the same
+  // criterion is visibly failing in the Must Haves list above. It is the exact same
+  // object read from match.allSelected in both places (never a duplicate/second copy).
   assert.ok(!(criteriaSummary?.matches || []).some((item) => item.key === 'exterior:Fenced yard'));
-  assert.ok(!(criteriaSummary?.mismatches || []).some((item) => item.key === 'exterior:Fenced yard'));
+  assert.ok((criteriaSummary?.mismatches || []).some((item) => item.key === 'exterior:Fenced yard'));
+  assert.equal(criteriaSummary.mismatches.filter((item) => item.key === 'exterior:Fenced yard').length, 1);
 
   // "No Must-Haves Missing" filter semantics (HomesBoard.jsx: m.mustMet === m.mustEvaluated).
   assert.notEqual(match.mustMet, match.mustEvaluated);
@@ -120,10 +122,15 @@ test('Case E: Must Have Fenced Yard = Unknown — displays Unknown, is never tre
   assert.equal(fencedYard.evaluated, false);
   assert.equal(fencedYard.met, null);
 
-  const { mustHaves } = selectHomeCardCriteria(match);
+  const { mustHaves, criteriaSummary } = selectHomeCardCriteria(match);
   const cardRow = mustHaves.find((item) => item.key === 'exterior:Fenced yard');
   assert.equal(cardRow.evaluated, false); // renders '?' in the UI, never '✕'
   assert.notEqual(cardRow.met, false);
+
+  // The aggregate now includes Must Haves too — an Unknown Must Have must land in
+  // the unknown bucket, never don't-match. UNKNOWN != NO.
+  assert.ok(criteriaSummary.unknown.some((item) => item.key === 'exterior:Fenced yard'));
+  assert.ok(!criteriaSummary.mismatches.some((item) => item.key === 'exterior:Fenced yard'));
 
   // Unknown must-haves don't disqualify "No Must-Haves Missing".
   assert.equal(match.mustMet, match.mustEvaluated);
@@ -159,5 +166,8 @@ test('the "No Must-Haves Missing" filter in HomesBoard.jsx reads the exact same 
 test('selectHomeCardCriteria documents and enforces one canonical evaluation source, never a second scoring path', () => {
   const matchingSrc = read('src/lib/matching.js');
   assert.match(matchingSrc, /ONE canonical Match result \(match\.allSelected\)/);
-  assert.match(matchingSrc, /Other Priorities/);
+  assert.match(matchingSrc, /`mustAll` is a highlighted/);
+  assert.match(matchingSrc, /SUBSET of `allCriteria`/);
+  const board = read('src/components/HomesBoard.jsx');
+  assert.match(board, /All Priorities/);
 });

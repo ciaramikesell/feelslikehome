@@ -538,15 +538,17 @@ export function summarizeForCard(match) {
 }
 
 // The Homes card derives both its bounded Must Have preview and its aggregate
-// non-Must-Have coverage from the ONE canonical Match result (match.allSelected) — no
-// counts are stored, and there is no second scoring path. `mustAll` and `personalized`
-// below are complementary partitions of that same array by `criterion.tier` (every
-// criterion is exactly must/important/nice — computeMatch already drops 'dontcare'
-// entirely), so a given criterion (e.g. Fenced Yard) can never appear as a mismatch in
-// one bucket and a match in the other: it is the exact same object, read once. The
-// card's "Other Priorities" heading deliberately says "Other," not a name that could be
-// read as covering every selected criterion, precisely because Must Haves are excluded
-// on purpose (see the comment below) and shown in their own list instead.
+// criteria coverage from the ONE canonical Match result (match.allSelected) — no
+// counts are stored, and there is no second scoring path. `mustAll` is a highlighted
+// SUBSET of `allCriteria` (every Must Have also appears once inside the aggregate
+// below), not a complementary partition — a prior version excluded Must Haves from
+// the aggregate entirely, which let a card show a Must Have mismatch in its own list
+// immediately above a "0 don't match" aggregate that silently didn't count it. That
+// was confusing rather than merely redundant (beta feedback: "Fenced yard does not
+// match but under other priorities it shows 0 don't match"), so the aggregate now
+// always reflects the true total across every selected criterion — a given criterion
+// (e.g. Fenced Yard) is the exact same object in both places, so its match/mismatch
+// state can never disagree between the Must Haves list and the aggregate count.
 export function selectHomeCardCriteria(match, mustLimit = 5) {
   if (!match) return { mustHaves: [], mustOverflow: 0, criteriaSummary: null };
   const source = match.allSelected || [];
@@ -569,25 +571,23 @@ export function selectHomeCardCriteria(match, mustLimit = 5) {
   const mustPreviewLimit = Math.max(mustLimit, mustAll.filter((criterion) => criterion.evaluated && criterion.met === false).length);
 
   const tierRank = { must: 0, important: 1, nice: 2, dontcare: 3 };
-  // Must Haves are already visible immediately above this summary. Excluding
-  // them here keeps the coverage number from reading like a second Must Have
-  // score, while every remaining item still comes directly from computeMatch's
-  // canonical participant-owned `allSelected` result.
-  const personalized = indexed
-    .filter(({ criterion }) => criterion.tier !== 'must')
+  // Every selected criterion, Must Have included — see the doc comment above for why
+  // this must be the complete set rather than excluding what the Must Haves list
+  // already shows.
+  const allCriteria = indexed
     .sort((a, b) => (tierRank[a.criterion.tier] ?? 3) - (tierRank[b.criterion.tier] ?? 3) || a.order - b.order)
     .map(({ criterion }) => criterion);
 
-  const matches = personalized.filter((criterion) => criterion.evaluated && criterion.met === true);
-  const mismatches = personalized.filter((criterion) => criterion.evaluated && criterion.met === false);
-  const unknown = personalized.filter((criterion) => !criterion.evaluated);
+  const matches = allCriteria.filter((criterion) => criterion.evaluated && criterion.met === true);
+  const mismatches = allCriteria.filter((criterion) => criterion.evaluated && criterion.met === false);
+  const unknown = allCriteria.filter((criterion) => !criterion.evaluated);
 
   return {
     mustHaves: mustAll.slice(0, mustPreviewLimit),
     hiddenMustHaves: mustAll.slice(mustPreviewLimit),
     mustOverflow: Math.max(0, mustAll.length - mustPreviewLimit),
     criteriaSummary: {
-      total: personalized.length,
+      total: allCriteria.length,
       evaluated: matches.length + mismatches.length,
       matches,
       mismatches,
