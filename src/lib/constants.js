@@ -22,7 +22,19 @@ export const LOCATION_CORE = [];
 // user's already-selected suggested items from their own stored `customItems`, never
 // from this list, so removing it here only stops it being *offered* to new selections;
 // nothing is deleted, renamed, or migrated.
-export const LOCATION_SUGGESTED = ['Near downtown area', 'Groceries nearby', 'Parks nearby', 'Walkable schools', 'Near waterfront', 'Quiet street', 'Tree-lined street'].map((label) => ({ label, kind: 'check' }));
+//
+// 2026 onboarding/My Search taxonomy unification: 'Near downtown area', 'Groceries
+// nearby', and 'Tree-lined street' are retired the same way — dropped from future
+// offering only, never deleted from anyone's stored priorities. 'Charming
+// Neighborhood', 'Reputable Schools', 'Walkable to Town', and 'No HOA' are new.
+// Everything else keeps its pre-existing stored identity (case included — see
+// CRITERION_DISPLAY_LABEL_OVERRIDES below for the Title Case shown to users) so no
+// existing selection is orphaned. See PURCHASE_LEGACY_LABEL_ALIASES for the one
+// stored-identity fold this pass required (Parks Nearby).
+export const LOCATION_SUGGESTED = [
+  'Charming Neighborhood', 'Reputable Schools', 'Walkable to Town', 'Parks nearby',
+  'Quiet street', 'Bustling Street', 'Near waterfront', 'Walkable schools', 'No HOA',
+].map((label) => ({ label, kind: 'check' }));
 
 export const HOME_FEEL_CORE = [];
 export const HOME_FEEL_SUGGESTED = [];
@@ -30,13 +42,27 @@ const LEGACY_HOME_FEEL_CORE = ['Overall Condition', 'Layout / Flow'].map((label)
 const LEGACY_HOME_FEEL_SUGGESTED = ['Natural Light', 'Character / Charm', 'Room Sizes', 'Openness / Ceiling Height', 'Privacy', 'Social Community', 'On-Site Management'].map((label) => ({ label, kind: 'rating' }));
 
 export const EXTERIOR_CORE = [];
+// 'Privacy Fencing' is new — a purely factual yes/no fact, deliberately distinct from
+// the subjective post-tour 'exterior:Privacy' ("Yard Privacy") rating below.
 export const EXTERIOR_SUGGESTED = [
-  'Fenced yard', 'Pool', 'Patio / deck', 'Detached garage', 'Attached garage',
-  'Large backyard', 'Landscaping', 'Front porch',
+  'Patio / deck', 'Fenced yard', 'Privacy Fencing', 'Attached garage', 'Detached garage',
+  'Large backyard', 'Front porch', 'Pool', 'Landscaping',
 ].map((label) => ({ label, kind: 'check' }));
 
+// 'Guest suite' is retired in favor of the canonical 'Guest / In-Law Suite' identity
+// (previously dead — see RETIRED_PURCHASE_BUILT_INS's history — now restored as a real
+// canonical item; see PURCHASE_LEGACY_LABEL_ALIASES for the safe fold from 'Guest suite').
+// 'First-Floor Primary', 'Move-in Ready', 'Renovation Potential', and 'New Construction'
+// are new. 'Move-in Ready'/'Renovation Potential'/'New Construction' are deliberately
+// separate from the existing Home Condition multiselect (priorities.homeCondition) —
+// that remains an unrelated, single-tier structural field; these are independently
+// rankable Must/Important/Nice priorities, per the 2026 taxonomy.
 export const FEATURES_CORE = [];
-export const FEATURES_SUGGESTED = ['First-floor laundry', 'Guest suite', 'Fireplace', 'Home office', 'Primary ensuite', 'Central air', 'Finished basement', 'Walkout basement'].map((label) => ({ label, kind: 'check' }));
+export const FEATURES_SUGGESTED = [
+  'Finished basement', 'Walkout basement', 'First-Floor Primary', 'Primary ensuite',
+  'First-floor laundry', 'Home office', 'Central air', 'Fireplace', 'Move-in Ready',
+  'Renovation Potential', 'New Construction', 'Guest / In-Law Suite',
+].map((label) => ({ label, kind: 'check' }));
 // These remain part of the canonical catalog. PriorityBoard combines them with
 // the regular suggestion tray so both onboarding and My Search discover the same
 // criteria without an additional generic disclosure.
@@ -52,6 +78,27 @@ export const FEATURES_SPECIFIC = [];
 const CRITERION_DISPLAY_LABEL_OVERRIDES = {
   'exterior:Privacy': 'Yard Privacy',
   'homeFeel:Privacy': 'Privacy from Neighbors',
+  // 2026 onboarding/My Search taxonomy unification — these stored identities predate
+  // the finalized Title Case product taxonomy and are shared with Rental/Investment
+  // (whose own real canonical identities use different casing — see
+  // PURCHASE_LEGACY_LABEL_ALIASES), so the stored label/key is intentionally left
+  // exactly as it already is in production; only the displayed text changes.
+  'location:Parks nearby': 'Parks Nearby',
+  'location:Quiet street': 'Quiet Street',
+  'location:Near waterfront': 'Near Waterfront',
+  'location:Walkable schools': 'Walkable Schools',
+  'features:Finished basement': 'Finished Basement',
+  'features:Walkout basement': 'Walkout Basement',
+  'features:Primary ensuite': 'Primary Ensuite',
+  'features:First-floor laundry': 'First-Floor Laundry',
+  'features:Home office': 'Home Office',
+  'features:Central air': 'Central Air',
+  'exterior:Patio / deck': 'Deck / Patio',
+  'exterior:Fenced yard': 'Fenced Yard',
+  'exterior:Attached garage': 'Attached Garage',
+  'exterior:Detached garage': 'Detached Garage',
+  'exterior:Large backyard': 'Large Backyard',
+  'exterior:Front porch': 'Front Porch',
 };
 
 // Additive catalog metadata. Stored priority identities remain `category:label`;
@@ -129,6 +176,13 @@ export function criterionDisplayLabel(categoryKey, label) {
 // Historical built-ins remain untouched in saved priority JSON, but no longer
 // appear as active purchase-search criteria or contribute Unknowns. An item the
 // buyer explicitly created carries `source: 'custom'` and is always preserved.
+// 'features:Guest / In-Law Suite' was previously retired here but is restored as the
+// canonical Guest / In-Law Suite identity in the 2026 taxonomy unification (it had been
+// wrongly retired in favor of nothing — onboarding kept offering it as a dead selection
+// that never counted toward Match; see FEATURES_SUGGESTED and
+// PURCHASE_LEGACY_LABEL_ALIASES). Restoring it here means anyone who already selected it
+// starts counting toward Match again — a restoration of their original intent, not a
+// change to their stored choice.
 const RETIRED_PURCHASE_BUILT_INS = new Set([
   'location:Neighborhood', 'location:Walkability', 'location:Immediate Street / Surroundings',
   'location:Dog Parks Nearby', 'location:Restaurants / Coffee / Shopping Nearby',
@@ -142,7 +196,7 @@ const RETIRED_PURCHASE_BUILT_INS = new Set([
   'features:Pantry', 'features:Storage', 'features:Updated Kitchen', 'features:Updated Bathrooms',
   'features:Walk-In Closet', 'features:Additional Living Space', 'features:Hardwood Floors',
   'features:Dishwasher', 'features:In-Unit Laundry', 'features:Updated Interior',
-  'features:Pets Allowed', 'features:Utilities Included', 'features:Guest / In-Law Suite',
+  'features:Pets Allowed', 'features:Utilities Included',
   'features:Basement Bedroom',
 ]);
 
@@ -150,6 +204,99 @@ export function isRetiredPurchaseBuiltIn(categoryKey, item, searchType) {
   return normalizeSearchIntent(searchType) === 'purchase'
     && item?.source !== 'custom'
     && RETIRED_PURCHASE_BUILT_INS.has(`${categoryKey}:${item?.label}`);
+}
+
+// 2026 onboarding/My Search taxonomy unification — root cause of the "duplicate Home
+// Office", "duplicate Fenced Yard", and similar bugs this pass fixes: onboarding and
+// My Search's canonical catalog (getItemlistCategories) had drifted into separate,
+// differently-cased label sets for the same purchase concept (e.g. onboarding wrote
+// "Home Office", the canonical catalog uses "Home office"), so a buyer who touched both
+// screens ended up with two independent stored priorities for one idea. These pairs are
+// exactly the ones already confirmed identical in meaning (not a guess — "Home Office"
+// vs "Home office" is a casing accident, not a semantic question). Deliberately scoped
+// to purchase only: several of these exact Title Case strings ARE the real, unrelated
+// canonical identity for Rental/Investment (see LEGACY_FEATURES/LEGACY_EXTERIOR) and
+// must never be folded there.
+//
+// This folds in memory, inside normalizePriorities, the moment an existing search's
+// priorities are read — never via a bulk SQL migration. The very next explicit save
+// (any patch at all) persists the already-folded, canonical-only shape back to the
+// database, so the fix propagates naturally without a destructive rewrite of live rows.
+// If both the legacy and canonical label were already independently selected, the
+// canonical label's own tier wins and the legacy entry is dropped (never silently
+// overwriting an explicit canonical choice with a stale legacy one).
+const PURCHASE_LEGACY_LABEL_ALIASES = {
+  location: { 'Parks Nearby': 'Parks nearby' },
+  features: {
+    'Home Office': 'Home office', 'Central Air': 'Central air', 'Primary Ensuite': 'Primary ensuite',
+    'First-Floor Laundry': 'First-floor laundry', 'Guest suite': 'Guest / In-Law Suite',
+  },
+  exterior: { 'Fenced Yard': 'Fenced yard', 'Patio / Deck / Outdoor Living': 'Patio / deck' },
+};
+
+// Every purchase category's coreItems is always empty (see LOCATION_CORE/
+// FEATURES_CORE/EXTERIOR_CORE) — every canonical item, including alias targets,
+// is a "suggested" item that only renders as a selected priority once it has
+// been promoted into customItems (exactly what selectPriorityItem does for a
+// normal selection). Folding a tier onto a canonical label must do the same
+// promotion, or the fold would leave a tier set with nothing on the board to
+// show for it.
+const PURCHASE_CATEGORY_CORE_LABELS = {
+  location: new Set(LOCATION_CORE.map((item) => item.label)),
+  features: new Set(FEATURES_CORE.map((item) => item.label)),
+  exterior: new Set(EXTERIOR_CORE.map((item) => item.label)),
+};
+
+function foldLegacyLabelAliasesInCategory(catState, aliases, coreLabels) {
+  const legacyLabels = Object.keys(aliases).filter((label) => catState?.tiers && Object.hasOwn(catState.tiers, label));
+  if (!legacyLabels.length) return catState;
+  const tiers = { ...catState.tiers };
+  const customItems = (catState.customItems || []).slice();
+  legacyLabels.forEach((legacyLabel) => {
+    const canonicalLabel = aliases[legacyLabel];
+    const legacyTier = tiers[legacyLabel];
+    const canonicalTier = tiers[canonicalLabel];
+    if (!canonicalTier || canonicalTier === 'dontcare') tiers[canonicalLabel] = legacyTier;
+    delete tiers[legacyLabel];
+    const customIndex = customItems.findIndex((entry) => entry.label === legacyLabel);
+    const legacyKind = customIndex !== -1 ? customItems[customIndex].kind : 'check';
+    if (customIndex !== -1) customItems.splice(customIndex, 1);
+    const alreadyRenderable = coreLabels.has(canonicalLabel) || customItems.some((entry) => entry.label === canonicalLabel);
+    if (!alreadyRenderable) customItems.push({ label: canonicalLabel, kind: legacyKind });
+  });
+  return { ...catState, tiers, customItems };
+}
+
+function foldLegacyLabelAliases(priorities) {
+  if (normalizeSearchIntent(priorities.searchType) !== 'purchase') return priorities;
+  let next = priorities;
+  Object.entries(PURCHASE_LEGACY_LABEL_ALIASES).forEach(([categoryKey, aliases]) => {
+    const folded = foldLegacyLabelAliasesInCategory(next[categoryKey], aliases, PURCHASE_CATEGORY_CORE_LABELS[categoryKey]);
+    if (folded !== next[categoryKey]) next = { ...next, [categoryKey]: folded };
+  });
+  return next;
+}
+
+// The per-home analog of the fold above — a check-kind fact (Yes/No/Unknown) is stored
+// on the home under the same `category:label` identity used for the search's priority.
+// Read-only and additive: never writes the alias back, so an already-recorded fact under
+// the legacy key stays visible (falls back to it only when the canonical key itself is
+// unset) without ever overwriting an explicit canonical-key answer. Used wherever a
+// home's checks are read for Match or for the Edit Home tri-state control.
+export function foldLegacyCheckAliases(checks, searchType) {
+  if (!checks || normalizeSearchIntent(searchType) !== 'purchase') return checks || {};
+  let folded = null;
+  Object.entries(PURCHASE_LEGACY_LABEL_ALIASES).forEach(([categoryKey, aliases]) => {
+    Object.entries(aliases).forEach(([legacyLabel, canonicalLabel]) => {
+      const canonicalKey = `${categoryKey}:${canonicalLabel}`;
+      const legacyKey = `${categoryKey}:${legacyLabel}`;
+      if (checks[canonicalKey] === undefined && checks[legacyKey] !== undefined) {
+        folded = folded || { ...checks };
+        folded[canonicalKey] = checks[legacyKey];
+      }
+    });
+  });
+  return folded || checks;
 }
 
 // Which selected criteria are genuinely experiential — things a person can only really
@@ -498,5 +645,5 @@ export function normalizePriorities(raw) {
   ['homeLayout', 'homeCondition', 'preferredPropertyTypes'].forEach((key) => {
     if (!Array.isArray(merged[key].values)) merged[key] = { ...merged[key], values: [] };
   });
-  return merged;
+  return foldLegacyLabelAliases(merged);
 }

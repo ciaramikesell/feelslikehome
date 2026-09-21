@@ -156,8 +156,10 @@ test('onboarding honors a pending redirect destination on completion, without ch
   assert.match(onboarding, /import \{ sanitizeRedirectPath \} from '@\/lib\/safeRedirect'/);
   assert.match(onboarding, /const pendingRedirect = sanitizeRedirectPath\(searchParams\.get\('redirect'\)\);/);
   assert.match(onboarding, /finish\(pendingRedirect \|\| '\/search\?welcome=1'\)/);
-  // Nothing else about the onboarding steps/copy/progress model changed.
-  assert.match(onboarding, /const steps = \['The basics', 'What matters', 'Dealbreakers', 'My Search'\];/);
+  // Onboarding is now a two-screen flow (The Basics, What Matters) that finishes
+  // straight into My Search's own "Rank Priorities" stage — see the three-stage
+  // progress indicator below — rather than a third in-onboarding screen.
+  assert.match(onboarding, /const steps = \['The basics', 'What matters', 'Rank Priorities'\];/);
 });
 
 /* ------------------------------ Part 4/5: idempotence & query cleanup ------------------------------ */

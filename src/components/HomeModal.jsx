@@ -5,7 +5,7 @@ import { X, Upload, Link2, Footprints, Archive as ArchiveIcon, ExternalLink, Che
 import { StarInput } from '@/components/ui';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
-  isArchivedStatus, isRentalType, TOUR_RATING_KEY, criterionDisplayLabel, TIER_ORDER,
+  isArchivedStatus, isRentalType, TOUR_RATING_KEY, criterionDisplayLabel, TIER_ORDER, foldLegacyCheckAliases,
 } from '@/lib/constants';
 import { visibleOrderedItems, parseListingTextFindings, selectedSubjectiveCriteria, computeMatch } from '@/lib/matching';
 import { extractAddressFromListingUrl, extractApartmentIdentityFromListingUrl, isLikelyListingUrl } from '@/lib/listingUrl';
@@ -245,6 +245,10 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
   };
   const apartment = vocabulary.apartment;
   const { showsRentalFacts } = searchIntentCapabilities(priorities.searchType);
+  // See foldLegacyCheckAliases: a fact recorded on this home under a pre-taxonomy-
+  // unification legacy label (e.g. 'features:Home Office') stays visible here once the
+  // search's own priority has folded onto the canonical label.
+  const foldedChecks = foldLegacyCheckAliases(form.checks, priorities.searchType);
   const criteria = getItemlistCategories(priorities.searchType).flatMap((category) =>
     visibleOrderedItems(category, priorities).filter((item) => item.kind === 'check').map((item) => ({
       ...item,
@@ -252,8 +256,8 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
       tier: priorities[category.key]?.tiers?.[item.label] || 'dontcare',
     })),
   ).sort((a, b) => {
-    const aKnown = form.checks?.[`${a.categoryKey}:${a.label}`] !== undefined;
-    const bKnown = form.checks?.[`${b.categoryKey}:${b.label}`] !== undefined;
+    const aKnown = foldedChecks[`${a.categoryKey}:${a.label}`] !== undefined;
+    const bKnown = foldedChecks[`${b.categoryKey}:${b.label}`] !== undefined;
     return (aKnown - bKnown) || (TIER_ORDER.indexOf(a.tier) - TIER_ORDER.indexOf(b.tier));
   });
   const shownCriteria = allCriteriaOpen ? criteria : criteria.slice(0, 6);
@@ -320,7 +324,7 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
             <p className="hh-edit-context">Correct the known property facts that matter to your configured criteria. Unknown is never treated as No.</p>
             {shownCriteria.length ? <div className="hh-edit-criteria">{shownCriteria.map((item) => {
               const key = `${item.categoryKey}:${item.label}`;
-              const value = form.checks?.[key];
+              const value = foldedChecks[key];
               return <div className="hh-edit-criterion" key={key}><div><b>{criterionDisplayLabel(item.categoryKey, item.label)}</b><span>{priorityLabel(item)}</span></div><div className="hh-edit-tristate" role="group" aria-label={`${criterionDisplayLabel(item.categoryKey, item.label)} property fact`}>
                 {[['yes', 'Yes', true], ['no', 'No', 'no'], ['unknown', 'Unknown', undefined]].map(([id, label, next]) => { const selected = next === undefined ? value === undefined : value === next; return <button type="button" key={id} className={`hh-chip is-${id} ${selected ? 'on' : ''}`} aria-pressed={selected} onClick={() => setCheckItem(item.categoryKey, item.label, next)}>{label}</button>; })}
               </div></div>;
