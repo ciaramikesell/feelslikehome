@@ -142,15 +142,16 @@ test('removing the schools boolean does not touch the new Reputable Schools / Wa
   assert.equal(match.allSelected[0].evaluated, false); // Unknown, never suppressed and never a mismatch
 });
 
-test('first-run My Search prominently teaches drag-and-drop ranking, not as fine print', () => {
+test('first-run My Search banner is orientation + payoff — the drag coachmark on the board itself now teaches the interaction', () => {
   const panel = read('src/components/MySearchPanel.jsx');
-  const css = read('src/app/globals.css');
-  assert.match(panel, /Your priorities are ready\. Now make them yours\./);
-  assert.match(panel, /We started everything you chose as Important\. Drag your priorities between/);
-  assert.match(panel, /When this looks right, add your first home\./);
-  assert.match(panel, /We&apos;ll compare it against these priorities and show you your personalized Match\./);
-  assert.match(panel, /className="hh-search-reveal-instruction"/);
-  assert.match(css, /\.hh-search-reveal-instruction \{[^}]*font-size: 15px/);
+  const board = read('src/components/PriorityBoard.jsx');
+  assert.match(panel, /Here&apos;s what we heard\./);
+  assert.match(panel, /Ready to see your Match\?/);
+  assert.match(panel, /Bring in the first home you&apos;re considering and we&apos;ll show you how it stacks up against your priorities\./);
+  // The banner itself no longer carries the drag-and-drop teaching paragraph.
+  assert.doesNotMatch(panel, /Drag your priorities between/);
+  assert.match(panel, /firstRun=\{firstRun\}/);
+  assert.match(board, /dragCoachmarkOpen && \(/);
 });
 
 /* ------------------------------ Match safety for new criteria ------------------------------ */

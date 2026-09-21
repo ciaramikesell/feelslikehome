@@ -38,7 +38,7 @@ function BasicsStep({ priorities, patch, onNext }) {
   const selectedChoice = priorities.onboardingSearchType || '';
   const rental = selectedChoice === 'home_rent' || selectedChoice === 'apartment_rent';
   return <div className="hh-onboarding-step">
-    <header><h1 className="hh-serif">Let&apos;s find what feels like home.</h1><p>Start with the kind of search you&apos;re making. A few useful numbers are optional—you can change all of this later.</p></header>
+    <header><h1 className="hh-serif">First, give us the basics.</h1><p>Tell us what you&apos;re looking for so we know what belongs in your search. Nothing here is permanent—you can change it anytime.</p></header>
     <fieldset className="hh-onboarding-fieldset"><legend className="hh-label">What are you searching for?</legend><div className="hh-choice-grid">
       {NEW_SEARCH_CHOICES.map((choice) => <button type="button" key={choice.key} className={`hh-choice-card ${selectedChoice === choice.key ? 'on' : ''}`} aria-pressed={selectedChoice === choice.key} onClick={() => patch((next) => applySearchChoice(next, choice.key))}>{selectedChoice === choice.key && <Check size={15} aria-hidden="true" />}{choice.label}</button>)}
     </div></fieldset>
@@ -86,7 +86,11 @@ function WhatMattersStep({ priorities, patch, onNext, onBack, isSaving }) {
     setCustomLabel(''); setCustomOpen(false);
   };
   return <div className="hh-onboarding-step">
-    <header><h1 className="hh-serif">What matters to you?</h1><p>Choose everything you&apos;d care about when comparing homes. Don&apos;t worry about ranking them yet—you&apos;ll do that next.</p></header>
+    <header><h1 className="hh-serif">What matters to you?</h1><p>Choose everything you&apos;d care about when comparing your options. Don&apos;t worry about ranking them yet—you&apos;ll do that next.</p></header>
+    <div className="hh-onboarding-callout">
+      <strong>For now, just choose what matters.</strong>
+      <span>You&apos;ll decide what&apos;s a Must Have, Important, or Nice to Have on the next screen.</span>
+    </div>
     <div className="hh-onboarding-suggestions">{categories.map(([title, items]) => <section key={title}><h2>{title}</h2><div>{items.flatMap((criterion) => {
       const chip = <button type="button" key={criterionKey(criterion)} className={`hh-chip ${selected(criterion) ? 'on' : ''}`} aria-pressed={selected(criterion)} onClick={() => toggle(criterion)}>{selected(criterion) && <Check size={13} aria-hidden="true" />}{criterion.displayLabel}</button>;
       if (!selected(criterion) || !hasQualifierOptions(criterion.categoryKey, criterion.label)) return [chip];

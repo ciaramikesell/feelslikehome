@@ -224,13 +224,7 @@ function PropertyFacts({ form, set, priorities, sharedFactAwareness }) {
   );
 }
 
-function NoteSummary({ label, value }) {
-  const lines = (value || '').split(/\n+/).map((line) => line.replace(/^[-•]\s*/, '').trim()).filter(Boolean);
-  return <div className="hh-edit-note-summary"><b>{label}</b>{lines.length ? <ul>{lines.slice(0, 4).map((line, index) => <li key={`${line}-${index}`}>{line}</li>)}</ul> : <span>Nothing added yet</span>}</div>;
-}
-
 function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwareness, isCollaborative, vocabulary, photoFile, photoPreviewUrl, photoInputRef, handlePhotoFileChange, handleRemovePhoto, photoError, showPhotoUrlInput, setShowPhotoUrlInput, setCheckItem, saving, submit, saveErrorMsg, onClose, dialogRef, titleRef, importResult = null, presentation = 'modal', matchPerspectives = [] }) {
-  const [notesOpen, setNotesOpen] = useState(false);
   const [allCriteriaOpen, setAllCriteriaOpen] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(() => mode === 'add' && !!importResult);
   const inspectorRef = useRef(null);
@@ -343,9 +337,17 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
 
           <section className="hh-edit-home-card" aria-labelledby="shared-notes-heading">
             <h2 id="shared-notes-heading" className="hh-serif">Shared notes</h2>
-            <p className="hh-edit-context">{isCollaborative ? 'Pros, cons, and notes are visible to everyone in this search.' : 'Keep the details you want to remember with this home.'}</p>
-            {!notesOpen ? <div className="hh-edit-notes"><NoteSummary label="Pros" value={form.pros} /><NoteSummary label="Cons" value={form.cons} /><NoteSummary label="Notes" value={form.notes} /></div> : <div className="hh-edit-notes-fields"><div><label className="hh-label">Pros</label><textarea className="hh-textarea" value={form.pros || ''} onChange={(e) => set('pros', e.target.value)} /></div><div><label className="hh-label">Cons</label><textarea className="hh-textarea" value={form.cons || ''} onChange={(e) => set('cons', e.target.value)} /></div><div><label className="hh-label">Notes</label><textarea className="hh-textarea" value={form.notes || ''} onChange={(e) => set('notes', e.target.value)} placeholder="HOA details, sewer/water, financing options, recent updates, listing terms, or anything else worth noting." /></div></div>}
-            <button type="button" className="hh-btn hh-btn-ghost hh-edit-disclosure" aria-expanded={notesOpen} onClick={() => setNotesOpen((value) => !value)}>{notesOpen ? 'Show notes summary' : 'Edit notes'}</button>
+            <p className="hh-edit-context">{isCollaborative ? 'Pros, cons, and notes are visible to everyone in this search.' : 'Keep the details you want to remember about this home.'}</p>
+            {/* Directly editable — no separate "Edit notes" click, since adding
+                or editing this home is already an editing workflow. Pros/Cons/
+                Notes are plain optional fields on the home row (see
+                database-privacy-enforcement's SHARED_FIELDS), saved through the
+                exact same submit() as everything else in this form. */}
+            <div className="hh-edit-notes-fields">
+              <div><label className="hh-label" htmlFor="edit-home-pros">Pros</label><textarea id="edit-home-pros" className="hh-textarea" value={form.pros || ''} onChange={(e) => set('pros', e.target.value)} placeholder="What do you like?" /></div>
+              <div><label className="hh-label" htmlFor="edit-home-cons">Cons</label><textarea id="edit-home-cons" className="hh-textarea" value={form.cons || ''} onChange={(e) => set('cons', e.target.value)} placeholder="Anything giving you pause?" /></div>
+              <div><label className="hh-label" htmlFor="edit-home-notes">Notes</label><textarea id="edit-home-notes" className="hh-textarea" value={form.notes || ''} onChange={(e) => set('notes', e.target.value)} placeholder="Anything else you want to remember?" /></div>
+            </div>
           </section>
           {matchPerspectives.length > 0 && form.address.trim() && <section className="hh-edit-home-card hh-suggestion-match-preview" aria-label="Buyer Match preview"><h2 className="hh-serif">How this lines up</h2><p>Based only on currently known property facts. Unknown details are not counted as misses.</p>{matchPerspectives.map((perspective) => { const match = computeMatch(form, perspective.priorities); return <div key={perspective.userId}><b>{perspective.name}</b><span>{match?.pct == null ? 'Match needs more known facts' : `${match.pct}% Match`}</span><small>{match?.allSelected?.filter((item) => !item.evaluated).slice(0, 3).map((item) => `${item.label} — Unknown`).join(' · ')}</small></div>; })}</section>}
         </div>

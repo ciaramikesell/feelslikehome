@@ -84,7 +84,7 @@ test('two-screen journey preserves choices on Back, persists before completion, 
   // #73: a pending share-intake destination (see (app)/layout.js) takes over
   // this push when present; the plain welcome landing is still the default.
   assert.match(onboarding, /onNext=\{\(\) => finish\(pendingRedirect \|\| '\/search\?welcome=1'\)\}/);
-  assert.match(search, /Your priorities are ready\. Now make them yours\./);
+  assert.match(search, /Here&apos;s what we heard\./);
   assert.match(search, /href="\/homes\?add=1">Add your first home/);
 });
 

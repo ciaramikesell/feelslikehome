@@ -11,12 +11,15 @@ const TIER_WEIGHT_LABEL = { must: 'Highest weight', important: 'Medium weight', 
 import { selectPriorityItem, splitCategoryItems } from '@/lib/matching';
 import Sheet from '@/components/Sheet';
 import QualifierPicker from '@/components/QualifierPicker';
+import Coachmark, { useCoachmark } from '@/components/Coachmark';
+
+const DRAG_COACHMARK_KEY = 'flh-my-search-drag-coachmark-dismissed';
 
 // The list of one tier's selected priorities — tap a priority to reveal
 // "Move to X" / "Remove" actions (already the real interaction; drag is a
 // bonus for a mouse, not a requirement). Shared verbatim between the desktop
 // column layout and the mobile per-tier Sheet below so the two never drift.
-function TierItemsList({ tier, items, activeItem, setActiveItem, setTier, priorities, patch, setSchoolsNote, onItemDragStart, onItemDragEnd }) {
+function TierItemsList({ tier, items, activeItem, setActiveItem, setTier, priorities, patch, setSchoolsNote, onItemDragStart, onItemDragEnd, cueKey }) {
   return (
     <div className="hh-selected-priorities">
       {items.map((item) => {
@@ -26,7 +29,7 @@ function TierItemsList({ tier, items, activeItem, setActiveItem, setTier, priori
           <div key={key} className="hh-selected-priority-wrap">
             <button
               type="button"
-              className="hh-selected-priority"
+              className={`hh-selected-priority ${key === cueKey ? 'hh-drag-hint-cue' : ''}`}
               draggable
               aria-expanded={open}
               aria-label={`${criterionDisplayLabel(item.categoryKey, item.label)}. Open priority actions`}
@@ -67,8 +70,12 @@ function TierItemsList({ tier, items, activeItem, setActiveItem, setTier, priori
 // The selected board has one canonical appearance. Adding reveals discovery
 // controls beneath it; it never swaps the board for a configuration surface.
 // Tier changes use the existing category tier map, with no within-tier order.
-export default function PriorityBoard({ priorities, patch, onboarding = false, catalogOpen, onCatalogOpenChange }) {
+export default function PriorityBoard({ priorities, patch, onboarding = false, catalogOpen, onCatalogOpenChange, firstRun = false }) {
   const categories = getItemlistCategories(priorities.searchType);
+  // One-time drag teaching moment for the first appropriate arrival after
+  // onboarding (see MySearchPanel's `firstRun`, itself gated on the ?welcome=1
+  // handoff) — never onboarding itself, which has no drag board at all.
+  const [dragCoachmarkOpen, dismissDragCoachmark] = useCoachmark(DRAG_COACHMARK_KEY, !onboarding && firstRun);
   const [localAddOpen, setLocalAddOpen] = useState(false);
   const addOpen = catalogOpen ?? localAddOpen;
   const setAddOpen = onCatalogOpenChange ?? setLocalAddOpen;
@@ -165,10 +172,26 @@ export default function PriorityBoard({ priorities, patch, onboarding = false, c
     return next;
   });
 
-  const tierItemsProps = { activeItem, setActiveItem, setTier, priorities, patch, setSchoolsNote };
+  // A very subtle, one-time "this moves" cue on the first priority the user
+  // will actually see — desktop only (mobile's compact summary rows have no
+  // individual chip to attach it to until a tier Sheet is opened), and only
+  // while the coachmark itself is still showing, so it never plays on repeat
+  // visits. Respects prefers-reduced-motion entirely in CSS (see .hh-drag-hint-cue).
+  const firstSelected = buckets.flatMap((bucket) => bucket.items)[0];
+  const cueKey = dragCoachmarkOpen && !mobileCompact && firstSelected ? `${firstSelected.categoryKey}:${firstSelected.label}` : null;
+
+  const tierItemsProps = { activeItem, setActiveItem, setTier, priorities, patch, setSchoolsNote, cueKey };
 
   return (
     <div>
+      {dragCoachmarkOpen && (
+        <Coachmark
+          className="hh-drag-coachmark"
+          heading="Now rank what matters most"
+          body="We started everything you chose as Important. Drag your priorities between Must Have, Important, and Nice to Have to tell Feels Like Home how much each one matters."
+          onDismiss={dismissDragCoachmark}
+        />
+      )}
       {!onboarding && (
         <div className="hh-priority-board-intro">
           <h4 className="hh-priority-board-heading">Rank what matters to you</h4>

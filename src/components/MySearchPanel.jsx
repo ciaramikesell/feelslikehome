@@ -239,11 +239,11 @@ function BasicsCard({ p, patch }) {
 // so its resting portrait never transforms into a configuration panel. This
 // is the page's primary purpose, so it renders in the wide left column (see
 // .hh-search-primary) rather than as one supporting card among several.
-function WhatMattersCard({ priorities, patch, catalogOpen, onCatalogOpenChange }) {
+function WhatMattersCard({ priorities, patch, catalogOpen, onCatalogOpenChange, firstRun }) {
   return (
     <div>
     <SearchCard title="What Matters Most to Me">
-      <PriorityBoard priorities={priorities} patch={patch} catalogOpen={catalogOpen} onCatalogOpenChange={onCatalogOpenChange} />
+      <PriorityBoard priorities={priorities} patch={patch} catalogOpen={catalogOpen} onCatalogOpenChange={onCatalogOpenChange} firstRun={firstRun} />
     </SearchCard>
     </div>
   );
@@ -339,13 +339,16 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
     <>
       <div className="hh-search-layout">
         {saveError && <p className="hh-save-error" role="alert">{saveError} <button type="button" onClick={retry}>Retry</button></p>}
+        {/* Orientation + payoff, not instruction — the drag coachmark on the
+            priority board itself (see PriorityBoard) now teaches the
+            interaction, so this banner doesn't need to repeat it. */}
         {firstRun && <section className="hh-search-reveal hh-corner">
           <div>
             <p className="hh-label">Your search is ready</p>
-            <h2 className="hh-serif">Your priorities are ready. Now make them yours.</h2>
-            <p className="hh-search-reveal-instruction">We started everything you chose as Important. Drag your priorities between Must Have, Important, and Nice to Have to show us what matters most. You can change them anytime.</p>
+            <h2 className="hh-serif">Here&apos;s what we heard.</h2>
+            <p>This is what Feels Like Home will use to Match your options. Nothing&apos;s set in stone—you can change your search anytime.</p>
           </div>
-          <div className="hh-first-home-handoff"><strong>When this looks right, add your first home.</strong><p>We&apos;ll compare it against these priorities and show you your personalized Match.</p><Link className="hh-btn" href="/homes?add=1">Add your first home</Link></div>
+          <div className="hh-first-home-handoff"><strong>Ready to see your Match?</strong><p>Bring in the first home you&apos;re considering and we&apos;ll show you how it stacks up against your priorities.</p><Link className="hh-btn" href="/homes?add=1">Add your first home</Link></div>
         </section>}
         {/* Asymmetric two-column composition: "What Matters Most to Me" is
             this page's central purpose and takes the wide primary column;
@@ -356,7 +359,7 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
             grid inside it already collapses at. */}
         <div className="hh-search-grid">
           <div className="hh-search-primary">
-            <WhatMattersCard priorities={p} patch={patch} catalogOpen={catalogOpen} onCatalogOpenChange={setCatalogOpen} />
+            <WhatMattersCard priorities={p} patch={patch} catalogOpen={catalogOpen} onCatalogOpenChange={setCatalogOpen} firstRun={firstRun} />
           </div>
           <div className="hh-search-rail">
             <BasicsCard p={p} patch={patch} />

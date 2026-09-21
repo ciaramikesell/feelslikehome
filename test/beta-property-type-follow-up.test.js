@@ -32,9 +32,16 @@ test('saved actual property type resolves Preferred Property Type Match', () => 
 
 test('property Notes examples remain placeholders rather than saved values', () => {
   const example = 'HOA details, sewer/water, financing options, recent updates, listing terms, or anything else worth noting.';
-  assert.match(modal, new RegExp(`placeholder="${example.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`));
+  // Home Detail's own separate "Property notes" edit flow keeps its original,
+  // more descriptive placeholder — untouched by the Add/Edit Home inline-notes
+  // pass (see onboarding-guidance-and-inline-notes.test.js), so it still uses
+  // the longer example text.
   assert.match(detail, new RegExp(`placeholder="${example.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`));
   assert.doesNotMatch(persistence, new RegExp(example.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+  // Add/Edit Home's inline notes card uses the shorter, conversational
+  // placeholder instead — still a placeholder, never a saved default value.
+  assert.match(modal, /placeholder="Anything else you want to remember\?"/);
+  assert.doesNotMatch(persistence, /Anything else you want to remember\?/);
 });
 
 test('Home Card commute inset is conditional, compact, primary-only, and wraps long labels', () => {

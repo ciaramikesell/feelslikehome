@@ -18,12 +18,12 @@ test('My Search keeps one compact canonical board while add choices are progress
   assert.match(board, /hh-priority-tiers/);
   assert.match(board, /TIER_ORDER\.filter\(\(tier\) => tier !== 'dontcare'\)/);
   assert.match(board, /selected\.filter\(\(item\) => item\.tier === tier\)/);
-  assert.equal(board.match(/hh-selected-priority"/g)?.length, 1);
+  assert.equal(board.match(/hh-selected-priority \$\{key === cueKey/g)?.length, 1);
   assert.match(board, /const choicesOpen = onboarding \|\| addOpen/);
   assert.match(board, /\{choicesOpen && \(/);
   assert.match(board, /\+ Add another priority/);
   assert.match(board, /Close choices/);
-  assert.match(panel, /<PriorityBoard priorities=\{priorities\} patch=\{patch\} catalogOpen=\{catalogOpen\} onCatalogOpenChange=\{onCatalogOpenChange\} \/>/);
+  assert.match(panel, /<PriorityBoard priorities=\{priorities\} patch=\{patch\} catalogOpen=\{catalogOpen\} onCatalogOpenChange=\{onCatalogOpenChange\} firstRun=\{firstRun\} \/>/);
   assert.doesNotMatch(panel, /showHeader=!editOpen/);
   assert.match(css, /\.hh-selected-priority \{[^}]*background: transparent/);
   assert.doesNotMatch(board, /<TierPicker|aria-label=\{`Remove /);

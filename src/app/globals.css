@@ -186,11 +186,6 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-edit-empty, .hh-edit-error { color: var(--unknown); font-size: 12px; }
 .hh-edit-error { color: var(--negative); }
 .hh-edit-disclosure { margin-top: 12px; }
-.hh-edit-notes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-.hh-edit-note-summary { min-width: 0; padding: 10px; border-radius: 10px; background: var(--paper); }
-.hh-edit-note-summary b { display: block; margin-bottom: 5px; color: var(--ink-soft); font-size: 9.5px; letter-spacing: .09em; text-transform: uppercase; }
-.hh-edit-note-summary span, .hh-edit-note-summary li { color: var(--ink-soft); font-size: 11px; line-height: 1.45; }
-.hh-edit-note-summary ul { margin: 0; padding-left: 16px; }
 .hh-edit-notes-fields { display: grid; gap: 10px; }
 .hh-edit-save-error { margin: 0 24px 12px; padding: 10px 14px; border: 1px solid var(--negative); border-radius: 10px; color: var(--negative); background: rgba(166,63,50,.07); font-size: 12.5px; }
 .hh-edit-home-footer { position: sticky; bottom: 0; display: flex; justify-content: flex-end; gap: 10px; padding: 14px 24px; border-top: 1px solid var(--line); background: rgba(255,255,255,.97); }
@@ -326,10 +321,6 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-search-reveal { display: grid; grid-template-columns: minmax(0,1.25fr) minmax(260px,.75fr); gap: 22px; padding: 24px; border: 1px solid rgba(193,89,47,.2); border-radius: 18px; background: linear-gradient(135deg, rgba(255,255,255,.78), rgba(198,146,69,.1)); }
 .hh-search-reveal h2 { margin: 2px 0 7px; color: var(--brick); font-size: 25px; }
 .hh-search-reveal p { margin: 0; color: var(--ink-soft); font-size: 13.5px; line-height: 1.55; }
-/* Beta testing showed the drag-and-drop instruction got missed when styled as
-   quiet helper text — this is the one paragraph in the reveal that must read
-   as instructional, not fine print. */
-.hh-search-reveal-instruction { color: var(--ink); font-size: 15px; font-weight: 500; line-height: 1.6; }
 .hh-first-home-handoff { padding-left: 22px; border-left: 1px solid var(--line); }
 .hh-first-home-handoff strong { display: block; margin-bottom: 4px; color: var(--ink); }
 .hh-first-home-handoff .hh-btn { margin-top: 13px; }
@@ -380,12 +371,19 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
    parent's optional qualifiers always land on their own line under it,
    never mid-row between unrelated chips. Visually lighter than the main
    chips: this is a secondary, optional decision, not a second question. */
-.hh-qualifier-row { display: flex; flex-wrap: wrap; gap: 5px; flex-basis: 100%; width: 100%; margin: 2px 0 2px 4px; }
+.hh-qualifier-block { flex-basis: 100%; width: 100%; margin: 2px 0 2px 4px; }
+.hh-qualifier-hint { margin: 0 0 4px; color: var(--ink-soft); font-size: 11px; font-style: italic; }
+.hh-qualifier-row { display: flex; flex-wrap: wrap; gap: 5px; }
 .hh-chip-qualifier { min-height: 32px; padding: 4px 10px; font-size: 11px; opacity: .82; }
 .hh-chip-qualifier.on { opacity: 1; }
 .hh-add-own { display: inline-flex; width: fit-content; min-height: 40px; align-items: center; gap: 5px; padding: 7px 11px; border: 1px dashed var(--brick); border-radius: 999px; background: transparent; color: var(--brick); cursor: pointer; font: 650 12px 'Plus Jakarta Sans',sans-serif; }
 .hh-onboarding-custom { margin-top: 0; }
 .hh-onboarding-empty { margin: 0; padding: 14px; border-radius: 12px; background: rgba(116,128,79,.08); color: var(--ink-soft); font-size: 13px; }
+/* A warm reassurance, not a warning: answers "I like this but it isn't a
+   requirement, should I select it?" with a clear yes — select now, rank next. */
+.hh-onboarding-callout { display: grid; gap: 3px; margin: -6px 0 4px; padding: 12px 14px; border-radius: 12px; background: rgba(116,128,79,.08); }
+.hh-onboarding-callout strong { color: var(--moss); font-size: 13px; font-weight: 700; }
+.hh-onboarding-callout span { color: var(--ink-soft); font-size: 12px; line-height: 1.45; }
 .hh-onboarding-summary-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
 .hh-onboarding-summary-grid section { padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
 .hh-onboarding-summary-grid h2 { margin: 0 0 12px; color: var(--brick); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; }
@@ -445,6 +443,23 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-priority-board-intro { margin: -2px 0 14px; }
 .hh-priority-board-heading { margin: 0 0 3px; color: var(--ink); font-size: 14.5px; font-weight: 700; }
 .hh-priority-board-instruction { margin: 0; color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
+/* A one-time coachmark, not a second permanent instruction — same warm
+   gradient-card language as .hh-search-reveal so it reads as part of this
+   product, not a foreign tooltip widget. The small triangle "tail" is what
+   visually ties it to the priority columns directly beneath it. */
+.hh-coachmark { position: relative; margin: 0 0 16px; padding: 14px 16px; border: 1px solid rgba(193,89,47,.25); border-radius: 14px; background: linear-gradient(135deg, rgba(255,255,255,.85), rgba(198,146,69,.12)); }
+.hh-coachmark::after { content: ''; position: absolute; left: 26px; bottom: -8px; width: 14px; height: 14px; background: #fbe9d8; border-right: 1px solid rgba(193,89,47,.25); border-bottom: 1px solid rgba(193,89,47,.25); transform: rotate(45deg); }
+.hh-coachmark-heading { margin: 0 0 4px; color: var(--brick); font-size: 16px; font-weight: 700; }
+.hh-coachmark-body { margin: 0 0 10px; color: var(--ink); font-size: 13px; line-height: 1.55; }
+.hh-coachmark-dismiss { min-height: 34px; padding: 6px 14px; font-size: 12px; }
+/* Optional, very subtle "this moves" cue — plays once (never loops) on the
+   one priority row PriorityBoard marks via cueKey, only while the coachmark
+   above is still showing. Wrapped entirely in the no-preference query, so a
+   prefers-reduced-motion user never receives this rule at all. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes hh-drag-hint-cue { 0% { transform: translateY(0); } 35% { transform: translateY(-4px); } 70% { transform: translateY(1px); } 100% { transform: translateY(0); } }
+  .hh-drag-hint-cue { animation: hh-drag-hint-cue 900ms ease-in-out 700ms 1 both; }
+}
 .hh-suggestion-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px 24px; align-items: start; }
 .hh-suggestion-heading { margin: 0 0 8px; color: var(--ink-soft); font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
 .hh-suggestion-tray { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -808,7 +823,6 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   .hh-edit-criterion { align-items: flex-start; flex-direction: column; }
   .hh-edit-tristate { width: 100%; }
   .hh-edit-tristate .hh-chip { min-height: 40px; flex: 1; justify-content: center; }
-  .hh-edit-notes { grid-template-columns: minmax(0, 1fr); }
   .hh-edit-home-footer { padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); }
   .hh-edit-home-footer .hh-btn { min-height: 44px; }
   .hh-edit-home-footer .hh-btn:last-child { flex: 1; justify-content: center; }
