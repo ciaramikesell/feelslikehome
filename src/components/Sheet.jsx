@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useId, useRef } from 'react';
+import { useId, useRef } from 'react';
 import { X } from 'lucide-react';
-
-const FOCUSABLE_SELECTOR = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+import { useSheetFocusTrap } from '@/lib/useSheetFocusTrap';
 
 /**
  * One reusable presentation for "a small decision, a workflow, or a
@@ -31,45 +30,7 @@ export default function Sheet({
   const dialogRef = useRef(null);
   const titleId = useId();
 
-  useEffect(() => {
-    if (!open) return undefined;
-    const previouslyFocused = document.activeElement;
-    const node = dialogRef.current;
-    const focusables = () => node ? Array.from(node.querySelectorAll(FOCUSABLE_SELECTOR)) : [];
-    (focusables()[0] || node)?.focus();
-
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape') {
-        event.stopPropagation();
-        onClose();
-        return;
-      }
-      if (event.key !== 'Tab') return;
-      const items = focusables();
-      if (!items.length) return;
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener('keydown', onKeyDown, true);
-
-    // Lock page scroll while the sheet is open — its own body scrolls
-    // independently (see .hh-sheet-body), so this never fights the page.
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-
-    return () => {
-      document.removeEventListener('keydown', onKeyDown, true);
-      document.body.style.overflow = previousOverflow;
-      previouslyFocused?.focus?.();
-    };
-  }, [open, onClose]);
+  useSheetFocusTrap(open, onClose, dialogRef);
 
   if (!open) return null;
 

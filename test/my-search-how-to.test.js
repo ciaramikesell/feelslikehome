@@ -134,7 +134,13 @@ test('How it works reuses the focus-managed Sheet and has intentional desktop an
   const shell = read('src/components/AppShell.jsx');
   const sheet = read('src/components/Sheet.jsx');
   const css = read('src/app/globals.css');
-  for (const behavior of [/role="dialog"/, /aria-modal="true"/, /event\.key === 'Escape'/, /event\.key !== 'Tab'/, /previouslyFocused\?\.focus/, /document\.body\.style\.overflow = 'hidden'/]) assert.match(sheet, behavior);
+  // Focus/Escape/scroll-lock behavior lives in the shared useSheetFocusTrap
+  // hook now (extracted so it can be exercised with a real DOM regression
+  // test — see sheet-focus-regression.test.js), not inlined in Sheet.jsx.
+  const focusTrap = read('src/lib/useSheetFocusTrap.js');
+  assert.match(sheet, /useSheetFocusTrap\(open, onClose, dialogRef\)/);
+  for (const behavior of [/role="dialog"/, /aria-modal="true"/]) assert.match(sheet, behavior);
+  for (const behavior of [/event\.key === 'Escape'/, /event\.key !== 'Tab'/, /previouslyFocused\?\.focus/, /document\.body\.style\.overflow = 'hidden'/]) assert.match(focusTrap, behavior);
   assert.match(sheet, /aria-label="Close"/);
   assert.match(css, /\.hh-sheet-journey \{ max-width: 1040px; \}/);
   assert.match(css, /\.hh-how-to-steps \{[^}]*repeat\(2/);

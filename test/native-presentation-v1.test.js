@@ -13,6 +13,7 @@ const authShell = read('src/components/auth/AuthShell.jsx');
 const appShell = read('src/components/AppShell.jsx');
 const globalsCss = read('src/app/globals.css');
 const sheet = read('src/components/Sheet.jsx');
+const sheetFocusTrap = read('src/lib/useSheetFocusTrap.js');
 const archiveModal = read('src/components/ArchiveConfirmModal.jsx');
 const homesBoard = read('src/components/HomesBoard.jsx');
 const homeModal = read('src/components/HomeModal.jsx');
@@ -80,10 +81,17 @@ test('the native shell gets its own top safe-area padding on the shared app head
 test('Sheet is an accessible dialog with focus handling, Escape dismissal, and backdrop tap', () => {
   assert.match(sheet, /role="dialog"/);
   assert.match(sheet, /aria-modal="true"/);
-  assert.match(sheet, /event\.key === 'Escape'/);
-  assert.match(sheet, /event\.key !== 'Tab'/);
   assert.match(sheet, /dismissOnBackdrop && event\.target === event\.currentTarget && onClose\(\)/);
-  assert.match(sheet, /document\.body\.style\.overflow = 'hidden'/);
+  assert.match(sheet, /useSheetFocusTrap\(open, onClose, dialogRef\)/);
+  // Focus-trap/Escape/scroll-lock behavior itself lives in the extracted
+  // useSheetFocusTrap hook — see sheet-focus-regression.test.js for the real
+  // DOM regression coverage of its keystroke-focus contract.
+  assert.match(sheetFocusTrap, /event\.key === 'Escape'/);
+  assert.match(sheetFocusTrap, /event\.key !== 'Tab'/);
+  assert.match(sheetFocusTrap, /document\.body\.style\.overflow = 'hidden'/);
+  // The proven regression fix: depend only on `open`, read onClose via a ref.
+  assert.match(sheetFocusTrap, /\}, \[open\]\);/);
+  assert.doesNotMatch(sheetFocusTrap, /\}, \[open, onClose\]\);/);
 });
 
 test('Sheet renders as a bottom sheet on mobile and a centered dialog on desktop, above the mobile nav', () => {
