@@ -361,6 +361,8 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-onboarding-field { display: grid; gap: 5px; }
 .hh-onboarding-input-wrap { display: flex; align-items: center; gap: 6px; color: var(--ink-soft); font-size: 12px; }
 .hh-onboarding-input-wrap .hh-input { min-width: 0; }
+.hh-onboarding-field + .hh-onboarding-field { margin-top: 12px; }
+.hh-onboarding-chip-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .hh-onboarding-actions { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding-top: 2px; }
 .hh-onboarding-suggestions { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 13px 22px; }
 .hh-onboarding-suggestions h2 { margin: 0 0 6px; color: var(--ink-soft); font-size: 10.5px; text-transform: uppercase; letter-spacing: .065em; }
@@ -469,8 +471,6 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-custom-priority { display: flex; gap: 6px; margin-top: 16px; flex-wrap: wrap; }
 .hh-custom-priority select { flex: 0 0 150px; width: auto; }
 .hh-custom-priority input { flex: 1 1 180px; }
-.hh-specific-preferences { margin-top: 12px; color: var(--ink-soft); font-size: 12px; }
-.hh-specific-preferences summary { min-height: 34px; padding: 7px 0; cursor: pointer; font-weight: 600; }
 .hh-specific-tray { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 6px; }
 .hh-sheet-journey { max-width: 1040px; }
 .hh-how-to { border: 1px solid rgba(138,124,110,.24); background: var(--paper-raised); }

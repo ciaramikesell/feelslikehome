@@ -6,9 +6,9 @@ import { computeMatch } from '../src/lib/matching.js';
 import { appendPostTourNote, applyPostTourVerdict } from '../src/lib/lifecycle.js';
 
 const expected = {
-  'Location & Surroundings': ['Charming Neighborhood','Reputable Schools','Walkable to Town','Parks nearby','Quiet street','Bustling Street','Near waterfront','Walkable schools','No HOA'],
-  'Home Features': ['Finished basement','Walkout basement','First-Floor Bedroom','Primary ensuite','First-floor laundry','Home office','Central air','Fireplace','Move-in Ready','Renovation Potential','New Construction','Guest / In-Law Suite'],
-  'Exterior & Property': ['Patio / deck','Fenced yard','Garage','Large backyard','Front porch','Pool','Landscaping'],
+  'Location & Surroundings': ['Reputable Schools','Walkable to Town','Parks nearby','Quiet street','Bustling Street','Near waterfront','Walkable schools','No HOA'],
+  'Home Features': ['Finished basement','Walkout basement','First-Floor Primary','Guest Bedroom','Primary ensuite','First-floor laundry','Home office','Central air','Fireplace','Guest / In-Law Suite'],
+  'Exterior & Property': ['Patio / deck','Fenced yard','Privacy Fencing','Garage','Large backyard','Front porch','Pool','Landscaping'],
 };
 
 test('purchase catalog is the exact pre-tour My Search catalog', () => {

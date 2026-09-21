@@ -14,14 +14,17 @@ test('home layout and condition use compact selects with canonical array persist
   assert.doesNotMatch(modal, /toggleMulti/);
   assert.deepEqual(emptyHome().homeLayout, []);
   assert.deepEqual(emptyHome().homeCondition, []);
-  assert.deepEqual(LAYOUT_OPTIONS, ['Ranch / Single Story', 'Two Story', 'Split Level', 'Other', 'No Preference']);
-  assert.deepEqual(HOME_CONDITION_OPTIONS, ['New Construction', 'Move-In Ready', 'Renovation Potential', 'No Preference']);
+  // 2026 Basics/taxonomy correction: reduced to the three options the product now asks
+  // (dropped 'Split Level' and the explicit 'No Preference' — see LAYOUT_OPTIONS/
+  // HOME_CONDITION_OPTIONS; 'Move-in Ready' casing standardized).
+  assert.deepEqual(LAYOUT_OPTIONS, ['Ranch', 'Two Story', 'Other']);
+  assert.deepEqual(HOME_CONDITION_OPTIONS, ['New Construction', 'Move-in Ready', 'Renovation Potential']);
   assert.deepEqual(structuredFactValueFromSelect('Two Story'), ['Two Story']);
-  assert.deepEqual(structuredFactValueFromSelect('Move-In Ready'), ['Move-In Ready']);
+  assert.deepEqual(structuredFactValueFromSelect('Move-in Ready'), ['Move-in Ready']);
   assert.deepEqual(structuredFactValueFromSelect(''), []);
-  assert.equal(structuredFactSelectValue(['Split Level'], ['Split Level']), 'Split Level');
-  assert.equal(structuredFactSelectValue([], ['Split Level']), '');
-  assert.equal(structuredFactSelectValue(['Ranch / Single Story', 'Other'], ['Ranch / Single Story', 'Other']), EXISTING_STRUCTURED_FACT_VALUE);
+  assert.equal(structuredFactSelectValue(['Other'], ['Other']), 'Other');
+  assert.equal(structuredFactSelectValue([], ['Other']), '');
+  assert.equal(structuredFactSelectValue(['Ranch', 'Other'], ['Ranch', 'Other']), EXISTING_STRUCTURED_FACT_VALUE);
   const collaboration = read('src/lib/supabase/collaboration.js');
   assert.match(collaboration, /homeLayout: row\.home_layout \|\| \[\]/);
   assert.match(collaboration, /homeCondition: Array\.isArray\(row\.home_condition\)/);

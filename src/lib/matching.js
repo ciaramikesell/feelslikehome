@@ -441,56 +441,6 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
         return;
       }
 
-      // Fenced Yard: Privacy Fence is an optional qualifier of the same weighted
-      // priority, not a second criterion. A reliable privacy-fence answer also implies
-      // the base "has a fenced yard" fact (Privacy Fence inherently implies Fenced
-      // Yard), since the base fact is otherwise fully manual (there is no objective
-      // field like garageSpaces backing it).
-      if (def.key === 'exterior' && item.label === 'Fenced yard') {
-        const qualifiers = catState.qualifiers?.['Fenced yard'] || [];
-        const baseRaw = checks[ns];
-        const privacyRaw = checks[qualifierFactKey(def.key, item.label, 'privacy')];
-        const effectiveBase = privacyRaw === true ? true : baseRaw;
-        if (!qualifiers.includes('privacy')) {
-          if (effectiveBase === true) push(ns, item.label, tier, true, 1, true, 'Yes', true);
-          else if (effectiveBase === 'no') push(ns, item.label, tier, true, 0, false, 'No', true);
-          else notEvaluated(ns, item.label, tier, true);
-        } else if (effectiveBase === 'no') {
-          push(ns, item.label, tier, true, 0, false, 'No fence', true);
-        } else if (privacyRaw === true) {
-          push(ns, item.label, tier, true, 1, true, 'Privacy fence confirmed', true);
-        } else if (privacyRaw === 'no') {
-          push(ns, item.label, tier, true, 0, false, 'Not a privacy fence', true);
-        } else {
-          notEvaluated(ns, item.label, tier, true);
-        }
-        return;
-      }
-
-      // First-Floor Bedroom: Primary and Guest are optional qualifiers of the same
-      // weighted priority and, unlike Garage, may both be requested together — every
-      // requested qualifier must have a reliably recorded fact before this criterion
-      // scores at all (never partially guessed from an incomplete answer); the score
-      // is the fraction of requested qualifiers confirmed present.
-      if (def.key === 'features' && item.label === 'First-Floor Bedroom') {
-        const qualifiers = catState.qualifiers?.['First-Floor Bedroom'] || [];
-        if (!qualifiers.length) {
-          const baseRaw = checks[ns];
-          if (baseRaw === true) push(ns, item.label, tier, true, 1, true, 'Yes', true);
-          else if (baseRaw === 'no') push(ns, item.label, tier, true, 0, false, 'No', true);
-          else notEvaluated(ns, item.label, tier, true);
-          return;
-        }
-        const results = qualifiers.map((qualifier) => checks[qualifierFactKey(def.key, item.label, qualifier)]);
-        const allKnown = results.every((raw) => raw === true || raw === 'no');
-        if (!allKnown) { notEvaluated(ns, item.label, tier, true); return; }
-        const metCount = results.filter((raw) => raw === true).length;
-        const score = metCount / qualifiers.length;
-        const detail = qualifiers.map((qualifier, index) => `${qualifier}: ${results[index] === true ? 'yes' : 'no'}`).join(', ');
-        push(ns, item.label, tier, true, score, score === 1, detail, true);
-        return;
-      }
-
       // Other check-kind criteria: three real states now. `true` continues to
       // mean Yes exactly as it always has (zero behavior change for existing
       // data). The string 'no' is the ONLY value that produces a confirmed

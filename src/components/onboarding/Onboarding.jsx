@@ -4,7 +4,8 @@ import { useCallback, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Check, Plus } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
-import { normalizePriorities, hasQualifierOptions } from '@/lib/constants';
+import { normalizePriorities, hasQualifierOptions, MULTISELECT_CATEGORIES, showsMultiselectCategory, isApartmentRental } from '@/lib/constants';
+import { searchIntentCapabilities, PROPERTY_TYPE_LABELS } from '@/lib/searchIntent';
 import QualifierPicker from '@/components/QualifierPicker';
 import { NEW_SEARCH_CHOICES, ONBOARDING_SUGGESTIONS, applySearchChoice } from '@/lib/onboarding';
 import { selectPriorityItem } from '@/lib/matching';
@@ -30,13 +31,32 @@ function OnboardingShell({ children, wide = false }) {
   return <div className="hh-onboarding-shell"><div className={`hh-corner hh-onboarding-card ${wide ? 'is-wide' : ''}`}>{children}</div></div>;
 }
 
-function BasicsField({ label, value, onChange, placeholder, prefix, suffix }) {
-  return <label className="hh-onboarding-field"><span className="hh-label">{label}</span><span className="hh-onboarding-input-wrap">{prefix}<input className="hh-input" inputMode="numeric" value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />{suffix}</span></label>;
+function BasicsField({ label, value, onChange, placeholder, prefix, suffix, inputMode = 'numeric' }) {
+  return <label className="hh-onboarding-field"><span className="hh-label">{label}</span><span className="hh-onboarding-input-wrap">{prefix}<input className="hh-input" inputMode={inputMode} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />{suffix}</span></label>;
+}
+
+// Same chip-multiselect shape My Search's own Basics editing uses (see
+// MultiselectSection in MySearchPanel.jsx) — no tier picker here, since onboarding
+// doesn't set per-field importance; the priorities document's own defaults already
+// give these fields a sensible starting tier, adjustable later in My Search.
+function MultiselectChips({ title, options, values, onToggle }) {
+  return <div className="hh-onboarding-field">
+    <span className="hh-label">{title} <span style={{ fontWeight: 400, textTransform: 'none' }}>(optional)</span></span>
+    <div className="hh-onboarding-chip-row">
+      {options.map((option) => <button type="button" key={option} className={`hh-chip ${values.includes(option) ? 'on' : ''}`} aria-pressed={values.includes(option)} onClick={() => onToggle(option)}>{option}</button>)}
+    </div>
+  </div>;
 }
 
 function BasicsStep({ priorities, patch, onNext }) {
   const selectedChoice = priorities.onboardingSearchType || '';
   const rental = selectedChoice === 'home_rent' || selectedChoice === 'apartment_rent';
+  const capabilities = searchIntentCapabilities(priorities.searchType);
+  const toggleMultiselect = (key) => (option) => patch((next) => {
+    const current = next[key].values || [];
+    next[key] = { ...next[key], values: current.includes(option) ? current.filter((v) => v !== option) : [...current, option] };
+    return next;
+  });
   return <div className="hh-onboarding-step">
     <header><h1 className="hh-serif">First, give us the basics.</h1><p>Tell us what you&apos;re looking for so we know what belongs in your search. Nothing here is permanent—you can change it anytime.</p></header>
     <fieldset className="hh-onboarding-fieldset"><legend className="hh-label">What are you searching for?</legend><div className="hh-choice-grid">
@@ -47,7 +67,24 @@ function BasicsStep({ priorities, patch, onNext }) {
       <BasicsField label="Minimum bedrooms" placeholder="3" suffix="beds" value={priorities.bedsMin.value} onChange={(value) => patch((next) => { next.bedsMin = { ...next.bedsMin, value }; return next; })} />
       <BasicsField label="Minimum bathrooms" placeholder="2" suffix="baths" value={priorities.bathsMin.value} onChange={(value) => patch((next) => { next.bathsMin = { ...next.bathsMin, value }; return next; })} />
       <BasicsField label="Minimum square footage" placeholder="1,800" suffix="sq ft" value={priorities.sqftTarget.value} onChange={(value) => patch((next) => { next.sqftTarget = { ...next.sqftTarget, value }; return next; })} />
+      {!isApartmentRental(priorities) && <BasicsField label="Minimum lot size" placeholder="0.25" suffix="acres" inputMode="decimal" value={priorities.lotSizeTarget.value} onChange={(value) => patch((next) => { next.lotSizeTarget = { ...next.lotSizeTarget, value }; return next; })} />}
     </div>}
+    {selectedChoice && (capabilities.isPurchase || capabilities.isRental) && (
+      <MultiselectChips
+        title="What kinds of homes are you considering?"
+        options={capabilities.preferredPropertyTypeOptions.map((value) => PROPERTY_TYPE_LABELS[value] || value)}
+        values={(priorities.preferredPropertyTypes.values || []).map((value) => PROPERTY_TYPE_LABELS[value] || value)}
+        onToggle={(optionLabel) => patch((next) => {
+          const value = Object.keys(PROPERTY_TYPE_LABELS).find((key) => PROPERTY_TYPE_LABELS[key] === optionLabel) || optionLabel;
+          const current = next.preferredPropertyTypes.values || [];
+          next.preferredPropertyTypes = { ...next.preferredPropertyTypes, values: current.includes(value) ? current.filter((v) => v !== value) : [...current, value] };
+          return next;
+        })}
+      />
+    )}
+    {selectedChoice && MULTISELECT_CATEGORIES.filter((def) => showsMultiselectCategory(def.key, priorities.searchType)).map((def) => (
+      <MultiselectChips key={def.key} title={def.title} options={def.options} values={priorities[def.key].values || []} onToggle={toggleMultiselect(def.key)} />
+    ))}
     <nav className="hh-onboarding-actions"><span /><button type="button" className="hh-btn" disabled={!selectedChoice} onClick={onNext}>Continue</button></nav>
   </div>;
 }

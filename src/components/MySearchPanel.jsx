@@ -8,11 +8,12 @@ import CommuteDestinations from '@/components/CommuteDestinations';
 import CoBuyerManagement from '@/components/CoBuyerManagement';
 import InviteCoBuyer from '@/components/InviteCoBuyer';
 import {
-  MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, INVESTMENT_PROPERTY_TYPES, INVESTMENT_LIVING_PLAN_OPTIONS,
+  MULTISELECT_CATEGORIES, INVESTMENT_PROPERTY_TYPES, INVESTMENT_LIVING_PLAN_OPTIONS,
   showsMultiselectCategory, terminology, toggleWithNoPreference,
   normalizePriorities, searchExperienceLabel, getItemlistCategories, isApartmentRental,
 } from '@/lib/constants';
 import { PROPERTY_TYPE_LABELS, searchIntentCapabilities } from '@/lib/searchIntent';
+import { parseNum } from '@/lib/matching';
 import { createClient } from '@/lib/supabase/client';
 import { useReliableOptimisticState } from '@/lib/useReliableOptimisticState';
 import { savePriorities } from '@/lib/supabase/collaboration';
@@ -50,38 +51,6 @@ function ObjectiveRow({ label, value, onValueChange, tier, onTierChange, placeho
   );
 }
 
-// Primary/Secondary bedroom pickers, rendered as a visually subordinate block — used only
-// nested beneath Home Layout, never as its own top-level section.
-function BedroomSubPreferences({ priorities, patch }) {
-  return (
-    <details className="hh-specific-preferences">
-      <summary>More specific layout preferences</summary>
-      {SINGLESELECT_CATEGORIES.map((def) => {
-        const catState = priorities[def.key] || { value: '', tier: 'dontcare' };
-        return (
-          <div className="hh-priority-row" key={def.key} style={{ alignItems: 'flex-start' }}>
-            <div style={{ flex: '1 1 200px' }}>
-              <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 6 }}>{def.title}</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {def.options.map((o) => (
-                  <button type="button" key={o} className={`hh-chip ${catState.value === o ? 'on' : ''}`} aria-pressed={catState.value === o} onClick={() => patch((next) => {
-                    const wasSelected = next[def.key].value === o;
-                    const newValue = wasSelected ? '' : o;
-                    const newTier = !wasSelected && o === 'No Preference' ? 'dontcare' : next[def.key].tier;
-                    next[def.key] = { ...next[def.key], value: newValue, tier: newTier };
-                    return next;
-                  })}>{o}</button>
-                ))}
-              </div>
-            </div>
-            <TierPicker value={catState.tier} onChange={(t) => patch((next) => { next[def.key] = { ...next[def.key], tier: t }; return next; })} quiet ariaLabel={`${def.title} importance`} />
-          </div>
-        );
-      })}
-    </details>
-  );
-}
-
 function MultiselectSection({ def, priorities, patch, children }) {
   const { key, title, options } = def;
   const catState = priorities[key] || { values: [], tier: 'dontcare' };
@@ -104,8 +73,8 @@ function MultiselectSection({ def, priorities, patch, children }) {
     return next;
   });
   return (
-    <div style={{ marginTop: 18 }}>
-      <div className="hh-label" style={{ marginBottom: 6 }}>{title}</div>
+    <div style={{ marginTop: 14 }}>
+      <div className="hh-label" style={{ marginBottom: 6 }}>{title} {def.optional && <span style={{ fontWeight: 400, textTransform: 'none' }}>(optional)</span>}</div>
       <div className="hh-priority-row" style={{ alignItems: 'flex-start' }}>
         <div style={{ flex: '1 1 220px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {options.map((o) => <button type="button" key={o} className={`hh-chip ${safeValues.includes(o) ? 'on' : ''}`} aria-pressed={safeValues.includes(o)} onClick={() => toggle(o)}>{o}</button>)}
@@ -118,28 +87,41 @@ function MultiselectSection({ def, priorities, patch, children }) {
 }
 
 // Compact, read-only lines summarizing the basic search — only what's actually set,
-// never empty placeholder rows, and never raw field names.
+// never empty placeholder rows, and never raw field names. Uses the same safe numeric
+// parser Match itself uses (parseNum strips thousands separators before parsing) —
+// previously this used raw Number(), which returns NaN for a comma-formatted value
+// like "450,000" (exactly what the input's own placeholder shows), producing the
+// "$NaN" / "NaN+ sq ft" bug. Every value here is optional; nothing renders NaN, $NaN,
+// undefined, or null when a field is unset.
 function buildBasicsSummary(p) {
   const lines = [];
   const rental = terminology(p.searchType).priceFieldLabel.toLowerCase().includes('rent');
-  if (p.budget?.value) lines.push(`Up to $${Number(p.budget.value).toLocaleString()}${rental ? '/mo' : ''}`);
+  const budget = parseNum(p.budget?.value);
+  if (budget !== null) lines.push(`Up to $${budget.toLocaleString()}${rental ? '/mo' : ''}`);
+
   const rooms = [p.bedsMin?.value && `${p.bedsMin.value}+ beds`, p.bathsMin?.value && `${p.bathsMin.value}+ baths`].filter(Boolean);
   if (rooms.length) lines.push(rooms.join(' · '));
-  const space = [p.sqftTarget?.value && `${Number(p.sqftTarget.value).toLocaleString()}+ sq ft`, !isApartmentRental(p) && p.lotSizeTarget?.value && `${p.lotSizeTarget.value}+ acres`].filter(Boolean);
+
+  const sqft = parseNum(p.sqftTarget?.value);
+  const lotSize = !isApartmentRental(p) ? parseNum(p.lotSizeTarget?.value) : null;
+  const space = [sqft !== null && `${sqft.toLocaleString()}+ sq ft`, lotSize !== null && `${lotSize}+ acres`].filter(Boolean);
   if (space.length) lines.push(space.join(' · '));
 
+  if (p.preferredPropertyTypes?.values?.length) {
+    lines.push(p.preferredPropertyTypes.values.map((value) => PROPERTY_TYPE_LABELS[value] || value).join(' or '));
+  }
+  if (p.searchType === 'investment' && (p.investmentPropertyTypes || []).filter((v) => v !== 'No Preference').length) {
+    lines.push(p.investmentPropertyTypes.filter((v) => v !== 'No Preference').join(' or '));
+  }
+
+  // 'No Preference' is no longer an offered chip (see LAYOUT_OPTIONS/
+  // HOME_CONDITION_OPTIONS), but a legacy search may still have it stored — filtered
+  // here so it never reads as a meaningful value in the summary.
   const layoutVals = (p.homeLayout?.values || []).filter((v) => v !== 'No Preference');
   if (layoutVals.length) lines.push(layoutVals.join(' or '));
 
   const conditionVals = (p.homeCondition?.values || []).filter((v) => v !== 'No Preference');
   if (conditionVals.length) lines.push(conditionVals.join(' or '));
-
-  if (p.searchType === 'investment' && (p.investmentPropertyTypes || []).filter((v) => v !== 'No Preference').length) {
-    lines.push(p.investmentPropertyTypes.filter((v) => v !== 'No Preference').join(' or '));
-  }
-  if (p.preferredPropertyTypes?.values?.length) {
-    lines.push(p.preferredPropertyTypes.values.map((value) => PROPERTY_TYPE_LABELS[value] || value).join(' or '));
-  }
 
   return lines;
 }
@@ -179,7 +161,7 @@ function BasicsCard({ p, patch }) {
           </div>
 
           {p.searchType === 'investment' && (
-            <div style={{ marginTop: 18 }}>
+            <div style={{ marginTop: 14 }}>
               <div className="hh-label" style={{ marginBottom: 6 }}>Investment Property Type</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14 }}>
                 {INVESTMENT_PROPERTY_TYPES.map((opt) => (
@@ -202,7 +184,7 @@ function BasicsCard({ p, patch }) {
           )}
 
           {(capabilities.isPurchase || capabilities.isRental) && (
-            <div style={{ marginTop: 18 }}>
+            <div style={{ marginTop: 14 }}>
               <div className="hh-label" style={{ marginBottom: 6 }}>What kinds of homes are you considering? <span style={{ fontWeight: 400, textTransform: 'none' }}>(optional)</span></div>
               <div className="hh-priority-row" style={{ alignItems: 'flex-start' }}>
                 <div style={{ flex: '1 1 220px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -221,9 +203,7 @@ function BasicsCard({ p, patch }) {
           )}
 
           {MULTISELECT_CATEGORIES.filter((def) => showsMultiselectCategory(def.key, p.searchType)).map((def) => (
-            <MultiselectSection key={def.key} def={def} priorities={p} patch={patch}>
-              {def.key === 'homeLayout' && <BedroomSubPreferences priorities={p} patch={patch} />}
-            </MultiselectSection>
+            <MultiselectSection key={def.key} def={def} priorities={p} patch={patch} />
           ))}
 
           <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px', marginTop: 16 }} onClick={() => setEditOpen(false)}>

@@ -51,10 +51,10 @@ test('CTA reinforces ranking, not a generic "Continue"', () => {
 
 /* ------------------------------ Qualifier helpers ------------------------------ */
 
-test('Garage, Fenced Yard, and First-Floor Bedroom each get a tiny conversational hint next to their refinement controls, never a large card', () => {
+test('Garage gets a tiny conversational hint next to its refinement control, never a large card — Fenced Yard/First-Floor Bedroom qualifiers were reverted', () => {
   assert.match(qualifierPicker, /'exterior:Garage': "Any garage works\? Leave it as Any, or tell us if Attached or Detached matters\."/);
-  assert.match(qualifierPicker, /'exterior:Fenced yard': "Any fence works\? Leave it as Any, or choose Privacy Fence if that's important\."/);
-  assert.match(qualifierPicker, /'features:First-Floor Bedroom': 'Who needs to be downstairs\? Choose Primary, Guest, both, or leave it as Any\.'/);
+  assert.doesNotMatch(qualifierPicker, /'exterior:Fenced yard':/);
+  assert.doesNotMatch(qualifierPicker, /'features:First-Floor Bedroom':/);
   assert.match(css, /\.hh-qualifier-hint \{[^}]*font-size: 11px/);
   assert.doesNotMatch(qualifierPicker, /<section|<article/); // no card wrapper
 });

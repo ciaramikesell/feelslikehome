@@ -24,14 +24,14 @@ test('new choices map to canonical intents and existing property-type preference
   assert.deepEqual([buy.preferredPropertyTypes.values, homeRent.preferredPropertyTypes.values, apartment.preferredPropertyTypes.values], [['house'], ['house'], ['apartment']]);
 });
 
-test('Home to Buy curated suggestions are exactly the canonical purchase taxonomy — one shared catalog with My Search, no Home Feel group, parent/child criteria collapsed to their parent', () => {
+test('Home to Buy curated suggestions are exactly the canonical purchase taxonomy — one shared catalog with My Search, no Home Feel group, Garage the sole parent/child criterion', () => {
   assert.deepEqual(displayed('home_buy'), [
-    'Charming Neighborhood', 'Reputable Schools', 'Walkable to Town', 'Parks Nearby', 'Quiet Street', 'Bustling Street', 'Near Waterfront', 'Walkable Schools', 'No HOA',
-    'Finished Basement', 'Walkout Basement', 'First-Floor Bedroom', 'Primary Ensuite', 'First-Floor Laundry', 'Home Office', 'Central Air', 'Fireplace', 'Move-in Ready', 'Renovation Potential', 'New Construction', 'Guest / In-Law Suite',
-    'Deck / Patio', 'Fenced Yard', 'Garage', 'Large Backyard', 'Front Porch', 'Pool', 'Landscaping',
+    'Reputable Schools', 'Walkable to Town', 'Parks Nearby', 'Quiet Street', 'Bustling Street', 'Near Waterfront', 'Walkable Schools', 'No HOA',
+    'Finished Basement', 'Walkout Basement', 'First-Floor Primary', 'Guest Bedroom', 'Primary Ensuite', 'First-Floor Laundry', 'Home Office', 'Central Air', 'Fireplace', 'Guest / In-Law Suite',
+    'Deck / Patio', 'Fenced Yard', 'Privacy Fencing', 'Garage', 'Large Backyard', 'Front Porch', 'Pool', 'Landscaping',
   ]);
   assert.deepEqual(ONBOARDING_SUGGESTIONS.home_buy.map(([title]) => title), ['Location', 'Home Features', 'Exterior & Property']);
-  for (const retired of ['Neighborhood', 'Walkability', 'Immediate Street / Surroundings', 'Basement', 'Yard', 'Overall Condition', 'Layout / Flow', 'Natural Light', 'Character / Charm', 'Attached Garage', 'Detached Garage', 'Privacy Fencing', 'First-Floor Primary']) {
+  for (const retired of ['Charming Neighborhood', 'Move-in Ready', 'Renovation Potential', 'New Construction', 'First-Floor Bedroom', 'Neighborhood', 'Walkability', 'Immediate Street / Surroundings', 'Basement', 'Yard', 'Overall Condition', 'Layout / Flow', 'Natural Light', 'Character / Charm', 'Attached Garage', 'Detached Garage']) {
     assert.ok(!displayed('home_buy').includes(retired));
   }
 });

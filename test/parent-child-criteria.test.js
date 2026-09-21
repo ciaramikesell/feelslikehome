@@ -18,33 +18,39 @@ function withSelected(priorities, categoryKey, label, tier, kind = 'check') {
   return { ...priorities, [categoryKey]: selectPriorityItem(priorities[categoryKey], def, { label, kind }, tier) };
 }
 
-/* ------------------------------ Taxonomy: parent only, no flat children ------------------------------ */
+/* ------------------------------ Taxonomy: Garage is the sole remaining parent ------------------------------ */
 
-test('Garage, Fenced yard, and First-Floor Bedroom are the sole canonical parents — their old flat children never appear as independent chips', () => {
+test('Garage is the sole canonical parent — Fenced Yard/Privacy Fencing and First-Floor Primary/Guest Bedroom are independent flat chips (2026 reversion)', () => {
   const labels = purchaseLabels();
   assert.ok(labels.includes('exterior:Garage'));
-  assert.ok(labels.includes('exterior:Fenced yard'));
-  assert.ok(labels.includes('features:First-Floor Bedroom'));
-  for (const flatChild of ['exterior:Attached garage', 'exterior:Detached garage', 'exterior:Privacy Fencing', 'features:First-Floor Primary']) {
+  for (const flatChild of ['exterior:Attached garage', 'exterior:Detached garage']) {
     assert.ok(!labels.includes(flatChild), `${flatChild} must not be an independent canonical chip`);
   }
+  for (const flat of ['exterior:Fenced yard', 'exterior:Privacy Fencing', 'features:First-Floor Primary', 'features:Guest Bedroom']) {
+    assert.ok(labels.includes(flat), `${flat} must be an independent canonical chip`);
+  }
+  assert.ok(!labels.includes('features:First-Floor Bedroom'), 'First-Floor Bedroom must not exist as a new-selectable parent chip');
   const onboardingBuyLabels = ONBOARDING_SUGGESTIONS.home_buy.flatMap(([, items]) => items.map((item) => `${item.categoryKey}:${item.label}`));
-  for (const flatChild of ['exterior:Attached garage', 'exterior:Detached garage', 'exterior:Privacy Fencing', 'features:First-Floor Primary']) {
+  for (const flatChild of ['exterior:Attached garage', 'exterior:Detached garage', 'features:First-Floor Bedroom']) {
     assert.ok(!onboardingBuyLabels.includes(flatChild));
+  }
+  for (const flat of ['exterior:Fenced yard', 'exterior:Privacy Fencing', 'features:First-Floor Primary', 'features:Guest Bedroom']) {
+    assert.ok(onboardingBuyLabels.includes(flat));
   }
 });
 
-test('qualifier registry is exactly Garage (Attached/Detached), Fenced yard (Privacy fence), First-Floor Bedroom (Primary/Guest)', () => {
+test('qualifier registry contains only Garage (Attached/Detached) — Fenced Yard and First-Floor Bedroom have no qualifier options', () => {
   assert.deepEqual(qualifierOptions('exterior', 'Garage').map((o) => o.key), ['attached', 'detached']);
-  assert.deepEqual(qualifierOptions('exterior', 'Fenced yard').map((o) => o.key), ['privacy']);
-  assert.deepEqual(qualifierOptions('features', 'First-Floor Bedroom').map((o) => o.key), ['primary', 'guest']);
+  assert.equal(qualifierOptions('exterior', 'Fenced yard'), null);
+  assert.equal(qualifierOptions('features', 'First-Floor Bedroom'), null);
+  assert.equal(hasQualifierOptions('exterior', 'Fenced yard'), false);
+  assert.equal(hasQualifierOptions('features', 'First-Floor Bedroom'), false);
   assert.equal(hasQualifierOptions('exterior', 'Pool'), false);
-  assert.equal(qualifierOptions('exterior', 'Pool'), null);
 });
 
-/* ------------------------------ Qualifier state helpers ------------------------------ */
+/* ------------------------------ Qualifier state helpers (Garage only) ------------------------------ */
 
-test('Garage/Fenced Yard qualifiers behave as an exclusive replacement; "Any" always clears', () => {
+test('Garage qualifiers behave as an exclusive replacement; "Any" always clears', () => {
   let catState = { tiers: { Garage: 'must' }, qualifiers: {} };
   catState = setExclusiveQualifier(catState, 'Garage', 'attached');
   assert.deepEqual(catState.qualifiers.Garage, ['attached']);
@@ -54,17 +60,6 @@ test('Garage/Fenced Yard qualifiers behave as an exclusive replacement; "Any" al
   assert.deepEqual(catState.qualifiers.Garage, []); // explicit Any
 });
 
-test('First-Floor Bedroom qualifiers toggle independently so Primary + Guest can both be selected', () => {
-  let catState = { tiers: { 'First-Floor Bedroom': 'important' }, qualifiers: {} };
-  catState = toggleCriterionQualifier(catState, 'First-Floor Bedroom', 'primary');
-  catState = toggleCriterionQualifier(catState, 'First-Floor Bedroom', 'guest');
-  assert.deepEqual(catState.qualifiers['First-Floor Bedroom'].sort(), ['guest', 'primary']);
-  catState = toggleCriterionQualifier(catState, 'First-Floor Bedroom', 'primary'); // toggling off removes just that one
-  assert.deepEqual(catState.qualifiers['First-Floor Bedroom'], ['guest']);
-  catState = toggleCriterionQualifier(catState, 'First-Floor Bedroom', null); // explicit Any clears both
-  assert.deepEqual(catState.qualifiers['First-Floor Bedroom'], []);
-});
-
 test('selecting both Garage qualifiers is semantically identical to Any', () => {
   assert.equal(isGarageQualifierAny([]), true);
   assert.equal(isGarageQualifierAny(undefined), true);
@@ -72,19 +67,19 @@ test('selecting both Garage qualifiers is semantically identical to Any', () => 
   assert.equal(isGarageQualifierAny(['attached', 'detached']), true);
 });
 
-test('compact My Search display text reads "Parent · Qualifier"', () => {
-  const priorities = normalizePriorities({ searchType: 'purchase', exterior: { qualifiers: { Garage: ['attached'], 'Fenced yard': ['privacy'] } }, features: { qualifiers: { 'First-Floor Bedroom': ['primary', 'guest'] } } });
+test('compact My Search display text reads "Parent · Qualifier" for Garage; unqualified criteria show their plain label', () => {
+  const priorities = normalizePriorities({ searchType: 'purchase', exterior: { qualifiers: { Garage: ['attached'] } } });
   assert.equal(qualifierSummaryLabel('exterior', 'Garage', selectedQualifiers(priorities, 'exterior', 'Garage')), 'Attached');
   assert.equal(criterionCompactLabel('exterior', 'Garage', priorities), 'Garage · Attached');
-  assert.equal(criterionCompactLabel('exterior', 'Fenced yard', priorities), 'Fenced Yard · Privacy Fence');
-  assert.equal(criterionCompactLabel('features', 'First-Floor Bedroom', priorities), 'First-Floor Bedroom · Primary + Guest');
   const anyPriorities = normalizePriorities({ searchType: 'purchase' });
   assert.equal(criterionCompactLabel('exterior', 'Garage', anyPriorities), 'Garage · Any');
-  assert.equal(criterionCompactLabel('exterior', 'Fenced yard', anyPriorities), 'Fenced Yard · Any Fence');
-  assert.equal(criterionCompactLabel('exterior', 'Pool', anyPriorities), 'Pool'); // unqualified criterion unaffected
+  assert.equal(criterionCompactLabel('exterior', 'Fenced yard', anyPriorities), 'Fenced Yard');
+  assert.equal(criterionCompactLabel('exterior', 'Privacy Fencing', anyPriorities), 'Privacy Fencing');
+  assert.equal(criterionCompactLabel('features', 'First-Floor Primary', anyPriorities), 'First-Floor Primary');
+  assert.equal(criterionCompactLabel('features', 'Guest Bedroom', anyPriorities), 'Guest Bedroom');
 });
 
-/* ------------------------------ Safe fold: flat legacy selections -> parent + qualifier ------------------------------ */
+/* ------------------------------ Safe fold: flat legacy Garage selections -> parent + qualifier ------------------------------ */
 
 test('Attached garage + Detached garage both previously selected fold into Garage with no qualifier (Any) and the stronger tier', () => {
   const priorities = normalizePriorities({
@@ -104,18 +99,6 @@ test('only Attached garage previously selected folds into Garage with the Attach
   assert.deepEqual(priorities.exterior.qualifiers.Garage, ['attached']);
 });
 
-test('Privacy Fencing folds into Fenced yard + privacy qualifier; First-Floor Primary folds into First-Floor Bedroom + primary qualifier', () => {
-  const priorities = normalizePriorities({
-    searchType: 'purchase',
-    exterior: { tiers: { 'Privacy Fencing': 'must' } },
-    features: { tiers: { 'First-Floor Primary': 'nice' } },
-  });
-  assert.equal(priorities.exterior.tiers['Fenced yard'], 'must');
-  assert.deepEqual(priorities.exterior.qualifiers['Fenced yard'], ['privacy']);
-  assert.equal(priorities.features.tiers['First-Floor Bedroom'], 'nice');
-  assert.deepEqual(priorities.features.qualifiers['First-Floor Bedroom'], ['primary']);
-});
-
 test('an existing explicit Garage selection is never demoted by a weaker legacy flat selection, only strengthened', () => {
   const priorities = normalizePriorities({ searchType: 'purchase', exterior: { tiers: { Garage: 'must', 'Attached garage': 'nice' } } });
   assert.equal(priorities.exterior.tiers.Garage, 'must');
@@ -128,11 +111,80 @@ test('this fold never fires for Rental/Investment — Attached Garage remains wh
   assert.equal(priorities.exterior.tiers.Garage, undefined);
 });
 
-test('a legacy per-home fact recorded under a flat child key stays visible as the new qualifier fact', () => {
-  const folded = foldLegacyCheckAliases({ 'exterior:Attached garage': true, 'exterior:Privacy Fencing': 'no', 'features:First-Floor Primary': true }, 'purchase');
+test('a legacy per-home Garage fact recorded under a flat child key stays visible as the new qualifier fact', () => {
+  const folded = foldLegacyCheckAliases({ 'exterior:Attached garage': true }, 'purchase');
   assert.equal(folded[qualifierFactKey('exterior', 'Garage', 'attached')], true);
-  assert.equal(folded[qualifierFactKey('exterior', 'Fenced yard', 'privacy')], 'no');
-  assert.equal(folded[qualifierFactKey('features', 'First-Floor Bedroom', 'primary')], true);
+});
+
+/* ------------------------------ Safe fold: Fenced Yard/First-Floor Bedroom parent+qualifier -> flat (2026 reversion) ------------------------------ */
+
+test('Fenced yard selected with no qualifier (Any) stays exactly as the flat Fenced Yard criterion', () => {
+  const priorities = normalizePriorities({ searchType: 'purchase', exterior: { tiers: { 'Fenced yard': 'must' }, qualifiers: { 'Fenced yard': [] } } });
+  assert.equal(priorities.exterior.tiers['Fenced yard'], 'must');
+  assert.equal(priorities.exterior.tiers['Privacy Fencing'], undefined);
+  assert.deepEqual(priorities.exterior.qualifiers['Fenced yard'], undefined); // cleaned up, no longer meaningful
+});
+
+test('Fenced yard + privacy qualifier folds onto Privacy Fencing alone (not both) at the same tier — this is what the qualifier branch actually scored', () => {
+  const priorities = normalizePriorities({ searchType: 'purchase', exterior: { tiers: { 'Fenced yard': 'must' }, qualifiers: { 'Fenced yard': ['privacy'] } } });
+  assert.equal(priorities.exterior.tiers['Privacy Fencing'], 'must');
+  assert.equal(priorities.exterior.tiers['Fenced yard'], undefined);
+  assert.equal(priorities.exterior.qualifiers['Fenced yard'], undefined);
+  assert.ok(priorities.exterior.customItems.some((item) => item.label === 'Privacy Fencing'));
+  assert.ok(!priorities.exterior.customItems.some((item) => item.label === 'Fenced yard'));
+});
+
+test('a newly selected independent Privacy Fencing priority never folds back into Fenced yard', () => {
+  const priorities = normalizePriorities({ searchType: 'purchase', exterior: { tiers: { 'Privacy Fencing': 'nice' } } });
+  assert.equal(priorities.exterior.tiers['Privacy Fencing'], 'nice');
+  assert.equal(priorities.exterior.tiers['Fenced yard'], undefined);
+});
+
+test('First-Floor Bedroom + only the Primary qualifier folds onto First-Floor Primary alone', () => {
+  const priorities = normalizePriorities({ searchType: 'purchase', features: { tiers: { 'First-Floor Bedroom': 'important' }, qualifiers: { 'First-Floor Bedroom': ['primary'] } } });
+  assert.equal(priorities.features.tiers['First-Floor Primary'], 'important');
+  assert.equal(priorities.features.tiers['Guest Bedroom'], undefined);
+  assert.equal(priorities.features.tiers['First-Floor Bedroom'], undefined);
+});
+
+test('First-Floor Bedroom + only the Guest qualifier folds onto Guest Bedroom alone', () => {
+  const priorities = normalizePriorities({ searchType: 'purchase', features: { tiers: { 'First-Floor Bedroom': 'nice' }, qualifiers: { 'First-Floor Bedroom': ['guest'] } } });
+  assert.equal(priorities.features.tiers['Guest Bedroom'], 'nice');
+  assert.equal(priorities.features.tiers['First-Floor Primary'], undefined);
+});
+
+test('First-Floor Bedroom + both Primary and Guest qualifiers folds onto both independent criteria at the same tier', () => {
+  const priorities = normalizePriorities({ searchType: 'purchase', features: { tiers: { 'First-Floor Bedroom': 'must' }, qualifiers: { 'First-Floor Bedroom': ['primary', 'guest'] } } });
+  assert.equal(priorities.features.tiers['First-Floor Primary'], 'must');
+  assert.equal(priorities.features.tiers['Guest Bedroom'], 'must');
+  assert.equal(priorities.features.tiers['First-Floor Bedroom'], undefined);
+});
+
+test('First-Floor Bedroom selected with NO qualifier (Any) has no exact equivalent and is preserved untouched as a legacy item, never guessed', () => {
+  const priorities = normalizePriorities({ searchType: 'purchase', features: { tiers: { 'First-Floor Bedroom': 'must' }, customItems: [{ label: 'First-Floor Bedroom', kind: 'check' }] } });
+  assert.equal(priorities.features.tiers['First-Floor Bedroom'], 'must');
+  assert.equal(priorities.features.tiers['First-Floor Primary'], undefined);
+  assert.equal(priorities.features.tiers['Guest Bedroom'], undefined);
+  assert.equal(hasQualifierOptions('features', 'First-Floor Bedroom'), false); // no qualifier UI reappears for it
+});
+
+test('a legacy per-home fact recorded under the old Fenced yard/First-Floor Bedroom qualifier keys stays visible under the new flat canonical fact keys', () => {
+  const folded = foldLegacyCheckAliases({
+    [qualifierFactKey('exterior', 'Fenced yard', 'privacy')]: true,
+    [qualifierFactKey('features', 'First-Floor Bedroom', 'primary')]: true,
+    [qualifierFactKey('features', 'First-Floor Bedroom', 'guest')]: 'no',
+  }, 'purchase');
+  assert.equal(folded['exterior:Privacy Fencing'], true);
+  assert.equal(folded['features:First-Floor Primary'], true);
+  assert.equal(folded['features:Guest Bedroom'], 'no');
+});
+
+test('an explicit canonical-key fact is never overwritten by the legacy qualifier-key fact', () => {
+  const folded = foldLegacyCheckAliases({
+    'features:First-Floor Primary': false,
+    [qualifierFactKey('features', 'First-Floor Bedroom', 'primary')]: true,
+  }, 'purchase');
+  assert.equal(folded['features:First-Floor Primary'], false);
 });
 
 /* ------------------------------ Match semantics: UNKNOWN never becomes MISMATCH ------------------------------ */
@@ -173,64 +225,26 @@ test('Garage: no reliable garage information at all — Any is Unknown', () => {
   assert.equal(match.pct, null);
 });
 
-test('Fenced Yard: a reliable privacy fence satisfies both Any and Privacy Fence', () => {
-  const priorities = withSelected(normalizePriorities({ searchType: 'purchase' }), 'exterior', 'Fenced yard', 'must');
-  const anyHome = { checks: { [qualifierFactKey('exterior', 'Fenced yard', 'privacy')]: true } }; // base fact never separately recorded
-  const anyResult = computeMatch(anyHome, priorities).allSelected[0];
-  assert.deepEqual([anyResult.evaluated, anyResult.met], [true, true]); // privacy fence implies fenced yard
-
-  const wantPrivacy = { ...priorities, exterior: setExclusiveQualifier(priorities.exterior, 'Fenced yard', 'privacy') };
-  const privacyResult = computeMatch(anyHome, wantPrivacy).allSelected[0];
-  assert.deepEqual([privacyResult.evaluated, privacyResult.met], [true, true]);
+test('Fenced Yard and Privacy Fencing score independently as plain check-kind criteria', () => {
+  let priorities = withSelected(normalizePriorities({ searchType: 'purchase' }), 'exterior', 'Fenced yard', 'must');
+  priorities = withSelected(priorities, 'exterior', 'Privacy Fencing', 'nice');
+  const home = { checks: { 'exterior:Fenced yard': true, 'exterior:Privacy Fencing': 'no' } };
+  const match = computeMatch(home, priorities);
+  const fenced = match.allSelected.find((c) => c.key === 'exterior:Fenced yard');
+  const privacy = match.allSelected.find((c) => c.key === 'exterior:Privacy Fencing');
+  assert.deepEqual([fenced.evaluated, fenced.met], [true, true]);
+  assert.deepEqual([privacy.evaluated, privacy.met], [true, false]);
 });
 
-test('Fenced Yard: a reliable non-privacy fence satisfies Any but not Privacy Fence', () => {
-  const priorities = withSelected(normalizePriorities({ searchType: 'purchase' }), 'exterior', 'Fenced yard', 'must');
-  const home = { checks: { 'exterior:Fenced yard': true, [qualifierFactKey('exterior', 'Fenced yard', 'privacy')]: 'no' } };
-  const anyResult = computeMatch(home, priorities).allSelected[0];
-  assert.deepEqual([anyResult.evaluated, anyResult.met], [true, true]);
-
-  const wantPrivacy = { ...priorities, exterior: setExclusiveQualifier(priorities.exterior, 'Fenced yard', 'privacy') };
-  const privacyResult = computeMatch(home, wantPrivacy).allSelected[0];
-  assert.deepEqual([privacyResult.evaluated, privacyResult.met], [true, false]);
-});
-
-test('Fenced Yard: fence exists but type unknown — Any may match while Privacy Fence remains Unknown', () => {
-  const priorities = withSelected(normalizePriorities({ searchType: 'purchase' }), 'exterior', 'Fenced yard', 'must');
-  const home = { checks: { 'exterior:Fenced yard': true } };
-  const anyResult = computeMatch(home, priorities).allSelected[0];
-  assert.deepEqual([anyResult.evaluated, anyResult.met], [true, true]);
-
-  const wantPrivacy = { ...priorities, exterior: setExclusiveQualifier(priorities.exterior, 'Fenced yard', 'privacy') };
-  const privacyResult = computeMatch(home, wantPrivacy).allSelected[0];
-  assert.equal(privacyResult.evaluated, false);
-});
-
-test('First-Floor Bedroom: a known first-floor bedroom with unknown role matches Any while Primary/Guest remain Unknown', () => {
-  const priorities = withSelected(normalizePriorities({ searchType: 'purchase' }), 'features', 'First-Floor Bedroom', 'must');
-  const home = { checks: { 'features:First-Floor Bedroom': true } };
-  const anyResult = computeMatch(home, priorities).allSelected[0];
-  assert.deepEqual([anyResult.evaluated, anyResult.met], [true, true]);
-
-  const wantPrimary = { ...priorities, features: toggleCriterionQualifier(priorities.features, 'First-Floor Bedroom', 'primary') };
-  const primaryResult = computeMatch(home, wantPrimary).allSelected[0];
-  assert.equal(primaryResult.evaluated, false);
-});
-
-test('First-Floor Bedroom: wanting both Primary and Guest requires both to be reliably known before scoring at all', () => {
-  let priorities = withSelected(normalizePriorities({ searchType: 'purchase' }), 'features', 'First-Floor Bedroom', 'must');
-  priorities = { ...priorities, features: toggleCriterionQualifier(toggleCriterionQualifier(priorities.features, 'First-Floor Bedroom', 'primary'), 'First-Floor Bedroom', 'guest') };
-
-  const onlyPrimaryKnown = { checks: { [qualifierFactKey('features', 'First-Floor Bedroom', 'primary')]: true } };
-  assert.equal(computeMatch(onlyPrimaryKnown, priorities).allSelected[0].evaluated, false);
-
-  const bothKnownBothMet = { checks: { [qualifierFactKey('features', 'First-Floor Bedroom', 'primary')]: true, [qualifierFactKey('features', 'First-Floor Bedroom', 'guest')]: true } };
-  const fullMatch = computeMatch(bothKnownBothMet, priorities).allSelected[0];
-  assert.deepEqual([fullMatch.evaluated, fullMatch.score, fullMatch.met], [true, 1, true]);
-
-  const bothKnownOneMet = { checks: { [qualifierFactKey('features', 'First-Floor Bedroom', 'primary')]: true, [qualifierFactKey('features', 'First-Floor Bedroom', 'guest')]: 'no' } };
-  const partial = computeMatch(bothKnownOneMet, priorities).allSelected[0];
-  assert.deepEqual([partial.evaluated, partial.score, partial.met], [true, 0.5, false]);
+test('First-Floor Primary and Guest Bedroom score independently as plain check-kind criteria', () => {
+  let priorities = withSelected(normalizePriorities({ searchType: 'purchase' }), 'features', 'First-Floor Primary', 'must');
+  priorities = withSelected(priorities, 'features', 'Guest Bedroom', 'important');
+  const home = { checks: { 'features:First-Floor Primary': true } }; // Guest Bedroom left unknown
+  const match = computeMatch(home, priorities);
+  const primary = match.allSelected.find((c) => c.key === 'features:First-Floor Primary');
+  const guest = match.allSelected.find((c) => c.key === 'features:Guest Bedroom');
+  assert.deepEqual([primary.evaluated, primary.met], [true, true]);
+  assert.equal(guest.evaluated, false);
 });
 
 /* ------------------------------ UI wiring ------------------------------ */

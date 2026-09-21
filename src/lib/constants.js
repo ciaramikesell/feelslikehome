@@ -6,8 +6,20 @@ import {
   normalizeSearchIntent,
 } from './searchIntent.js';
 
-export const LAYOUT_OPTIONS = ['Ranch / Single Story', 'Two Story', 'Split Level', 'Other', 'No Preference'];
-export const HOME_CONDITION_OPTIONS = ['New Construction', 'Move-In Ready', 'Renovation Potential', 'No Preference'];
+// 2026 Basics/taxonomy correction: reduced to the three options the product now asks
+// (previously included 'Split Level' and an explicit 'No Preference' — no selection
+// already means unspecified, so there's no separate "no preference" state to offer).
+// Existing stored values outside this list ('Split Level', 'No Preference', or the old
+// 'Ranch / Single Story' spelling) are never rewritten — see foldMultiselectValueRenames
+// for the one safe, unambiguous rename ('Ranch / Single Story' -> 'Ranch'); 'Split Level'
+// has no equivalent among these three and is deliberately left stored as-is rather than
+// guessed onto one of them.
+export const LAYOUT_OPTIONS = ['Ranch', 'Two Story', 'Other'];
+// Reduced to the three options the product now asks (dropped the explicit
+// 'No Preference' — absence of a selection already means unspecified). Casing
+// standardized to 'Move-in Ready' (previously 'Move-In Ready'); see
+// foldMultiselectValueRenames for the safe casing fold of already-stored values.
+export const HOME_CONDITION_OPTIONS = ['New Construction', 'Move-in Ready', 'Renovation Potential'];
 
 // Schools is deliberately check-kind (Yes/No), not rating-kind — it answers
 // "does this home satisfy what I said matters about schools," a personal
@@ -25,14 +37,20 @@ export const LOCATION_CORE = [];
 //
 // 2026 onboarding/My Search taxonomy unification: 'Near downtown area', 'Groceries
 // nearby', and 'Tree-lined street' are retired the same way — dropped from future
-// offering only, never deleted from anyone's stored priorities. 'Charming
-// Neighborhood', 'Reputable Schools', 'Walkable to Town', and 'No HOA' are new.
-// Everything else keeps its pre-existing stored identity (case included — see
-// CRITERION_DISPLAY_LABEL_OVERRIDES below for the Title Case shown to users) so no
-// existing selection is orphaned. See PURCHASE_LEGACY_LABEL_ALIASES for the one
-// stored-identity fold this pass required (Parks Nearby).
+// offering only, never deleted from anyone's stored priorities. 'Reputable Schools',
+// 'Walkable to Town', and 'No HOA' are new. Everything else keeps its pre-existing
+// stored identity (case included — see CRITERION_DISPLAY_LABEL_OVERRIDES below for the
+// Title Case shown to users) so no existing selection is orphaned. See
+// PURCHASE_LEGACY_LABEL_ALIASES for the one stored-identity fold this pass required
+// (Parks Nearby).
+//
+// 2026 Basics/taxonomy correction: 'Charming Neighborhood' is retired the same way —
+// it's experiential/subjective (only really judgeable in person), so it belongs with
+// future Post-Tour criteria rather than this pre-tour, listing-verifiable family. It is
+// deliberately NOT added to Post-Tour in this pass. Anyone who already selected it keeps
+// it (same "removed from offering, never deleted" pattern as the retirements above).
 export const LOCATION_SUGGESTED = [
-  'Charming Neighborhood', 'Reputable Schools', 'Walkable to Town', 'Parks nearby',
+  'Reputable Schools', 'Walkable to Town', 'Parks nearby',
   'Quiet street', 'Bustling Street', 'Near waterfront', 'Walkable schools', 'No HOA',
 ].map((label) => ({ label, kind: 'check' }));
 
@@ -42,32 +60,47 @@ const LEGACY_HOME_FEEL_CORE = ['Overall Condition', 'Layout / Flow'].map((label)
 const LEGACY_HOME_FEEL_SUGGESTED = ['Natural Light', 'Character / Charm', 'Room Sizes', 'Openness / Ceiling Height', 'Privacy', 'Social Community', 'On-Site Management'].map((label) => ({ label, kind: 'rating' }));
 
 export const EXTERIOR_CORE = [];
-// REVISION (parent/child criteria): 'Attached garage'/'Detached garage' and
-// 'Privacy Fencing' are no longer independent chips. 'Garage' (qualifiers:
-// Attached/Detached) and 'Fenced yard' (qualifier: Privacy Fence) are the sole
-// weighted parent criteria — see CRITERION_QUALIFIERS. The priority weight
-// belongs only to the parent; a qualifier narrows which fact must be true to
-// satisfy that same weighted priority, and is never itself draggable/weighted.
+// REVISION (2026 Basics/taxonomy correction — reverts the prior pass's parent/child
+// model for this criterion): 'Fenced yard' and 'Privacy Fencing' are independent chips
+// again, separately weighted. 'Garage' (qualifiers: Attached/Detached) remains the sole
+// parent/qualifier criterion in this category — see CRITERION_QUALIFIERS — left
+// untouched by this reversion. See foldQualifiedCriteriaBackToFlat for how existing
+// 'Fenced yard' + qualifier selections are safely carried forward.
 export const EXTERIOR_SUGGESTED = [
-  'Patio / deck', 'Fenced yard', 'Garage',
+  'Patio / deck', 'Fenced yard', 'Privacy Fencing', 'Garage',
   'Large backyard', 'Front porch', 'Pool', 'Landscaping',
 ].map((label) => ({ label, kind: 'check' }));
 
 // 'Guest suite' is retired in favor of the canonical 'Guest / In-Law Suite' identity
 // (previously dead — see RETIRED_PURCHASE_BUILT_INS's history — now restored as a real
 // canonical item; see PURCHASE_LEGACY_LABEL_ALIASES for the safe fold from 'Guest suite').
-// 'Move-in Ready', 'Renovation Potential', and 'New Construction' are new and
-// deliberately separate from the existing Home Condition multiselect
-// (priorities.homeCondition) — that remains an unrelated, single-tier structural
-// field; these are independently rankable Must/Important/Nice priorities.
-// REVISION (parent/child criteria): 'First-Floor Primary' is no longer an
-// independent chip. 'First-Floor Bedroom' (qualifiers: Primary/Guest) is the
-// sole weighted parent — see CRITERION_QUALIFIERS.
+// 'Guest / In-Law Suite' and 'Guest Bedroom' are deliberately different concepts and are
+// never merged: Guest Bedroom is simply an additional bedroom, while Guest / In-Law Suite
+// is a more substantial, more self-contained guest/in-law accommodation.
+//
+// REVISION (2026 Basics/taxonomy correction): 'Move-in Ready', 'Renovation Potential',
+// and 'New Construction' are removed from this weighted, selectable catalog — their
+// semantics now belong exclusively to the Basics -> Home Condition multiselect (an
+// unrelated, single-tier structural field; see HOME_CONDITION_OPTIONS), not a
+// Must/Important/Nice weighted priority. This is a future-offering change only: anyone
+// who already selected one of these as a weighted priority keeps it exactly as stored
+// (same non-destructive "removed from offering" pattern used throughout this file) —
+// it is NOT automatically converted into a Home Condition restriction, since a
+// "Nice to Have: New Construction" priority does not necessarily mean "only show/
+// consider New Construction," and guessing that would risk silently strengthening the
+// buyer's actual intent.
+//
+// REVISION (2026 Basics/taxonomy correction — reverts the prior pass's parent/child
+// model for this criterion): 'First-Floor Primary' and 'Guest Bedroom' are independent
+// chips again, replacing the 'First-Floor Bedroom' parent (with Primary/Guest
+// qualifiers). See foldQualifiedCriteriaBackToFlat for how existing 'First-Floor
+// Bedroom' + qualifier selections are safely carried forward — an existing selection
+// with no qualifier (Any) has no exact equivalent here and is deliberately left
+// un-migrated rather than guessed onto either label.
 export const FEATURES_CORE = [];
 export const FEATURES_SUGGESTED = [
-  'Finished basement', 'Walkout basement', 'First-Floor Bedroom', 'Primary ensuite',
-  'First-floor laundry', 'Home office', 'Central air', 'Fireplace', 'Move-in Ready',
-  'Renovation Potential', 'New Construction', 'Guest / In-Law Suite',
+  'Finished basement', 'Walkout basement', 'First-Floor Primary', 'Guest Bedroom', 'Primary ensuite',
+  'First-floor laundry', 'Home office', 'Central air', 'Fireplace', 'Guest / In-Law Suite',
 ].map((label) => ({ label, kind: 'check' }));
 // These remain part of the canonical catalog. PriorityBoard combines them with
 // the regular suggestion tray so both onboarding and My Search discover the same
@@ -187,17 +220,15 @@ export function criterionDisplayLabel(categoryKey, label) {
  * as its own catalog entry, and is stored in its own `qualifiers` map alongside `tiers`
  * so selecting/clearing one never touches the parent's tier.
  * ---------------------------------------------------------------------------------- */
+// REVISION (2026 Basics/taxonomy correction): Fenced Yard and First-Floor Bedroom's
+// entries are removed here, reverting both to plain independent criteria (Fenced Yard /
+// Privacy Fencing, First-Floor Primary / Guest Bedroom — see EXTERIOR_SUGGESTED/
+// FEATURES_SUGGESTED). Garage is explicitly kept exactly as it was — this pass leaves
+// Garage's parent/qualifier model intact.
 export const CRITERION_QUALIFIERS = Object.freeze({
   'exterior:Garage': Object.freeze([
     { key: 'attached', label: 'Attached' },
     { key: 'detached', label: 'Detached' },
-  ]),
-  'exterior:Fenced yard': Object.freeze([
-    { key: 'privacy', label: 'Privacy fence' },
-  ]),
-  'features:First-Floor Bedroom': Object.freeze([
-    { key: 'primary', label: 'Primary' },
-    { key: 'guest', label: 'Guest' },
   ]),
 });
 
@@ -261,7 +292,6 @@ export function qualifierSummaryLabel(categoryKey, label, qualifiers) {
   if (!options) return null;
   const set = qualifiers || [];
   if (categoryKey === 'exterior' && label === 'Garage' && isGarageQualifierAny(set)) return 'Any';
-  if (categoryKey === 'exterior' && label === 'Fenced yard') return set.includes('privacy') ? 'Privacy Fence' : 'Any Fence';
   if (!set.length) return 'Any';
   return options.filter((option) => set.includes(option.key)).map((option) => option.label).join(' + ');
 }
@@ -295,15 +325,6 @@ export function qualifierFactRows(categoryKey, label, priorities) {
     if (isGarageQualifierAny(selected)) return [];
     const meta = options.find((option) => option.key === selected[0]);
     return meta ? [rowFor(meta.key, `Garage — ${meta.label}?`)] : [];
-  }
-  if (categoryKey === 'exterior' && label === 'Fenced yard') {
-    return selected.includes('privacy') ? [rowFor('privacy', 'Fenced Yard — Privacy fence?')] : [];
-  }
-  if (categoryKey === 'features' && label === 'First-Floor Bedroom') {
-    return selected
-      .map((key) => options.find((option) => option.key === key))
-      .filter(Boolean)
-      .map((meta) => rowFor(meta.key, `First-Floor Bedroom — ${meta.label}?`));
   }
   return [];
 }
@@ -423,6 +444,12 @@ function foldLegacyLabelAliases(priorities) {
  * like Immediate Street/Surroundings would be. Folds in memory inside normalizePriorities,
  * exactly like foldLegacyLabelAliases above, so no SQL migration is required.
  * ------------------------------------------------------------------------------------- */
+// REVISION (2026 Basics/taxonomy correction): only Garage's rule remains — Fenced
+// Yard and First-Floor Bedroom are reverted to plain independent criteria, so a newly
+// selected 'Privacy Fencing' or 'First-Floor Primary'/'Guest Bedroom' priority must stay
+// flat, never fold into a parent. See foldQualifiedCriteriaBackToFlat just below for the
+// opposite-direction fold this reversion needed instead (existing parent+qualifier data
+// -> flat).
 const FLAT_TO_QUALIFIED_PURCHASE_CRITERIA = {
   exterior: [
     {
@@ -431,10 +458,6 @@ const FLAT_TO_QUALIFIED_PURCHASE_CRITERIA = {
         { label: 'Detached garage', qualifier: 'detached' },
       ],
     },
-    { parent: 'Fenced yard', flat: [{ label: 'Privacy Fencing', qualifier: 'privacy' }] },
-  ],
-  features: [
-    { parent: 'First-Floor Bedroom', flat: [{ label: 'First-Floor Primary', qualifier: 'primary' }] },
   ],
 };
 
@@ -489,6 +512,91 @@ function foldFlatCriteriaIntoParents(priorities) {
   return next;
 }
 
+/* --------------------- Parent+qualifier criteria folded back to flat (REVERSION) ---------------------
+ * Fenced Yard and First-Floor Bedroom's parent/qualifier model (introduced in an earlier
+ * pass) is reverted here: both are independent, separately-weighted criteria again
+ * (Fenced Yard / Privacy Fencing, First-Floor Primary / Guest Bedroom). Garage's
+ * parent/qualifier model is intentionally KEPT and untouched by this fold.
+ *
+ * Folds in memory inside normalizePriorities, the moment existing priorities are read —
+ * never a SQL migration — exactly like the other folds in this file. Only the exact,
+ * unambiguous cases below are converted automatically; anything ambiguous is left
+ * exactly as stored rather than guessed.
+ *   - Fenced yard, no qualifier (Any): already a flat criterion under this very stored
+ *     label — nothing to convert beyond clearing the now-meaningless empty qualifier entry.
+ *   - Fenced yard + privacy qualifier: the removed qualifier-aware Match branch scored
+ *     this weight entirely on the privacy-fence-specific fact (a plain, non-privacy fence
+ *     was never enough to satisfy it), so this folds onto Privacy Fencing ALONE at the
+ *     same tier — not onto both Fenced Yard and Privacy Fencing — since adding Fenced
+ *     Yard back at full weight would introduce a second, previously-unscored "any fence"
+ *     signal that was never actually part of this priority's stored intent.
+ *   - First-Floor Bedroom + exactly one or both qualifiers: folds onto the matching
+ *     independent label(s) (Primary -> First-Floor Primary, Guest -> Guest Bedroom) at
+ *     the same tier; when both are present both independent criteria are created, since
+ *     that exactly preserves what was being asked for.
+ *   - First-Floor Bedroom with NO qualifier (Any): there is no flat criterion in the new
+ *     taxonomy meaning "a first-floor bedroom, role unspecified" — converting this would
+ *     require guessing whether the buyer meant Primary, Guest, or both, so it is
+ *     deliberately left untouched. It keeps its stored tier and surfaces as a legacy
+ *     stray item via splitCategoryItems' legacySelected fallback (no qualifier UI, since
+ *     hasQualifierOptions now returns false for it) rather than being silently
+ *     reinterpreted.
+ * ------------------------------------------------------------------------------------- */
+function foldFencedYardQualifierBackToFlat(catState) {
+  if (!catState?.tiers || !Object.hasOwn(catState.tiers, 'Fenced yard')) return catState;
+  const parentTier = catState.tiers['Fenced yard'];
+  const quals = catState.qualifiers?.['Fenced yard'] || [];
+  if (!quals.length) {
+    if (!catState.qualifiers || !Object.hasOwn(catState.qualifiers, 'Fenced yard')) return catState;
+    const qualifiers = { ...catState.qualifiers };
+    delete qualifiers['Fenced yard'];
+    return { ...catState, qualifiers };
+  }
+  if (!quals.includes('privacy') || !parentTier || parentTier === 'dontcare') return catState;
+  const tiers = { ...catState.tiers };
+  const qualifiers = { ...catState.qualifiers };
+  const customItems = (catState.customItems || []).slice();
+  delete tiers['Fenced yard'];
+  delete qualifiers['Fenced yard'];
+  const parentIndex = customItems.findIndex((entry) => entry.label === 'Fenced yard');
+  if (parentIndex !== -1) customItems.splice(parentIndex, 1);
+  if (!tiers['Privacy Fencing'] || tiers['Privacy Fencing'] === 'dontcare') tiers['Privacy Fencing'] = parentTier;
+  if (!customItems.some((entry) => entry.label === 'Privacy Fencing')) customItems.push({ label: 'Privacy Fencing', kind: 'check' });
+  return { ...catState, tiers, qualifiers, customItems };
+}
+
+function foldFirstFloorBedroomQualifierBackToFlat(catState) {
+  if (!catState?.tiers || !Object.hasOwn(catState.tiers, 'First-Floor Bedroom')) return catState;
+  const parentTier = catState.tiers['First-Floor Bedroom'];
+  const quals = catState.qualifiers?.['First-Floor Bedroom'] || [];
+  if (!quals.length || !parentTier || parentTier === 'dontcare') return catState;
+  const targetFor = { primary: 'First-Floor Primary', guest: 'Guest Bedroom' };
+  const tiers = { ...catState.tiers };
+  const qualifiers = { ...catState.qualifiers };
+  const customItems = (catState.customItems || []).slice();
+  delete tiers['First-Floor Bedroom'];
+  delete qualifiers['First-Floor Bedroom'];
+  const parentIndex = customItems.findIndex((entry) => entry.label === 'First-Floor Bedroom');
+  if (parentIndex !== -1) customItems.splice(parentIndex, 1);
+  quals.forEach((qualifierKey) => {
+    const label = targetFor[qualifierKey];
+    if (!label) return;
+    if (!tiers[label] || tiers[label] === 'dontcare') tiers[label] = parentTier;
+    if (!customItems.some((entry) => entry.label === label)) customItems.push({ label, kind: 'check' });
+  });
+  return { ...catState, tiers, qualifiers, customItems };
+}
+
+function foldQualifiedCriteriaBackToFlat(priorities) {
+  if (normalizeSearchIntent(priorities.searchType) !== 'purchase') return priorities;
+  let next = priorities;
+  const exterior = foldFencedYardQualifierBackToFlat(next.exterior);
+  if (exterior !== next.exterior) next = { ...next, exterior };
+  const features = foldFirstFloorBedroomQualifierBackToFlat(next.features);
+  if (features !== next.features) next = { ...next, features };
+  return next;
+}
+
 // The per-home analog of the fold above — a check-kind fact (Yes/No/Unknown) is stored
 // on the home under the same `category:label` identity used for the search's priority.
 // Read-only and additive: never writes the alias back, so an already-recorded fact under
@@ -504,13 +612,19 @@ export function foldLegacyCheckAliases(checks, searchType) {
       folded[canonicalKey] = checks[legacyKey];
     }
   };
-  // The flat criteria's own former fact keys become the new qualifier fact keys —
-  // an "Attached garage: Yes" recorded on a home is exactly the same fact as
-  // "Garage, Attached qualifier: Yes" under the new model.
+  // Garage stays a parent/qualifier criterion, so its old flat fact keys still fold
+  // forward into the qualifier fact keys — an "Attached garage: Yes" recorded on a
+  // home is exactly the same fact as "Garage, Attached qualifier: Yes."
   foldInto(qualifierFactKey('exterior', 'Garage', 'attached'), 'exterior:Attached garage');
   foldInto(qualifierFactKey('exterior', 'Garage', 'detached'), 'exterior:Detached garage');
-  foldInto(qualifierFactKey('exterior', 'Fenced yard', 'privacy'), 'exterior:Privacy Fencing');
-  foldInto(qualifierFactKey('features', 'First-Floor Bedroom', 'primary'), 'features:First-Floor Primary');
+  // REVISION (2026 Basics/taxonomy correction): Fenced Yard and First-Floor Bedroom are
+  // reverted to flat independent criteria, so this direction is reversed from the fold
+  // above — a fact recorded under the PARENT+QUALIFIER key during the period that model
+  // was live (e.g. "Fenced yard, Privacy qualifier: Yes") now folds forward onto the new
+  // flat canonical fact key, so it stays visible to Match without ever being overwritten.
+  foldInto('exterior:Privacy Fencing', qualifierFactKey('exterior', 'Fenced yard', 'privacy'));
+  foldInto('features:First-Floor Primary', qualifierFactKey('features', 'First-Floor Bedroom', 'primary'));
+  foldInto('features:Guest Bedroom', qualifierFactKey('features', 'First-Floor Bedroom', 'guest'));
   Object.entries(PURCHASE_LEGACY_LABEL_ALIASES).forEach(([categoryKey, aliases]) => {
     Object.entries(aliases).forEach(([legacyLabel, canonicalLabel]) => {
       const canonicalKey = `${categoryKey}:${canonicalLabel}`;
@@ -573,9 +687,37 @@ const RENTAL_EXTERIOR = [
 ];
 
 export const MULTISELECT_CATEGORIES = [
-  { key: 'homeLayout', title: 'Home Layout', options: LAYOUT_OPTIONS },
-  { key: 'homeCondition', title: 'Home Condition', options: HOME_CONDITION_OPTIONS },
+  { key: 'homeLayout', title: 'Home Layout', optional: true, options: LAYOUT_OPTIONS },
+  { key: 'homeCondition', title: 'Home Condition', optional: true, options: HOME_CONDITION_OPTIONS },
 ];
+
+// Safe, direct 1:1 renames for already-stored Home Layout/Home Condition values —
+// the same "fold at read time, never a SQL migration" pattern used throughout this
+// file. Only exact, unambiguous casing/spelling changes are folded ('Ranch / Single
+// Story' -> 'Ranch', 'Move-In Ready' -> 'Move-in Ready'); anything with no equivalent
+// in the reduced option lists ('Split Level', the old explicit 'No Preference') is
+// deliberately left stored as-is rather than guessed onto one of the remaining options.
+const LAYOUT_VALUE_RENAMES = { 'Ranch / Single Story': 'Ranch' };
+const HOME_CONDITION_VALUE_RENAMES = { 'Move-In Ready': 'Move-in Ready' };
+
+function renameMultiselectValues(catState, renames) {
+  if (!Array.isArray(catState?.values) || !catState.values.length) return catState;
+  let changed = false;
+  const values = catState.values.map((value) => {
+    if (!Object.hasOwn(renames, value)) return value;
+    changed = true;
+    return renames[value];
+  });
+  if (!changed) return catState;
+  return { ...catState, values: [...new Set(values)] };
+}
+
+function foldMultiselectValueRenames(priorities) {
+  const homeLayout = renameMultiselectValues(priorities.homeLayout, LAYOUT_VALUE_RENAMES);
+  const homeCondition = renameMultiselectValues(priorities.homeCondition, HOME_CONDITION_VALUE_RENAMES);
+  if (homeLayout === priorities.homeLayout && homeCondition === priorities.homeCondition) return priorities;
+  return { ...priorities, homeLayout, homeCondition };
+}
 
 // These are presented as sub-preferences nested under Home Layout, not their own major
 // section — kept as separate priority entries under the hood, just visually subordinate.
@@ -870,5 +1012,5 @@ export function normalizePriorities(raw) {
   ['homeLayout', 'homeCondition', 'preferredPropertyTypes'].forEach((key) => {
     if (!Array.isArray(merged[key].values)) merged[key] = { ...merged[key], values: [] };
   });
-  return foldFlatCriteriaIntoParents(foldLegacyLabelAliases(merged));
+  return foldFlatCriteriaIntoParents(foldQualifiedCriteriaBackToFlat(foldMultiselectValueRenames(foldLegacyLabelAliases(merged))));
 }

@@ -78,7 +78,11 @@ test('structured basics use a compact responsive grid and quieter importance con
   assert.match(css, /\.hh-basics-grid \{[^}]*grid-template-columns: minmax\(210px, 1\.35fr\) repeat\(3/);
   assert.match(css, /@media \(max-width: 900px\)[\s\S]*?\.hh-basics-grid \{ grid-template-columns: repeat\(2/);
   assert.match(css, /@media \(max-width: 640px\)[\s\S]*?\.hh-basics-grid \{ grid-template-columns: 1fr/);
-  assert.match(panel, /More specific layout preferences/);
+  // 2026 Basics/taxonomy correction: the "More specific layout preferences" secondary
+  // bedroom-location sub-picker is removed entirely — more specific needs are handled
+  // through weighted My Search criteria now (First-Floor Primary / Guest Bedroom).
+  assert.doesNotMatch(panel, /More specific layout preferences/);
+  assert.doesNotMatch(panel, /BedroomSubPreferences/);
 });
 
 test('available suggestions use four, two, and one-column responsive layouts', () => {
