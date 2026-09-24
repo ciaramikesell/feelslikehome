@@ -85,3 +85,19 @@ test('collaboration keeps co-buyer and Realtor participation distinct', () => {
   assert.match(landing, /Learn more for agents/);
   assert.doesNotMatch(landing, /combined|blended household Match|compatibility score/i);
 });
+
+test('How it works pairs compact steps with an in-page, privacy-enhanced walkthrough video', () => {
+  assert.match(landing, /id="how-it-works"[^>]*tabIndex=\{-1\}/);
+  assert.match(landing, /src: 'https:\/\/www\.youtube-nocookie\.com\/embed\/1PGJdmPz21I\?rel=0&playsinline=1'/);
+  assert.doesNotMatch(landing, /autoplay=1/);
+  assert.match(landing, /title: 'Feels Like Home — How It Works'/);
+  assert.match(landing, /allow="[^"]*autoplay[^"]*encrypted-media[^"]*picture-in-picture[^"]*"/);
+  assert.match(landing, /allowFullScreen/);
+  assert.match(landing, /See Feels Like Home in action/);
+  assert.match(landing, /From saved listing to confident choice\./);
+  assert.match(landing, /3-minute walkthrough/);
+  assert.match(landing, /className="pl-button is-quiet" href="#how-it-works">See how it works</);
+  assert.match(css, /\.pl-video-frame\{[^}]*aspect-ratio:16\/9/);
+  assert.match(css, /grid-template-areas:'intro video' 'steps video'/);
+  assert.match(css, /grid-template-areas:'intro' 'video' 'steps'/);
+});

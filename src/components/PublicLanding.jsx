@@ -14,6 +14,15 @@ const steps = [
   [Users, 'Search Together', 'Add a co-buyer, invite your Realtor, and make decisions with clarity — and less back-and-forth.'],
 ];
 
+// Official walkthrough. Privacy-enhanced embed; playback only starts when the
+// visitor presses play (no autoplay parameter), including via "See how it works".
+const walkthroughVideo = {
+  id: '1PGJdmPz21I',
+  src: 'https://www.youtube-nocookie.com/embed/1PGJdmPz21I?rel=0&playsinline=1',
+  title: 'Feels Like Home — How It Works',
+  label: '3-minute walkthrough',
+};
+
 export default function PublicLanding() {
   // This entry preserves explicit Realtor intent and lands a new account in the
   // People workspace; it does not send agents through buyer onboarding.
@@ -53,9 +62,17 @@ export default function PublicLanding() {
         <figure className="pl-hero-visual"><Image src="/images/Warm Cottage.png" alt="A welcoming cottage with a front porch at golden hour" fill priority sizes="(max-width: 900px) 100vw, 58vw" /></figure>
       </section>
 
-      <section className="pl-values" id="how-it-works" aria-labelledby="values-title">
-        <h2 className="pl-eyebrow" id="values-title">How it works</h2>
-        <div className="pl-value-grid">{steps.map(([Icon, title, copy]) => <article key={title}><span className="pl-step-icon"><Icon size={30} strokeWidth={1.7} aria-hidden="true" /></span><h3>{title}</h3><p>{copy}</p></article>)}</div>
+      <section className="pl-values" id="how-it-works" aria-labelledby="values-title" tabIndex={-1}>
+        <div className="pl-values-intro">
+          <h2 className="pl-eyebrow" id="values-title">How it works</h2>
+          <p className="pl-values-lead">Search anywhere. Decide here.</p>
+          <p className="pl-values-copy">Keep finding homes wherever you already look. Bring your real contenders into Feels Like Home to see how each one fits your priorities — then tour, compare, and choose together.</p>
+        </div>
+        <ol className="pl-value-grid">{steps.map(([Icon, title, copy]) => <li key={title}><span className="pl-step-icon"><Icon size={24} strokeWidth={1.7} aria-hidden="true" /></span><div><h3>{title}</h3><p>{copy}</p></div></li>)}</ol>
+        <figure className="pl-video-card" aria-labelledby="video-title">
+          <figcaption className="pl-video-header"><span className="pl-video-label">{walkthroughVideo.label}</span><h3 id="video-title">See Feels Like Home in action</h3><p>From saved listing to confident choice.</p></figcaption>
+          <div className="pl-video-frame"><iframe src={walkthroughVideo.src} title={walkthroughVideo.title} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen /></div>
+        </figure>
       </section>
 
       <section className="pl-demo" aria-labelledby="demo-title">
