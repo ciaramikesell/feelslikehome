@@ -147,9 +147,15 @@ test('the entitlement is wired into both Debug and Release build configurations 
   assert.equal(matches.length, 2, 'expected CODE_SIGN_ENTITLEMENTS on both Debug and Release');
 });
 
-test('no Apple Team ID was invented — DEVELOPMENT_TEAM stays unset, a real account/signing decision left to the product owner', () => {
+test('the product owner\'s Apple Developer Team signs both targets in Debug and Release — and no other team', () => {
   const pbxproj = read('ios/App/App.xcodeproj/project.pbxproj');
-  assert.doesNotMatch(pbxproj, /DEVELOPMENT_TEAM = [A-Z0-9]/);
+  const teams = pbxproj.match(/DEVELOPMENT_TEAM = [^;]*;/g) || [];
+  assert.deepEqual(teams, Array(4).fill('DEVELOPMENT_TEAM = QCQYKZVAC8;'));
+  for (const bundleId of ['app\\.feelslikehome\\.mobile', 'app\\.feelslikehome\\.mobile\\.share']) {
+    const configs = pbxproj.match(new RegExp(`buildSettings = \\{[^}]*PRODUCT_BUNDLE_IDENTIFIER = ${bundleId};[^}]*\\}`, 'g')) || [];
+    assert.equal(configs.length, 2, `expected Debug and Release for ${bundleId}`);
+    for (const config of configs) assert.match(config, /DEVELOPMENT_TEAM = QCQYKZVAC8;/);
+  }
 });
 
 test('the bundle identifier is unchanged, not silently redecided', () => {

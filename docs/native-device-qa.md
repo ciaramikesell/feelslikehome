@@ -85,10 +85,10 @@ and API error messages identify import failure after intake.
 Static project-contract and plist checks confirm two targets, the extension
 dependency/embed phase, matching version/build numbers, automatic signing,
 extension-safe APIs, iOS 15 deployment targets, and the main target's
-`applinks:feelslikehome.app` entitlement. No Apple Development Team is committed
-and none should be guessed. Both targets need the same real Team selected in
-Xcode; the Developer account must permit the explicit main and extension bundle
-IDs. Only the main target needs Associated Domains. Do not add an App Group.
+`applinks:feelslikehome.app` entitlement. Both targets commit the product
+owner's Apple Development Team, `QCQYKZVAC8`, for Debug and Release; do not
+change it to another team. The Developer account must permit the explicit main
+and extension bundle IDs. Only the main target needs Associated Domains. Do not add an App Group.
 
 Production must define `APPLE_TEAM_ID` as the ten-character Team ID used to sign
 the app. The live, redirect-free
@@ -100,7 +100,7 @@ unset for production/device acceptance so the shell uses the production origin.
 
 Linux validation cannot establish that Xcode opens the project, resolves SPM,
 signs/builds either target, embeds the signed extension, or installs it. There
-is no committed manual Xcode setting other than selecting the real Team; Xcode
+is no manual Xcode setting beyond signing in to an account on that Team; Xcode
 may require account/App-ID provisioning repair, which must be recorded rather
 than silently changing bundle IDs or capabilities.
 
@@ -117,11 +117,11 @@ than silently changing bundle IDs or capabilities.
    `npx cap sync ios`. Leave `CAP_SERVER_URL` unset.
 4. Open `ios/App/App.xcodeproj` (not the extension's standalone Swift package).
    Allow Swift Package Manager resolution to finish.
-5. Select the project, then **App > Signing & Capabilities**. Select the real
-   Team with automatic signing enabled. Confirm bundle ID
+5. Select the project, then **App > Signing & Capabilities**. Confirm the committed
+   Team (`QCQYKZVAC8`) is selected with automatic signing enabled. Confirm bundle ID
    `app.feelslikehome.mobile` and **Associated Domains** contains only
    `applinks:feelslikehome.app`.
-6. Select **ShareExtension > Signing & Capabilities**, select the same Team with
+6. Select **ShareExtension > Signing & Capabilities**, confirm the same Team with
    automatic signing, and confirm bundle ID
    `app.feelslikehome.mobile.share`. It should have no App Group or Associated
    Domains capability. If provisioning fails, register/enable that explicit App
