@@ -543,6 +543,10 @@ export function selectHomeCardCriteria(match, mustLimit = 5) {
   const matches = personalized.filter((criterion) => criterion.evaluated && criterion.met === true);
   const mismatches = personalized.filter((criterion) => criterion.evaluated && criterion.met === false);
   const unknown = personalized.filter((criterion) => !criterion.evaluated);
+  // A neutral tour response is evaluated but deliberately neither a match nor a
+  // miss (see computeMatch). It is reported as its own group, never folded into
+  // either count, so total = evaluated + unknown + neutral.
+  const neutral = personalized.filter((criterion) => criterion.evaluated && criterion.met === null);
 
   return {
     mustHaves: mustAll.slice(0, mustPreviewLimit),
@@ -554,8 +558,29 @@ export function selectHomeCardCriteria(match, mustLimit = 5) {
       matches,
       mismatches,
       unknown,
+      neutral,
     },
   };
+}
+
+// The one canonical reading of a home's Must Haves, shared by My Homes' "No
+// Must-Haves missing" filter, Home Detail's Match panel, and matchFactualSummary.
+// Only a CONFIRMED miss (evaluated, met === false) is missing. Unknown is not
+// failure, and a neutral tour response is evaluated but neither met nor missed.
+export function mustHaveStatus(match) {
+  const all = (match?.allSelected || []).filter((criterion) => criterion.tier === 'must');
+  return {
+    all,
+    total: all.length,
+    met: all.filter((criterion) => criterion.evaluated && criterion.met === true).length,
+    missed: all.filter((criterion) => criterion.evaluated && criterion.met === false).length,
+    neutral: all.filter((criterion) => criterion.evaluated && criterion.met === null).length,
+    unknown: all.filter((criterion) => !criterion.evaluated).length,
+  };
+}
+
+export function hasNoMustHaveMisses(match) {
+  return mustHaveStatus(match).missed === 0;
 }
 
 // Home Detail's concise hero summary — a deterministic sentence built only
@@ -568,8 +593,9 @@ export function selectHomeCardCriteria(match, mustLimit = 5) {
 export function matchFactualSummary(match) {
   if (!match || match.pct == null) return null;
 
-  const mustMissing = match.mustEvaluated - match.mustMet;
-  const mustUnknown = match.mustTotal - match.mustEvaluated;
+  // Confirmed misses only (see mustHaveStatus): a neutral tour response is
+  // evaluated but is not a miss, so it must never be reported as "missing".
+  const { missed: mustMissing, unknown: mustUnknown } = mustHaveStatus(match);
   let mustClause = null;
   if (match.mustTotal > 0) {
     if (mustMissing > 0) mustClause = `${mustMissing} Must-Have${mustMissing > 1 ? 's' : ''} missing`;
@@ -580,7 +606,7 @@ export function matchFactualSummary(match) {
   const important = match.allSelected.filter((c) => c.tier === 'important');
   const importantEvaluated = important.filter((c) => c.evaluated);
   const importantMet = importantEvaluated.filter((c) => c.met).length;
-  const importantMissed = importantEvaluated.length - importantMet;
+  const importantMissed = importantEvaluated.filter((c) => c.met === false).length;
   let importantSentence = null;
   if (importantEvaluated.length > 0) {
     importantSentence = `${importantMet} of ${importantEvaluated.length} Important preference${importantEvaluated.length > 1 ? 's' : ''} match.`

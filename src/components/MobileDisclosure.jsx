@@ -21,7 +21,11 @@ import { ChevronDown } from 'lucide-react';
 // reuse the identical mechanism instead of a parallel implementation. The
 // default label/breakpoint/class names match that original usage exactly, so
 // existing card behavior/CSS/tests are unaffected by this extraction.
-export default function MobileDisclosure({ label = 'More details', breakpoint = 640, className = 'hh-card-context', children }) {
+//
+// `summary` (optional) replaces the plain label with a richer row — Home Detail's
+// compact "More details" / "Places that matter" rows — and `variant` adds a
+// modifier class for that treatment. Without them, behavior is unchanged.
+export default function MobileDisclosure({ label = 'More details', breakpoint = 640, className = 'hh-card-context', summary = null, variant = '', children }) {
   const [open, setOpen] = useState(true);
   useEffect(() => {
     const mq = window.matchMedia(`(max-width: ${breakpoint}px)`);
@@ -32,9 +36,9 @@ export default function MobileDisclosure({ label = 'More details', breakpoint = 
   }, [breakpoint]);
 
   return (
-    <div className="hh-card-context-details">
-      <button type="button" className="hh-card-context-summary" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-        <span>{label}</span>
+    <div className={`hh-card-context-details${variant ? ` is-${variant}` : ''}`}>
+      <button type="button" className="hh-card-context-summary" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label={summary ? label : undefined}>
+        {summary || <span>{label}</span>}
         <ChevronDown size={14} className="hh-card-context-chevron" style={{ transform: open ? 'rotate(180deg)' : 'none' }} aria-hidden="true" />
       </button>
       {open && <div className={className}>{children}</div>}

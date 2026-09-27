@@ -66,7 +66,9 @@ test('active, Want to Tour, Favorite, reaction, rating and archived signals are 
 });
 
 test('Realtor detail is read-only below controls and Compare has no Realtor Match', () => {
-  assert.match(detail, /!readOnly && <div className="hh-detail-actions">/);
+  assert.match(detail, /!readOnly && <div className="hh-detail-actions[^"]*">/);
+  // The phone action bar is personal state too, so it is gated the same way.
+  assert.match(detail, /\{!readOnly && !isArchivedStatus\(home\.status\) && <div className="flh-mobile-only flh-detail-action-bar">/);
   assert.match(detail, /!readOnly && editing && <HomeModal/);
   assert.match(detail, /!readOnly && archiveTarget/);
   assert.match(detail, /!readOnly && reflecting/);

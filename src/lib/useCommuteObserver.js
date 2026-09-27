@@ -140,6 +140,30 @@ export function useCommuteObserver(home, destinations) {
   return { setRef, getState };
 }
 
+// Synchronous read of the same session cache every card's getState reads. Lets a
+// consumer that ranks or filters many homes (My Homes) evaluate the Commute
+// criterion from exactly the results the cards show — never a second source.
+// It never schedules work: a pair nobody has requested yet reads as 'idle'
+// (Unknown), exactly as the card itself does before it scrolls into view.
+export function readCommuteResult(home, destination) {
+  const key = cacheKey(home, destination);
+  if (resultCache.has(key)) return resultCache.get(key);
+  if (inFlightKeys.has(key)) return { minutes: null, status: 'loading' };
+  return { minutes: null, status: 'idle' };
+}
+
+// Re-renders the caller whenever a commute batch resolves, so values derived via
+// readCommuteResult stay in step with the cards.
+export function useCommuteCacheVersion() {
+  const [version, setVersion] = useState(0);
+  useEffect(() => {
+    const listener = () => setVersion((n) => n + 1);
+    batchListeners.add(listener);
+    return () => batchListeners.delete(listener);
+  }, []);
+  return version;
+}
+
 // Compare is already an intentional, fully-visible view of every selected home, so it
 // does not need one IntersectionObserver per card. It still goes through the exact same
 // scheduler, in-flight deduplication, session cache, and API batch as the home cards.

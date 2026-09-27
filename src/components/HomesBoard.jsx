@@ -6,19 +6,24 @@ import Link from 'next/link';
 import {
   Plus, Search, Archive as ArchiveIcon, ExternalLink,
   Heart, Home as HomeIcon, Undo2, Footprints, MessageCircle, Check,
-  StickyNote, Pencil,
+  StickyNote, Pencil, SlidersHorizontal, ArrowUpDown, Map as MapIcon, ChevronRight,
 } from 'lucide-react';
 import { CriteriaDisclosure, MatchSummary } from '@/components/ui';
-import { useCommuteObserver } from '@/lib/useCommuteObserver';
+import { useCommuteObserver, readCommuteResult, useCommuteCacheVersion } from '@/lib/useCommuteObserver';
 import { evaluateCommute } from '@/lib/commute';
 import HomeModal from '@/components/HomeModal';
 import PostTourModal from '@/components/PostTourModal';
 import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
 import Sheet from '@/components/Sheet';
 import MobileDisclosure from '@/components/MobileDisclosure';
+import HomesFilterSheet from '@/components/HomesFilterSheet';
+import {
+  EMPTY_FILTERS, activeFilterCount, activeFilterLabels, applyContenderFilters, currentUserWantsToTour,
+  normalizeFilters, singleFilterCounts, sortContenders, sortLabel,
+} from '@/lib/homesCollection';
 import { emptyHome, isArchivedStatus } from '@/lib/constants';
 import { isLikelyListingUrl, findHomeByListingUrl } from '@/lib/listingUrl';
-import { parseNum, fmtMoney, trueCheckLabels, homeStyleSummary, computeMatch, matchColor, matchTint, selectHomeCardCriteria } from '@/lib/matching';
+import { parseNum, fmtMoney, homeStyleSummary, computeMatch, matchColor, matchTint, selectHomeCardCriteria, mustHaveStatus } from '@/lib/matching';
 import { homeCardSnapshot } from '@/lib/homeCardPresentation';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
 import { formatHomePrice, formatLotSizeDisplay, parseCommaList } from '@/lib/homeDisplay';
@@ -126,7 +131,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   const coBuyerActivity = home.coBuyerWantsToTour ? 'Co-buyer wants to tour' : home.coBuyerFavorited ? 'Co-buyer favorited' : null;
 
   return (
-    <article className={`hh-home-card hh-corner ${mode === 'archive' ? 'is-archived' : ''}`} ref={commuteRef}>
+    <article className={`hh-home-card hh-corner ${mode === 'archive' ? 'is-archived' : ''} ${mode === 'homes' ? 'is-contender' : ''}`} ref={commuteRef}>
       <div className="hh-home-card-surface">
         <div className={`hh-home-card-photo ${showPhoto ? '' : 'is-empty'}`}>
         <Link href={`/homes/${encodeURIComponent(home.id)}`} className="hh-home-card-photo-link" aria-label={`Open ${identity.accessible} details`}>
@@ -147,6 +152,10 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
             </span>
           )}
           {home.suggestedBy && <span className="hh-image-provenance">Suggested by {home.suggestedBy}</span>}
+          {/* My Homes on a phone: the card's Match is summarized as one badge (the
+              detailed explanation lives on Home Detail). Same canonical `match`
+              object as the full panel below — only its presentation differs. */}
+          {mode === 'homes' && match?.pct != null && <span className="hh-contender-match" style={{ '--match-color': matchColor(match.pct) }} aria-label={`${match.pct}% Match`}>{match.pct}%</span>}
           {coBuyerActivity && <span className="hh-cobuyer-activity">{coBuyerActivity}</span>}
         </Link>
           {showQuickFavorite && (
@@ -162,7 +171,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
             {showsPurchaseFinancials && home.estMonthly && <span className="hh-mono" style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>{fmtMoney(home.estMonthly)}/mo est.</span>}
           </div>
 
-          <div>
+          <div className="hh-card-identity">
             <Link href={`/homes/${encodeURIComponent(home.id)}`} className="hh-home-identity-link">
               <div className="hh-address" style={{ fontSize: 19, fontWeight: 600, lineHeight: 1.28, color: 'var(--ink)' }}>{identity.primary}</div>
               {identity.option && <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', marginTop: 2 }}>{identity.option}</div>}
@@ -171,7 +180,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
           </div>
 
           {factLine.length > 0 && (
-            <div className="hh-mono" style={{ fontSize: 12.5, color: 'var(--ink-soft)', display: 'flex', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div className="hh-mono hh-card-factline" style={{ fontSize: 12.5, color: 'var(--ink-soft)', display: 'flex', flexWrap: 'wrap', alignItems: 'center' }}>
               {factLine.map((item, i) => (
                 <span key={i} style={{ display: 'flex', alignItems: 'center' }}>
                   {i > 0 && <span style={{ color: 'var(--line)', margin: '0 7px' }}>•</span>}
@@ -180,6 +189,25 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
               ))}
             </div>
           )}
+
+          {mode === 'homes' && (() => {
+            // Compact state line for the phone contender card — every item is an
+            // existing state already shown on the full card or its photo overlays.
+            // Must Haves stay visible even on the compact card: a confirmed miss (or
+            // an unknown) is a different kind of fact than the percentage. Same
+            // mustHaveStatus the filter and Home Detail read.
+            const must = mustHaveStatus(match);
+            const states = [
+              must.missed > 0 && { key: 'must-missed', label: `${must.missed} Must Have${must.missed === 1 ? '' : 's'} missing`, tone: 'negative' },
+              must.missed === 0 && must.unknown > 0 && { key: 'must-unknown', label: `${must.unknown} Must Have${must.unknown === 1 ? '' : 's'} unknown`, tone: 'quiet' },
+              !toured && home.status === 'Want to Tour' && { key: 'tour', label: 'Want to tour', tone: 'positive' },
+              toured && { key: 'toured', label: 'Toured', tone: 'positive' },
+              coBuyerActivity && { key: 'cobuyer', label: coBuyerActivity, tone: 'positive' },
+              home.suggestedBy && { key: 'realtor', label: `Suggested by ${home.suggestedBy}`, tone: 'quiet' },
+              match && match.pct == null && { key: 'match', label: 'Match not known yet', tone: 'quiet' },
+            ].filter(Boolean);
+            return states.length ? <div className="hh-contender-meta">{states.map((state) => <span key={state.key} className={`is-${state.tone}`}>{state.label}</span>)}</div> : null;
+          })()}
 
           {/* On an archived Home, why it was set aside is more decision-relevant than
               whether it had an 89% Match — so this leads, and the Match panel right
@@ -216,7 +244,9 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
           )}
 
           {commuteDestinations.length > 0 && (() => {
-            const shown = commuteDestinations.slice(0, 1);
+            // Every saved place, in the participant's stored order — never only the
+            // first. A pending or failed route keeps its row with an honest status.
+            const shown = commuteDestinations;
             return (
               <div className="hh-card-commute">
                 <div className="hh-card-commute-label">Commute</div>
@@ -355,7 +385,9 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   const priorities = initialPriorities;
   const vocabulary = homeVocabulary(initialPriorities);
   const [query, setQuery] = useState('');
-  const [quickFilter, setQuickFilter] = useState('all');
+  // Filters combine (AND). Each one keeps its existing meaning; see homesCollection.
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
+  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [sortBy, setSortBy] = useState('newest');
   const [modalHome, setModalHome] = useState(null);
   // Carries the "this particular modal open should auto-run Find" intent
@@ -576,65 +608,44 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   const favoriteHomes = useMemo(() => activeHomes.filter(isFavoriteHome), [activeHomes]);
   const tourHomes = useMemo(
     () => activeHomes.filter((h) => (
-      deriveWantToTourState(h).currentUserWantsToTour || h.coBuyerWantsToTour
+      currentUserWantsToTour(h) || h.coBuyerWantsToTour
     )),
     [activeHomes]
   );
 
   const baseList = mode === 'archive' ? archivedHomes : mode === 'favorites' ? favoriteHomes : mode === 'tour' ? tourHomes : activeHomes;
 
+  // The one canonical Match evaluation for filtering, sorting, and counting:
+  // computeMatch with the same Commute route results (session cache) each card
+  // renders from — never a second, commute-less pathway.
+  const commuteCacheVersion = useCommuteCacheVersion();
+  const evaluate = useMemo(() => {
+    const cache = new Map();
+    return (home) => {
+      if (!cache.has(home)) {
+        const commuteEvaluation = evaluateCommute(initialCommuteDestinations, (destination) => readCommuteResult(home, destination));
+        cache.set(home, computeMatch(home, priorities, commuteEvaluation));
+      }
+      return cache.get(home);
+    };
+    // commuteCacheVersion invalidates the memo whenever route results arrive.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [priorities, initialCommuteDestinations, commuteCacheVersion]);
+
   const filtered = useMemo(() => {
     if (mode !== 'homes') return baseList;
-    let list = baseList.filter((h) => {
-      if (query.trim()) {
-        const q = query.toLowerCase();
-        const hay = [h.propertyName, h.address, h.selectedFloorPlanName, h.selectedUnitLabel, ...(h.homeLayout || []), h.primaryBedroomLocation, h.secondaryBedroomLocation, ...trueCheckLabels(h)].join(' ').toLowerCase();
-        if (!hay.includes(q)) return false;
-      }
-      return true;
-    });
+    return sortContenders(applyContenderFilters(baseList, filters, evaluate, query), sortBy, evaluate);
+  }, [baseList, query, mode, filters, sortBy, evaluate]);
 
-    // Quick filters — a first, restrained layer for narrowing 30+ homes down
-    // to a serious short list. Reuses the exact same computeMatch every card
-    // already uses; no separate scoring path.
-    if (quickFilter === 'match90') {
-      list = list.filter((h) => { const m = computeMatch(h, priorities); return m && m.pct !== null && m.pct >= 90; });
-    } else if (quickFilter === 'noMustMissing') {
-      // "No Must-Haves missing" means no CONFIRMED miss — an unconfirmed
-      // Must-Have does not disqualify a home from this filter. Unknown is
-      // not failure here either.
-      list = list.filter((h) => {
-        const m = computeMatch(h, priorities);
-        if (!m || m.mustTotal === 0) return true;
-        return m.mustMet === m.mustEvaluated;
-      });
-    } else if (quickFilter === 'wantToTour') {
-      list = list.filter((h) => deriveWantToTourState(h).currentUserWantsToTour);
-    } else if (quickFilter === 'favorites') {
-      list = list.filter((h) => h.isFavorite);
-    }
-
-    if (sortBy === 'matchDesc' || sortBy === 'matchAsc') {
-      list = [...list].sort((a, b) => (computeMatch(b, priorities)?.pct ?? -1) - (computeMatch(a, priorities)?.pct ?? -1));
-      if (sortBy === 'matchAsc') list.reverse();
-    } else if (sortBy === 'priceAsc' || sortBy === 'priceDesc') {
-      list = [...list].sort((a, b) => (parseNum(a.price) ?? Infinity) - (parseNum(b.price) ?? Infinity));
-      if (sortBy === 'priceDesc') list.reverse();
-    } else if (sortBy === 'newest' || sortBy === 'oldest') {
-      list = [...list].sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
-      if (sortBy === 'newest') list.reverse();
-    }
-
-    return list;
-  }, [baseList, query, mode, quickFilter, sortBy, priorities]);
-
-  const filterCounts = useMemo(() => ({
-    all: activeHomes.length,
-    match90: activeHomes.filter((h) => (computeMatch(h, priorities)?.pct ?? -1) >= 90).length,
-    noMustMissing: activeHomes.filter((h) => { const m = computeMatch(h, priorities); return !m || m.mustMet === m.mustEvaluated; }).length,
-    wantToTour: activeHomes.filter((h) => deriveWantToTourState(h).currentUserWantsToTour).length,
-    favorites: activeHomes.filter(isFavoriteHome).length,
-  }), [activeHomes, priorities]);
+  const filterCounts = useMemo(() => singleFilterCounts(activeHomes, evaluate), [activeHomes, evaluate]);
+  const countFor = useCallback((draft) => applyContenderFilters(activeHomes, draft, evaluate, query).length, [activeHomes, evaluate, query]);
+  const activeLabels = activeFilterLabels(filters);
+  const toggleChip = (key) => setFilters((current) => {
+    if (key === 'all') return { ...EMPTY_FILTERS };
+    if (key === 'match90') return { ...current, minMatch: current.minMatch === 90 ? null : 90 };
+    return { ...current, [key]: !current[key] };
+  });
+  const chipOn = (key) => (key === 'all' ? activeFilterCount(filters) === 0 : key === 'match90' ? filters.minMatch === 90 : !!filters[key]);
 
   if (mode === 'archive') {
     return (
@@ -663,11 +674,26 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     <>
       {mode === 'homes' && (
         <div className="hh-homes-primary-action">
-          <button className="hh-btn" onClick={() => openHomeModal(emptyHome())}><Plus size={15} /> Add Home Listing</button>
+          <button className="hh-btn" onClick={() => openHomeModal(emptyHome())} aria-label={`Add ${vocabulary.singularLower}`}><Plus size={15} aria-hidden="true" /> <span className="hh-add-home-label">Add Home Listing</span></button>
         </div>
       )}
 
       {saveError && <div className="hh-save-error" role="alert">{saveError}{retrySave && <> <button type="button" onClick={() => retrySave().catch(() => {})}>Retry</button></>}</div>}
+
+      {mode === 'homes' && (
+        <section className="flh-homes-controls" aria-label={`Search and filter ${vocabulary.pluralLower}`}>
+          <label className="flh-search-field">
+            <Search size={16} aria-hidden="true" />
+            <span className="sr-only">Search your {vocabulary.pluralLower}</span>
+            <input type="search" placeholder="Search address or neighborhood" value={query} onChange={(e) => setQuery(e.target.value)} />
+          </label>
+          <div className="flh-control-row">
+            <button type="button" className="flh-control-pill is-strong" onClick={() => setFilterSheetOpen(true)} aria-label={`Sort: ${sortLabel(sortBy)}. Change sort`}><ArrowUpDown size={14} aria-hidden="true" /> {sortLabel(sortBy, { short: true })}</button>
+            <button type="button" className={`flh-control-pill ${activeLabels.length ? 'is-active' : ''}`} onClick={() => setFilterSheetOpen(true)} aria-label={activeLabels.length ? `Filters, ${activeLabels.length} active` : 'Filters'}><SlidersHorizontal size={14} aria-hidden="true" /> Filters{activeLabels.length > 0 && <span className="flh-control-badge">{activeLabels.length}</span>}</button>
+            <Link href="/map" className="flh-control-pill"><MapIcon size={14} aria-hidden="true" /> Map</Link>
+          </div>
+        </section>
+      )}
 
       {mode === 'homes' && (
         <section className="hh-homes-toolbar" aria-label={`Search and filter ${vocabulary.pluralLower}`}>
@@ -696,9 +722,9 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
             <button
               key={f.key}
               type="button"
-              className={`hh-chip ${quickFilter === f.key ? 'on' : ''}`}
-              aria-pressed={quickFilter === f.key}
-              onClick={() => setQuickFilter(f.key)}
+              className={`hh-chip ${chipOn(f.key) ? 'on' : ''}`}
+              aria-pressed={chipOn(f.key)}
+              onClick={() => toggleChip(f.key)}
             >
               {f.label} ({filterCounts[f.key]})
             </button>
@@ -719,7 +745,8 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         ) : (
           <div className="hh-corner" style={{ border: '1px dashed var(--line)', borderRadius: 16, padding: '48px 24px', textAlign: 'center', color: 'var(--ink-soft)' }}>
             <p className="hh-serif" style={{ fontSize: 17, color: 'var(--ink)', marginBottom: 6 }}>{activeHomes.length === 0 ? vocabulary.apartment ? "No properties yet" : "You found the homes. We'll help you choose." : 'Nothing matches that search'}</p>
-            <p style={{ fontSize: 13, marginBottom: 18 }}>{activeHomes.length === 0 ? 'Paste a listing link from anywhere to get started.' : 'Try a different search or status filter.'}</p>
+            <p style={{ fontSize: 13, marginBottom: 18 }}>{activeHomes.length === 0 ? 'Paste a listing link from anywhere to get started.' : 'Try a different search or filter.'}</p>
+            {activeHomes.length > 0 && activeLabels.length > 0 && <button type="button" className="hh-btn hh-btn-ghost" onClick={() => setFilters({ ...EMPTY_FILTERS })}>Clear filters</button>}
             {activeHomes.length === 0 && <button className="hh-btn" onClick={() => openHomeModal(emptyHome())}><Plus size={15} /> Add {vocabulary.singularLower}</button>}
           </div>
         )
@@ -728,6 +755,29 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
           homes={filtered} priorities={priorities} commuteDestinations={initialCommuteDestinations} mode={mode} onEdit={openHomeModal} onArchiveRequest={setArchiveTarget}
           onToggleFavorite={toggleFavorite} onWantToTour={wantToTour} onOpenPostTour={setPostTourTarget} onRemoveFromTour={removeFromTour}
           onRestore={restoreHome} onRequestDelete={setDeleteTarget}
+        />
+      )}
+
+      {mode === 'homes' && activeLabels.length > 0 && (
+        <button type="button" className="flh-card flh-card-quiet is-interactive flh-active-filters" onClick={() => setFilterSheetOpen(true)}>
+          <span className="flh-card-heading">
+            <span className="flh-card-title flh-card-title-small">Active filters · {filtered.length} of {activeHomes.length}</span>
+            <span className="flh-card-sub">{activeLabels.join(' · ')}</span>
+          </span>
+          <ChevronRight size={18} className="flh-chevron" aria-hidden="true" />
+        </button>
+      )}
+
+      {mode === 'homes' && (
+        <HomesFilterSheet
+          open={filterSheetOpen}
+          onClose={() => setFilterSheetOpen(false)}
+          filters={filters}
+          sortBy={sortBy}
+          onApply={({ filters: next, sortBy: nextSort }) => { setFilters(normalizeFilters(next)); setSortBy(nextSort); setFilterSheetOpen(false); }}
+          countFor={countFor}
+          counts={filterCounts}
+          vocabulary={vocabulary}
         />
       )}
 

@@ -2,7 +2,10 @@ import { createClient } from '@/lib/supabase/server';
 import { requireUser, withAuthRecovery } from '@/lib/supabase/auth';
 import HomesBoard from '@/components/HomesBoard';
 import CoBuyerHomesLine from '@/components/CoBuyerHomesLine';
-import { normalizePriorities } from '@/lib/constants';
+import HomesTogetherCallout from '@/components/HomesTogetherCallout';
+import { homeVocabulary } from '@/lib/homePresentation';
+import { contenderCountLabel } from '@/lib/homesCollection';
+import { isArchivedStatus, normalizePriorities } from '@/lib/constants';
 import { resolveActiveSearch, resolvePriorities, resolveSharedFactPriorityAwareness, getHomesForUser, getParticipantStatusesForHomes, addCoBuyerPersonalSignals, getSearchParticipantIds, getCommuteDestinations, getSuggestions } from '@/lib/supabase/collaboration';
 
 export default async function HomesPage() {
@@ -25,17 +28,20 @@ export default async function HomesPage() {
     const statusesByHome = await getParticipantStatusesForHomes(supabase, search, homes);
     const homesWithSignal = addCoBuyerPersonalSignals(homes, statusesByHome, user.id);
     const normalizedPriorities = normalizePriorities(priorities);
+    const activeCount = homes.filter((home) => !isArchivedStatus(home.status)).length;
     const outstandingSuggestions = suggestions.filter((item) => item.status === 'pending' && !item.dispositions.some((row) => row.userId === user.id));
 
     return (
       <main className="hh-homes-page">
         <div className="hh-homes-intro">
           <h1 className="hh-homes-purpose">My Homes</h1>
+          <p className="hh-homes-count">{contenderCountLabel(activeCount, homeVocabulary(normalizedPriorities))}</p>
           <p className="hh-homes-instructions">All the places you’re considering, scored against what matters to you.</p>
           {!isCollaborative && <CoBuyerHomesLine searchId={search.id} userId={user.id} isOwner={isOwner} isCollaborative={false} />}
         </div>
         {outstandingSuggestions.length > 0 && <a className="hh-suggestions-entry" href="/homes/suggestions"><strong>{outstandingSuggestions[0].suggestedByName} suggested {outstandingSuggestions.length} {outstandingSuggestions.length === 1 ? 'home' : 'homes'} →</strong></a>}
         <HomesBoard mode="homes" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizedPriorities} initialCommuteDestinations={commuteDestinations} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} />
+        <div className="flh-mobile-only"><HomesTogetherCallout searchId={search.id} userId={user.id} isOwner={isOwner} isCollaborative={isCollaborative} /></div>
         <section className="hh-match-editorial">
           <div>
             <h2>How Match Scores Work</h2>

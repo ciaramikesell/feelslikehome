@@ -1664,6 +1664,7 @@ details[open] > summary .hh-accordion-chevron, .hh-more-home-details:has(.hh-mor
 .flh-card-row { display: grid; grid-template-columns: auto minmax(0,1fr) auto auto; align-items: center; gap: 12px; }
 .flh-card-row > :only-child { grid-column: 1 / -1; }
 .flh-card-heading { min-width: 0; }
+.flh-card-heading > span { display: block; }
 .flh-card-title { margin: 0; color: var(--ink); font: 600 17px/1.25 var(--font-serif); }
 .flh-card-title-small { font: 600 14.5px/1.35 var(--font-sans); }
 .flh-card-sub { margin: 2px 0 0; color: var(--ink-soft); font-size: 12.5px; line-height: 1.45; }
@@ -1856,4 +1857,111 @@ details[open] > summary .hh-accordion-chevron, .hh-more-home-details:has(.hh-mor
 @media (max-width: 360px) {
   .flh-select-card { min-height: 78px; padding: 11px 10px; font-size: 12.5px; }
   .flh-number-grid { grid-template-columns: minmax(0,1fr); }
+}
+
+/* ------------------------------------------------------------------------
+   Authenticated-mobile system: My Homes, Sort & Filter, Home Detail
+   Phone presentation only (≤700px) around the same components and canonical
+   state desktop uses; desktop keeps its existing layout.
+   ------------------------------------------------------------------------ */
+.flh-mobile-only, .flh-homes-controls, .hh-homes-count, .hh-contender-match, .hh-contender-meta, .flh-active-filters { display: none; }
+.flh-filter-sheet .flh-filter-clear { display: block; margin: -6px 0 6px auto; }
+.flh-filter-section { margin: 0 0 20px; }
+.flh-filter-section .flh-segmented button { min-width: 72px; }
+.flh-filter-count { color: var(--ink-soft); font-weight: 500; }
+.flh-toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 14px; border: 1px solid var(--flh-card-line); border-radius: 14px; background: var(--flh-card); cursor: pointer; }
+.flh-toggle-row strong { display: block; color: var(--ink); font-size: 14px; }
+.flh-toggle-row small { display: block; margin-top: 2px; color: var(--ink-soft); font-size: 12.5px; line-height: 1.45; }
+.flh-toggle-row input { flex-shrink: 0; width: 44px; height: 26px; margin: 0; appearance: none; -webkit-appearance: none; position: relative; border-radius: 999px; background: #D9CFC2; cursor: pointer; transition: background .15s ease; }
+.flh-toggle-row input::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(46,38,33,.25); transition: transform .15s ease; }
+.flh-toggle-row input:checked { background: var(--flh-sage-strong); }
+.flh-toggle-row input:checked::after { transform: translateX(18px); }
+.flh-filter-apply { position: sticky; bottom: calc(-20px - env(safe-area-inset-bottom)); margin: 6px -20px calc(-20px - env(safe-area-inset-bottom)); padding: 12px 20px calc(14px + env(safe-area-inset-bottom)); background: var(--paper-raised); border-top: 1px solid var(--line); }
+.flh-state-icon { display: inline-grid; place-items: center; width: 20px; height: 20px; flex-shrink: 0; border-radius: 50%; font: 700 11px/1 var(--font-sans); }
+.flh-state-icon.is-positive { background: var(--flh-sage-bg); color: var(--positive); }
+.flh-state-icon.is-negative { background: #F6DDD7; color: var(--negative); }
+.flh-state-icon.is-unknown { background: #ECE7E0; color: var(--unknown); }
+.flh-state-icon.is-neutral { background: #ECE7E0; color: var(--ink-soft); }
+
+@media (max-width: 700px) {
+  .flh-mobile-only { display: block; }
+
+  /* My Homes — header, controls */
+  .hh-homes-page { position: relative; }
+  .hh-homes-intro { padding-right: 56px; }
+  .hh-homes-purpose { margin: 4px 0 2px; font-size: 31px; }
+  .hh-homes-count { display: block; margin: 0 0 12px; color: var(--ink-soft); font-size: 13px; }
+  .hh-homes-intro .hh-cobuyer-context { display: none; }
+  .hh-homes-primary-action { position: absolute; top: 4px; right: 0; margin: 0; }
+  .hh-homes-primary-action .hh-btn { width: 44px; height: 44px; min-height: 44px; padding: 0; justify-content: center; border-radius: 50%; }
+  .hh-add-home-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .hh-suggestions-entry { display: flex; width: 100%; margin: 0 0 12px; padding: 10px 14px; font-size: 13px; }
+  .hh-homes-toolbar { display: none; }
+  .flh-homes-controls { display: grid; gap: 10px; margin: 0 0 14px; }
+  .flh-search-field { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border: 1px solid var(--flh-control-line); border-radius: 12px; background: #fff; color: var(--ink-soft); }
+  .flh-search-field:focus-within { border-color: var(--brick); outline: 3px solid var(--focus-ring); outline-offset: 1px; }
+  .flh-search-field input { flex: 1 1 0; width: 0; min-width: 0; padding: 0; border: 0; outline: none; background: transparent; color: var(--ink); font: 400 16px var(--font-sans); }
+  .flh-control-row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+  .flh-control-pill { display: inline-flex; flex-shrink: 0; align-items: center; gap: 6px; min-height: 38px; padding: 0 14px; border: 1px solid var(--flh-control-line); border-radius: 999px; background: var(--flh-card); color: var(--ink); font: 600 13px var(--font-sans); text-decoration: none; cursor: pointer; }
+  .flh-control-pill.is-strong { border-color: var(--ink); background: var(--ink); color: #fff; }
+  .flh-control-pill.is-active { border-color: var(--brick); color: var(--brick); }
+  .flh-control-badge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--brick); color: #fff; font-size: 11px; }
+  .flh-active-filters { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; text-align: left; }
+  .flh-homes-together { margin-top: 12px; }
+  .flh-homes-together .flh-card-row { grid-template-columns: auto minmax(0,1fr); }
+
+  /* My Homes — compact contender cards (same HomeCard, same canonical Match) */
+  .hh-homes-grid { gap: 10px; }
+  .hh-home-card.is-contender .hh-home-card-surface { position: relative; flex-direction: row; min-height: 124px; border-radius: 16px; }
+  .hh-home-card.is-contender .hh-home-card-photo { position: static; flex: 0 0 116px; width: 116px; height: auto !important; min-height: 0; aspect-ratio: auto; }
+  .hh-home-card.is-contender .hh-home-card-photo-link { position: absolute; inset: 0 auto 0 0; width: 116px; }
+  .hh-home-card.is-contender .hh-card-status, .hh-home-card.is-contender .hh-flh-moment,
+  .hh-home-card.is-contender .hh-image-provenance, .hh-home-card.is-contender .hh-cobuyer-activity { display: none; }
+  .hh-home-card.is-contender .hh-contender-match { display: block; position: absolute; z-index: 2; top: 8px; left: 8px; padding: 3px 8px; border-radius: 999px; background: var(--match-color, var(--ink-soft)); color: #fff; font: 700 12px/1.3 var(--font-sans); box-shadow: 0 1px 4px rgba(46,38,33,.25); }
+  /* Explicit: the shared .hh-tooltip rule (later in the cascade) makes this button
+     position: relative everywhere else. */
+  .hh-home-card.is-contender .hh-card-favorite { position: absolute; top: 8px; right: 8px; left: auto; width: 36px; height: 36px; }
+  .hh-home-card.is-contender .hh-home-card-body { flex: 1; min-width: 0; padding: 11px 12px 12px !important; gap: 3px !important; }
+  .hh-home-card.is-contender .hh-home-card-body > :not(.hh-card-price-row):not(.hh-card-identity):not(.hh-card-factline):not(.hh-contender-meta) { display: none !important; }
+  .hh-home-card.is-contender .hh-card-price-row { padding-right: 40px; }
+  .hh-home-card.is-contender .hh-card-price-row > span:first-child { color: var(--ink) !important; font: 600 18px/1.2 var(--font-serif) !important; }
+  .hh-home-card.is-contender .hh-card-price-row > span + span { font-size: 11.5px !important; }
+  .hh-home-card.is-contender .hh-card-identity .hh-address { font: 600 14px/1.3 var(--font-sans) !important; }
+  .hh-home-card.is-contender .hh-card-identity div { font-size: 12.5px !important; }
+  .hh-home-card.is-contender .hh-home-identity-link::after { content: ''; position: absolute; inset: 0; z-index: 1; }
+  .hh-home-card.is-contender .hh-card-factline { font-size: 12px !important; }
+  .hh-home-card.is-contender .hh-contender-meta { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+  .hh-contender-meta span { padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; }
+  .hh-contender-meta .is-positive { background: var(--flh-sage-bg); color: var(--flh-sage-ink); }
+  .hh-contender-meta .is-quiet { background: var(--paper); color: var(--ink-soft); }
+  .hh-contender-meta .is-negative { background: #F6DDD7; color: var(--negative); }
+  .hh-home-card.is-contender:hover .hh-home-card-surface { transform: none; }
+
+  /* Home Detail */
+  .hh-home-detail { position: relative; padding-bottom: calc(96px + env(safe-area-inset-bottom)); }
+  .hh-detail-back { position: absolute; z-index: 5; top: 16px; left: 10px; width: 40px; height: 40px; min-height: 40px; margin: 0; padding: 0; justify-content: center; border-radius: 50%; background: rgba(255,253,248,.94); color: var(--ink); box-shadow: 0 2px 8px rgba(46,38,33,.18); font-size: 0; }
+  .hh-detail-back svg { width: 18px; height: 18px; }
+  .hh-detail-match-card, .hh-detail-match-factual { display: none !important; }
+  .flh-detail-match { margin: 0 0 12px; }
+  .flh-detail-match-score { display: flex; align-items: center; gap: 8px; margin: 0 0 12px; font: 600 26px/1.1 var(--font-serif); }
+  .flh-detail-match-score.is-unknown { color: var(--ink-soft); font-size: 18px; }
+  .flh-detail-match-group { padding: 10px 0 0; border-top: 1px solid rgba(138,112,86,.12); }
+  .flh-detail-match-group + .flh-detail-match-group { margin-top: 10px; }
+  .flh-detail-match-label { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 10px; margin: 0 0 8px; color: var(--ink); font: 700 11.5px/1.3 var(--font-sans); letter-spacing: .08em; text-transform: uppercase; }
+  .flh-detail-match-label span { color: var(--ink-soft); font-weight: 600; letter-spacing: 0; text-transform: none; }
+  .flh-detail-match ul { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+  .flh-detail-match li { display: flex; align-items: center; gap: 9px; color: var(--ink); font-size: 14px; }
+  .flh-detail-match li.is-unknown { color: var(--ink-soft); }
+  .flh-detail-match li.is-negative { color: var(--negative); font-weight: 600; }
+  .flh-detail-match-note { margin: 12px 0 0; color: var(--ink-soft); font-size: 12px; }
+  .flh-detail-row-section { margin: 0 0 10px !important; padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; }
+  .flh-detail-row-section > .hh-detail-eyebrow, .flh-detail-row-section > h2 { display: none; }
+  .hh-card-context-details.is-detail-row { overflow: hidden; border: 1px solid var(--flh-card-line); border-radius: var(--flh-radius-card); background: var(--flh-card); }
+  .hh-card-context-details.is-detail-row.is-sage { border-color: var(--flh-sage-line); background: var(--flh-sage-bg); }
+  .hh-card-context-details.is-detail-row > .hh-card-context-summary { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 64px; margin: 0; padding: 12px 14px; border: 0; background: none; color: var(--ink); text-align: left; cursor: pointer; }
+  .hh-card-context-details.is-detail-row > .hh-card-context-summary .flh-card-row { flex: 1; grid-template-columns: auto minmax(0,1fr); }
+  .flh-detail-row-body { padding: 4px 14px 14px; background: var(--flh-card); }
+  .flh-detail-listing-link { display: inline-flex !important; align-items: center; gap: 6px; margin-top: 12px; color: var(--brick); font-weight: 600; font-size: 14px; }
+  .flh-detail-inline-actions > .hh-btn { display: none; }
+  .flh-detail-action-bar { position: fixed; z-index: 39; left: 0; right: 0; bottom: calc(62px + env(safe-area-inset-bottom)); display: flex !important; gap: 10px; padding: 10px 14px; background: linear-gradient(to bottom, rgba(250,246,239,0), var(--paper) 14px); }
 }

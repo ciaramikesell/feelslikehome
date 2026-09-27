@@ -2,7 +2,10 @@
 
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Check, ChevronRight, ExternalLink, Heart, Footprints, Home as HomeIcon, Minus, Pencil, RotateCcw, Star, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronRight, ExternalLink, Heart, Footprints, Home as HomeIcon, ListChecks, MapPin, Minus, NotebookText, Pencil, RotateCcw, Star, X } from 'lucide-react';
+import DetailMatchPanel from '@/components/DetailMatchPanel';
+import MobileDisclosure from '@/components/MobileDisclosure';
+import { IconBadge } from '@/components/MobileSystem';
 import HomeModal from '@/components/HomeModal';
 import PostTourModal from '@/components/PostTourModal';
 import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
@@ -27,6 +30,16 @@ function Stars({ value }) {
 
 function Section({ eyebrow, title, children, className = '' }) {
   return <section className={`hh-detail-section ${className}`}><div className="hh-detail-eyebrow">{eyebrow}</div>{title && <h2 className="hh-serif">{title}</h2>}{children}</section>;
+}
+
+// A compact phone row (Home Detail's "More details" / "Places that matter" /
+// "Every criterion"). On desktop the same content is simply always open.
+function DetailRow({ icon, title, subtitle, tone = 'default', children }) {
+  return (
+    <MobileDisclosure breakpoint={700} label={title} variant={`detail-row is-${tone}`} className="flh-detail-row-body" summary={
+      <span className="flh-card-row"><IconBadge icon={icon} tone={tone === 'sage' ? 'sage' : 'terracotta'} /><span className="flh-card-heading"><span className="flh-card-title flh-card-title-small">{title}</span>{subtitle && <span className="flh-card-sub">{subtitle}</span>}</span></span>
+    }>{children}</MobileDisclosure>
+  );
 }
 
 function tierSummary(rows) {
@@ -164,21 +177,33 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
       </div>
     </header>
 
-    {facts.length > 0 && <Section eyebrow="The home" title="Property Facts" className="hh-detail-section-wide hh-detail-surface"><dl className="hh-detail-facts">{facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>{home.conditionNotes && <p className="hh-detail-condition">{home.conditionNotes}</p>}</Section>}
+    {/* Phone: the compact Match panel replaces the hero Match card; the full
+        per-criterion breakdown stays available below ("Every criterion"). */}
+    {match && <div className="flh-mobile-only">
+      {/* Read-only (a Realtor viewing a buyer's home): it is the buyer's Match. */}
+      <DetailMatchPanel match={match} heading={readOnly ? 'The buyer’s personalized Match' : 'Your personalized Match'} />
+    </div>}
+
+    {facts.length > 0 && <Section eyebrow="The home" title="Property Facts" className="hh-detail-section-wide hh-detail-surface flh-detail-row-section"><DetailRow icon={NotebookText} title="More details" subtitle={`${facts.length} property ${facts.length === 1 ? 'fact' : 'facts'}${home.listingUrl ? ' · original listing' : ''}`}><dl className="hh-detail-facts">{facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>{home.conditionNotes && <p className="hh-detail-condition">{home.conditionNotes}</p>}{home.listingUrl && <a className="flh-mobile-only flh-detail-listing-link" href={home.listingUrl} target="_blank" rel="noreferrer">Original listing <ExternalLink size={14} aria-hidden="true" /></a>}</DetailRow></Section>}
 
     {commuteDestinations.length > 0 && (() => {
       return (
-        <Section eyebrow="Places that matter" title="Location & Commute" className="hh-detail-section-wide hh-detail-surface">
-          <HomeDetailLocation home={home} destinations={commuteDestinations} getState={getState} />
+        <Section eyebrow="Places that matter" title="Location & Commute" className="hh-detail-section-wide hh-detail-surface flh-detail-row-section">
+          {/* Every saved place, in stored order (HomeDetailLocation lists them all).
+              Drive times are decision context; they only affect Match if the
+              participant has made Commute itself a priority. */}
+          <DetailRow icon={MapPin} tone="sage" title="Places that matter" subtitle={`${commuteDestinations.map((destination) => destination.label).join(' · ')} · ${commuteDestinations.length} ${commuteDestinations.length === 1 ? 'place' : 'places'}`}>
+            <HomeDetailLocation home={home} destinations={commuteDestinations} getState={getState} />
+          </DetailRow>
         </Section>
       );
     })()}
 
-    {match && <div ref={matchSection} tabIndex={-1} className="hh-detail-match-anchor"><Section eyebrow="How it fits your search" title={match.pct == null ? 'More will come into focus' : `Why this home is a ${match.pct}% Match${readOnly ? '' : ' for you'}`} className="hh-detail-section-wide hh-detail-surface"><div className="hh-detail-match-groups">{['must', 'important', 'nice'].map((tier) => { const rows = match.allSelected.filter((item) => item.tier === tier); return rows.length ? <div className={`hh-detail-match-tier ${tier}`} key={tier}><h3>{TIER_LABELS[tier]}<small>{tierSummary(rows)}</small></h3>{rows.map((item) => { const neutral = item.evaluated && item.met === null; const detail = !item.evaluated ? 'Some listing details couldn’t be determined reliably.' : item.detail || (item.objective ? 'Evaluated' : neutral ? 'Neutral' : item.met ? 'Matches' : 'Does not match'); const stateLabel = !item.evaluated ? 'Unknown' : neutral ? 'Neutral' : item.met ? 'Satisfied' : 'Missed'; return <div className={`hh-detail-criterion ${!item.evaluated ? 'unknown' : neutral ? 'neutral' : item.met ? 'met' : 'missed'}`} key={item.key}><b aria-hidden="true">{!item.evaluated ? <span className="hh-detail-question">?</span> : neutral ? <span>—</span> : item.met ? <Check size={14} /> : <X size={14} />}</b><span><strong>{item.key.includes(':') ? criterionDisplayLabel(item.key.split(':')[0], item.label) : item.label}</strong><small>{detail}</small></span><span className="sr-only">{stateLabel}</span></div>; })}</div> : null; })}</div></Section></div>}
+    {match && <div ref={matchSection} tabIndex={-1} className="hh-detail-match-anchor"><Section eyebrow="How it fits your search" title={match.pct == null ? 'More will come into focus' : `Why this home is a ${match.pct}% Match${readOnly ? '' : ' for you'}`} className="hh-detail-section-wide hh-detail-surface flh-detail-row-section"><DetailRow icon={ListChecks} title="Every criterion" subtitle={`${match.allSelected.length} ${match.allSelected.length === 1 ? 'priority' : 'priorities'} · how each one reads for this ${vocabulary.singularLower}`}><div className="hh-detail-match-groups">{['must', 'important', 'nice'].map((tier) => { const rows = match.allSelected.filter((item) => item.tier === tier); return rows.length ? <div className={`hh-detail-match-tier ${tier}`} key={tier}><h3>{TIER_LABELS[tier]}<small>{tierSummary(rows)}</small></h3>{rows.map((item) => { const neutral = item.evaluated && item.met === null; const detail = !item.evaluated ? 'Some listing details couldn’t be determined reliably.' : item.detail || (item.objective ? 'Evaluated' : neutral ? 'Neutral' : item.met ? 'Matches' : 'Does not match'); const stateLabel = !item.evaluated ? 'Unknown' : neutral ? 'Neutral' : item.met ? 'Satisfied' : 'Missed'; return <div className={`hh-detail-criterion ${!item.evaluated ? 'unknown' : neutral ? 'neutral' : item.met ? 'met' : 'missed'}`} key={item.key}><b aria-hidden="true">{!item.evaluated ? <span className="hh-detail-question">?</span> : neutral ? <span>—</span> : item.met ? <Check size={14} /> : <X size={14} />}</b><span><strong>{item.key.includes(':') ? criterionDisplayLabel(item.key.split(':')[0], item.label) : item.label}</strong><small>{detail}</small></span><span className="sr-only">{stateLabel}</span></div>; })}</div> : null; })}</div></DetailRow></Section></div>}
 
     <Section eyebrow={readOnly ? 'Buyer perspective' : 'Your take'} title={readOnly ? 'Their relationship with this home' : 'Your relationship with this home'} className="hh-detail-relationship hh-detail-section-wide hh-detail-surface">
       {isCollaborative && <p className="hh-detail-context">{readOnly ? 'Each buyer’s perspective stays separate.' : 'These choices are yours. Your co-buyer can see them and keeps their own.'}</p>}
-      {!readOnly && <div className="hh-detail-actions">
+      {!readOnly && <div className="hh-detail-actions flh-detail-inline-actions">
         {hasToured(home) ? <span className="hh-detail-toured-state"><Check size={15} aria-hidden="true" /> Toured</span> : <button className="hh-btn" aria-pressed={home.status === 'Want to Tour'} onClick={() => savePersonal({ status: home.status === 'Want to Tour' ? 'Saved' : 'Want to Tour' }).catch(() => {})}><Footprints size={15} aria-hidden="true" />{home.status === 'Want to Tour' ? 'On your Want to Tour list' : 'Want to tour'}</button>}
         <button className="hh-btn hh-btn-ghost" aria-pressed={home.isFavorite} onClick={() => savePersonal(toggleFavorite(home)).catch(() => {})}><Heart size={15} aria-hidden="true" fill={home.isFavorite ? 'currentColor' : 'none'} />{home.isFavorite ? 'Favorited' : 'Favorite'}</button>
         <button className="hh-detail-archive-action" onClick={() => isArchivedStatus(home.status) ? savePersonal(restoreHome(home)).catch(() => {}) : setArchiveTarget(home)}>{isArchivedStatus(home.status) ? <><RotateCcw size={14} aria-hidden="true" /> Restore</> : 'Archive'}</button>
@@ -198,6 +223,14 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
 
     <Section eyebrow="Property notes" title={isCollaborative ? "Shared notes" : "What you want to remember"}>{isCollaborative && <p className="hh-detail-context">Pros, cons, and notes are visible to both of you.</p>}{!notesOpen ? <><div className="hh-detail-notes">{parseCommaList(home.pros).length > 0 && <div><h3>Pros</h3>{parseCommaList(home.pros).map((x) => <p key={x}><span aria-hidden="true">+</span>{x}</p>)}</div>}{parseCommaList(home.cons).length > 0 && <div><h3>Cons</h3>{parseCommaList(home.cons).map((x) => <p key={x}><span aria-hidden="true">−</span>{x}</p>)}</div>}{home.notes && <div className="wide"><h3>Notes</h3><p>{home.notes}</p></div>}</div>{!readOnly && <button className="hh-btn hh-btn-ghost hh-detail-notes-action" onClick={() => setNotesOpen(true)}>{home.pros || home.cons || home.notes ? 'Edit property notes' : 'Add pros, cons, or a note'}</button>}</> : <div className="hh-detail-notes-form"><label>Pros<input className="hh-input" value={thoughts.pros} onChange={(e) => setThoughts({ ...thoughts, pros: e.target.value })} placeholder="Great kitchen, quiet street" /></label><label>Cons<input className="hh-input" value={thoughts.cons} onChange={(e) => setThoughts({ ...thoughts, cons: e.target.value })} placeholder="Busy road" /></label><label className="wide">Anything else you want to remember?<textarea className="hh-textarea" value={thoughts.notes} onChange={(e) => setThoughts({ ...thoughts, notes: e.target.value })} placeholder="HOA details, sewer/water, financing options, recent updates, listing terms, or anything else worth noting." /></label><div className="wide hh-detail-form-actions"><button className="hh-btn hh-btn-ghost" onClick={() => setNotesOpen(false)}>Cancel</button><button className="hh-btn" disabled={saving} onClick={saveThoughts}>{saving ? 'Saving…' : 'Save notes'}</button></div></div>}</Section>
     </div>
+    {/* Phone: the primary personal actions sit in a sticky bar above the bottom
+        navigation. Same handlers, same meaning as the inline buttons above. */}
+    {!readOnly && !isArchivedStatus(home.status) && <div className="flh-mobile-only flh-detail-action-bar">
+      <button type="button" className="flh-icon-button" aria-pressed={home.isFavorite} aria-label={home.isFavorite ? 'Remove from favorites' : 'Add to favorites'} onClick={() => savePersonal(toggleFavorite(home)).catch(() => {})}><Heart size={18} aria-hidden="true" fill={home.isFavorite ? 'var(--brick)' : 'none'} color={home.isFavorite ? 'var(--brick)' : 'currentColor'} /></button>
+      {hasToured(home)
+        ? <button type="button" className="flh-button flh-button-primary flh-button-block" onClick={() => setReflecting(true)}>{hasPostTourFeedback ? 'Edit your take' : 'Record your take'}</button>
+        : <button type="button" className={`flh-button flh-button-block ${home.status === 'Want to Tour' ? 'flh-button-outline' : 'flh-button-primary'}`} aria-pressed={home.status === 'Want to Tour'} onClick={() => savePersonal({ status: home.status === 'Want to Tour' ? 'Saved' : 'Want to Tour' }).catch(() => {})}><Footprints size={16} aria-hidden="true" /> {home.status === 'Want to Tour' ? 'On your Want to Tour list' : 'Want to tour'}</button>}
+    </div>}
     {!readOnly && editing && <HomeModal presentation="detail-panel" initial={home} priorities={priorities} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} userId={userId} onSave={saveWhole} onClose={() => setEditing(false)} onWantToTour={() => savePersonal({ status: 'Want to Tour' })} onArchiveRequest={setArchiveTarget} />}
     {!readOnly && archiveTarget && <ArchiveConfirmModal home={archiveTarget} onCancel={() => setArchiveTarget(null)} onConfirm={(reason) => confirmArchive(reason).catch(() => {})} />}
     {!readOnly && reflecting && <PostTourModal home={home} priorities={priorities} isCollaborative={isCollaborative} saveError={saveError} onVerdict={handleVerdict} onClose={() => setReflecting(false)} />}

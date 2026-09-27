@@ -13,7 +13,9 @@ const globalsCss = read('src/app/globals.css');
 /* ------------------------------ MobileDisclosure ------------------------------ */
 
 test('MobileDisclosure generalizes the card disclosure pattern with the same default behavior', () => {
-  assert.match(mobileDisclosure, /export default function MobileDisclosure\(\{ label = 'More details', breakpoint = 640, className = 'hh-card-context', children \}\)/);
+  // Same defaults as the original card disclosure; `summary`/`variant` are optional additions.
+  assert.match(mobileDisclosure, /export default function MobileDisclosure\(\{ label = 'More details', breakpoint = 640, className = 'hh-card-context', summary = null, variant = '', children \}\)/);
+  assert.match(mobileDisclosure, /\{summary \|\| <span>\{label\}<\/span>\}/);
   assert.match(mobileDisclosure, /useState\(true\)/);
   assert.match(mobileDisclosure, /window\.matchMedia\(`\(max-width: \$\{breakpoint\}px\)`\)/);
   assert.match(mobileDisclosure, /hh-card-context-details/);
