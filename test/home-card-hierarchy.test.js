@@ -86,7 +86,7 @@ test('compact property facts use canonical values, fixed order, and omit unknown
   assert.deepEqual(homeCardSnapshot({ basementNotes: 'Unknown', schoolsNotes: 'N/A', homeCondition: [] }, null), []);
 });
 
-test('visible Must Haves contain feature criteria, not baseline search parameters', () => {
+test('every Must Have is eligible for the preview regardless of category, with truthful overflow', () => {
   const allSelected = [
     criterion('preferredPropertyTypes', 'must', true, false),
     criterion('budget', 'must', true, false),
@@ -99,11 +99,14 @@ test('visible Must Haves contain feature criteria, not baseline search parameter
   ];
   const match = { allSelected, pct: 42 };
   const result = selectHomeCardCriteria(match);
-  assert.deepEqual(result.mustHaves.map(({ label }) => label), ['Fenced Yard', 'Home Office']);
-  assert.equal(result.mustOverflow, 0);
+  // Failures first, then Unknown, then met — the preview limit (5) never hides a
+  // failure, and nothing is excluded for its category; the rest is overflow.
+  assert.deepEqual(result.mustHaves.map(({ label }) => label), ['preferredPropertyTypes', 'budget', 'beds', 'sqft', 'Fenced Yard']);
+  assert.deepEqual(result.hiddenMustHaves.map(({ label }) => label), ['homeCondition', 'Home Office', 'Natural Light']);
+  assert.equal(result.mustOverflow, 3);
+  assert.equal(result.mustHaves.length + result.hiddenMustHaves.length, allSelected.length);
   assert.equal(match.allSelected, allSelected);
   assert.equal(match.pct, 42);
-  assert.ok(match.allSelected.some(({ key }) => key === 'budget'));
 });
 
 test('card renders compact unboxed facts and preserves adjacent component contracts', () => {

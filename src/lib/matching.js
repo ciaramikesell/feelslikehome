@@ -1,4 +1,4 @@
-import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier, isExperientialCriterion, isRetiredPurchaseBuiltIn, foldLegacyCheckAliases, TOUR_RESPONSE, tourResponseLabel } from './constants.js';
+import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier, isExperientialCriterion, isRetiredPurchaseBuiltIn, foldLegacyCheckAliases, TOUR_RESPONSE, tourResponseLabel, criterionDisplayLabel } from './constants.js';
 import { normalizeSearchIntent } from './searchIntent.js';
 import { EVIDENCE_STRENGTH, findingsFromFields } from './importDomain.js';
 
@@ -514,16 +514,12 @@ export function selectHomeCardCriteria(match, mustLimit = 5) {
   const source = match.allSelected || [];
   const indexed = source.map((criterion, order) => ({ criterion, order }));
   const stateRank = (criterion) => criterion.evaluated ? (criterion.met === false ? 0 : 2) : 1;
-  // The compact preview is intentionally limited to concrete property features.
-  // Baseline search constraints still live in `source` (and therefore in the
-  // canonical score), but budget, size, property type, and similar parameters
-  // should not displace feature choices in this small presentation surface.
-  const isVisibleMustHave = (criterion) => {
-    const category = criterion.key.split(':', 1)[0];
-    return criterion.tier === 'must'
-      && criterion.objective !== false
-      && (category === 'features' || category === 'exterior');
-  };
+  // Every Must Have is eligible for the preview, whatever its category (location,
+  // features, exterior, a custom priority, a baseline like budget, or an
+  // after-tour criterion) — the same set mustHaveStatus, Home Detail, and the
+  // "No Must-Haves missing" filter read. Space is handled by the bounded preview
+  // plus explicit overflow below, never by excluding a category.
+  const isVisibleMustHave = (criterion) => criterion.tier === 'must';
   const mustAll = indexed
     .filter(({ criterion }) => isVisibleMustHave(criterion))
     .sort((a, b) => stateRank(a.criterion) - stateRank(b.criterion) || a.order - b.order)
@@ -561,6 +557,14 @@ export function selectHomeCardCriteria(match, mustLimit = 5) {
       neutral,
     },
   };
+}
+
+// The name a participant sees for a criterion on every surface (card, Home
+// Detail, Compare): the display label for a category criterion, the evaluated
+// label otherwise (e.g. "Within budget").
+export function criterionLabel(criterion) {
+  const separator = criterion?.key?.indexOf(':') ?? -1;
+  return separator > 0 ? criterionDisplayLabel(criterion.key.slice(0, separator), criterion.label) : criterion?.label;
 }
 
 // The one canonical reading of a home's Must Haves, shared by My Homes' "No

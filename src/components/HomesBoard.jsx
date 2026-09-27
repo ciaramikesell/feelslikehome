@@ -23,7 +23,7 @@ import {
 } from '@/lib/homesCollection';
 import { emptyHome, isArchivedStatus } from '@/lib/constants';
 import { isLikelyListingUrl, findHomeByListingUrl } from '@/lib/listingUrl';
-import { parseNum, fmtMoney, homeStyleSummary, computeMatch, matchColor, matchTint, selectHomeCardCriteria, mustHaveStatus } from '@/lib/matching';
+import { parseNum, fmtMoney, homeStyleSummary, computeMatch, matchColor, matchTint, selectHomeCardCriteria, mustHaveStatus, criterionLabel } from '@/lib/matching';
 import { homeCardSnapshot } from '@/lib/homeCardPresentation';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
 import { formatHomePrice, formatLotSizeDisplay, parseCommaList } from '@/lib/homeDisplay';
@@ -223,7 +223,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
             <div className={`hh-match-panel${mode === 'archive' ? ' is-secondary' : ''}`} style={{ background: matchTint(match.pct), borderLeft: `${mode === 'archive' ? 2 : 3}px solid ${matchColor(match.pct)}` }}>
               <div className="hh-match-eyebrow">Personalized Match</div>
               <MatchSummary match={match} />
-              {mustHaves.length > 0 && <div className="hh-must-summary"><strong>Must Haves</strong>{displayedMustHaves.map((item) => { const neutral = item.evaluated && item.met === null; return <span className={!item.evaluated ? 'is-unknown' : neutral ? 'is-neutral' : item.met ? 'is-positive' : 'is-negative'} key={item.key}>{!item.evaluated ? '?' : neutral ? '—' : item.met ? '✓' : '✕'} {item.label}</span>; })}{mustOverflow > 0 && <button type="button" className="hh-criteria-overflow" aria-expanded={showAllMustHaves} onClick={() => setShowAllMustHaves((value) => !value)}>{showAllMustHaves ? 'Show fewer' : `+ ${mustOverflow} more Must Have${mustOverflow === 1 ? '' : 's'}`}</button>}</div>}
+              {mustHaves.length > 0 && <div className="hh-must-summary"><strong>Must Haves</strong>{displayedMustHaves.map((item) => { const neutral = item.evaluated && item.met === null; return <span className={!item.evaluated ? 'is-unknown' : neutral ? 'is-neutral' : item.met ? 'is-positive' : 'is-negative'} key={item.key}>{!item.evaluated ? '?' : neutral ? '—' : item.met ? '✓' : '✕'} {criterionLabel(item)}<span className="sr-only">{!item.evaluated ? ' (unknown)' : neutral ? ' (neutral)' : item.met ? ' (met)' : ' (missing)'}</span></span>; })}{mustOverflow > 0 && <button type="button" className="hh-criteria-overflow" aria-expanded={showAllMustHaves} onClick={() => setShowAllMustHaves((value) => !value)}>{showAllMustHaves ? 'Show fewer' : `+ ${mustOverflow} more Must Have${mustOverflow === 1 ? '' : 's'}`}</button>}</div>}
               {criteriaSummary?.total > 0 && <div className="hh-personalized-criteria"><strong>Personalized Criteria — {criteriaSummary.evaluated}/{criteriaSummary.total} evaluated</strong><CriteriaDisclosure symbol="✓" tone="positive" heading="Matches" items={criteriaSummary.matches} label={`${criteriaSummary.matches.length} match`} /><CriteriaDisclosure symbol="✕" tone="negative" heading="Doesn’t match" items={criteriaSummary.mismatches} label={`${criteriaSummary.mismatches.length} don’t match`} /><CriteriaDisclosure symbol="?" tone="unknown" heading="Still unknown" items={criteriaSummary.unknown} label={`${criteriaSummary.unknown.length} ${criteriaSummary.unknown.length === 1 ? 'criterion' : 'criteria'} still unknown`} /></div>}
             </div>
           ) : (

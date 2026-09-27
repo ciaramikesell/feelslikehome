@@ -2,10 +2,7 @@
 
 import { Check, Minus, X } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
-import { criterionDisplayLabel } from '@/lib/constants';
-import { matchColor, mustHaveStatus, selectHomeCardCriteria } from '@/lib/matching';
-
-const label = (criterion) => (criterion.key.includes(':') ? criterionDisplayLabel(criterion.key.split(':')[0], criterion.label) : criterion.label);
+import { criterionLabel as label, matchColor, mustHaveStatus, selectHomeCardCriteria } from '@/lib/matching';
 
 function StateIcon({ criterion }) {
   if (!criterion.evaluated) return <span className="flh-state-icon is-unknown" aria-hidden="true">?</span>;

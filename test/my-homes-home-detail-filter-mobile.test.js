@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { normalizePriorities, getItemlistCategories, MOBILE_PRIMARY_TABS } from '../src/lib/constants.js';
-import { computeMatch, selectPriorityItem, mustHaveStatus, hasNoMustHaveMisses, matchFactualSummary, selectHomeCardCriteria } from '../src/lib/matching.js';
+import { computeMatch, selectPriorityItem, mustHaveStatus, hasNoMustHaveMisses, matchFactualSummary, selectHomeCardCriteria, criterionLabel } from '../src/lib/matching.js';
 import { evaluateCommute } from '../src/lib/commute.js';
 import {
   EMPTY_FILTERS, SORT_OPTIONS, MATCH_THRESHOLDS, activeFilterLabels, activeFilterCount, applyContenderFilters,
@@ -233,4 +233,71 @@ test('mobile navigation is unchanged and desktop keeps its toolbar, chips, and f
   assert.match(board, /className="hh-home-card-actions"/);
   const css = read('src/app/globals.css');
   assert.match(css, /\.flh-mobile-only, \.flh-homes-controls, \.hh-homes-count, \.hh-contender-match, \.hh-contender-meta, \.flh-active-filters \{ display: none; \}/);
+});
+
+/* ------------------------- Must Have presentation consistency ------------------------- */
+
+
+// Must Haves from every kind of source: a Location criterion, the buyer's own
+// custom priority, a Basics constraint (budget), plus Exterior and Features.
+let mixed = normalizePriorities({ searchType: 'purchase', budget: { value: '400000', tier: 'must' } });
+mixed = select(mixed, 'location', 'Reputable Schools', 'must');
+mixed = { ...mixed, features: selectPriorityItem(mixed.features, { coreItems: [], suggestedItems: [] }, { label: 'Mudroom', kind: 'check', source: 'custom' }, 'must') };
+mixed = select(mixed, 'exterior', 'Fenced yard', 'must');
+mixed = select(mixed, 'features', 'Home office', 'must');
+mixed = select(mixed, 'features', 'Central air', 'important');
+
+const mixedHomes = [
+  // Location miss, custom unknown, budget met.
+  { id: 'loc-miss', price: '350000', checks: { 'location:Reputable Schools': 'no', 'exterior:Fenced yard': true, 'features:Home office': true } },
+  // Custom Must Have missed; Location unknown.
+  { id: 'custom-miss', price: '390000', checks: { 'features:Mudroom': 'no', 'exterior:Fenced yard': true } },
+  // Budget (a Basics Must Have) missed; everything else unknown.
+  { id: 'budget-miss', price: '480000', checks: {} },
+  // No confirmed misses; several unknown.
+  { id: 'no-miss', price: '399000', checks: { 'location:Reputable Schools': true, 'features:Home office': true } },
+];
+const evaluateMixed = (home) => computeMatch(home, mixed);
+const stateOf = (criterion) => (!criterion.evaluated ? 'unknown' : criterion.met === null ? 'neutral' : criterion.met ? 'met' : 'missing');
+
+test('desktop card preview includes Location, custom, and Basics Must Haves — not only Features/Exterior', () => {
+  const preview = selectHomeCardCriteria(evaluateMixed(mixedHomes[0]));
+  const shown = [...preview.mustHaves, ...preview.hiddenMustHaves];
+  assert.deepEqual(new Set(shown.map((criterion) => criterion.key)), new Set(['budget', 'location:Reputable Schools', 'features:Mudroom', 'exterior:Fenced yard', 'features:Home office']));
+  // Bounded preview with explicit overflow, never a dropped category: all 5 fit.
+  assert.equal(preview.mustHaves.length, 5);
+  assert.equal(preview.mustOverflow, 0);
+  // The failed Location Must Have leads the preview.
+  assert.equal(preview.mustHaves[0].key, 'location:Reputable Schools');
+  assert.deepEqual(shown.map(criterionLabel).sort(), ['Fenced Yard', 'Home Office', 'Mudroom', 'Reputable Schools', 'Within budget']);
+});
+
+test('card preview, Home Detail, and the No Must-Haves missing filter agree on every Must Have’s state', () => {
+  const kept = new Set(applyContenderFilters(mixedHomes, { noMustMissing: true }, evaluateMixed).map((home) => home.id));
+  assert.deepEqual([...kept], ['no-miss']);
+  for (const home of mixedHomes) {
+    const match = evaluateMixed(home);
+    const detail = mustHaveStatus(match); // Home Detail panel + phone card cue
+    const card = selectHomeCardCriteria(match); // desktop card preview
+    const cardStates = Object.fromEntries([...card.mustHaves, ...card.hiddenMustHaves].map((criterion) => [criterion.key, stateOf(criterion)]));
+    const detailStates = Object.fromEntries(detail.all.map((criterion) => [criterion.key, stateOf(criterion)]));
+    assert.deepEqual(cardStates, detailStates, home.id);
+    const cardShowsMiss = Object.values(cardStates).includes('missing');
+    assert.equal(kept.has(home.id), !cardShowsMiss, home.id);
+    assert.equal(cardShowsMiss, detail.missed > 0, home.id);
+  }
+  // Unknown stays distinct from a miss on every surface.
+  const unknownHome = mixedHomes.find((home) => home.id === 'no-miss');
+  const states = selectHomeCardCriteria(evaluateMixed(unknownHome)).mustHaves.map(stateOf);
+  assert.ok(states.includes('unknown'));
+  assert.ok(!states.includes('missing'));
+});
+
+test('the desktop card renders every previewed Must Have with the shared label and an explicit overflow', () => {
+  const board = read('src/components/HomesBoard.jsx');
+  assert.match(board, /\{!item\.evaluated \? '\?' : neutral \? '—' : item\.met \? '✓' : '✕'\} \{criterionLabel\(item\)\}/);
+  assert.match(board, /`\+ \$\{mustOverflow\} more Must Have\$\{mustOverflow === 1 \? '' : 's'\}`/);
+  const matching = read('src/lib/matching.js');
+  assert.match(matching, /const isVisibleMustHave = \(criterion\) => criterion\.tier === 'must';/);
+  assert.doesNotMatch(matching, /category === 'features' \|\| category === 'exterior'/);
 });
