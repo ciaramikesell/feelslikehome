@@ -17,6 +17,15 @@ test('iOS project embeds one minimal share extension with a derived bundle ident
   assert.match(plist, /NSExtensionActivationSupportsText/);
 });
 
+test('share extension Info.plist declares its executable so the .appex is installable', () => {
+  const plist = read('ios/App/ShareExtension/Info.plist');
+
+  // Without CFBundleExecutable the simulator rejects the install with
+  // "ShareExtension.appex has missing or invalid CFBundleExecutable in its Info.plist".
+  assert.match(plist, /<key>CFBundleExecutable<\/key>\s*<string>\$\(EXECUTABLE_NAME\)<\/string>/);
+  assert.equal(plist.match(/<key>CFBundleExecutable<\/key>/g).length, 1);
+});
+
 test('share extension hands only a URL to the canonical web intake contract', () => {
   const helper = read('ios/App/ShareExtension/ShareURL.swift');
   const controller = read('ios/App/ShareExtension/ShareViewController.swift');
