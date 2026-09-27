@@ -31,8 +31,11 @@ export const LOCATION_CORE = [];
 // CRITERION_DISPLAY_LABEL_OVERRIDES below for the Title Case shown to users) so no
 // existing selection is orphaned. See PURCHASE_LEGACY_LABEL_ALIASES for the one
 // stored-identity fold this pass required (Parks Nearby).
+//
+// Authenticated-mobile redesign: 'Charming Neighborhood' is no longer offered —
+// see DISCONTINUED_PURCHASE_OFFERINGS below for how existing selections are kept.
 export const LOCATION_SUGGESTED = [
-  'Charming Neighborhood', 'Reputable Schools', 'Walkable to Town', 'Parks nearby',
+  'Reputable Schools', 'Walkable to Town', 'Parks nearby',
   'Quiet street', 'Bustling Street', 'Near waterfront', 'Walkable schools', 'No HOA',
 ].map((label) => ({ label, kind: 'check' }));
 
@@ -44,28 +47,61 @@ const LEGACY_HOME_FEEL_SUGGESTED = ['Natural Light', 'Character / Charm', 'Room 
 export const EXTERIOR_CORE = [];
 // 'Privacy Fencing' is new — a purely factual yes/no fact, deliberately distinct from
 // the subjective post-tour 'exterior:Privacy' ("Yard Privacy") rating below.
+// 'Garage' is the one weighted garage criterion (scored from the home's existing
+// garageSpaces fact — see computeMatch); Attached/Detached is an optional,
+// informational qualifier (exterior.garagePreference), never a separate criterion.
 export const EXTERIOR_SUGGESTED = [
-  'Patio / deck', 'Fenced yard', 'Privacy Fencing', 'Attached garage', 'Detached garage',
+  'Patio / deck', 'Fenced yard', 'Privacy Fencing', 'Garage',
   'Large backyard', 'Front porch', 'Pool', 'Landscaping',
 ].map((label) => ({ label, kind: 'check' }));
 
-// 'Guest suite' is retired in favor of the canonical 'Guest / In-Law Suite' identity
-// (previously dead — see RETIRED_PURCHASE_BUILT_INS's history — now restored as a real
-// canonical item; see PURCHASE_LEGACY_LABEL_ALIASES for the safe fold from 'Guest suite').
-// 'First-Floor Primary', 'Move-in Ready', 'Renovation Potential', and 'New Construction'
-// are new. 'Move-in Ready'/'Renovation Potential'/'New Construction' are deliberately
-// separate from the existing Home Condition multiselect (priorities.homeCondition) —
-// that remains an unrelated, single-tier structural field; these are independently
-// rankable Must/Important/Nice priorities, per the 2026 taxonomy.
+// Optional qualifier shown when Garage is selected. Stored on the participant's
+// own priorities document (exterior.garagePreference); absent means 'any'. It is
+// context for the buyer, not a Match input.
+export const GARAGE_PREFERENCE_OPTIONS = Object.freeze([
+  Object.freeze({ key: 'any', label: 'Any' }),
+  Object.freeze({ key: 'attached', label: 'Attached' }),
+  Object.freeze({ key: 'detached', label: 'Detached' }),
+]);
+
+export function garagePreferenceLabel(priorities) {
+  const key = priorities?.exterior?.garagePreference;
+  return key && key !== 'any' ? GARAGE_PREFERENCE_OPTIONS.find((option) => option.key === key)?.label || null : null;
+}
+
+// Authenticated-mobile redesign: 'Guest Bedroom' is the one guest-space criterion.
+// Home condition (New Construction / Move-in Ready / Renovation Potential) is part of
+// the search definition (priorities.homeCondition, the Basics), not a weighted
+// criterion, so those three are no longer offered here. 'Guest / In-Law Suite' is no
+// longer offered either. Existing selections of any of them are kept and keep
+// counting — see DISCONTINUED_PURCHASE_OFFERINGS.
 export const FEATURES_CORE = [];
 export const FEATURES_SUGGESTED = [
-  'Finished basement', 'Walkout basement', 'First-Floor Primary', 'Primary ensuite',
-  'First-floor laundry', 'Home office', 'Central air', 'Fireplace', 'Move-in Ready',
-  'Renovation Potential', 'New Construction', 'Guest / In-Law Suite',
+  'Finished basement', 'Walkout basement', 'First-Floor Primary', 'Guest Bedroom',
+  'Primary ensuite', 'First-floor laundry', 'Home office', 'Central air', 'Fireplace',
 ].map((label) => ({ label, kind: 'check' }));
-// These remain part of the canonical catalog. PriorityBoard combines them with
-// the regular suggestion tray so both onboarding and My Search discover the same
-// criteria without an additional generic disclosure.
+
+// Criteria that were offered as purchase built-ins before the authenticated-mobile
+// redesign and are no longer offered for NEW selection. Unlike
+// RETIRED_PURCHASE_BUILT_INS, these are NOT retired from Match: anyone who already
+// selected one keeps it on their board, and it keeps counting exactly as before
+// (a selected suggestion is promoted into the participant's own customItems, so
+// splitCategoryItems/computeMatch still see it). They are only excluded from the
+// "add a priority" choices, so a deselected one is never offered back. A buyer's own
+// typed priority (source: 'custom') is never treated as discontinued.
+const DISCONTINUED_PURCHASE_OFFERINGS = new Set([
+  'location:Charming Neighborhood',
+  'features:Move-in Ready', 'features:Renovation Potential', 'features:New Construction',
+  'features:Guest / In-Law Suite',
+  'exterior:Attached garage', 'exterior:Detached garage',
+]);
+
+export function isDiscontinuedOffering(categoryKey, item) {
+  return item?.source !== 'custom' && DISCONTINUED_PURCHASE_OFFERINGS.has(`${categoryKey}:${item?.label}`);
+}
+// These remain part of the canonical catalog. offeredCriteriaGroups
+// (src/lib/searchProfile.js) combines them with the regular suggestions so
+// onboarding and My Search discover the same criteria.
 export const FEATURES_SPECIFIC = [];
 
 // "Privacy" exists as two independent criteria (Exterior & Property, and Home Feel) —
@@ -173,6 +209,9 @@ export function criterionDisplayLabel(categoryKey, label) {
   return CRITERION_DISPLAY_LABEL_OVERRIDES[`${categoryKey}:${label}`] || label;
 }
 
+// 'exterior:Garage' is deliberately absent: the authenticated-mobile redesign makes
+// Garage the canonical weighted garage criterion again (scored from garageSpaces).
+//
 // Historical built-ins remain untouched in saved priority JSON, but no longer
 // appear as active purchase-search criteria or contribute Unknowns. An item the
 // buyer explicitly created carries `source: 'custom'` and is always preserved.
@@ -189,7 +228,7 @@ const RETIRED_PURCHASE_BUILT_INS = new Set([
   'homeFeel:Overall Condition', 'homeFeel:Layout / Flow', 'homeFeel:Natural Light',
   'homeFeel:Character / Charm', 'homeFeel:Room Sizes', 'homeFeel:Openness / Ceiling Height',
   'homeFeel:Privacy', 'homeFeel:Social Community', 'homeFeel:On-Site Management',
-  'exterior:Yard', 'exterior:Garage', 'exterior:Privacy', 'exterior:Sidewalks',
+  'exterior:Yard', 'exterior:Privacy', 'exterior:Sidewalks',
   'exterior:Exterior Condition', 'exterior:Curb Appeal', 'exterior:Outdoor Space',
   'exterior:Noise Level', 'exterior:Driveway / Off-Street Parking', 'exterior:Fitness Center',
   'exterior:Secure Entry', 'exterior:Elevator', 'features:Basement', 'features:Mudroom',

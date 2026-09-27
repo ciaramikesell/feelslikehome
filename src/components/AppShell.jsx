@@ -48,6 +48,12 @@ function MobileNav({ pathname, vocabulary, highlightKey }) {
   );
 }
 
+// Focused mobile subpages (My Search's editors) own the whole phone screen: their
+// own back/cancel header and a sticky save action replace the shared header and
+// bottom navigation below the phone breakpoint (see .hh-focused-route in
+// globals.css). Desktop chrome is unchanged on these routes.
+export const FOCUSED_MOBILE_ROUTES = Object.freeze(['/search/priorities', '/search/places']);
+
 // Device-specific by design for V1 — see MOBILE_TOUR_DISMISS_KEY usage below.
 const MOBILE_TOUR_DISMISS_KEY = 'flh-mobile-tour-dismissed';
 
@@ -282,7 +288,7 @@ export default function AppShell({ children, userEmail, userId, firstName = null
   };
 
   return (
-    <div className={`hh-root ${native ? 'hh-native' : ''}`}>
+    <div className={`hh-root ${native ? 'hh-native' : ''} ${FOCUSED_MOBILE_ROUTES.includes(pathname) ? 'hh-focused-route' : ''}`}>
       <div className={`hh-app-frame ${pathname === '/map' ? 'hh-map-frame' : ''}`}>
         <header className="hh-app-header">
           <div className="hh-brand-lockup">
@@ -301,7 +307,7 @@ export default function AppShell({ children, userEmail, userId, firstName = null
             {(isRealtorWorkspace || hasRealtorRelationships) && <Link href="/people" className={`hh-shell-action hh-people-entry ${pathname.startsWith('/people') ? 'active' : ''}`}><Users size={14} /> People I’m Helping</Link>}
             {!isRealtorWorkspace && <Link
               href="/search"
-              className={`hh-shell-action hh-shell-action-primary hh-desktop-only ${pathname === '/search' ? 'active' : ''}`}
+              className={`hh-shell-action hh-shell-action-primary hh-desktop-only ${pathname === '/search' || pathname.startsWith('/search/') ? 'active' : ''}`}
             >
               <SlidersHorizontal size={14} /> My Search
             </Link>}

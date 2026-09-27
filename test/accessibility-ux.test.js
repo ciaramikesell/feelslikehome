@@ -7,15 +7,18 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 test('priority and reaction chips use buttons with exposed selection state', () => {
   for (const path of [
     'src/components/onboarding/Onboarding.jsx',
-    'src/components/MySearchPanel.jsx',
+    'src/components/BasicsEditor.jsx',
     'src/components/HomeModal.jsx',
     'src/components/PostTourModal.jsx',
   ]) {
     const source = read(path);
     assert.doesNotMatch(source, /<span[^>]+hh-chip[^>]+onClick/);
-    if (path !== 'src/components/PostTourModal.jsx') assert.match(source, /<button type="button"[^>]+hh-chip[^>]+aria-pressed=/);
-    else assert.match(source, /aria-pressed=\{selected\}/);
+    if (path === 'src/components/PostTourModal.jsx') assert.match(source, /aria-pressed=\{selected\}/);
+    else if (path === 'src/components/onboarding/Onboarding.jsx') assert.match(source, /<ChoiceChip key=/);
+    else assert.match(source, /<button type="button"[^>]+hh-chip[^>]+aria-pressed=/);
   }
+  // The shared chip primitive onboarding and My Search use is a real button with pressed state.
+  assert.match(read('src/components/MobileSystem.jsx'), /<button type="button" className=\{`flh-choice-chip[^>]+aria-pressed=\{selected\}/);
 });
 
 test('contained UX recovery and truthful copy remain in place', () => {

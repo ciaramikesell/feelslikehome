@@ -7,7 +7,9 @@ const read = (p) => fs.readFileSync(p, 'utf8');
 const appShell = read('src/components/AppShell.jsx');
 const globalsCss = read('src/app/globals.css');
 const savedHomesMap = read('src/components/SavedHomesMap.jsx');
-const priorityBoard = read('src/components/PriorityBoard.jsx');
+const rankBoard = read('src/components/RankBoard.jsx');
+const onboarding = read('src/components/onboarding/Onboarding.jsx');
+const rankEditor = read('src/components/RankPrioritiesEditor.jsx');
 const mySearchPanel = read('src/components/MySearchPanel.jsx');
 const inviteCoBuyer = read('src/components/InviteCoBuyer.jsx');
 const coBuyerManagement = read('src/components/CoBuyerManagement.jsx');
@@ -63,32 +65,31 @@ test('regression guard: fit/bounds and marker-click-select logic in SavedHomesMa
 
 /* ------------------------------ My Search: priorities ------------------------------ */
 
-test('PriorityBoard extracts a shared TierItemsList so desktop and the mobile Sheet never drift apart', () => {
-  assert.match(priorityBoard, /function TierItemsList\(\{ tier, items, activeItem, setActiveItem, setTier, priorities, setSchoolsNote, onItemDragStart, onItemDragEnd \}\)/);
-  const usages = priorityBoard.match(/<TierItemsList\b/g) || [];
-  assert.equal(usages.length, 2, 'expected TierItemsList used once for the desktop column and once inside the mobile Sheet');
+test('one shared RankBoard serves onboarding and My Search on every viewport, so they never drift apart', () => {
+  assert.match(onboarding, /import RankBoard from '@\/components\/RankBoard'/);
+  assert.match(rankEditor, /import RankBoard from '@\/components\/RankBoard'/);
+  assert.equal((rankBoard.match(/className=\{`flh-rank-row /g) || []).length, 1);
+  // No viewport forks: the same markup and interactions at every width.
+  assert.doesNotMatch(rankBoard, /matchMedia/);
 });
 
-test('mobile compact tier summary is gated on viewport and never active during onboarding', () => {
-  assert.match(priorityBoard, /const \[mobileCompact, setMobileCompact\] = useState\(false\);/);
-  assert.match(priorityBoard, /if \(onboarding\) return;/);
-  assert.match(priorityBoard, /window\.matchMedia\('\(max-width: 700px\)'\)/);
-  // The desktop/onboarding 3-column grid markup must still exist verbatim —
-  // this is an added mobile branch, not a replacement.
-  assert.match(priorityBoard, /className="hh-priority-tiers" aria-label="Selected preferences by importance"/);
-  assert.match(priorityBoard, /className={`hh-tier-group hh-tier-\$\{tier\}/);
+test('mobile never depends on drag alone: every priority has a tap target that opens the level picker', () => {
+  assert.match(rankBoard, /className="flh-rank-row-main" onClick=\{\(\) => setPicker\(item\)\}/);
+  assert.match(rankBoard, /touch-action|onPointerDown/);
+  assert.match(globalsCss, /\.flh-rank-handle \{[^}]*touch-action: none;/);
 });
 
-test('tapping a tier summary row opens that tier in a Sheet, reusing the exact TIER_META/TIER_DESCRIPTIONS copy', () => {
-  assert.match(priorityBoard, /className="hh-tier-summary-row"/);
-  assert.match(priorityBoard, /onClick={\(\) => setOpenTierSheet\(tier\)}/);
-  assert.match(priorityBoard, /import Sheet from '@\/components\/Sheet'/);
-  assert.match(priorityBoard, /title={TIER_META\[openTierSheet\]\.label}/);
-  assert.match(priorityBoard, /{TIER_DESCRIPTIONS\[openTierSheet\]}/);
+test('the level picker opens in the shared Sheet and reuses the canonical level copy', () => {
+  assert.match(rankBoard, /import Sheet from '@\/components\/Sheet'/);
+  assert.match(rankBoard, /<Sheet open=\{!!picker\} onClose=\{\(\) => setPicker\(null\)\}/);
+  assert.match(rankBoard, /<strong>\{LEVEL_COPY\[tier\]\.heading\}<\/strong><small>\{LEVEL_COPY\[tier\]\.description\}<\/small>/);
 });
 
-test('touch targets on the tier summary rows meet the ~44px guidance', () => {
-  assert.match(globalsCss, /\.hh-tier-summary-row \{[^}]*min-height: 52px;/);
+test('touch targets on priority rows, handles, and editor controls meet the ~44px guidance', () => {
+  assert.match(globalsCss, /\.flh-rank-row-main \{[^}]*min-height: 50px;/);
+  assert.match(globalsCss, /\.flh-rank-handle \{[^}]*width: 48px;/);
+  assert.match(globalsCss, /\.flh-icon-button \{[^}]*width: 44px; height: 44px;/);
+  assert.match(globalsCss, /\.flh-text-action \{[^}]*min-height: 44px;/);
 });
 
 /* --------------------------- My Search: Sheet migrations --------------------------- */
@@ -138,13 +139,12 @@ test('the collaboration philosophy copy survives the Sheet migration verbatim', 
 /* ------------------------------ My Search: Searching Together ------------------------------ */
 
 test('Searching Together is one consolidated section (connected state, collaborator summary, and the one appropriate action), positioned after Places That Matter', () => {
-  assert.match(mySearchPanel, /function SearchingTogetherCard\(/);
-  assert.match(mySearchPanel, /Connected with \{name\}\./);
-  assert.match(mySearchPanel, /You&apos;re searching alone\./);
+  assert.match(mySearchPanel, /function SearchingTogether\(/);
+  assert.match(mySearchPanel, /You’re searching alone\./);
+  assert.match(mySearchPanel, /function CollaboratorSummary\(/);
   assert.doesNotMatch(mySearchPanel, /function CollaboratorContextCard/);
-
-  const placesIdx = mySearchPanel.indexOf('title="Places That Matter"');
-  const togetherIdx = mySearchPanel.indexOf('<SearchingTogetherCard');
+  const placesIdx = mySearchPanel.indexOf('<PlacesThatMatter');
+  const togetherIdx = mySearchPanel.indexOf('<SearchingTogether ');
   assert.ok(placesIdx !== -1 && togetherIdx !== -1 && placesIdx < togetherIdx, 'Searching Together must render after Places That Matter');
 });
 
@@ -153,9 +153,10 @@ test('regression guard: no Couple Match / merged-opinion language was introduced
   assert.doesNotMatch(mySearchPanel, /combined score|merge.*opinion|average.*match/i);
 });
 
-test('regression guard: My Search IA order is What Matters (primary column) then Basics, Places, Searching Together (supporting rail)', () => {
-  const order = ['<WhatMattersCard', '<BasicsCard', 'title="Places That Matter"', '<SearchingTogetherCard']
+test('regression guard: My Search IA order is What Matters Most, then What I\'m Looking For, Places, Searching Together, status', () => {
+  const order = ['<WhatMattersMost', '<WhatImLookingFor', '<PlacesThatMatter', '<SearchingTogether ', '<SearchStatus']
     .map((needle) => mySearchPanel.indexOf(needle));
-  assert.ok(order.every((i) => i !== -1), 'expected all four sections to be present');
+  assert.ok(order.every((i) => i !== -1), 'expected all five sections to be present');
   for (let i = 1; i < order.length; i++) assert.ok(order[i - 1] < order[i], `expected section ${i} to follow section ${i - 1} in source order`);
 });
+

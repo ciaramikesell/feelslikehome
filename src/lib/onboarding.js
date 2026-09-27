@@ -19,12 +19,21 @@ const item = (categoryKey, label, kind = 'rating', displayLabel = label) => Obje
 // retired from purchase Match entirely, so picking them in onboarding silently did
 // nothing). Home Feel is intentionally absent: it is not part of the purchase pre-tour
 // catalog at all (Post-Tour owns those experiential dimensions instead).
-function purchaseOnboardingGroup(categoryKey, groupTitle) {
+function purchaseOnboardingGroup(categoryKey, groupTitle, excluded = []) {
   const def = getItemlistCategories('purchase').find((category) => category.key === categoryKey);
   const items = [...def.coreItems, ...def.suggestedItems]
+    .filter((entry) => !excluded.includes(`${categoryKey}:${entry.label}`))
     .map((entry) => item(categoryKey, entry.label, entry.kind, criterionDisplayLabel(categoryKey, entry.label)));
   return [groupTitle, items];
 }
+
+// Home to Rent uses the same canonical Home criteria as Home to Buy wherever they
+// apply — only No HOA is excluded (an HOA is the landlord's concern, not a renter's).
+// Selected items are promoted into the participant's own customItems exactly like a
+// purchase selection (selectPriorityItem), so the rental intent's Match reads them
+// without any catalog or schema change. Existing Home to Rent selections from the
+// earlier hand-authored list are untouched and keep counting.
+const HOME_RENT_EXCLUDED = ['location:No HOA'];
 
 export const ONBOARDING_SUGGESTIONS = Object.freeze({
   home_buy: Object.freeze([
@@ -33,10 +42,9 @@ export const ONBOARDING_SUGGESTIONS = Object.freeze({
     purchaseOnboardingGroup('exterior', 'Exterior & Property'),
   ]),
   home_rent: Object.freeze([
-    ['Location', [item('location', 'Neighborhood'), item('location', 'Walkability'), item('location', 'Parks Nearby'), item('location', 'Immediate Street / Surroundings', 'rating', 'Quiet Street')]],
-    ['Home Features', [item('features', 'Basement', 'check'), item('features', 'Fireplace', 'check'), item('features', 'Primary Ensuite', 'check'), item('features', 'Home Office', 'check'), item('features', 'Central Air', 'check'), item('features', 'Hardwood Floors', 'check')]],
-    ['Exterior & Property', [item('exterior', 'Garage', 'check'), item('exterior', 'Fenced Yard', 'check'), item('exterior', 'Outdoor Space'), item('exterior', 'Patio / Deck / Outdoor Living', 'check', 'Patio / Deck'), item('exterior', 'Privacy', 'rating', 'Yard Privacy')]],
-    ['Living There', [item('features', 'Pets Allowed', 'check'), item('features', 'Utilities Included', 'check'), item('homeFeel', 'Overall Condition'), item('homeFeel', 'Layout / Flow', 'rating', 'Layout'), item('homeFeel', 'Natural Light'), item('homeFeel', 'Privacy', 'rating', 'Privacy'), item('exterior', 'Noise Level')]],
+    purchaseOnboardingGroup('location', 'Location', HOME_RENT_EXCLUDED),
+    purchaseOnboardingGroup('features', 'Home Features', HOME_RENT_EXCLUDED),
+    purchaseOnboardingGroup('exterior', 'Exterior & Property', HOME_RENT_EXCLUDED),
   ]),
   apartment_rent: Object.freeze([
     ['The Unit', [item('features', 'In-Unit Laundry', 'check'), item('features', 'Central Air', 'check'), item('features', 'Dishwasher', 'check'), item('features', 'Updated Interior', 'check'), item('exterior', 'Patio / Deck / Outdoor Living', 'check', 'Balcony / Patio'), item('features', 'Home Office', 'check', 'Home Office Space')]],

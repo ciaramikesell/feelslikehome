@@ -12,64 +12,72 @@ test('purchase catalog has only the three pre-tour families', () => {
 });
 
 test('My Search keeps one compact canonical board while add choices are progressively disclosed', () => {
-  const board = read('src/components/PriorityBoard.jsx');
+  const board = read('src/components/RankBoard.jsx');
+  const editor = read('src/components/RankPrioritiesEditor.jsx');
   const panel = read('src/components/MySearchPanel.jsx');
-  const css = read('src/app/globals.css');
-  assert.match(board, /hh-priority-tiers/);
-  assert.match(board, /TIER_ORDER\.filter\(\(tier\) => tier !== 'dontcare'\)/);
-  assert.match(board, /selected\.filter\(\(item\) => item\.tier === tier\)/);
-  assert.equal(board.match(/hh-selected-priority"/g)?.length, 1);
-  assert.match(board, /const choicesOpen = onboarding \|\| addOpen/);
-  assert.match(board, /\{choicesOpen && \(/);
-  assert.match(board, /\+ Add another priority/);
-  assert.match(board, /Close choices/);
-  assert.match(panel, /<PriorityBoard priorities=\{priorities\} patch=\{patch\} catalogOpen=\{catalogOpen\} onCatalogOpenChange=\{onCatalogOpenChange\} \/>/);
-  assert.doesNotMatch(panel, /showHeader=!editOpen/);
-  assert.match(css, /\.hh-selected-priority \{[^}]*background: transparent/);
+  // One board, three levels, one row treatment — shared by onboarding and My Search.
+  assert.match(board, /levels\.map\(\(level\) =>/);
+  assert.equal(board.match(/className=\{`flh-rank-row /g)?.length, 1);
+  // Add choices are progressively disclosed in their own Sheet, never inline on the resting board.
+  assert.match(editor, /const \[adding, setAdding\] = useState\(false\)/);
+  assert.match(editor, /<AddPrioritySheet open=\{adding\}/);
+  assert.match(editor, /Add a priority/);
+  // The overview summarizes; editing happens in the focused editor.
+  assert.match(panel, /href="\/search\/priorities"/);
+  assert.doesNotMatch(panel, /<RankBoard/);
   assert.doesNotMatch(board, /<TierPicker|aria-label=\{`Remove /);
 });
 
 test('selected rows expose contextual keyboard actions without resting-board clutter', () => {
-  const board = read('src/components/PriorityBoard.jsx');
-  assert.match(board, /aria-expanded=\{open\}/);
-  assert.match(board, /onClick=\{\(\) => setActiveItem/);
-  assert.match(board, /Move to \{TIER_META\[target\]\.label\}/);
-  assert.match(board, /disabled=\{target === tier\}/);
+  const board = read('src/components/RankBoard.jsx');
+  // Tapping a priority (or pressing Enter/Space on its handle) opens an explicit level picker.
+  assert.match(board, /onClick=\{\(\) => setPicker\(item\)\}/);
+  assert.match(board, /if \(event\.key === 'Enter' \|\| event\.key === ' '\) \{ event\.preventDefault\(\); setPicker\(item\); \}/);
+  assert.match(board, /role="radio"[\s\S]*?aria-checked=\{picker\.tier === tier\}/);
+  assert.match(board, /PRIORITY_LEVELS\.map\(\(tier\) =>/);
   assert.match(board, />Remove priority<\/button>/);
-  assert.match(board, /setTier\(item\.categoryKey, item\.label, 'dontcare'\)/);
+  const editor = read('src/components/RankPrioritiesEditor.jsx');
+  assert.match(editor, /onRemove=\{\(item\) => setDraft\(\(current\) => moveCriterion\(current, item\.categoryKey, item\.label, 'dontcare'\)\)\}/);
 });
 
-test('selected and available drags use existing tier semantics without manual ranking', () => {
-  const board = read('src/components/PriorityBoard.jsx');
-  assert.match(board, /const setTier = \(categoryKey, label, tier\) => patch/);
-  assert.match(board, /dragged\?\.type === 'selected'[\s\S]*?setTier\(dragged\.item\.categoryKey, dragged\.item\.label, tier\)/);
-  assert.match(board, /dragged\?\.type === 'available'[\s\S]*?selectItem\(dragged\.def, dragged\.item, tier\)/);
-  assert.match(board, /draggable[\s\S]*?type: 'selected'/);
-  assert.match(board, /className="hh-chip"[\s\S]*?type: 'available'/);
+test('selected and available drags use existing tier semantics without manual ranking', async () => {
+  const board = read('src/components/RankBoard.jsx');
+  // Dragging only ever changes a priority's level through onMove(item, tier).
+  assert.match(board, /if \(current\.overTier && current\.overTier !== current\.item\.tier\) onMove\(current\.item, current\.overTier\);/);
+  assert.match(board, /data-rank-tier=\{level\.tier\}/);
+  // Pointer events (not HTML5 drag-and-drop, which iOS touch never fires) and a tap fallback.
+  assert.match(board, /onPointerDown=\{\(event\) => handlePointerDown\(event, item\)\}/);
+  assert.match(board, /if \(!current\.moved\) \{ setPicker\(current\.item\); return; \}/);
   assert.doesNotMatch(board, /\b(order|rank|position|sortIndex)\s*:/);
+  const { moveCriterion } = await import('../src/lib/searchProfile.js');
+  const before = normalizePriorities({ searchType: 'purchase', features: { customItems: [{ label: 'Fireplace', kind: 'check' }], tiers: { Fireplace: 'important' }, order: ['Fireplace'] } });
+  const after = moveCriterion(before, 'features', 'Fireplace', 'must');
+  assert.equal(after.features.tiers.Fireplace, 'must');
+  assert.deepEqual(after.features.order, ['Fireplace']);
+  assert.deepEqual(after.features.customItems, before.features.customItems);
 });
 
-test('Schools configuration and specific/custom preference discovery remain available', () => {
-  const board = read('src/components/PriorityBoard.jsx');
-  assert.match(board, /item\.label === 'Schools'[\s\S]*?School preference/);
-  assert.match(board, /onChange=\{\(event\) => setSchoolsNote\(event\.target\.value\)\}/);
-  assert.match(board, /\.\.\.\(def\.specificItems \|\| \[\]\)/);
-  assert.doesNotMatch(board, /<summary>More specific preferences<\/summary>/);
-  assert.match(board, /tierOf\(def, item\.label\) === 'dontcare'/);
-  assert.match(board, /placeholder="Add your own\.\.\."/);
-  assert.match(board, /addCustomItem\(newItemCategory/);
+test('Schools configuration and specific/custom preference discovery remain available', async () => {
+  const board = read('src/components/RankBoard.jsx');
+  const editor = read('src/components/RankPrioritiesEditor.jsx');
+  assert.match(board, /picker\.label === 'Schools'[\s\S]*?School preference/);
+  assert.match(board, /onChange=\{\(event\) => onSchoolsNoteChange\(event\.target\.value\)\}/);
+  assert.match(editor, /Schools: note/);
+  assert.match(editor, /placeholder="What else matters\?"/);
+  assert.match(editor, /addCustomCriterion\(current, category, label, offered\)/);
+  const profile = read('src/lib/searchProfile.js');
+  assert.match(profile, /\.\.\.\(def\.specificItems \|\| \[\]\)/);
 });
 
 test('drag education distinguishes moving existing priorities from adding new ones', () => {
-  const board = read('src/components/PriorityBoard.jsx');
-  assert.match(board, /Rank what matters to you/);
-  assert.match(board, /Drag any priority to move it between the three columns\./);
-  assert.match(board, /Drag a preference below into a column to add it to your priorities\./);
-  assert.match(board, /className="hh-chip" onClick=\{\(\) => selectItem\(def, item\)\} onDragStart/);
+  const editor = read('src/components/RankPrioritiesEditor.jsx');
+  assert.match(editor, /Rank what matters to you/);
+  assert.match(editor, /Drag a priority by its handle, or tap it to choose its level\./);
+  assert.match(editor, /New priorities start as Important\. You can move them once they’re on your board\./);
 });
 
 test('structured basics use a compact responsive grid and quieter importance controls', () => {
-  const panel = read('src/components/MySearchPanel.jsx');
+  const panel = read('src/components/BasicsEditor.jsx');
   const css = read('src/app/globals.css');
   assert.match(panel, /className="hh-basics-grid"/);
   for (const label of ['Minimum Square Footage', 'Minimum Lot Size', 'Minimum Bedrooms', 'Minimum Bathrooms']) assert.match(panel, new RegExp(label));
@@ -89,11 +97,13 @@ test('available suggestions use four, two, and one-column responsive layouts', (
 });
 
 test('My Search omits redundant guidance while retaining contextual tour language only', () => {
-  const board = read('src/components/PriorityBoard.jsx');
-  assert.doesNotMatch(board, /Choose the pre-tour details/);
-  assert.doesNotMatch(board, /Best answered after you tour<\/div>/);
-  assert.doesNotMatch(board, /experiential priorities stay Unknown/);
-  assert.doesNotMatch(board, /We&apos;ll ask after you tour/);
+  for (const path of ['src/components/RankBoard.jsx', 'src/components/RankPrioritiesEditor.jsx', 'src/components/MySearchPanel.jsx']) {
+    const source = read(path);
+    assert.doesNotMatch(source, /Choose the pre-tour details/);
+    assert.doesNotMatch(source, /Best answered after you tour<\/div>/);
+    assert.doesNotMatch(source, /experiential priorities stay Unknown/);
+    assert.doesNotMatch(source, /We&apos;ll ask after you tour/);
+  }
 });
 
 test('How it works tells the six-step decision journey in accessible DOM order', () => {

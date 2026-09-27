@@ -19,24 +19,27 @@ const source = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8'
 
 test('solo owner: Searching Together shows the solo state and the invite action, not a collaborator summary', async () => {
   const panel = await source('src/components/MySearchPanel.jsx');
-  assert.match(panel, /const isCollaborative = participantCount > 1;/);
-  assert.match(panel, /\{isCollaborative \? \(/);
-  assert.match(panel, /You&apos;re searching alone\./);
-  assert.match(panel, /isOwner && \(/);
-  assert.match(panel, /<InviteCoBuyer searchId=\{search\.id\} userId=\{userId\} \/>/);
+  assert.match(panel, /const collaborative = participantCount > 1;/);
+  assert.match(panel, /if \(!collaborative && !isOwner\) return null;/);
+  assert.match(panel, /You’re searching alone\./);
+  assert.match(panel, /Invite a co-buyer or Realtor →/);
+  // The existing invitation flow (co-buyer or Realtor) — no new invite path.
+  assert.match(panel, /\{open && !collaborative && <InviteCoBuyer searchId=\{search\.id\} userId=\{userId\} embedded onClose=/);
 });
 
 test('owner + co-buyer with completed criteria: a real display name and compact tier/place counts, not an itemized list', async () => {
   const panel = await source('src/components/MySearchPanel.jsx');
-  assert.match(panel, /Connected with \{name\}\./);
+  assert.match(panel, /`Searching with \$\{collaboratorContext\?\.displayName \|\| 'a co-buyer'\}`/);
+  assert.match(panel, /Both perspectives shape every Match\./);
   assert.match(panel, /\{name\}&apos;s priorities/);
   assert.match(panel, /\{name\}&apos;s places/);
   assert.match(panel, /countOf\('must'\)/);
   assert.match(panel, /countOf\('important'\)/);
   assert.match(panel, /countOf\('nice'\)/);
-  // Deliberately compact, not itemized — the old chip-list/address-list
-  // rendering of the collaborator's actual priorities/places is gone.
+  // Deliberately compact, not itemized.
   assert.doesNotMatch(panel, /hh-collaborator-priorities|hh-collaborator-places/);
+  // Membership management stays the existing component, unchanged.
+  assert.match(panel, /<CoBuyerManagement userId=\{userId\} search=\{search\} isOwner=\{isOwner\} participantCount=\{participantCount\} memberUserId=\{memberUserId\}/);
 });
 
 test('owner + co-buyer with incomplete criteria: a simple truthful state using natural language, never the forbidden database-oriented phrasing', async () => {
@@ -78,79 +81,82 @@ test('Realtor is never conflated with Searching Together: My Search exposes no R
   assert.doesNotMatch(panel, /getRealtorSearchContext|getRealtorRelationships|realtorContributions|Realtor Match/i);
 });
 
-test('Match weighting is unchanged: PriorityBoard\'s weight callout is presentation-only, TIER_META numeric weights are untouched', async () => {
-  const board = await source('src/components/PriorityBoard.jsx');
+test('Match weighting is unchanged: level names come from TIER_META, whose numeric weights are untouched', async () => {
+  const profile = await source('src/lib/searchProfile.js');
+  const board = await source('src/components/RankBoard.jsx');
   const constants = await source('src/lib/constants.js');
-  assert.match(board, /const TIER_WEIGHT_LABEL = \{ must: 'Highest weight', important: 'Medium weight', nice: 'Lowest weight' \};/);
-  assert.match(board, /\{TIER_META\[tier\]\.label\} <span className="hh-tier-weight">\(\{TIER_WEIGHT_LABEL\[tier\]\}\)<\/span>/);
-  assert.match(board, /\{items\.length\} \{items\.length === 1 \? 'priority' : 'priorities'\} active/);
+  assert.match(profile, /must: Object\.freeze\(\{ label: TIER_META\.must\.label/);
+  assert.match(profile, /important: Object\.freeze\(\{ label: TIER_META\.important\.label/);
+  assert.match(profile, /nice: Object\.freeze\(\{ label: TIER_META\.nice\.label/);
   assert.match(constants, /must: \{ label: 'Must have', weight: 4/);
   assert.match(constants, /important: \{ label: 'Important', weight: 2/);
   assert.match(constants, /nice: \{ label: 'Nice to have', weight: 1/);
-  // Still passes the same patch function straight through to PriorityBoard —
-  // the weight/count line is additive rendering, not a new edit path.
-  assert.match(board, /<TierItemsList/);
+  // The board only ever reports a level change; it has no weight logic of its own.
+  assert.doesNotMatch(board, /weight/);
 });
 
 test('priority groups omit redundant Match copy while retaining contextual tour markers', async () => {
-  const board = await source('src/components/PriorityBoard.jsx');
+  const board = await source('src/components/RankBoard.jsx');
+  const profile = await source('src/lib/searchProfile.js');
   assert.doesNotMatch(board, /Choose the pre-tour details you want Feels Like Home to evaluate from reliable property information/);
   assert.doesNotMatch(board, /Best answered after you tour<\/div>/);
-  assert.match(board, /isExperientialCriterion\(item\.categoryKey, item\.label\)/);
+  assert.match(profile, /experiential: isExperientialCriterion\(def\.key, item\.label\)/);
+  assert.match(board, /item\.experiential && <span/);
 });
 
-test('parameter editing (What I\'m Looking For) keeps its existing Edit/Done editor untouched, only retitled', async () => {
+test('parameter editing (What I\'m Looking For) keeps its existing editor, opened from the overview', async () => {
   const panel = await source('src/components/MySearchPanel.jsx');
-  assert.match(panel, /<SearchCard title="What I'm Looking For">/);
-  assert.match(panel, /onClick=\{\(\) => setEditOpen\(true\)\}/);
-  assert.match(panel, />\s*Edit\s*\n/);
-  assert.match(panel, />\s*Done\s*\n/);
+  const editor = await source('src/components/BasicsEditor.jsx');
+  assert.match(panel, /<WhatImLookingFor priorities=\{priorities\} onEdit=\{\(\) => setBasicsOpen\(true\)\} \/>/);
+  assert.match(panel, /<BasicsEditor priorities=\{priorities\} patch=\{patch\} \/>/);
+  assert.match(panel, />Done<\/button>/);
+  // The editor still edits the same fields and their existing importance tiers.
+  assert.match(editor, /<TierPicker value=\{tier\} onChange=\{onTierChange\} quiet/);
 });
 
-test('Places That Matter keeps the existing CommuteDestinations editor and per-place fields, only retitled with the mandated supporting copy', async () => {
+test('Places That Matter opens a focused editor that writes only the current participant\'s own rows', async () => {
   const panel = await source('src/components/MySearchPanel.jsx');
-  const destinations = await source('src/components/CommuteDestinations.jsx');
-  assert.match(panel, /<SearchCard title="Places That Matter" subtitle="We'll calculate commute times from every home to the places that matter to you\."/);
+  const editor = await source('src/components/PlacesEditor.jsx');
+  assert.match(panel, /href="\/search\/places"/);
   assert.doesNotMatch(panel, /key coordinates/i);
-  assert.match(panel, /<CommuteDestinations searchId=\{search\.id\} userId=\{userId\} destinations=\{commuteDestinations\}/);
   // Ownership doctrine: the editable list is always the current user's own
   // rows (searchId+userId scoped); a collaborator's places never enter it.
-  assert.match(destinations, /createCommuteDestination\(supabase, searchId, userId, values\)/);
+  assert.match(editor, /createCommuteDestination\(supabase, searchId, userId, values\)/);
+  assert.match(editor, /updateCommuteDestination\(supabase, id, changes\)/);
+  assert.match(editor, /deleteCommuteDestination\(supabase, id\)/);
 });
 
-test('desktop composition: an asymmetric two-column grid with What Matters Most to Me as the wide primary column', async () => {
+test('desktop composition: an asymmetric two-column grid with What Matters Most as the primary column', async () => {
   const panel = await source('src/components/MySearchPanel.jsx');
   const css = await source('src/app/globals.css');
-  assert.match(panel, /className="hh-search-grid"/);
-  assert.match(panel, /className="hh-search-primary">\s*<WhatMattersCard/);
-  assert.match(panel, /className="hh-search-rail">\s*<BasicsCard/);
-  assert.match(css, /\.hh-search-grid \{ display: grid; grid-template-columns: minmax\(0, 1\.65fr\) minmax\(300px, 1fr\)/);
+  assert.match(panel, /className="flh-my-search-grid"/);
+  assert.match(panel, /className="flh-my-search-primary">\s*<WhatMattersMost/);
+  assert.match(panel, /className="flh-my-search-rail">\s*<WhatImLookingFor/);
+  assert.match(css, /@media \(min-width: 960px\) \{ \.flh-my-search-grid \{ grid-template-columns: minmax\(0,1\.05fr\) minmax\(0,1fr\)/);
 });
 
-test('mobile: the desktop two-column grid collapses to one stacked column; PriorityBoard\'s own mobile compact behavior is untouched', async () => {
+test('mobile: My Search is one stacked column below the desktop breakpoint', async () => {
   const css = await source('src/app/globals.css');
-  const board = await source('src/components/PriorityBoard.jsx');
-  const block = css.match(/@media \(max-width: 900px\) \{[\s\S]*?\n\}/)?.[0] || '';
-  assert.match(block, /\.hh-search-grid \{ grid-template-columns: 1fr; \}/);
-  assert.match(board, /const \[mobileCompact, setMobileCompact\] = useState\(false\);/);
+  assert.match(css, /\.flh-my-search-grid \{ display: grid; gap: var\(--flh-stack\); \}/);
+  // Two columns only appear at the desktop breakpoint.
+  assert.match(css, /@media \(min-width: 960px\) \{ \.flh-my-search-grid \{ grid-template-columns:/);
 });
 
-test('Match education uses a non-overlapping editorial asset and has no redundant My Search CTA', async () => {
+test('the permanent How Match Scores Work section no longer lives on My Search; the Homes link to My Search remains', async () => {
   const panel = await source('src/components/MySearchPanel.jsx');
   const homes = await source('src/app/(app)/homes/page.js');
-  const css = await source('src/app/globals.css');
-  assert.match(panel, /className="hh-match-editorial hh-match-editorial-search"/);
-  assert.match(panel, /<h2>How Match Scores Work<\/h2>/);
-  assert.match(panel, /FWFLH%20Transparent\.png/);
-  assert.match(panel, /hh-match-editorial-inner/);
+  const shell = await source('src/components/AppShell.jsx');
+  assert.doesNotMatch(panel, /How Match Scores Work/);
+  assert.doesNotMatch(panel, /hh-match-editorial/);
   assert.doesNotMatch(panel, /Review My Search/);
-  assert.match(css, /\.hh-match-editorial-search \.hh-match-editorial-art \{[\s\S]*?position: static !important;[\s\S]*?object-fit: contain;[\s\S]*?opacity: 1;/);
+  // The underlying explanation still lives in How it works.
+  assert.match(shell, /Match on paper/);
   assert.match(homes, /href="\/search">Review My Search<\/a>/);
 });
 
 test('page identity copy matches the approved spec', async () => {
-  const page = await source('src/app/(app)/search/page.js');
-  assert.match(page, /Describe the home you want and what matters most\. Feels Like Home uses the priorities you choose here — along with reliable property information — to calculate your personalized Match\./);
+  const panel = await source('src/components/MySearchPanel.jsx');
+  assert.match(panel, /<PageHeading title="My Search" subtitle="The things that make a place feel like home"/);
 });
 
 test('data/loader change is additive and minimal: resolveCollaboratorSearchContext gains only a display name, using the same already-verified relationship', async () => {
@@ -205,7 +211,7 @@ test('no household criteria, no averaged priorities, one participant can never e
   const collaboration = await source('src/lib/supabase/collaboration.js');
   assert.doesNotMatch(panel, /household/i);
   assert.doesNotMatch(panel, /average/i);
-  // savePriorities (the only write path PriorityBoard/BasicsCard drive) is
+  // savePriorities (the only write path the priority and Basics editors drive) is
   // always scoped to the authenticated caller's own row.
   assert.match(collaboration, /export async function savePriorities\(supabase, search, userId, priorities\)/);
   assert.match(collaboration, /\.upsert\(\{ search_id: search\.id, user_id: userId, priorities: savedPriorities \}, \{ onConflict: 'search_id,user_id' \}\)/);

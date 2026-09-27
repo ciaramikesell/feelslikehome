@@ -28,11 +28,13 @@ test('every criterion bank item can be selected, including later suggestions in 
 });
 
 test('criterion chips retain native button keyboard semantics and independent wrapped targets', () => {
-  const board = read('src/components/PriorityBoard.jsx');
-  assert.match(board, /<button key=\{item\.label\} type="button" draggable className="hh-chip"/);
-  assert.match(board, /className="hh-suggestion-tray"/);
-  assert.match(board, /onClick=\{\(\) => selectItem\(def, item\)\}/);
-  assert.doesNotMatch(board, /<span[^>]+hh-chip[^>]+onClick/);
+  const system = read('src/components/MobileSystem.jsx');
+  assert.match(system, /<button type="button" className=\{`flh-choice-chip \$\{selected \? 'is-selected' : ''\}`\} aria-pressed=\{selected\} onClick=\{onClick\}/);
+  assert.match(read('src/app/globals.css'), /\.flh-chip-row \{ display: flex; flex-wrap: wrap; gap: 8px; \}/);
+  for (const path of ['src/components/onboarding/Onboarding.jsx', 'src/components/RankPrioritiesEditor.jsx']) {
+    assert.match(read(path), /<ChoiceChip /);
+    assert.doesNotMatch(read(path), /<span[^>]+chip[^>]+onClick/);
+  }
   assert.match(read('src/app/globals.css'), /\.hh-chip:focus-visible \{ outline: 3px solid var\(--focus-ring\); outline-offset: 2px; \}/);
 });
 
@@ -59,15 +61,18 @@ test('signed-out auth makes account creation explicit without removing recovery 
 
 test('new onboarding search choices set an explicit, accessible rental subtype', () => {
   const onboarding = read('src/components/onboarding/Onboarding.jsx');
+  const system = read('src/components/MobileSystem.jsx');
   assert.match(onboarding, /NEW_SEARCH_CHOICES\.map/);
-  assert.match(onboarding, /aria-pressed=\{selectedChoice === choice\.key\}/);
-  assert.match(onboarding, /applySearchChoice\(next, choice\.key\)/);
+  assert.match(onboarding, /selected=\{choice === option\.key\}/);
+  assert.match(system, /className=\{`flh-select-card \$\{selected \? 'is-selected' : ''\}`\} aria-pressed=\{selected\}/);
+  assert.match(onboarding, /applySearchChoice\(next, option\.key\)/);
 });
 
 test('auth mobile and onboarding brand placement use focused centering classes', () => {
   assert.match(read('src/components/auth/AuthShell.jsx'), /className="afh-brand"/);
-  assert.match(read('src/components/onboarding/Onboarding.jsx'), /className="hh-onboarding-brand"/);
+  assert.match(read('src/components/onboarding/Onboarding.jsx'), /className="flh-onboarding-brand"/);
   const css = read('src/app/globals.css');
-  assert.match(css, /\.hh-onboarding-brand \{[^}]*justify-content: center/);
+  assert.match(css, /\.flh-onboarding-brand \{[^}]*justify-content: center/);
   assert.match(css, /@media \(max-width: 640px\) \{[\s\S]*\.afh-brand \{ justify-content: center; \}/);
 });
+

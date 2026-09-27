@@ -68,7 +68,8 @@ test('AuthShell swaps to a simplified native presentation without touching the d
 test('AppShell applies one centralized hh-native class instead of scattering Capacitor checks', () => {
   assert.match(appShell, /import \{ isNativeApp \} from '@\/lib\/platform'/);
   assert.match(appShell, /useEffect\(\(\) => \{ if \(isNativeApp\(\)\) setNative\(true\); \}, \[\]\);/);
-  assert.match(appShell, /className=\{`hh-root \$\{native \? 'hh-native' : ''\}`\}/);
+  assert.match(appShell, /className=\{`hh-root \$\{native \? 'hh-native' : ''\}/);
+  assert.equal((appShell.match(/isNativeApp\(\)/g) || []).length, 1);
 });
 
 test('the native shell gets its own top safe-area padding on the shared app header', () => {

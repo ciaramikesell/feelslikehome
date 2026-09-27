@@ -26,18 +26,24 @@ test('new choices map to canonical intents and existing property-type preference
 
 test('Home to Buy curated suggestions are exactly the canonical purchase taxonomy — one shared catalog with My Search, no Home Feel group', () => {
   assert.deepEqual(displayed('home_buy'), [
-    'Charming Neighborhood', 'Reputable Schools', 'Walkable to Town', 'Parks Nearby', 'Quiet Street', 'Bustling Street', 'Near Waterfront', 'Walkable Schools', 'No HOA',
-    'Finished Basement', 'Walkout Basement', 'First-Floor Primary', 'Primary Ensuite', 'First-Floor Laundry', 'Home Office', 'Central Air', 'Fireplace', 'Move-in Ready', 'Renovation Potential', 'New Construction', 'Guest / In-Law Suite',
-    'Deck / Patio', 'Fenced Yard', 'Privacy Fencing', 'Attached Garage', 'Detached Garage', 'Large Backyard', 'Front Porch', 'Pool', 'Landscaping',
+    'Reputable Schools', 'Walkable to Town', 'Parks Nearby', 'Quiet Street', 'Bustling Street', 'Near Waterfront', 'Walkable Schools', 'No HOA',
+    'Finished Basement', 'Walkout Basement', 'First-Floor Primary', 'Guest Bedroom', 'Primary Ensuite', 'First-Floor Laundry', 'Home Office', 'Central Air', 'Fireplace',
+    'Deck / Patio', 'Fenced Yard', 'Privacy Fencing', 'Garage', 'Large Backyard', 'Front Porch', 'Pool', 'Landscaping',
   ]);
   assert.deepEqual(ONBOARDING_SUGGESTIONS.home_buy.map(([title]) => title), ['Location', 'Home Features', 'Exterior & Property']);
-  for (const retired of ['Neighborhood', 'Walkability', 'Garage', 'Immediate Street / Surroundings', 'Basement', 'Yard', 'Overall Condition', 'Layout / Flow', 'Natural Light', 'Character / Charm']) {
+  for (const retired of ['Neighborhood', 'Walkability', 'Immediate Street / Surroundings', 'Basement', 'Yard', 'Overall Condition', 'Layout / Flow', 'Natural Light', 'Character / Charm']) {
     assert.ok(!displayed('home_buy').includes(retired));
+  }
+  // Not weighted criteria in the approved model: Home Condition lives in Basics,
+  // Guest Bedroom replaces Guest / In-Law Suite, Garage has an Attached/Detached qualifier.
+  for (const absent of ['Charming Neighborhood', 'Guest / In-Law Suite', 'Move-in Ready', 'Renovation Potential', 'New Construction', 'Attached Garage', 'Detached Garage']) {
+    assert.ok(!displayed('home_buy').includes(absent), `${absent} must not be offered`);
   }
 });
 
-test('Home to Rent curated suggestions are exact', () => {
-  assert.deepEqual(displayed('home_rent'), ['Neighborhood','Walkability','Parks Nearby','Quiet Street','Basement','Fireplace','Primary Ensuite','Home Office','Central Air','Hardwood Floors','Garage','Fenced Yard','Outdoor Space','Patio / Deck','Yard Privacy','Pets Allowed','Utilities Included','Overall Condition','Layout','Natural Light','Privacy','Noise Level']);
+test('Home to Rent curated suggestions are exactly the canonical Home criteria without No HOA', () => {
+  assert.deepEqual(displayed('home_rent'), displayed('home_buy').filter((label) => label !== 'No HOA'));
+  assert.ok(!displayed('home_rent').includes('No HOA'));
 });
 
 test('Apartment to Rent curated suggestions are exact', () => {
@@ -71,45 +77,50 @@ test('custom priorities use the same canonical JSON structure and default to Imp
   assert.deepEqual(selected.customItems.at(-1), { label: 'Morning coffee spot', kind: 'rating' });
 });
 
-test('two-screen journey preserves choices on Back, persists before completion, and finishes straight into My Search', () => {
+test('three-step journey preserves choices on Back, persists before completion, and ends on a ready state', () => {
   const onboarding = read('src/components/onboarding/Onboarding.jsx');
-  const search = read('src/components/MySearchPanel.jsx');
-  // No Dealbreakers screen, no separate "My Search Criteria" summary screen —
-  // step 2's own CTA is the only forward action left in onboarding.
+  // No Dealbreakers screen, no separate "My Search Criteria" summary screen.
   assert.doesNotMatch(onboarding, /Dealbreaker|dealbreaker/);
   assert.doesNotMatch(onboarding, /SummaryStep|My Search Criteria/);
   assert.match(onboarding, /onBack=\{\(\) => setStep\(1\)\}/);
+  assert.match(onboarding, /onBack=\{\(\) => setStep\(2\)\}/);
   assert.match(onboarding, /Rank my priorities/);
-  assert.match(onboarding, /await flush\(\); await completeOnboarding/);
-  // #73: a pending share-intake destination (see (app)/layout.js) takes over
-  // this push when present; the plain welcome landing is still the default.
-  assert.match(onboarding, /onNext=\{\(\) => finish\(pendingRedirect \|\| '\/search\?welcome=1'\)\}/);
-  assert.match(search, /Your priorities are ready\. Now make them yours\./);
-  assert.match(search, /href="\/homes\?add=1">Add your first home/);
+  // Every step change flushes pending saves; completion flushes before marking onboarding complete.
+  assert.match(onboarding, /const goTo = async \(nextStep\) => \{ await flush\(\); setStep\(nextStep\);/);
+  assert.match(onboarding, /await flush\(\);\n\s+await completeOnboarding\(createClient\(\), userId\);/);
+  // #73: a pending share-intake destination (see (app)/layout.js) takes over when present.
+  assert.match(onboarding, /if \(pendingRedirect\) \{ router\.push\(pendingRedirect\); router\.refresh\(\); return; \}/);
+  assert.match(onboarding, /Your search is ready\./);
+  assert.match(onboarding, /Now let’s see how your first home measures up\./);
+  assert.match(onboarding, /Add your first home <ArrowRight/);
+  assert.match(onboarding, /onAddHome=\{\(\) => leave\('\/homes\?add=1'\)\}/);
+  assert.match(onboarding, /onViewSearch=\{\(\) => leave\('\/search\?welcome=1'\)\}/);
+  assert.match(onboarding, /Unknown information never counts against a home\./);
 });
 
-test('onboarding is tap-first and responsive while My Search retains tier actions', () => {
+test('onboarding is tap-first and responsive, and ranking offers explicit level actions', () => {
   const onboarding = read('src/components/onboarding/Onboarding.jsx');
-  const board = read('src/components/PriorityBoard.jsx');
+  const board = read('src/components/RankBoard.jsx');
   const css = read('src/app/globals.css');
   assert.doesNotMatch(onboarding, /draggable|CommuteDestinations/);
-  assert.doesNotMatch(onboarding, /<PriorityBoard/);
-  assert.match(onboarding, /aria-pressed=\{selected\(criterion\)\}/);
-  assert.match(board, /Move to \{TIER_META\[target\]\.label\}/);
+  assert.match(onboarding, /<ChoiceChip key=\{`\$\{criterion\.categoryKey\}:\$\{criterion\.label\}`\} selected=\{isCriterionSelected\(priorities, criterion\.categoryKey, criterion\.label\)\}/);
+  assert.match(onboarding, /<RankBoard/);
+  assert.match(board, /LEVEL_COPY\[tier\]\.heading/);
   assert.match(board, />Remove priority<\/button>/);
-  assert.match(css, /\.hh-onboarding-suggestions \.hh-chip[^}]*min-height: 40px/);
-  assert.match(css, /@media \(max-width: 640px\)[\s\S]*\.hh-onboarding-suggestions \{ grid-template-columns: 1fr/);
+  assert.match(css, /\.flh-choice-chip \{[^}]*min-height: 38px/);
+  assert.match(css, /\.flh-chip-row \{ display: flex; flex-wrap: wrap;/);
   assert.deepEqual(Object.fromEntries(Object.entries(TIER_META).map(([tier, meta]) => [tier, meta.weight])), { must: 4, important: 2, nice: 1, dontcare: 0 });
 });
 
 test('the old Dealbreakers onboarding state cannot trap an existing user', () => {
   // Onboarding gating is a single boolean (profiles.onboarding_complete) — see
   // completeOnboarding — never a persisted step number, so there is no stored
-  // "step 3" value an existing user could be stuck on. Every visit to
-  // /onboarding starts this same two-screen flow from step 1.
+  // step an existing user could be stuck on. Every visit to /onboarding starts
+  // this same flow from step 1 with their saved choices intact.
   const dataLib = read('src/lib/supabase/data.js');
   assert.match(dataLib, /onboarding_complete/);
   const onboarding = read('src/components/onboarding/Onboarding.jsx');
   assert.match(onboarding, /const \[step, setStep\] = useState\(1\);/);
-  assert.doesNotMatch(onboarding, /setStep\(3\)|setStep\(4\)/);
+  assert.doesNotMatch(onboarding, /onboardingStep|next\.step\b|localStorage/);
 });
+

@@ -30,6 +30,15 @@ export default function Sheet({
 }) {
   const dialogRef = useRef(null);
   const titleId = useId();
+  // Callers routinely pass an inline onClose (a new function every render). The
+  // focus/keyboard effect below must not depend on it: re-running that effect on
+  // every parent render restored focus to the opener and then focused the Sheet's
+  // first focusable element (its Close button). In a form whose draft lives in the
+  // Sheet's parent (e.g. Places That Matter), typing an address moved focus off the
+  // field after one keystroke, and a typed space then activated Close. The effect
+  // now runs once per open, and always calls the latest onClose.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return undefined;
@@ -41,7 +50,7 @@ export default function Sheet({
     const onKeyDown = (event) => {
       if (event.key === 'Escape') {
         event.stopPropagation();
-        onClose();
+        onCloseRef.current?.();
         return;
       }
       if (event.key !== 'Tab') return;
@@ -69,7 +78,7 @@ export default function Sheet({
       document.body.style.overflow = previousOverflow;
       previouslyFocused?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
