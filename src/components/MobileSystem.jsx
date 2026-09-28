@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Check, ChevronLeft, ChevronRight, LoaderCircle } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, LoaderCircle, Sparkles } from 'lucide-react';
 
 // Authenticated-mobile foundation — the small set of layout/visual primitives the
 // approved Onboarding and My Search designs established, so later pages (Homes,
@@ -146,4 +146,35 @@ export function LevelDot({ tier }) {
 export function Avatar({ name, tone = 'warm' }) {
   const initials = String(name || '?').trim().split(/\s+/).map((part) => part[0]).slice(0, 2).join('').toUpperCase() || '?';
   return <span className={`flh-avatar flh-avatar-${tone}`} aria-hidden="true">{initials}</span>;
+}
+
+// The one Match badge (My Homes cards; later Map pins/preview, Compare, Home
+// Detail). Presentation only: `pct` is the caller's canonical computeMatch
+// percentage for the signed-in participant. With no computable percentage it
+// renders nothing, so Unknown never appears as a number.
+export function MatchBadge({ pct, size = 'sm', className = '' }) {
+  if (pct === null || pct === undefined) return null;
+  return (
+    <span className={`flh-match-badge flh-match-badge-${size} ${className}`} aria-label={`${pct}% Match`}>
+      <Sparkles aria-hidden="true" strokeWidth={2.2} />
+      <span aria-hidden="true">{pct}%</span>
+    </span>
+  );
+}
+
+// Compact state chip. Tones follow the system semantics: positive (sage), negative
+// (only for a confirmed problem), unknown (taupe — never styled as a miss), quiet.
+export function StatusTag({ tone = 'quiet', children }) {
+  return <span className={`flh-tag is-${tone}`}>{children}</span>;
+}
+
+// "You + collaborator" initials, for a search that really is shared. Status only.
+export function ParticipantStack({ collaboratorName }) {
+  const label = `Searching together with ${collaboratorName || 'a co-buyer'}. Each of you keeps your own Match.`;
+  return (
+    <span className="flh-avatar-stack flh-participants" role="img" aria-label={label} title={label}>
+      <Avatar name="You" />
+      <Avatar name={collaboratorName || 'Co-buyer'} tone="sage" />
+    </span>
+  );
 }

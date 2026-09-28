@@ -159,7 +159,10 @@ test('My Homes header counts the actual active homes and keeps the Add action', 
 test('compact contender cards use real home data and the canonical Match, and keep existing states', () => {
   const board = read('src/components/HomesBoard.jsx');
   assert.match(board, /mode === 'homes' \? 'is-contender' : ''/);
-  assert.match(board, /\{mode === 'homes' && match\?\.pct != null && <span className="hh-contender-match"/);
+  // The shared MatchBadge renders only a computable percentage — Unknown is never a number.
+  assert.match(board, /\{mode === 'homes' && match\?\.pct != null && <MatchBadge pct=\{match\.pct\} className="hh-contender-match" \/>\}/);
+  const system = read('src/components/MobileSystem.jsx');
+  assert.match(system, /export function MatchBadge\(\{ pct, size = 'sm', className = '' \}\) \{\n  if \(pct === null \|\| pct === undefined\) return null;/);
   assert.match(board, /const must = mustHaveStatus\(match\);/);
   assert.match(board, /must\.missed > 0 && \{ key: 'must-missed'/);
   assert.match(board, /must\.missed === 0 && must\.unknown > 0 && \{ key: 'must-unknown'/);

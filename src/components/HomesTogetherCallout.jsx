@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { UserPlus, Users } from 'lucide-react';
 import InviteCoBuyer from '@/components/InviteCoBuyer';
-import { IconBadge } from '@/components/MobileSystem';
+import { Chevron, IconBadge } from '@/components/MobileSystem';
 
 // My Homes' compact collaboration note, derived from the search's actual state:
 // a collaborative search says so (each person keeps their own Match); the owner
@@ -34,6 +34,7 @@ export default function HomesTogetherCallout({ searchId, userId, isOwner, isColl
             <span className="flh-card-title flh-card-title-small">Compare homes together</span>
             <span className="flh-card-sub">Invite a co-buyer or Realtor. Everyone keeps their own Match and perspective.</span>
           </span>
+          <Chevron />
         </span>
       </button>
       {inviteOpen && <InviteCoBuyer searchId={searchId} userId={userId} embedded onClose={() => setInviteOpen(false)} />}

@@ -6,9 +6,10 @@ import Link from 'next/link';
 import {
   Plus, Search, Archive as ArchiveIcon, ExternalLink,
   Heart, Home as HomeIcon, Undo2, Footprints, MessageCircle, Check,
-  StickyNote, Pencil, SlidersHorizontal, ArrowUpDown, Map as MapIcon, ChevronRight,
+  StickyNote, Pencil, SlidersHorizontal, ArrowUpDown, Map as MapIcon,
 } from 'lucide-react';
 import { CriteriaDisclosure, MatchSummary } from '@/components/ui';
+import { Chevron, IconBadge, MatchBadge, ParticipantStack } from '@/components/MobileSystem';
 import { useCommuteObserver, readCommuteResult, useCommuteCacheVersion } from '@/lib/useCommuteObserver';
 import { evaluateCommute } from '@/lib/commute';
 import HomeModal from '@/components/HomeModal';
@@ -155,7 +156,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
           {/* My Homes on a phone: the card's Match is summarized as one badge (the
               detailed explanation lives on Home Detail). Same canonical `match`
               object as the full panel below — only its presentation differs. */}
-          {mode === 'homes' && match?.pct != null && <span className="hh-contender-match" style={{ '--match-color': matchColor(match.pct) }} aria-label={`${match.pct}% Match`}>{match.pct}%</span>}
+          {mode === 'homes' && match?.pct != null && <MatchBadge pct={match.pct} className="hh-contender-match" />}
           {coBuyerActivity && <span className="hh-cobuyer-activity">{coBuyerActivity}</span>}
         </Link>
           {showQuickFavorite && (
@@ -206,7 +207,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
               home.suggestedBy && { key: 'realtor', label: `Suggested by ${home.suggestedBy}`, tone: 'quiet' },
               match && match.pct == null && { key: 'match', label: 'Match not known yet', tone: 'quiet' },
             ].filter(Boolean);
-            return states.length ? <div className="hh-contender-meta">{states.map((state) => <span key={state.key} className={`is-${state.tone}`}>{state.label}</span>)}</div> : null;
+            return states.length ? <div className="hh-contender-meta">{states.map((state) => <span key={state.key} className={`flh-tag is-${state.tone}`}>{state.label}</span>)}</div> : null;
           })()}
 
           {/* On an archived Home, why it was set aside is more decision-relevant than
@@ -376,7 +377,7 @@ function EmptyLifecycleState({ icon: Icon, title, body, children }) {
 
 /* ---------------------------------- board ---------------------------------- */
 
-export default function HomesBoard({ mode, userId, searchId, initialHomes, initialPriorities, initialCommuteDestinations = [], sharedFactAwareness, isCollaborative = false }) {
+export default function HomesBoard({ mode, userId, searchId, initialHomes, initialPriorities, initialCommuteDestinations = [], sharedFactAwareness, isCollaborative = false, collaboratorName = null }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [homes, setHomes] = useState(initialHomes);
@@ -674,6 +675,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     <>
       {mode === 'homes' && (
         <div className="hh-homes-primary-action">
+          {isCollaborative && <span className="flh-mobile-only-inline"><ParticipantStack collaboratorName={collaboratorName} /></span>}
           <button className="hh-btn" onClick={() => openHomeModal(emptyHome())} aria-label={`Add ${vocabulary.singularLower}`}><Plus size={15} aria-hidden="true" /> <span className="hh-add-home-label">Add Home Listing</span></button>
         </div>
       )}
@@ -759,12 +761,13 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
       )}
 
       {mode === 'homes' && activeLabels.length > 0 && (
-        <button type="button" className="flh-card flh-card-quiet is-interactive flh-active-filters" onClick={() => setFilterSheetOpen(true)}>
+        <button type="button" className="flh-card flh-card-warm is-interactive flh-active-filters" onClick={() => setFilterSheetOpen(true)}>
+          <IconBadge icon={SlidersHorizontal} />
           <span className="flh-card-heading">
             <span className="flh-card-title flh-card-title-small">Active filters · {filtered.length} of {activeHomes.length}</span>
             <span className="flh-card-sub">{activeLabels.join(' · ')}</span>
           </span>
-          <ChevronRight size={18} className="flh-chevron" aria-hidden="true" />
+          <Chevron />
         </button>
       )}
 

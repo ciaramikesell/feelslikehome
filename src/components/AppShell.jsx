@@ -301,7 +301,7 @@ export default function AppShell({ children, userEmail, userId, firstName = null
             </div>
           </div>
           <div className="hh-shell-utilities">
-            {hasBuyerSearch && isCollaborative && <span className="hh-collaboration-pill">Searching together</span>}
+            {hasBuyerSearch && isCollaborative && <span className="hh-collaboration-pill" title="Searching together"><Users size={13} aria-hidden="true" /> Searching together</span>}
             {hasBuyerSearch && accessibleSearches && accessibleSearches.length > 1 && (
               <SearchSwitcher userId={userId} searches={accessibleSearches} activeSearchId={activeSearchId} />
             )}
@@ -313,7 +313,7 @@ export default function AppShell({ children, userEmail, userId, firstName = null
             >
               <SlidersHorizontal size={14} /> My Search
             </Link>}
-            <button className="hh-shell-action" onClick={() => setHowToOpen(true)}>
+            <button className="hh-shell-action hh-shell-action-help" onClick={() => setHowToOpen(true)} title="How it works">
               <HelpCircle size={14} /> How it works
             </button>
             <Link href="/account" className={`hh-shell-action hh-account-entry ${pathname === '/account' ? 'active' : ''}`} aria-label="Account & Settings">
