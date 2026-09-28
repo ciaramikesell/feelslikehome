@@ -1965,3 +1965,107 @@ details[open] > summary .hh-accordion-chevron, .hh-more-home-details:has(.hh-mor
   .flh-detail-inline-actions > .hh-btn { display: none; }
   .flh-detail-action-bar { position: fixed; z-index: 39; left: 0; right: 0; bottom: calc(62px + env(safe-area-inset-bottom)); display: flex !important; gap: 10px; padding: 10px 14px; background: linear-gradient(to bottom, rgba(250,246,239,0), var(--paper) 14px); }
 }
+
+/* ------------------------------------------------------------------------
+   Add / Edit Home on phones: one real scroll container.
+   Previously the editor kept `overflow: hidden` from its base rule while its
+   content switched to `overflow: visible`; opened from Home Detail as a
+   100dvh panel, nothing could scroll, and the "listing details" button's
+   scrollIntoView moved the content where a finger could not scroll back (the
+   close control ended up off-screen). Now the header and footer stay put and
+   the body scrolls — for both the modal and the Home Detail panel.
+   ------------------------------------------------------------------------ */
+@media (max-width: 700px) {
+  .hh-edit-home-backdrop { overflow: hidden; }
+  .hh-edit-home-modal { display: flex; flex-direction: column; height: 100dvh; max-height: 100dvh; min-height: 0; overflow: hidden; }
+  .hh-edit-home-modal > .hh-edit-home-header, .hh-edit-home-modal > .hh-edit-home-footer, .hh-edit-home-modal > .hh-edit-save-error { flex: 0 0 auto; }
+  .hh-edit-home-modal > .hh-edit-home-header { padding-top: max(12px, env(safe-area-inset-top)); }
+  .hh-edit-home-modal > .hh-workspace-shell { flex: 1 1 auto; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; }
+  .hh-edit-home-modal .hh-edit-home-columns { max-height: none; overflow: visible; }
+  .hh-edit-home-modal > .hh-edit-home-footer { position: static; }
+}
+
+/* ── Add / Edit Home review (buyer mobile pass) ───────────────────────────── */
+.flh-provenance { display: inline-flex !important; align-items: center; margin: 0 0 0 6px !important; padding: 1px 7px; border-radius: 999px; font: 700 9.5px/1.5 'Plus Jakarta Sans', sans-serif; letter-spacing: .02em; vertical-align: middle; white-space: nowrap; }
+.flh-provenance.is-listing { background: var(--flh-sage-bg); color: var(--flh-sage-ink) !important; }
+.flh-provenance.is-you { background: var(--flh-level-nice-bg); color: var(--blue) !important; }
+.flh-provenance.is-unknown { background: var(--flh-quiet); color: var(--ink-soft) !important; }
+.flh-provenance-legend { display: flex; flex-wrap: wrap; gap: 6px; margin: -4px 0 10px; }
+.flh-provenance-legend .flh-provenance { margin: 0 !important; }
+.flh-unknown-helper { display: flex; gap: 6px; align-items: flex-start; margin: 10px 0 0; color: var(--ink-soft); font-size: 11.5px; line-height: 1.45; }
+.flh-unknown-helper svg { flex: 0 0 auto; margin-top: 1px; color: var(--flh-sage-strong); }
+.flh-tier-label { display: inline-block !important; margin-top: 3px !important; font-weight: 700; }
+.flh-tier-label.is-must { color: var(--flh-level-must) !important; }
+.flh-tier-label.is-important { color: var(--flh-level-important) !important; }
+.flh-tier-label.is-nice { color: var(--flh-level-nice) !important; }
+.flh-basics-note { margin: 12px 0 0; color: var(--ink-soft); font-size: 11.5px; line-height: 1.45; }
+.flh-basics-note a { color: var(--brick-deep); font-weight: 700; }
+.flh-what-found { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: start; margin-bottom: 12px; padding: 12px; border: 1px solid var(--flh-sage-line); border-radius: var(--flh-radius-card); background: var(--flh-sage-bg); }
+.flh-what-found strong { display: block; font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--flh-sage-ink); }
+.flh-what-found p { margin: 4px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--ink); }
+.flh-edit-summary { display: grid; grid-template-columns: 72px 1fr; gap: 12px; align-items: center; margin-bottom: 12px; padding: 12px; border: 1px solid var(--flh-card-line); border-radius: var(--flh-radius-card); background: var(--flh-card); }
+.flh-edit-summary-photo { width: 72px; height: 72px; border-radius: 12px; overflow: hidden; display: grid; place-items: center; background: var(--flh-warm); color: var(--ink-soft); }
+.flh-edit-summary-photo img { width: 100%; height: 100%; object-fit: cover; }
+.flh-edit-summary-copy { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.flh-edit-summary-price { font: 700 18px/1.2 'Fraunces', Georgia, serif; }
+.flh-edit-summary-address { font-weight: 700; font-size: 13px; overflow-wrap: anywhere; }
+.flh-edit-summary-sub { color: var(--ink-soft); font-size: 11.5px; }
+.flh-edit-summary-link { display: inline-flex; gap: 4px; align-items: center; margin-top: 4px; color: var(--brick-deep); font-size: 12px; font-weight: 700; }
+.hh-edit-home-header .flh-eyebrow { margin: 0 0 4px; }
+.flh-step-next { display: none !important; }
+.flh-step-count { display: none; }
+.flh-source-note { margin: 10px 0 0; color: var(--ink-soft); font-size: 11.5px; line-height: 1.45; }
+.flh-share-callout { display: flex; gap: 10px; align-items: flex-start; margin: 0 0 14px; padding: 12px; border: 1px dashed var(--flh-control-line); border-radius: var(--flh-radius-card); background: var(--flh-card); }
+.flh-share-callout svg { flex: 0 0 auto; margin-top: 2px; color: var(--brick); }
+.flh-share-callout strong { display: block; font-size: 13px; }
+.flh-share-callout p { margin: 2px 0 0; color: var(--ink-soft); font-size: 12px; line-height: 1.45; }
+.flh-duplicate-card { display: flex; gap: 12px; align-items: center; margin: 4px 0 12px; padding: 12px; border: 1px solid var(--flh-card-line); border-radius: var(--flh-radius-card); background: var(--flh-card); }
+.flh-duplicate-card img, .flh-duplicate-photo { width: 64px; height: 64px; flex: 0 0 auto; border-radius: 12px; object-fit: cover; display: grid; place-items: center; background: var(--flh-warm); color: var(--ink-soft); }
+.flh-duplicate-card div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.flh-duplicate-card span { color: var(--ink-soft); font-size: 12px; }
+.flh-duplicate-notes { margin: 0 0 14px; padding-left: 18px; color: var(--ink-soft); font-size: 12.5px; line-height: 1.5; }
+.flh-duplicate-home .hh-modal-actions a { display: inline-flex; gap: 6px; align-items: center; text-decoration: none; }
+@media (max-width: 700px) {
+  /* Add Home is two steps on a phone: review what came through, then how it fits
+     you. Presentation only — both steps edit the same form (see EditHomeEditor). */
+  .hh-edit-steps.is-adding.is-step-review [data-step="match"],
+  .hh-edit-steps.is-adding.is-step-match [data-step="review"] { display: none; }
+  .flh-step-count { display: inline; }
+  .hh-edit-steps-footer.is-adding.is-step-review .flh-step-next { display: inline-flex !important; gap: 6px; align-items: center; }
+  .hh-edit-steps-footer.is-adding.is-step-review .flh-step-save { display: none; }
+  .hh-edit-steps-footer.is-adding .flh-step-back { display: inline-flex; gap: 4px; align-items: center; }
+}
+.hh-map-place-card.is-unplaced { cursor: default; border-style: dashed; opacity: .85; }
+@media (max-width: 700px) {
+  /* Want to Tour on a phone: a compact card that keeps the tour lifecycle action
+     (I toured / Edit my thoughts / Remove mine) in view. No scheduling UI. */
+  .hh-home-card.is-tour .hh-home-card-photo { height: 150px !important; min-height: 0; aspect-ratio: auto; }
+  .hh-home-card.is-tour .hh-home-card-body { padding: 12px 14px 14px !important; gap: 8px !important; }
+  .hh-home-card.is-tour .hh-personalized-criteria, .hh-home-card.is-tour .hh-flh-moment, .hh-home-card.is-tour .hh-image-provenance { display: none !important; }
+}
+.flh-step-label { margin: 0 0 2px; color: var(--brick); font: 700 10.5px/1.4 'Plus Jakarta Sans', sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+.flh-tour-match-note { margin: 4px 0 12px; padding: 10px 12px; border-radius: 12px; background: var(--flh-quiet); color: var(--ink-soft); font-size: 12px; line-height: 1.45; }
+
+/* ── Account & Settings ─────────────────────────────────────────────────── */
+.flh-account { box-sizing: border-box; width: 100%; max-width: 672px; margin: 0 auto; padding: 8px 16px calc(96px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: var(--flh-stack); }
+.flh-account-header h1 { margin: 0; font-size: 26px; }
+.flh-account-section { display: flex; flex-direction: column; gap: 10px; padding: 16px; }
+.flh-account-section .flh-section-kicker { display: flex; gap: 6px; align-items: center; margin: 0; }
+.flh-account-form { display: flex; flex-direction: column; gap: 12px; }
+.flh-account-name-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.flh-account-value { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.flh-account-copy { margin: 0; color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
+.flh-account-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.flh-account-status { color: var(--ink-soft); font-size: 12.5px; }
+.flh-account-section .hh-btn { align-self: flex-start; display: inline-flex; gap: 6px; align-items: center; }
+@media (max-width: 700px) {
+  .flh-account { padding: 4px 16px calc(96px + env(safe-area-inset-bottom)); }
+  .flh-account-name-row { grid-template-columns: 1fr; }
+}
+@media (max-width: 700px) {
+  /* The smallest Account entry point: an icon in the header utilities. It never
+     takes a bottom-nav slot; Sign out lives on the Account page on phones. */
+  .hh-account-entry { margin-left: auto; min-width: 44px; min-height: 44px; justify-content: center; }
+  .hh-account-entry-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .hh-account-entry svg { width: 18px; height: 18px; }
+}

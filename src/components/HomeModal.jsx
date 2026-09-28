@@ -1,24 +1,27 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { X, Upload, Link2, Footprints, Archive as ArchiveIcon, ExternalLink, Check, Users, Search, ClipboardPaste, Camera, MessageSquareText, House, ChevronDown } from 'lucide-react';
+import Link from 'next/link';
+import { X, Upload, Link2, Footprints, Archive as ArchiveIcon, ExternalLink, Check, Users, Search, ClipboardPaste, Camera, MessageSquareText, House, ChevronDown, ChevronLeft, Sparkles, ShieldCheck, Share, ArrowRight } from 'lucide-react';
 import { StarInput } from '@/components/ui';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
   isArchivedStatus, isRentalType, TOUR_RATING_KEY, criterionDisplayLabel, TIER_ORDER, foldLegacyCheckAliases,
 } from '@/lib/constants';
 import { visibleOrderedItems, parseListingTextFindings, selectedSubjectiveCriteria, computeMatch } from '@/lib/matching';
-import { extractAddressFromListingUrl, extractApartmentIdentityFromListingUrl, isLikelyListingUrl } from '@/lib/listingUrl';
+import { extractAddressFromListingUrl, extractApartmentIdentityFromListingUrl, isLikelyListingUrl, findHomeByListingUrl } from '@/lib/listingUrl';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { mergeImportFields, resolveImport } from '@/lib/importDomain';
 import { appendAllSuggestions, appendSuggestionToNotes, derivePriorityCheckPatch, extractEnrichmentSuggestions } from '@/lib/importReview';
-import { splitAddressLines, formatFoundCardFacts, formatCurrencyDisplay, digitsOnly, formatLotSizeDisplay } from '@/lib/homeDisplay';
+import { splitAddressLines, formatFoundCardFacts, formatCurrencyDisplay, digitsOnly, formatLotSizeDisplay, formatHomePrice } from '@/lib/homeDisplay';
 import { createClient } from '@/lib/supabase/client';
 import { hasToured } from '@/lib/lifecycle';
 import { HOME_PROPERTY_TYPE_OPTIONS, PROPERTY_TYPE_LABELS, searchIntentCapabilities } from '@/lib/searchIntent';
-import { homeVocabulary } from '@/lib/homePresentation';
+import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
 import { EXISTING_STRUCTURED_FACT_VALUE, structuredFactSelectValue, structuredFactValueFromSelect } from '@/lib/homeStructuredFacts';
 import { countListingDetails, groupListingFacts } from '@/lib/listingFacts';
+import { PROVENANCE_LABELS, fieldProvenance, hasImportSnapshot } from '@/lib/homeProvenance';
+import { isNativeApp } from '@/lib/platform';
 
 const PHOTO_BUCKET = 'home-photos';
 const ALLOWED_PHOTO_TYPES = { 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
@@ -54,12 +57,17 @@ function CoBuyerOnlyHelper() {
   return <span className="hh-shared-fact" title="This detail matters to your collaborator"><Users size={11} /> Shared</span>;
 }
 
-function CompactField({ label, value, onChange, isCurrency, placeholder, must, coBuyerOnly }) {
+function ProvenanceTag({ provenance }) {
+  if (!provenance) return null;
+  return <span className={`flh-provenance is-${provenance}`}>{PROVENANCE_LABELS[provenance]}</span>;
+}
+
+function CompactField({ label, value, onChange, isCurrency, placeholder, must, coBuyerOnly, provenance = null }) {
   const filled = !!value;
   const shown = isCurrency ? (filled ? formatCurrencyDisplay(value) : '') : (value || '');
   return (
     <div>
-      <label className="hh-label" style={{ fontSize: 10.5, marginBottom: 3 }}>{label}{must && <span className="hh-must-badge">MUST</span>}{coBuyerOnly && <CoBuyerOnlyHelper />}</label>
+      <label className="hh-label" style={{ fontSize: 10.5, marginBottom: 3 }}>{label}{must && <span className="hh-must-badge">MUST</span>}{coBuyerOnly && <CoBuyerOnlyHelper />}<ProvenanceTag provenance={provenance} /></label>
       <input
         className="hh-input"
         style={{
@@ -223,14 +231,87 @@ function PropertyFacts({ form, set, priorities, sharedFactAwareness }) {
   );
 }
 
-function NoteSummary({ label, value }) {
-  const lines = (value || '').split(/\n+/).map((line) => line.replace(/^[-•]\s*/, '').trim()).filter(Boolean);
-  return <div className="hh-edit-note-summary"><b>{label}</b>{lines.length ? <ul>{lines.slice(0, 4).map((line, index) => <li key={`${line}-${index}`}>{line}</li>)}</ul> : <span>Nothing added yet</span>}</div>;
+// Educational, dismissible: explains FLH's property-information model once. The
+// dismissal is a per-device preference (same localStorage pattern as the mobile
+// tour and install banner) — no schema, no settings system.
+export const WHAT_FLH_FOUND_DISMISS_KEY = 'flh-what-flh-found-dismissed';
+
+function WhatFlhFoundIntro() {
+  const [dismissed, setDismissed] = useState(true);
+  useEffect(() => {
+    try { setDismissed(localStorage.getItem(WHAT_FLH_FOUND_DISMISS_KEY) === '1'); } catch { setDismissed(false); }
+  }, []);
+  if (dismissed) return null;
+  const dismiss = () => {
+    setDismissed(true);
+    try { localStorage.setItem(WHAT_FLH_FOUND_DISMISS_KEY, '1'); } catch { /* best-effort; never blocks dismissal */ }
+  };
+  return (
+    <aside className="flh-what-found" aria-label="What FLH found">
+      <span className="flh-icon-badge flh-icon-badge-sage" aria-hidden="true"><Sparkles size={16} /></span>
+      <div><strong>What FLH found</strong><p>Listings don’t always tell the whole story. We filled in what we could. Update anything missing or incorrect below. Anything we can’t confirm stays Unknown — it won’t count against this home.</p></div>
+      <button type="button" className="flh-icon-button flh-icon-button-plain" onClick={dismiss} aria-label="Dismiss What FLH found"><X size={16} aria-hidden="true" /></button>
+    </aside>
+  );
+}
+
+// The contender as it stands right now — the same identity rules as every other
+// surface (an apartment's community name may lead; nothing is fabricated).
+function HomeSummaryCard({ form, priorities, previewSrc }) {
+  const identity = homeIdentity(form, priorities);
+  const facts = [form.beds && `${form.beds} bd`, form.baths && `${form.baths} ba`, form.sqft && `${Number(String(form.sqft).replace(/[^0-9.]/g, '')).toLocaleString()} sq ft`].filter(Boolean);
+  return (
+    <section className="flh-edit-summary" aria-label="This home">
+      <div className="flh-edit-summary-photo">{previewSrc ? <img src={previewSrc} alt="" /> : <House size={26} aria-hidden="true" />}</div>
+      <div className="flh-edit-summary-copy">
+        <strong className="flh-edit-summary-price">{formatHomePrice(form.price, priorities.searchType) || 'Price unknown'}</strong>
+        <span className="flh-edit-summary-address">{identity.primary}</span>
+        {identity.supporting && <span className="flh-edit-summary-sub">{identity.supporting}</span>}
+        {facts.length > 0 && <span className="flh-edit-summary-sub">{facts.join(' · ')}</span>}
+        {form.listingUrl && <a className="flh-edit-summary-link" href={form.listingUrl} target="_blank" rel="noreferrer">View original listing <ExternalLink size={12} aria-hidden="true" /></a>}
+      </div>
+    </section>
+  );
+}
+
+// Shown when a pasted listing URL exactly matches a home this search already holds
+// (findHomeByListingUrl — the same rule as share intake). There is deliberately no
+// "Add anyway": a second row would split notes, tour state, and Match answers.
+function DuplicateHomeView({ home, priorities, userId, isCollaborative, vocabulary, dialogRef, titleRef, onClose, onBack }) {
+  const identity = homeIdentity(home, priorities);
+  const archived = isArchivedStatus(home.status);
+  const addedByOther = isCollaborative && home.userId && userId && home.userId !== userId;
+  return <div className="hh-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+    <div ref={dialogRef} className="hh-modal hh-corner hh-add-home-modal flh-duplicate-home" role="dialog" aria-modal="true" aria-labelledby="duplicate-home-title">
+      <header className="hh-edit-home-header">
+        <div><p className="flh-eyebrow">Already saved</p><h1 ref={titleRef} id="duplicate-home-title" className="hh-serif" tabIndex={-1}>This {vocabulary.singularLower} is already here</h1><p>{addedByOther ? 'Someone in this search already added this listing.' : 'You’ve already added this listing to this search.'}</p></div>
+        <button type="button" className="hh-btn hh-btn-ghost hh-edit-home-close" onClick={onClose} aria-label="Close add home"><X size={18} /></button>
+      </header>
+      <div className="flh-duplicate-card">
+        {home.photoUrl ? <img src={home.photoUrl} alt="" /> : <span className="flh-duplicate-photo" aria-hidden="true"><House size={22} /></span>}
+        <div><strong>{identity.primary}</strong>{identity.supporting && <span>{identity.supporting}</span>}<span>{formatHomePrice(home.price, priorities.searchType) || 'Price unknown'}</span></div>
+      </div>
+      <ul className="flh-duplicate-notes">
+        {archived && <li>It’s in your archive. Open it to restore it.</li>}
+        {addedByOther && <li>Your Yes / No / Unknown answers and Match stay your own. Pros, cons, and notes on it are shared with everyone in this search.</li>}
+        <li>Its original listing link is kept exactly as it was saved.</li>
+      </ul>
+      <div className="hh-modal-actions">
+        <button type="button" className="hh-btn hh-btn-ghost" onClick={onBack}>Use a different link</button>
+        <Link className="hh-btn" href={`/homes/${encodeURIComponent(home.id)}`} onClick={onClose}>Open existing {vocabulary.singularLower} <ArrowRight size={15} aria-hidden="true" /></Link>
+      </div>
+    </div>
+  </div>;
 }
 
 function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwareness, isCollaborative, vocabulary, photoFile, photoPreviewUrl, photoInputRef, handlePhotoFileChange, handleRemovePhoto, photoError, showPhotoUrlInput, setShowPhotoUrlInput, setCheckItem, saving, submit, saveErrorMsg, onClose, dialogRef, titleRef, importResult = null, presentation = 'modal', matchPerspectives = [] }) {
-  const [notesOpen, setNotesOpen] = useState(false);
   const [allCriteriaOpen, setAllCriteriaOpen] = useState(false);
+  // Add Home on a phone is two steps — review what came through, then how it fits
+  // you. Presentation only (see .hh-edit-steps in globals.css): desktop keeps the
+  // one-page workspace, and both steps edit the same form and save the same way.
+  const [step, setStep] = useState('review');
+  const shellRef = useRef(null);
+  const goToStep = (next) => { setStep(next); shellRef.current?.scrollTo?.({ top: 0 }); };
   const [inspectorOpen, setInspectorOpen] = useState(() => mode === 'add' && !!importResult);
   const inspectorRef = useRef(null);
   const inspectorResult = importResult || form.listingImport || null;
@@ -245,6 +326,10 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
   };
   const apartment = vocabulary.apartment;
   const { showsRentalFacts } = searchIntentCapabilities(priorities.searchType);
+  // Provenance is only claimed when the listing snapshot proves it (homeProvenance).
+  const importSnapshot = importResult || form.listingImport || null;
+  const snapshotAvailable = hasImportSnapshot(importSnapshot);
+  const provenanceOf = (field) => fieldProvenance(form[field], importSnapshot, field);
   // See foldLegacyCheckAliases: a fact recorded on this home under a pre-taxonomy-
   // unification legacy label (e.g. 'features:Home Office') stays visible here once the
   // search's own priority has folded onto the canonical label.
@@ -263,24 +348,34 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
   const shownCriteria = allCriteriaOpen ? criteria : criteria.slice(0, 6);
   const currentPreviewSrc = photoFile ? photoPreviewUrl : (form.photoUrl || null);
   const priorityLabel = (item) => item.tier === 'must' ? 'Must Have' : item.tier === 'important' ? 'Important' : item.tier === 'nice' ? 'Nice to Have' : item.categoryKey === 'location' ? 'Location Preference' : 'Preference';
+  const adding = mode === 'add';
 
   return <div className={`hh-modal-backdrop hh-edit-home-backdrop ${presentation === 'detail-panel' ? 'hh-detail-editor-backdrop' : ''}`} onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
     <div ref={dialogRef} className={`hh-modal hh-corner hh-edit-home-modal ${presentation === 'detail-panel' ? 'hh-detail-editor-panel' : ''}`} role="dialog" aria-modal="true" aria-labelledby="edit-home-title">
       <header className="hh-edit-home-header">
-        <div><h1 ref={titleRef} id="edit-home-title" className="hh-serif" tabIndex={-1}>{mode === 'add' ? 'Add a home' : 'Edit home'}</h1><p>{mode === 'add' ? (importResult ? 'Review what we found, fill in anything that matters, and save this contender.' : 'Review the property details before adding this home to your search.') : "Update this home's details. Changes to shared property information are visible to everyone in this search."}</p>{hasInspector && <button type="button" className="hh-listing-inspector-entry" aria-controls="flh-listing-details" onClick={showInspector}><Check size={14} /> {inspectorCount} listing detail{inspectorCount === 1 ? '' : 's'} found <span>View →</span></button>}</div>
+        <div>
+          <p className="flh-eyebrow">{adding ? <>Review imported {vocabulary.singularLower}<span className="flh-step-count"> · Step {step === 'review' ? 1 : 2} of 2</span></> : `Edit ${vocabulary.singularLower}`}</p>
+          <h1 ref={titleRef} id="edit-home-title" className="hh-serif" tabIndex={-1}>{adding ? (step === 'review' ? 'Check what came through.' : 'How this home fits you.') : 'Refine what FLH knows.'}</h1>
+          <p>{adding
+            ? (step === 'review' ? 'Imported listing details can be incomplete. Correct only what you actually know — anything missing stays Unknown.' : 'These are the priorities you set in My Search. Confirm what’s true for this home — don’t re-rank them here.')
+            : 'Correct the listing, add what you know, and keep your perspective current. Changes to shared property information are visible to everyone in this search.'}</p>
+          {hasInspector && !(adding && step === 'match') && <button type="button" className="hh-listing-inspector-entry" aria-controls="flh-listing-details" onClick={showInspector}><Check size={14} /> {inspectorCount} listing detail{inspectorCount === 1 ? '' : 's'} found <span>View →</span></button>}
+        </div>
         <button type="button" className="hh-btn hh-btn-ghost hh-edit-home-close" onClick={onClose} aria-label={mode === 'add' ? 'Close add home' : 'Close edit home'}><X size={18} aria-hidden="true" /></button>
       </header>
 
-      <div className={`hh-workspace-shell ${inspectorOpen && hasInspector ? 'has-inspector' : ''}`}><div className="hh-edit-home-columns">
+      <div ref={shellRef} className={`hh-workspace-shell hh-edit-steps ${adding ? `is-adding is-step-${step}` : ''} ${inspectorOpen && hasInspector ? 'has-inspector' : ''}`}><div className="hh-edit-home-columns">
         <div className="hh-edit-home-column">
-          <section className="hh-edit-home-card" aria-labelledby="property-address-heading">
+          <div data-step="review"><WhatFlhFoundIntro /></div>
+          <div data-step="review"><HomeSummaryCard form={form} priorities={priorities} previewSrc={currentPreviewSrc} /></div>
+          <section className="hh-edit-home-card" data-step="review" aria-labelledby="property-address-heading">
             <h2 id="property-address-heading" className="hh-serif">Property address</h2>
             {apartment && <div><label className="hh-label">Property name</label><input className="hh-input" value={form.propertyName || ''} onChange={(e) => set('propertyName', e.target.value)} /></div>}
             <div><label className="hh-label">Address *</label><AddressAutocomplete value={form.address} onChange={(value) => set('address', value)} onSelect={(value) => set('address', value)} placeholder="123 Maple St, Ann Arbor, MI" /></div>
             <div><label className="hh-label">Original listing URL</label><input className="hh-input" type="url" value={form.listingUrl || ''} onChange={(e) => set('listingUrl', e.target.value)} placeholder="https://…" /></div>
           </section>
 
-          <section className="hh-edit-home-card" aria-labelledby="home-photo-heading">
+          <section className="hh-edit-home-card" data-step="review" aria-labelledby="home-photo-heading">
             <h2 id="home-photo-heading" className="hh-serif">Home photo</h2>
             <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhotoFileChange} hidden />
             {currentPreviewSrc ? <div className="hh-edit-photo-frame"><img src={currentPreviewSrc} alt="Current home" /></div> : <div className="hh-edit-photo-empty"><Upload size={22} aria-hidden="true" /><span>No photo added</span></div>}
@@ -293,23 +388,25 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
             {photoError && <p className="hh-edit-error" role="alert">{photoError}</p>}
           </section>
 
-          <section className="hh-edit-home-card" aria-labelledby="key-details-heading">
+          <section className="hh-edit-home-card" data-step="review" aria-labelledby="key-details-heading">
             <h2 id="key-details-heading" className="hh-serif">Key details</h2>
+            {snapshotAvailable && <p className="flh-provenance-legend" aria-label="Provenance key"><span className="flh-provenance is-listing">From listing</span><span className="flh-provenance is-you">Added by you</span><span className="flh-provenance is-unknown">Unknown</span></p>}
             <div className="hh-edit-fields-grid">
-              <CompactField label={showsRentalFacts ? 'Monthly rent' : 'Price'} value={form.price} isCurrency onChange={(value) => set('price', value)} placeholder="Unknown" />
-              {!showsRentalFacts && <CompactField label="Est. monthly payment" value={form.estMonthly} isCurrency onChange={(value) => set('estMonthly', value)} placeholder="Unknown" />}
-              <CompactField label="Beds" value={form.beds} onChange={(value) => set('beds', value)} placeholder="Unknown" />
-              <CompactField label="Baths" value={form.baths} onChange={(value) => set('baths', value)} placeholder="Unknown" />
-              <CompactField label="Square footage" value={form.sqft} onChange={(value) => set('sqft', value)} placeholder="Unknown" />
-              <CompactField label="Lot size" value={form.lotSize} onChange={(value) => set('lotSize', value)} placeholder="Unknown" />
-              <CompactField label="Year built" value={form.yearBuilt} onChange={(value) => set('yearBuilt', value)} placeholder="Unknown" />
-              <CompactField label="Garage" value={form.garageSpaces} onChange={(value) => set('garageSpaces', value)} placeholder="Unknown" />
+              <CompactField label={showsRentalFacts ? 'Monthly rent' : 'Price'} value={form.price} isCurrency onChange={(value) => set('price', value)} placeholder="Unknown" provenance={provenanceOf('price')} />
+              {!showsRentalFacts && <CompactField label="Est. monthly payment" value={form.estMonthly} isCurrency onChange={(value) => set('estMonthly', value)} placeholder="Unknown" provenance={provenanceOf('estMonthly')} />}
+              <CompactField label="Beds" value={form.beds} onChange={(value) => set('beds', value)} placeholder="Unknown" provenance={provenanceOf('beds')} />
+              <CompactField label="Baths" value={form.baths} onChange={(value) => set('baths', value)} placeholder="Unknown" provenance={provenanceOf('baths')} />
+              <CompactField label="Square footage" value={form.sqft} onChange={(value) => set('sqft', value)} placeholder="Unknown" provenance={provenanceOf('sqft')} />
+              <CompactField label="Lot size" value={form.lotSize} onChange={(value) => set('lotSize', value)} placeholder="Unknown" provenance={provenanceOf('lotSize')} />
+              <CompactField label="Year built" value={form.yearBuilt} onChange={(value) => set('yearBuilt', value)} placeholder="Unknown" provenance={provenanceOf('yearBuilt')} />
+              <CompactField label="Garage" value={form.garageSpaces} onChange={(value) => set('garageSpaces', value)} placeholder="Unknown" provenance={provenanceOf('garageSpaces')} />
             </div>
+            <p className="flh-unknown-helper"><ShieldCheck size={14} aria-hidden="true" /> Unknown is neutral. Leave a field alone when the listing doesn’t support a reliable answer.</p>
           </section>
         </div>
 
         <div className="hh-edit-home-column">
-          <section className="hh-edit-home-card" aria-labelledby="home-details-heading">
+          <section className="hh-edit-home-card" data-step="review" aria-labelledby="home-details-heading">
             <h2 id="home-details-heading" className="hh-serif">Home details</h2>
             <div className="hh-edit-fields-grid">
               <CompactField label="Basement" value={form.basementNotes} onChange={(value) => set('basementNotes', value)} placeholder="Unknown" />
@@ -319,37 +416,51 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
             </div>
           </section>
 
-          <section className="hh-edit-home-card" aria-labelledby="personalized-matches-heading">
-            <div className="hh-edit-heading-row"><h2 id="personalized-matches-heading" className="hh-serif">Personalized Match</h2><span>Used in Match Score</span></div>
-            <p className="hh-edit-context">Correct the known property facts that matter to your configured criteria. Unknown is never treated as No.</p>
+          <section className="hh-edit-home-card" data-step="match" aria-labelledby="personalized-matches-heading">
+            <div className="hh-edit-heading-row"><h2 id="personalized-matches-heading" className="hh-serif">Personalized Match</h2><span>{criteria.length} applicable</span></div>
+            <p className="hh-edit-context">Confirm what’s true for this {vocabulary.singularLower}. Priority levels come from My Search. Unknown is never treated as No — it won’t count against this {vocabulary.singularLower}.</p>
             {shownCriteria.length ? <div className="hh-edit-criteria">{shownCriteria.map((item) => {
               const key = `${item.categoryKey}:${item.label}`;
               const value = foldedChecks[key];
-              return <div className="hh-edit-criterion" key={key}><div><b>{criterionDisplayLabel(item.categoryKey, item.label)}</b><span>{priorityLabel(item)}</span></div><div className="hh-edit-tristate" role="group" aria-label={`${criterionDisplayLabel(item.categoryKey, item.label)} property fact`}>
+              return <div className="hh-edit-criterion" key={key}><div><b>{criterionDisplayLabel(item.categoryKey, item.label)}</b><span className={`flh-tier-label is-${item.tier}`}>{priorityLabel(item)}</span>{value === undefined && <span className="flh-provenance is-unknown">Not confirmed</span>}</div><div className="hh-edit-tristate" role="group" aria-label={`${criterionDisplayLabel(item.categoryKey, item.label)} property fact`}>
                 {[['yes', 'Yes', true], ['no', 'No', 'no'], ['unknown', 'Unknown', undefined]].map(([id, label, next]) => { const selected = next === undefined ? value === undefined : value === next; return <button type="button" key={id} className={`hh-chip is-${id} ${selected ? 'on' : ''}`} aria-pressed={selected} onClick={() => setCheckItem(item.categoryKey, item.label, next)}>{label}</button>; })}
               </div></div>;
             })}</div> : <p className="hh-edit-empty">No Match criteria are configured for this search.</p>}
             {criteria.length > 6 && <button type="button" className="hh-btn hh-btn-ghost hh-edit-disclosure" aria-expanded={allCriteriaOpen} onClick={() => setAllCriteriaOpen((value) => !value)}>{allCriteriaOpen ? 'Show prioritized criteria' : 'View all Match criteria'}</button>}
+            <p className="flh-basics-note">Search Basics — budget, beds, baths, size, home type, layout, and condition — live in <Link href="/search">My Search</Link>; they aren’t re-weighted here.</p>
           </section>
 
-          <section className="hh-edit-home-card" aria-labelledby="shared-notes-heading">
-            <h2 id="shared-notes-heading" className="hh-serif">Shared notes</h2>
-            <p className="hh-edit-context">{isCollaborative ? 'Pros, cons, and notes are visible to everyone in this search.' : 'Keep the details you want to remember with this home.'}</p>
-            {!notesOpen ? <div className="hh-edit-notes"><NoteSummary label="Pros" value={form.pros} /><NoteSummary label="Cons" value={form.cons} /><NoteSummary label="Notes" value={form.notes} /></div> : <div className="hh-edit-notes-fields"><div><label className="hh-label">Pros</label><textarea className="hh-textarea" value={form.pros || ''} onChange={(e) => set('pros', e.target.value)} /></div><div><label className="hh-label">Cons</label><textarea className="hh-textarea" value={form.cons || ''} onChange={(e) => set('cons', e.target.value)} /></div><div><label className="hh-label">Notes</label><textarea className="hh-textarea" value={form.notes || ''} onChange={(e) => set('notes', e.target.value)} placeholder="HOA details, sewer/water, financing options, recent updates, listing terms, or anything else worth noting." /></div></div>}
-            <button type="button" className="hh-btn hh-btn-ghost hh-edit-disclosure" aria-expanded={notesOpen} onClick={() => setNotesOpen((value) => !value)}>{notesOpen ? 'Show notes summary' : 'Edit notes'}</button>
+          {/* Pros, cons, and notes are stored on the shared home (see SHARED_FIELDS in
+              collaboration.js), so they are labeled truthfully: private to you in a
+              solo search, visible to everyone in a shared one. Your Yes/No/Unknown
+              answers above are the part that stays yours. */}
+          <section className="hh-edit-home-card" data-step="match" aria-labelledby="shared-notes-heading">
+            <h2 id="shared-notes-heading" className="hh-serif">{isCollaborative ? 'Shared notes' : 'Your perspective'}</h2>
+            <p className="hh-edit-context">{isCollaborative ? 'Pros, cons, and notes are visible to everyone in this search.' : 'Your impressions — not verified property facts.'}{isCollaborative && ' Your Yes / No / Unknown answers and Match stay your own.'}</p>
+            <div className="hh-edit-notes-fields">
+              <div><label className="hh-label" htmlFor="edit-home-pros">+ Pros</label><textarea id="edit-home-pros" className="hh-textarea" value={form.pros || ''} onChange={(e) => set('pros', e.target.value)} placeholder="Bright front room, dedicated office…" /></div>
+              <div><label className="hh-label" htmlFor="edit-home-cons">− Cons</label><textarea id="edit-home-cons" className="hh-textarea" value={form.cons || ''} onChange={(e) => set('cons', e.target.value)} placeholder="Backyard fencing is unclear…" /></div>
+              <div><label className="hh-label" htmlFor="edit-home-notes">Notes</label><textarea id="edit-home-notes" className="hh-textarea" value={form.notes || ''} onChange={(e) => set('notes', e.target.value)} placeholder="HOA details, sewer/water, financing options, recent updates, listing terms, or anything else worth noting." /></div>
+            </div>
           </section>
-          {matchPerspectives.length > 0 && form.address.trim() && <section className="hh-edit-home-card hh-suggestion-match-preview" aria-label="Buyer Match preview"><h2 className="hh-serif">How this lines up</h2><p>Based only on currently known property facts. Unknown details are not counted as misses.</p>{matchPerspectives.map((perspective) => { const match = computeMatch(form, perspective.priorities); return <div key={perspective.userId}><b>{perspective.name}</b><span>{match?.pct == null ? 'Match needs more known facts' : `${match.pct}% Match`}</span><small>{match?.allSelected?.filter((item) => !item.evaluated).slice(0, 3).map((item) => `${item.label} — Unknown`).join(' · ')}</small></div>; })}</section>}
+          {matchPerspectives.length > 0 && form.address.trim() && <section className="hh-edit-home-card hh-suggestion-match-preview" data-step="match" aria-label="Buyer Match preview"><h2 className="hh-serif">How this lines up</h2><p>Based only on currently known property facts. Unknown details are not counted as misses.</p>{matchPerspectives.map((perspective) => { const match = computeMatch(form, perspective.priorities); return <div key={perspective.userId}><b>{perspective.name}</b><span>{match?.pct == null ? 'Match needs more known facts' : `${match.pct}% Match`}</span><small>{match?.allSelected?.filter((item) => !item.evaluated).slice(0, 3).map((item) => `${item.label} — Unknown`).join(' · ')}</small></div>; })}</section>}
         </div>
       </div>
 
-      {inspectorOpen && hasInspector && <div className="hh-workspace-inspector"><button type="button" className="hh-btn hh-btn-ghost hh-inspector-close" onClick={() => setInspectorOpen(false)} aria-label="Close listing details"><X size={16} /></button><WhatFlhFound panelRef={inspectorRef} result={inspectorResult} listingUrl={form.listingUrl} /></div>}</div>
+      {inspectorOpen && hasInspector && <div className="hh-workspace-inspector" data-step="review"><button type="button" className="hh-btn hh-btn-ghost hh-inspector-close" onClick={() => setInspectorOpen(false)} aria-label="Close listing details"><X size={16} /></button><WhatFlhFound panelRef={inspectorRef} result={inspectorResult} listingUrl={form.listingUrl} /></div>}</div>
       {saveErrorMsg && <div className="hh-edit-save-error" role="alert">{saveErrorMsg}</div>}
-      <footer className="hh-edit-home-footer"><button type="button" className="hh-btn hh-btn-ghost" onClick={onClose}>Cancel</button><button type="button" className="hh-btn" onClick={submit} disabled={!form.address.trim() || saving}>{saving ? 'Saving…' : mode === 'add' ? 'Save home' : 'Save changes'}</button></footer>
+      <footer className={`hh-edit-home-footer hh-edit-steps-footer ${adding ? `is-adding is-step-${step}` : ''}`}>
+        {adding && step === 'match'
+          ? <button type="button" className="hh-btn hh-btn-ghost flh-step-back" onClick={() => goToStep('review')}><ChevronLeft size={16} aria-hidden="true" /> Back</button>
+          : <button type="button" className="hh-btn hh-btn-ghost" onClick={onClose}>Cancel</button>}
+        {adding && <button type="button" className="hh-btn flh-step-next" onClick={() => goToStep('match')} disabled={!form.address.trim()}>Review Match <ArrowRight size={15} aria-hidden="true" /></button>}
+        <button type="button" className="hh-btn flh-step-save" onClick={submit} disabled={!form.address.trim() || saving}>{saving ? 'Saving…' : mode === 'add' ? 'Save home' : 'Save changes'}</button>
+      </footer>
     </div>
   </div>;
 }
 
-export default function HomeModal({ initial, priorities, sharedFactAwareness = {}, isCollaborative = false, onSave, onClose, userId, onWantToTour, onArchiveRequest, presentation = 'modal', autoFindOnMount = false, matchPerspectives = [], saveLabel = null }) {
+export default function HomeModal({ initial, priorities, sharedFactAwareness = {}, isCollaborative = false, onSave, onClose, userId, onWantToTour, onArchiveRequest, presentation = 'modal', autoFindOnMount = false, matchPerspectives = [], saveLabel = null, existingHomes = [] }) {
   const [form, setForm] = useState(initial);
   const vocabulary = homeVocabulary(priorities);
   const [pasteText, setPasteText] = useState('');
@@ -386,6 +497,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState(null);
   const [photoError, setPhotoError] = useState('');
   const [saveErrorMsg, setSaveErrorMsg] = useState('');
+  const [duplicateHome, setDuplicateHome] = useState(null);
   const [showPhotoUrlInput, setShowPhotoUrlInput] = useState(false);
   const photoInputRef = useRef(null);
   const dialogRef = useRef(null);
@@ -618,6 +730,10 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     const looksLikeUrl = isLikelyListingUrl(raw);
 
     if (looksLikeUrl) {
+      // The same exact-URL rule the share intake uses (HomesBoard): a listing this
+      // search already holds is opened, never imported a second time.
+      const existing = findHomeByListingUrl(existingHomes, raw);
+      if (existing) { setDuplicateHome(existing); return; }
       const result = extractAddressFromListingUrl(raw);
       if (result?.address) {
         setApartmentIdentity(null);
@@ -666,6 +782,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   };
 
   const isNewHome = !initial.address;
+  if (isNewHome && duplicateHome) return <DuplicateHomeView home={duplicateHome} priorities={priorities} userId={userId} isCollaborative={isCollaborative} vocabulary={vocabulary} dialogRef={dialogRef} titleRef={titleRef} onClose={onClose} onBack={() => setDuplicateHome(null)} />;
   const workspaceReady = !isNewHome || ['success', 'text-success', 'empty', 'error'].includes(importPhase);
 
   if (workspaceReady) return <EditHomeEditor
@@ -681,19 +798,21 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   return <div className="hh-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
     <div ref={dialogRef} className="hh-modal hh-corner hh-add-home-modal hh-add-home-discovery" role="dialog" aria-modal="true" aria-labelledby="add-home-title">
       <header className="hh-edit-home-header">
-        <div><h1 ref={titleRef} id="add-home-title" className="hh-serif" tabIndex={-1}>Add a home</h1><p>Introduce a new contender to analyze compatibility.</p></div>
+        <div><p className="flh-eyebrow">Add a {vocabulary.singularLower}</p><h1 ref={titleRef} id="add-home-title" className="hh-serif" tabIndex={-1}>Bring in a {vocabulary.singularLower} you found.</h1><p>You found the {vocabulary.singularLower}. Feels Like Home helps you evaluate it.</p></div>
         <button type="button" className="hh-btn hh-btn-ghost hh-edit-home-close" onClick={onClose} aria-label="Close add home"><X size={18} /></button>
       </header>
       <section className="hh-import-listing">
-        <AddSectionHeading icon={Search} title="Import a listing">Paste a listing link or enter an address. We&apos;ll fill in what we can.</AddSectionHeading>
-        <label className="hh-label">Listing link or address</label>
+        <AddSectionHeading icon={Search} title="Listing URL">Paste a link from Zillow, Redfin, Realtor.com, or any listing site — or an address.</AddSectionHeading>
+        <label className="hh-label" htmlFor="add-home-find">Listing link or address</label>
         <div className="hh-find-home-row">
-          <input className="hh-input" value={findInput} onChange={(event) => setFindInput(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && handleFind()} placeholder="Listing link or address" />
-          <button type="button" className="hh-btn" onClick={handleFind} disabled={!findInput.trim() || importPhase === 'loading'}>{importPhase === 'loading' ? 'Finding…' : 'Find this home'}</button>
+          <input id="add-home-find" className="hh-input" inputMode="url" autoCapitalize="none" autoCorrect="off" value={findInput} onChange={(event) => setFindInput(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && handleFind()} placeholder="https://www.zillow.com/homedetails/…" />
+          <button type="button" className="hh-btn" onClick={handleFind} disabled={!findInput.trim() || importPhase === 'loading'}>{importPhase === 'loading' ? 'Finding…' : `Review this ${vocabulary.singularLower}`}</button>
         </div>
+        <p className="flh-source-note">The original listing stays the source of truth. FLH keeps its link and never invents details it didn’t find.</p>
         {importPhase === 'identity' && apartmentIdentity && <div className="hh-manual-address"><p>We found {apartmentIdentity.propertyName}. Add its street address to continue.</p><AddressAutocomplete value={fallbackAddressInput} onChange={setFallbackAddressInput} onSelect={setFallbackAddressInput} /><button type="button" className="hh-btn" onClick={handleFallbackAddressLookup}>Use address</button></div>}
         {urlFallbackMsg && <p className="hh-edit-error">{urlFallbackMsg}</p>}
       </section>
+      {isNativeApp() && <aside className="flh-share-callout" aria-label="Add from the Share Sheet"><Share size={18} aria-hidden="true" /><div><strong>Faster from your listing app</strong><p>Tap Share on any listing, then choose Feels Like Home. It opens right here, ready to review.</p></div></aside>}
       <details className="hh-details hh-manual-fallback">
         <summary><span className="hh-accordion-icon"><ClipboardPaste size={24} /></span><span>Can&apos;t find the home? Paste listing details instead<small>Enter the details manually when a link isn&apos;t available.</small></span><ChevronDown className="hh-accordion-chevron" size={20} /></summary>
         <textarea className="hh-textarea" value={pasteText} onChange={(event) => setPasteText(event.target.value)} placeholder="Paste listing details (optional)" />

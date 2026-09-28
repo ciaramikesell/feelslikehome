@@ -34,10 +34,13 @@ test('one or many authorized clients render while empty relationships are intent
 test('Realtor context hides buyer navigation without changing dual-role permissions', () => {
   assert.match(appLayout, /workspace="realtor"/);
   assert.match(shell, /workspace = 'buyer'/);
-  assert.match(shell, /!isRealtorWorkspace && <nav className="hh-tabs"/);
-  assert.match(shell, /!isRealtorWorkspace && <MobileNav/);
+  // Buyer chrome renders only for the buyer workspace (never realtor, never the
+  // search-less Account shell).
+  assert.match(shell, /const hasBuyerSearch = workspace === 'buyer';/);
+  assert.match(shell, /hasBuyerSearch && <nav className="hh-tabs"/);
+  assert.match(shell, /hasBuyerSearch && <MobileNav/);
   assert.match(shell, /\(isRealtorWorkspace \|\| hasRealtorRelationships\).*People I’m Helping/);
-  assert.match(shell, /!isRealtorWorkspace && <Link[\s\S]*?My Search/);
+  assert.match(shell, /hasBuyerSearch && <Link[\s\S]*?My Search/);
 });
 
 test('URL access fails closed before any client context is returned', () => {

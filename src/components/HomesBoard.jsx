@@ -131,7 +131,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   const coBuyerActivity = home.coBuyerWantsToTour ? 'Co-buyer wants to tour' : home.coBuyerFavorited ? 'Co-buyer favorited' : null;
 
   return (
-    <article className={`hh-home-card hh-corner ${mode === 'archive' ? 'is-archived' : ''} ${mode === 'homes' ? 'is-contender' : ''}`} ref={commuteRef}>
+    <article className={`hh-home-card hh-corner ${mode === 'archive' ? 'is-archived' : ''} ${mode === 'homes' ? 'is-contender' : ''} ${mode === 'tour' ? 'is-tour' : ''}`} ref={commuteRef}>
       <div className="hh-home-card-surface">
         <div className={`hh-home-card-photo ${showPhoto ? '' : 'is-empty'}`}>
         <Link href={`/homes/${encodeURIComponent(home.id)}`} className="hh-home-card-photo-link" aria-label={`Open ${identity.accessible} details`}>
@@ -785,7 +785,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         <HomeModal
           initial={modalHome} priorities={priorities} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} userId={userId}
           onSave={saveEditedHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget}
-          autoFindOnMount={modalAutoFind}
+          autoFindOnMount={modalAutoFind} existingHomes={homes}
         />
       )}
 

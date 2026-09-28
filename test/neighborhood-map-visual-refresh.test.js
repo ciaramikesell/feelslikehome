@@ -161,7 +161,7 @@ test('empty states stay truthful: no homes/places, homes with none mappable, and
 
 test('solo search: no collaboration attribution noise when there is no collaborator place to attribute', async () => {
   const map = await source('src/components/SavedHomesMap.jsx');
-  assert.match(map, /const isCollaborativeMap = eligibleDestinations\.some\(\(destination\) => destination\.owner === 'collaborator'\);/);
+  assert.match(map, /const isCollaborativeMap = places\.some\(\(destination\) => destination\.owner === 'collaborator'\);/);
   assert.match(map, /\{isCollaborativeMap && `\$\{attribution\} · `\}/);
 });
 

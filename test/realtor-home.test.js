@@ -105,7 +105,7 @@ test('authenticated navigation exposes Realtor Home alongside People I’m Helpi
   assert.match(appShell, /href="\/realtor" className=\{`hh-shell-action hh-people-entry \$\{pathname === '\/realtor' \? 'active' : ''\}`\}/);
   assert.match(appShell, /isRealtorWorkspace \|\| hasRealtorRelationships/);
   assert.match(appShell, /hasRealtorRelationships = accessibleSearches\?\.some\(\(search\) => search\.relationshipType === 'realtor'\)/);
-  assert.match(appShell, /!isRealtorWorkspace && <nav className="hh-tabs"/);
+  assert.match(appShell, /hasBuyerSearch && <nav className="hh-tabs"/);
 });
 
 test('no global realtor role, no directory, and requests remain distinct from membership at every layer', () => {

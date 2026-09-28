@@ -47,7 +47,7 @@ export default function SavedHomesMap({ homes, destinations = [], collaboratorDe
     ...collaboratorDestinations.map((d) => ({ ...d, owner: 'collaborator' })),
   ], [destinations, collaboratorDestinations]);
   const eligibleDestinations = useMemo(() => places.filter((destination) => destination.mapPosition), [places]);
-  const isCollaborativeMap = eligibleDestinations.some((destination) => destination.owner === 'collaborator');
+  const isCollaborativeMap = places.some((destination) => destination.owner === 'collaborator');
   // Start with the geography unobstructed. A preview is an explicit result of
   // choosing a marker/list row, rather than permanent furniture over the map.
   const [selection, setSelection] = useState(null);
@@ -194,10 +194,25 @@ export default function SavedHomesMap({ homes, destinations = [], collaboratorDe
         <h2 className="hh-serif">Places That Matter to This Search</h2>
         <p>See commute times from your homes to the places that matter to you.</p>
       </div>
-      {eligibleDestinations.length > 0 ? (
+      {/* Every saved place is listed, in its saved order. A place the map can't
+          position yet (no mapPosition) is still shown — labeled, not dropped — it
+          just has no marker to select. */}
+      {places.length > 0 ? (
         <div className="hh-map-places-cards">
-          {eligibleDestinations.map((destination) => {
+          {places.map((destination) => {
             const attribution = destination.owner === 'collaborator' ? `${collaboratorName || 'Your collaborator'}'s place` : 'Your place';
+            if (!destination.mapPosition) return (
+              <div key={destination.id} className={`hh-map-place-card is-unplaced ${destination.owner === 'collaborator' ? 'is-collaborator' : ''}`}>
+                <MapPin size={15} aria-hidden="true" />
+                <div>
+                  <strong>{destination.label}</strong>
+                  {destination.address && <small>{destination.address}</small>}
+                  <span className="hh-map-place-attribution">
+                    {isCollaborativeMap && `${attribution} · `}Not on the map yet
+                  </span>
+                </div>
+              </div>
+            );
             return (
               <button
                 key={destination.id}

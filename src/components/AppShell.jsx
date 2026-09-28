@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Home as HomeIcon, Columns, HelpCircle, Footprints, SlidersHorizontal, Map, Users, Search, Plus, Heart, DoorOpen, Sparkles, Scale, Compass, X } from 'lucide-react';
+import { LogOut, Home as HomeIcon, Columns, HelpCircle, Footprints, SlidersHorizontal, Map, Users, Search, Plus, Heart, DoorOpen, Sparkles, Scale, Compass, X, UserRound } from 'lucide-react';
 import { BrandMark, Wordmark } from '@/components/ui';
 import { PRIMARY_TABS, MOBILE_PRIMARY_TABS } from '@/lib/constants';
 import { homeVocabulary } from '@/lib/homePresentation';
@@ -243,6 +243,9 @@ export default function AppShell({ children, userEmail, userId, firstName = null
   const vocabulary = homeVocabulary(priorities);
   const hasRealtorRelationships = accessibleSearches?.some((search) => search.relationshipType === 'realtor');
   const isRealtorWorkspace = workspace === 'realtor';
+  // Search-scoped chrome (tabs, switcher, My Search) only renders with a buyer
+  // search; Realtor workspaces and a search-less Account page have none.
+  const hasBuyerSearch = workspace === 'buyer';
 
   // Centralizes the one native-vs-web chrome difference this shell needs —
   // the installed app has no browser UI pushing content below the status
@@ -299,13 +302,13 @@ export default function AppShell({ children, userEmail, userId, firstName = null
             </div>
           </div>
           <div className="hh-shell-utilities">
-            {!isRealtorWorkspace && isCollaborative && <span className="hh-collaboration-pill">Searching together</span>}
-            {!isRealtorWorkspace && accessibleSearches && accessibleSearches.length > 1 && (
+            {hasBuyerSearch && isCollaborative && <span className="hh-collaboration-pill">Searching together</span>}
+            {hasBuyerSearch && accessibleSearches && accessibleSearches.length > 1 && (
               <SearchSwitcher userId={userId} searches={accessibleSearches} activeSearchId={activeSearchId} />
             )}
             {(isRealtorWorkspace || hasRealtorRelationships) && <Link href="/realtor" className={`hh-shell-action hh-people-entry ${pathname === '/realtor' ? 'active' : ''}`}><Compass size={14} /> Realtor Home</Link>}
             {(isRealtorWorkspace || hasRealtorRelationships) && <Link href="/people" className={`hh-shell-action hh-people-entry ${pathname.startsWith('/people') ? 'active' : ''}`}><Users size={14} /> People I’m Helping</Link>}
-            {!isRealtorWorkspace && <Link
+            {hasBuyerSearch && <Link
               href="/search"
               className={`hh-shell-action hh-shell-action-primary hh-desktop-only ${pathname === '/search' || pathname.startsWith('/search/') ? 'active' : ''}`}
             >
@@ -314,7 +317,10 @@ export default function AppShell({ children, userEmail, userId, firstName = null
             <button className="hh-shell-action" onClick={() => setHowToOpen(true)}>
               <HelpCircle size={14} /> How it works
             </button>
-            <button className="hh-shell-action hh-shell-action-quiet" onClick={signOut}>
+            <Link href="/account" className={`hh-shell-action hh-account-entry ${pathname === '/account' ? 'active' : ''}`} aria-label="Account & Settings">
+              <UserRound size={14} aria-hidden="true" /> <span className="hh-account-entry-label">Account</span>
+            </Link>
+            <button className="hh-shell-action hh-shell-action-quiet hh-desktop-only" onClick={signOut}>
               <LogOut size={14} /> Sign out
             </button>
           </div>
@@ -322,7 +328,7 @@ export default function AppShell({ children, userEmail, userId, firstName = null
 
         {!firstName && <NameCompletionPrompt userId={userId} onSaved={() => router.refresh()} />}
 
-        {!isRealtorWorkspace && <nav className="hh-tabs" aria-label="Primary navigation">
+        {hasBuyerSearch && <nav className="hh-tabs" aria-label="Primary navigation">
           {PRIMARY_TABS.map(({ key, label, href }) => {
             const Icon = TAB_ICONS[key];
             const presentationLabel = key === 'homes' ? vocabulary.plural : label;
@@ -337,7 +343,7 @@ export default function AppShell({ children, userEmail, userId, firstName = null
         {children}
       </div>
 
-      {!isRealtorWorkspace && <MobileNav pathname={pathname} vocabulary={vocabulary} highlightKey={tourOpen ? mobileTourSteps(vocabulary)[tourStep]?.key : undefined} />}
+      {hasBuyerSearch && <MobileNav pathname={pathname} vocabulary={vocabulary} highlightKey={tourOpen ? mobileTourSteps(vocabulary)[tourStep]?.key : undefined} />}
 
       {tourOpen && (
         <MobileFirstRunTour

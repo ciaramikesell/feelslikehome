@@ -37,7 +37,9 @@ test('isLikelyListingUrl: real execution over the basic-routing matrix', () => {
 });
 
 test('handleFind and the /homes?url= intake share the exact same URL predicate — no drift between the two entry points', () => {
-  assert.match(homeModal, /import \{ extractAddressFromListingUrl, extractApartmentIdentityFromListingUrl, isLikelyListingUrl \} from '@\/lib\/listingUrl'/);
+  // Manual Add also imports findHomeByListingUrl: a pasted URL this search already
+  // holds uses the exact same duplicate rule as the share intake.
+  assert.match(homeModal, /import \{ extractAddressFromListingUrl, extractApartmentIdentityFromListingUrl, isLikelyListingUrl, findHomeByListingUrl \} from '@\/lib\/listingUrl'/);
   assert.match(homeModal, /const looksLikeUrl = isLikelyListingUrl\(raw\);/);
   assert.doesNotMatch(homeModal, /\/\^https\?:\\\/\\\/\/i\.test/, 'the old inline regex should be gone from HomeModal now that it is centralized');
   assert.match(homesBoard, /import \{ isLikelyListingUrl, findHomeByListingUrl \} from '@\/lib\/listingUrl'/);
