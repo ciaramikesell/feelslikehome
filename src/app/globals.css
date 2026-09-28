@@ -36,7 +36,7 @@ html { scroll-behavior: smooth; }
 .hh-brand-copy { min-width: 0; }
 .hh-brand-tagline { margin: 2px 0 0; color: var(--ink-soft); font-size: 8.5px; font-weight: 700; letter-spacing: .16em; }
 .hh-shell-utilities { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
-.hh-collaboration-pill { display:inline-flex; min-height:32px; align-items:center; padding:6px 11px; border:1px solid rgba(86,114,77,.24); border-radius:999px; background:var(--sage); color:var(--positive); font-size:11.5px; font-weight:700; }
+.hh-collaboration-pill { display:inline-flex; gap:5px; min-height:32px; align-items:center; padding:6px 11px; border:1px solid rgba(86,114,77,.24); border-radius:999px; background:var(--sage); color:var(--positive); font-size:11.5px; font-weight:700; }
 .hh-shell-action { min-height: 38px; padding: 8px 11px; border: 0; border-radius: 9px; background: transparent; color: var(--ink-soft); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font: 600 12.5px 'Plus Jakarta Sans', sans-serif; text-decoration: none; }
 .hh-shell-action:hover, .hh-shell-action:focus-visible { color: var(--ink); background: rgba(46,38,33,.045); outline: none; }
 .hh-shell-action-primary { color: var(--ink); background: rgba(116,128,79,.09); }
@@ -1638,6 +1638,10 @@ details[open] > summary .hh-accordion-chevron, .hh-more-home-details:has(.hh-mor
   --flh-level-must-bg: #FBEEE7; --flh-level-important-bg: #FBF2E4; --flh-level-nice-bg: #E7EFEC;
   --flh-radius-card: 16px; --flh-radius-control: 12px;
   --flh-gutter: 16px; --flh-stack: 12px;
+  /* State surfaces: negative only for a confirmed problem; unknown is neutral taupe. */
+  --flh-negative-bg: #F6DDD7; --flh-unknown-bg: #ECE7E0; --flh-accent-bg: #FBE7DC;
+  --flh-radius-thumb: 12px; --flh-thumb-w: 92px;
+  --flh-shadow-card: 0 1px 2px rgba(46,38,33,.04), 0 8px 20px -16px rgba(46,38,33,.3);
 }
 
 .flh-page { max-width: 1040px; margin: 0 auto; padding: 24px 0 36px; }
@@ -1699,6 +1703,32 @@ details[open] > summary .hh-accordion-chevron, .hh-more-home-details:has(.hh-mor
 .flh-helper-row-warm { border-color: var(--flh-warm-line); background: var(--flh-warm); }
 .flh-helper-copy strong { display: block; color: var(--ink); font-size: 14px; font-weight: 700; line-height: 1.35; }
 .flh-helper-copy span { display: block; color: var(--ink-soft); font-size: 12.5px; line-height: 1.45; }
+
+/* Decision-surface primitives shared by My Homes, Map, Compare and Home Detail. */
+.flh-match-badge { display: inline-flex; align-items: center; gap: 3px; padding: 3px 7px 3px 6px; border-radius: 999px; background: var(--brick); color: #fff; font: 700 11.5px/1.2 var(--font-sans); font-variant-numeric: tabular-nums; white-space: nowrap; box-shadow: 0 1px 4px rgba(46,38,33,.22); }
+.flh-match-badge svg { width: 11px; height: 11px; flex-shrink: 0; }
+.flh-match-badge-md { gap: 4px; padding: 4px 10px 4px 8px; font-size: 13px; }
+.flh-match-badge-md svg { width: 13px; height: 13px; }
+.flh-tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font: 600 11px/1.45 var(--font-sans); white-space: nowrap; }
+.flh-tag.is-positive { background: var(--flh-sage-bg); color: var(--flh-sage-ink); }
+.flh-tag.is-negative { background: var(--flh-negative-bg); color: var(--negative); }
+.flh-tag.is-unknown { background: var(--flh-unknown-bg); color: var(--unknown); }
+.flh-tag.is-quiet { background: var(--paper); color: var(--ink-soft); box-shadow: inset 0 0 0 1px var(--flh-card-line); }
+.flh-tag.is-accent { background: var(--flh-accent-bg); color: var(--brick-deep); }
+.flh-participants .flh-avatar { width: 30px; height: 30px; font-size: 11px; }
+.flh-participants .flh-avatar + .flh-avatar { margin-left: -9px; }
+.flh-mobile-only-inline { display: none; }
+
+/* Search field + pill controls (My Homes today; Map's toolbar next). Pills that
+   carry a chosen value (sort, active filters) are ink; plain pills are quiet. */
+.flh-search-field { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border: 1px solid var(--flh-control-line); border-radius: var(--flh-radius-control); background: #fff; color: var(--ink-soft); }
+.flh-search-field:focus-within { border-color: var(--brick); outline: 3px solid var(--focus-ring); outline-offset: 1px; }
+.flh-search-field input { flex: 1 1 0; width: 0; min-width: 0; padding: 0; border: 0; outline: none; background: transparent; color: var(--ink); font: 400 16px var(--font-sans); }
+.flh-search-field input::placeholder { color: #9A8E84; }
+.flh-control-row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.flh-control-pill { display: inline-flex; flex-shrink: 0; align-items: center; gap: 6px; min-height: 38px; padding: 0 14px; border: 1px solid var(--flh-control-line); border-radius: 999px; background: var(--flh-card); color: var(--ink); font: 600 13px var(--font-sans); text-decoration: none; cursor: pointer; }
+.flh-control-pill.is-strong, .flh-control-pill.is-active { border-color: var(--ink); background: var(--ink); color: #fff; }
+.flh-control-badge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--brick); color: #fff; font-size: 11px; }
 
 /* Controls */
 .flh-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 20px; border: 1.5px solid transparent; border-radius: 14px; font: 700 15px/1 var(--font-sans); text-decoration: none; cursor: pointer; transition: opacity .15s ease, transform .15s ease; }
@@ -1885,9 +1915,21 @@ details[open] > summary .hh-accordion-chevron, .hh-more-home-details:has(.hh-mor
 .flh-state-icon.is-negative { background: #F6DDD7; color: var(--negative); }
 .flh-state-icon.is-unknown { background: #ECE7E0; color: var(--unknown); }
 .flh-state-icon.is-neutral { background: #ECE7E0; color: var(--ink-soft); }
+.flh-toggle-row .flh-toggle-copy { flex: 1; min-width: 0; }
+.flh-toggle-icon { display: grid; place-items: center; width: 34px; height: 34px; flex-shrink: 0; border-radius: 50%; background: var(--flh-accent-bg); color: var(--brick); }
+.flh-toggle-list { display: grid; gap: 8px; }
+.flh-segmented-block { display: flex; width: 100%; box-sizing: border-box; }
+.flh-segmented-block button { flex: 1 1 0; }
+.flh-segmented-accent button.is-selected { background: var(--brick); color: #fff; box-shadow: 0 1px 3px rgba(152,67,41,.3); }
+.flh-segmented-accent button.is-selected .flh-filter-count { color: rgba(255,255,255,.82); }
+.flh-sort-grid .flh-select-card { min-height: 74px; font-size: 12.5px; }
+.flh-sort-grid .flh-select-card:not(.is-selected) > svg { color: var(--ink-soft); }
+.flh-filter-note { display: flex; align-items: flex-start; gap: 8px; margin: 0 0 8px; padding: 11px 12px; border-radius: 12px; background: var(--flh-quiet); color: var(--ink-soft); font-size: 12px; line-height: 1.45; }
+.flh-filter-note svg { flex-shrink: 0; margin-top: 1px; color: var(--flh-sage-strong); }
 
 @media (max-width: 700px) {
   .flh-mobile-only { display: block; }
+  .flh-mobile-only-inline { display: inline-flex; }
 
   /* My Homes — header, controls */
   .hh-homes-page { position: relative; }
@@ -1895,49 +1937,46 @@ details[open] > summary .hh-accordion-chevron, .hh-more-home-details:has(.hh-mor
   .hh-homes-purpose { margin: 4px 0 2px; font-size: 31px; }
   .hh-homes-count { display: block; margin: 0 0 12px; color: var(--ink-soft); font-size: 13px; }
   .hh-homes-intro .hh-cobuyer-context { display: none; }
-  .hh-homes-primary-action { position: absolute; top: 4px; right: 0; margin: 0; }
+  .hh-homes-primary-action { position: absolute; top: 4px; right: 0; align-items: center; gap: 8px; margin: 0; }
   .hh-homes-primary-action .hh-btn { width: 44px; height: 44px; min-height: 44px; padding: 0; justify-content: center; border-radius: 50%; }
   .hh-add-home-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .hh-suggestions-entry { display: flex; width: 100%; margin: 0 0 12px; padding: 10px 14px; font-size: 13px; }
   .hh-homes-toolbar { display: none; }
   .flh-homes-controls { display: grid; gap: 10px; margin: 0 0 14px; }
-  .flh-search-field { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border: 1px solid var(--flh-control-line); border-radius: 12px; background: #fff; color: var(--ink-soft); }
-  .flh-search-field:focus-within { border-color: var(--brick); outline: 3px solid var(--focus-ring); outline-offset: 1px; }
-  .flh-search-field input { flex: 1 1 0; width: 0; min-width: 0; padding: 0; border: 0; outline: none; background: transparent; color: var(--ink); font: 400 16px var(--font-sans); }
-  .flh-control-row { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
-  .flh-control-pill { display: inline-flex; flex-shrink: 0; align-items: center; gap: 6px; min-height: 38px; padding: 0 14px; border: 1px solid var(--flh-control-line); border-radius: 999px; background: var(--flh-card); color: var(--ink); font: 600 13px var(--font-sans); text-decoration: none; cursor: pointer; }
-  .flh-control-pill.is-strong { border-color: var(--ink); background: var(--ink); color: #fff; }
-  .flh-control-pill.is-active { border-color: var(--brick); color: var(--brick); }
-  .flh-control-badge { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--brick); color: #fff; font-size: 11px; }
   .flh-active-filters { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; text-align: left; }
+  .flh-active-filters .flh-card-heading { flex: 1; }
+  .flh-active-filters .flh-icon-badge { background: var(--flh-card); }
   .flh-homes-together { margin-top: 12px; }
-  .flh-homes-together .flh-card-row { grid-template-columns: auto minmax(0,1fr); }
+  .flh-homes-together .flh-card-row { grid-template-columns: auto minmax(0,1fr) auto; }
 
-  /* My Homes — compact contender cards (same HomeCard, same canonical Match) */
+  /* My Homes — compact contender cards (same HomeCard, same canonical Match).
+     The Figma row: an inset rounded thumbnail carrying the Match badge, then
+     price / address / facts / state tags, and a plain terracotta heart. */
   .hh-homes-grid { gap: 10px; }
-  .hh-home-card.is-contender .hh-home-card-surface { position: relative; flex-direction: row; min-height: 124px; border-radius: 16px; }
-  .hh-home-card.is-contender .hh-home-card-photo { position: static; flex: 0 0 116px; width: 116px; height: auto !important; min-height: 0; aspect-ratio: auto; }
-  .hh-home-card.is-contender .hh-home-card-photo-link { position: absolute; inset: 0 auto 0 0; width: 116px; }
+  .hh-home-card.is-contender.hh-corner { box-shadow: var(--flh-shadow-card); }
+  .hh-home-card.is-contender .hh-home-card-surface { position: relative; flex-direction: row; align-items: stretch; min-height: 0; border-radius: var(--flh-radius-card); background: var(--flh-card); box-shadow: inset 0 0 0 1px var(--flh-card-line); }
+  .hh-home-card.is-contender .hh-home-card-photo { position: static; flex: 0 0 var(--flh-thumb-w); width: var(--flh-thumb-w); height: auto !important; min-height: var(--flh-thumb-w); margin: 10px 0 10px 10px; border-radius: var(--flh-radius-thumb); aspect-ratio: auto; }
+  .hh-home-card.is-contender .hh-home-card-photo-link { position: relative; }
+  .hh-home-card.is-contender .hh-home-card-photo-fallback svg { width: 26px; height: 26px; }
   .hh-home-card.is-contender .hh-card-status, .hh-home-card.is-contender .hh-flh-moment,
   .hh-home-card.is-contender .hh-image-provenance, .hh-home-card.is-contender .hh-cobuyer-activity { display: none; }
-  .hh-home-card.is-contender .hh-contender-match { display: block; position: absolute; z-index: 2; top: 8px; left: 8px; padding: 3px 8px; border-radius: 999px; background: var(--match-color, var(--ink-soft)); color: #fff; font: 700 12px/1.3 var(--font-sans); box-shadow: 0 1px 4px rgba(46,38,33,.25); }
+  .hh-home-card.is-contender .hh-contender-match { display: inline-flex; position: absolute; z-index: 2; top: 6px; left: 6px; }
   /* Explicit: the shared .hh-tooltip rule (later in the cascade) makes this button
-     position: relative everywhere else. */
-  .hh-home-card.is-contender .hh-card-favorite { position: absolute; top: 8px; right: 8px; left: auto; width: 36px; height: 36px; }
-  .hh-home-card.is-contender .hh-home-card-body { flex: 1; min-width: 0; padding: 11px 12px 12px !important; gap: 3px !important; }
+     position: relative everywhere else. The heart is quiet chrome here — no
+     floating white disc — while keeping a 36px tap target. */
+  .hh-home-card.is-contender .hh-card-favorite { position: absolute; top: 4px; right: 4px; left: auto; width: 36px; height: 36px; border: 0; background: transparent; box-shadow: none; }
+  .hh-home-card.is-contender .hh-card-favorite svg { width: 17px; height: 17px; stroke: var(--brick); }
+  .hh-home-card.is-contender .hh-home-card-body { flex: 1; min-width: 0; justify-content: center; padding: 11px 12px 11px 12px !important; gap: 2px !important; }
   .hh-home-card.is-contender .hh-home-card-body > :not(.hh-card-price-row):not(.hh-card-identity):not(.hh-card-factline):not(.hh-contender-meta) { display: none !important; }
-  .hh-home-card.is-contender .hh-card-price-row { padding-right: 40px; }
-  .hh-home-card.is-contender .hh-card-price-row > span:first-child { color: var(--ink) !important; font: 600 18px/1.2 var(--font-serif) !important; }
-  .hh-home-card.is-contender .hh-card-price-row > span + span { font-size: 11.5px !important; }
-  .hh-home-card.is-contender .hh-card-identity .hh-address { font: 600 14px/1.3 var(--font-sans) !important; }
-  .hh-home-card.is-contender .hh-card-identity div { font-size: 12.5px !important; }
+  .hh-home-card.is-contender .hh-card-price-row { gap: 6px; padding-right: 30px; }
+  .hh-home-card.is-contender .hh-card-price-row > span:first-child { color: var(--ink) !important; font: 600 17.5px/1.2 var(--font-serif) !important; letter-spacing: -.01em; }
+  .hh-home-card.is-contender .hh-card-price-row > span + span { font-size: 11px !important; font-weight: 500; }
+  .hh-home-card.is-contender .hh-card-identity .hh-address { font: 700 13.5px/1.3 var(--font-sans) !important; overflow-wrap: anywhere; }
+  .hh-home-card.is-contender .hh-card-identity div { font-size: 12px !important; line-height: 1.35; }
   .hh-home-card.is-contender .hh-home-identity-link::after { content: ''; position: absolute; inset: 0; z-index: 1; }
-  .hh-home-card.is-contender .hh-card-factline { font-size: 12px !important; }
-  .hh-home-card.is-contender .hh-contender-meta { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
-  .hh-contender-meta span { padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 600; }
-  .hh-contender-meta .is-positive { background: var(--flh-sage-bg); color: var(--flh-sage-ink); }
-  .hh-contender-meta .is-quiet { background: var(--paper); color: var(--ink-soft); }
-  .hh-contender-meta .is-negative { background: #F6DDD7; color: var(--negative); }
+  .hh-home-card.is-contender .hh-card-factline { margin-top: 2px; font-size: 11.5px !important; font-weight: 500; }
+  .hh-home-card.is-contender .hh-card-factline > span > span { margin: 0 5px !important; color: var(--ink-soft) !important; }
+  .hh-home-card.is-contender .hh-contender-meta { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; }
   .hh-home-card.is-contender:hover .hh-home-card-surface { transform: none; }
 
   /* Home Detail */
@@ -2118,6 +2157,23 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
   /* Home Detail's fixed action bar owns the band above the nav; the tab rides
      above that bar instead of covering its buttons. */
   .hh-root:has(.flh-detail-action-bar) .beta-feedback { bottom: calc(var(--flh-mobile-nav-h) + 64px + 8px + var(--flh-safe-bottom)); }
+}
+/* ── Compact authenticated header (phones) ──────────────────────────────────
+   One quiet row shared by every authenticated buyer screen: a small brand
+   lockup, then icon-only utilities. Every control keeps its accessible name
+   (visible text is collapsed with font-size, not removed from the DOM) and a
+   ≥40px target. Extra utilities (search switcher, Realtor links) still wrap to
+   a second row rather than being hidden. */
+@media (max-width: 700px) {
+  .hh-app-header { --flh-brandmark-size: 26px; --flh-wordmark-size: 19px; align-items: center; flex-wrap: wrap; gap: 4px 8px; padding-bottom: 6px; border-bottom: 0; }
+  .hh-brand-lockup { width: auto; flex: 1 1 auto; gap: 8px; }
+  .hh-brand-copy { flex: 0 1 auto; white-space: nowrap; }
+  .hh-brand-tagline { display: none; }
+  .hh-shell-utilities { width: auto; flex: 0 1 auto; justify-content: flex-end; margin-left: auto; }
+  .hh-shell-action-help { width: 40px; justify-content: center; padding: 0; gap: 0; font-size: 0; }
+  .hh-shell-action-help svg, .hh-account-entry svg { width: 19px; height: 19px; }
+  .hh-account-entry { margin-left: 0; }
+  .hh-collaboration-pill { width: 32px; height: 32px; min-height: 32px; justify-content: center; padding: 0; gap: 0; font-size: 0; }
 }
 @media (max-width: 560px) {
   /* Record Your Take is a bottom sheet on phones: never taller than the space

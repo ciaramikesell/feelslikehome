@@ -5,28 +5,32 @@ import { Star, ChevronDown, Heart, Check } from 'lucide-react';
 import { TIER_ORDER, TIER_META } from '@/lib/constants';
 import { matchColor } from '@/lib/matching';
 
+// Both brand pieces size from a CSS custom property when one is set (the compact
+// authenticated phone header sets --flh-brandmark-size / --flh-wordmark-size),
+// falling back to the `size` prop everywhere else. The mark's inner parts are
+// proportional, so it stays correct at any size.
 export function BrandMark({ size = 34 }) {
+  const box = `var(--flh-brandmark-size, ${size}px)`;
   return (
-    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
-      <svg viewBox="0 0 64 64" width={size} height={size} style={{ display: 'block' }} xmlns="http://www.w3.org/2000/svg">
+    <div style={{ position: 'relative', width: box, height: box, flexShrink: 0 }}>
+      <svg viewBox="0 0 64 64" style={{ display: 'block', width: '100%', height: '100%' }} xmlns="http://www.w3.org/2000/svg">
         <path d="M6 32 L32 9 L58 32 Z" fill="var(--brick)" />
         <rect x="13" y="27" width="38" height="30" rx="7" fill="var(--brick)" />
       </svg>
       <Heart
-        size={size * 0.3}
         color="var(--paper-raised)"
         fill="var(--paper-raised)"
         strokeWidth={0}
-        style={{ position: 'absolute', top: '58%', left: '48%', transform: 'translate(-50%, -50%)' }}
+        style={{ position: 'absolute', top: '58%', left: '48%', width: '30%', height: '30%', transform: 'translate(-50%, -50%)' }}
       />
       <div
         style={{
-          position: 'absolute', top: '58%', left: '60%', width: size * 0.44, height: size * 0.44,
+          position: 'absolute', top: '58%', left: '60%', width: '44%', height: '44%',
           borderRadius: '50%', background: 'var(--moss)', border: '2px solid var(--paper)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}
       >
-        <Check size={size * 0.25} color="var(--paper-raised)" strokeWidth={3.5} />
+        <Check color="var(--paper-raised)" strokeWidth={3.5} style={{ width: '75%', height: '75%' }} />
       </div>
     </div>
   );
@@ -34,7 +38,7 @@ export function BrandMark({ size = 34 }) {
 
 export function Wordmark({ size = 27, className = 'hh-serif' }) {
   return (
-    <h1 className={className} style={{ fontSize: size, margin: 0, letterSpacing: '-0.015em' }}>
+    <h1 className={className} style={{ fontSize: `var(--flh-wordmark-size, ${size}px)`, margin: 0, letterSpacing: '-0.015em' }}>
       <span style={{ color: 'var(--ink)', fontWeight: 500 }}>Feels Like </span>
       <span style={{ color: 'var(--brick)', fontWeight: 700 }}>Home</span>
     </h1>
