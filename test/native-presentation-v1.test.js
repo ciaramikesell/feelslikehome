@@ -72,8 +72,11 @@ test('AppShell applies one centralized hh-native class instead of scattering Cap
   assert.equal((appShell.match(/isNativeApp\(\)/g) || []).length, 1);
 });
 
-test('the native shell gets its own top safe-area padding on the shared app header', () => {
-  assert.match(globalsCss, /\.hh-native \.hh-app-header \{ padding-top: max\(10px, env\(safe-area-inset-top\)\); \}/);
+test('the shared app header sits below the top safe area via the one body-owned inset (see safe-area-contract tests)', () => {
+  // body pads by the inset; the header keeps its 10px collapsed by that inset,
+  // i.e. the former max(10px, inset) position, for native and web alike.
+  assert.match(globalsCss, /\.hh-app-header \{ padding-top: var\(--flh-flow-top-10\); \}/);
+  assert.match(globalsCss, /body \{ padding-top: var\(--flh-safe-top\); \}/);
 });
 
 /* -------------------------------- Sheet primitive -------------------------------- */

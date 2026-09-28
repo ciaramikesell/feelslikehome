@@ -87,6 +87,8 @@ native shell. Findings:
   env(safe-area-inset-top)); }` inside the existing `@media (max-width:
   700px)` block. This is the only chrome change — nothing was hidden or made
   sparser beyond what was already true.
+  _Superseded by the body-owned safe-area contract after physical-device QA
+  (#77): see `docs/ios-safe-area-contract.md`._
 
 ## 4. Reusable Sheet/modal primitive
 

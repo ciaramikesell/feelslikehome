@@ -247,11 +247,10 @@ export default function AppShell({ children, userEmail, userId, firstName = null
   // search; Realtor workspaces and a search-less Account page have none.
   const hasBuyerSearch = workspace === 'buyer';
 
-  // Centralizes the one native-vs-web chrome difference this shell needs —
-  // the installed app has no browser UI pushing content below the status
-  // bar/notch, so its header needs its own safe-area-top padding (see
-  // .hh-native .hh-app-header in globals.css). Everything else about the
-  // header/tabs/nav is identical between native and mobile web.
+  // One centralized native marker (hh-native) for native-only presentation.
+  // Safe areas are NOT gated on it: they are owned by the body-level
+  // safe-area contract in globals.css, driven by env(safe-area-inset-*),
+  // which is simply 0 wherever nothing overlaps the page.
   useEffect(() => { if (isNativeApp()) setNative(true); }, []);
 
   // Reads localStorage once after mount — same mechanism and key style as

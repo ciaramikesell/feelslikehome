@@ -339,7 +339,7 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 
 /* Onboarding keeps the established paper, ink, brick, and rounded-corner language,
    while replacing the tall priority board with compact, tap-first decisions. */
-.hh-onboarding-shell { min-height: 80vh; display: flex; align-items: center; justify-content: center; padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); }
+.hh-onboarding-shell { min-height: 80vh; display: flex; align-items: center; justify-content: center; padding: var(--flh-flow-top-24) 16px max(24px, env(safe-area-inset-bottom)); }
 .hh-onboarding-card { width: 100%; max-width: 640px; padding: 28px 30px 26px; border: 1px solid var(--line); border-radius: 20px; background: var(--paper-raised); }
 .hh-onboarding-card.is-wide { max-width: 920px; }
 .hh-onboarding-brand { display: flex; justify-content: center; align-items: center; gap: 9px; margin-bottom: 17px; font-size: 18px; }
@@ -644,10 +644,11 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
      mobile nav (~62px tall) plus the iPhone home-indicator safe area. */
   .hh-root { padding: 0 14px calc(78px + env(safe-area-inset-bottom)); }
   .hh-app-header { padding: 10px 0 8px; gap: 8px; flex-wrap: wrap; }
-  /* Native-only: an installed app has no browser chrome pushing content
-     below the status bar/notch the way mobile Safari's own UI does, so only
-     the native shell needs its header padded for the top safe area. */
-  .hh-native .hh-app-header { padding-top: max(10px, env(safe-area-inset-top)); }
+  /* The top safe area is owned by <body> (see "Safe-area contract" at the end
+     of this file); the header keeps only its own 10px, collapsed by whatever
+     inset body already provides, so its position matches the former
+     max(10px, inset). */
+  .hh-app-header { padding-top: var(--flh-flow-top-10); }
   .hh-brand-lockup { width: 100%; }
   .hh-brand-copy { flex: 1; }
   .hh-user-email { display: none; }
@@ -683,7 +684,7 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   .hh-tooltip::after { display:none; }
   /* Lifted clear of the fixed mobile nav so the closed feedback tab and the
      open drawer both sit above it instead of overlapping. */
-  .beta-feedback { top: auto; bottom: calc(70px + env(safe-area-inset-bottom)); right: 14px; transform: none; }
+  .beta-feedback { top: auto; bottom: calc(var(--flh-mobile-nav-h) + 8px + var(--flh-safe-bottom)); right: 14px; transform: none; }
   .beta-feedback-tab { min-height: 38px; padding: 8px 11px; border-right: 1px solid rgba(138,124,110,.38); border-radius: 9px; writing-mode: horizontal-tb; }
   .beta-feedback.is-open { left: 14px; }
   .beta-feedback-drawer { width: 100%; max-height: min(520px, calc(100dvh - 28px)); overflow-y: auto; border-right: 1px solid var(--line); border-radius: 16px; padding: 18px; }
@@ -788,8 +789,10 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 
 /* Focused responsive behavior for the three core decision surfaces. */
 @media (max-width: 640px) {
-  .hh-modal-backdrop { padding: 0; }
-  .hh-modal { min-height: 100vh; margin: 0; padding: 22px 16px 30px; border-radius: 0; }
+  /* Full-screen phone modals start below the status bar: the backdrop's top
+     padding is the (dimmed) status-bar strip, the modal fills the rest. */
+  .hh-modal-backdrop { padding: var(--flh-safe-top) 0 0; }
+  .hh-modal { min-height: calc(100dvh - var(--flh-safe-top)); margin: 0; padding: 22px 16px calc(30px + var(--flh-safe-bottom)); border-radius: 0; }
   .hh-edit-home-backdrop { padding: 0; }
   .hh-edit-home-modal { min-height: 100dvh; padding: 0; }
   .hh-edit-home-header { padding: 20px 16px 16px; }
@@ -1168,7 +1171,7 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 /* Auth composition. These desktop declarations must live outside the responsive
    overrides below; without them the grid and contained panel collapse to normal
    block flow and every width:100% form control spans the viewport. */
-.afh-root { min-height: 100vh; }
+.afh-root { min-height: calc(100vh - var(--flh-safe-top)); }
 .afh-serif { font-family: 'Fraunces', serif; font-optical-sizing: auto; }
 .afh-grid { display: grid; grid-template-columns: minmax(0,55fr) minmax(380px,45fr); min-height: 100vh; max-width: 1440px; margin: 0 auto; }
 .afh-left { display: flex; flex-direction: column; justify-content: center; min-width: 0; padding: 56px clamp(40px,5vw,72px); }
@@ -1209,7 +1212,7 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
    used everywhere else, centered with safe-area padding for the native shell. */
 .afh-native-root {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 28px; padding: max(32px, env(safe-area-inset-top)) 22px max(32px, env(safe-area-inset-bottom));
+  gap: 28px; padding: var(--flh-flow-top-32) 22px max(32px, env(safe-area-inset-bottom));
   background: var(--paper);
 }
 .afh-native-header { display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; }
@@ -1303,9 +1306,9 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 
 /* -------------------------- signed-out public landing -------------------------- */
 /* -------------------------- public landing (pl-) -------------------------- */
-.pl-root{--font-public-serif:'Source Serif 4',Georgia,serif;min-height:100vh;overflow:hidden;background:var(--paper);color:var(--ink)}
+.pl-root{--font-public-serif:'Source Serif 4',Georgia,serif;min-height:calc(100vh - var(--flh-safe-top));overflow:hidden;background:var(--paper);color:var(--ink)}
 .pl-root h1,.pl-root h2,.pl-root h3,.pl-root h4{font-family:var(--font-public-serif);font-optical-sizing:auto}.pl-root a{color:inherit}
-.pl-skip{position:fixed;z-index:100;left:16px;top:10px;padding:10px 14px;border-radius:8px;background:var(--ink);color:#fff!important;transform:translateY(-150%)}.pl-skip:focus{transform:translateY(0)}
+.pl-skip{position:fixed;z-index:100;left:16px;top:calc(10px + var(--flh-safe-top));padding:10px 14px;border-radius:8px;background:var(--ink);color:#fff!important;transform:translateY(calc(-100% - 20px - var(--flh-safe-top)))}.pl-skip:focus{transform:translateY(0)}
 .pl-header{position:relative;z-index:10;width:min(100% - 48px,1340px);min-height:88px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:30px}.pl-brand{display:inline-flex;align-items:center;gap:12px;text-decoration:none;font:600 25px var(--font-public-serif);white-space:nowrap}.pl-brand b{color:var(--brick)}
 .pl-header>nav{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:700}.pl-nav-surface{display:flex;align-items:center;gap:4px;padding:4px;border:1px solid rgba(255,255,255,.5);border-radius:12px;background:rgba(255,249,240,.9);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}.pl-nav-surface a,.pl-nav-surface button{display:inline-flex;min-height:40px;align-items:center;padding:8px 14px;border-radius:8px}.pl-mobile-menu{display:none}.pl-header nav a:not(.pl-button),.pl-footer a{text-decoration:none;text-underline-offset:5px}.pl-header nav a:not(.pl-button):hover,.pl-header nav a:not(.pl-button):focus-visible{background:rgba(255,255,255,.62);color:var(--brick);text-decoration:none}.pl-footer a:hover{text-decoration:underline;color:var(--brick)}
 .pl-button{min-height:48px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 19px;border:1px solid var(--brick);border-radius:8px;background:var(--brick);color:#fff!important;font-size:13.5px;font-weight:700;line-height:1;text-decoration:none;box-shadow:0 10px 24px -18px rgba(46,38,33,.6);transition:background .16s ease,border-color .16s ease,transform .16s ease}.pl-button:hover{background:var(--brick-deep);border-color:var(--brick-deep);transform:translateY(-1px)}.pl-button.is-small{min-height:40px;padding:9px 15px}.pl-button.is-quiet{background:transparent;color:var(--ink)!important;border-color:var(--line);box-shadow:none}.pl-button.is-quiet:hover{background:var(--paper-raised);border-color:var(--ink-soft)}
@@ -1321,7 +1324,7 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 
 /* Public Realtor acquisition page: the buyer landing page’s professional sibling. */
 .rl-auth-trigger,.rl-text-link[type="button"],.rl-footer-auth{border:0;background:none;padding:0;color:inherit;font:inherit;cursor:pointer}.rl-auth-trigger:hover,.rl-auth-trigger:focus-visible,.rl-footer-auth:hover,.rl-footer-auth:focus-visible{text-decoration:underline;text-underline-offset:5px;color:var(--brick)}.rl-header button:focus-visible,.rl-actions button:focus-visible,.rl-footer button:focus-visible{outline:3px solid var(--focus-ring);outline-offset:3px}.rl-root .rl-mobile-auth{display:none}
-.rl-root{--rl-serif:'Source Serif 4',Georgia,serif;min-height:100vh;overflow:hidden;background:#f8f4ec;color:var(--ink)}.rl-root h1,.rl-root h2,.rl-root h3{font-family:var(--rl-serif);font-optical-sizing:auto}.rl-root a{color:inherit}.rl-header{position:relative;width:min(100% - 56px,1360px);min-height:82px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:30px}.rl-header>nav{display:flex;align-items:center;gap:30px;font-size:13px;font-weight:700}.rl-header>nav a:not(.rl-button){text-decoration:none}.rl-header>nav a:not(.rl-button):hover{text-decoration:underline;text-underline-offset:5px;color:var(--brick)}.rl-mobile-menu{display:none}.rl-button{min-height:48px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border:1px solid var(--brick);border-radius:9px;background:var(--brick);color:#fff!important;font-size:13.5px;font-weight:750;line-height:1;text-decoration:none;transition:transform .16s ease,background .16s ease}.rl-button:hover{background:var(--brick-deep);transform:translateY(-1px)}.rl-button.is-small{min-height:40px;padding:9px 15px}.rl-eyebrow{margin:0 0 15px;color:var(--brick);font:750 10.5px/1.3 var(--font-sans);letter-spacing:.17em;text-transform:uppercase}
+.rl-root{--rl-serif:'Source Serif 4',Georgia,serif;min-height:calc(100vh - var(--flh-safe-top));overflow:hidden;background:#f8f4ec;color:var(--ink)}.rl-root h1,.rl-root h2,.rl-root h3{font-family:var(--rl-serif);font-optical-sizing:auto}.rl-root a{color:inherit}.rl-header{position:relative;width:min(100% - 56px,1360px);min-height:82px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:30px}.rl-header>nav{display:flex;align-items:center;gap:30px;font-size:13px;font-weight:700}.rl-header>nav a:not(.rl-button){text-decoration:none}.rl-header>nav a:not(.rl-button):hover{text-decoration:underline;text-underline-offset:5px;color:var(--brick)}.rl-mobile-menu{display:none}.rl-button{min-height:48px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border:1px solid var(--brick);border-radius:9px;background:var(--brick);color:#fff!important;font-size:13.5px;font-weight:750;line-height:1;text-decoration:none;transition:transform .16s ease,background .16s ease}.rl-button:hover{background:var(--brick-deep);transform:translateY(-1px)}.rl-button.is-small{min-height:40px;padding:9px 15px}.rl-eyebrow{margin:0 0 15px;color:var(--brick);font:750 10.5px/1.3 var(--font-sans);letter-spacing:.17em;text-transform:uppercase}
 .rl-hero{width:min(100% - 56px,1360px);margin:auto;padding:64px 0 92px;display:grid;grid-template-columns:minmax(390px,.88fr) minmax(520px,1.12fr);align-items:center;gap:clamp(46px,5vw,82px)}.rl-hero h1{max-width:650px;margin:0;font-size:clamp(46px,4.7vw,70px);font-weight:600;letter-spacing:-.04em;line-height:1.015}.rl-hero h1 em{display:block;margin-top:8px;color:var(--brick);font-weight:600}.rl-lede{max-width:610px;margin:25px 0 0;color:var(--ink-soft);font-size:16px;line-height:1.72}.rl-actions{display:flex;align-items:center;flex-wrap:wrap;gap:20px;margin-top:29px}.rl-text-link{display:inline-flex;align-items:center;min-height:44px;font-size:13px;font-weight:750;text-decoration:underline;text-underline-offset:5px}.rl-text-link:hover{color:var(--brick)}
 .rl-hero-visual{position:relative;aspect-ratio:3/2;min-height:0;margin:0;overflow:hidden;border:1px solid rgba(85,63,48,.1);border-radius:30px;background:#eee7dc;box-shadow:0 30px 70px -48px rgba(46,38,33,.7)}.rl-hero-visual>img{object-fit:contain;object-position:center}
 .rl-steps{padding:78px max(28px,calc((100vw - 1360px)/2)) 86px;background:#efdccf;scroll-margin-top:16px}.rl-steps>header{max-width:820px;margin-bottom:42px}.rl-steps h2,.rl-value h2,.rl-cta h2{margin:0;font-size:clamp(36px,4vw,52px);font-weight:600;line-height:1.06;letter-spacing:-.025em}.rl-steps>div{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px}.rl-steps article{min-height:305px;padding:27px 24px 29px;border:1px solid rgba(85,63,48,.1);border-radius:20px;background:rgba(255,253,249,.9);box-shadow:0 18px 35px -30px rgba(46,38,33,.5)}.rl-steps article:nth-child(even){background:rgba(239,243,232,.92)}.rl-step-top{display:flex;align-items:center;justify-content:space-between}.rl-step-icon{width:48px;height:48px;display:grid;place-items:center;border-radius:15px;background:#e2e8d8;color:var(--moss)}.rl-step-number{color:var(--brick);font-size:10px;font-weight:800;letter-spacing:.12em}.rl-steps h3{margin:32px 0 12px;font-size:23px;line-height:1.15}.rl-steps article p{margin:0;color:var(--ink-soft);font-size:13px;line-height:1.68}
@@ -1741,7 +1744,7 @@ details[open] > summary .hh-accordion-chevron, .hh-more-home-details:has(.hh-mor
 .flh-inline-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
 
 /* Focused editor chrome */
-.flh-subpage-header { position: sticky; top: 0; z-index: 20; display: grid; grid-template-columns: 44px minmax(0,1fr) minmax(44px,auto); align-items: center; gap: 8px; margin: 0 0 14px; padding: 10px 0; background: var(--paper); }
+.flh-subpage-header { position: sticky; top: var(--flh-safe-top); z-index: 20; display: grid; grid-template-columns: 44px minmax(0,1fr) minmax(44px,auto); align-items: center; gap: 8px; margin: 0 0 14px; padding: 10px 0; background: var(--paper); }
 .flh-subpage-title { margin: 0; overflow: hidden; color: var(--ink); font: 600 22px/1.2 var(--font-serif); text-align: center; text-overflow: ellipsis; white-space: nowrap; }
 .flh-action-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 45; padding: 18px 16px calc(12px + env(safe-area-inset-bottom)); background: linear-gradient(to bottom, rgba(250,246,239,0), var(--paper) 22px); }
 .flh-action-bar-inner { max-width: 640px; margin: 0 auto; }
@@ -1774,7 +1777,7 @@ details[open] > summary .hh-accordion-chevron, .hh-more-home-details:has(.hh-mor
 .flh-basics-editor .hh-basics-grid { margin-top: 0; }
 
 /* Onboarding */
-.flh-onboarding { max-width: 600px; margin: 0 auto; padding: max(20px, env(safe-area-inset-top)) 0 calc(24px + env(safe-area-inset-bottom)); }
+.flh-onboarding { max-width: 600px; margin: 0 auto; padding: var(--flh-flow-top-20) 0 calc(24px + env(safe-area-inset-bottom)); }
 .flh-onboarding-brand { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 20px; font-size: 17px; }
 .flh-onboarding-brand b { color: var(--brick); }
 .flh-onboarding-step { display: grid; gap: 14px; }
@@ -1851,7 +1854,7 @@ details[open] > summary .hh-accordion-chevron, .hh-more-home-details:has(.hh-mor
   .hh-root.hh-focused-route { padding-bottom: 0; }
   /* Onboarding's sticky step actions own the bottom edge; lift the feedback tab clear of them. */
   .flh-onboarding-root .beta-feedback { bottom: calc(92px + env(safe-area-inset-bottom)); }
-  .hh-focused-route .flh-subpage-header { padding-top: max(10px, env(safe-area-inset-top)); }
+  .hh-focused-route .flh-subpage-header { padding-top: var(--flh-flow-top-10); }
   .hh-mobile-nav-item.active .hh-mobile-nav-icon { width: 46px; height: 28px; border-radius: 999px; background: rgba(193,89,47,.12); }
 }
 @media (max-width: 360px) {
@@ -2068,4 +2071,67 @@ details[open] > summary .hh-accordion-chevron, .hh-more-home-details:has(.hh-mor
   .hh-account-entry { margin-left: auto; min-width: 44px; min-height: 44px; justify-content: center; }
   .hh-account-entry-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .hh-account-entry svg { width: 18px; height: 18px; }
+}
+
+/* ── Safe-area contract (iOS native shell + any viewport-fit=cover browser) ──
+   The Capacitor WebView is edge-to-edge (Capacitor's iOS default
+   contentInset "never" + viewport-fit=cover), and the status bar is
+   transparent over it. One owner per region:
+     • In-flow content: <body> pads by the top inset, so every shell — public,
+       auth, onboarding, authenticated — starts below the status bar. Shell
+       pieces keep only their own design spacing via --flh-flow-top-*, which
+       collapses by the inset body already gave (= the former max(N, inset)).
+     • Scrolled content: a fixed guard paints the status-bar strip, so the
+       document can never scroll visibly underneath the clock/Dynamic Island.
+     • Sticky elements stick at --flh-safe-top, just below the guard.
+     • Fixed overlays (modals, sheets, the edit workspace) are outside body's
+       flow and pad themselves with --flh-safe-top/--flh-safe-bottom.
+     • Bottom: the mobile nav owns the home-indicator inset; floating controls
+       sit above --flh-mobile-nav-h + inset.
+   Off-device every inset is 0, so none of this changes desktop or mobile
+   Safari layout. A surface that deliberately wants the status-bar region must
+   opt in explicitly (none do today). */
+:root {
+  --flh-safe-top: env(safe-area-inset-top, 0px);
+  --flh-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --flh-flow-top-10: calc(max(10px, var(--flh-safe-top)) - var(--flh-safe-top));
+  --flh-flow-top-20: calc(max(20px, var(--flh-safe-top)) - var(--flh-safe-top));
+  --flh-flow-top-24: calc(max(24px, var(--flh-safe-top)) - var(--flh-safe-top));
+  --flh-flow-top-32: calc(max(32px, var(--flh-safe-top)) - var(--flh-safe-top));
+  /* Rendered height of .hh-mobile-nav above the home-indicator inset (measured: 63px). */
+  --flh-mobile-nav-h: 63px;
+  /* The floating Feedback tab's footprint: its 38px tab plus an 8px gap each side. */
+  --flh-feedback-clearance: 54px;
+  --flh-status-bar-bg: var(--paper);
+}
+body { padding-top: var(--flh-safe-top); }
+body::before {
+  content: ''; position: fixed; z-index: 45; top: 0; left: 0; right: 0;
+  height: var(--flh-safe-top); background: var(--flh-status-bar-bg); pointer-events: none;
+}
+body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
+@media (max-width: 700px) {
+  /* Bottom: the floating Feedback tab sits above the mobile nav + home-indicator
+     inset, and the scrolling page reserves room for it so the last card/action
+     can always be scrolled clear of it. */
+  .hh-root:not(.hh-focused-route):not(:has(.hh-map-frame)):has(> .beta-feedback) { padding-bottom: calc(var(--flh-mobile-nav-h) + var(--flh-feedback-clearance) + 16px + var(--flh-safe-bottom)); }
+  /* Home Detail's fixed action bar owns the band above the nav; the tab rides
+     above that bar instead of covering its buttons. */
+  .hh-root:has(.flh-detail-action-bar) .beta-feedback { bottom: calc(var(--flh-mobile-nav-h) + 64px + 8px + var(--flh-safe-bottom)); }
+}
+@media (max-width: 560px) {
+  /* Record Your Take is a bottom sheet on phones: never taller than the space
+     below the status bar, so its title and close control stay clear of it. */
+  .hh-post-tour-modal { max-height: calc(100dvh - var(--flh-safe-top)); }
+}
+/* Public masthead on narrow phones: the desktop 30px gap pushed the Menu
+   control past the edge at 320px. Tighten the gap and keep both the brand mark
+   and the Menu control at full size (the brand text may truncate, never the mark). */
+@media (max-width: 640px) {
+  .pl-header { gap: 12px; }
+  .pl-brand { min-width: 0; }
+  .pl-brand > :first-child, .pl-mobile-menu { flex-shrink: 0; }
+}
+@media (max-width: 360px) {
+  .pl-header { gap: 8px; width: calc(100% - 24px); }
 }

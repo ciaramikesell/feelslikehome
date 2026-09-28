@@ -352,8 +352,10 @@ test('focused editors own the phone screen and respect iOS safe areas', () => {
   assert.match(css, /\.hh-focused-route \.hh-mobile-nav, \.hh-focused-route \.beta-feedback \{ display: none; \}/);
   assert.match(css, /\.flh-action-bar \{[^}]*padding: 18px 16px calc\(12px \+ env\(safe-area-inset-bottom\)\)/);
   assert.match(css, /\.flh-has-action-bar \{ padding-bottom: calc\(128px \+ env\(safe-area-inset-bottom\)\); \}/);
-  assert.match(css, /\.hh-focused-route \.flh-subpage-header \{ padding-top: max\(10px, env\(safe-area-inset-top\)\); \}/);
-  assert.match(css, /\.flh-onboarding \{[^}]*padding: max\(20px, env\(safe-area-inset-top\)\) 0 calc\(24px \+ env\(safe-area-inset-bottom\)\)/);
+  // Top inset is owned by body; the sticky header sticks just below it.
+  assert.match(css, /\.hh-focused-route \.flh-subpage-header \{ padding-top: var\(--flh-flow-top-10\); \}/);
+  assert.match(css, /\.flh-subpage-header \{ position: sticky; top: var\(--flh-safe-top\);/);
+  assert.match(css, /\.flh-onboarding \{[^}]*padding: var\(--flh-flow-top-20\) 0 calc\(24px \+ env\(safe-area-inset-bottom\)\)/);
   // iOS doesn't zoom inputs at 16px.
   assert.match(css, /\.flh-input \{[^}]*font: 400 16px/);
 });

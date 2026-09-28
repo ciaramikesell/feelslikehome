@@ -152,7 +152,8 @@ listing URLs, credentials, sensitive headers, or unrelated device logs.
 
 ## Remaining device risks / exit gate
 
-Physical QA must still prove safe areas/Dynamic Island/home indicator,
+Physical QA must still prove safe areas/Dynamic Island/home indicator (the
+safe-area contract and its device checklist: `docs/ios-safe-area-contract.md`),
 status-bar contrast, keyboard focus/dismissal, sheet and nested scrolling,
 touch targets, landscape, image/overflow behavior, browser/native back and
 external/Apple Maps behavior, poor-network recovery, no native white screen,
