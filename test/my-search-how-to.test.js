@@ -76,13 +76,15 @@ test('drag education distinguishes moving existing priorities from adding new on
   assert.match(editor, /New priorities start as Important\. You can move them once they’re on your board\./);
 });
 
-test('structured basics use a compact responsive grid and quieter importance controls', () => {
+test('structured basics use a compact responsive grid and carry no importance controls', () => {
   const panel = read('src/components/BasicsEditor.jsx');
   const css = read('src/app/globals.css');
   assert.match(panel, /className="hh-basics-grid"/);
   for (const label of ['Minimum Square Footage', 'Minimum Lot Size', 'Minimum Bedrooms', 'Minimum Bathrooms']) assert.match(panel, new RegExp(label));
   assert.match(panel, /wide label=\{terminology\(p\.searchType\)\.budgetLabel\}/);
-  assert.match(panel, /quiet ariaLabel=\{`\$\{label\} importance`\}/);
+  // Search Basics are not weighted in Match, so they have no tier picker at all.
+  assert.doesNotMatch(panel, /TierPicker|importance`/);
+  assert.match(panel, /aren’t weighted in Match/);
   assert.match(css, /\.hh-basics-grid \{[^}]*grid-template-columns: minmax\(210px, 1\.35fr\) repeat\(3/);
   assert.match(css, /@media \(max-width: 900px\)[\s\S]*?\.hh-basics-grid \{ grid-template-columns: repeat\(2/);
   assert.match(css, /@media \(max-width: 640px\)[\s\S]*?\.hh-basics-grid \{ grid-template-columns: 1fr/);

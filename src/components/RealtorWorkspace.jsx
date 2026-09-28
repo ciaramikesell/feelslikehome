@@ -16,15 +16,19 @@ const CORE = [
   ['primaryBedroomLocation', 'Primary bedroom location'], ['secondaryBedroomLocation', 'Secondary bedrooms'],
 ];
 
+// Search Basics describe the search (shown with their values); they are not
+// weighted, so they never appear in a Must Have / Important / Nice bucket.
+function searchBasics(p) {
+  return CORE.flatMap(([key, label]) => {
+    const value = p[key];
+    const detail = (value?.values || []).filter((entry) => entry && entry !== 'No Preference').join(', ') || (value?.value && value.value !== 'No Preference' ? value.value : '');
+    return detail ? [{ key, label, detail }] : [];
+  });
+}
+
 function priorityBuckets(raw) {
   const p = normalizePriorities(raw);
-  const items = CORE.flatMap(([key, label]) => {
-    const value = p[key];
-    const tier = value?.tier || 'dontcare';
-    if (tier === 'dontcare') return [];
-    const detail = value?.value || value?.values?.join(', ') || '';
-    return [{ key, label, detail, tier }];
-  });
+  const items = [];
   getItemlistCategories(p.searchType).forEach((definition) => {
     const { core, custom } = splitCategoryItems(definition, p);
     [...core, ...custom].forEach((item) => {
@@ -37,8 +41,10 @@ function priorityBuckets(raw) {
 
 function Priorities({ person, priorities }) {
   const buckets = priorityBuckets(priorities);
+  const basics = searchBasics(normalizePriorities(priorities));
   return <section className="hh-realtor-priorities" aria-label={`${person.display_name}'s priorities`}>
     <div className="hh-realtor-person-label">{person.display_name} <span>{person.relationship}</span></div>
+    {basics.length > 0 && <p className="hh-realtor-basics"><strong>Search Basics</strong> {basics.map((item) => `${item.label}: ${item.detail}`).join(' · ')}</p>}
     <div className="hh-realtor-priority-grid">{buckets.map(({ tier, items }) => <div key={tier} className={`hh-realtor-tier is-${tier}`}>
       <h3>{TIER_META[tier].label}</h3>
       {items.length ? <ul>{items.map((item) => <li key={item.key}>{item.label}{item.detail && <small>{item.detail}</small>}</li>)}</ul> : <p>None selected</p>}

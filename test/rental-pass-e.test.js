@@ -43,7 +43,7 @@ test('Rental surfaces use centralized prices and suppress purchase financial row
   assert.ok(rentalRows);
   assert.doesNotMatch(rentalRows, /estMonthly|pps|hoa|tax/);
   assert.match(map, /formatHomePrice\(selected\.price, priorities\.searchType\)/);
-  assert.match(modal, /!showsRentalFacts && <CompactField label="Est\. monthly pmt"/);
+  assert.match(modal, /!showsRentalFacts && <CompactField label="Est\. monthly payment"/);
 });
 
 test('cross-intent helper copy is neutral', async () => {

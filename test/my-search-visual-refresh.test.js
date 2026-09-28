@@ -110,8 +110,10 @@ test('parameter editing (What I\'m Looking For) keeps its existing editor, opene
   assert.match(panel, /<WhatImLookingFor priorities=\{priorities\} onEdit=\{\(\) => setBasicsOpen\(true\)\} \/>/);
   assert.match(panel, /<BasicsEditor priorities=\{priorities\} patch=\{patch\} \/>/);
   assert.match(panel, />Done<\/button>/);
-  // The editor still edits the same fields and their existing importance tiers.
-  assert.match(editor, /<TierPicker value=\{tier\} onChange=\{onTierChange\} quiet/);
+  // The editor edits the same Basics fields; they are guideposts, not Match
+  // weights, so no importance tier is offered for any of them.
+  assert.match(editor, /ObjectiveRow wide label=\{terminology\(p\.searchType\)\.budgetLabel\}/);
+  assert.doesNotMatch(editor, /TierPicker/);
 });
 
 test('Places That Matter opens a focused editor that writes only the current participant\'s own rows', async () => {

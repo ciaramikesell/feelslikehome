@@ -2191,3 +2191,64 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 @media (max-width: 360px) {
   .pl-header { gap: 8px; width: calc(100% - 24px); }
 }
+
+/* ── Pass 2: Search Basics vs. weighted priorities, onboarding stepper,
+   Home Detail Match hierarchy, Account hub. Built on the flh- tokens above. ── */
+.flh-basics-intro { margin: 0 0 14px; padding: 11px 12px; border-radius: 12px; background: var(--flh-quiet); color: var(--ink-soft); font-size: 12.5px; line-height: 1.5; }
+.flh-basics-intro a, .flh-search-basics a { color: var(--brick-deep); font-weight: 700; }
+.flh-basics-weight-note { margin: 10px 0 0; color: var(--ink-soft); font-size: 11.5px; }
+.flh-basics-card .flh-card-title { margin: 0; }
+.flh-basics-card-sub { margin: 2px 0 4px !important; }
+.flh-rental-facts { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--flh-card-line); }
+.hh-realtor-basics { margin: 0 0 10px; color: var(--ink-soft); font-size: 12.5px; line-height: 1.5; }
+.hh-realtor-basics strong { margin-right: 6px; color: var(--ink); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; }
+
+.flh-stepper { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0 0 16px; padding: 10px 0 0; border-top: 2px solid var(--line); list-style: none; }
+.flh-stepper li { position: relative; display: flex; align-items: center; gap: 6px; min-width: 0; color: var(--ink-soft); font: 600 11px/1.2 var(--font-sans); }
+.flh-stepper li::before { content: ''; position: absolute; top: -12px; left: 0; right: 0; height: 2px; background: transparent; }
+.flh-stepper li.is-done::before, .flh-stepper li.is-current::before { background: var(--brick); }
+.flh-stepper-dot { display: inline-grid; place-items: center; width: 20px; height: 20px; flex-shrink: 0; border: 1.5px solid var(--flh-control-line); border-radius: 50%; background: var(--flh-card); font-size: 10.5px; }
+.flh-stepper li.is-current { color: var(--brick); }
+.flh-stepper li.is-current .flh-stepper-dot { border-color: var(--brick); background: var(--brick); color: #fff; }
+.flh-stepper li.is-done .flh-stepper-dot { border-color: var(--flh-sage-strong); background: var(--flh-sage-strong); color: #fff; }
+.flh-stepper-label { min-width: 0; overflow-wrap: anywhere; }
+
+/* Home Detail — Personalized Match (phone panel) */
+.flh-detail-match { border-color: var(--flh-warm-line); border-left: 3px solid var(--brick); background: var(--flh-warm); }
+.flh-detail-match-head { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; }
+.flh-detail-match-head .flh-section-kicker { margin: 0; }
+.flh-detail-match .flh-detail-match-score { display: block; margin: 2px 0 0; color: var(--brick); font: 600 28px/1.1 var(--font-serif); letter-spacing: -.01em; }
+.flh-detail-match .flh-detail-match-score.is-unknown { color: var(--ink-soft); font-size: 19px; }
+.flh-detail-match .flh-detail-match-group { margin: 0; padding: 11px 12px; border: 1px solid var(--flh-card-line); border-radius: 12px; background: var(--flh-card); }
+.flh-detail-match .flh-detail-match-group + .flh-detail-match-group { margin-top: 8px; }
+.flh-detail-match-counts li.is-negative { color: var(--negative); }
+.flh-detail-match-counts li.is-unknown { color: var(--ink-soft); }
+.flh-detail-match-evidence { display: flex; align-items: flex-start; gap: 8px; margin: 12px 0 0; color: var(--ink); font-size: 13px; line-height: 1.45; }
+.flh-detail-match-evidence svg { flex-shrink: 0; margin-top: 1px; color: var(--brick); }
+
+/* Home Detail — Search Basics (all widths) */
+.flh-detail-basics { margin: 0 0 12px; }
+.flh-search-basics ul { display: grid; margin: 0; padding: 0; list-style: none; }
+.flh-search-basics li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 0; }
+.flh-search-basics li + li { border-top: 1px solid rgba(138,112,86,.12); }
+.flh-search-basics-copy { min-width: 0; }
+.flh-search-basics-copy strong { display: block; color: var(--ink); font-size: 13.5px; }
+.flh-search-basics-copy span { display: block; color: var(--ink-soft); font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+.flh-search-basics .flh-detail-match-note { margin: 8px 0 0; color: var(--ink-soft); font-size: 12px; }
+@media (min-width: 701px) { .flh-detail-basics { max-width: 760px; margin: 22px 0; } }
+
+/* Account hub */
+.flh-account.flh-page { display: flex; flex-direction: column; gap: var(--flh-stack); }
+.flh-account .flh-page-heading { margin-bottom: 4px; }
+.flh-account .flh-section-label { margin: 8px 0 -2px; }
+.flh-account-identity .flh-card-row { grid-template-columns: auto minmax(0,1fr) auto; }
+.flh-account-identity .flh-avatar { width: 48px; height: 48px; font-size: 15px; }
+.flh-account-identity .flh-card-sub { overflow-wrap: anywhere; }
+.flh-account-access .flh-card-row, .flh-account-search .flh-card-row { grid-template-columns: auto minmax(0,1fr) auto; align-items: start; }
+.flh-account-list { overflow: hidden; border: 1px solid var(--flh-card-line); border-radius: var(--flh-radius-card); background: var(--flh-card); }
+.flh-account-row { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 12px; width: 100%; min-height: 60px; padding: 10px 14px; border: 0; background: transparent; color: var(--ink); font: inherit; text-align: left; text-decoration: none; cursor: pointer; }
+.flh-account-row + .flh-account-row { border-top: 1px solid rgba(138,112,86,.12); }
+.flh-account-row > svg:first-child { color: var(--ink-soft); }
+.flh-account-row strong { display: block; font-size: 14px; }
+.flh-account-row small { display: block; margin-top: 2px; color: var(--ink-soft); font-size: 12px; line-height: 1.4; }
+.flh-account-signout { margin-top: 4px; }

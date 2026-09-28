@@ -7,7 +7,7 @@ import {
   prioritiesForExplicitSave,
 } from '../src/lib/searchIntent.js';
 import { defaultPriorities, getItemlistCategories, normalizePriorities, TIER_META } from '../src/lib/constants.js';
-import { computeMatch, splitCategoryItems } from '../src/lib/matching.js';
+import { computeMatch, evaluateSearchBasics, splitCategoryItems } from '../src/lib/matching.js';
 
 const labels = (intent, category) => {
   const def = getItemlistCategories(intent).find(({ key }) => key === category);
@@ -33,19 +33,18 @@ test('explicit save canonicalizes only intent and preserves the complete documen
   assert.deepEqual({ ...saved, searchType: raw.searchType }, raw);
 });
 
-test('preferred property type is optional and follows unknown/satisfied/mismatch weighted Match semantics', () => {
+test('preferred property type is an optional Search Basic: unknown/satisfied/mismatch, never weighted', () => {
   const empty = normalizePriorities({ searchType: 'rental' });
   assert.equal(computeMatch({ propertyType: 'house' }, empty), null);
+  assert.deepEqual(evaluateSearchBasics({ propertyType: 'house' }, empty), []);
 
   const priorities = normalizePriorities({ searchType: 'rental', preferredPropertyTypes: { values: ['apartment', 'condo'], tier: 'must' } });
-  const unknown = computeMatch({ propertyType: null }, priorities);
-  assert.equal(unknown.pct, null);
-  assert.equal(unknown.allSelected[0].evaluated, false);
-  const overlap = computeMatch({ propertyType: 'condo' }, priorities);
-  assert.equal(overlap.pct, 100);
-  const mismatch = computeMatch({ propertyType: 'house' }, priorities);
-  assert.equal(mismatch.pct, 0);
-  assert.equal(mismatch.missing[0].key, 'preferredPropertyTypes');
+  const homeType = (home) => evaluateSearchBasics(home, priorities).find((basic) => basic.key === 'preferredPropertyTypes');
+  assert.deepEqual([homeType({ propertyType: null }).evaluated, homeType({ propertyType: null }).met], [false, null]);
+  assert.equal(homeType({ propertyType: 'condo' }).met, true);
+  assert.equal(homeType({ propertyType: 'house' }).met, false);
+  // Even stored at the Must Have tier, a Basic never produces a Match percentage.
+  assert.equal(computeMatch({ propertyType: 'house' }, priorities), null);
   assert.equal(TIER_META.must.weight, 4);
 });
 

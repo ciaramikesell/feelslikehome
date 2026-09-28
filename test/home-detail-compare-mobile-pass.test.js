@@ -146,7 +146,7 @@ test('regression: the no-commute picker Match is byte-for-byte identical to the 
   // Case A: Commute is NOT a selected priority at all — nothing in
   // priorities makes computeMatch look at commuteEvaluation, so the
   // no-commute picker calculation already IS the canonical one.
-  const noCommutePriorities = { searchType: 'buy', bedsMin: { value: '2', tier: 'important' } };
+  const noCommutePriorities = { searchType: 'buy', features: { customItems: [{ label: 'Home office', kind: 'check' }, { label: 'Central air', kind: 'check' }], tiers: { 'Home office': 'important' } } };
   const picker = computeMatch(home, noCommutePriorities);
   const canonical = computeMatch(home, noCommutePriorities, evaluateCommute(destinations, resolvedOk));
   assert.deepEqual(picker, canonical);

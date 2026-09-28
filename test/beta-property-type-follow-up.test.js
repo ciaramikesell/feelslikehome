@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { computeMatch } from '../src/lib/matching.js';
+import { computeMatch, evaluateSearchBasics } from '../src/lib/matching.js';
 
 const persistence = fs.readFileSync('src/lib/supabase/collaboration.js', 'utf8');
 const modal = fs.readFileSync('src/components/HomeModal.jsx', 'utf8');
@@ -23,11 +23,14 @@ test('Edit Home preserves the loaded selection and updates the same shared field
   assert.match(persistence, /HOME_SHARED_COLUMNS[^\n]*property_type/);
 });
 
-test('saved actual property type resolves Preferred Property Type Match', () => {
+test('saved actual property type resolves the Home type Search Basic (never a Match weight)', () => {
   const priorities = { preferredPropertyTypes: { values: ['condo'], tier: 'must' } };
-  assert.equal(computeMatch({ propertyType: 'condo' }, priorities).pct, 100);
-  assert.equal(computeMatch({ propertyType: 'house' }, priorities).pct, 0);
-  assert.equal(computeMatch({ propertyType: null }, priorities).pct, null);
+  const homeType = (home) => evaluateSearchBasics(home, priorities).find((basic) => basic.key === 'preferredPropertyTypes');
+  assert.deepEqual([homeType({ propertyType: 'condo' }).met, homeType({ propertyType: 'house' }).met], [true, false]);
+  // Unknown stays Unknown, never a mismatch.
+  assert.deepEqual([homeType({ propertyType: null }).evaluated, homeType({ propertyType: null }).met], [false, null]);
+  // Even at the old 'must' tier, a Basic contributes nothing to Match.
+  assert.equal(computeMatch({ propertyType: 'house' }, priorities), null);
 });
 
 test('property Notes examples remain placeholders rather than saved values', () => {

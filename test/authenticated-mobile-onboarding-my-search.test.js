@@ -61,8 +61,9 @@ test('Home Condition remains Basics (search definition), never a weighted criter
   // existing Match-neutral default — it never becomes a board priority.
   const priorities = { ...buy(), homeCondition: { values: ['Move-In Ready'], tier: 'dontcare' } };
   assert.equal(selectedPriorityCount(priorities), 0);
-  const match = computeMatch({ homeCondition: ['New Construction'] }, priorities);
-  assert.ok(!match.allSelected.some((item) => item.key === 'homeCondition'));
+  // Search Basics are never weighted: with nothing ranked there is no Match at all.
+  const match = computeMatch({ homeCondition: ['New Construction'] }, { ...priorities, homeCondition: { values: ['Move-In Ready'], tier: 'must' } });
+  assert.ok(!(match?.allSelected || []).some((item) => item.key === 'homeCondition'));
 });
 
 /* --------------------------------- Onboarding: What Matters --------------------------------- */

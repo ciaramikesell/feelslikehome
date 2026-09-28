@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { getItemlistCategories, normalizePriorities, foldLegacyCheckAliases, criterionDisplayLabel, isSchoolsSuppressed } from '../src/lib/constants.js';
-import { computeMatch, splitCategoryItems, selectPriorityItem } from '../src/lib/matching.js';
+import { computeMatch, evaluateSearchBasics, splitCategoryItems, selectPriorityItem } from '../src/lib/matching.js';
 import { ONBOARDING_SUGGESTIONS } from '../src/lib/onboarding.js';
 
 // Mirrors how the real UI (Onboarding / My Search's Rank Priorities editor) selects a canonical
@@ -172,7 +172,11 @@ test('Move-in Ready / Renovation Potential / New Construction stay independent o
   let priorities = normalizePriorities({ searchType: 'purchase', homeCondition: { values: ['Move-In Ready'], tier: 'important' } });
   priorities = withSelected(priorities, 'features', 'Renovation Potential', 'must');
   const match = computeMatch({ checks: {}, homeCondition: ['Move-In Ready'] }, priorities);
+  // The legacy ranked priority keeps counting in Match; Home Condition is a Search
+  // Basic, compared separately and never weighted.
   const renovation = match.allSelected.find((item) => item.key === 'features:Renovation Potential');
-  const condition = match.allSelected.find((item) => item.key === 'homeCondition');
-  assert.ok(renovation && condition && renovation !== condition);
+  assert.ok(renovation);
+  assert.ok(!match.allSelected.some((item) => item.key === 'homeCondition'));
+  const condition = evaluateSearchBasics({ homeCondition: ['Move-In Ready'] }, priorities).find((item) => item.key === 'homeCondition');
+  assert.equal(condition.met, true);
 });

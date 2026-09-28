@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowRight, Building2, Home as HomeIcon, KeyRound, Plus, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowRight, Check, Building2, Home as HomeIcon, KeyRound, Plus, ShieldCheck, Sparkles } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
 import { ChoiceChip, HelperRow, SectionCard, SelectCard } from '@/components/MobileSystem';
 import RankBoard from '@/components/RankBoard';
@@ -28,8 +28,17 @@ const CHOICE_LABELS = { home_buy: 'Home to Buy', home_rent: 'Home to Rent', apar
 function StepHeader({ step, title, lead }) {
   return (
     <header className="flh-onboarding-header">
-      <div className="flh-onboarding-progress" aria-hidden="true">{STEPS.map((label, index) => <span key={label} className={index < step ? 'is-done' : ''} />)}</div>
-      <p className="flh-eyebrow">Step {step} of 3 · {STEPS[step - 1]}</p>
+      <ol className="flh-stepper" aria-label={`Step ${step} of ${STEPS.length}`}>
+        {STEPS.map((label, index) => {
+          const state = index + 1 < step ? 'is-done' : index + 1 === step ? 'is-current' : '';
+          return (
+            <li key={label} className={state} aria-current={index + 1 === step ? 'step' : undefined}>
+              <span className="flh-stepper-dot" aria-hidden="true">{index + 1 < step ? <Check size={11} strokeWidth={3} /> : index + 1}</span>
+              <span className="flh-stepper-label">{label}</span>
+            </li>
+          );
+        })}
+      </ol>
       <h1 className="flh-page-title">{title}</h1>
       {lead && <p className="flh-lead">{lead}</p>}
     </header>
@@ -90,7 +99,8 @@ function BasicsStep({ priorities, patch, onNext }) {
       </fieldset>
       {choice && (
         <SectionCard className="flh-basics-card">
-          <p className="flh-section-kicker">A few guideposts</p>
+          <h2 className="flh-card-title">A few helpful details</h2>
+          <p className="flh-card-sub flh-basics-card-sub">Lightweight guideposts — not weighted Match priorities. You’ll rank what matters next.</p>
           <div className="flh-number-grid">
             <NumberField label={fields.budgetLabel} prefix="$" placeholder={fields.budgetPlaceholder} value={priorities.budget.value} onChange={(value) => setValue('budget', value)} />
             <NumberField label="Minimum bedrooms" placeholder="3" suffix="beds" value={priorities.bedsMin.value} onChange={(value) => setValue('bedsMin', value)} />

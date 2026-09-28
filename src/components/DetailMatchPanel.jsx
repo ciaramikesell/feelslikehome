@@ -1,8 +1,8 @@
 'use client';
 
-import { Check, Minus, X } from 'lucide-react';
-import { BrandMark } from '@/components/ui';
-import { criterionLabel as label, matchColor, mustHaveStatus, selectHomeCardCriteria } from '@/lib/matching';
+import { Check, HousePlus, Lightbulb, Minus, X } from 'lucide-react';
+import { IconBadge } from '@/components/MobileSystem';
+import { criterionLabel as label, matchFactualSummary, mustHaveStatus, weightedPrioritySummary } from '@/lib/matching';
 
 function StateIcon({ criterion }) {
   if (!criterion.evaluated) return <span className="flh-state-icon is-unknown" aria-hidden="true">?</span>;
@@ -14,25 +14,33 @@ function StateIcon({ criterion }) {
 
 const stateText = (criterion) => (!criterion.evaluated ? 'Unknown' : criterion.met === null ? 'Neutral' : criterion.met ? 'Met' : 'Missing');
 
-// Home Detail's compact Match panel. Everything here is read from the one
+// Home Detail's Personalized Match panel. Everything here is read from the one
 // canonical `match` (computeMatch) the rest of Home Detail uses — no counts are
 // computed, adjusted, or reconciled for display:
 //  - Must Haves: every criterion at the Must Have tier (mustHaveStatus), each
 //    with its own state. Only a confirmed miss is "missing"; Unknown is Unknown.
-//  - Personalized criteria: the non-Must-Have summary the Homes card has always
-//    used (selectHomeCardCriteria). evaluated = match + don't match; unknown is
-//    listed separately; a neutral tour response is its own line when present.
+//  - All weighted priorities: every ranked priority counted once, Must Haves
+//    included (weightedPrioritySummary), so the aggregate can never say
+//    everything matches while a Must Have above it is missing. Unknown is its
+//    own count, never a "don't match"; a neutral tour response is its own line.
+//  - The summary sentence is the deterministic matchFactualSummary, not prose.
+// Search Basics are not weighted and never appear here (see SearchBasicsPanel).
 export default function DetailMatchPanel({ match, heading = 'Your personalized Match' }) {
   if (!match) return null;
   const must = mustHaveStatus(match);
-  const { criteriaSummary } = selectHomeCardCriteria(match);
-  const summary = criteriaSummary || { total: 0, evaluated: 0, matches: [], mismatches: [], unknown: [], neutral: [] };
+  const summary = weightedPrioritySummary(match);
+  const factual = matchFactualSummary(match);
   return (
     <section className="flh-card flh-detail-match" aria-labelledby="detail-match-heading">
-      <p className="flh-section-kicker" id="detail-match-heading">{heading}</p>
-      {match.pct != null
-        ? <div className="flh-detail-match-score" style={{ color: matchColor(match.pct) }}><BrandMark size={22} /> {match.pct}% Match</div>
-        : <div className="flh-detail-match-score is-unknown"><BrandMark size={22} /> Not enough information yet</div>}
+      <div className="flh-detail-match-head">
+        <IconBadge icon={HousePlus} />
+        <div>
+          <p className="flh-section-kicker" id="detail-match-heading">{heading}</p>
+          {match.pct != null
+            ? <p className="flh-detail-match-score">{match.pct}% Match</p>
+            : <p className="flh-detail-match-score is-unknown">Not enough information yet</p>}
+        </div>
+      </div>
 
       {must.total > 0 && (
         <div className="flh-detail-match-group is-must">
@@ -49,14 +57,17 @@ export default function DetailMatchPanel({ match, heading = 'Your personalized M
 
       {summary.total > 0 && (
         <div className="flh-detail-match-group">
-          <p className="flh-detail-match-label">Personalized criteria <span>{summary.evaluated}/{summary.total} evaluated</span></p>
+          <p className="flh-detail-match-label">All weighted priorities <span>{summary.evaluated} of {summary.total} evaluated</span></p>
           <ul className="flh-detail-match-counts">
             <li><span className="flh-state-icon is-positive" aria-hidden="true"><Check size={12} strokeWidth={3} /></span>{summary.matches.length} match</li>
-            <li><span className="flh-state-icon is-negative" aria-hidden="true"><X size={12} strokeWidth={3} /></span>{summary.mismatches.length} don’t match</li>
+            <li className={summary.mismatches.length ? 'is-negative' : ''}><span className="flh-state-icon is-negative" aria-hidden="true"><X size={12} strokeWidth={3} /></span>{summary.mismatches.length} don’t match</li>
             {summary.neutral.length > 0 && <li><span className="flh-state-icon is-neutral" aria-hidden="true"><Minus size={12} /></span>{summary.neutral.length} neutral after touring</li>}
-            <li><span className="flh-state-icon is-unknown" aria-hidden="true">?</span>{summary.unknown.length} {summary.unknown.length === 1 ? 'criterion' : 'criteria'} still unknown</li>
+            <li className="is-unknown"><span className="flh-state-icon is-unknown" aria-hidden="true">?</span>{summary.unknown.length} still unknown</li>
           </ul>
         </div>
+      )}
+      {factual && (factual.mustClause || factual.importantSentence) && (
+        <p className="flh-detail-match-evidence"><Lightbulb size={15} aria-hidden="true" /><span>{[factual.mustClause && `${factual.mustClause}.`, factual.importantSentence].filter(Boolean).join(' ')}</span></p>
       )}
       <p className="flh-detail-match-note">Unknown details never count against a home.</p>
     </section>

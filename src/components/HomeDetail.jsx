@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Check, ChevronRight, ExternalLink, Heart, Footprints, Home as HomeIcon, ListChecks, MapPin, Minus, NotebookText, Pencil, RotateCcw, Star, X } from 'lucide-react';
 import DetailMatchPanel from '@/components/DetailMatchPanel';
+import SearchBasicsPanel from '@/components/SearchBasicsPanel';
 import MobileDisclosure from '@/components/MobileDisclosure';
 import { IconBadge } from '@/components/MobileSystem';
 import HomeModal from '@/components/HomeModal';
@@ -12,7 +13,7 @@ import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
 import RealtorContributions from '@/components/RealtorContributions';
 import HomeDetailLocation from '@/components/HomeDetailLocation';
 import { criterionDisplayLabel, isArchivedStatus, TOUR_RATING_KEY } from '@/lib/constants';
-import { computeMatch, matchFactualSummary, parseNum } from '@/lib/matching';
+import { computeMatch, evaluateSearchBasics, matchFactualSummary, parseNum } from '@/lib/matching';
 import { evaluateCommute } from '@/lib/commute';
 import { formatDateOnly, formatHomePrice, formatLotSizeDisplay, formatPropertyType, formatTriState, parseCommaList } from '@/lib/homeDisplay';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
@@ -183,6 +184,9 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
       {/* Read-only (a Realtor viewing a buyer's home): it is the buyer's Match. */}
       <DetailMatchPanel match={match} heading={readOnly ? 'The buyer’s personalized Match' : 'Your personalized Match'} />
     </div>}
+
+    {/* Search Basics: factual comparison only, never weighted (all widths). */}
+    <div className="flh-detail-basics"><SearchBasicsPanel basics={evaluateSearchBasics(home, priorities)} readOnly={readOnly} /></div>
 
     {facts.length > 0 && <Section eyebrow="The home" title="Property Facts" className="hh-detail-section-wide hh-detail-surface flh-detail-row-section"><DetailRow icon={NotebookText} title="More details" subtitle={`${facts.length} property ${facts.length === 1 ? 'fact' : 'facts'}${home.listingUrl ? ' · original listing' : ''}`}><dl className="hh-detail-facts">{facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>{home.conditionNotes && <p className="hh-detail-condition">{home.conditionNotes}</p>}{home.listingUrl && <a className="flh-mobile-only flh-detail-listing-link" href={home.listingUrl} target="_blank" rel="noreferrer">Original listing <ExternalLink size={14} aria-hidden="true" /></a>}</DetailRow></Section>}
 

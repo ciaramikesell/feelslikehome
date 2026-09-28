@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { X, Upload, Link2, Footprints, Archive as ArchiveIcon, ExternalLink, Check, Users, Search, ClipboardPaste, Camera, MessageSquareText, House, ChevronDown, ChevronLeft, Sparkles, ShieldCheck, Share, ArrowRight } from 'lucide-react';
 import { StarInput } from '@/components/ui';
 import {
-  MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
+  MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories,
   isArchivedStatus, isRentalType, TOUR_RATING_KEY, criterionDisplayLabel, TIER_ORDER, foldLegacyCheckAliases,
 } from '@/lib/constants';
 import { visibleOrderedItems, parseListingTextFindings, selectedSubjectiveCriteria, computeMatch } from '@/lib/matching';
@@ -13,7 +13,7 @@ import { extractAddressFromListingUrl, extractApartmentIdentityFromListingUrl, i
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { mergeImportFields, resolveImport } from '@/lib/importDomain';
 import { appendAllSuggestions, appendSuggestionToNotes, derivePriorityCheckPatch, extractEnrichmentSuggestions } from '@/lib/importReview';
-import { splitAddressLines, formatFoundCardFacts, formatCurrencyDisplay, digitsOnly, formatLotSizeDisplay, formatHomePrice } from '@/lib/homeDisplay';
+import { formatCurrencyDisplay, digitsOnly, formatHomePrice } from '@/lib/homeDisplay';
 import { createClient } from '@/lib/supabase/client';
 import { hasToured } from '@/lib/lifecycle';
 import { HOME_PROPERTY_TYPE_OPTIONS, PROPERTY_TYPE_LABELS, searchIntentCapabilities } from '@/lib/searchIntent';
@@ -139,96 +139,6 @@ function WhatFlhFound({ result, listingUrl, mobile = false, panelRef }) {
 
 function AddSectionHeading({ icon: Icon, title, children, tone = 'peach' }) {
   return <div className="hh-add-section-heading"><span className={`is-${tone}`}><Icon size={24} aria-hidden="true" /></span><div><h3 className="hh-serif">{title}</h3>{children && <p>{children}</p>}</div></div>;
-}
-
-// The compact "Property details" area: a settled, scannable summary of what's
-// known by default, with an explicit toggle to reveal small editable fields —
-// replacing what used to be nine equally-prominent form boxes. Filled vs. empty
-// fields are visually distinct so it's obvious at a glance what's known vs. what's
-// merely optional to add.
-function PropertyFacts({ form, set, priorities, sharedFactAwareness }) {
-  const apartment = homeVocabulary(priorities).apartment;
-  const [editOpen, setEditOpen] = useState(() => !(form.price || form.beds || form.baths || form.sqft));
-  const { showsRentalFacts } = searchIntentCapabilities(priorities.searchType);
-  const priceLabel = showsRentalFacts ? 'Monthly Rent' : terminology(priorities.searchType).priceFieldLabel;
-
-  const facts = formatFoundCardFacts({
-    price: apartment ? null : form.price, beds: apartment ? null : form.beds, baths: apartment ? null : form.baths, sqft: apartment ? null : form.sqft,
-    yearBuilt: form.yearBuilt, garageSpaces: form.garageSpaces,
-    lotSize: form.lotSize, daysOnMarket: form.daysOnMarket,
-    hoaFeeMonthly: form.hoaFeeMonthly, propertyTaxAnnual: form.propertyTaxAnnual, propertyTaxYear: form.propertyTaxYear,
-  }, priorities.searchType);
-  const hasAnyFacts = !!(facts.priceLine || facts.bedsBathsSqft || facts.secondaryFacts);
-
-  return (
-    <div style={{ marginBottom: 16 }}>
-      <label className="hh-label" style={{ marginBottom: 8 }}>{apartment ? 'What do we know about it?' : 'Property details'}</label>
-      {apartment && <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '-3px 0 10px' }}>Reliable details about the property, when available.</p>}
-
-      {!editOpen && hasAnyFacts && (
-        <div style={{ background: 'var(--paper)', border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px' }}>
-          {facts.priceLine && <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--ink)' }}>{facts.priceLine}</div>}
-          {facts.bedsBathsSqft && <div style={{ fontSize: 13.5, color: 'var(--ink)', marginTop: 2 }}>{facts.bedsBathsSqft}</div>}
-          {facts.secondaryFacts && <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 4 }}>{facts.secondaryFacts}</div>}
-          {facts.hoaTaxLine && <div style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 4 }}>{facts.hoaTaxLine}</div>}
-          {!showsRentalFacts && !form.estMonthly && (
-            <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 6, fontStyle: 'italic' }}>Estimated monthly payment not added</div>
-          )}
-          <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px', marginTop: 10 }} onClick={() => setEditOpen(true)}>
-            Edit these details
-          </button>
-        </div>
-      )}
-
-      {(editOpen || !hasAnyFacts) && (
-        <div>
-          <div className="hh-property-facts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 10 }}>
-            {!apartment && sharedFactAwareness.price?.eligibleForSharedFactCapture && (
-              <CompactField label={priceLabel} value={form.price} isCurrency onChange={(v) => set('price', v)} placeholder={`Add ${priceLabel.toLowerCase()}`} must={priorities.budget?.tier === 'must'} coBuyerOnly={sharedFactAwareness.price.coBuyerOnly} />
-            )}
-            {!showsRentalFacts && <CompactField label="Est. monthly pmt" value={form.estMonthly} isCurrency onChange={(v) => set('estMonthly', v)} placeholder="Add est. payment" />}
-            {!apartment && sharedFactAwareness.beds?.eligibleForSharedFactCapture && (
-              <CompactField label="Beds" value={form.beds} onChange={(v) => set('beds', v)} placeholder="Add beds" must={priorities.bedsMin?.tier === 'must'} coBuyerOnly={sharedFactAwareness.beds.coBuyerOnly} />
-            )}
-            {!apartment && sharedFactAwareness.baths?.eligibleForSharedFactCapture && (
-              <CompactField label="Baths" value={form.baths} onChange={(v) => set('baths', v)} placeholder="Add baths" must={priorities.bathsMin?.tier === 'must'} coBuyerOnly={sharedFactAwareness.baths.coBuyerOnly} />
-            )}
-            {!apartment && sharedFactAwareness.sqft?.eligibleForSharedFactCapture && (
-              <CompactField label="Sq ft" value={form.sqft} onChange={(v) => set('sqft', v)} placeholder="Add sq ft" must={priorities.sqftTarget?.tier === 'must'} coBuyerOnly={sharedFactAwareness.sqft.coBuyerOnly} />
-            )}
-            {sharedFactAwareness.lotSize?.eligibleForSharedFactCapture && (
-              <CompactField label="Lot size" value={form.lotSize} onChange={(v) => set('lotSize', v)} placeholder="0.25 acres" must={priorities.lotSizeTarget?.tier === 'must'} coBuyerOnly={sharedFactAwareness.lotSize.coBuyerOnly} />
-            )}
-            {!apartment && <CompactField label="Garage" value={form.garageSpaces} onChange={(v) => set('garageSpaces', v)} placeholder="Add garage" coBuyerOnly={sharedFactAwareness.garageSpaces?.coBuyerOnly} />}
-            <CompactField label="Year built" value={form.yearBuilt} onChange={(v) => set('yearBuilt', v)} placeholder="Add year" />
-            {!apartment && <CompactField label="Days on mkt" value={form.daysOnMarket} onChange={(v) => set('daysOnMarket', v)} placeholder="Add DOM" />}
-          </div>
-          <div style={{ marginBottom: 12 }}>
-            <label className="hh-label" htmlFor="home-property-type">Property Type</label>
-            <select id="home-property-type" className="hh-input" value={form.propertyType ?? ''} onChange={(e) => set('propertyType', e.target.value || null)}>
-              <option value="">Unknown / not specified</option>
-              {HOME_PROPERTY_TYPE_OPTIONS.map((value) => <option key={value} value={value}>{PROPERTY_TYPE_LABELS[value]}</option>)}
-            </select>
-          </div>
-          {/* Capability gate retained for home rentals: showsRentalFacts && <section */}
-          {showsRentalFacts && <>{!apartment && <section style={{ border: '1px solid var(--line)', borderRadius: 12, padding: '12px 14px', marginBottom: 10 }}>
-            <div className="hh-label" style={{ marginBottom: 10 }}>Rental details</div>
-            <div className="hh-property-facts-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
-              <div><label className="hh-label" htmlFor="available-on" style={{ fontSize: 10.5, marginBottom: 3 }}>Available On</label><input id="available-on" type="date" className="hh-input" value={form.availableOn ?? ''} onChange={(e) => set('availableOn', e.target.value || null)} /></div>
-              <TriStateField label="Pets Allowed" value={form.petsAllowed} onChange={(v) => set('petsAllowed', v)} />
-              <TriStateField label="Utilities Included" value={form.utilitiesIncluded} onChange={(v) => set('utilitiesIncluded', v)} />
-              <TriStateField label="In-Unit Laundry" value={form.inUnitLaundry} onChange={(v) => set('inUnitLaundry', v)} />
-            </div>
-          </section>}</>}
-          {hasAnyFacts && (
-            <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 11.5, padding: '4px 10px' }} onClick={() => setEditOpen(false)}>
-              Show summary
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
 }
 
 // Educational, dismissible: explains FLH's property-information model once. The
@@ -400,7 +310,25 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
               <CompactField label="Lot size" value={form.lotSize} onChange={(value) => set('lotSize', value)} placeholder="Unknown" provenance={provenanceOf('lotSize')} />
               <CompactField label="Year built" value={form.yearBuilt} onChange={(value) => set('yearBuilt', value)} placeholder="Unknown" provenance={provenanceOf('yearBuilt')} />
               <CompactField label="Garage" value={form.garageSpaces} onChange={(value) => set('garageSpaces', value)} placeholder="Unknown" provenance={provenanceOf('garageSpaces')} />
+              <div>
+                <label className="hh-label" htmlFor="home-property-type" style={{ fontSize: 10.5, marginBottom: 3 }}>{apartment ? 'Property type' : 'Home type'}<ProvenanceTag provenance={provenanceOf('propertyType')} /></label>
+                <select id="home-property-type" className="hh-input" value={form.propertyType ?? ''} onChange={(e) => set('propertyType', e.target.value || null)}>
+                  <option value="">Unknown / not specified</option>
+                  {HOME_PROPERTY_TYPE_OPTIONS.map((value) => <option key={value} value={value}>{PROPERTY_TYPE_LABELS[value]}</option>)}
+                </select>
+              </div>
             </div>
+            {/* Shared rental facts. Match reads these directly (Pets Allowed,
+                Utilities Included, In-Unit Laundry), so every rental — home or
+                apartment — needs a way to record them. Unknown clears to null. */}
+            {showsRentalFacts && <section className="flh-rental-facts" aria-label="Rental details">
+              <div className="hh-edit-fields-grid">
+                <div><label className="hh-label" htmlFor="available-on" style={{ fontSize: 10.5, marginBottom: 3 }}>Available On<ProvenanceTag provenance={provenanceOf('availableOn')} /></label><input id="available-on" type="date" className="hh-input" value={form.availableOn ?? ''} onChange={(e) => set('availableOn', e.target.value || null)} /></div>
+                <TriStateField label="Pets Allowed" value={form.petsAllowed} onChange={(v) => set('petsAllowed', v)} />
+                <TriStateField label="Utilities Included" value={form.utilitiesIncluded} onChange={(v) => set('utilitiesIncluded', v)} />
+                <TriStateField label="In-Unit Laundry" value={form.inUnitLaundry} onChange={(v) => set('inUnitLaundry', v)} />
+              </div>
+            </section>}
             <p className="flh-unknown-helper"><ShieldCheck size={14} aria-hidden="true" /> Unknown is neutral. Leave a field alone when the listing doesn’t support a reliable answer.</p>
           </section>
         </div>
@@ -427,7 +355,7 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
               </div></div>;
             })}</div> : <p className="hh-edit-empty">No Match criteria are configured for this search.</p>}
             {criteria.length > 6 && <button type="button" className="hh-btn hh-btn-ghost hh-edit-disclosure" aria-expanded={allCriteriaOpen} onClick={() => setAllCriteriaOpen((value) => !value)}>{allCriteriaOpen ? 'Show prioritized criteria' : 'View all Match criteria'}</button>}
-            <p className="flh-basics-note">Search Basics — budget, beds, baths, size, home type, layout, and condition — live in <Link href="/search">My Search</Link>; they aren’t re-weighted here.</p>
+            <p className="flh-basics-note">Search Basics — budget, beds, baths, size, lot, home type, layout, and condition — live in <Link href="/search">My Search</Link>. They define your search and appear as facts on this {vocabulary.singularLower}; they aren’t weighted in Match.</p>
           </section>
 
           {/* Pros, cons, and notes are stored on the shared home (see SHARED_FIELDS in

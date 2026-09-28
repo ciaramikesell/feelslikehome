@@ -127,7 +127,8 @@ test('no invented amber/partial evaluation state: met stays a strict boolean eve
   // The engine itself: `met` is push()ed as a strict boolean/null, confirming
   // there is no third state to expose -- "1 of 2 desired baths" is a
   // detail *string* on an already-false met, not a distinct evaluation.
-  assert.match(matching, /met \? `\$\{actual\} bath\(s\)` : `\$\{actual\} of \$\{min\} desired baths`/);
+  assert.match(matching, /if \(raw === true\) \{ push\(ns, item\.label, tier, true, 1, true, 'Yes', true\); return; \}/);
+  assert.match(matching, /if \(raw === 'no'\) \{ push\(ns, item\.label, tier, true, 0, false, 'No', true\); return; \}/);
 });
 
 test('legend uses only supported states -- no entry for a state the data model does not have', async () => {

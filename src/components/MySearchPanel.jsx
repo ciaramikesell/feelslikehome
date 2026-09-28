@@ -55,7 +55,7 @@ function WhatImLookingFor({ priorities, onEdit }) {
         <IconBadge icon={House} />
         <div className="flh-card-heading">
           <h2 className="flh-card-title">What I’m Looking For</h2>
-          <p className="flh-card-sub">{summary.experienceLabel ? `${summary.experienceLabel} · ` : ''}<span className="flh-link-text">Edit</span></p>
+          <p className="flh-card-sub">{summary.experienceLabel ? `${summary.experienceLabel} · ` : ''}Search Basics · <span className="flh-link-text">Edit</span></p>
         </div>
         <span className="flh-card-meta">{summary.setCount} set</span>
         <Chevron />
@@ -68,6 +68,7 @@ function WhatImLookingFor({ priorities, onEdit }) {
       ) : (
         <p className="flh-card-empty">Add a budget, size, or the kinds of homes you’re considering.</p>
       )}
+      <p className="flh-basics-weight-note">Guideposts shown on every home — not weighted in Match.</p>
     </SectionCard>
   );
 }

@@ -51,8 +51,8 @@ test('regression guard: Match computation itself is untouched — the new hero s
 
 test('a missing Must-Have is always named in the new hero summary, never smoothed over by the headline percentage', async () => {
   const { computeMatch, matchFactualSummary } = await import('../src/lib/matching.js');
-  const priorities = { searchType: 'buy', bedsMin: { value: '4', tier: 'must' } };
-  const home = { beds: '2' }; // objective Must-Have, confirmed NOT met
+  const priorities = { searchType: 'buy', features: { customItems: [{ label: 'Home office', kind: 'check' }, { label: 'Central air', kind: 'check' }], tiers: { 'Home office': 'must' } } };
+  const home = { checks: { 'features:Home office': 'no' } }; // ranked Must-Have, confirmed NOT met
   const match = computeMatch(home, priorities);
   const summary = matchFactualSummary(match);
   assert.equal(match.mustMet < match.mustEvaluated, true);
@@ -61,11 +61,11 @@ test('a missing Must-Have is always named in the new hero summary, never smoothe
 
 test('an unevaluated Must-Have is reported as unknown, never as met and never as a mismatch', async () => {
   const { computeMatch, matchFactualSummary } = await import('../src/lib/matching.js');
-  // bedsMin is evaluated and met (so pct is non-null); Commute is also a
+  // Home office is evaluated and met (so pct is non-null); Commute is also a
   // selected Must-Have but no commute data is passed in, so it stays
   // genuinely unevaluated rather than failed.
-  const priorities = { searchType: 'buy', bedsMin: { value: '2', tier: 'must' }, location: { tiers: { Commute: 'must' } } };
-  const match = computeMatch({ beds: '3' }, priorities);
+  const priorities = { searchType: 'buy', features: { customItems: [{ label: 'Home office', kind: 'check' }, { label: 'Central air', kind: 'check' }], tiers: { 'Home office': 'must' } }, location: { tiers: { Commute: 'must' } } };
+  const match = computeMatch({ checks: { 'features:Home office': true } }, priorities);
   const summary = matchFactualSummary(match);
   assert.notEqual(match.pct, null);
   assert.equal(match.mustEvaluated < match.mustTotal, true);
@@ -74,8 +74,8 @@ test('an unevaluated Must-Have is reported as unknown, never as met and never as
 
 test('all Must-Haves met produces the exact spec\'d factual phrase, and the Important sentence follows the spec\'s "X of Y ... Z doesn\'t match" shape', async () => {
   const { computeMatch, matchFactualSummary } = await import('../src/lib/matching.js');
-  const priorities = { searchType: 'buy', bedsMin: { value: '2', tier: 'must' }, bathsMin: { value: '2', tier: 'important' } };
-  const home = { beds: '3', baths: '2' };
+  const priorities = { searchType: 'buy', features: { customItems: [{ label: 'Home office', kind: 'check' }, { label: 'Central air', kind: 'check' }], tiers: { 'Home office': 'must', 'Central air': 'important' } } };
+  const home = { checks: { 'features:Home office': true, 'features:Central air': true } };
   const match = computeMatch(home, priorities);
   const summary = matchFactualSummary(match);
   assert.equal(summary.mustClause, 'All Must-Haves met');

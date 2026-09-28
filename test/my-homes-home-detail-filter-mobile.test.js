@@ -87,8 +87,9 @@ test('personalized criteria keep evaluated = match + don’t match, with unknown
     assert.equal(s.total, s.evaluated + s.unknown.length + s.neutral.length);
   }
   const { criteriaSummary } = selectHomeCardCriteria(evaluate(homes.find((home) => home.id === 'nothing-known')));
-  // Unknown is never a mismatch.
-  assert.deepEqual([criteriaSummary.matches.length, criteriaSummary.mismatches.length, criteriaSummary.unknown.length], [0, 0, 2]);
+  // Unknown is never a mismatch. (Only the ranked Important priority is here —
+  // budget is a Search Basic and never a Match criterion.)
+  assert.deepEqual([criteriaSummary.matches.length, criteriaSummary.mismatches.length, criteriaSummary.unknown.length], [0, 0, 1]);
 });
 
 /* ------------------------------------ filters and sorting ------------------------------------ */
@@ -190,8 +191,10 @@ test('multiple Places That Matter are never collapsed to one', () => {
 test('Home Detail’s compact Match panel reads only the canonical match and keeps Unknown distinct', () => {
   const panel = read('src/components/DetailMatchPanel.jsx');
   assert.match(panel, /const must = mustHaveStatus\(match\);/);
-  assert.match(panel, /const \{ criteriaSummary \} = selectHomeCardCriteria\(match\);/);
-  assert.match(panel, /\{summary\.evaluated\}\/\{summary\.total\} evaluated/);
+  // "All weighted priorities" counts every ranked priority once, Must Haves
+  // included, so it can never read as all-matching beside a missing Must Have.
+  assert.match(panel, /const summary = weightedPrioritySummary\(match\);/);
+  assert.match(panel, /\{summary\.evaluated\} of \{summary\.total\} evaluated/);
   assert.match(panel, /still unknown/);
   assert.match(panel, /Not enough information yet/);
   assert.match(panel, /Unknown details never count against a home\./);
@@ -255,7 +258,7 @@ const mixedHomes = [
   { id: 'loc-miss', price: '350000', checks: { 'location:Reputable Schools': 'no', 'exterior:Fenced yard': true, 'features:Home office': true } },
   // Custom Must Have missed; Location unknown.
   { id: 'custom-miss', price: '390000', checks: { 'features:Mudroom': 'no', 'exterior:Fenced yard': true } },
-  // Budget (a Basics Must Have) missed; everything else unknown.
+  // Over budget (a Search Basic, not weighted); every ranked Must Have unknown.
   { id: 'budget-miss', price: '480000', checks: {} },
   // No confirmed misses; several unknown.
   { id: 'no-miss', price: '399000', checks: { 'location:Reputable Schools': true, 'features:Home office': true } },
@@ -263,21 +266,23 @@ const mixedHomes = [
 const evaluateMixed = (home) => computeMatch(home, mixed);
 const stateOf = (criterion) => (!criterion.evaluated ? 'unknown' : criterion.met === null ? 'neutral' : criterion.met ? 'met' : 'missing');
 
-test('desktop card preview includes Location, custom, and Basics Must Haves — not only Features/Exterior', () => {
+test('desktop card preview includes Location and custom Must Haves — not only Features/Exterior — and never a Search Basic', () => {
   const preview = selectHomeCardCriteria(evaluateMixed(mixedHomes[0]));
   const shown = [...preview.mustHaves, ...preview.hiddenMustHaves];
-  assert.deepEqual(new Set(shown.map((criterion) => criterion.key)), new Set(['budget', 'location:Reputable Schools', 'features:Mudroom', 'exterior:Fenced yard', 'features:Home office']));
-  // Bounded preview with explicit overflow, never a dropped category: all 5 fit.
-  assert.equal(preview.mustHaves.length, 5);
+  // Budget was stored at the Must Have tier, but Search Basics are not weighted.
+  assert.deepEqual(new Set(shown.map((criterion) => criterion.key)), new Set(['location:Reputable Schools', 'features:Mudroom', 'exterior:Fenced yard', 'features:Home office']));
+  // Bounded preview with explicit overflow, never a dropped category: all 4 fit.
+  assert.equal(preview.mustHaves.length, 4);
   assert.equal(preview.mustOverflow, 0);
   // The failed Location Must Have leads the preview.
   assert.equal(preview.mustHaves[0].key, 'location:Reputable Schools');
-  assert.deepEqual(shown.map(criterionLabel).sort(), ['Fenced Yard', 'Home Office', 'Mudroom', 'Reputable Schools', 'Within budget']);
+  assert.deepEqual(shown.map(criterionLabel).sort(), ['Fenced Yard', 'Home Office', 'Mudroom', 'Reputable Schools']);
 });
 
 test('card preview, Home Detail, and the No Must-Haves missing filter agree on every Must Have’s state', () => {
   const kept = new Set(applyContenderFilters(mixedHomes, { noMustMissing: true }, evaluateMixed).map((home) => home.id));
-  assert.deepEqual([...kept], ['no-miss']);
+  // Over budget is a Search Basic fact, not a Must Have miss, so it is kept.
+  assert.deepEqual([...kept], ['budget-miss', 'no-miss']);
   for (const home of mixedHomes) {
     const match = evaluateMixed(home);
     const detail = mustHaveStatus(match); // Home Detail panel + phone card cue

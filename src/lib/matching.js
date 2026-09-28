@@ -1,10 +1,17 @@
 import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier, isExperientialCriterion, isRetiredPurchaseBuiltIn, foldLegacyCheckAliases, TOUR_RESPONSE, tourResponseLabel, criterionDisplayLabel } from './constants.js';
+import { lotSizeAcres } from './homeDisplay.js';
+import { PROPERTY_TYPE_LABELS } from './searchIntent.js';
 import { normalizeSearchIntent } from './searchIntent.js';
 import { EVIDENCE_STRENGTH, findingsFromFields } from './importDomain.js';
 
+// A value with no digits at all ("Contact agent", "—", "N/A") is Unknown (null),
+// never 0 — Number('') is 0, which would silently turn an unknown price into
+// "$0" and an unknown fact into a met or missed comparison.
 export function parseNum(v) {
   if (v === '' || v === null || v === undefined) return null;
-  const n = Number(String(v).replace(/[^0-9.]/g, ''));
+  const cleaned = String(v).replace(/[^0-9.]/g, '');
+  if (!/\d/.test(cleaned)) return null;
+  const n = Number(cleaned);
   return Number.isFinite(n) ? n : null;
 }
 
@@ -290,84 +297,10 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
   };
   const notEvaluated = (key, label, tier, objective) => push(key, label, tier, false, null, null, 'Not evaluated yet', objective);
 
-  const propertyTypes = priorities.preferredPropertyTypes;
-  if (propertyTypes?.values?.length && propertyTypes.tier !== 'dontcare') {
-    if (!home.propertyType) notEvaluated('preferredPropertyTypes', 'Preferred property type', propertyTypes.tier, true);
-    else {
-      const met = propertyTypes.values.includes(home.propertyType);
-      push('preferredPropertyTypes', 'Preferred property type', propertyTypes.tier, true, met ? 1 : 0, met,
-        met ? home.propertyType : `${home.propertyType} is not on your preferred list`, true);
-    }
-  }
-
-  if (priorities.budget?.value && priorities.budget.tier !== 'dontcare') {
-    const target = parseNum(priorities.budget.value);
-    const price = parseNum(home.price);
-    if (target && price !== null) {
-      if (price <= target) push('budget', 'Within budget', priorities.budget.tier, true, 1, true, `$${(target - price).toLocaleString()} under budget`, true);
-      else { const over = price - target; push('budget', 'Within budget', priorities.budget.tier, true, Math.max(0, 1 - over / target), false, `$${over.toLocaleString()} over budget`, true); }
-    } else {
-      notEvaluated('budget', 'Within budget', priorities.budget.tier, true);
-    }
-  }
-  if (priorities.sqftTarget?.value && priorities.sqftTarget.tier !== 'dontcare') {
-    const target = parseNum(priorities.sqftTarget.value);
-    const actual = parseNum(home.sqft);
-    if (target && actual !== null) {
-      const met = actual >= target;
-      push('sqft', 'Target square footage', priorities.sqftTarget.tier, true, met ? 1 : Math.max(0, actual / target), met, met ? `${(actual - target).toLocaleString()} sqft over target` : `${(target - actual).toLocaleString()} sqft under target`, true);
-    } else {
-      notEvaluated('sqft', 'Target square footage', priorities.sqftTarget.tier, true);
-    }
-  }
-  if (priorities.lotSizeTarget?.value && priorities.lotSizeTarget.tier !== 'dontcare') {
-    const target = parseNum(priorities.lotSizeTarget.value);
-    const actual = parseNum(home.lotSize);
-    if (target && actual !== null) {
-      const met = actual >= target;
-      push('lotSize', 'Lot size', priorities.lotSizeTarget.tier, true, met ? 1 : Math.max(0, actual / target), met, met ? `${actual} (wanted ${target}+)` : `${actual} below target ${target}`, true);
-    } else {
-      notEvaluated('lotSize', 'Lot size', priorities.lotSizeTarget.tier, true);
-    }
-  }
-  if (priorities.bedsMin?.value && priorities.bedsMin.tier !== 'dontcare') {
-    const min = parseNum(priorities.bedsMin.value);
-    const actual = parseNum(home.beds);
-    if (min && actual !== null) {
-      const met = actual >= min;
-      push('beds', 'Minimum bedrooms', priorities.bedsMin.tier, true, met ? 1 : actual / min, met, met ? `${actual} bed(s)` : `${actual} of ${min} desired beds`, true);
-    } else {
-      notEvaluated('beds', 'Minimum bedrooms', priorities.bedsMin.tier, true);
-    }
-  }
-  if (priorities.bathsMin?.value && priorities.bathsMin.tier !== 'dontcare') {
-    const min = parseNum(priorities.bathsMin.value);
-    const actual = parseNum(home.baths);
-    if (min && actual !== null) {
-      const met = actual >= min;
-      push('baths', 'Minimum bathrooms', priorities.bathsMin.tier, true, met ? 1 : actual / min, met, met ? `${actual} bath(s)` : `${actual} of ${min} desired baths`, true);
-    } else {
-      notEvaluated('baths', 'Minimum bathrooms', priorities.bathsMin.tier, true);
-    }
-  }
-
-  MULTISELECT_CATEGORIES.forEach(({ key, title }) => {
-    const pref = priorities[key];
-    if (!pref || pref.tier === 'dontcare' || !pref.values?.length) return;
-    const homeVals = home[key] || [];
-    if (!homeVals.length) { notEvaluated(key, title, pref.tier, true); return; }
-    const overlap = homeVals.filter((v) => pref.values.includes(v));
-    push(key, title, pref.tier, true, overlap.length ? 1 : 0, overlap.length > 0, overlap.length ? overlap.join(', ') : 'No match on your list', true);
-  });
-
-  SINGLESELECT_CATEGORIES.forEach(({ key, title }) => {
-    const pref = priorities[key];
-    if (!pref || pref.tier === 'dontcare' || !pref.value) return;
-    const actual = home[key];
-    if (!actual) { notEvaluated(key, title, pref.tier, true); return; }
-    const met = actual === pref.value;
-    push(key, title, pref.tier, true, met ? 1 : 0, met, met ? pref.value : `${actual} (wanted ${pref.value})`, true);
-  });
+  // Search Basics (budget, beds, baths, square footage, lot size, home type,
+  // layout, condition, bedroom locations) define the search; they are not
+  // weighted Match criteria. See evaluateSearchBasics for their factual,
+  // unweighted comparison. Match is built only from ranked priorities.
 
   getItemlistCategories(priorities.searchType).forEach((def) => {
     const { catState, core, custom } = splitCategoryItems(def, priorities);
@@ -478,6 +411,83 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
     // array the percentage itself is derived from.
     allSelected: all,
   };
+}
+
+// Search Basics are the search's factual definition, not Match criteria. This
+// compares a home's known facts with each Basic the participant has filled in —
+// tier is ignored entirely, and nothing here feeds a score. A fact the home
+// doesn't establish yet is Unknown (evaluated: false), never a miss.
+const NO_PREFERENCE = 'No Preference';
+const hasValue = (value) => String(value ?? '').trim() !== '';
+const plural = (n, one, many) => `${n.toLocaleString()} ${n === 1 ? one : many}`;
+
+export function evaluateSearchBasics(home, rawPriorities) {
+  if (!home || !rawPriorities) return [];
+  const p = rawPriorities;
+  const out = [];
+  const add = (key, label, wanted, evaluated, met, detail) => out.push({ key, label, wanted, evaluated, met: evaluated ? met : null, detail });
+
+  const budget = parseNum(p.budget?.value);
+  if (budget) {
+    const price = parseNum(home.price);
+    const wanted = `$${budget.toLocaleString()} max`;
+    if (price === null) add('budget', 'Budget', wanted, false, null, 'Price unknown');
+    else add('budget', 'Budget', wanted, true, price <= budget, price <= budget ? `$${(budget - price).toLocaleString()} under your budget` : `$${(price - budget).toLocaleString()} over your budget`);
+  }
+  const minimum = (key, label, target, actual, unit, units) => {
+    if (!target) return;
+    const wanted = `${target.toLocaleString()}+ ${units}`;
+    if (actual === null) add(key, label, wanted, false, null, `${label} unknown`);
+    else add(key, label, wanted, true, actual >= target, plural(actual, unit, units));
+  };
+  minimum('beds', 'Bedrooms', parseNum(p.bedsMin?.value), parseNum(home.beds), 'bed', 'beds');
+  minimum('baths', 'Bathrooms', parseNum(p.bathsMin?.value), parseNum(home.baths), 'bath', 'baths');
+  minimum('sqft', 'Square footage', parseNum(p.sqftTarget?.value), parseNum(home.sqft), 'sq ft', 'sq ft');
+
+  const lotTarget = parseNum(p.lotSizeTarget?.value);
+  if (lotTarget) {
+    const acres = lotSizeAcres(home.lotSize);
+    const wanted = `${lotTarget}+ acres`;
+    if (acres === null) add('lotSize', 'Lot size', wanted, false, null, 'Lot size unknown');
+    else add('lotSize', 'Lot size', wanted, true, acres >= lotTarget, `${acres.toFixed(2)} acres`);
+  }
+
+  const types = (p.preferredPropertyTypes?.values || []).filter((value) => value && value !== NO_PREFERENCE);
+  if (types.length) {
+    const wanted = types.map((value) => PROPERTY_TYPE_LABELS[value] || value).join(' · ');
+    if (!home.propertyType) add('preferredPropertyTypes', 'Home type', wanted, false, null, 'Home type unknown');
+    else add('preferredPropertyTypes', 'Home type', wanted, true, types.includes(home.propertyType), PROPERTY_TYPE_LABELS[home.propertyType] || home.propertyType);
+  }
+
+  MULTISELECT_CATEGORIES.forEach(({ key, title }) => {
+    const wantedValues = (p[key]?.values || []).filter((value) => value && value !== NO_PREFERENCE);
+    if (!wantedValues.length) return;
+    const homeValues = home[key] || [];
+    if (!homeValues.length) { add(key, title, wantedValues.join(' · '), false, null, `${title} unknown`); return; }
+    const overlap = homeValues.filter((value) => wantedValues.includes(value));
+    add(key, title, wantedValues.join(' · '), true, overlap.length > 0, homeValues.join(' · '));
+  });
+
+  SINGLESELECT_CATEGORIES.forEach(({ key, title }) => {
+    const wanted = p[key]?.value;
+    if (!hasValue(wanted) || wanted === NO_PREFERENCE) return;
+    if (!hasValue(home[key])) { add(key, title, wanted, false, null, `${title} unknown`); return; }
+    add(key, title, wanted, true, home[key] === wanted, home[key]);
+  });
+
+  return out;
+}
+
+// Every ranked (weighted) priority, counted once from computeMatch's own
+// allSelected — Must Haves included — so an aggregate can never claim that
+// everything matches while a Must Have beside it reads as missing.
+export function weightedPrioritySummary(match) {
+  const all = match?.allSelected || [];
+  const matches = all.filter((criterion) => criterion.evaluated && criterion.met === true);
+  const mismatches = all.filter((criterion) => criterion.evaluated && criterion.met === false);
+  const neutral = all.filter((criterion) => criterion.evaluated && criterion.met === null);
+  const unknown = all.filter((criterion) => !criterion.evaluated);
+  return { total: all.length, evaluated: matches.length + mismatches.length + neutral.length, matches, mismatches, neutral, unknown };
 }
 
 // Phase 3 Home Card summary: matches/missing/not-confirmed across ALL tiers

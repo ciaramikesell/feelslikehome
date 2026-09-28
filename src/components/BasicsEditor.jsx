@@ -1,6 +1,6 @@
 'use client';
 
-import { TierPicker } from '@/components/ui';
+import Link from 'next/link';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, INVESTMENT_PROPERTY_TYPES, INVESTMENT_LIVING_PLAN_OPTIONS,
   showsMultiselectCategory, terminology, toggleWithNoPreference, isApartmentRental,
@@ -8,11 +8,13 @@ import {
 import { PROPERTY_TYPE_LABELS, searchIntentCapabilities } from '@/lib/searchIntent';
 import { sanitizeNumericInput } from '@/lib/searchProfile';
 
-// The existing "What I'm Looking For" editor, unchanged in what it edits: the
-// search definition (Basics) plus each field's existing importance tier, which
-// Match already uses. My Search's redesigned overview opens it in a Sheet; it
-// autosaves through the same patch/savePriorities path as before.
-function ObjectiveRow({ label, value, onValueChange, tier, onTierChange, placeholder, prefix, suffix, wide = false, decimal = false }) {
+// The "What I'm Looking For" editor: the search definition (Search Basics).
+// Basics are factual guideposts, not Match weights — there is no importance
+// picker here, and computeMatch never reads them (see evaluateSearchBasics).
+// Any tier still stored on a Basic from before is left untouched and unused.
+// My Search opens it in a Sheet; it autosaves through the same
+// patch/savePriorities path Onboarding uses.
+function ObjectiveRow({ label, value, onValueChange, placeholder, prefix, suffix, wide = false, decimal = false }) {
   return (
     <div className={`hh-basic-field ${wide ? 'hh-basic-field-wide' : ''}`}>
       <div>
@@ -23,7 +25,6 @@ function ObjectiveRow({ label, value, onValueChange, tier, onTierChange, placeho
           {suffix && <span style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>{suffix}</span>}
         </div>
       </div>
-      <TierPicker value={tier} onChange={onTierChange} quiet ariaLabel={`${label} importance`} />
     </div>
   );
 }
@@ -52,7 +53,6 @@ function BedroomSubPreferences({ priorities, patch }) {
                 ))}
               </div>
             </div>
-            <TierPicker value={catState.tier} onChange={(t) => patch((next) => { next[def.key] = { ...next[def.key], tier: t }; return next; })} quiet ariaLabel={`${def.title} importance`} />
           </div>
         );
       })}
@@ -88,7 +88,6 @@ function MultiselectSection({ def, priorities, patch, children }) {
         <div style={{ flex: '1 1 220px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
           {options.map((o) => <button type="button" key={o} className={`hh-chip ${safeValues.includes(o) ? 'on' : ''}`} aria-pressed={safeValues.includes(o)} onClick={() => toggle(o)}>{o}</button>)}
         </div>
-        <TierPicker value={catState.tier} onChange={(t) => patch((next) => { next[key] = { ...next[key], tier: t }; return next; })} quiet ariaLabel={`${title} importance`} />
       </div>
       {children}
     </div>
@@ -99,12 +98,13 @@ export default function BasicsEditor({ priorities: p, patch }) {
   const capabilities = searchIntentCapabilities(p.searchType);
   return (
     <div className="flh-basics-editor">
+          <p className="flh-basics-intro">Search Basics define what you’re looking for. They show up as facts on every home — they aren’t weighted in Match. Rank what matters in <Link href="/search/priorities">Rank priorities</Link>.</p>
           <div className="hh-basics-grid">
-            <ObjectiveRow wide label={terminology(p.searchType).budgetLabel} prefix="$" value={p.budget.value} onValueChange={(v) => patch((n) => { n.budget = { ...n.budget, value: v }; return n; })} tier={p.budget.tier} onTierChange={(t) => patch((n) => { n.budget = { ...n.budget, tier: t }; return n; })} placeholder={terminology(p.searchType).pricePlaceholder} />
-            <ObjectiveRow label="Minimum Square Footage" suffix="sqft" value={p.sqftTarget.value} onValueChange={(v) => patch((n) => { n.sqftTarget = { ...n.sqftTarget, value: v }; return n; })} tier={p.sqftTarget.tier} onTierChange={(t) => patch((n) => { n.sqftTarget = { ...n.sqftTarget, tier: t }; return n; })} placeholder="1,800" />
-            {!isApartmentRental(p) && <ObjectiveRow decimal label="Minimum Lot Size" suffix="acres" value={p.lotSizeTarget.value} onValueChange={(v) => patch((n) => { n.lotSizeTarget = { ...n.lotSizeTarget, value: v }; return n; })} tier={p.lotSizeTarget.tier} onTierChange={(t) => patch((n) => { n.lotSizeTarget = { ...n.lotSizeTarget, tier: t }; return n; })} placeholder="0.25" />}
-            <ObjectiveRow label="Minimum Bedrooms" suffix="beds" value={p.bedsMin.value} onValueChange={(v) => patch((n) => { n.bedsMin = { ...n.bedsMin, value: v }; return n; })} tier={p.bedsMin.tier} onTierChange={(t) => patch((n) => { n.bedsMin = { ...n.bedsMin, tier: t }; return n; })} placeholder="3" />
-            <ObjectiveRow decimal label="Minimum Bathrooms" suffix="baths" value={p.bathsMin.value} onValueChange={(v) => patch((n) => { n.bathsMin = { ...n.bathsMin, value: v }; return n; })} tier={p.bathsMin.tier} onTierChange={(t) => patch((n) => { n.bathsMin = { ...n.bathsMin, tier: t }; return n; })} placeholder="2" />
+            <ObjectiveRow wide label={terminology(p.searchType).budgetLabel} prefix="$" value={p.budget.value} onValueChange={(v) => patch((n) => { n.budget = { ...n.budget, value: v }; return n; })} placeholder={terminology(p.searchType).pricePlaceholder} />
+            <ObjectiveRow label="Minimum Square Footage" suffix="sqft" value={p.sqftTarget.value} onValueChange={(v) => patch((n) => { n.sqftTarget = { ...n.sqftTarget, value: v }; return n; })} placeholder="1,800" />
+            {!isApartmentRental(p) && <ObjectiveRow decimal label="Minimum Lot Size" suffix="acres" value={p.lotSizeTarget.value} onValueChange={(v) => patch((n) => { n.lotSizeTarget = { ...n.lotSizeTarget, value: v }; return n; })} placeholder="0.25" />}
+            <ObjectiveRow label="Minimum Bedrooms" suffix="beds" value={p.bedsMin.value} onValueChange={(v) => patch((n) => { n.bedsMin = { ...n.bedsMin, value: v }; return n; })} placeholder="3" />
+            <ObjectiveRow decimal label="Minimum Bathrooms" suffix="baths" value={p.bathsMin.value} onValueChange={(v) => patch((n) => { n.bathsMin = { ...n.bathsMin, value: v }; return n; })} placeholder="2" />
           </div>
 
           {p.searchType === 'investment' && (
@@ -143,9 +143,8 @@ export default function BasicsEditor({ priorities: p, patch }) {
                     </button>;
                   })}
                 </div>
-                <TierPicker value={p.preferredPropertyTypes.tier} onChange={(tier) => patch((n) => { n.preferredPropertyTypes = { ...n.preferredPropertyTypes, tier }; return n; })} quiet ariaLabel="Property type importance" />
               </div>
-              <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '6px 0 0' }}>This shapes Match when a home's type is known; it never filters homes out.</p>
+              <p style={{ fontSize: 11.5, color: 'var(--ink-soft)', margin: '6px 0 0' }}>Shown as a fact on each home; it never filters homes out.</p>
             </div>
           )}
 

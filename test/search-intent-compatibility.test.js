@@ -18,7 +18,7 @@ import {
   showsMultiselectCategory,
   terminology,
 } from '../src/lib/constants.js';
-import { computeMatch, parseListingText } from '../src/lib/matching.js';
+import { computeMatch, evaluateSearchBasics, parseListingText } from '../src/lib/matching.js';
 
 const legacyTypes = ['buy', 'rent_home', 'rent_apartment', 'investment'];
 
@@ -151,19 +151,20 @@ test('normalization preserves complete legacy documents without mutation', () =>
   }
 });
 
-test('current Match result is search-type independent for the same selected facts', () => {
+test('Search Basics read the same for every search type and never become Match weights', () => {
+  const home = { price: '450000', beds: '2', checks: {}, ratings: {} };
   const results = legacyTypes.map((searchType) => {
     const priorities = normalizePriorities({
       searchType,
       budget: { value: '500000', tier: 'must' },
       bedsMin: { value: '3', tier: 'important' },
     });
-    return computeMatch({ price: '450000', beds: '2', checks: {}, ratings: {} }, priorities);
+    assert.equal(computeMatch(home, priorities), null);
+    return evaluateSearchBasics(home, priorities);
   });
   for (const result of results.slice(1)) assert.deepEqual(result, results[0]);
-  assert.equal(results[0].pct, 89);
-  assert.deepEqual(results[0].satisfied.map(({ key }) => key), ['budget']);
-  assert.deepEqual(results[0].missing.map(({ key }) => key), ['beds']);
+  assert.deepEqual(results[0].map(({ key, met }) => [key, met]), [['budget', true], ['beds', false]]);
+  assert.equal(results[0][0].detail, '$50,000 under your budget');
 });
 
 test('current listing parser behavior remains search-intent agnostic', () => {

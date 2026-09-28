@@ -78,28 +78,36 @@ export function digitsOnly(v) {
 //   - anything unparsable -> returned verbatim rather than guessed at
 // Sub-436 sq ft (rounds to under 0.01 acres) stays in sq ft, since "0.00 acres"
 // isn't meaningful.
+export const SQFT_PER_ACRE = 43560;
+
+// The one canonical reading of a stored lot size, in acres. Lot size reaches
+// `home.lotSize` in several shapes: RentCast writes "0.22 acres" or "8712 sq ft",
+// the listing-text parser keeps the listing's own unit ("9,583 sqft"), and a
+// person types a bare number ("0.17") into Add/Edit Home. A bare number is read
+// as acres below 100 (no residential lot is 100+ acres typed as a number, and no
+// lot is under 100 sq ft) and as square feet otherwise. Returns null when the
+// value can't be read — Unknown, never zero.
+export function lotSizeAcres(raw) {
+  if (raw === null || raw === undefined) return null;
+  const str = String(raw).trim();
+  if (!str) return null;
+  const match = str.match(/(\d[\d,]*(?:\.\d+)?|\.\d+)/);
+  if (!match) return null;
+  const n = Number(match[1].replace(/,/g, ''));
+  if (!Number.isFinite(n) || n <= 0) return null;
+  if (/acre/i.test(str)) return n;
+  if (/(sq\.?\s?f(ee)?t|sqft|square\s*f(ee|oo)t|\bsf\b)/i.test(str)) return n / SQFT_PER_ACRE;
+  return n < 100 ? n : n / SQFT_PER_ACRE;
+}
+
 export function formatLotSizeDisplay(raw) {
   if (!raw) return '';
   const str = String(raw).trim();
   if (!str) return '';
-
-  const acreMatch = str.match(/([\d,.]+)\s*acres?/i);
-  if (acreMatch) {
-    const n = Number(acreMatch[1].replace(/,/g, ''));
-    return Number.isFinite(n) ? `${n.toFixed(2)} acres` : str;
-  }
-
-  const sqftMatch = str.match(/([\d,.]+)/);
-  if (sqftMatch) {
-    const n = Number(sqftMatch[1].replace(/,/g, ''));
-    if (Number.isFinite(n) && n > 0) {
-      const acres = n / 43560;
-      if (acres < 0.01) return `${Math.round(n)} sq ft`;
-      return `${acres.toFixed(2)} acres`;
-    }
-  }
-
-  return str;
+  const acres = lotSizeAcres(str);
+  if (acres === null) return str;
+  if (acres < 0.01) return `${Math.round(acres * SQFT_PER_ACRE).toLocaleString()} sq ft`;
+  return `${acres.toFixed(2)} acres`;
 }
 
 // Builds the fact lines for the compact confirmation card from whichever fields

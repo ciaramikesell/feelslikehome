@@ -3,20 +3,26 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LogOut, SlidersHorizontal, UserRound } from 'lucide-react';
+import { KeyRound, LogOut, SlidersHorizontal, UserRound } from 'lucide-react';
+import Sheet from '@/components/Sheet';
+import { Avatar, Chevron, IconBadge, MobilePage, PageHeading, SectionCard, SectionLabel } from '@/components/MobileSystem';
 import { createClient } from '@/lib/supabase/client';
 import { updateProfileName } from '@/lib/supabase/data';
 
-// Account & Settings: profile, access, and session. It never needs an active
-// buyer search. Access is described only from what the product actually has:
-// there is no paid-access entitlement in the app or database today, so none is
-// claimed here.
+// Account & Settings: an account hub — identity, access, the search this person
+// is part of, and session. It is about the person, not a search, so it never
+// needs an active buyer search (searchSummary may be null). Access is described
+// only from what the product actually has: there is no paid-access entitlement
+// in the app or database today, so none is claimed here. Only implemented
+// destinations are listed (no notification, privacy, or deletion screens exist).
 export default function AccountSettings({ userId, email, firstName, lastName, searchSummary }) {
   const router = useRouter();
+  const [profileOpen, setProfileOpen] = useState(false);
   const [first, setFirst] = useState(firstName);
   const [last, setLast] = useState(lastName);
   const [state, setState] = useState('idle');
   const dirty = first.trim() !== firstName.trim() || last.trim() !== lastName.trim();
+  const displayName = [firstName, lastName].map((part) => part.trim()).filter(Boolean).join(' ');
 
   const saveName = async (event) => {
     event.preventDefault();
@@ -38,22 +44,78 @@ export default function AccountSettings({ userId, email, firstName, lastName, se
   };
 
   return (
-    <main className="flh-account">
-      <header className="flh-account-header">
-        <p className="flh-eyebrow">Account &amp; Settings</p>
-        <h1 className="hh-serif">Your account</h1>
-      </header>
+    <MobilePage width="narrow" className="flh-account">
+      <PageHeading title="Account" />
 
-      <section className="flh-card flh-account-section" aria-labelledby="account-profile">
-        <h2 id="account-profile" className="flh-section-kicker"><UserRound size={14} aria-hidden="true" /> Profile</h2>
+      <SectionCard onClick={() => setProfileOpen(true)} className="flh-account-identity" ariaLabel={`Profile details: ${displayName || 'add your name'}, ${email || 'no email on file'}`}>
+        <span className="flh-card-row">
+          <Avatar name={displayName || email || '?'} />
+          <span className="flh-card-heading">
+            <span className="flh-card-title">{displayName || 'Add your name'}</span>
+            <span className="flh-card-sub">{email || 'No email on file'}</span>
+          </span>
+          <Chevron />
+        </span>
+      </SectionCard>
+
+      <SectionLabel>My access</SectionLabel>
+      <SectionCard tone="warm" className="flh-account-access" aria-labelledby="account-access">
+        <div className="flh-card-row">
+          <IconBadge icon={KeyRound} />
+          <div className="flh-card-heading">
+            <h2 id="account-access" className="flh-card-title flh-card-title-small">Everything is included</h2>
+            <p className="flh-card-sub">Every part of Feels Like Home comes with your account today. There’s nothing to buy, upgrade, or manage here.</p>
+          </div>
+        </div>
+      </SectionCard>
+      {searchSummary ? (
+        <SectionCard href="/search" className="flh-account-search" ariaLabel="Your search. Open My Search">
+          <span className="flh-card-row">
+            <IconBadge icon={SlidersHorizontal} tone="sage" />
+            <span className="flh-card-heading">
+              <span className="flh-card-title flh-card-title-small">Your search</span>
+              <span className="flh-card-sub">{searchSummary.isOwner ? 'You started this search' : 'You were invited to this search'} · {searchSummary.participantCount > 1 ? `shared by ${searchSummary.participantCount} people` : 'just you'}. Each person keeps their own priorities and Match.</span>
+            </span>
+            <Chevron />
+          </span>
+        </SectionCard>
+      ) : (
+        <SectionCard href="/onboarding" className="flh-account-search" ariaLabel="No active home search. Start a search">
+          <span className="flh-card-row">
+            <IconBadge icon={SlidersHorizontal} tone="sage" />
+            <span className="flh-card-heading">
+              <span className="flh-card-title flh-card-title-small">No active home search</span>
+              <span className="flh-card-sub">Start a search to add homes and see how they measure up.</span>
+            </span>
+            <Chevron />
+          </span>
+        </SectionCard>
+      )}
+
+      <SectionLabel>Account and session</SectionLabel>
+      <div className="flh-account-list">
+        <button type="button" className="flh-account-row" onClick={() => setProfileOpen(true)}>
+          <UserRound size={17} aria-hidden="true" />
+          <span><strong>Profile details</strong><small>Your name and sign-in email</small></span>
+          <Chevron />
+        </button>
+        <Link className="flh-account-row" href="/search">
+          <SlidersHorizontal size={17} aria-hidden="true" />
+          <span><strong>My Search</strong><small>What you’re looking for — search-specific, not account settings</small></span>
+          <Chevron />
+        </Link>
+      </div>
+      <button type="button" className="flh-button flh-button-outline flh-button-block flh-account-signout" onClick={signOut}><LogOut size={16} aria-hidden="true" /> Sign out</button>
+
+      <Sheet open={profileOpen} onClose={() => { setProfileOpen(false); setFirst(firstName); setLast(lastName); setState('idle'); }} title="Profile details" size="default">
         <form onSubmit={saveName} className="flh-account-form">
           <div className="flh-account-name-row">
-            <div><label className="hh-label" htmlFor="account-first">First name</label><input id="account-first" className="hh-input" value={first} onChange={(e) => { setFirst(e.target.value); setState('idle'); }} autoComplete="given-name" /></div>
-            <div><label className="hh-label" htmlFor="account-last">Last name</label><input id="account-last" className="hh-input" value={last} onChange={(e) => { setLast(e.target.value); setState('idle'); }} autoComplete="family-name" /></div>
+            <div className="flh-field"><label className="flh-field-label" htmlFor="account-first">First name</label><input id="account-first" className="flh-input" value={first} onChange={(e) => { setFirst(e.target.value); setState('idle'); }} autoComplete="given-name" /></div>
+            <div className="flh-field"><label className="flh-field-label" htmlFor="account-last">Last name</label><input id="account-last" className="flh-input" value={last} onChange={(e) => { setLast(e.target.value); setState('idle'); }} autoComplete="family-name" /></div>
           </div>
-          <div><span className="hh-label">Email</span><p className="flh-account-value">{email || 'No email on file'}</p></div>
+          <div className="flh-field"><span className="flh-field-label">Email</span><p className="flh-account-value">{email || 'No email on file'}</p></div>
           <div className="flh-account-actions">
-            <button type="submit" className="hh-btn" disabled={!dirty || state === 'saving'}>{state === 'saving' ? 'Saving…' : 'Save name'}</button>
+            <button type="submit" className="flh-button flh-button-primary" disabled={!dirty || state === 'saving'}>{state === 'saving' ? 'Saving…' : 'Save name'}</button>
             <span role="status" className="flh-account-status">
               {state === 'saved' && 'Saved.'}
               {state === 'invalid' && 'Please enter your first and last name.'}
@@ -61,28 +123,7 @@ export default function AccountSettings({ userId, email, firstName, lastName, se
             </span>
           </div>
         </form>
-      </section>
-
-      <section className="flh-card flh-account-section" aria-labelledby="account-access">
-        <h2 id="account-access" className="flh-section-kicker">My access</h2>
-        <p className="flh-account-copy">Everything in Feels Like Home today is included with your account. There’s nothing to upgrade or manage here yet.</p>
-      </section>
-
-      <section className="flh-card flh-account-section" aria-labelledby="account-search">
-        <h2 id="account-search" className="flh-section-kicker"><SlidersHorizontal size={14} aria-hidden="true" /> Your search</h2>
-        {searchSummary ? <>
-          <p className="flh-account-copy">{searchSummary.participantCount > 1 ? `A shared search with ${searchSummary.participantCount} people.` : 'A search just for you.'}{!searchSummary.isOwner && ' You were invited to it.'}</p>
-          <Link className="hh-btn hh-btn-ghost" href="/search">Open My Search</Link>
-        </> : <>
-          <p className="flh-account-copy">You don’t have an active home search yet.</p>
-          <Link className="hh-btn hh-btn-ghost" href="/onboarding">Start a search</Link>
-        </>}
-      </section>
-
-      <section className="flh-card flh-account-section" aria-labelledby="account-session">
-        <h2 id="account-session" className="flh-section-kicker">Session</h2>
-        <button type="button" className="hh-btn hh-btn-ghost flh-account-signout" onClick={signOut}><LogOut size={15} aria-hidden="true" /> Sign out</button>
-      </section>
-    </main>
+      </Sheet>
+    </MobilePage>
   );
 }

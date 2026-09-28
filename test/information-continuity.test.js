@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { computeMatch, summarizeForCard } from '../src/lib/matching.js';
+import { computeMatch, evaluateSearchBasics, summarizeForCard } from '../src/lib/matching.js';
 import { defaultPriorities, emptyHome, HOME_CONDITION_OPTIONS, LAYOUT_OPTIONS, TIER_META } from '../src/lib/constants.js';
 import { EXISTING_STRUCTURED_FACT_VALUE, structuredFactSelectValue, structuredFactValueFromSelect } from '../src/lib/homeStructuredFacts.js';
 
@@ -37,16 +37,17 @@ test('condition notes leave the editor but remain a lossless shared fact', () =>
   assert.match(collaboration, /condition_notes: home\.conditionNotes \|\| ''/);
 });
 
-test('layout and condition use existing weights and unknown remains excluded', () => {
+test('layout and condition are Search Basics: compared factually, never weighted, unknown stays unknown', () => {
   const priorities = defaultPriorities();
   priorities.searchType = 'purchase';
   priorities.homeLayout = { values: ['Two Story'], tier: 'must' };
   priorities.homeCondition = { values: ['Move-In Ready'], tier: 'important' };
-  const unknown = computeMatch(emptyHome(), priorities);
-  assert.equal(unknown.pct, null);
-  assert.equal(unknown.evaluatedCount, 0);
-  const known = computeMatch({ ...emptyHome(), homeLayout: ['Two Story'], homeCondition: ['Move-In Ready'] }, priorities);
-  assert.equal(known.pct, 100);
+  // Stored tiers are ignored: Basics never enter Match.
+  assert.equal(computeMatch({ ...emptyHome(), homeLayout: ['Ranch'] }, priorities), null);
+  const unknown = evaluateSearchBasics(emptyHome(), priorities).filter((basic) => ['homeLayout', 'homeCondition'].includes(basic.key));
+  assert.deepEqual(unknown.map((basic) => [basic.evaluated, basic.met]), [[false, null], [false, null]]);
+  const known = evaluateSearchBasics({ ...emptyHome(), homeLayout: ['Two Story'], homeCondition: ['New Construction'] }, priorities);
+  assert.deepEqual(known.map((basic) => [basic.key, basic.met]), [['homeLayout', true], ['homeCondition', false]]);
   assert.equal(TIER_META.must.weight, 4);
   assert.equal(TIER_META.important.weight, 2);
   assert.equal(TIER_META.nice.weight, 1);
@@ -56,7 +57,8 @@ test('layout and condition use existing weights and unknown remains excluded', (
 test('card unknown summary uses canonical unknown criteria without stale after-tour copy', () => {
   const priorities = defaultPriorities();
   priorities.searchType = 'purchase';
-  priorities.budget = { value: '500000', tier: 'important' };
+  priorities.features.customItems = [{ label: 'Home office', kind: 'check' }];
+  priorities.features.tiers['Home office'] = 'important';
   priorities.homeFeel.tiers['Natural Light'] = 'must';
   priorities.homeFeel.customItems = [{ label: 'Natural Light', kind: 'rating' }];
   const summary = summarizeForCard(computeMatch(emptyHome(), priorities));
