@@ -2252,3 +2252,82 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-account-row strong { display: block; font-size: 14px; }
 .flh-account-row small { display: block; margin-top: 2px; color: var(--ink-soft); font-size: 12px; line-height: 1.4; }
 .flh-account-signout { margin-top: 4px; }
+
+/* ── Pass 3: decision/action layer — Compare, Map, Tour, Post-Tour ── */
+/* Shared post-tour recap (Tour cards, Home Detail, Compare) */
+.flh-tour-recap { display: grid; gap: 8px; margin: 0 0 12px; }
+.flh-tour-recap.is-compact { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 2px 0 0; }
+.flh-tour-recap-count { color: var(--ink-soft); font-size: 11.5px; }
+.flh-tour-recap-verdict { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; color: var(--ink); font-size: 13px; font-weight: 600; }
+.flh-tour-recap dl, .flh-post-tour-recap dl { display: grid; gap: 6px; margin: 0; }
+.flh-tour-recap dl > div, .flh-post-tour-recap dl > div { display: grid; grid-template-columns: 96px minmax(0,1fr); gap: 8px; font-size: 12.5px; }
+.flh-tour-recap dt, .flh-post-tour-recap dt { color: var(--ink-soft); font-weight: 600; }
+.flh-tour-recap dd, .flh-post-tour-recap dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+
+/* Tour hub */
+.flh-tour-hub-controls { display: grid; gap: 8px; margin: 0 0 14px; }
+.flh-tour-hub-controls .flh-segmented button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; }
+.flh-tour-count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px; background: var(--flh-quiet); color: var(--ink-soft); font-size: 11px; }
+.flh-tour-hub-note { margin: 0; color: var(--ink-soft); font-size: 12.5px; line-height: 1.45; }
+
+/* Post-tour two-step capture */
+.flh-post-tour .flh-post-tour-header { display: grid; grid-template-columns: 36px minmax(0,1fr) auto; align-items: start; gap: 8px; }
+.flh-post-tour .flh-post-tour-header p { margin: 2px 0 0; }
+.flh-post-tour-home { display: flex; align-items: center; gap: 10px; margin: 10px 0 12px; padding: 8px; border: 1px solid var(--flh-card-line); border-radius: 12px; background: var(--flh-card); }
+.flh-post-tour-thumb { display: grid; place-items: center; width: 48px; height: 48px; flex-shrink: 0; overflow: hidden; border-radius: 10px; background: var(--flh-warm); color: var(--ink-soft); }
+.flh-post-tour-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.flh-post-tour-home strong { display: block; font-size: 13.5px; overflow-wrap: anywhere; }
+.flh-post-tour-home small { display: block; color: var(--ink-soft); font-size: 12px; }
+.flh-post-tour-owner { margin: 8px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--flh-sage-bg); color: var(--flh-sage-ink); font-size: 12px; line-height: 1.45; }
+.flh-post-tour-recap { margin: 14px 0 0; padding: 12px; border: 1px solid var(--flh-card-line); border-radius: 12px; background: var(--flh-card); }
+.flh-post-tour-recap .flh-section-label { margin: 0 0 8px; }
+.flh-post-tour-hint { margin: 8px 0 0; color: var(--ink-soft); font-size: 12px; text-align: right; }
+.flh-post-tour .hh-textarea { min-height: 140px; font-size: 16px; }
+
+/* Compare — overview and side by side */
+.hh-criteria-value.is-neutral { color: var(--ink-soft); }
+.hh-criteria-value.is-neutral b { background: var(--flh-unknown-bg); }
+.hh-compare-legend .is-neutral { color: var(--ink-soft); }
+.hh-collaborator-state strong { color: var(--ink); }
+.flh-compare-glance .flh-section-label { margin: 0 0 8px; }
+.flh-compare-glance-scroll { overflow-x: auto; margin: 0 -4px; padding: 0 4px; }
+.flh-compare-glance table { width: 100%; min-width: 320px; border-collapse: separate; border-spacing: 0 4px; font-size: 12.5px; }
+.flh-compare-glance th { padding: 4px 6px; color: var(--ink-soft); font-weight: 600; text-align: left; vertical-align: top; }
+.flh-compare-glance thead th { color: var(--ink); font-size: 12px; overflow-wrap: anywhere; }
+.flh-compare-glance tbody th { width: 88px; }
+.flh-compare-glance td { padding: 7px 8px; border-radius: 9px; background: var(--paper); color: var(--ink); font-weight: 600; vertical-align: top; }
+.flh-compare-glance td.is-best { background: var(--flh-sage-bg); color: var(--flh-sage-ink); }
+.flh-compare-glance td.is-unknown { color: var(--unknown); font-weight: 500; }
+.flh-compare-glance td.is-negative { background: var(--flh-negative-bg); color: var(--negative); }
+.flh-compare-go { margin-top: 2px; }
+.flh-compare-detail-head { display: flex; align-items: center; gap: 12px; }
+.flh-compare-detail-head h2 { margin: 0; font-size: 22px; }
+.flh-compare-detail-head p { margin: 2px 0 0; color: var(--ink-soft); font-size: 12.5px; }
+.flh-compare-pinned { position: sticky; top: var(--flh-safe-top); z-index: 5; display: grid; grid-template-columns: repeat(var(--compare-count, 2), minmax(0,1fr)); gap: 8px; padding: 8px 0; background: var(--paper); }
+.flh-compare-pin { display: grid; gap: 3px; min-width: 0; padding: 9px 10px; border: 1px solid var(--flh-card-line); border-radius: 12px; background: var(--flh-card); color: var(--ink); text-decoration: none; }
+.flh-compare-pin strong { overflow: hidden; font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
+.flh-compare-pin span:not(.flh-match-badge):not(.flh-tag) { color: var(--ink-soft); font-size: 12px; }
+.flh-compare-pin .flh-match-badge, .flh-compare-pin .flh-tag { justify-self: start; box-shadow: none; }
+.flh-compare-tabs { overflow-x: auto; }
+.flh-compare-tabs button { flex: 1 0 auto; white-space: nowrap; }
+.flh-compare-subhead { margin: 16px 0 8px; font-size: 17px; }
+
+/* Map — labeled pins, selected-home drives, drive-time table */
+.hh-map-marker.has-label { display: inline-flex; align-items: center; gap: 5px; width: auto; height: 32px; padding: 0 10px 0 7px; border-width: 2px; border-radius: 999px; transform: none; white-space: nowrap; }
+.hh-map-marker.has-label .hh-map-marker-glyph { transform: none; font-size: 15px; line-height: 1; }
+.hh-map-marker.has-label .hh-map-marker-label { display: inline; transform: none; font: 700 12px/1 var(--font-sans); line-height: 1; }
+.hh-map-marker.has-label.selected { height: 36px; }
+.hh-map-preview-drives { display: grid; gap: 4px; margin: 6px 0 0; padding: 0; list-style: none; }
+.hh-map-preview-drives li { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
+.hh-map-preview-drives li > span:first-child { overflow: hidden; color: var(--ink); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.hh-map-favorite { width: 40px; height: 40px; margin-left: auto; }
+.flh-drive-times { margin: 16px 0 12px; padding: 14px; border: 1px solid var(--flh-card-line); border-radius: var(--flh-radius-card); background: var(--flh-card); }
+.flh-drive-times .flh-section-label { margin: 0 0 8px; }
+.flh-drive-times-scroll { overflow-x: auto; }
+.flh-drive-times table { width: 100%; min-width: 300px; border-collapse: collapse; font-size: 12.5px; }
+.flh-drive-times th, .flh-drive-times td { padding: 8px 6px; border-top: 1px solid rgba(138,112,86,.12); text-align: left; vertical-align: top; }
+.flh-drive-times thead th { border-top: 0; color: var(--ink); font-weight: 700; }
+.flh-drive-times thead th span { display: block; max-width: 160px; margin-bottom: 4px; overflow-wrap: anywhere; }
+.flh-drive-times tbody th strong { display: block; color: var(--ink); }
+.flh-drive-times small { display: block; margin-top: 3px; color: var(--ink-soft); font-size: 11px; font-weight: 500; }
+.flh-drive-times-note { margin: 10px 0 0; color: var(--ink-soft); font-size: 12px; }

@@ -59,10 +59,10 @@ test('selected-home preview stays compact: unchanged truthful fields, no full Ma
   assert.doesNotMatch(map, /\bpros\b|\bcons\b/i);
 });
 
-test('Match remains participant-specific: the same trust guard as before, never averaged/combined/household', async () => {
+test('Match remains participant-specific and canonical (commute-aware), never averaged/combined/household', async () => {
   const map = await source('src/components/SavedHomesMap.jsx');
-  assert.match(map, /const matchTrustworthy = !match\?\.allSelected\?\.some\(\(c\) => c\.key === 'location:Commute'\);/);
-  assert.match(map, /\{matchTrustworthy && match\?\.pct !== null && match\?\.pct !== undefined && <span className="hh-map-match">\{match\.pct\}% Match<\/span>\}/);
+  assert.match(map, /const getCommuteResult = useCommuteMatrix\(eligible, destinations\);/);
+  assert.match(map, /\{match\?\.pct != null \? <MatchBadge pct=\{match\.pct\} \/> : match \? <StatusTag tone="unknown">Match not known yet<\/StatusTag> : null\}/);
   assert.doesNotMatch(map, /couple match|combined match|household match|average.*match/i);
 });
 
@@ -73,7 +73,7 @@ test('View home links to the canonical Home Detail route -- no duplicate detail 
 
 test('Directions reuses the existing canonical address/coordinates -- no new geocoding path introduced for it', async () => {
   const map = await source('src/components/SavedHomesMap.jsx');
-  assert.match(map, /href=\{`https:\/\/maps\.apple\.com\/\?daddr=\$\{encodeURIComponent\(selected\.address\)\}`\} target="_blank" rel="noreferrer">Directions<\/a>/);
+  assert.match(map, /href=\{`https:\/\/maps\.apple\.com\/\?daddr=\$\{encodeURIComponent\(selected\.address\)\}`\} target="_blank" rel="noreferrer"><Navigation size=\{14\} aria-hidden="true" \/> Directions<\/a>/);
 });
 
 test('Recenter is a map-workspace control, not device geolocation: it fits already-loaded mapped content, never calls navigator.geolocation', async () => {
@@ -144,7 +144,7 @@ test('Realtor is not treated as a co-buyer here: no Realtor-privileged function,
 test('unmappable homes are excluded, never placed at a fabricated fallback location, and stay reachable elsewhere in FLH', async () => {
   const map = await source('src/components/SavedHomesMap.jsx');
   const commute = await source('src/lib/commute.js');
-  assert.match(map, /const unresolved = useMemo\(\(\) => homes\.filter\(\(home\) => !home\.mapPosition\), \[homes\]\);/);
+  assert.match(map, /const unresolved = useMemo\(\(\) => initialHomes\.filter\(\(home\) => !home\.mapPosition\), \[initialHomes\]\);/);
   assert.match(map, /couldn't be placed on the map yet/);
   assert.match(map, /<Link key=\{home\.id\} href=\{`\/homes\/\$\{encodeURIComponent\(home\.id\)\}`\}>\{home\.address \|\| 'Address not added'\}/);
   // currentHomeCoordinates only ever returns a real, provenance-matched

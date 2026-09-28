@@ -45,14 +45,16 @@ test('no ranking language anywhere: no #1/#2/#3 Match, no winner/best/recommende
 test('contender cards: photo, price, address, beds/baths/sqft, participant-specific Match, and a truthful lifecycle/provenance badge -- never invented state', async () => {
   const board = await source('src/components/CompareBoard.jsx');
   assert.match(board, /home\.suggestedBy && <span className="hh-provenance">Suggested by \{home\.suggestedBy\}<\/span>/);
-  assert.match(board, /\{home\.status && home\.status !== 'Saved' && \(/);
-  assert.match(board, /<Footprints size=\{12\} color="var\(--moss\)" \/> \{home\.status\}/);
+  // Toured is read from the canonical lifecycle (hasToured), not the stale
+  // 'Want to Tour' status a toured home keeps.
+  assert.match(board, /\{\(hasToured\(home\) \|\| \(home\.status && home\.status !== 'Saved'\)\) && \(/);
+  assert.match(board, /<Footprints size=\{12\} color="var\(--moss\)" \/> \{hasToured\(home\) \? 'Toured' : home\.status\}/);
 });
 
 test('Match on contender cards stays participant-specific: unchanged computeMatch/Perspective wiring, unknown stays unknown, no averaging', async () => {
   const board = await source('src/components/CompareBoard.jsx');
   assert.match(board, /label="You" match=\{match\}/);
-  assert.match(board, /label="Collaborator" match=\{coBuyerPerspective\.match\}/);
+  assert.match(board, /label=\{collaboratorName\} match=\{coBuyerPerspective\.match\}/);
   assert.match(board, /Not enough information yet/);
   assert.doesNotMatch(board, /average.*match|blended.*match|household.*match/i);
 });
@@ -80,7 +82,7 @@ test('the old bottom Notes section is removed (deduplicated into the card) witho
   const detail = await source('src/components/HomeDetail.jsx');
   assert.doesNotMatch(board, /<summary>Notes<\/summary>/);
   // What Stood Out (pros/cons) is a materially different section and stays.
-  assert.match(board, /<summary>What Stood Out<\/summary>/);
+  assert.match(board, /<section aria-label="What stood out">/);
   assert.match(board, /parseCommaList\(h\.pros\)/);
   assert.match(board, /parseCommaList\(h\.cons\)/);
   // Editing still lives on Home Detail, untouched.
@@ -122,7 +124,9 @@ test('no invented amber/partial evaluation state: met stays a strict boolean eve
   // CriteriaValue's branching is unchanged: evaluated/unknown, then met
   // true/false -- no third visual state was added.
   assert.match(board, /if \(!c \|\| !c\.evaluated\) \{/);
-  assert.match(board, /c\.met \? '✓' : '—'/);
+  // A confirmed miss (✕) is visibly distinct from a neutral answer (—).
+  assert.match(board, /c\.met \? '✓' : '✕'/);
+  assert.match(board, /is-neutral"><b aria-hidden="true">—<\/b>/);
   assert.doesNotMatch(board, /is-partial|is-nuanced|'amber'/i);
   // The engine itself: `met` is push()ed as a strict boolean/null, confirming
   // there is no third state to expose -- "1 of 2 desired baths" is a
@@ -148,7 +152,8 @@ test('Must-Have visibility and priority weighting are untouched: same shared com
 
 test('Home Facts stays a dense comparison table (not per-fact cards), keeps its apartment-aware fact set, and the vocabulary-aware Title Case heading', async () => {
   const board = await source('src/components/CompareBoard.jsx');
-  assert.match(board, /<summary>\{vocabulary\.singular\} Facts<\/summary>/);
+  assert.match(board, /<section aria-label=\{`\$\{vocabulary\.singular\} facts`\}>/);
+  assert.match(board, /\['facts', `\$\{vocabulary\.singular\} facts`\]/);
   assert.match(board, /const physicalRows = apartment \? PHYSICAL_FACT_ROWS\.filter\(\(row\) => !APARTMENT_IRRELEVANT_FACT_KEYS\.has\(row\.key\)\) : PHYSICAL_FACT_ROWS;/);
   assert.match(board, /APARTMENT_IRRELEVANT_FACT_KEYS = new Set\(\['lot'\]\)/);
 });
@@ -158,10 +163,13 @@ test('estimated monthly payment keeps its existing label/calculation -- no new m
   assert.match(board, /label: 'Est\. monthly payment', betterHigh: false, get: \(h\) => parseNum\(h\.estMonthly\)/);
 });
 
-test('deeper sections stay collapsible; primary identities and the core comparison are never collapsed by default', async () => {
+test('deeper sections stay behind the side-by-side stage; primary identities and the core comparison are never collapsed by default', async () => {
   const board = await source('src/components/CompareBoard.jsx');
-  const detailsBlocks = board.match(/<details className="hh-details">/g) || [];
-  assert.ok(detailsBlocks.length >= 2, 'expected Home Facts and What Stood Out to remain collapsible <details>');
+  // Two-stage Compare: the overview (At a glance + contender cards) comes first;
+  // Home facts and notes are one tap deeper, in the side-by-side sections.
+  assert.match(board, /stage === 'overview' \? \([\s\S]*?<AtAGlance homes=\{selected\} matches=\{matches\}/);
+  assert.match(board, /\{section === 'facts' && <>/);
+  assert.match(board, /\{section === 'notes' && <>/);
   assert.doesNotMatch(board, /<details[^>]*>\s*<summary>What Matters to You/);
 });
 
@@ -193,7 +201,10 @@ test('View home links to the canonical Home Detail route with the caller-supplie
 test('collaboration: each participant keeps independent Match/criteria; Different Takes and the collaborator state summary are unchanged', async () => {
   const board = await source('src/components/CompareBoard.jsx');
   assert.match(board, /<summary>Different Takes<\/summary>/);
-  assert.match(board, /function CollaboratorState\(\{ state \}\)/);
+  assert.match(board, /function CollaboratorState\(\{ state, name \}\)/);
+  // Plain-language, attributed collaborator choices — never a raw stored value.
+  assert.match(board, /reactionLabel\(state\.reaction\)/);
+  assert.doesNotMatch(board, /state\.reaction \|\| null/);
   assert.doesNotMatch(board, /Couple Match|Combined Match|Household Match|average Match/i);
 });
 
@@ -235,7 +246,7 @@ test('accessibility: picker chips and the new diff toggle are keyboard-operable 
   assert.match(board, /aria-pressed=\{isSelected\}/);
   assert.match(board, /aria-pressed=\{diffsOnly\}/);
   assert.match(board, /aria-pressed=\{!diffsOnly\}/);
-  assert.match(board, /<b aria-hidden="true">\{c\.met \? '✓' : '—'\}<\/b><span>\{text\}<\/span>/);
+  assert.match(board, /<b aria-hidden="true">\{c\.met \? '✓' : '✕'\}<\/b><span>\{text\}<\/span>/);
 });
 
 test('performance: selection changes reuse the already-loaded Match/commute data -- no new fetch is introduced by toggling comparison or differences-only', async () => {

@@ -49,6 +49,8 @@ export default async function MapPage() {
           collaboratorDestinations={mappedCollaboratorDestinations}
           collaboratorName={collaboratorContext?.displayName || null}
           priorities={normalizePriorities(priorities)}
+          userId={user.id}
+          searchId={search.id}
         />
       </>
     );

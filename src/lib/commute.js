@@ -78,6 +78,22 @@ export function commuteResultSignature(result) {
   return 'unavailable';
 }
 
+// One drive-time cell (Map), from the real route result only. A pending or failed
+// route keeps its row with an honest status — never an estimate, never dropped.
+// Routes are traffic-unaware (see /api/commute), so nothing here claims live traffic.
+export function driveTimeCell(result, destination) {
+  if (result?.status === 'ok' && Number.isFinite(result.minutes)) {
+    const limit = destination?.maxDriveMinutes;
+    if (limit == null) return { text: `${result.minutes} min`, tone: 'quiet', note: 'No limit set' };
+    return result.minutes <= limit
+      ? { text: `${result.minutes} min`, tone: 'positive', note: `Within ${limit} min` }
+      : { text: `${result.minutes} min`, tone: 'negative', note: `Over ${limit} min` };
+  }
+  if (!result || result.status === 'idle' || result.status === 'loading') return { text: 'Calculating…', tone: 'unknown', note: null };
+  if (result.status === 'destination_invalid' || result.status === 'destination_ambiguous') return { text: 'Check address', tone: 'unknown', note: null };
+  return { text: 'Not available', tone: 'unknown', note: null };
+}
+
 export function uniqueShortestIndex(results) {
   const known = results.map((result, index) => ({ result, index }))
     .filter(({ result }) => result?.status === 'ok' && Number.isFinite(result.minutes));

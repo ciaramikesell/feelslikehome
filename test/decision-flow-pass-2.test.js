@@ -245,7 +245,8 @@ function latestDefinition(name) {
 
 test('the Postgres co-buyer Match no longer scores Search Basics and matches the JS retired-criteria list', () => {
   const { file, body } = latestDefinition('resolve_cobuyer_compare_perspectives');
-  assert.equal(file, '2026-09-28-search-basics-unweighted.sql');
+  // Whichever migration defines it last must keep Search Basics out of Match.
+  assert.ok(file >= '2026-09-28-search-basics-unweighted.sql', file);
   for (const basic of ["'budget'", "'bedsMin'", "'homeLayout'", "'primaryBedroomLocation'", "'{preferredPropertyTypes,tier}'"]) assert.ok(!body.includes(basic), basic);
   const sqlRetired = new Set(body.match(/v_key = any\(array\[([\s\S]*?)\]\) then continue/)[1].match(/'[^']+'/g).map((entry) => entry.slice(1, -1)));
   const constants = read('src/lib/constants.js');

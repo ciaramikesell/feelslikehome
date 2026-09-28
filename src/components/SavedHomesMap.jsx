@@ -2,19 +2,47 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Crosshair, Home, MapPin } from 'lucide-react';
-import { computeMatch } from '@/lib/matching';
+import { Crosshair, Heart, Home, MapPin, Navigation } from 'lucide-react';
+import { computeMatch, parseNum } from '@/lib/matching';
+import { driveTimeCell as driveTime, evaluateCommute } from '@/lib/commute';
+import { useCommuteMatrix } from '@/lib/useCommuteObserver';
+import { toggleFavorite } from '@/lib/lifecycle';
+import { createClient } from '@/lib/supabase/client';
+import { saveHomePersonalState } from '@/lib/supabase/collaboration';
+import { MatchBadge, StatusTag } from '@/components/MobileSystem';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
 import { formatHomePrice } from '@/lib/homeDisplay';
 import { loadGoogleMaps } from '@/lib/googleMaps';
 
-function MarkerContent({ selected, address }) {
+// Compact price for a pin ("$439k", "$1.2M", "$2,400/mo" rentals stay whole).
+function pinPrice(price) {
+  const n = parseNum(price);
+  if (!n) return '';
+  if (n >= 1000000) return `$${(n / 1000000).toFixed(n >= 10000000 ? 0 : 1).replace(/\.0$/, '')}M`;
+  if (n >= 10000) return `$${Math.round(n / 1000)}k`;
+  return `$${n.toLocaleString()}`;
+}
+
+// A saved-home pin: the house mark plus, when known, a short price and this
+// participant's canonical Match. Nothing is shown for an unknown value.
+function MarkerContent({ selected, address, price = '', pct = null }) {
   const node = document.createElement('button');
   node.type = 'button';
-  node.className = `hh-map-marker${selected ? ' selected' : ''}`;
-  node.setAttribute('aria-label', `${selected ? 'Selected home' : 'Select saved home'}: ${address || 'Address not added'}`);
+  node.className = `hh-map-marker${selected ? ' selected' : ''}${price || pct != null ? ' has-label' : ''}`;
+  node.setAttribute('aria-label', `${selected ? 'Selected home' : 'Select saved home'}: ${address || 'Address not added'}${price ? `, ${price}` : ''}${pct != null ? `, ${pct}% Match` : ''}`);
   node.setAttribute('aria-pressed', String(selected));
-  node.innerHTML = '<span aria-hidden="true">⌂</span>';
+  const glyph = document.createElement('span');
+  glyph.setAttribute('aria-hidden', 'true');
+  glyph.className = 'hh-map-marker-glyph';
+  glyph.textContent = '⌂';
+  node.append(glyph);
+  if (price || pct != null) {
+    const label = document.createElement('span');
+    label.setAttribute('aria-hidden', 'true');
+    label.className = 'hh-map-marker-label';
+    label.textContent = [price, pct != null ? `${pct}%` : ''].filter(Boolean).join(' · ');
+    node.append(label);
+  }
   return node;
 }
 
@@ -32,10 +60,17 @@ function DestinationMarkerContent({ selected, label, isCollaborator }) {
   return node;
 }
 
-export default function SavedHomesMap({ homes, destinations = [], collaboratorDestinations = [], collaboratorName = null, priorities }) {
+export default function SavedHomesMap({ homes: initialHomes, destinations = [], collaboratorDestinations = [], collaboratorName = null, priorities, userId = null, searchId = null }) {
   const vocabulary = homeVocabulary(priorities);
-  const eligible = useMemo(() => homes.filter((home) => home.mapPosition), [homes]);
-  const unresolved = useMemo(() => homes.filter((home) => !home.mapPosition), [homes]);
+  // Favorite is the participant's own state, saved through the same personal-state
+  // path Home Detail and My Homes use; the list reflects it immediately.
+  const [homes, setHomes] = useState(initialHomes);
+  const [favoriteError, setFavoriteError] = useState('');
+  useEffect(() => { setHomes(initialHomes); }, [initialHomes]);
+  // Map geometry comes from the server-provided homes (positions don't change on
+  // this page); local Favorite edits must never rebuild the map.
+  const eligible = useMemo(() => initialHomes.filter((home) => home.mapPosition), [initialHomes]);
+  const unresolved = useMemo(() => initialHomes.filter((home) => !home.mapPosition), [initialHomes]);
   // Places That Matter displayed on Map may come from more than one
   // decision-making participant, but displaying a place here never
   // transfers ownership, creates a shared criterion, or allows editing --
@@ -48,6 +83,12 @@ export default function SavedHomesMap({ homes, destinations = [], collaboratorDe
   ], [destinations, collaboratorDestinations]);
   const eligibleDestinations = useMemo(() => places.filter((destination) => destination.mapPosition), [places]);
   const isCollaborativeMap = places.some((destination) => destination.owner === 'collaborator');
+  // One canonical Match per mapped home: computeMatch with Commute evaluated from
+  // the same route results (and shared session cache) Compare and My Homes use.
+  // Pending routes leave Commute Unknown — never a guessed travel time.
+  const getCommuteResult = useCommuteMatrix(eligible, destinations);
+  const matchFor = (home) => computeMatch(home, priorities, evaluateCommute(destinations, (destination) => getCommuteResult(home, destination)));
+  const pinLabels = eligible.map((home) => `${home.id}:${pinPrice(home.price)}:${matchFor(home)?.pct ?? ''}`).join('|');
   // Start with the geography unobstructed. A preview is an explicit result of
   // choosing a marker/list row, rather than permanent furniture over the map.
   const [selection, setSelection] = useState(null);
@@ -74,7 +115,7 @@ export default function SavedHomesMap({ homes, destinations = [], collaboratorDe
       mapRef.current = map;
       const bounds = new maps.LatLngBounds();
       eligible.forEach((home) => {
-        const marker = new AdvancedMarkerElement({ map, position: home.mapPosition, title: homeIdentity(home, priorities).accessible, content: MarkerContent({ selected: selection?.type === 'home' && home.id === selection.id, address: homeIdentity(home, priorities).accessible }) });
+        const marker = new AdvancedMarkerElement({ map, position: home.mapPosition, title: homeIdentity(home, priorities).accessible, content: MarkerContent({ selected: selection?.type === 'home' && home.id === selection.id, address: homeIdentity(home, priorities).accessible, price: pinPrice(home.price), pct: matchFor(home)?.pct ?? null }) });
         marker.addListener('click', () => setSelection({ type: 'home', id: home.id }));
         markersRef.current.set(`home:${home.id}`, marker);
         bounds.extend(home.mapPosition);
@@ -97,7 +138,7 @@ export default function SavedHomesMap({ homes, destinations = [], collaboratorDe
       const [type, id] = keyName.split(':');
       if (type === 'home') {
         const home = eligible.find((item) => item.id === id);
-        marker.content = MarkerContent({ selected: selection?.type === 'home' && id === selection.id, address: home ? homeIdentity(home, priorities).accessible : '' });
+        marker.content = MarkerContent({ selected: selection?.type === 'home' && id === selection.id, address: home ? homeIdentity(home, priorities).accessible : '', price: home ? pinPrice(home.price) : '', pct: home ? matchFor(home)?.pct ?? null : null });
       } else {
         const destination = eligibleDestinations.find((item) => item.id === id);
         marker.content = DestinationMarkerContent({ selected: selection?.type === 'destination' && id === selection.id, label: destination?.label, isCollaborator: destination?.owner === 'collaborator' });
@@ -113,7 +154,9 @@ export default function SavedHomesMap({ homes, destinations = [], collaboratorDe
       const bounds = mapRef.current.getBounds();
       if (!bounds || !bounds.contains(selectedItem.mapPosition)) mapRef.current.panTo(selectedItem.mapPosition);
     }
-  }, [selection, eligible, eligibleDestinations]);
+    // pinLabels: refresh pin text when a route result changes a canonical Match.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selection, eligible, eligibleDestinations, pinLabels]);
 
   // Recenter is a map-workspace recovery action (undo panning/zooming away
   // from the relevant search geography), not device geolocation -- it fits
@@ -132,15 +175,22 @@ export default function SavedHomesMap({ homes, destinations = [], collaboratorDe
   };
 
   if (!homes.length && !places.length) return <div className="hh-map-empty"><Home size={30} /><h2>Your {vocabulary.pluralLower} and places will show up here.</h2><p>Add a {vocabulary.singularLower} or a place that matters to start your map.</p><Link className="hh-btn" href="/homes?add=1">Add {vocabulary.singularLower}</Link></div>;
-  const match = selected ? computeMatch(selected, priorities) : null;
-  // Same Match-trust rule as Compare's contender picker: this Match is
-  // computed without commute evaluation (the map never fetches a commute
-  // matrix just to badge a preview card), which is fine — identical to the
-  // canonical Home Detail Match — UNLESS the user has selected "Commute" as
-  // a location priority, in which case this number and the real one could
-  // differ. Detected the same structural way: presence of a
-  // 'location:Commute' row in allSelected, not by re-deriving tier logic.
-  const matchTrustworthy = !match?.allSelected?.some((c) => c.key === 'location:Commute');
+  // The selected home's Match is the same canonical, commute-aware evaluation the
+  // pins use (see matchFor) — so it is never hidden and never a second number.
+  const match = selected ? matchFor(selected) : null;
+  const toggleSelectedFavorite = async () => {
+    if (!selected || !userId) return;
+    const previous = selected;
+    const next = toggleFavorite(selected);
+    setFavoriteError('');
+    setHomes((current) => current.map((home) => (home.id === next.id ? { ...home, isFavorite: next.isFavorite } : home)));
+    try {
+      await saveHomePersonalState(createClient(), next, userId, searchId);
+    } catch {
+      setHomes((current) => current.map((home) => (home.id === previous.id ? { ...home, isFavorite: previous.isFavorite } : home)));
+      setFavoriteError('Couldn’t save that. Try again.');
+    }
+  };
 
   return <>
     <div className="hh-map-layout">
@@ -156,13 +206,18 @@ export default function SavedHomesMap({ homes, destinations = [], collaboratorDe
           <div className="hh-map-preview-media" aria-hidden="true">{selected.photoUrl ? <img src={selected.photoUrl} alt="" /> : <div className="hh-map-preview-photo-fallback"><Home size={22} /></div>}</div>
           <div className="hh-map-preview-copy"><div className="hh-mono hh-map-preview-price">{formatHomePrice(selected.price, priorities.searchType) || 'Price not added'}</div><strong className="hh-address">{homeIdentity(selected, priorities).primary}</strong>{homeIdentity(selected, priorities).option && <small>{homeIdentity(selected, priorities).option}</small>}{homeIdentity(selected, priorities).supporting && <small>{homeIdentity(selected, priorities).supporting}</small>}
             <small className="hh-map-preview-facts">{[selected.beds && `${selected.beds} beds`, selected.baths && `${selected.baths} baths`, selected.sqft && `${selected.sqft} sq ft`].filter(Boolean).join(' · ')}</small>
+            {selected.mapPosition && destinations.length > 0 && <ul className="hh-map-preview-drives" aria-label="Drive times from this home">
+              {destinations.map((destination) => { const cell = driveTime(getCommuteResult(selected, destination), destination); return <li key={destination.id}><span>{destination.label}</span><span className={`flh-tag is-${cell.tone}`}>{cell.text}</span></li>; })}
+            </ul>}
             <div className="hh-map-preview-summary">
-              {matchTrustworthy && match?.pct !== null && match?.pct !== undefined && <span className="hh-map-match">{match.pct}% Match</span>}
-              {selected.status && <span className="hh-map-status">{selected.status}</span>}
+              {match?.pct != null ? <MatchBadge pct={match.pct} /> : match ? <StatusTag tone="unknown">Match not known yet</StatusTag> : null}
+              {selected.status === 'Want to Tour' && <StatusTag tone="positive">Want to tour</StatusTag>}
             </div>
+            {favoriteError && <p className="hh-save-error" role="alert">{favoriteError}</p>}
             <div className="hh-map-preview-actions">
               <Link href={`/homes/${encodeURIComponent(selected.id)}`}>View {vocabulary.singularLower}</Link>
-              {selected.address && <a href={`https://maps.apple.com/?daddr=${encodeURIComponent(selected.address)}`} target="_blank" rel="noreferrer">Directions</a>}
+              {selected.address && <a href={`https://maps.apple.com/?daddr=${encodeURIComponent(selected.address)}`} target="_blank" rel="noreferrer"><Navigation size={14} aria-hidden="true" /> Directions</a>}
+              {userId && <button type="button" className="flh-icon-button hh-map-favorite" aria-pressed={Boolean(selected.isFavorite)} aria-label={selected.isFavorite ? 'Remove from favorites' : 'Add to favorites'} onClick={toggleSelectedFavorite}><Heart size={17} aria-hidden="true" fill={selected.isFavorite ? 'var(--brick)' : 'none'} color="var(--brick)" /></button>}
             </div>
           </div>
         </article>}
@@ -235,6 +290,25 @@ export default function SavedHomesMap({ homes, destinations = [], collaboratorDe
         </div>
       ) : (
         <p className="hh-map-places-empty">Nothing to show yet — add a place from My Search and we&apos;ll compare the trip from every {vocabulary.singularLower}.</p>
+      )}
+      {destinations.length > 0 && eligible.length > 0 && (
+        <div className="flh-drive-times" role="region" aria-label="Drive times from your homes">
+          <div className="flh-section-label"><h3>Drive times</h3><span>Typical driving time, no live traffic</span></div>
+          <div className="flh-drive-times-scroll">
+            <table>
+              <thead><tr><th scope="col">Your places</th>{eligible.map((home) => { const pct = matchFor(home)?.pct; return <th scope="col" key={home.id}><span>{homeIdentity(home, priorities).primary}</span>{pct != null && <MatchBadge pct={pct} />}</th>; })}</tr></thead>
+              <tbody>
+                {destinations.map((destination) => (
+                  <tr key={destination.id}>
+                    <th scope="row"><strong>{destination.label}</strong><small>{destination.maxDriveMinutes != null ? `${destination.maxDriveMinutes} min limit` : 'No limit set'}</small></th>
+                    {eligible.map((home) => { const cell = driveTime(getCommuteResult(home, destination), destination); return <td key={home.id}><span className={`flh-tag is-${cell.tone}`}>{cell.text}</span>{cell.note && <small>{cell.note}</small>}</td>; })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {collaboratorDestinations.length > 0 && <p className="flh-drive-times-note">Drive times are only calculated for your own places, not {collaboratorName || 'your collaborator'}’s.</p>}
+        </div>
       )}
       <Link className="hh-btn hh-btn-ghost hh-map-edit-places" href="/search">Edit places</Link>
     </section>

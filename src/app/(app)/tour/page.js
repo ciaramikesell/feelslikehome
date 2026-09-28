@@ -6,7 +6,7 @@ import { PageIntro } from '@/components/ui';
 import { isArchivedStatus, normalizePriorities } from '@/lib/constants';
 import {
   resolveActiveSearch, resolvePriorities, resolveSharedFactPriorityAwareness, getHomesForUser, getParticipantStatusesForHomes,
-  addCoBuyerPersonalSignals, deriveWantToTourState, getSearchParticipantIds, getCommuteDestinations,
+  addCoBuyerPersonalSignals, deriveWantToTourState, getSearchParticipantIds, getCommuteDestinations, resolveCollaboratorSearchContext,
 } from '@/lib/supabase/collaboration';
 
 export default async function TourPage() {
@@ -22,7 +22,12 @@ export default async function TourPage() {
       getSearchParticipantIds(supabase, search),
     ]);
 
-    const statusesByHome = await getParticipantStatusesForHomes(supabase, search, homes);
+    const isCollaborative = participantIds.length > 1;
+    // Name only labels whose take is whose; a failure falls back to generic copy.
+    const [statusesByHome, collaboratorContext] = await Promise.all([
+      getParticipantStatusesForHomes(supabase, search, homes),
+      isCollaborative ? resolveCollaboratorSearchContext(supabase, search).catch(() => null) : null,
+    ]);
     const homesWithPersonalSignals = addCoBuyerPersonalSignals(homes, statusesByHome, user.id);
     const homesWithSignal = homesWithPersonalSignals.map((home) => {
       return {
@@ -37,7 +42,7 @@ export default async function TourPage() {
     return (
       <DecisionNav active="tour" hasFavorites={hasFavorites} hasArchived={hasArchived}>
         <PageIntro title="Want to Tour" subtitle="Homes that you or your collaborator are thinking about seeing in person." />
-        <HomesBoard mode="tour" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizePriorities(priorities)} initialCommuteDestinations={commuteDestinations} sharedFactAwareness={sharedFactAwareness} isCollaborative={participantIds.length > 1} />
+        <HomesBoard mode="tour" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizePriorities(priorities)} initialCommuteDestinations={commuteDestinations} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} collaboratorName={collaboratorContext?.displayName || null} />
       </DecisionNav>
     );
   });

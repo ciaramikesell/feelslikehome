@@ -25,7 +25,8 @@ test('mobile stage remains a useful map surface while page sections remain scrol
 
 test('compact preview preserves identity, participant Match and canonical actions', () => {
   assert.match(map, /homeIdentity\(selected, priorities\)\.primary/);
-  assert.match(map, /match\.pct\}% Match/);
+  // The shared MatchBadge (aria-label "{pct}% Match") from the canonical, commute-aware Match.
+  assert.match(map, /match\?\.pct != null \? <MatchBadge pct=\{match\.pct\} \/>/);
   assert.match(map, /href=\{`\/homes\/\$\{encodeURIComponent\(selected\.id\)\}`\}/);
   assert.match(map, /maps\.apple\.com\/\?daddr=/);
 });

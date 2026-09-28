@@ -31,6 +31,7 @@ export default async function ComparePage() {
           priorities={normalizePriorities(priorities)}
           coBuyerPerspectives={visiblePerspectives}
           commuteDestinations={commuteDestinations}
+          collaboratorName={collaboratorContext?.displayName || null}
         />
       </>
     );

@@ -46,10 +46,14 @@ test('regression: the flex map frame does not inherit the base grid rule\'s alig
 
 test('map preview: photo fallback, Match trust guard, and a Directions link are present', () => {
   assert.match(savedHomesMap, /selected\.photoUrl \? <img src=\{selected\.photoUrl\} alt="" \/> : <div className="hh-map-preview-photo-fallback">/);
-  assert.match(savedHomesMap, /const matchTrustworthy = !match\?\.allSelected\?\.some\(\(c\) => c\.key === 'location:Commute'\);/);
-  assert.match(savedHomesMap, /\{matchTrustworthy && match\?\.pct !== null && match\?\.pct !== undefined && <span className="hh-map-match">/);
+  // No trust guard is needed any more: the preview's Match is the canonical,
+  // commute-aware one (same route results as Compare/My Homes), so it is never
+  // hidden and never a second number.
+  assert.match(savedHomesMap, /const match = selected \? matchFor\(selected\) : null;/);
+  assert.match(savedHomesMap, /const matchFor = \(home\) => computeMatch\(home, priorities, evaluateCommute\(destinations, \(destination\) => getCommuteResult\(home, destination\)\)\);/);
+  assert.doesNotMatch(savedHomesMap, /computeMatch\(selected, priorities\)/);
   assert.match(savedHomesMap, /maps\.apple\.com\/\?daddr=\$\{encodeURIComponent\(selected\.address\)\}/);
-  assert.match(savedHomesMap, /target="_blank" rel="noreferrer">Directions<\/a>/);
+  assert.match(savedHomesMap, /target="_blank" rel="noreferrer"><Navigation size=\{14\} aria-hidden="true" \/> Directions<\/a>/);
 });
 
 test('touch targets on the map preview actions meet the ~44px guidance', () => {

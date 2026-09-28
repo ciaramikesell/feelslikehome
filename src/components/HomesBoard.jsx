@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { CriteriaDisclosure, MatchSummary } from '@/components/ui';
 import { Chevron, IconBadge, MatchBadge, ParticipantStack } from '@/components/MobileSystem';
+import PostTourRecap from '@/components/PostTourRecap';
 import { useCommuteObserver, readCommuteResult, useCommuteCacheVersion } from '@/lib/useCommuteObserver';
 import { evaluateCommute } from '@/lib/commute';
 import HomeModal from '@/components/HomeModal';
@@ -31,6 +32,7 @@ import { formatHomePrice, formatLotSizeDisplay, parseCommaList } from '@/lib/hom
 import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { isNativeApp } from '@/lib/platform';
 import { deriveFlhMoment } from '@/lib/flhMoments';
+import { postTourSummary } from '@/lib/postTour';
 import { applyPostTourVerdict, archiveHome, hasToured, isFavoriteHome, restoreHome as restoreLifecycleHome, toggleFavorite as toggleFavoriteState } from '@/lib/lifecycle';
 import { createClient } from '@/lib/supabase/client';
 import { deleteHome as deleteHomeQuery } from '@/lib/supabase/data';
@@ -191,6 +193,8 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
             </div>
           )}
 
+          {mode === 'tour' && toured && <PostTourRecap home={home} compact />}
+
           {mode === 'homes' && (() => {
             // Compact state line for the phone contender card — every item is an
             // existing state already shown on the full card or its photo overlays.
@@ -198,11 +202,14 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
             // an unknown) is a different kind of fact than the percentage. Same
             // mustHaveStatus the filter and Home Detail read.
             const must = mustHaveStatus(match);
+            const tourTake = postTourSummary(home);
             const states = [
               must.missed > 0 && { key: 'must-missed', label: `${must.missed} Must Have${must.missed === 1 ? '' : 's'} missing`, tone: 'negative' },
               must.missed === 0 && must.unknown > 0 && { key: 'must-unknown', label: `${must.unknown} Must Have${must.unknown === 1 ? '' : 's'} unknown`, tone: 'quiet' },
               !toured && home.status === 'Want to Tour' && { key: 'tour', label: 'Want to tour', tone: 'positive' },
               toured && { key: 'toured', label: 'Toured', tone: 'positive' },
+              // The participant's own post-tour reaction (canonical postTourSummary).
+              toured && tourTake.verdictLabel && { key: 'reaction', label: tourTake.verdictLabel, tone: { love: 'positive', considering: 'quiet', not_for_me: 'negative' }[tourTake.verdict] },
               coBuyerActivity && { key: 'cobuyer', label: coBuyerActivity, tone: 'positive' },
               home.suggestedBy && { key: 'realtor', label: `Suggested by ${home.suggestedBy}`, tone: 'quiet' },
               match && match.pct == null && { key: 'match', label: 'Match not known yet', tone: 'quiet' },
@@ -614,7 +621,16 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     [activeHomes]
   );
 
-  const baseList = mode === 'archive' ? archivedHomes : mode === 'favorites' ? favoriteHomes : mode === 'tour' ? tourHomes : activeHomes;
+  // Toured homes stay on the Tour page (they used to drop off it entirely once a
+  // take was saved), most recent first. Same canonical lifecycle (hasToured).
+  const touredHomes = useMemo(
+    () => activeHomes.filter(hasToured).sort((a, b) => String(b.touredAt || '').localeCompare(String(a.touredAt || ''))),
+    [activeHomes]
+  );
+  const [tourView, setTourView] = useState('next');
+  const needsTakeCount = touredHomes.filter((home) => postTourSummary(home).needsTake).length;
+
+  const baseList = mode === 'archive' ? archivedHomes : mode === 'favorites' ? favoriteHomes : mode === 'tour' ? (tourView === 'toured' ? touredHomes : tourHomes) : activeHomes;
 
   // The one canonical Match evaluation for filtering, sorting, and counting:
   // computeMatch with the same Commute route results (session cache) each card
@@ -735,8 +751,22 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         </section>
       )}
 
+      {mode === 'tour' && (
+        <div className="flh-tour-hub-controls">
+          <div className="flh-segmented flh-segmented-block" role="tablist" aria-label="Tour lists">
+            <button type="button" role="tab" aria-selected={tourView === 'next'} className={tourView === 'next' ? 'is-selected' : ''} onClick={() => setTourView('next')}>Want to tour <span className="flh-control-badge">{tourHomes.length}</span></button>
+            <button type="button" role="tab" aria-selected={tourView === 'toured'} className={tourView === 'toured' ? 'is-selected' : ''} onClick={() => setTourView('toured')}>Toured <span className="flh-tour-count">{touredHomes.length}</span></button>
+          </div>
+          <p className="flh-tour-hub-note">{tourView === 'next'
+            ? `${vocabulary.plural} you${isCollaborative ? ' or your co-buyer' : ''} want to see in person. Scheduling happens with your agent or the listing — FLH keeps your take.`
+            : needsTakeCount ? `${needsTakeCount} ${needsTakeCount === 1 ? 'needs' : 'need'} your take while it’s fresh.` : 'Your in-person takes. They never change Match.'}</p>
+        </div>
+      )}
+
       {filtered.length === 0 ? (
-        mode === 'favorites' ? (
+        mode === 'tour' && tourView === 'toured' ? (
+          <EmptyLifecycleState icon={Footprints} title="Nothing toured yet." body="After you see a home in person, record your take and it will show up here." />
+        ) : mode === 'favorites' ? (
           <EmptyLifecycleState icon={Heart} title="No favorites yet." body="Tap the heart on any home you want to keep close.">
             <Link href="/homes" className="hh-btn hh-btn-ghost">Go to My Homes</Link>
           </EmptyLifecycleState>
@@ -794,6 +824,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
 
       {postTourTarget && (
         <PostTourModal
+          collaboratorName={collaboratorName}
           key={`${postTourTarget.id}:${postTourTarget.reaction ?? 'none'}`}
           home={postTourTarget}
           priorities={priorities}

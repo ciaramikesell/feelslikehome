@@ -56,7 +56,8 @@ test('approved perspectives stay separate and participant writes stay owner-scop
     source('supabase/schema.sql'),
   ]);
   assert.match(compare, /Perspective label="You"/);
-  assert.match(compare, /Perspective label="Collaborator"/);
+  // The collaborator's perspective is attributed to them by name, never merged.
+  assert.match(compare, /Perspective label=\{collaboratorName\} match=\{coBuyerPerspective\.match\}/);
   assert.match(compare, /Different Takes/);
   assert.doesNotMatch(compare, /Couple Match|Combined Match|Household Match|average Match/i);
   assert.match(collaboration, /user_id: userId/);

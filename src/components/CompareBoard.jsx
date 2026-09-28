@@ -2,9 +2,14 @@
 
 import { useState, useMemo, Fragment } from 'react';
 import Link from 'next/link';
-import { Columns, Star, Heart, Home as HomeIcon, Footprints } from 'lucide-react';
+import { ArrowLeft, Columns, Star, Heart, Home as HomeIcon, Footprints } from 'lucide-react';
+import { MatchBadge, StatusTag } from '@/components/MobileSystem';
+import PostTourRecap from '@/components/PostTourRecap';
 import { TOUR_RATING_KEY, criterionDisplayLabel, isApartmentRental } from '@/lib/constants';
 import { parseNum, computeMatch, matchColor } from '@/lib/matching';
+import { hasToured } from '@/lib/lifecycle';
+import { postTourEvaluationLabel, reactionLabel } from '@/lib/postTour';
+import { compareGlance, mustGlanceText } from '@/lib/compare';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
 import { formatDateOnly, formatHomePrice, formatLotSizeDisplay, formatPropertyType, formatTriState, parseCommaList } from '@/lib/homeDisplay';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
@@ -94,8 +99,9 @@ function CriteriaValue({ c }) {
   // calculation, so a historical fine-grained star rating (e.g. an old 4/5) still
   // displays correctly as "Liked" through this same threshold, with nothing rewritten.
   const text = c.objective ? c.detail : (c.met ? 'Liked' : "Didn't like");
+  // A confirmed miss is its own mark (✕), never the same "—" a neutral answer uses.
   return <span className={`hh-criteria-value ${c.met ? 'is-met' : 'is-missed'}`}>
-    <b aria-hidden="true">{c.met ? '✓' : '—'}</b><span>{text}</span>
+    <b aria-hidden="true">{c.met ? '✓' : '✕'}</b><span>{text}</span>
   </span>;
 }
 
@@ -124,7 +130,7 @@ function MatchSummary({ match, emptyCopy }) {
 function Perspective({ label, match, feeling, emptyCopy }) {
   return (
     <div className="hh-compare-perspective">
-      <div className="hh-compare-perspective-label">{label} perspective</div>
+      <div className="hh-compare-perspective-label">{label === 'You' ? 'Your' : `${label}’s`} perspective</div>
       <MatchSummary match={match} emptyCopy={emptyCopy} />
       {feeling > 0 ? (
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 5 }}>
@@ -136,13 +142,21 @@ function Perspective({ label, match, feeling, emptyCopy }) {
   );
 }
 
-function CollaboratorState({ state }) {
+// The collaborator's own lifecycle choices, attributed and in plain language
+// (never a raw stored value like "not_for_me"). Never merged with yours.
+function CollaboratorState({ state, name }) {
   if (!state) return null;
-  const choices = [state.isFavorite ? 'Favorite' : null, state.status === 'Want to Tour' ? 'Want to Tour' : null, state.status === 'Archived' ? 'Archived' : null, state.reaction || null].filter(Boolean);
-  return choices.length ? <div className="hh-collaborator-state">{choices.join(' · ')}</div> : null;
+  const toured = Boolean(state.touredAt) || state.status === 'Toured';
+  const choices = [
+    state.isFavorite ? 'Favorite' : null,
+    toured ? 'Toured' : state.status === 'Want to Tour' ? 'Wants to tour' : null,
+    state.status === 'Archived' ? 'Archived' : null,
+    reactionLabel(state.reaction),
+  ].filter(Boolean);
+  return choices.length ? <div className="hh-collaborator-state"><strong>{name}:</strong> {choices.join(' · ')}</div> : null;
 }
 
-function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective, searchType, priorities, basePath = '/homes', vocabulary, isCollaborative }) {
+function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective, searchType, priorities, basePath = '/homes', vocabulary, isCollaborative, collaboratorName = 'Your collaborator' }) {
   const [imgError, setImgError] = useState(false);
   const showPhoto = home.photoUrl && !imgError;
   const overallRating = home.ratings?.[TOUR_RATING_KEY] || 0;
@@ -174,22 +188,23 @@ function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective, searchTyp
       </div>
       {/* Existing lifecycle state, never invented for the card -- Saved is
           the default and not worth a badge; Want to Tour/Toured are. */}
-      {home.status && home.status !== 'Saved' && (
+      {(hasToured(home) || (home.status && home.status !== 'Saved')) && (
         <div className="hh-lifecycle-status">
-          <Footprints size={12} color="var(--moss)" /> {home.status}
+          <Footprints size={12} color="var(--moss)" /> {hasToured(home) ? 'Toured' : home.status}
         </div>
       )}
+      {hasToured(home) && <PostTourRecap home={home} compact ownerLabel={coBuyerPerspective ? 'You' : null} />}
 
       {coBuyerPerspective ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
           <Perspective label="You" match={match} feeling={overallRating} emptyCopy="Set priorities in My Search to see Match" />
-          <Perspective label="Collaborator" match={coBuyerPerspective.match} feeling={coBuyerPerspective.overallFeeling} emptyCopy="Your collaborator hasn't set relevant priorities yet" />
-          <CollaboratorState state={coBuyerPerspective.state} />
+          <Perspective label={collaboratorName} match={coBuyerPerspective.match} feeling={coBuyerPerspective.overallFeeling} emptyCopy={`${collaboratorName} hasn't set relevant priorities yet`} />
+          <CollaboratorState state={coBuyerPerspective.state} name={collaboratorName} />
         </div>
       ) : match ? (
         match.pct !== null ? (
           <div style={{ marginBottom: 4 }}>
-            <span className="hh-mono" style={{ fontSize: 17, fontWeight: 700, color: matchColor(match.pct) }}>{match.pct}% Match</span>
+            <MatchBadge pct={match.pct} size="md" />
             {match.evaluatedCount < match.selectedCount && (
               <div style={{ fontSize: 10.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>Based on {match.evaluatedCount} of {match.selectedCount} priorities evaluated</div>
             )}
@@ -367,9 +382,42 @@ function CompareRowsSection({ title, legend, rows, homes, priorities, renderValu
   );
 }
 
-export default function CompareBoard({ homes, priorities, coBuyerPerspectives = {}, commuteDestinations = [], readOnly = false, basePath = '/homes' }) {
+// "At a glance": the few facts that separate contenders, each read from real
+// data — price from the home, Match and Must Haves from the same canonical
+// computeMatch results the rest of Compare uses. "Best" is marked only when at
+// least two homes have a known value and exactly one is best; Unknown is shown
+// as Unknown and never wins, loses, or counts as a miss.
+function AtAGlance({ homes, matches, priorities }) {
+  const { prices, bestPrice, pcts, bestMatch, musts, hasMust, bestMust } = compareGlance(homes, matches);
+  const cell = (index, best, content, tone = '') => <td key={homes[index].id} className={`${index === best ? 'is-best' : ''} ${tone}`}>{content}{index === best && <span className="sr-only"> (best in this row)</span>}</td>;
+  return (
+    <section className="flh-card flh-compare-glance" aria-labelledby="compare-glance-heading">
+      <div className="flh-section-label"><h2 id="compare-glance-heading">At a glance</h2><span>Best in each row</span></div>
+      <div className="flh-compare-glance-scroll">
+        <table>
+          <thead><tr><th scope="col"><span className="sr-only">Compare</span></th>{homes.map((home) => <th scope="col" key={home.id}>{homeIdentity(home, priorities).primary}</th>)}</tr></thead>
+          <tbody>
+            <tr><th scope="row">{searchIntentCapabilities(priorities.searchType).showsRentalFacts ? 'Rent' : 'Price'}</th>{homes.map((home, index) => cell(index, bestPrice, prices[index] === null ? 'Unknown' : formatHomePrice(home.price, priorities.searchType), prices[index] === null ? 'is-unknown' : ''))}</tr>
+            <tr><th scope="row">Match</th>{homes.map((home, index) => cell(index, bestMatch, pcts[index] === null ? 'Not enough info' : `${pcts[index]}%`, pcts[index] === null ? 'is-unknown' : ''))}</tr>
+            {hasMust && <tr><th scope="row">Must Haves</th>{homes.map((home, index) => {
+              const must = musts[index];
+              return cell(index, bestMust, mustGlanceText(must), must.missed ? 'is-negative' : '');
+            })}</tr>}
+            <tr><th scope="row">Home facts</th>{homes.map((home, index) => cell(index, -1, [home.beds && `${home.beds} bd`, home.baths && `${home.baths} ba`, parseNum(home.sqft) && `${parseNum(home.sqft).toLocaleString()} sq ft`].filter(Boolean).join(' · ') || 'Unknown', (home.beds || home.baths || home.sqft) ? '' : 'is-unknown'))}</tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+export default function CompareBoard({ homes, priorities, coBuyerPerspectives = {}, commuteDestinations = [], readOnly = false, basePath = '/homes', collaboratorName = null }) {
   const [selectedIds, setSelectedIds] = useState(() => homes.slice(0, Math.min(2, homes.length)).map((h) => h.id));
   const [diffsOnly, setDiffsOnly] = useState(true);
+  // Two-stage Compare: an overview first, then the deeper side-by-side view.
+  const [stage, setStage] = useState('overview');
+  const [section, setSection] = useState('match');
+  const partner = collaboratorName || 'Your collaborator';
   const vocabulary = homeVocabulary(priorities);
 
   const toggle = (id) => setSelectedIds((prev) => {
@@ -422,19 +470,21 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
     return new Set(values.map((value) => value == null ? 'unknown' : String(value))).size > 1;
   });
 
-  // One row per label the user selected as a priority, aligned across homes by label
+  // One row per priority the user selected, aligned across homes by criterion key
   // (a priority either exists for every home's computeMatch result or none, since it's
   // driven by the same shared `priorities` object) — pulled from the same shared
   // Match 2.0 calculation, never a separate scoring path.
   const { mustRows, otherRows, allCriteriaCount } = useMemo(() => {
-    const byLabel = new Map(); // label -> { tier, perHome: [c|null, ...] }
+    // Aligned by canonical criterion key (never by display label, which two
+    // different criteria can share across categories).
+    const byKey = new Map(); // key -> { label, tier, perHome: [c|null, ...] }
     matches.forEach((m, i) => {
       (m?.allSelected || []).forEach((c) => {
-        if (!byLabel.has(c.label)) byLabel.set(c.label, { key: c.key, tier: c.tier, perHome: new Array(selected.length).fill(null) });
-        byLabel.get(c.label).perHome[i] = c;
+        if (!byKey.has(c.key)) byKey.set(c.key, { key: c.key, label: c.label, tier: c.tier, perHome: new Array(selected.length).fill(null) });
+        byKey.get(c.key).perHome[i] = c;
       });
     });
-    const rows = Array.from(byLabel.entries()).map(([label, r]) => ({ label, ...r }));
+    const rows = Array.from(byKey.values());
     const differs = (row) => new Set(row.perHome.map(rowSignature)).size > 1;
     const visible = diffsOnly ? rows.filter(differs) : rows;
     return {
@@ -463,7 +513,7 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-      <div>
+      {stage === 'overview' && <div>
         <div className="hh-label" style={{ marginBottom: 8 }}>Choose {vocabulary.pluralLower} to compare {selectedIds.length >= MAX_COMPARE && <span>(max {MAX_COMPARE})</span>}</div>
         <div className="hh-compare-picker">
           {homes.map((h) => {
@@ -483,24 +533,47 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
             );
           })}
         </div>
-      </div>
+      </div>}
 
       {selected.length < 2 ? (
         <div className="hh-corner" style={{ border: '1px dashed var(--line)', borderRadius: 16, padding: '36px 24px', textAlign: 'center', color: 'var(--ink-soft)' }}>
           <Columns size={22} style={{ marginBottom: 8, opacity: 0.5 }} />
           <p style={{ fontSize: 13.5 }}>Pick at least two homes above to compare them.</p>
         </div>
-      ) : (
+      ) : stage === 'overview' ? (
         <>
+          <AtAGlance homes={selected} matches={matches} priorities={priorities} />
           {/* Identification + the big picture: Match and Overall Feeling */}
           <div className="hh-compare-identity-scroll">
             <div className="hh-compare-identity-grid" data-count={selected.length} style={{ '--compare-count': selected.length }}>
               {selected.map((h, i) => (
-                <HomeHeaderCard key={h.id} home={h} match={matches[i]} isFavorite={h.isFavorite} coBuyerPerspective={coBuyerPerspectives[h.id]} searchType={priorities.searchType} priorities={priorities} basePath={basePath} vocabulary={vocabulary} isCollaborative={isCollaborative} />
+                <HomeHeaderCard key={h.id} home={h} match={matches[i]} isFavorite={h.isFavorite} coBuyerPerspective={coBuyerPerspectives[h.id]} searchType={priorities.searchType} priorities={priorities} basePath={basePath} vocabulary={vocabulary} isCollaborative={isCollaborative} collaboratorName={partner} />
               ))}
             </div>
           </div>
 
+          <button type="button" className="flh-button flh-button-primary flh-button-block flh-compare-go" onClick={() => { setStage('detail'); setSection('match'); }}><Columns size={16} aria-hidden="true" /> Compare side by side</button>
+        </>
+      ) : (
+        <>
+          <div className="flh-compare-detail-head">
+            <button type="button" className="flh-icon-button" onClick={() => setStage('overview')} aria-label="Back to overview"><ArrowLeft size={18} aria-hidden="true" /></button>
+            <div><h2 className="hh-serif">Side by side</h2><p>{selected.length} {vocabulary.pluralLower} · context stays pinned</p></div>
+          </div>
+          <div className="flh-compare-pinned" style={{ '--compare-count': selected.length }}>
+            {selected.map((home, index) => (
+              <Link key={home.id} href={`${basePath}/${encodeURIComponent(home.id)}`} className="flh-compare-pin">
+                <strong>{homeIdentity(home, priorities).primary}</strong>
+                <span>{formatHomePrice(home.price, priorities.searchType) || 'Price unknown'}</span>
+                {matches[index]?.pct != null ? <MatchBadge pct={matches[index].pct} /> : <StatusTag tone="unknown">Match unknown</StatusTag>}
+              </Link>
+            ))}
+          </div>
+          <div className="flh-segmented flh-segmented-block flh-compare-tabs" role="tablist" aria-label="Comparison sections">
+            {[['match', 'Match'], ...(commuteDestinations.length ? [['commutes', 'Commutes']] : []), ['facts', `${vocabulary.singular} facts`], ['notes', 'Notes']].map(([key, label]) => (
+              <button key={key} type="button" role="tab" aria-selected={section === key} className={section === key ? 'is-selected' : ''} onClick={() => setSection(key)}>{label}</button>
+            ))}
+          </div>
           {(mustRows.length > 0 || otherRows.length > 0 || commuteDestinations.length > 0 || factRows.length > 0 || allCriteriaCount > 0) && (
             <div className="hh-compare-diff-toggle" role="group" aria-label="Comparison detail level">
               <button type="button" className={diffsOnly ? 'active' : ''} aria-pressed={diffsOnly} onClick={() => setDiffsOnly(true)}>Showing differences only</button>
@@ -508,17 +581,16 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
             </div>
           )}
 
+          {section === 'match' && <>
           {/* Must-Haves */}
           <CompareRowsSection
             title="Must-Haves"
-            legend={<p className="hh-compare-legend"><span className="is-met">✓ Meets preference</span><span className="is-missed">— Doesn't meet</span><span className="is-unknown">? Not evaluated</span></p>}
+            legend={<p className="hh-compare-legend"><span className="is-met">✓ Meets preference</span><span className="is-missed">✕ Doesn't meet</span><span className="is-neutral">— Neutral</span><span className="is-unknown">? Unknown</span></p>}
             rows={mustRows.map((row) => ({ key: row.key, label: rowDisplayLabel(row), values: row.perHome }))}
             homes={selected}
             priorities={priorities}
             renderValue={(c) => <CriteriaValue c={c} />}
           />
-
-          {commuteDestinations.length > 0 && <CommuteSection homes={selected} destinations={commuteDestinations} diffsOnly={diffsOnly} getResult={getCommuteResult} priorities={priorities} />}
 
           {/* What Matters to You */}
           <CompareRowsSection
@@ -533,6 +605,27 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
             <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>These homes look the same on everything you've told us matters — toggle to "show all" to see the full picture.</p>
           )}
 
+          </>}
+          {section === 'commutes' && <>
+          {commuteDestinations.length > 0 && <CommuteSection homes={selected} destinations={commuteDestinations} diffsOnly={diffsOnly} getResult={getCommuteResult} priorities={priorities} />}
+
+          </>}
+          {section === 'facts' && <>
+          <section aria-label={`${vocabulary.singular} facts`}>
+            <div>
+              <CompareRowsSection
+                rows={factRows.map((row) => ({ key: row.key, label: row.label, values: selected.map((h) => row.get(h)), fmt: row.fmt }))}
+                homes={selected}
+                priorities={priorities}
+                labelColWidth={160}
+                minColWidth={100}
+                renderValue={(v, h, row) => <span className="hh-mono" style={{ color: 'var(--ink)', fontWeight: 500 }}>{row.fmt(v, h)}</span>}
+              />
+            </div>
+          </section>
+
+          </>}
+          {section === 'notes' && <>
           {/* Participant-specific context returned by the secure perspective boundary. */}
           {selected.some((home) => coBuyerPerspectives[home.id]?.differentTakes?.length > 0) && (
             <details className="hh-details hh-different-takes" open>
@@ -544,8 +637,8 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 8 }}>{homeIdentity(home, priorities).primary}</div>
                     {(coBuyerPerspectives[home.id]?.differentTakes || []).map((take) => (
                       <div key={take.key} className="hh-different-take">
-                        <strong>{criterionDisplayLabel(take.key.split(':')[0], take.label)}</strong>
-                        <div><span><b>You</b> {take.youLiked ? 'Liked' : "Didn't like"}</span><span><b>Collaborator</b> {take.coBuyerLiked ? 'Liked' : "Didn't like"}</span></div>
+                        <strong>{postTourEvaluationLabel(take.key) || criterionDisplayLabel(take.key.split(':')[0], take.label)}</strong>
+                        <div><span><b>You</b> {take.youLiked ? 'Liked' : "Didn't like"}</span><span><b>{partner}</b> {take.coBuyerLiked ? 'Liked' : "Didn't like"}</span></div>
                       </div>
                     ))}
                     {!coBuyerPerspectives[home.id]?.differentTakes?.length && <div style={{ fontSize: 12, color: 'var(--ink-soft)', fontStyle: 'italic' }}>No different takes here.</div>}
@@ -555,22 +648,8 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
             </details>
           )}
 
-          <details className="hh-details">
-            <summary>{vocabulary.singular} Facts</summary>
-            <div style={{ marginTop: 10 }}>
-              <CompareRowsSection
-                rows={factRows.map((row) => ({ key: row.key, label: row.label, values: selected.map((h) => row.get(h)), fmt: row.fmt }))}
-                homes={selected}
-                priorities={priorities}
-                labelColWidth={160}
-                minColWidth={100}
-                renderValue={(v, h, row) => <span className="hh-mono" style={{ color: 'var(--ink)', fontWeight: 500 }}>{row.fmt(v, h)}</span>}
-              />
-            </div>
-          </details>
-
-          <details className="hh-details">
-            <summary>What Stood Out</summary>
+          <section aria-label="What stood out">
+            <h3 className="hh-serif flh-compare-subhead">What stood out</h3>
             <div className="hh-compare-notes" style={{ marginTop: 10 }}>
               {selected.map((h) => {
                 const liked = parseCommaList(h.pros);
@@ -589,12 +668,13 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
                 );
               })}
             </div>
-          </details>
+          </section>
           {/* The dedicated "Notes" section that used to live here duplicated
               the exact same home.notes text now surfaced on each contender
               card above (see HomeHeaderCard's note excerpt) -- this was
               presentation deduplication only, home.notes and its Home Detail
               edit path are untouched. */}
+          </>}
         </>
       )}
     </div>
