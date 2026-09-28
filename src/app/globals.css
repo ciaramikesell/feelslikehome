@@ -2306,7 +2306,7 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-compare-pinned { position: sticky; top: var(--flh-safe-top); z-index: 5; display: grid; grid-template-columns: repeat(var(--compare-count, 2), minmax(0,1fr)); gap: 8px; padding: 8px 0; background: var(--paper); }
 .flh-compare-pin { display: grid; gap: 3px; min-width: 0; padding: 9px 10px; border: 1px solid var(--flh-card-line); border-radius: 12px; background: var(--flh-card); color: var(--ink); text-decoration: none; }
 .flh-compare-pin strong { overflow: hidden; font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
-.flh-compare-pin span:not(.flh-match-badge):not(.flh-tag) { color: var(--ink-soft); font-size: 12px; }
+.flh-compare-pin > span:not(.flh-match-badge):not(.flh-tag) { color: var(--ink-soft); font-size: 12px; }
 .flh-compare-pin .flh-match-badge, .flh-compare-pin .flh-tag { justify-self: start; box-shadow: none; }
 .flh-compare-tabs { overflow-x: auto; }
 .flh-compare-tabs button { flex: 1 0 auto; white-space: nowrap; }
@@ -2327,7 +2327,10 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-drive-times table { width: 100%; min-width: 300px; border-collapse: collapse; font-size: 12.5px; }
 .flh-drive-times th, .flh-drive-times td { padding: 8px 6px; border-top: 1px solid rgba(138,112,86,.12); text-align: left; vertical-align: top; }
 .flh-drive-times thead th { border-top: 0; color: var(--ink); font-weight: 700; }
-.flh-drive-times thead th span { display: block; max-width: 160px; margin-bottom: 4px; overflow-wrap: anywhere; }
+.flh-drive-times thead th > span:first-child { display: block; max-width: 160px; margin-bottom: 4px; overflow-wrap: anywhere; }
+.flh-drive-times thead .flh-match-badge { box-shadow: none; }
 .flh-drive-times tbody th strong { display: block; color: var(--ink); }
 .flh-drive-times small { display: block; margin-top: 3px; color: var(--ink-soft); font-size: 11px; font-weight: 500; }
 .flh-drive-times-note { margin: 10px 0 0; color: var(--ink-soft); font-size: 12px; }
+/* The selected-home card is opaque so a map status message never shows through it. */
+.hh-map-preview { background: var(--flh-card); }
