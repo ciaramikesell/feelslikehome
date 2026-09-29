@@ -35,6 +35,8 @@ import { deriveFlhMoment } from '@/lib/flhMoments';
 import { postTourSummary } from '@/lib/postTour';
 import { applyPostTourVerdict, archiveHome, hasToured, isFavoriteHome, restoreHome as restoreLifecycleHome, toggleFavorite as toggleFavoriteState } from '@/lib/lifecycle';
 import { createClient } from '@/lib/supabase/client';
+import Paywall from '@/components/Paywall';
+import { checkHomeAdmission, clearPendingAdmission, isPaywallError, savePendingAdmission } from '@/lib/entitlements';
 import { deleteHome as deleteHomeQuery } from '@/lib/supabase/data';
 import {
   deriveWantToTourState, hasSharedHomeChanges, saveHomePersonalAndShared, saveHomePersonalState,
@@ -398,6 +400,8 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [sortBy, setSortBy] = useState('newest');
   const [modalHome, setModalHome] = useState(null);
+  // Opens only after the server declines a new unique home for this search.
+  const [paywallOpen, setPaywallOpen] = useState(false);
   // Carries the "this particular modal open should auto-run Find" intent
   // separately from modalHome itself, set at the same moment as the home
   // being opened (see openHomeModal below) rather than derived from the URL
@@ -494,6 +498,20 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     router.replace('/homes');
   }, [mode, searchParams, router, homes, openHomeModal]);
 
+  // Keep what the buyer was trying to add (for Phase 2 to resume after a
+  // verified unlock) and show the paywall over the still-open Add Home modal.
+  const requestPaywall = useCallback((home) => {
+    savePendingAdmission({ searchId, kind: 'add_home', listingUrl: home?.listingUrl, address: home?.address });
+    setPaywallOpen(true);
+  }, [searchId]);
+
+  const beforeCreateHome = useCallback(async (home) => {
+    const result = await checkHomeAdmission(createClient(), searchId, { listingUrl: home.listingUrl, address: home.address }).catch(() => null);
+    if (result !== 'paywall_required') return true;
+    requestPaywall(home);
+    return false;
+  }, [searchId, requestPaywall]);
+
   const saveHome = useCallback(async (home, { shared = true, optimistic = false } = {}) => {
     const supabase = createClient();
     const previous = homes.find((candidate) => candidate.id === home.id);
@@ -516,6 +534,12 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
       // logged, surfaced here (visible once the modal closes), and re-thrown so
       // HomeModal's own catch can show it immediately, right where the user is
       // looking, without losing anything they'd entered.
+      if (!home.id && isPaywallError(err)) {
+        // Not a failure: the search has used its free homes. Nothing was saved
+        // and nothing else changes; the modal keeps everything entered.
+        requestPaywall(home);
+        throw err;
+      }
       console.error('saveHome failed', err);
       // If the shared `homes` row was already persisted before this failure
       // (see saveHomePersonalAndShared), adopt its id so a retry updates that
@@ -538,11 +562,12 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     setModalHome(null);
     setSaveError('');
     setRetrySave(null);
+    if (!home.id) clearPendingAdmission();
     // Favorites/Archive nav visibility is computed server-side in the layout — refresh
     // it so a first favorite/archive (or the last one being undone) updates the nav
     // right away instead of only after a manual reload.
     router.refresh();
-  }, [userId, searchId, router, homes]);
+  }, [userId, searchId, router, homes, requestPaywall]);
 
   const saveEditedHome = useCallback((home) => {
     const shared = !home.id || hasSharedHomeChanges(home, modalHome);
@@ -673,7 +698,8 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         ) : (
           <CardGrid homes={archivedHomes} priorities={priorities} commuteDestinations={initialCommuteDestinations} mode={mode} onEdit={openHomeModal} onRestore={restoreHome} onRequestDelete={setDeleteTarget} />
         )}
-        {modalHome && <HomeModal initial={modalHome} priorities={priorities} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} userId={userId} onSave={saveEditedHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget} />}
+        {modalHome && <HomeModal initial={modalHome} priorities={priorities} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} userId={userId} onSave={saveEditedHome} onBeforeCreate={beforeCreateHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget} />}
+        <Paywall open={paywallOpen} searchId={searchId} onClose={() => setPaywallOpen(false)} onUnlocked={() => setPaywallOpen(false)} />
         {deleteTarget && (
           <ConfirmModal
             title="Delete this home permanently?"
@@ -817,10 +843,11 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
       {modalHome && (
         <HomeModal
           initial={modalHome} priorities={priorities} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} userId={userId}
-          onSave={saveEditedHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget}
+          onSave={saveEditedHome} onBeforeCreate={beforeCreateHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget}
           autoFindOnMount={modalAutoFind} existingHomes={homes}
         />
       )}
+      <Paywall open={paywallOpen} searchId={searchId} onClose={() => setPaywallOpen(false)} onUnlocked={() => setPaywallOpen(false)} />
 
       {postTourTarget && (
         <PostTourModal

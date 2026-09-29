@@ -22,6 +22,7 @@ import { EXISTING_STRUCTURED_FACT_VALUE, structuredFactSelectValue, structuredFa
 import { countListingDetails, groupListingFacts } from '@/lib/listingFacts';
 import { PROVENANCE_LABELS, fieldProvenance, hasImportSnapshot } from '@/lib/homeProvenance';
 import { isNativeApp } from '@/lib/platform';
+import { isPaywallError } from '@/lib/entitlements';
 
 const PHOTO_BUCKET = 'home-photos';
 const ALLOWED_PHOTO_TYPES = { 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
@@ -376,7 +377,9 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
       </div>
 
       {inspectorOpen && hasInspector && <div className="hh-workspace-inspector" data-step="review"><button type="button" className="hh-btn hh-btn-ghost hh-inspector-close" onClick={() => setInspectorOpen(false)} aria-label="Close listing details"><X size={16} /></button><WhatFlhFound panelRef={inspectorRef} result={inspectorResult} listingUrl={form.listingUrl} /></div>}</div>
-      {saveErrorMsg && <div className="hh-edit-save-error" role="alert">{saveErrorMsg}</div>}
+      {saveErrorMsg && (saveErrorMsg === PAYWALL_SAVE_NOTE
+        ? <div className="flh-paywall-save-note" role="status">{saveErrorMsg}</div>
+        : <div className="hh-edit-save-error" role="alert">{saveErrorMsg}</div>)}
       <footer className={`hh-edit-home-footer hh-edit-steps-footer ${adding ? `is-adding is-step-${step}` : ''}`}>
         {adding && step === 'match'
           ? <button type="button" className="hh-btn hh-btn-ghost flh-step-back" onClick={() => goToStep('review')}><ChevronLeft size={16} aria-hidden="true" /> Back</button>
@@ -388,7 +391,11 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
   </div>;
 }
 
-export default function HomeModal({ initial, priorities, sharedFactAwareness = {}, isCollaborative = false, onSave, onClose, userId, onWantToTour, onArchiveRequest, presentation = 'modal', autoFindOnMount = false, matchPerspectives = [], saveLabel = null, existingHomes = [] }) {
+// Shown under Save when the server declines a new home for this search's free
+// allowance. Nothing entered is lost; the paywall opens over the modal.
+const PAYWALL_SAVE_NOTE = 'Your first three homes are always free. Unlock this search to add this one — everything you entered is still here.';
+
+export default function HomeModal({ initial, priorities, sharedFactAwareness = {}, isCollaborative = false, onSave, onClose, userId, onWantToTour, onArchiveRequest, presentation = 'modal', autoFindOnMount = false, matchPerspectives = [], saveLabel = null, existingHomes = [], onBeforeCreate = null }) {
   const [form, setForm] = useState(initial);
   const vocabulary = homeVocabulary(priorities);
   const [pasteText, setPasteText] = useState('');
@@ -509,6 +516,13 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     setPhotoError('');
     setSaveErrorMsg('');
     try {
+      // Advisory entitlement preflight for a brand-new home, before any photo
+      // upload. The caller opens the paywall when it returns false; the
+      // database still decides on write.
+      if (!form.id && onBeforeCreate && !(await onBeforeCreate(form))) {
+        setSaveErrorMsg(PAYWALL_SAVE_NOTE);
+        return;
+      }
       let finalPhotoUrl = form.photoUrl;
 
       if (photoFile) {
@@ -536,6 +550,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         // otherwise clicking Save again on this still-open modal would upsert
         // with no id and create a second, orphaned home.
         if (saveErr?.partialHomeId && !form.id) set('id', saveErr.partialHomeId);
+        if (isPaywallError(saveErr)) { setSaveErrorMsg(PAYWALL_SAVE_NOTE); setSaving(false); return; }
         setSaveErrorMsg("We couldn't save this home. Please try again — your changes here haven't been lost.");
         setSaving(false);
         return;

@@ -8,16 +8,19 @@ import { dismissSuggestion, promoteSuggestion } from '@/lib/supabase/collaborati
 import { computeMatch } from '@/lib/matching';
 import { homeIdentity } from '@/lib/homePresentation';
 import { formatHomePrice } from '@/lib/homeDisplay';
+import Paywall from '@/components/Paywall';
+import { clearPendingAdmission, isPaywallError, savePendingAdmission } from '@/lib/entitlements';
 
 const REASONS = ['Price', 'Location', 'Layout', 'Condition', 'Missing a must-have', "Just don't like it", 'Other'];
 
-function SuggestionCard({ suggestion, userId, priorities, past }) {
+function SuggestionCard({ suggestion, userId, searchId, priorities, past, onPaywall }) {
   const router = useRouter();
   const [feedbackOpen, setFeedbackOpen] = useState(false);
   const [reasons, setReasons] = useState([]);
   const [other, setOther] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [paywallNote, setPaywallNote] = useState(false);
   const home = suggestion.home;
   const identity = homeIdentity(home, priorities);
   const match = computeMatch(home, priorities);
@@ -38,8 +41,16 @@ function SuggestionCard({ suggestion, userId, priorities, past }) {
   };
   const accept = async () => {
     setBusy(true); setError('');
-    try { const homeId = await promoteSuggestion(createClient(), suggestion.id); router.push(`/homes/${homeId}`); router.refresh(); }
-    catch { setError("Couldn't add this home. Try again."); setBusy(false); }
+    try { const homeId = await promoteSuggestion(createClient(), suggestion.id); clearPendingAdmission(); router.push(`/homes/${homeId}`); router.refresh(); }
+    catch (err) {
+      setBusy(false);
+      if (!isPaywallError(err)) { setError("Couldn't add this home. Try again."); return; }
+      // The suggestion stays pending (the server rolled the promotion back).
+      savePendingAdmission({ searchId, kind: 'suggestion_promotion', suggestionId: suggestion.id, listingUrl: home.listingUrl, address: home.address });
+      setError('');
+      setPaywallNote(true);
+      onPaywall?.();
+    }
   };
 
   return <article className={`hh-suggestion-card${past ? ' is-past' : ''}`}>
@@ -51,16 +62,19 @@ function SuggestionCard({ suggestion, userId, priorities, past }) {
       {others.length > 0 && <p className="hh-cobuyer-dismissed">Dismissed by your co-buyer</p>}
       {past ? <strong className="hh-suggestion-outcome">{suggestion.status === 'accepted' ? 'Added to My Homes' : mine ? 'You dismissed this suggestion' : 'Dismissed'}</strong> : <div className="hh-suggestion-actions"><button className="hh-btn" disabled={busy} onClick={accept}>Add to My Homes</button><button className="hh-btn hh-btn-ghost" disabled={busy} onClick={dismiss}>Dismiss</button></div>}
       {feedbackOpen && <div className="hh-dismiss-feedback"><strong>Want to tell {suggestion.suggestedByName} why?</strong><small>Optional — your dismissal is already saved.</small><div>{REASONS.map((reason) => <label key={reason}><input type="checkbox" checked={reasons.includes(reason)} onChange={() => setReasons((current) => current.includes(reason) ? current.filter((item) => item !== reason) : [...current,reason])}/>{reason}</label>)}</div>{reasons.includes('Other') && <textarea maxLength={280} value={other} onChange={(event) => setOther(event.target.value)} placeholder="Optional note"/>}<button className="hh-btn hh-btn-ghost" onClick={saveFeedback} disabled={busy}>Save feedback</button></div>}
+      {paywallNote && <p role="status" className="flh-paywall-inline-note">This suggestion is still here. Your first three homes are always free — unlock this search to add more.</p>}
       {error && <p role="alert" className="hh-error-text">{error}</p>}
     </div>
   </article>;
 }
 
-export default function SuggestionsBoard({ suggestions, userId, priorities }) {
+export default function SuggestionsBoard({ suggestions, userId, searchId, priorities }) {
+  const [paywallOpen, setPaywallOpen] = useState(false);
   const pending = suggestions.filter((item) => item.status === 'pending' && !item.dispositions.some((row) => row.userId === userId));
   const past = suggestions.filter((item) => item.status !== 'pending' || item.dispositions.some((row) => row.userId === userId));
   return <main className="hh-suggestions-page"><header><a href="/homes">← Homes</a><span>Realtor suggestions</span><h1>Homes worth a look</h1><p>A suggestion stays outside My Homes until you decide to add it.</p></header>
-    <section><h2>New / Pending Suggestions</h2>{pending.length ? <div className="hh-suggestion-list">{pending.map((item) => <SuggestionCard key={item.id} suggestion={item} userId={userId} priorities={priorities}/>)}</div> : <div className="hh-realtor-empty">No pending suggestions.</div>}</section>
+    <section><h2>New / Pending Suggestions</h2>{pending.length ? <div className="hh-suggestion-list">{pending.map((item) => <SuggestionCard key={item.id} suggestion={item} userId={userId} searchId={searchId} priorities={priorities} onPaywall={() => setPaywallOpen(true)}/>)}</div> : <div className="hh-realtor-empty">No pending suggestions.</div>}</section>
     <section className="hh-past-suggestions"><h2>Past Suggestions</h2>{past.length ? <div className="hh-suggestion-list">{past.map((item) => <SuggestionCard key={item.id} suggestion={item} userId={userId} priorities={priorities} past/>)}</div> : <p className="hh-muted">No past suggestions yet.</p>}</section>
+    <Paywall open={paywallOpen} searchId={searchId} onClose={() => setPaywallOpen(false)} onUnlocked={() => setPaywallOpen(false)} />
   </main>;
 }
