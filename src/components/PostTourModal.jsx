@@ -13,7 +13,7 @@ export { POST_TOUR_EVALUATIONS };
 const VERDICTS = [
   { key: 'love', icon: Heart, filled: true, body: 'Real contender.' },
   { key: 'considering', icon: CircleDashed, body: 'Not sure yet.' },
-  { key: 'not_for_me', icon: XCircle, body: 'Rule this one out.' },
+  { key: 'not_for_me', icon: XCircle, body: 'Not the one.' },
 ];
 
 function Evaluation({ item, value, onChange }) {
