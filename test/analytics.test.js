@@ -81,3 +81,11 @@ test('no third-party analytics dependency was introduced', () => {
   assert.deepEqual(deps.filter((dep) => /analytics|segment|mixpanel|posthog|amplitude|gtag|heap|rudder/i.test(dep)), []);
 });
 
+test('onboarding emits the funnel events through the boundary', () => {
+  const onboarding = readFileSync(new URL('../src/components/onboarding/Onboarding.jsx', import.meta.url), 'utf8');
+  for (const event of ['ONBOARDING_STARTED', 'ONBOARDING_RESUMED', 'ONBOARDING_STEP_VIEWED', 'ONBOARDING_STEP_COMPLETED', 'ONBOARDING_COMPLETED']) {
+    assert.match(onboarding, new RegExp(`ANALYTICS_EVENTS\\.${event}`));
+  }
+  const accept = readFileSync(new URL('../src/app/invite/[token]/AcceptInvitationClient.jsx', import.meta.url), 'utf8');
+  assert.match(accept, /track\(ANALYTICS_EVENTS\.COLLABORATOR_JOINED/);
+});

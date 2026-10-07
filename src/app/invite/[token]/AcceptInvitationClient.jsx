@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { acceptInvitation, setActiveSearch } from '@/lib/supabase/collaboration';
+import { ANALYTICS_EVENTS, track } from '@/lib/analytics';
 import { BrandMark, Wordmark } from '@/components/ui';
 
 const REASON_COPY = {
@@ -63,6 +64,8 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
       if (user && result.search_id) {
         await setActiveSearch(supabase, user.id, result.search_id);
       }
+      // role = the collaborator who joined the search (a Realtor for both Realtor directions).
+      track(ANALYTICS_EVENTS.COLLABORATOR_JOINED, { role: isBuyerInvite || isRealtorInvite ? 'realtor' : 'co_buyer', surface: 'invitation' });
       setState('done');
       setTimeout(() => { router.push(isBuyerInvite ? '/onboarding' : '/homes'); router.refresh(); }, 1200);
     } catch (err) {

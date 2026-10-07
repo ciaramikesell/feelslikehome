@@ -9,9 +9,36 @@ export async function getProfile(supabase, userId) {
   return data;
 }
 
-export async function completeOnboarding(supabase, userId) {
+// onboarding_complete is the one thing that must be saved: it is the gate.
+// Progress (version + state) is recorded afterwards and best-effort, so a
+// failed or not-yet-migrated progress write can never strand someone in
+// onboarding after they finished it.
+export async function completeOnboarding(supabase, userId, progress = null) {
   const { error } = await supabase.from('profiles').update({ onboarding_complete: true }).eq('id', userId);
   if (error) throw error;
+  if (progress) await saveOnboardingProgress(supabase, userId, progress);
+}
+
+// PostgREST / Postgres responses for a column that does not exist yet — the
+// app can deploy before 2026-10-07-onboarding-state.sql is applied.
+const isMissingOnboardingColumn = (error) => error?.code === 'PGRST204' || error?.code === '42703'
+  || /onboarding_(state|version)/.test(error?.message || '');
+
+// Persists resumable onboarding progress (src/lib/onboardingFlow.js) on the
+// caller's own profile. Never throws: returns false when progress could not
+// be saved, and onboarding simply continues (answers themselves are saved
+// separately, as participant priorities, and are never at risk here).
+export async function saveOnboardingProgress(supabase, userId, { version, state }) {
+  try {
+    const { error } = await supabase.from('profiles')
+      .update({ onboarding_version: version, onboarding_state: state }).eq('id', userId);
+    if (!error) return true;
+    if (!isMissingOnboardingColumn(error)) console.warn('Onboarding progress not saved', error.code || error.message);
+    return false;
+  } catch (err) {
+    console.warn('Onboarding progress not saved', err?.message);
+    return false;
+  }
 }
 
 // Lightweight profile completion for existing accounts that predate name

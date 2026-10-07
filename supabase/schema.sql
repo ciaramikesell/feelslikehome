@@ -2691,3 +2691,27 @@ revoke execute on function public.create_prospective_search(jsonb,text), public.
 notify pgrst, 'reload schema';
 
 commit;
+
+
+-- 2026-10-07 Onboarding state foundation (see migrations/2026-10-07-onboarding-state.sql)
+begin;
+
+alter table public.profiles
+  add column if not exists onboarding_version smallint,
+  add column if not exists onboarding_state jsonb not null default '{}'::jsonb;
+
+alter table public.profiles drop constraint if exists profiles_onboarding_version_range;
+alter table public.profiles add constraint profiles_onboarding_version_range
+  check (onboarding_version is null or onboarding_version between 1 and 100);
+
+alter table public.profiles drop constraint if exists profiles_onboarding_state_shape;
+alter table public.profiles add constraint profiles_onboarding_state_shape
+  check (jsonb_typeof(onboarding_state) = 'object' and pg_column_size(onboarding_state) <= 16384);
+
+comment on column public.profiles.onboarding_version is
+  'Onboarding flow version started/completed. NULL with onboarding_complete = true means completed before versioning; never re-routed.';
+comment on column public.profiles.onboarding_state is
+  'Resumable onboarding progress (src/lib/onboardingFlow.js). Presentation only; never used for authorization or entitlement.';
+
+notify pgrst, 'reload schema';
+commit;

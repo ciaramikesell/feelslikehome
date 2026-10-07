@@ -36,6 +36,7 @@ export const POST_SNAPSHOT_MIGRATIONS = [
   { file: 'supabase/migrations/2026-09-19-account-name-capture-and-realtor-home.sql' },
   { file: 'supabase/migrations/2026-10-07-cobuyer-compare-garage-parity.sql' },
   { file: 'supabase/migrations/2026-10-07-invitation-acceptance-conflict-targets.sql' },
+  { file: 'supabase/migrations/2026-10-07-onboarding-state.sql' },
 ];
 
 const SUPABASE_SHIM = `
