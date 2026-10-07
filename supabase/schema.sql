@@ -2689,3 +2689,5 @@ grant execute on function public.preview_invitation(uuid) to authenticated;
 revoke execute on function public.create_prospective_search(jsonb,text), public.invite_prospective_client(uuid,text), public.claim_prospective_search(uuid,jsonb), public.preview_invitation(uuid), public.create_buyer_invitation(text), public.accept_invitation(uuid) from anon, service_role;
 
 notify pgrst, 'reload schema';
+
+commit;
