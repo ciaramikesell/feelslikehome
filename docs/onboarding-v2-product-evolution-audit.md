@@ -529,3 +529,105 @@ ratings from the headline % and see them in "After your tour" instead —
 Each phase: unit tests for new domain logic, contract tests in the existing
 `test/*.test.js` style for SQL/RLS boundaries, `npm test` + `npm run build`,
 logical commits.
+
+---
+
+## Part 4 — Locked decisions (2026-10-07) and Phase 0/1 results
+
+### Locked product decisions
+
+These supersede the corresponding proposals and DECISION markers above.
+
+1. **Sequence:** Welcome → Who are you searching with? → Practical basics →
+   Ranked location areas → Personal priorities → Tour Discoveries concept →
+   Import/share lesson → (after completion) first-home Match reveal → My Homes
+   + contextual Get Started. Collaboration comes before any criteria.
+   The name from sign-up is reused. Budget stays a maximum; beds and baths
+   stay "at least".
+2. **FLH+ scope:** a permanent entitlement owned by the purchaser's account.
+   Collaboration features unlock per *search* when at least one buyer
+   participant on it owns FLH+. That never grants the other buyer an account
+   entitlement. Realtors never need FLH+. Checks are search-scoped, never just
+   `currentUser.isPlus`.
+3. **Payments:** native iOS IAP first; web honors existing entitlements but
+   doesn't sell. A server-only privileged key is approved only for verified
+   purchase writes, restore processing, and refund/revocation.
+4. **Restore:** a transaction stays with the FLH account that first claimed
+   it. A restore that finds it claimed by another account shows an
+   account-state message and is never reassigned.
+5. **Free tier:** Homes #1–#2 are free; Home #3+ needs FLH+. A free
+   collaborative search gets one complete shared-home loop (invite, accept,
+   independent preferences, one shared home, each buyer's Match, a Together
+   view, agree/differ) before anything collaborative is gated.
+6. **Location rank** is a label, not a weight, in v1. An area FLH can't verify
+   is Unknown, never a miss.
+7. **After-tour separation approved:** "94% Match · Pre-tour"; Tour
+   Discoveries stay a separate assessment.
+8. **Grandfathering:** every account that exists before monetization goes live
+   gets a real, persisted, permanent FLH+ entitlement, granted by a
+   deterministic, auditable cutoff.
+9. **Unknown never equals No**; tour-only criteria never lower pre-tour Match
+   or read as unfinished work.
+10. **Researcher behavior:** a buyer may evaluate listing data against the
+    other buyer's declared criteria, but may never record their reaction,
+    answer for them, or change their preferences. "Add to mine" copies a
+    criterion on an explicit action only, and never links the two records.
+
+### Phase 0 — shipped
+
+| Change | Files |
+|---|---|
+| Invited co-buyers onboard into the shared search (`resolveOnboardingSearch`; the ambiguous `getSearch` removed) | `src/lib/supabase/collaboration.js`, `src/app/onboarding/page.js`, `src/lib/supabase/data.js` |
+| **New finding, fixed:** every invitation acceptance failed with 42702 (ambiguous `search_id`) since 2026-09-16, covering co-buyer, Realtor, Realtor connection, and Realtor-started claim | `migrations/2026-10-07-invitation-acceptance-conflict-targets.sql`, `schema.sql` |
+| **New finding, fixed:** co-buyer Compare Match ignored Garage and Guest / In-Law Suite, so it disagreed with the co-buyer's own Match | `migrations/2026-10-07-cobuyer-compare-garage-parity.sql`, `test/match-scorer-parity.test.js` |
+| **New finding, fixed:** `schema.sql` ended in an open transaction; fresh installs rolled back the Realtor-started-searches block | `schema.sql` |
+| Real-Postgres authorization harness (opt-in, no npm dependency) | `test/support/*`, `docs/database-tests.md` |
+| Read-only check for co-buyers already affected by the onboarding bug | `supabase/cobuyer-onboarding-placement-check.sql` |
+
+### Phase 1 — shipped
+
+* `profiles.onboarding_version` + `profiles.onboarding_state`
+  (`migrations/2026-10-07-onboarding-state.sql`): additive, constrained, no
+  backfill, existing policies only. Existing accounts keep `NULL`, which means
+  "finished before versioning"; the gate is still `onboarding_complete` alone.
+* `src/lib/onboardingFlow.js` holds the flow versions, per-person step
+  branching (V2 defined, not yet rendered), resume, Back without data loss,
+  invited co-buyer context, re-doing search-scoped steps when the search
+  changes, and v1→v2 carry-over. `CURRENT_ONBOARDING_VERSION` stays 1 until
+  Phase 2 ships the screens.
+* The current onboarding UI persists and resumes its position, saves on
+  backgrounding, and never blocks on a progress write.
+* `src/lib/analytics.js` is the event boundary: a typed vocabulary, allowlisted
+  PII-free properties, pluggable sinks, no vendor. Onboarding funnel and
+  `collaborator_joined` are instrumented.
+
+### Findings that affect later phases
+
+* **Scorer drift beyond Garage (Phase 4):** the SQL projection doesn't apply
+  `PURCHASE_LEGACY_LABEL_ALIASES` folding, and it skips retired keys even when
+  a buyer typed them as their own criterion (`source: 'custom'`), which the JS
+  scorer keeps. A legacy document can still score differently on the two
+  sides. Phase 4 rewrites this function anyway (pre-tour split); it should
+  extend the parity test to run shared fixtures through both scorers.
+* **Already-joined co-buyers (Phase 7):** a person who had finished onboarding
+  before accepting has no priority document on the shared search (Match
+  empty), because onboarding is never re-run for them. The planned explicit
+  "bring over my preferences" copy (caller-owned) also serves the accounts
+  listed by the placement check.
+* **Production verification needed:** apply the three 2026-10-07 migrations
+  in filename order (conflict targets, compare parity, onboarding state;
+  they're independent). Then accept one real co-buyer invitation to confirm
+  42702 is gone. If production had silently been failing acceptances, there
+  may be pending invitations users gave up on.
+* **`AcceptInvitationClient` comment drift:** it refers to an
+  `accept_invitation` exception handler that produced sanitized
+  `error_<stage>_<sqlstate>` reasons. The current function has no such
+  handler, so unexpected failures surface only as a generic invalid state.
+* **schema.sql snapshot drift:** it still defines the pre-display-name
+  `resolve_collaborator_search_context` and lacks several 2026-09-16+
+  migrations. The test harness documents the replay order
+  (`POST_SNAPSHOT_MIGRATIONS`). Regenerating `schema.sql` from production
+  would remove that maintenance.
+* **Entitlement placement (Phase 8):** confirmed `profiles` is fully
+  own-row-writable (no column grants), so onboarding state can live there but
+  entitlements must not.
