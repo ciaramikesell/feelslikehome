@@ -71,6 +71,34 @@ export async function resolveActiveSearch(supabase, userId) {
   return { search: activeSearch, isOwner: activeSearch.user_id === userId };
 }
 
+// The search a person's buyer onboarding writes into. Onboarding builds the
+// caller's OWN participant priorities, so it must target the search they are
+// actually deciding in — never "the search this account happens to own".
+//
+// An invited co-buyer who accepts is pointed at the shared search
+// (accept_invitation + setActiveSearch). Their auto-created owned search is
+// empty and unused; resolving it here (as onboarding once did via getSearch)
+// silently stored their preferences somewhere their household never sees.
+// The active search is therefore authoritative, constrained to searches where
+// RLS lets the caller write participant priorities: the owned search, or a
+// search where their membership role is co_buyer. A Realtor membership is a
+// professional relationship, not the Realtor's own buyer search, so it falls
+// back to the owned search — matching smp_decision_maker_insert/update.
+export async function resolveOnboardingSearch(supabase, userId) {
+  const { search, isOwner } = await resolveActiveSearch(supabase, userId);
+  if (!search || isOwner) return { search, role: 'owner' };
+
+  const { data: membership, error } = await supabase
+    .from('search_members').select('role').eq('search_id', search.id).eq('user_id', userId).maybeSingle();
+  if (error) throw error;
+  if (membership?.role === 'co_buyer') return { search, role: 'co_buyer' };
+
+  const { data: ownedSearch, error: ownedError } = await supabase
+    .from('searches').select(SEARCH_SHARED_COLUMNS).eq('user_id', userId).maybeSingle();
+  if (ownedError) throw ownedError;
+  return { search: ownedSearch, role: 'owner' };
+}
+
 // Every search the current user can access, for the search switcher. Small
 // by design — V1 is one owned search plus at most one shared search, never a
 // full workspace list.

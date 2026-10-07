@@ -26,14 +26,10 @@ export async function updateProfileName(supabase, userId, firstName, lastName) {
   if (error) throw error;
 }
 
-// Every user has exactly one row here in V1 (enforced by a unique constraint on user_id).
-// The table itself supports more than one search per user, so multi-search is a future
-// UI feature, not a future migration.
-export async function getSearch(supabase, userId) {
-  const { data, error } = await supabase.from('searches').select('id,user_id,created_at,updated_at').eq('user_id', userId).maybeSingle();
-  if (error) throw error;
-  return data;
-}
+// There is deliberately no "get this account's owned search" helper here: which
+// search applies is a collaboration question (owned vs. shared, co-buyer vs.
+// Realtor) answered only by resolveActiveSearch / resolveOnboardingSearch in
+// collaboration.js.
 
 export async function deleteHome(supabase, homeId) {
   const { error } = await supabase.from('homes').delete().eq('id', homeId);

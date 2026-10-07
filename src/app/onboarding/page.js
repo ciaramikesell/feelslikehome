@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getProfile, getSearch } from '@/lib/supabase/data';
+import { getProfile } from '@/lib/supabase/data';
 import { normalizePriorities } from '@/lib/constants';
-import { resolvePriorities } from '@/lib/supabase/collaboration';
+import { resolveOnboardingSearch, resolvePriorities } from '@/lib/supabase/collaboration';
 import Onboarding from '@/components/onboarding/Onboarding';
 
 export default async function OnboardingPage() {
@@ -13,7 +13,9 @@ export default async function OnboardingPage() {
   const profile = await getProfile(supabase, user.id);
   if (profile?.onboarding_complete) redirect('/homes');
 
-  const search = await getSearch(supabase, user.id);
+  // The active decision-making search, not the account's owned search: an
+  // invited co-buyer onboards into the shared search they just joined.
+  const { search } = await resolveOnboardingSearch(supabase, user.id);
   const priorities = await resolvePriorities(supabase, search, user.id);
 
   const appVersion = process.env.VERCEL_GIT_COMMIT_SHA || process.env.VERCEL_DEPLOYMENT_ID || null;
