@@ -321,6 +321,10 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
     setFinishing(true);
     try {
       await flush();
+      // The participant document must exist on this search when onboarding
+      // ends — it is what the shared-search setup gate checks — even if the
+      // last screen changed nothing. Idempotent upsert of the caller's own row.
+      await persistPriorities(priorities);
       await completeOnboarding(createClient(), userId, { version, state: completeOnboardingState(version, progressRef.current) });
       track(ANALYTICS_EVENTS.ONBOARDING_COMPLETED, eventContext);
       if (pendingRedirect) { router.push(pendingRedirect); router.refresh(); return; }

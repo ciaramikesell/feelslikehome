@@ -99,6 +99,28 @@ export async function resolveOnboardingSearch(supabase, userId) {
   return { search: ownedSearch, role: 'owner' };
 }
 
+// True when the caller is a co-buyer on this search and has never set up their
+// own preferences for it. Onboarding completion is account-level, so someone
+// who had already used FLH on their own and then accepted a co-buyer
+// invitation would otherwise land in the shared search with an empty
+// preference list (and no Match) and never be asked for one. Their preferences
+// on their own search are a different search's document: never read, moved,
+// or copied here.
+//
+// The (app) layout gate and the onboarding page both use this one predicate,
+// so they always agree (no redirect loop) and no other "which search needs
+// setup" rule exists. Owners and Realtor memberships are never affected.
+export async function needsSharedSearchSetup(supabase, userId, search, isOwner) {
+  if (!search || isOwner) return false;
+  const [{ data: membership, error: membershipError }, { data: ownPriorities, error: prioritiesError }] = await Promise.all([
+    supabase.from('search_members').select('role').eq('search_id', search.id).eq('user_id', userId).maybeSingle(),
+    supabase.from('search_member_priorities').select('id').eq('search_id', search.id).eq('user_id', userId).maybeSingle(),
+  ]);
+  if (membershipError) throw membershipError;
+  if (prioritiesError) throw prioritiesError;
+  return membership?.role === 'co_buyer' && !ownPriorities;
+}
+
 // Every search the current user can access, for the search switcher. Small
 // by design — V1 is one owned search plus at most one shared search, never a
 // full workspace list.

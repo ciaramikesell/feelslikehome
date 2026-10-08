@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { requireUser, withAuthRecovery, withRedirectParam, currentPathForRedirect } from '@/lib/supabase/auth';
 import { getProfile } from '@/lib/supabase/data';
-import { resolveActiveSearch, getAccessibleSearches, resolvePriorities, getSearchParticipantIds } from '@/lib/supabase/collaboration';
+import { resolveActiveSearch, getAccessibleSearches, needsSharedSearchSetup, resolvePriorities, getSearchParticipantIds } from '@/lib/supabase/collaboration';
 import { normalizeSearchIntent } from '@/lib/searchIntent';
 import AppShell from '@/components/AppShell';
 
@@ -50,7 +50,11 @@ export default async function AppGroupLayout({ children }) {
       );
     }
 
-    const { search } = await resolveActiveSearch(supabase, user.id);
+    const { search, isOwner } = await resolveActiveSearch(supabase, user.id);
+    // A co-buyer who joined this shared search after finishing onboarding on
+    // their own account still needs their OWN preferences here before its
+    // homes, Match, and My Search mean anything; their other search is untouched.
+    if (!isAccountRoute && await needsSharedSearchSetup(supabase, user.id, search, isOwner)) redirect(withRedirectParam('/onboarding', requestedPath));
     const [accessibleSearches, priorities, participantIds] = await Promise.all([
       getAccessibleSearches(supabase, user.id),
       resolvePriorities(supabase, search, user.id),

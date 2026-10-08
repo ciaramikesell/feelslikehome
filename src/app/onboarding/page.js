@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getProfile } from '@/lib/supabase/data';
 import { normalizePriorities } from '@/lib/constants';
-import { resolveOnboardingSearch, resolvePriorities } from '@/lib/supabase/collaboration';
+import { needsSharedSearchSetup, resolveOnboardingSearch, resolvePriorities } from '@/lib/supabase/collaboration';
 import { beginOnboarding } from '@/lib/onboardingFlow';
 import Onboarding from '@/components/onboarding/Onboarding';
 
@@ -12,11 +12,14 @@ export default async function OnboardingPage() {
   if (!user) redirect('/auth/sign-in');
 
   const profile = await getProfile(supabase, user.id);
-  if (profile?.onboarding_complete) redirect('/homes');
 
   // The active decision-making search, not the account's owned search: an
   // invited co-buyer onboards into the shared search they just joined.
   const { search, role } = await resolveOnboardingSearch(supabase, user.id);
+  // Finished accounts only come back here to set up their own preferences for
+  // a shared search they joined as a co-buyer (same predicate as the (app)
+  // layout gate, so the two can never disagree).
+  if (profile?.onboarding_complete && !(await needsSharedSearchSetup(supabase, user.id, search, role === 'owner'))) redirect('/homes');
   const priorities = await resolvePriorities(supabase, search, user.id);
 
   // Resume where this person left off, against this search. Missing columns

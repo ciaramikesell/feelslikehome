@@ -87,7 +87,7 @@ test('three-step journey preserves choices on Back, persists before completion, 
   assert.match(onboarding, /Rank my priorities/);
   // Every step change flushes pending saves; completion flushes before marking onboarding complete.
   assert.match(onboarding, /const goTo = async \(fromStep\) => \{\n\s+await flush\(\);\n\s+const \{ state: next \} = advanceOnboarding\(version, progressRef\.current, fromStep\);/);
-  assert.match(onboarding, /await flush\(\);\n\s+await completeOnboarding\(createClient\(\), userId, \{ version, state: completeOnboardingState\(version, progressRef\.current\) \}\);/);
+  assert.match(onboarding, /await flush\(\);\n(?:\s+\/\/.*\n)*\s+await persistPriorities\(priorities\);\n\s+await completeOnboarding\(createClient\(\), userId, \{ version, state: completeOnboardingState\(version, progressRef\.current\) \}\);/);
   // #73: a pending share-intake destination (see (app)/layout.js) takes over when present.
   assert.match(onboarding, /if \(pendingRedirect\) \{ router\.push\(pendingRedirect\); router\.refresh\(\); return; \}/);
   assert.match(onboarding, /Your search is ready\./);
@@ -122,7 +122,9 @@ test('the old Dealbreakers onboarding state cannot trap an existing user', () =>
   const dataLib = read('src/lib/supabase/data.js');
   assert.match(dataLib, /update\(\{ onboarding_complete: true \}\)/);
   const page = read('src/app/onboarding/page.js');
-  assert.match(page, /if \(profile\?\.onboarding_complete\) redirect\('\/homes'\);/);
+  // A finished account re-enters only to set up its own preferences on a shared
+  // search it joined as a co-buyer (cobuyer-journey-db.test.js).
+  assert.match(page, /if \(profile\?\.onboarding_complete && !\(await needsSharedSearchSetup\(supabase, user\.id, search, role === 'owner'\)\)\) redirect\('\/homes'\);/);
   assert.match(page, /beginOnboarding\(\{/);
   const onboarding = read('src/components/onboarding/Onboarding.jsx');
   assert.match(onboarding, /const \[progressState, setProgressState\] = useState\(initialProgress\.state\);/);
