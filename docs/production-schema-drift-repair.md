@@ -75,10 +75,35 @@ function body.
 
 ### RLS and privileged-function review
 
-* **New table `prospective_searches`:** RLS on. SELECT and UPDATE only where
-  `started_by = auth.uid()`; no client INSERT or DELETE. File 2 narrows
-  SELECT to `id, client_name, invited_email, status, draft_priorities,
-  created_at, updated_at`, so `started_by` isn't exposed.
+* **Existing permissions are untouched.** The test snapshots every table
+  ACL, column grant, RLS policy, and function ACL / SECURITY DEFINER flag /
+  setting before and after the seven files. Nothing pre-existing changes or
+  disappears; the only additions are the new table, its two policies, the
+  new columns, and five new functions.
+* **New table `prospective_searches`:** RLS on. Rows are visible and
+  updatable only where `started_by = auth.uid()`. File 2 narrows SELECT to
+  `id, client_name, invited_email, status, draft_priorities, created_at,
+  updated_at`, so `started_by` can't be read. Verified behavior:
+  * direct INSERT is rejected by RLS (no insert policy); drafts are created
+    only through `create_prospective_search` / `create_buyer_invitation`;
+  * direct DELETE affects no rows (no delete policy);
+  * another user sees no drafts;
+  * an owner can't reassign `started_by` to someone else.
+* **Known pre-existing gap (not introduced or changed by this repair):**
+  2026-09-16-realtor-started-searches.sql revokes from `public, anon` only.
+  Supabase's default privileges therefore leave `authenticated` with
+  table-level INSERT/UPDATE/DELETE/TRUNCATE, which RLS reduces to "an owner
+  may UPDATE any column of their own drafts". The intent was only
+  `client_name, draft_priorities, updated_at`, and that's all the app
+  updates. TRUNCATE isn't reachable through the Supabase API. Low risk and
+  owner-only, but it should be tightened in a separate, reviewed change. A
+  proposed migration, **not** part of this repair, to be decided separately:
+  ```sql
+  begin;
+  revoke insert, update, delete, truncate, references, trigger on public.prospective_searches from authenticated;
+  grant update (client_name, draft_priorities, updated_at) on public.prospective_searches to authenticated;
+  commit;
+  ```
 * **New SECURITY DEFINER functions** (`create_prospective_search`,
   `invite_prospective_client`, `create_buyer_invitation`,
   `claim_prospective_search`): empty `search_path`, require `auth.uid()`,
@@ -89,7 +114,12 @@ function body.
   versions they replace. `preview_invitation` still returns invitation
   metadata only, plus `requires_confirmation`.
 * **Bridge (3):** the reviewed display-name definition unchanged, re-granted
-  to `authenticated` only. Nothing depends on the function.
+  to `authenticated` only. Nothing depends on the function. Verified against
+  every state it can meet: on the old 3-column version it replaces the
+  function; on the display-name, the newer 09-19, or a hand-edited
+  4-column version it leaves the body, return type, SECURITY DEFINER flag
+  and settings byte-identical. Its grant statements can only narrow access
+  to the documented `authenticated`-only set, never widen it.
 * No existing policy is loosened; no grant beyond the above is added.
 
 ## Runbook (Supabase SQL Editor, production project)

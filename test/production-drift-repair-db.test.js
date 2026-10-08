@@ -25,6 +25,7 @@ import { readFileSync } from 'node:fs';
 import { register } from 'node:module';
 import { createTestDatabase, DB_TESTS_ENABLED, DB_SKIP_REASON } from './support/supabaseDb.mjs';
 import { fingerprintSql } from './support/functionCatalog.mjs';
+import { PRIVILEGE_SNAPSHOT, diffSnapshots } from './support/privilegeSnapshot.mjs';
 import { normalizePriorities } from '../src/lib/constants.js';
 import { computeMatch } from '../src/lib/matching.js';
 
@@ -140,6 +141,18 @@ const EXPECTED_AFTER = {
   suggest_home_tour: '2026-09-19-account-name-capture-and-realtor-home.sql',
 };
 
+// Every access-controlled object the repair adds; nothing else may appear.
+const EXPECTED_NEW_ACCESS_OBJECTS = [
+  'column profiles.first_name', 'column profiles.last_name', 'column profiles.onboarding_state', 'column profiles.onboarding_version',
+  'column prospective_searches.client_name', 'column prospective_searches.created_at', 'column prospective_searches.draft_priorities',
+  'column prospective_searches.id', 'column prospective_searches.invited_email', 'column prospective_searches.started_by',
+  'column prospective_searches.status', 'column prospective_searches.updated_at', 'column search_invitations.prospective_search_id',
+  'function claim_prospective_search', 'function create_prospective_search', 'function create_realtor_connection_request',
+  'function invite_prospective_client', 'function resolve_display_name',
+  'policy prospective_searches.prospective_searches_owner_select', 'policy prospective_searches.prospective_searches_owner_update',
+  'table prospective_searches',
+];
+
 function seed(db) {
   const ids = {};
   for (const [key, email] of Object.entries({ ciara: 'ciara@example.com', andrew: 'andrew@example.com', rita: 'rita@example.com', pat: 'pat@example.com', newbie: 'newbie@example.com', client: 'client@example.com' })) {
@@ -226,11 +239,18 @@ for (const compareFile of COMPARE_CANDIDATES) {
     assert.deepEqual(db.admin(FINGERPRINT_DATA), data);
 
     // 3. The revised order: every file applies, every existing row unchanged.
+    const privilegesBefore = db.admin(PRIVILEGE_SNAPSHOT);
     for (const file of REPAIR_ORDER) {
       const result = db.applyFile(file);
       assert.equal(result.ok, true, `${file}: ${result.error}`);
     }
     assert.deepEqual(db.admin(FINGERPRINT_DATA), data);
+    // Permissions: nothing that existed before is changed or removed; the only
+    // additions are the new objects the repair is meant to create.
+    const privileges = diffSnapshots(privilegesBefore, db.admin(PRIVILEGE_SNAPSHOT));
+    assert.deepEqual(privileges.removed, []);
+    assert.deepEqual(privileges.changed, []);
+    assert.deepEqual(privileges.added.map((entry) => entry.replace(/\(.*$/, '')), EXPECTED_NEW_ACCESS_OBJECTS);
     const repaired = inventoryOf(db);
     for (const [migration, applied] of Object.entries(migrationRows(repaired))) assert.equal(applied, true, migration);
     assert.equal(repaired['FACT: accept_invitation conflict clause'], 'named constraint (fixed)');
