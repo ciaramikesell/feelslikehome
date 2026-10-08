@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowRight, Building2, Home as HomeIcon, KeyRound, Plus, ShieldCheck, Sparkles } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
@@ -16,20 +16,23 @@ import {
 } from '@/lib/searchProfile';
 import { createClient } from '@/lib/supabase/client';
 import { useReliableOptimisticState } from '@/lib/useReliableOptimisticState';
-import { completeOnboarding } from '@/lib/supabase/data';
+import { completeOnboarding, saveOnboardingProgress } from '@/lib/supabase/data';
+import { advanceOnboarding, completeOnboardingState, onboardingProgress, retreatOnboarding } from '@/lib/onboardingFlow';
+import { ANALYTICS_EVENTS, track } from '@/lib/analytics';
 import { savePriorities } from '@/lib/supabase/collaboration';
 import { sanitizeRedirectPath } from '@/lib/safeRedirect';
 import BetaFeedback from '@/components/BetaFeedback';
 
-const STEPS = ['The Basics', 'What Matters', 'Rank Priorities'];
+// Screen labels for the flow-1 steps (src/lib/onboardingFlow.js owns order and branching).
+const STEP_LABELS = { basics: 'The Basics', what_matters: 'What Matters', rank: 'Rank Priorities' };
 const CHOICE_ICONS = { home_buy: HomeIcon, home_rent: KeyRound, apartment_rent: Building2 };
 const CHOICE_LABELS = { home_buy: 'Home to Buy', home_rent: 'Home to Rent', apartment_rent: 'Apartment to Rent' };
 
-function StepHeader({ step, title, lead }) {
+function StepHeader({ step, progress, title, lead }) {
   return (
     <header className="flh-onboarding-header">
-      <div className="flh-onboarding-progress" aria-hidden="true">{STEPS.map((label, index) => <span key={label} className={index < step ? 'is-done' : ''} />)}</div>
-      <p className="flh-eyebrow">Step {step} of 3 · {STEPS[step - 1]}</p>
+      <div className="flh-onboarding-progress" aria-hidden="true">{progress.steps.map((key, index) => <span key={key} className={index < progress.position ? 'is-done' : ''} />)}</div>
+      <p className="flh-eyebrow">Step {progress.position} of {progress.total} · {STEP_LABELS[step]}</p>
       <h1 className="flh-page-title">{title}</h1>
       {lead && <p className="flh-lead">{lead}</p>}
     </header>
@@ -72,14 +75,14 @@ const withRetained = (choices, values, labelFor = (value) => value) => [
   ...(values || []).filter((value) => value !== 'No Preference' && !choices.some((choice) => choice.value === value)).map((value) => ({ value, label: labelFor(value) })),
 ];
 
-function BasicsStep({ priorities, patch, onNext }) {
+function BasicsStep({ priorities, patch, onNext, progress }) {
   const choice = priorities.onboardingSearchType || '';
   const fields = basicsFieldsFor(choice);
   const setValue = (key, value) => patch((next) => { next[key] = { ...next[key], value }; return next; });
   const setValues = (key, value) => patch((next) => { next[key] = { ...next[key], values: toggleValue(next[key]?.values, value) }; return next; });
   return (
     <div className="flh-onboarding-step">
-      <StepHeader step={1} title="Let’s find what feels like home." lead="Start with the kind of search you’re making. Add a few helpful details now—you can change everything later." />
+      <StepHeader step="basics" progress={progress} title="Let’s find what feels like home." lead="Start with the kind of search you’re making. Add a few helpful details now—you can change everything later." />
       <fieldset className="flh-option-group">
         <legend className="flh-section-kicker">Search type</legend>
         <div className="flh-select-grid">
@@ -132,7 +135,7 @@ function GarageQualifier({ priorities, patch }) {
   );
 }
 
-function WhatMattersStep({ priorities, patch, onNext, onBack, isSaving }) {
+function WhatMattersStep({ priorities, patch, onNext, onBack, isSaving, progress }) {
   const groups = ONBOARDING_SUGGESTIONS[priorities.onboardingSearchType] || [];
   const offered = groups.flatMap(([, items]) => items);
   const offeredKeys = new Set(offered.map((criterion) => `${criterion.categoryKey}:${criterion.label}`));
@@ -155,7 +158,7 @@ function WhatMattersStep({ priorities, patch, onNext, onBack, isSaving }) {
 
   return (
     <div className="flh-onboarding-step">
-      <StepHeader step={2} title="What matters to you?" lead="For now, just choose what matters. You’ll decide what’s a Must Have, Important, or Nice to Have next." />
+      <StepHeader step="what_matters" progress={progress} title="What matters to you?" lead="For now, just choose what matters. You’ll decide what’s a Must Have, Important, or Nice to Have next." />
       <HelperRow
         className="flh-count-row"
         tone="sage"
@@ -205,11 +208,11 @@ function WhatMattersStep({ priorities, patch, onNext, onBack, isSaving }) {
   );
 }
 
-function RankStep({ priorities, patch, onBack, onFinish, finishing }) {
+function RankStep({ priorities, patch, onBack, onFinish, finishing, progress }) {
   const levels = priorityLevels(priorities);
   return (
     <div className="flh-onboarding-step">
-      <StepHeader step={3} title="Now rank what matters most." lead="Everything you chose began as Important. Drag a priority between levels, or tap it and choose where it belongs." />
+      <StepHeader step="rank" progress={progress} title="Now rank what matters most." lead="Everything you chose began as Important. Drag a priority between levels, or tap it and choose where it belongs." />
       <RankBoard
         levels={levels}
         showDescriptions
@@ -243,7 +246,7 @@ function ReadyStep({ onAddHome, onViewSearch }) {
   );
 }
 
-export default function Onboarding({ userId, searchId, initialPriorities, appVersion = null }) {
+export default function Onboarding({ userId, searchId, initialPriorities, initialProgress, appVersion = null }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   // Set only when the app-group auth gate sent the user here with a pending
@@ -254,22 +257,78 @@ export default function Onboarding({ userId, searchId, initialPriorities, appVer
   const pendingRedirect = sanitizeRedirectPath(searchParams.get('redirect'));
   const persistPriorities = useCallback((next) => savePriorities(createClient(), { id: searchId }, userId, next), [searchId, userId]);
   const { state: priorities, patch, saveError, retry, flush, isSaving } = useReliableOptimisticState(normalizePriorities(initialPriorities), persistPriorities);
-  // There is no persisted step number: onboarding completion is tracked only by
-  // profiles.onboarding_complete (see completeOnboarding), so anyone who opens
-  // /onboarding starts this flow fresh with their saved choices intact.
-  const [step, setStep] = useState(1);
+  // Resumable progress (src/lib/onboardingFlow.js): the server page resolved
+  // where to land for this person and this search. The gate itself is still
+  // only profiles.onboarding_complete; stored progress steers, never traps —
+  // an unknown or stale step resolves to a screen this person can see.
+  const version = initialProgress.version;
+  const [progressState, setProgressState] = useState(initialProgress.state);
+  const progressRef = useRef(progressState);
+  const step = progressState.step;
+  const progress = onboardingProgress(version, progressState, step);
+  const [ready, setReady] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [finishError, setFinishError] = useState('');
+  const eventContext = { flow_version: version, role: progressState.context?.role };
 
-  const goTo = async (nextStep) => { await flush(); setStep(nextStep); window.scrollTo?.({ top: 0 }); };
+  // Writes are chained so quick taps can't land out of order and leave an
+  // older position stored; each write carries the latest state.
+  const saveChainRef = useRef(Promise.resolve());
+  const saveProgress = useCallback(() => {
+    saveChainRef.current = saveChainRef.current.then(() => saveOnboardingProgress(createClient(), userId, { version, state: progressRef.current }));
+    return saveChainRef.current;
+  }, [userId, version]);
+  const persistProgress = useCallback((next) => {
+    progressRef.current = next;
+    setProgressState(next);
+    return saveProgress();
+  }, [saveProgress]);
+
+  useEffect(() => {
+    if (initialProgress.changed) persistProgress(initialProgress.state);
+    track(initialProgress.fresh ? ANALYTICS_EVENTS.ONBOARDING_STARTED : ANALYTICS_EVENTS.ONBOARDING_RESUMED, { ...eventContext, step, search_changed: initialProgress.searchChanged });
+    // Once per mount: this records how the session began, not each render.
+  }, []);
+
+  useEffect(() => {
+    if (!ready) track(ANALYTICS_EVENTS.ONBOARDING_STEP_VIEWED, { ...eventContext, step, position: progress.position, total: progress.total });
+  }, [step, ready]);
+
+  // Backgrounding (app switch, lock screen, tab hidden) is where an
+  // interrupted session is most likely lost: save answers and position now.
+  useEffect(() => {
+    const onHidden = () => {
+      if (document.visibilityState !== 'hidden') return;
+      flush().catch(() => {});
+      saveProgress();
+    };
+    document.addEventListener('visibilitychange', onHidden);
+    return () => document.removeEventListener('visibilitychange', onHidden);
+  }, [flush, saveProgress]);
+
+  const goTo = async (fromStep) => {
+    await flush();
+    const { state: next } = advanceOnboarding(version, progressRef.current, fromStep);
+    persistProgress(next);
+    track(ANALYTICS_EVENTS.ONBOARDING_STEP_COMPLETED, { ...eventContext, step: fromStep });
+    window.scrollTo?.({ top: 0 });
+  };
+  // Going back never clears an answer: priorities stay saved, and the
+  // screen re-renders from them.
+  const goBack = (fromStep) => { persistProgress(retreatOnboarding(version, progressRef.current, fromStep)); window.scrollTo?.({ top: 0 }); };
   const finish = async () => {
     setFinishError('');
     setFinishing(true);
     try {
       await flush();
-      await completeOnboarding(createClient(), userId);
+      // The participant document must exist on this search when onboarding
+      // ends — it is what the shared-search setup gate checks — even if the
+      // last screen changed nothing. Idempotent upsert of the caller's own row.
+      await persistPriorities(priorities);
+      await completeOnboarding(createClient(), userId, { version, state: completeOnboardingState(version, progressRef.current) });
+      track(ANALYTICS_EVENTS.ONBOARDING_COMPLETED, eventContext);
       if (pendingRedirect) { router.push(pendingRedirect); router.refresh(); return; }
-      setStep(4);
+      setReady(true);
       window.scrollTo?.({ top: 0 });
     } catch {
       setFinishError('Couldn’t finish setup. Your choices are still here—please try again.');
@@ -284,10 +343,10 @@ export default function Onboarding({ userId, searchId, initialPriorities, appVer
       <main className="flh-onboarding">
         <div className="flh-onboarding-brand"><BrandMark size={28} /><span className="hh-serif"><span>Feels Like </span><b>Home</b></span></div>
         {(saveError || finishError) && <p className="hh-save-error" role="alert">{saveError || finishError} <button type="button" onClick={saveError ? retry : () => setFinishError('')}>{saveError ? 'Retry' : 'Dismiss'}</button></p>}
-        {step === 1 && <BasicsStep priorities={priorities} patch={patch} onNext={() => goTo(2)} />}
-        {step === 2 && <WhatMattersStep priorities={priorities} patch={patch} onBack={() => setStep(1)} onNext={() => goTo(3)} isSaving={isSaving} />}
-        {step === 3 && <RankStep priorities={priorities} patch={patch} onBack={() => setStep(2)} onFinish={finish} finishing={finishing} />}
-        {step === 4 && <ReadyStep onAddHome={() => leave('/homes?add=1')} onViewSearch={() => leave('/search?welcome=1')} />}
+        {!ready && step === 'basics' && <BasicsStep priorities={priorities} patch={patch} progress={progress} onNext={() => goTo('basics')} />}
+        {!ready && step === 'what_matters' && <WhatMattersStep priorities={priorities} patch={patch} progress={progress} onBack={() => goBack('what_matters')} onNext={() => goTo('what_matters')} isSaving={isSaving} />}
+        {!ready && step === 'rank' && <RankStep priorities={priorities} patch={patch} progress={progress} onBack={() => goBack('rank')} onFinish={finish} finishing={finishing} />}
+        {ready && <ReadyStep onAddHome={() => leave('/homes?add=1')} onViewSearch={() => leave('/search?welcome=1')} />}
       </main>
       <BetaFeedback userId={userId} searchId={searchId} searchType={priorities.searchType} appVersion={appVersion} />
     </div>

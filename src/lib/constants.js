@@ -239,6 +239,11 @@ const RETIRED_PURCHASE_BUILT_INS = new Set([
   'features:Basement Bedroom',
 ]);
 
+// Read-only view for the scorer-parity contract: the sanitized co-buyer Match
+// projection in SQL (resolve_cobuyer_compare_perspectives) must skip exactly
+// these keys, or the two Matches for the same person disagree.
+export const RETIRED_PURCHASE_BUILT_IN_KEYS = Object.freeze([...RETIRED_PURCHASE_BUILT_INS]);
+
 export function isRetiredPurchaseBuiltIn(categoryKey, item, searchType) {
   return normalizeSearchIntent(searchType) === 'purchase'
     && item?.source !== 'custom'

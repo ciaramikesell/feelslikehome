@@ -56,7 +56,7 @@ test('specific client routes still fail closed for absent or revoked membership'
 
 test('buyer and dual-role route contexts remain separated', () => {
   const realtorBranch = layout.match(/if \(isRealtorWorkspace\) \{[\s\S]*?\n    \}/)[0];
-  const buyerBranch = layout.slice(layout.indexOf("const { search } = await resolveActiveSearch"));
+  const buyerBranch = layout.slice(layout.indexOf("const { search, isOwner } = await resolveActiveSearch"));
   assert.match(realtorBranch, /workspace="realtor"/);
   assert.doesNotMatch(realtorBranch, /resolveActiveSearch/);
   assert.match(buyerBranch, /resolveActiveSearch\(supabase, user\.id\)/);

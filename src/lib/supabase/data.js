@@ -9,9 +9,36 @@ export async function getProfile(supabase, userId) {
   return data;
 }
 
-export async function completeOnboarding(supabase, userId) {
+// onboarding_complete is the one thing that must be saved: it is the gate.
+// Progress (version + state) is recorded afterwards and best-effort, so a
+// failed or not-yet-migrated progress write can never strand someone in
+// onboarding after they finished it.
+export async function completeOnboarding(supabase, userId, progress = null) {
   const { error } = await supabase.from('profiles').update({ onboarding_complete: true }).eq('id', userId);
   if (error) throw error;
+  if (progress) await saveOnboardingProgress(supabase, userId, progress);
+}
+
+// PostgREST / Postgres responses for a column that does not exist yet — the
+// app can deploy before 2026-10-07-onboarding-state.sql is applied.
+const isMissingOnboardingColumn = (error) => error?.code === 'PGRST204' || error?.code === '42703'
+  || /onboarding_(state|version)/.test(error?.message || '');
+
+// Persists resumable onboarding progress (src/lib/onboardingFlow.js) on the
+// caller's own profile. Never throws: returns false when progress could not
+// be saved, and onboarding simply continues (answers themselves are saved
+// separately, as participant priorities, and are never at risk here).
+export async function saveOnboardingProgress(supabase, userId, { version, state }) {
+  try {
+    const { error } = await supabase.from('profiles')
+      .update({ onboarding_version: version, onboarding_state: state }).eq('id', userId);
+    if (!error) return true;
+    if (!isMissingOnboardingColumn(error)) console.warn('Onboarding progress not saved', error.code || error.message);
+    return false;
+  } catch (err) {
+    console.warn('Onboarding progress not saved', err?.message);
+    return false;
+  }
 }
 
 // Lightweight profile completion for existing accounts that predate name
@@ -26,14 +53,10 @@ export async function updateProfileName(supabase, userId, firstName, lastName) {
   if (error) throw error;
 }
 
-// Every user has exactly one row here in V1 (enforced by a unique constraint on user_id).
-// The table itself supports more than one search per user, so multi-search is a future
-// UI feature, not a future migration.
-export async function getSearch(supabase, userId) {
-  const { data, error } = await supabase.from('searches').select('id,user_id,created_at,updated_at').eq('user_id', userId).maybeSingle();
-  if (error) throw error;
-  return data;
-}
+// There is deliberately no "get this account's owned search" helper here: which
+// search applies is a collaboration question (owned vs. shared, co-buyer vs.
+// Realtor) answered only by resolveActiveSearch / resolveOnboardingSearch in
+// collaboration.js.
 
 export async function deleteHome(supabase, homeId) {
   const { error } = await supabase.from('homes').delete().eq('id', homeId);

@@ -2519,11 +2519,11 @@ begin
     select s.id into target_search from public.searches s where s.user_id=caller;
     if target_search is null then return query select false,'search_not_ready',null::uuid; return; end if;
     if exists(select 1 from public.search_members sm where sm.search_id=target_search and sm.user_id=inv.invited_by and sm.role<>'realtor') then return query select false,'relationship_conflict',null::uuid; return; end if;
-    insert into public.search_members(search_id,user_id,role) values(target_search,inv.invited_by,'realtor') on conflict(search_id,user_id) do nothing;
+    insert into public.search_members(search_id,user_id,role) values(target_search,inv.invited_by,'realtor') on conflict on constraint search_members_search_id_user_id_key do nothing;
   else
     target_search:=inv.search_id;
     if exists(select 1 from public.search_members sm where sm.search_id=target_search and sm.user_id=caller and sm.role<>inv.relationship_type) then return query select false,'relationship_conflict',null::uuid; return; end if;
-    insert into public.search_members(search_id,user_id,role) values(target_search,caller,inv.relationship_type) on conflict(search_id,user_id) do nothing;
+    insert into public.search_members(search_id,user_id,role) values(target_search,caller,inv.relationship_type) on conflict on constraint search_members_search_id_user_id_key do nothing;
   end if;
   update public.search_invitations set status='accepted',responded_at=now(),search_id=target_search where id=inv.id;
   return query select true,null::text,target_search;
@@ -2643,8 +2643,8 @@ begin
   if draft.id is null then return query select false,'draft_unavailable',null::uuid; return; end if;
   if target_search is null then return query select false,'search_not_ready',null::uuid; return; end if;
   insert into public.search_member_priorities(search_id,user_id,priorities) values(target_search,caller,p_confirmed_priorities)
-    on conflict(search_id,user_id) do update set priorities=excluded.priorities,updated_at=now();
-  insert into public.search_members(search_id,user_id,role) values(target_search,inv.invited_by,'realtor') on conflict(search_id,user_id) do nothing;
+    on conflict on constraint search_member_priorities_search_id_user_id_key do update set priorities=excluded.priorities,updated_at=now();
+  insert into public.search_members(search_id,user_id,role) values(target_search,inv.invited_by,'realtor') on conflict on constraint search_members_search_id_user_id_key do nothing;
   update public.search_invitations set status='accepted',responded_at=now(),search_id=target_search,prospective_search_id=null where id=inv.id;
   update public.profiles set onboarding_complete=true where id=caller;
   delete from public.prospective_searches where id=draft.id;
@@ -2670,11 +2670,11 @@ begin
   if inv.invitation_direction='realtor_to_buyer' then
     select s.id into target_search from public.searches s where s.user_id=caller;
     if target_search is null then return query select false,'search_not_ready',null::uuid; return; end if;
-    insert into public.search_members(search_id,user_id,role) values(target_search,inv.invited_by,'realtor') on conflict(search_id,user_id) do nothing;
+    insert into public.search_members(search_id,user_id,role) values(target_search,inv.invited_by,'realtor') on conflict on constraint search_members_search_id_user_id_key do nothing;
   else
     target_search:=inv.search_id;
     if exists(select 1 from public.search_members sm where sm.search_id=target_search and sm.user_id=caller and sm.role<>inv.relationship_type) then return query select false,'relationship_conflict',null::uuid; return; end if;
-    insert into public.search_members(search_id,user_id,role) values(target_search,caller,inv.relationship_type) on conflict(search_id,user_id) do nothing;
+    insert into public.search_members(search_id,user_id,role) values(target_search,caller,inv.relationship_type) on conflict on constraint search_members_search_id_user_id_key do nothing;
   end if;
   update public.search_invitations set status='accepted',responded_at=now(),search_id=target_search where id=inv.id;
   return query select true,null::text,target_search;
@@ -2689,3 +2689,29 @@ grant execute on function public.preview_invitation(uuid) to authenticated;
 revoke execute on function public.create_prospective_search(jsonb,text), public.invite_prospective_client(uuid,text), public.claim_prospective_search(uuid,jsonb), public.preview_invitation(uuid), public.create_buyer_invitation(text), public.accept_invitation(uuid) from anon, service_role;
 
 notify pgrst, 'reload schema';
+
+commit;
+
+
+-- 2026-10-07 Onboarding state foundation (see migrations/2026-10-07-onboarding-state.sql)
+begin;
+
+alter table public.profiles
+  add column if not exists onboarding_version smallint,
+  add column if not exists onboarding_state jsonb not null default '{}'::jsonb;
+
+alter table public.profiles drop constraint if exists profiles_onboarding_version_range;
+alter table public.profiles add constraint profiles_onboarding_version_range
+  check (onboarding_version is null or onboarding_version between 1 and 100);
+
+alter table public.profiles drop constraint if exists profiles_onboarding_state_shape;
+alter table public.profiles add constraint profiles_onboarding_state_shape
+  check (jsonb_typeof(onboarding_state) = 'object' and pg_column_size(onboarding_state) <= 16384);
+
+comment on column public.profiles.onboarding_version is
+  'Onboarding flow version started/completed. NULL with onboarding_complete = true means completed before versioning; never re-routed.';
+comment on column public.profiles.onboarding_state is
+  'Resumable onboarding progress (src/lib/onboardingFlow.js). Presentation only; never used for authorization or entitlement.';
+
+notify pgrst, 'reload schema';
+commit;

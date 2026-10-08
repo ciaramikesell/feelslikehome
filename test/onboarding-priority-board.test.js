@@ -82,12 +82,12 @@ test('three-step journey preserves choices on Back, persists before completion, 
   // No Dealbreakers screen, no separate "My Search Criteria" summary screen.
   assert.doesNotMatch(onboarding, /Dealbreaker|dealbreaker/);
   assert.doesNotMatch(onboarding, /SummaryStep|My Search Criteria/);
-  assert.match(onboarding, /onBack=\{\(\) => setStep\(1\)\}/);
-  assert.match(onboarding, /onBack=\{\(\) => setStep\(2\)\}/);
+  assert.match(onboarding, /onBack=\{\(\) => goBack\('what_matters'\)\}/);
+  assert.match(onboarding, /onBack=\{\(\) => goBack\('rank'\)\}/);
   assert.match(onboarding, /Rank my priorities/);
   // Every step change flushes pending saves; completion flushes before marking onboarding complete.
-  assert.match(onboarding, /const goTo = async \(nextStep\) => \{ await flush\(\); setStep\(nextStep\);/);
-  assert.match(onboarding, /await flush\(\);\n\s+await completeOnboarding\(createClient\(\), userId\);/);
+  assert.match(onboarding, /const goTo = async \(fromStep\) => \{\n\s+await flush\(\);\n\s+const \{ state: next \} = advanceOnboarding\(version, progressRef\.current, fromStep\);/);
+  assert.match(onboarding, /await flush\(\);\n(?:\s+\/\/.*\n)*\s+await persistPriorities\(priorities\);\n\s+await completeOnboarding\(createClient\(\), userId, \{ version, state: completeOnboardingState\(version, progressRef\.current\) \}\);/);
   // #73: a pending share-intake destination (see (app)/layout.js) takes over when present.
   assert.match(onboarding, /if \(pendingRedirect\) \{ router\.push\(pendingRedirect\); router\.refresh\(\); return; \}/);
   assert.match(onboarding, /Your search is ready\./);
@@ -113,14 +113,21 @@ test('onboarding is tap-first and responsive, and ranking offers explicit level 
 });
 
 test('the old Dealbreakers onboarding state cannot trap an existing user', () => {
-  // Onboarding gating is a single boolean (profiles.onboarding_complete) — see
-  // completeOnboarding — never a persisted step number, so there is no stored
-  // step an existing user could be stuck on. Every visit to /onboarding starts
-  // this same flow from step 1 with their saved choices intact.
+  // Onboarding V2 Phase 1 deliberately persists progress (profiles.onboarding_state)
+  // so an interrupted session resumes. The original guarantee still holds:
+  // gating is the single boolean profiles.onboarding_complete, and a stored
+  // step only steers — an unknown/retired step (e.g. the old Dealbreakers
+  // screen) resolves to a screen this person can see. Behavior is covered in
+  // onboarding-flow.test.js; this pins the wiring.
   const dataLib = read('src/lib/supabase/data.js');
-  assert.match(dataLib, /onboarding_complete/);
+  assert.match(dataLib, /update\(\{ onboarding_complete: true \}\)/);
+  const page = read('src/app/onboarding/page.js');
+  // A finished account re-enters only to set up its own preferences on a shared
+  // search it joined as a co-buyer (cobuyer-journey-db.test.js).
+  assert.match(page, /if \(profile\?\.onboarding_complete && !\(await needsSharedSearchSetup\(supabase, user\.id, search, role === 'owner'\)\)\) redirect\('\/homes'\);/);
+  assert.match(page, /beginOnboarding\(\{/);
   const onboarding = read('src/components/onboarding/Onboarding.jsx');
-  assert.match(onboarding, /const \[step, setStep\] = useState\(1\);/);
-  assert.doesNotMatch(onboarding, /onboardingStep|next\.step\b|localStorage/);
+  assert.match(onboarding, /const \[progressState, setProgressState\] = useState\(initialProgress\.state\);/);
+  assert.doesNotMatch(onboarding, /localStorage/);
 });
 
