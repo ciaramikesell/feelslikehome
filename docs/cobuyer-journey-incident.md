@@ -91,6 +91,11 @@ on conflict on constraint search_member_priorities_search_id_user_id_key do noth
 commit;
 ```
 
+> **2026-10-08 update:** production's Section 0 failed (Realtor-started-searches
+> schema missing). Follow `docs/production-schema-drift-repair.md` instead of
+> the migration step below. It applies three missing September migrations
+> before the October 7 ones.
+
 ## Deploying
 
 1. **Migrations** (production Supabase project, SQL Editor). First run
