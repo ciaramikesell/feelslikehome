@@ -59,12 +59,12 @@ alter default privileges in schema public grant all on functions to anon, authen
 alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
 `;
 
-function psql(database, script) {
+function psql(database, script, { checkFunctionBodies = false } = {}) {
   const args = ['-X', '-q', '-A', '-t', '-v', 'ON_ERROR_STOP=1', '-h', process.env.FLH_TEST_PGHOST, '-U', process.env.FLH_TEST_PGUSER || 'postgres', '-d', database, '-f', '-'];
   if (process.env.FLH_TEST_PGPORT) args.push('-p', process.env.FLH_TEST_PGPORT);
   // Repository SQL forward-references functions/tables the way pg_dump output
   // does; Supabase's editor tolerates that, so validate bodies at call time.
-  const env = { ...process.env, PGOPTIONS: '-c check_function_bodies=off -c client_min_messages=warning' };
+  const env = { ...process.env, PGOPTIONS: `-c check_function_bodies=${checkFunctionBodies ? 'on' : 'off'} -c client_min_messages=warning` };
   const result = spawnSync('psql', args, { input: script, encoding: 'utf8', env, maxBuffer: 64 * 1024 * 1024 });
   if (result.error) throw result.error;
   const errorLine = (result.stderr || '').split('\n').find((line) => /ERROR:/.test(line));
@@ -151,7 +151,12 @@ class Query {
   }
 }
 
-export function createTestDatabase() {
+// Options (both default to the repository's current state):
+//   schemaSql — the baseline snapshot to run instead of supabase/schema.sql
+//   steps     — the migration steps to run after it, instead of
+//               POST_SNAPSHOT_MIGRATIONS ({ file } or { sql } each)
+// Used to rebuild a known-drifted production state and prove a repair.
+export function createTestDatabase({ schemaSql = null, steps = POST_SNAPSHOT_MIGRATIONS } = {}) {
   const maintenance = process.env.FLH_TEST_PGDATABASE || 'postgres';
   const name = `flh_test_${process.pid}_${Date.now()}`;
   must(psql(maintenance, `create database ${name};`), 'create database');
@@ -159,8 +164,8 @@ export function createTestDatabase() {
   must(psql(name, SUPABASE_SHIM), 'Supabase shim');
   // schema.sql is a sequence of begin/commit blocks; run it as-is, the way an
   // operator would, then the post-snapshot migrations each in one transaction.
-  must(psql(name, read('supabase/schema.sql')), 'schema.sql');
-  for (const step of POST_SNAPSHOT_MIGRATIONS) {
+  must(psql(name, schemaSql ?? read('supabase/schema.sql')), 'schema.sql');
+  for (const step of steps) {
     const sql = step.sql || read(step.file);
     must(psql(name, sql), step.file || step.sql);
   }
@@ -174,6 +179,10 @@ export function createTestDatabase() {
       return JSON.parse(stdout || '[]');
     },
     exec(statement) { must(psql(name, statement), statement); },
+    // Runs a repository SQL file the way an operator pastes it into the
+    // Supabase SQL Editor (function bodies validated, as Postgres does by
+    // default); returns { ok, error } instead of throwing.
+    applyFile(file) { const result = psql(name, read(file), { checkFunctionBodies: true }); return { ok: result.ok, error: result.error }; },
     runAs(userId, query) {
       const script = `begin;\nset local role authenticated;\nset local request.jwt.claim.sub = ${text(userId)};\n${query};\ncommit;\n`;
       const result = psql(name, script);
