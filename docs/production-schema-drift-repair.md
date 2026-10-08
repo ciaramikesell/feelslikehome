@@ -1,168 +1,160 @@
-# Production schema drift: diagnosis and repair runbook (2026-10-08)
+# Production schema drift: diagnosis and repair runbook (revised 2026-10-08)
 
-## What production's Section 0 result means
+This revision is based on production's actual inventory output. It replaces
+the first version of this runbook, which predicted a different baseline.
 
-| Check | Production | Created by |
+## Production's inventory, explained
+
+| Inventory row | Production | Real state |
 |---|---|---|
-| `has_invitation_direction` | true | `2026-09-16-realtor-notes-tours-buyer-invitations.sql` |
-| `has_prospective_searches` | **false** | `2026-09-16-realtor-started-searches.sql` |
-| `has_invitation_prospective_link` | **false** | `2026-09-16-realtor-started-searches.sql` |
+| realtor-role-foundation, realtor-suggestions (+ homes select fix), realtor-notes-tours-buyer-invitations, listing-import (+ hotfix) | true | Applied. |
+| collaborator display-name (map-collaborator-places / my-search-collaborator-display-name) | false | **Missing, and those two files can't apply.** Both change `resolve_collaborator_search_context` from 3 to 4 output columns with `CREATE OR REPLACE`; Postgres refuses (42P13 "cannot change return type"), so each attempt rolls back. Not a false negative. |
+| realtor-started-searches | false | **Missing** (`prospective_searches`, `search_invitations.prospective_search_id`, and their functions). |
+| people-workspace-draft-select-privileges | false | Missing: it can't apply without `prospective_searches`. |
+| tour-evaluations | false | **Missing.** Production's `resolve_cobuyer_compare_perspectives` is a pre-2026-09-18 version (secure-compare / rental-v1 / realtor-role), which `supabase/production-function-fingerprints.sql` identifies exactly. Not a false negative. |
+| account-name-capture-and-realtor-home (09-19) | false | Missing: it can't apply without `prospective_searches` *and* the 4-column collaborator context. |
+| 2026-10-07 conflict targets / onboarding state | false | Not applied (correct; you held them). |
+| 2026-10-07 **garage-parity** | **true** | **False positive.** The first inventory checked only "the compare body doesn't retire `exterior:Garage`". Pre-2026-09-18 bodies have no retired list at all, so they pass trivially. The check now also requires the tour-evaluation lineage, and production reads **false**. |
 
-The two missing objects are created only by
-`2026-09-16-realtor-started-searches.sql`, which runs as one transaction, so
-the whole migration is absent: the table, its RLS and grants, the
-`search_invitations.prospective_search_id` link, and its functions
-(`create_prospective_search`, `invite_prospective_client`,
-`claim_prospective_search`, and new versions of `create_buyer_invitation`,
-`preview_invitation`, `accept_invitation`).
+**Could garage-parity be overwritten by an earlier migration?** It isn't
+applied yet, but yes: that is the hazard to avoid.
+`2026-09-18-tour-evaluations.sql` contains *only* the compare function, and
+`2026-10-07-cobuyer-compare-garage-parity.sql` is that exact body minus two
+retired keys (Garage, Guest / In-Law Suite). Running tour-evaluations after
+garage-parity silently re-retires Garage, so a co-buyer's Garage Must Have
+vanishes from Compare again. `test/production-drift-repair-db.test.js`
+demonstrates this. **tour-evaluations.sql is therefore never applied:
+garage-parity delivers its behavior plus the fix.**
 
-**Most likely cause:** the pre-fix `supabase/schema.sql`. Its last block was
-exactly this migration, and it began with `begin;` but had no `commit;`
-(fixed in PR #136). Running that file rolls back only that block. Every
-earlier block, including `invitation_direction`, commits. That reproduces
-production's Section 0 result exactly.
+## Revised order (seven files)
 
-### Knock-on effects (not intentional drift)
+| # | File | Why here |
+|---|---|---|
+| 1 | `supabase/migrations/2026-09-16-realtor-started-searches.sql` | Creates the missing table/column. Everything below needs it. |
+| 2 | `supabase/migrations/2026-09-18-people-workspace-draft-select-privileges.sql` | Narrows `prospective_searches` SELECT; needs 1. |
+| 3 | `supabase/migrations/2026-10-08-collaborator-context-return-type.sql` | **New bridge.** Only if the collaborator context still has 3 columns, drop it and create the display-name version in one transaction. A no-op otherwise. Needed before 4. |
+| 4 | `supabase/migrations/2026-09-19-account-name-capture-and-realtor-home.sql` | Needs 1 and 3. Newest versions of names, display names, Realtor functions, 8-column `preview_invitation`. |
+| 5 | `supabase/migrations/2026-10-07-invitation-acceptance-conflict-targets.sql` | Newest `accept_invitation` / `claim_prospective_search`; needs 1. |
+| 6 | `supabase/migrations/2026-10-07-cobuyer-compare-garage-parity.sql` | Newest compare projection (includes tour-evaluation behavior). |
+| 7 | `supabase/migrations/2026-10-07-onboarding-state.sql` | Independent; last. |
 
-Because the table is missing, two later migrations **cannot** apply. Each
-runs as one transaction and fails on the missing table, so it is absent
-entirely:
+**Never apply to production:** `2026-09-16-map-collaborator-places.sql`,
+`2026-09-16-my-search-collaborator-display-name.sql` (superseded by 3 and 4;
+they fail on production anyway), and `2026-09-18-tour-evaluations.sql`
+(superseded by 6; harmful after it).
 
-* `2026-09-18-people-workspace-draft-select-privileges.sql`
-* `2026-09-19-account-name-capture-and-realtor-home.sql`: adds
-  `profiles.first_name/last_name`, `resolve_display_name`,
-  `create_realtor_connection_request`, the 8-column `preview_invitation`,
-  and name-aware display functions.
+After step 7, every function the repair touches runs its **newest**
+repository definition. The test checks this by body fingerprint.
 
-Current `main` code expects all of these. In production today:
+## Why this order is safe
 
-* co-buyer and Realtor invitation acceptance fails with 42702 if
-  `accept_invitation` is the Sept 16 Realtor-notes version (the inventory's
-  FACT row says which);
-* People workspace (`/people`), Realtor "start a search for a client",
-  "invite a buyer", "connect with an existing buyer", and the confirmation
-  step fail;
-* saving a name in Account settings or the name prompt fails. Names typed at
-  sign-up during the drift are still in sign-up metadata; nothing is lost.
+`test/production-drift-repair-db.test.js` rebuilds production three times,
+once per possible pre-09-18 compare version. Each rebuild reproduces your
+inventory row-for-row (including all four FACT rows and the old check's false
+positive), with existing users, memberships, preferences, homes, personal
+state, Realtor notes, places, and pending invitations seeded. It proves:
 
-The October 7 acceptance fix cannot apply either: its
-`claim_prospective_search` needs the missing table. Section 0 caught this.
+* the original plan fails: display-name, 09-19 and the conflict fix each
+  error and **roll back completely**, with nothing half-applied;
+* the revised seven files all apply, and **every existing row is
+  byte-for-byte unchanged**;
+* every repaired function matches its newest repository version, and
+  re-running the bridge afterwards changes nothing;
+* drift-era co-buyer and Realtor invitations accept; the Realtor-started
+  draft → claim flow works; names save; Ciara's My Search shows Andrew by
+  name;
+* Andrew is routed to set up his own preferences on the shared search, with
+  his own-search preferences untouched;
+* a co-buyer's Garage Must Have scores the same in Compare as in their own
+  Match;
+* applying tour-evaluations afterwards regresses Garage, and the corrected
+  inventory catches it.
 
-## Why replaying the missing files as-is is safe
+No file writes data at the top level; every insert/update sits inside a
+function body.
 
-Proven by `test/production-drift-repair-db.test.js`, which rebuilds the
-drifted state from the repository, seeds existing users, memberships,
-preferences, homes, personal state, notes, places, and pending invitations,
-then applies the order below exactly as the SQL Editor does:
+### RLS and privileged-function review
 
-* every file applies cleanly in this order, and **every existing row is
-  byte-for-byte unchanged** (fingerprinted before and after);
-* out of order, the dependent files fail and roll back completely, so a
-  mistake can't leave anything half-applied;
-* invitations created during the drift (co-buyer, and Realtor→buyer without
-  a draft) accept successfully afterwards;
-* the Realtor-started draft → invite → claim flow works;
-* Andrew-style co-buyers are routed to set up their own preferences on the
-  shared search, and their own-search preferences are untouched;
-* account names save again.
-
-No file contains a top-level data write: every `insert`/`update` sits inside
-a function body that runs only when the app calls it.
-
-**RLS and privileged-function review** (all from previously reviewed
-migrations, now reviewed again):
-
-* `prospective_searches`: RLS on; SELECT and UPDATE only where
-  `started_by = auth.uid()`; no client INSERT or DELETE. The people-workspace
-  migration then narrows SELECT to `id, client_name, invited_email, status,
-  draft_priorities, created_at, updated_at`, so `started_by` is not
-  exposed.
-* `create_prospective_search`, `invite_prospective_client`,
-  `create_buyer_invitation`: SECURITY DEFINER with an empty `search_path`.
-  They require `auth.uid()`, write only drafts stamped with the caller as
-  `started_by`, and only invite from a draft the caller started.
-* `claim_prospective_search`, `accept_invitation`: email-bound to the
-  invited account, and write only the caller's own membership/preferences.
-  The October 7 file replaces both with constraint-named conflict targets.
-* `preview_invitation`: returns only invitation metadata (no
-  search contents), as before, plus `requires_confirmation`.
-* 2026-09-19 replaces existing functions with name-aware versions (same
-  access checks) and `handle_new_user` (seeds names for *new* signups only).
-  It adds nullable profile columns, with no backfill.
-
-No existing policy is loosened, and no grant beyond these is added.
+* **New table `prospective_searches`:** RLS on. SELECT and UPDATE only where
+  `started_by = auth.uid()`; no client INSERT or DELETE. File 2 narrows
+  SELECT to `id, client_name, invited_email, status, draft_priorities,
+  created_at, updated_at`, so `started_by` isn't exposed.
+* **New SECURITY DEFINER functions** (`create_prospective_search`,
+  `invite_prospective_client`, `create_buyer_invitation`,
+  `claim_prospective_search`): empty `search_path`, require `auth.uid()`,
+  write only the caller's own drafts, membership, or preferences, and are
+  email-bound to the invited account.
+* **Replaced functions** (`accept_invitation`, `preview_invitation`, 09-19's
+  name-aware functions, the compare projection): same access checks as the
+  versions they replace. `preview_invitation` still returns invitation
+  metadata only, plus `requires_confirmation`.
+* **Bridge (3):** the reviewed display-name definition unchanged, re-granted
+  to `authenticated` only. Nothing depends on the function.
+* No existing policy is loosened; no grant beyond the above is added.
 
 ## Runbook (Supabase SQL Editor, production project)
 
-### 0. Before anything
+**Before anything:** confirm a recent backup / point-in-time recovery
+(Supabase → Database → Backups), and that the project URL matches Vercel's
+`NEXT_PUBLIC_SUPABASE_URL`.
 
-* Confirm a recent backup / point-in-time recovery is available
-  (Supabase → Database → Backups).
-* Use the project whose URL matches Vercel's `NEXT_PUBLIC_SUPABASE_URL`.
+### A. Read-only preflight: run all three and keep the output
 
-### 1. Read-only inventory
+1. `supabase/production-migration-inventory.sql` (corrected): expect the
+   table above, with garage-parity now **false**.
+2. `supabase/production-function-fingerprints.sql`: which repository version
+   of each function production runs. Expected:
+   * `accept_invitation`, `create_buyer_invitation`, `preview_invitation`,
+     `save_realtor_note`, `suggest_home_tour` → `…realtor-notes-tours-buyer-invitations.sql`
+   * `resolve_cobuyer_compare_perspectives` → one of `…secure-compare-perspectives.sql`,
+     `…fix-compare-bedroom-location-type.sql`, `…rental-v1-shared-facts.sql`,
+     `…realtor-role-foundation.sql`
+   * `resolve_collaborator_search_context` → `…shared-search-collaboration-contract.sql`
+     or `…realtor-role-foundation.sql`
+   * `claim_prospective_search`, `create_prospective_search`,
+     `invite_prospective_client`, `create_realtor_connection_request`,
+     `resolve_display_name` → `NOT PRESENT`
+3. `supabase/production-repair-preflight.sql`: the last row must read
+   `VERDICT | all prerequisites present | true`.
 
-Run **`supabase/production-migration-inventory.sql`** and keep the output.
-Expected for the diagnosed state:
+**Stop and send me the output if:** any fingerprint says `NO REPOSITORY
+MATCH` (a hand-edited function would be overwritten); any result differs
+from the expectations above; or the preflight verdict is not true.
 
-| migration | applied |
-|---|---|
-| realtor-role-foundation, realtor-suggestions, realtor-suggestions-homes-select-fix, realtor-notes-tours-buyer-invitations, collaborator display-name, listing-import-provenance, listing-import-z-privileges-hotfix, tour-evaluations | **true** |
-| realtor-started-searches, people-workspace-draft-select-privileges, account-name-capture-and-realtor-home, all three 2026-10-07 | **false** |
-| FACT: Realtor-started functions present | **none** |
+### B. Apply: only after A matches, one file at a time
 
-**Stop and send the output instead of continuing if:**
-* any migration in the "true" row is false (production is behind in a
-  different way, and the order below would need re-checking), **or**
-* "FACT: Realtor-started functions present" is not `none` (a partial manual
-  attempt exists), **or**
-* the collaborator display-name row is false (the 2026-09-19 file would fail
-  on a return-type change; it needs a reviewed extra step).
+Paste each file **whole** from `main` (files 3 and the revised SQL checks
+arrive on `main` with this change), run it, and confirm success before the
+next. If any file errors, stop: it rolls back entirely. Send the error.
+Order: **1 → 7** from the table above.
 
-### 2. Apply, one file at a time, in this order
+### C. Verify (read-only)
 
-Open each file from `main`, paste the **entire** file, run it, and confirm
-"Success" before moving on. If any file errors, stop: its transaction rolls
-back entirely, so nothing is half-applied. Send the error.
+* Inventory: every migration row `true` (including garage-parity and
+  tour-evaluations, whose behavior arrives via file 6);
+  "accept_invitation conflict clause" = `named constraint (fixed)`.
+* Fingerprints: every function shows the file listed under "newest" in
+  `test/production-drift-repair-db.test.js` (`EXPECTED_AFTER`), e.g.
+  `accept_invitation` → `…2026-10-07-invitation-acceptance-conflict-targets.sql`,
+  `resolve_cobuyer_compare_perspectives` → `…2026-10-07-cobuyer-compare-garage-parity.sql`,
+  `resolve_collaborator_search_context` → `…2026-09-19-account-name-capture-and-realtor-home.sql`.
+* `supabase/cobuyer-journey-production-check.sql` section 0: all true;
+  section 3 for you and Andrew.
 
-1. `supabase/migrations/2026-09-16-realtor-started-searches.sql`
-2. `supabase/migrations/2026-09-18-people-workspace-draft-select-privileges.sql`
-3. `supabase/migrations/2026-09-19-account-name-capture-and-realtor-home.sql`
-4. `supabase/migrations/2026-10-07-invitation-acceptance-conflict-targets.sql`
-5. `supabase/migrations/2026-10-07-cobuyer-compare-garage-parity.sql`
-6. `supabase/migrations/2026-10-07-onboarding-state.sql`
+### D. In the app
 
-Skip any file the inventory already showed as applied.
-
-### 3. Verify (read-only)
-
-* Re-run `supabase/production-migration-inventory.sql`: every migration row
-  `true`, and "FACT: accept_invitation conflict clause" = `named constraint
-  (fixed)`.
-* Re-run section 0 of `supabase/cobuyer-journey-production-check.sql`:
-  every column `true`.
-* Run section 3 of the same file for you and Andrew (see
-  `docs/cobuyer-journey-incident.md`).
-
-### 4. Functional checks in the app
-
-* Andrew opens FLH. If his preferences are stranded on his own search, he
-  lands on onboarding for your shared search; after it, he's in your homes
-  with his own Match.
-* A test co-buyer invitation to a fresh account accepts and onboards into
-  the shared search.
-* As a Realtor account, `/people` loads.
-* Account settings saves a name.
+* Andrew opens FLH and lands on onboarding for your shared search; afterwards
+  he's in your homes with his own Match. Your My Search shows him by name.
+* A fresh co-buyer invitation accepts; a Realtor account's `/people` loads;
+  Account settings saves a name.
 
 ## Not done automatically (needs a decision)
 
-* **Andrew's stranded preferences:** see the consent-only template in
-  `docs/cobuyer-journey-incident.md`.
-* **Names of accounts created during the drift:** names typed at sign-up
-  are in `auth.users.raw_user_meta_data` but not in `profiles.first_name`.
-  Display already falls back to them where `full_name` exists; otherwise to
-  the email-derived name. A one-off backfill is possible but is a data
-  change, so it isn't proposed without approval.
-* **Pending invitations that failed:** anyone who saw an error accepting an
-  invitation can simply open the same link again after the repair, if it
-  hasn't expired (7 days). Expired ones need a new invitation.
+* **Andrew's stranded preferences:** consent-only copy template in
+  `docs/cobuyer-journey-incident.md`. Otherwise he simply sets them up
+  again.
+* **Names of accounts created during the drift** are in sign-up metadata but
+  not `profiles.first_name`. A backfill is a data change, so it needs
+  approval.
+* **Invitations that failed during the drift:** re-open the same link if it
+  hasn't expired (7 days); otherwise send a new one.

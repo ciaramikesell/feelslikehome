@@ -37,6 +37,8 @@ export const POST_SNAPSHOT_MIGRATIONS = [
   { file: 'supabase/migrations/2026-10-07-cobuyer-compare-garage-parity.sql' },
   { file: 'supabase/migrations/2026-10-07-invitation-acceptance-conflict-targets.sql' },
   { file: 'supabase/migrations/2026-10-07-onboarding-state.sql' },
+  // Conditional bridge: a no-op here (the 4-column version already exists).
+  { file: 'supabase/migrations/2026-10-08-collaborator-context-return-type.sql' },
 ];
 
 const SUPABASE_SHIM = `

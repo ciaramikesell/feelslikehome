@@ -6,7 +6,8 @@
 -- changes are present.
 --
 -- Use it to decide exactly which migrations production is missing; do not
--- replay ones that show applied = true. See
+-- replay ones that show applied = true. For exact function versions run
+-- supabase/production-function-fingerprints.sql as well. See
 -- docs/production-schema-drift-repair.md for how to read the result.
 with fn as (
   select p.proname, p.prosrc, pg_get_function_result(p.oid) as result
@@ -33,6 +34,9 @@ select * from (values
   ('2026-09-16-map-collaborator-places.sql / my-search-collaborator-display-name.sql',
      exists (select 1 from fn where proname = 'resolve_collaborator_search_context' and result like '%display_name%'),
      'resolve_collaborator_search_context returns display_name'),
+  ('2026-09-16-realtor-search-view.sql',
+     exists (select 1 from fn where proname = 'get_realtor_client_roster'),
+     'get_realtor_client_roster() exists'),
   ('2026-09-16-realtor-started-searches.sql',
      to_regclass('public.prospective_searches') is not null
        and exists (select 1 from col where table_name = 'search_invitations' and column_name = 'prospective_search_id'),
@@ -60,9 +64,14 @@ select * from (values
   ('2026-10-07-invitation-acceptance-conflict-targets.sql',
      exists (select 1 from fn where proname = 'accept_invitation' and prosrc like '%on conflict on constraint search_members_search_id_user_id_key%'),
      'accept_invitation uses named conflict constraint'),
+  -- Must check the tour-evaluation lineage too: older compare bodies (before
+  -- 2026-09-18) never contained a retired-criteria list at all, so "Garage
+  -- not retired" alone reads as applied on them (a false positive).
   ('2026-10-07-cobuyer-compare-garage-parity.sql',
-     exists (select 1 from fn where proname = 'resolve_cobuyer_compare_perspectives' and prosrc not like '%''exterior:Garage''%'),
-     'compare projection no longer retires Garage'),
+     exists (select 1 from fn where proname = 'resolve_cobuyer_compare_perspectives'
+             and prosrc like '%"positive"%' and prosrc like '%''features:Basement Bedroom''%'
+             and prosrc not like '%''exterior:Garage''%'),
+     'compare projection = tour-evaluation version minus retired Garage'),
   ('2026-10-07-onboarding-state.sql',
      exists (select 1 from col where table_name = 'profiles' and column_name = 'onboarding_state'),
      'profiles.onboarding_state')
