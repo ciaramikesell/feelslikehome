@@ -8,6 +8,27 @@
 -- Run each numbered section separately and keep the results.
 
 ------------------------------------------------------------------------------
+-- 0. Prerequisites for the 2026-10-07 migrations. ALL must be true before
+--    applying them. The replacement accept_invitation /
+--    claim_prospective_search bodies use the 2026-09-16 Realtor-started-search
+--    objects, and the compare function uses the 2026-09-18 columns. If any is
+--    false, do not apply the migrations: production is behind the repository
+--    in a way that needs its own review first.
+------------------------------------------------------------------------------
+select
+  to_regclass('public.prospective_searches') is not null as has_prospective_searches,
+  exists (select 1 from information_schema.columns where table_schema = 'public'
+          and table_name = 'search_invitations' and column_name = 'prospective_search_id') as has_invitation_prospective_link,
+  exists (select 1 from information_schema.columns where table_schema = 'public'
+          and table_name = 'search_invitations' and column_name = 'invitation_direction') as has_invitation_direction,
+  exists (select 1 from pg_constraint where conname = 'search_members_search_id_user_id_key') as has_members_unique,
+  exists (select 1 from pg_constraint where conname = 'search_member_priorities_search_id_user_id_key') as has_priorities_unique,
+  exists (select 1 from information_schema.columns where table_schema = 'public'
+          and table_name = 'homes' and column_name = 'suggestion_staged') as has_homes_suggestion_staged,
+  exists (select 1 from information_schema.columns where table_schema = 'public'
+          and table_name = 'homes' and column_name = 'property_type') as has_homes_property_type;
+
+------------------------------------------------------------------------------
 -- 1. Which database code is deployed?
 ------------------------------------------------------------------------------
 -- accept_invitation / claim_prospective_search:

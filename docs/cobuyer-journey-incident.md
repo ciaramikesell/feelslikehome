@@ -93,8 +93,10 @@ commit;
 
 ## Deploying
 
-1. **Migrations** (production Supabase project, SQL Editor). Run each file in
-   full, in this order. Each is a single transaction and replaces or adds
+1. **Migrations** (production Supabase project, SQL Editor). First run
+   section 0 of the check: every column must be `true`, otherwise stop (the
+   replacement functions depend on the 2026-09-16/18 objects). Then run each
+   file not already applied (section 1), in full, in this order. Each is a single transaction and replaces or adds
    only; no data changes.
    1. `supabase/migrations/2026-10-07-invitation-acceptance-conflict-targets.sql`
    2. `supabase/migrations/2026-10-07-cobuyer-compare-garage-parity.sql`
