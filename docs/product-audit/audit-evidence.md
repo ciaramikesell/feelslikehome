@@ -218,3 +218,56 @@ grep -E "^\| [A-Z]+-[0-9]{3} " docs/product-audit/feature-inventory.md \
   - invitation revocation;
   - payment absence;
   - API auth.
+
+
+## Decision-lock pass (2026-10-09)
+
+The original evidence above is unchanged and traceable to `main` @ `9032151`. This
+pass adds the following.
+
+### Baseline
+
+- `main` @ `3651f7e` ("Merge pull request #138"). `git diff --stat 9032151 3651f7e` shows **only** the 11 `docs/product-audit/` files (1219 insertions). **No application, SQL or native change since the audit.**
+- PR #138 is merged; its merge commit is in `main`'s history. Note: the GitHub API's `merged` field read `false` for #136–#138, although their merge commits are on `main`. Git history was treated as authoritative.
+- **Multi-search fix `4168309`** (`claude/charming-bell-i0xo4w`):
+  - `git merge-base --is-ancestor 4168309 origin/main` → **not an ancestor**, so **not merged**;
+  - no open PR exists for it;
+  - **therefore not deployed from `main`.** Production deployment is unverifiable here; with N-10 unresolved, whether a branch deploy ever served production is unknown.
+  - The owner's report that "Claude has fixed the multi-search bug" is accurate for the **code on the branch**. It is not merged, not production-verified, and not QA'd on real accounts.
+- Documentation branch: `claude/product-decisions-lock` from `3651f7e`. It is a new branch because #138 is merged. Nothing was force-pushed.
+
+### Commands run
+
+| Command | Result |
+|---|---|
+| Full suite on `main` @ `3651f7e` with the real-Postgres harness | **710/710 pass** |
+| Full suite on `4168309` in a separate worktree, real-Postgres harness | **719/719 pass** (incl. `multi-search-invitation-db`) |
+| `npm run build` on `4168309` | **Success** (exit 0) |
+
+> The first `4168309` run reported 41 failures, all `connection refused`: the local
+> test Postgres had stopped. It was restarted (`pg_ctl … start`) and both suites were
+> re-run green. The local test cluster only; no production system was touched.
+
+### New code evidence (used by the conflicts doc)
+
+| Ref | Check | Result |
+|---|---|---|
+| N-1…N-3 | FK definitions in `supabase/schema.sql` | `searches.user_id` cascade (`:81`); `homes.user_id` cascade (`:111`); `homes.search_id` set null (`:112`); `search_members`, `search_member_priorities`, `search_invitations`, `commute_destinations`, `realtor_suggestions` cascade from `searches` |
+| N-4 | `on delete restrict` | `realtor_suggestions.suggested_by` (`:2236`), `realtor_notes.author_id` (`:2395`), `tour_suggestions.suggested_by` (`:2407`) |
+| N-5 | Realtor select policies | `smp_participant_or_realtor_select`, `hms_participant_or_realtor_select`, `commute_destinations_participant_or_realtor_select` (`:1573-1596`) |
+| N-6 | `accept_invitation` locking | `select … from search_invitations … for update` only (`2026-10-07-invitation-acceptance-conflict-targets.sql`) |
+| N-7 | One-search lookups | `grep -noE "from public\.searches s where s\.user_id ?= ?(caller\|auth\.uid\(\))\|searches where user_id ?= ?(caller\|auth\.uid\(\)\|new\.id)" supabase/schema.sql supabase/migrations/*.sql \| wc -l` → **13**; `from('searches')` with `.eq('user_id'` in `src/lib/supabase/collaboration.js` → **5** |
+| N-8 | `resolve_display_name` callers | 7 internal call sites in `2026-09-19-account-name-capture-and-realtor-home.sql` (lines 117, 153, 172, 188, 209, 260, 295); 0 client callers on `main`; 1 client caller added by `4168309` |
+| N-9 | Legacy shared status | `homes.status text not null default 'Considering'` (`schema.sql:133`) |
+| N-10 | Vercel bot comment on PR #138 (2026-10-09 17:25 UTC) | "Preview" link shown as `feelslikehome.app`. Unverified |
+| Onboarding gate | `src/app/(app)/layout.js:25` | Redirects `onboarding_complete = false` to `/onboarding` |
+| Leave/remove | `schema.sql:382-387` | Owner or self may delete the `search_members` row |
+
+### Documentation consistency checks
+
+See the PR description for the final run:
+- the inventory status count is unchanged (150 rows; same counts);
+- every D-01…D-18 is marked APPROVED;
+- all 10 locked rules are present;
+- internal links resolve to existing files;
+- the diff touches only `docs/product-audit/`.

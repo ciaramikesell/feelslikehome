@@ -37,12 +37,9 @@ Landing ("Create a free account")
 | First Match reveal | Partial | The Ready screen sends people to "Add your first home". The match appears on the card with no moment around it |
 | Homes + Get Started | Partial | No checklist |
 
-**V2 is paused by owner decision.** None of these gaps blocks a free L0–L3 launch.
-The highest-value, lowest-cost pieces before a public launch would be:
-- an import/share lesson (it can be a static `/help/share` page);
-- a one-screen welcome.
+**Update 2026-10-09 (D-02, APPROVED):** the **full** V2 sequence must ship before external TestFlight. Already-onboarded users accepting invitations must not be forced through it. The entrant-by-entrant routing (new account, invited new account, existing account, Realtor-started buyer, Realtor) is specified in [decision-implementation-conflicts.md, C-06](decision-implementation-conflicts.md#c-06--onboarding-v2-vs-existing-user-invitation-continuation) and scheduled as roadmap P2-01…P2-05.
 
-These are listed as optional in the roadmap and require an owner decision (D-02).
+*Original text (superseded):* V2 was paused; only a share lesson and a welcome screen were recommended before launch.
 
 ## 2. Co-buyer journey
 
@@ -58,7 +55,7 @@ These are listed as optional in the roadmap and require an owner decision (D-02)
 
 **Remaining UX gaps after that fix:**
 - **No email.** The copy says "Send connection request", but nothing is sent.
-  Users must paste the link themselves. Change the copy or add email (D-08).
+  Users must paste the link themselves. **D-08 (APPROVED): ship both email delivery and a copy link, clearly distinguished** (P1-03).
 - **A pending invite cannot be cancelled** (COLLAB-009).
 - **An already-onboarded co-buyer starts with an empty priority document on the
   shared search,** so their Match is empty. The planned explicit "bring over my
@@ -98,7 +95,7 @@ These are listed as optional in the roadmap and require an owner decision (D-02)
 | Compare | Up to 4 homes, differences-only | Good |
 | Map | Needs a browser key **and** a Map ID; otherwise shows "unconfigured" | Verify the production env |
 | Account | Name only; no deletion, email change or data export | Deletion is required for the App Store |
-| Feedback | A floating Beta Feedback tab on every page | Hide or relabel before the public App Store launch (D-11) |
+| Feedback | A floating Beta Feedback tab on every page | **D-11 (APPROVED):** remove the floating tab; add "Send Feedback" in Account (P3-05) |
 | Dark mode | None | iOS users in dark mode get a light WebView. Acceptable for V1; list in the parking lot |
 | Accessibility | Source-text checks only | Run a VoiceOver and Dynamic Type pass on a device (QA matrix J-10) |
 
@@ -109,3 +106,15 @@ These are listed as optional in the roadmap and require an owner decision (D-02)
   privacy, terms or support links, and no App Store badge.
 - **`/for-realtors`:** collaboration copy only. No pricing claims.
 - **Needed before L2/L3:** footer links to a privacy policy, terms and support.
+
+## 6. Decision-lock UX implications (2026-10-09)
+
+| Decision | UX surface | Notes |
+|---|---|---|
+| D-05 | Account → Delete account | Disclosure must name the surviving co-buyer ("<Name> will keep this shared search") or list what is deleted when no successor exists |
+| D-06 | Leave search sheet | Two explicit choices with plain consequences; owners see "Delete account" instead of Leave |
+| D-07 | Invite screens | `co_buyer_limit` copy for owner and invitee |
+| D-08/D-09 | Invite screens | Separate **Send email** and **Copy link**; pending list with Revoke; send-failure state |
+| D-15 | Home card / detail / Compare | Search-wide "Offer submitted" / "Under contract" badge; buyers set it, Realtors see it |
+| D-17 | Native | Branded offline screen with Retry instead of a blank WebView |
+| D-01 | Paywall | Copy must stay consistent with "Create a free account" (free tier) |

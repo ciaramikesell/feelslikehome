@@ -1,130 +1,130 @@
 # Launch readiness
 
-**Verdict (2026-10-09, `main` @ `9032151`): not ready for App Store submission.**
+**Updated 2026-10-09** for the locked decisions (`main` @ `3651f7e`). The original
+verdict and the L0–L4 milestone tables are preserved at the end.
 
-The product is plausibly ready for a **web private beta and TestFlight internal
-testing**, once production verification (below) has been done.
+**Verdict: not ready for any external release.**
+- **G0 (private dev/device QA)** is reachable once the in-flight multi-search fix
+  (`4168309`) is merged and the read-only production checks are run.
+- Under D-01 and D-02:
+  - external TestFlight requires the full Onboarding V2 and the account-integrity work;
+  - the **public release requires FLH+**.
 
-The core buyer loop is built and covered by automated contracts:
-- add or import a home;
-- set priorities;
-- see Match;
-- compare;
-- map and commute;
-- tour and archive.
+**Key to the "Required by" column**
+- **Platform:** required by Apple's rules or tooling. Without it, upload, Beta App Review or App Review is expected to fail.
+- **FLH:** an FLH product-quality or approved-decision requirement.
+- Gates are cumulative: each one includes everything in the gates before it.
 
-What is missing is mostly launch infrastructure, not features:
-- account deletion;
-- a privacy policy and support URL;
-- a privacy manifest and plist keys;
-- production verification;
-- device QA.
+## G0 — Private development / device QA
 
-## Launch definitions used
-
-| Milestone | Meaning |
-|---|---|
-| **L0 — Web private beta** | Invited users on `feelslikehome.app` (web/PWA) |
-| **L1 — TestFlight internal** | Up to 100 App Store Connect users. No Beta App Review |
-| **L2 — TestFlight external** | Requires Beta App Review. Needs a privacy policy URL and test account |
-| **L3 — App Store public (free)** | Full review. Account deletion, privacy label and 4.2 risk all apply |
-| **L4 — FLH+ monetized** | IAP, entitlements, restore, terms, paywall |
-
-## Blockers by milestone
-
-### L0 — Web private beta
-
-| # | Blocker | Evidence | Effort |
+| Item | Task | Required by | Status today |
 |---|---|---|---|
-| L0-1 | Production schema verified after the drift repair (inventory + fingerprints all green) | INFRA-003; owner reports applied, output not seen | S |
-| L0-2 | Invitation acceptance works in production (it failed 09-16 → 10-07) | COLLAB-002 | S (QA) |
-| L0-3 | Multi-search invitation fix merged and deployed, or a known-issue note issued to beta users | ⟳ `4168309`; SEARCH-002, COLLAB-003/004 | S–M |
-| L0-4 | Production environment variables present: `RENTCAST_API_KEY`, the Google keys, `APPLE_TEAM_ID` | INFRA-015 | S |
-| L0-5 | Spend guards on RentCast and Google (provider quotas or budgets at minimum) | INFRA-010, IMPORT-009 | S |
-| L0-6 | Beta-feedback migration verified (the flag is on in source) | INFRA-014 | S |
-| L0-7 | Minimal error visibility: Vercel logs reviewed, or crash/error monitoring added | INFRA-007 | S–M |
+| Multi-search fix merged, deployed, **real-account QA on both accounts** | P0-01 | FLH (D-03) | **Not merged.** `4168309`: 719/719 tests and build OK, re-run 2026-10-09. Production deployment and real-account QA: **not done** |
+| Read-only production verification (inventory, fingerprints, co-buyer checks, beta-feedback, env names, AASA) | P0-02 | FLH | Not run since the repair (owner reports the migrations were applied) |
+| Read-only preflights for Phase 1 | P0-03 | FLH | Not written |
+| CI on PRs | P0-04 | FLH | None |
+| Vercel production-branch / domain verification (N-10) | P0-05 | FLH | Unverified anomaly |
+| Error monitoring with redaction | P0-07 | FLH (D-10: "before beta") | None |
+| Provider quotas/alerts **and** app rate limits | P0-08 | FLH (D-12) | None |
+| Dependency advisories patched | P0-06 | FLH | 3 high, 1 moderate |
 
-### L1 — TestFlight internal
+## G1 — Internal TestFlight (free)
 
-Everything in L0, plus:
-
-| # | Blocker | Evidence | Effort |
+| Item | Task | Required by | Status today |
 |---|---|---|---|
-| L1-1 | Archive and upload: signing, version/build numbering | RELEASE-006/010 | S |
-| L1-2 | `ITSAppUsesNonExemptEncryption = NO` (otherwise every build asks for export compliance) | IOS-007 | S |
-| L1-3 | `NSCameraUsageDescription` (and photo-library text if needed) because of the `<input type=file>` photo picker | IOS-007 | S |
-| L1-4 | Remove the legacy `armv7` `UIRequiredDeviceCapabilities` | IOS-007 | S |
-| L1-5 | `PrivacyInfo.xcprivacy` (App Store Connect rejects uploads without one when required-reason APIs are used) | IOS-006 | S |
-| L1-6 | Execute the `native-device-qa.md` checklist on a real iPhone: Universal Links, Share Extension, auth persistence, safe areas, keyboard, photo upload | RELEASE-008 | M |
+| Signed archive uploads; version/build scheme | P3-07 | **Platform** | Team ID set; 1.0 (1); never uploaded (UNKNOWN) |
+| `ITSAppUsesNonExemptEncryption` | P3-02 | **Platform** (export compliance per build; can be answered manually, but the key avoids it) | Missing |
+| `PrivacyInfo.xcprivacy` (required-reason APIs) | P3-02 | **Platform** (upload validation) | Missing |
+| `NSCameraUsageDescription` (the file input offers Take Photo) | P3-02 | **Platform** (crash and rejection otherwise) | Missing |
+| Remove legacy `armv7` capability | P3-02 | Platform hygiene | Present |
+| iPhone-only target | P3-01 | FLH (D-04) | Device family 1,2 |
+| Branded offline screen + Retry, bundled | P3-03 | FLH (D-17) | None |
+| Send Feedback in Account; floating tab removed | P3-05 | FLH (D-11) | Floating tab |
+| One-co-buyer cap (concurrency-safe) | P1-01 | FLH (D-07) | No cap |
+| Invitation revocation (view + revoke, server-enforced) | P1-02 | FLH (D-09: "before beta") | Not settable |
+| Device QA of the core journeys | P3-07 | FLH | Not done |
 
-### L2 — TestFlight external
+> Onboarding V2 is **not** required for G1. It is required for G2 (D-02).
 
-Everything in L1, plus:
+## G2 — External TestFlight (free; Beta App Review)
 
-| # | Blocker | Evidence | Effort |
+| Item | Task | Required by | Status today |
 |---|---|---|---|
-| L2-1 | Public privacy policy URL | RELEASE-001 | S (writing) + owner/legal review |
-| L2-2 | Reviewer demo account + review notes (the app is login-gated) | RELEASE-007 | S |
-| L2-3 | Beta App Description and feedback email | RELEASE-004 | S |
+| Privacy policy URL | P3-06 | **Platform** (App Store Connect beta info) | None |
+| Beta App Description, feedback email, demo account + review notes | P3-08 | **Platform** (Beta App Review, login-gated app) | None |
+| Support email + `/support` (mailbox verified) | P3-06 | FLH (D-14); platform-required at G3 | None |
+| **Full Onboarding V2** (Welcome → … → Homes + Get Started) | P2-01…P2-05 | FLH (D-02) | Flow keys only |
+| Location areas + Match pre-tour / after-tour separation, JS/SQL parity | P2-02, P2-03 | FLH (locked rules 6, 9) | Not built (R-1, R-2) |
+| Offer Submitted / Under Contract | P2-06 | FLH (D-15) | Not built |
+| Invitation email + Copy link | P1-03 | FLH (D-08) | Copy only |
+| Leave: retain or delete; retained data hidden | P1-04 | FLH (D-06) | Retain only; visible to Realtor (N-5) |
+| Primary-search model + **account deletion with automatic succession** | P1-05, P1-06 | FLH (D-05). Account deletion becomes **platform-required at G3** (5.1.1(v)) | None. Current FKs would destroy shared data (N-1…N-4) |
+| Display-name privacy | P1-07 | FLH (D-16) | Unrestricted |
+| Journey regression on the V2 build | P2-07 | FLH | — |
 
-### L3 — App Store public (free)
+## G3 — Public App Store with FLH+
 
-Everything in L2, plus:
-
-| # | Blocker | Evidence | Effort |
+| Item | Task | Required by | Status today |
 |---|---|---|---|
-| L3-1 | **In-app account deletion** (Guideline 5.1.1(v)) | AUTH-005 | M (cascades through owned search, memberships, storage, auth user; needs a privileged server path) |
-| L3-2 | Support URL | RELEASE-003 | S |
-| L3-3 | App Privacy nutrition label | RELEASE-005 | S |
-| L3-4 | Screenshots for iPhone **and iPad** (device family 1,2), or restrict to iPhone | IOS-010 | S–M |
-| L3-5 | Guideline 4.2 mitigation: a review note explaining the native Share Extension, Universal Links and account-bound workflow; consider one more native affordance | IOS-011 | S–M |
-| L3-6 | Terms of service (recommended) | RELEASE-002 | S + review |
-| L3-7 | Offline / no-network screen in native, so the reviewer never sees a blank WebView | IOS-009 | S |
+| In-app account deletion | P1-06 | **Platform** (Guideline 5.1.1(v)) | None |
+| Privacy policy + support URL in metadata | P3-06 | **Platform** | None |
+| App Privacy label from verified flows | P4-07 | **Platform** | None |
+| iPhone screenshots | P4-07 | **Platform** | None |
+| IAP for the digital unlock (no external purchase steering) | P4-03 | **Platform** (Guideline 3.1.1) | None |
+| Restore Purchases available | P4-04 | **Platform** (3.1.1 expectation for non-consumables) | None |
+| Terms of use / EULA reference | P3-06 | Platform expectation for IAP (standard EULA acceptable); FLH wants its own (D-13) | None |
+| Server-verified purchases, refunds → revoke, no silent transfer | P4-03 | FLH (locked rule 7) | None |
+| Entitlements + server-enforced limits (2 free homes; free collab loop; per-search unlock; Realtors free) | P4-01, P4-02 | FLH (locked rules 1–5) | None |
+| Grandfathering executed at the cutoff | P4-05 | FLH (locked rule 6) | None |
+| Paywall + Account purchase state | P4-04 | FLH | None |
+| App Review 4.2 notes (native behaviours) | P4-07 | Platform risk; **approval not guaranteed** | — |
+| Legal pages reviewed before publication | P3-06 | FLH (D-13) | — |
 
-### L4 — FLH+
+## Hidden blockers (updated)
 
-Everything in L3, plus the PAY-001…PAY-007 build. That is XL and not started.
-Terms are required at this stage, plus restore purchases and a server entitlement
-table. See [roadmap.md](roadmap.md).
+The original 14 are below. Status changes and new items:
 
-## Hidden launch blockers
+- **New: the account-deletion FK graph (N-1…N-4).** Deleting an auth user today:
+  - deletes an owner's whole shared search;
+  - deletes shared homes a co-buyer created;
+  - orphans other homes;
+  - and **fails** for Realtors with authored rows.
 
-These are things that are easy to miss because each looks finished.
+  No one should delete users from the Supabase dashboard until P1-06 lands.
+- **New: Realtors can read departed members' retained personal rows (N-5).**
+- **New: concurrent acceptance can exceed the co-buyer limit (N-6).** The fix is race-proof only as a DB index.
+- **New: the TestFlight vs grandfathering cutoff (R-4).** Paywall QA needs post-cutoff accounts.
+- **New: succession vs per-search FLH+ unlock (R-3).**
+- **Updated, original #4:** a second co-buyer is now an approved cap (D-07), scheduled in P1-01.
+- **Updated, original #5:** revocation is approved (D-09), scheduled in P1-02.
+- **Unchanged:** the original items 1–3 and 6–14 still apply.
 
-1. **AASA is silently empty without `APPLE_TEAM_ID`.** Universal Links and the Share Extension handoff then open Safari instead of the app. `.env.example` does not list it.
-2. **The import feature fails without `RENTCAST_API_KEY`**, which `.env.example` also omits. A fresh environment builds fine and then fails at runtime.
-3. **The camera crash path.** iOS WKWebView offers "Take Photo" for `<input type=file accept=image/*>`. With no `NSCameraUsageDescription`, choosing it is expected to terminate the app. Not observed on a device; verify.
-4. **A second co-buyer is not prevented.**
-   - The owner can invite and a second person can accept (no DB cap).
-   - Collaborator projections then pick an arbitrary "other participant" (`limit 1`).
-   - Archive signals assume a count of 1.
-   - Data is not lost, but people see the wrong perspective.
-   - The fix is either a cap or multi-co-buyer support. That is a product decision (see product-decisions.md, D-07).
-5. **Pending invitations cannot be revoked.** A link sent to the wrong address stays valid for 7 days. It is email-bound, which limits the damage.
-6. **Removed members' personal rows are retained.** That matters for account deletion and privacy answers.
-7. **`schema.sql` is not the full truth.** Rebuilding a database from `schema.sql` alone omits the 2026-09-19 and later objects. Only the test harness knows which migrations to add. That is a disaster-recovery risk.
-8. **No CI.** 710 tests exist but nothing runs them on PRs. A merge can go red unnoticed.
-9. **The default Supabase mailer** (if custom SMTP is not configured) has low hourly limits. Sign-up confirmation and reset emails will fail under a beta spike.
-10. **The beta-feedback flag is `true` in source.** If the 09-09 migration were missing in production, submissions would error. Verify (INFRA-014).
-11. **`resolve_display_name` lets any signed-in user resolve any user's name (or email local part) from a UUID.** This is low severity, but it matters for the privacy label: "data linked to user, visible to others".
-12. **`npm audit` reports 3 high advisories**, mostly via `next`. Patch before the public launch.
-13. **The native app is entirely remote.** A Vercel outage or bad deploy breaks the App Store app instantly, and so does a breaking change shipped to the web. Release discipline (CI + preview checks) matters more than it looks.
-14. **The landing page says "Create a free account".** That stays true under the FLH+ plan (the free tier exists), but the paywall copy must match it.
+### Original hidden blockers (2026-10-09, unchanged)
 
-## Launch-readiness scorecard
+1. AASA is empty without `APPLE_TEAM_ID`.
+2. Import fails without `RENTCAST_API_KEY`.
+3. Camera crash path (no `NSCameraUsageDescription`).
+4. A second co-buyer is not prevented.
+5. Pending invitations cannot be revoked.
+6. Removed members' personal rows are retained.
+7. `schema.sql` is not the full truth.
+8. No CI.
+9. Default Supabase mailer limits.
+10. Beta-feedback flag is on in source.
+11. `resolve_display_name` resolves any user.
+12. `npm audit`: 3 high.
+13. The native app is entirely remote.
+14. Landing says "Create a free account". Still true under FLH+ (free tier), but the paywall copy must match.
 
-| Area | Ready for L0? | Ready for L3? |
-|---|---|---|
-| Auth | Yes (pending QA) | **No:** deletion missing |
-| Search management | Conditional: in-flight fix | Conditional |
-| Import | Yes, if the env vars are set | Yes, with spend guards |
-| My Homes | Yes (pending QA) | Yes (pending QA) |
-| Match / Compare / Map | Yes (pending QA) | Yes (pending QA) |
-| Co-buyer collaboration | Conditional: production acceptance verification | Conditional + the co-buyer cap decision |
-| Realtor | Conditional: production repair verification | Conditional |
-| Onboarding | Yes (V1) | Yes (V1); V2 is not a launch requirement |
-| FLH+ | n/a | n/a for a free launch |
-| Native iOS | n/a | **No:** plist keys, privacy manifest, device QA |
-| Notifications | Acceptable (copy-link) | Acceptable; email is a quality gap |
-| Infra / security | Conditional: verification + spend guards | **No:** CI, monitoring, advisories |
-| App Store assets | n/a | **No:** privacy policy, support, label, screenshots |
+## Superseded: original milestone model (L0–L4)
+
+The original audit defined:
+- L0 web private beta;
+- L1 internal TestFlight;
+- L2 external TestFlight;
+- L3 a free public App Store release;
+- L4 FLH+.
+
+**L3-without-FLH+ is no longer an approved milestone (D-01).** L0/L1/L2 map to
+G0/G1/G2, and L3 + L4 merge into G3. The full original tables are in git history:
+`docs/product-audit/launch-readiness.md` @ `3651f7e`.
