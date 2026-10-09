@@ -1,6 +1,6 @@
 # Master feature inventory
 
-Audit baseline: `main` @ `9032151` (2026-10-09). Evidence is in
+Audit baseline: `main` @ `9032151` (2026-10-09). **Decision-lock refresh:** `main` @ `3651f7e`, the same day. `main` gained only the audit docs, so **no implementation status changed**. Approved decisions are mapped at the end of this file; approval is not evidence of implementation. Evidence is in
 [audit-evidence.md](audit-evidence.md). Every row below was checked against the
 code on `main`. Plans, PR descriptions and earlier docs were not taken as proof.
 
@@ -177,7 +177,7 @@ Rows it affects are marked **⟳ in flight**, and their status may change when i
 | ONBOARD-001 | Current onboarding: Basics → What Matters → Rank → Ready | Y | Y | Y | Y | U/S/D | ? | N | BUILT — QA PENDING | `CURRENT_ONBOARDING_VERSION = 1` |
 | ONBOARD-002 | Resumable progress (`onboarding_state`, version, save on background) | Y | Y | Y | Y | D/U | owner reports migration applied | N | NEEDS VERIFICATION | 2026-10-07 migration |
 | ONBOARD-003 | V2 flow definition (`ONBOARDING_FLOWS[2]`) | P | Y | N | N | U | — | — | PARTIAL | Step keys only; not live |
-| ONBOARD-004 | V2 Welcome | N | — | N | N | N | — | — | NOT STARTED | Paused by owner |
+| ONBOARD-004 | V2 Welcome | N | — | N | N | N | — | — | NOT STARTED | Approved for V1 before external TestFlight (D-02); not built |
 | ONBOARD-005 | V2 Who are you searching with | P | Y | N | N | U | — | — | PARTIAL | Answer storage exists; no screen |
 | ONBOARD-006 | V2 Locations step (with labelled ranks) | N | N | N | N | N | — | — | NOT STARTED | Places editor exists outside onboarding |
 | ONBOARD-007 | V2 Tour Discoveries | N | — | N | N | N | — | — | NOT STARTED | |
@@ -296,3 +296,33 @@ The counts were produced by a script over this file; re-run it after edits (see
 [audit-evidence.md](audit-evidence.md#reproducing-the-status-count)).
 Ideas that were never built are tracked separately in
 [ideas-parking-lot.md](ideas-parking-lot.md) as FUTURE-xxx and are not counted here.
+
+
+---
+
+## Decision mapping (2026-10-09 lock)
+
+Approving a decision does not change any status above. This table only links
+inventory rows to the approved decisions and the roadmap tasks that will move
+them. A row changes status only when new code evidence exists.
+
+| Decision | Inventory rows affected | Roadmap task(s) | Status today (unchanged) |
+|---|---|---|---|
+| D-01 Launch (free TestFlight; public with FLH+) | PAY-001…PAY-008 | P4-01…P4-07 | NOT STARTED / PARTIAL |
+| D-02 Full Onboarding V2 before external TestFlight | ONBOARD-003…ONBOARD-010, MATCH-008 | P2-01…P2-05 | PARTIAL / NOT STARTED |
+| D-03 Multi-search real-account verification | SEARCH-002, SEARCH-006, COLLAB-003, COLLAB-004, DESIGN-006 | P0-01 | NEEDS VERIFICATION ⟳. `4168309` re-run 2026-10-09: 719/719 tests, build OK; **not merged, not deployed, no real-account QA** |
+| D-04 iPhone-first | IOS-010 | P3-01 | NEEDS VERIFICATION |
+| D-05 Succession on account deletion | AUTH-005, SEARCH-003, INFRA-017 | P1-05, P1-06 | NOT STARTED |
+| D-06 Leave: retain or delete | COLLAB-008, INFRA-017 | P1-04 | BUILT — QA PENDING (leave) / NOT STARTED (choice) |
+| D-07 One co-buyer, enforced | COLLAB-011 | P1-01 | NOT STARTED |
+| D-08 Email + copy link | COLLAB-010, NOTIFY-001, NOTIFY-002 | P1-03 | NOT STARTED / NEEDS VERIFICATION |
+| D-09 Revocation | COLLAB-009 | P1-02 | NOT STARTED |
+| D-10 Error monitoring | INFRA-007, INFRA-008 | P0-07, P4-06 | NOT STARTED / PARTIAL |
+| D-11 Send Feedback in Account | INFRA-014 | P3-05 | NEEDS VERIFICATION |
+| D-12 Quotas + app rate limits | INFRA-010, IMPORT-009, MATCH-013 | P0-08 | NOT STARTED |
+| D-13 Privacy policy + terms | RELEASE-001, RELEASE-002 | P3-06 | NOT STARTED |
+| D-14 Support | RELEASE-003 | P3-06 | NOT STARTED |
+| D-15 Offer Submitted / Under Contract | HOMES-007 | P2-06 | NOT STARTED |
+| D-16 Display-name privacy | INFRA-012 | P1-07 | PARTIAL |
+| D-17 Offline + Retry | IOS-009 | P3-03 | PARTIAL |
+| D-18 Remote-hosted native polish | IOS-001…IOS-005, IOS-011 | P3-03, P3-04 | BUILT — QA PENDING / PARTIAL |

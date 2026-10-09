@@ -24,7 +24,7 @@ The **Source** column uses these abbreviations:
 | FUTURE-007 | Match breakdown groups ("why this score" by weight) | V2 audit Part 3 §7 | NOT STARTED | |
 | FUTURE-008 | First Match reveal moment | Locked 1 | PARTIAL | Ready screen only |
 | FUTURE-009 | Get Started contextual checklist | Locked 1 | NOT STARTED | Roadmap B5 |
-| FUTURE-010 | Import / share lesson (`/help/share`) | Locked 1 | NOT STARTED | Candidate for Roadmap A (D-02) |
+| FUTURE-010 | Import / share lesson (`/help/share`) | Locked 1 | NOT STARTED | **Now V1 (D-02 APPROVED):** P2-01 |
 | FUTURE-011 | Mine / Theirs / Together views | V2 audit Phase 7 | NOT STARTED | Roadmap B6 |
 | FUTURE-012 | "Add to mine" explicit criterion copy | Locked 10 | NOT STARTED | |
 | FUTURE-013 | Bring my preferences into a joined shared search | V2 audit findings | NOT STARTED | Joined co-buyers start with an empty Match |
@@ -32,7 +32,7 @@ The **Source** column uses these abbreviations:
 | FUTURE-015 | FLH+ entitlement, StoreKit, restore, refunds (ASSN V2), paywall, gates, grandfathering | V2 brief; Locked 2–5, 8 | NOT STARTED | Roadmap B7–B9 |
 | FUTURE-016 | Web checkout (Stripe) | V2 brief | DEFERRED | Locked 3: iOS first; web honours entitlements but doesn't sell |
 | FUTURE-017 | Realtor-side monetization | V2 audit | DEFERRED | Locked 2: Realtors free |
-| FUTURE-018 | Multiple co-buyers per search | V2 audit | DEFERRED | V1 RPCs assume one; see D-07 |
+| FUTURE-018 | Multiple co-buyers per search | V2 audit | DEFERRED | V1 RPCs assume one. **D-07 APPROVED:** cap at one in V1 (P1-01); multiple is post-launch (P5-02) |
 | FUTURE-019 | Multiple owned searches per user | V2 audit | DEFERRED | `unique(user_id)` |
 | FUTURE-020 | Admin-managed criteria catalog | V2 audit | DEFERRED | |
 | FUTURE-021 | Hard DB-enforced home caps before entitlements are proven | V2 audit | DEFERRED | Rejected for now (V2 audit). Risky; gate in app logic first |
@@ -50,7 +50,7 @@ The **Source** column uses these abbreviations:
 | FUTURE-033 | Comments on homes | — | NOT STARTED | Roadmap C4 |
 | FUTURE-034 | Tour scheduling / calendar | #82 doc | NOT STARTED | Roadmap C6 |
 | FUTURE-035 | Tour photos / voice notes | — | NOT STARTED | |
-| FUTURE-036 | Offer / under-contract / closed lifecycle | legacy statuses | NOT STARTED | D-15 |
+| FUTURE-036 | Offer / under-contract / closed lifecycle | legacy statuses | NOT STARTED | **Offer Submitted / Under Contract now V1 (D-15 APPROVED, P2-06).** Closed/contract/escrow remain parked |
 | FUTURE-037 | Rental details (lease terms, fee matrices, pet restrictions, amenity catalogs) | rental audits | DEFERRED | Use custom criteria / notes |
 | FUTURE-038 | Dogs / Cats Allowed suggestions | rental audits | DEFERRED | Until beta evidence asks for them |
 | FUTURE-039 | Moving buyer notes/pros/cons to per-participant notes | #78 doc | DEFERRED | Destructive migration risk |
@@ -59,7 +59,30 @@ The **Source** column uses these abbreviations:
 | FUTURE-042 | Personal data export | — | NOT STARTED | |
 | FUTURE-043 | Email / password change in Account | — | NOT STARTED | |
 | FUTURE-044 | Sign in with Apple | — | NOT STARTED | Becomes **required** if any social login is ever added |
-| FUTURE-045 | Additional native features (widgets, Siri, haptics) to strengthen App Review 4.2 | — | NOT STARTED | Only if rejected (D-18) |
+| FUTURE-045 | Additional native features (widgets, Siri, haptics) to strengthen App Review 4.2 | — | NOT STARTED | D-18 APPROVED: purposeful native polish in V1 (P3-04); no Swift rewrite. Widgets/Siri remain parked |
 | FUTURE-046 | Regenerate `schema.sql` from a migrated DB | V2 audit findings | NOT STARTED | Roadmap C11 |
 | FUTURE-047 | `AcceptInvitationClient` sanitized error reasons (comment drift) | V2 audit findings | NOT STARTED | Small diagnostics improvement |
 | FUTURE-048 | Pending invitations users gave up on during the 42702 window: re-send | V2 audit findings | NOT STARTED | Read-only query first; owner decides outreach |
+
+
+## Disposition changes after the 2026-10-09 decision lock
+
+Statuses in the table above are implementation statuses and are unchanged. These
+ideas are now **scheduled for V1** by an approved decision:
+
+| ID | Now scheduled | Decision | Task |
+|---|---|---|---|
+| FUTURE-001 | Full Onboarding V2 | D-02 | P2-01…P2-05 |
+| FUTURE-002 | Ranked location areas | D-02 / locked 6 | P2-02 |
+| FUTURE-005, FUTURE-006 | Tour Discoveries + pre-tour Match | locked 9 | P2-01, P2-03 |
+| FUTURE-008, FUTURE-009, FUTURE-010 | Match reveal, Get Started, import lesson | D-02 | P2-04, P2-05, P2-01 |
+| FUTURE-015 | FLH+ | D-01 | P4-01…P4-05 |
+| FUTURE-030 | Transactional email (invitations) | D-08 | P1-03 |
+| FUTURE-036 (partial) | Offer Submitted / Under Contract only | D-15 | P2-06 |
+| FUTURE-047 | Sanitized acceptance error reasons | (rides with) D-07/D-09 | PR-08/PR-09 |
+
+Explicitly **post-launch** by decision: native iPad (D-04 → P5-01), multiple co-buyers
+(D-07 → P5-02), product analytics expansion (D-10 → P5-03). FUTURE-011…014
+(Mine/Theirs/Together, Add to mine, bring-over preferences, per-home co-buyer criteria)
+are not named in the locked decisions. They stay parked unless the owner pulls them into
+P2. FUTURE-013 is relevant to existing-account co-buyers, whose Match starts empty.

@@ -41,12 +41,12 @@ Severity: **H** high · **M** medium · **L** low · **I** informational.
 | ID | Sev | Finding | Evidence | Recommendation |
 |---|---|---|---|---|
 | T-01 | H | No CI. Tests and the build are never run automatically | no `.github/` | Add a GitHub Actions workflow: `npm ci && npm test && npm run build`. Optionally a DB job using the existing harness |
-| T-02 | H | No in-app account deletion, and no data-deletion path for removed members | AUTH-005, INFRA-017 | Server route with a scoped privileged key; cascade plan (owned search and its homes, memberships, personal rows, storage objects, auth user); handle shared searches the user owns that others belong to (product decision D-05) |
+| T-02 | H | No in-app account deletion, and no data-deletion path for removed members | AUTH-005, INFRA-017 | **D-05/D-06 APPROVED:** automatic succession to the remaining co-buyer, personal-data purge, leave retain/delete choice. See C-01…C-03, P1-04…P1-06 |
 | T-03 | H | Paid-API spend is not bounded (RentCast, Google Routes, Geocoding). Any signed-in user can loop the endpoints | `import-listing/route.js`, `commute/route.js` | Provider quotas and budgets now; later a per-user rate limit (e.g. a Postgres counter table or an edge KV) |
 | T-04 | M | `schema.sql` snapshot lags the migrations (09-19+) | `grep resolve_display_name schema.sql` = 0 | Regenerate the snapshot from a migrated test DB, or document the canonical rebuild order in `database-tests.md` |
 | T-05 | M | A second co-buyer is not prevented, while the V1 RPCs assume one (`limit 1`) | collaboration RPCs | Either enforce a cap (constraint or acceptance-RPC check) or design multi-co-buyer support |
 | T-06 | M | Pending invitations cannot be revoked | no UPDATE policy or RPC sets `revoked` | Owner-only `revoke_invitation` RPC + UI |
-| T-07 | M | No error monitoring or crash reporting; no production analytics sink | `analytics.js:107-108` | Choose a vendor (decision D-10). This affects the privacy label |
+| T-07 | M | No error monitoring or crash reporting; no production analytics sink | `analytics.js:107-108` | **D-10 APPROVED:** error monitoring before beta (P0-07); analytics later. This affects the privacy label |
 | T-08 | M | No security headers (CSP, `frame-ancestors`, `Referrer-Policy`, `Permissions-Policy`) | empty `next.config.mjs` | Add a conservative header set. Test the Maps, YouTube-nocookie and Supabase origins |
 | T-09 | M | `npm audit`: 3 high, 1 moderate (next, postcss, sharp, source-map-js) | audit run | Bump `next` within 15.x; re-run the audit |
 | T-10 | M | iOS plist gaps: camera usage string, encryption flag, legacy `armv7`; no privacy manifest | `Info.plist`, `find` | Add them before the first TestFlight upload |
@@ -60,6 +60,29 @@ Severity: **H** high · **M** medium · **L** low · **I** informational.
 | T-18 | I | No lint or typecheck | `package.json` | Add `next lint` (ESLint) as a first step |
 | T-19 | I | The native shell depends on a live web deploy, so a web regression is an app regression | Capacitor remote mode | Preview-deploy QA plus CI before promoting to production |
 | T-20 | I | `CAPACITOR_DEBUG = true` in the debug config | `ios/debug.xcconfig` | Confirm the Release configuration doesn't inherit it |
+
+### Findings added in the decision-lock pass (2026-10-09)
+
+Details are in [decision-implementation-conflicts.md](decision-implementation-conflicts.md#new-evidence-found-during-this-pass).
+
+| ID | Sev | Finding | Evidence | Recommendation / task |
+|---|---|---|---|---|
+| T-21 | H | Deleting an auth user cascades to their owned shared search (N-1) and to shared homes they created in any search (N-2); other homes are orphaned (N-3). **Do not delete users from the dashboard** until P1-06 | `schema.sql:81, 111, 112` | C-02 / P1-06 |
+| T-22 | M | Realtor-authored rows are `on delete restrict`, so deleting a Realtor account fails (N-4) | `schema.sql:2236, 2395, 2407` | C-02 / PR-13 |
+| T-23 | M | Realtors can read departed members' retained personal rows (N-5) | `schema.sql:1573-1596` | C-03 / P1-04 |
+| T-24 | M | Concurrent acceptance of two co-buyer invitations is not serialised (N-6) | `2026-10-07-…-conflict-targets.sql:53` | C-04 / P1-01 (partial unique index) |
+| T-25 | M | The Vercel bot listed the production domain as the preview for a non-`main` branch (N-10). If real, unmerged code reaches iOS users | PR #138 bot comment | C-09 / P0-05 |
+| T-26 | I | The in-flight fix adds a client caller of `resolve_display_name` (N-8). The D-16 wrapper must keep allowing an owner's name to that owner's members | `4168309` | C-10 / P1-07 |
+
+### Privacy and redaction requirements from the locked decisions
+
+- **D-10 monitoring:** scrub invitation tokens (`/invite/<uuid>`), emails, street addresses, notes and listing URLs from error payloads and breadcrumbs. Disable session replay, or mask all inputs.
+- **D-08 email:** the provider processes invitee emails and names, so it must be disclosed (D-13). Send-rate limits prevent abuse.
+- **D-05/D-06:**
+  - account deletion purges personal rows and storage;
+  - leave-and-retain data is hidden from everyone else;
+  - the retention semantics go into the privacy policy.
+- **FLH+:** Apple transaction ids are personal data linked to the account. Retention on account deletion is to be decided in P4-01.
 
 ## Privacy inventory (input for the App Privacy label and the policy)
 

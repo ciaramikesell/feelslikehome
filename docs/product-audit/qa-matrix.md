@@ -38,7 +38,7 @@ UI behaviour.
 | E-1 | Accept an invite while signed in as the wrong email | `wrong_account` message; no membership |
 | E-2 | Accept an expired (> 7 days) or already-accepted invite | Clear refusal |
 | E-3 | Owner invites themself | `self_invite` refusal |
-| E-4 | Second co-buyer invitation | **Current behaviour: allowed.** Record what each participant sees (input to D-07) |
+| E-4 | Second co-buyer invitation | **Current behaviour: allowed.** After P1-01 (D-07): refused with `co_buyer_limit`, including two concurrent acceptances |
 | E-5 | Realtor tries to edit a home / state via the UI | No edit affordance; RLS refuses |
 | E-6 | Import with a RentCast 429 / missing key | Friendly message; manual entry still possible |
 | E-7 | Commute with an unresolvable address | Per-address "ambiguous / invalid" state, no crash |
@@ -47,6 +47,34 @@ UI behaviour.
 | E-10 | Duplicate URL import | Exact-match duplicate warning |
 | E-11 | Removed co-buyer reloads | Loses access; own search intact |
 | E-12 | Beta feedback submit | Row stored; no error |
+
+## Journeys added by the locked decisions (2026-10-09)
+
+| # | Journey | Expected | Decision | Task |
+|---|---|---|---|---|
+| J-11 | Existing account (Ciara/Andrew pattern) accepts a co-buyer invite on the merged multi-search build; switch searches; kill and relaunch the app | Both searches intact and labelled; own preferences unchanged; shared-search setup only (no full onboarding); session persists | D-03 | P0-01 |
+| J-12 | Owner sends an invitation by **email**; separately copies a link | Email arrives (Gmail, iCloud), not spam; link opens the app; UI says which action happened | D-08 | P1-03 |
+| J-13 | Owner revokes a pending invite; invitee opens the old link | Refused as revoked; owner list updates | D-09 | P1-02 |
+| J-14 | Co-buyer leaves with **retain**, then rejoins; another leaves with **delete** | Access revoked at once; retained data invisible to owner and Realtor; rejoin restores; delete leaves nothing | D-06 | P1-04 |
+| J-15 | Owner with a co-buyer deletes their account (co-buyer also owns a primary search) | Co-buyer now owns the shared search plus their own; no merge; the deleted owner's personal data gone | D-05 | P1-06 |
+| J-16 | Solo owner / Realtor with authored notes deletes their account | Disclosed deletion completes; the buyer keeps promoted homes | D-05 | P1-06 |
+| J-17 | Full Onboarding V2 as: new account, invited new account, Realtor-started buyer | Each follows the C-06 routing table | D-02 | P2-01 |
+| J-18 | Mark Offer Submitted → Under Contract; co-buyer and Realtor view | Search-wide badge; Realtor read-only; Match unchanged; archive warns | D-15 | P2-06 |
+| J-19 | Native offline: airplane mode at cold launch; server 5xx; Retry | Branded offline screen; Retry recovers | D-17 | P3-03 |
+| J-20 | Send Feedback from Account | Stored; no floating tab anywhere | D-11 | P3-05 |
+| J-21 | FLH+: post-cutoff account adds home #3; buys (sandbox); restores on a second device; refund | Blocked → purchase unlocks → restore works → refund revokes; grandfathered account never blocked | D-01, locked 1–7 | P4-02…P4-05 |
+| J-22 | Co-buyer with FLH+ unlocks collaboration on the owner's search; Realtor never unlocks | Per-search unlock only | locked 4, 5 | P4-02 |
+
+## Edge cases added by the locked decisions
+
+| # | Case | Expected |
+|---|---|---|
+| E-13 | Email bounce / provider outage | Send failure shown; Copy link still works |
+| E-14 | Duplicate invite to the same email and search | The existing pending invite is reused and refreshed; no second row |
+| E-15 | Wrong-account recovery after an emailed invite | Clear "sign in as <email>" path |
+| E-16 | Account deletion retried after a partial failure | Completes idempotently |
+| E-17 | Restore of a purchase owned by another FLH account | Account-state message; never reassigned |
+| E-18 | App rate limit hit on import or commute | Friendly 429; manual entry still possible |
 
 ## Device and release checklist (from `docs/native-device-qa.md`, condensed)
 
@@ -58,7 +86,7 @@ UI behaviour.
 - Status bar contrast.
 - Orientation (portrait lock?).
 - Small screen (SE / mini).
-- iPad, only if D-04 keeps the universal build.
+- iPad: **native app is iPhone-only (D-04).** Check that iPad Safari web access still works.
 
 ## Results log (fill in)
 

@@ -1,24 +1,30 @@
-# FLH product, feature & launch-readiness audit (2026-10-09)
+# FLH product, feature & launch-readiness audit
 
-**Baseline:** `main` @ `9032151`. This is an audit only. No application code,
-migrations, production data, pricing or payment configuration was changed.
+**Original audit:** 2026-10-09, `main` @ `9032151` (PR #138).
+**Decision-lock refresh:** 2026-10-09, `main` @ `3651f7e`. All 18 product decisions are approved; the roadmap is rebased on them.
+
+Both passes are documentation only. No application code, migrations, policies, RPCs,
+native project files, environment variables, production data, pricing or payment
+configuration were changed.
 
 | Document | What it answers |
 |---|---|
-| [executive-summary.md](executive-summary.md) | Where are we, and what should happen next? |
-| [feature-inventory.md](feature-inventory.md) | What exists, layer by layer, with stable IDs and statuses (150 rows) |
-| [launch-readiness.md](launch-readiness.md) | Blockers per milestone (web beta → TestFlight → App Store → FLH+), plus hidden blockers |
-| [ux-and-onboarding-audit.md](ux-and-onboarding-audit.md) | Journeys as built vs. the locked V2 sequence |
-| [technical-and-security-audit.md](technical-and-security-audit.md) | Architecture, findings T-01…T-20, privacy inventory |
-| [roadmap.md](roadmap.md) | Roadmap A (minimum reliable launch), B (ideal V1), C (post-launch) |
-| [product-decisions.md](product-decisions.md) | Open decisions D-01…D-18 with recommended defaults; locked decisions |
-| [qa-matrix.md](qa-matrix.md) | Top 10 journeys, edge cases, device checklist, results log |
-| [ideas-parking-lot.md](ideas-parking-lot.md) | Every unbuilt idea (FUTURE-001…048) and why it is parked |
-| [audit-evidence.md](audit-evidence.md) | Commands run, file:line evidence, read-only production checks, limitations |
+| [executive-summary.md](executive-summary.md) | Where are we, and what is the approved plan? |
+| [product-decisions.md](product-decisions.md) | **All 18 decisions APPROVED**; the 10 earlier locked rules; rule↔code discrepancies; open implementation-rule questions |
+| [decision-implementation-conflicts.md](decision-implementation-conflicts.md) | Where approved decisions meet the current code (C-01…C-10), new evidence N-1…N-10, owner questions Q-01…Q-10 |
+| [roadmap.md](roadmap.md) | Phases 0–5 with task IDs, dependencies, effort, risk, gates; parallel tracks; critical path |
+| [implementation-pr-sequence.md](implementation-pr-sequence.md) | Proposed small PRs (PR-01…PR-35). **Not implemented** |
+| [launch-readiness.md](launch-readiness.md) | Gates G0 (dev/device) → G1 (internal TestFlight) → G2 (external TestFlight) → G3 (public with FLH+); platform-required vs FLH requirements |
+| [feature-inventory.md](feature-inventory.md) | What exists, layer by layer (150 rows), plus the decision mapping. Statuses are evidence-based |
+| [ux-and-onboarding-audit.md](ux-and-onboarding-audit.md) | Journeys as built vs the approved V2 sequence; UX implications of the decisions |
+| [technical-and-security-audit.md](technical-and-security-audit.md) | Findings T-01…T-26; privacy inventory; redaction requirements |
+| [qa-matrix.md](qa-matrix.md) | Journeys J-1…J-22, edge cases E-1…E-18, device checklist, results log |
+| [ideas-parking-lot.md](ideas-parking-lot.md) | Unbuilt ideas FUTURE-001…048, and which are now scheduled for V1 |
+| [audit-evidence.md](audit-evidence.md) | Commands, file:line evidence, read-only production checks, decision-lock evidence |
 
 ## Status vocabulary
 
-The statuses used throughout are:
+Implementation statuses:
 - COMPLETE — VERIFIED
 - BUILT — QA PENDING
 - PARTIAL
@@ -28,17 +34,21 @@ The statuses used throughout are:
 - UNKNOWN
 - NEEDS VERIFICATION
 
-Definitions are at the top of [feature-inventory.md](feature-inventory.md).
+Decision status: **APPROVED**. That records product direction, never implementation.
 
 ## In-flight work that may change these findings
 
 Branch `claude/charming-bell-i0xo4w` @ `4168309` (the existing-user invitation +
-multi-search fix) is **not merged**. Rows marked ⟳ in the inventory depend on it.
-This audit did not modify any file that branch touches.
+multi-search fix):
+- **not merged**;
+- tests 719/719 and build OK on 2026-10-09;
+- no real-account QA.
+
+Rows marked ⟳ depend on it. Neither audit pass modified any file it touches.
 
 ## Keeping this audit current
 
-- Update a row's status only with evidence. Add that evidence to `audit-evidence.md`.
-- Record device and production QA in the results log in `qa-matrix.md`. That is
-  what moves rows to COMPLETE — VERIFIED.
-- Re-run the status count command in `audit-evidence.md` after edits.
+- Change an implementation status only with code or QA evidence, and add that evidence to `audit-evidence.md`.
+- Log device and production QA in `qa-matrix.md`.
+- Re-run the status-count command in `audit-evidence.md` after edits.
+- Owner answers to Q-01…Q-10 go into `product-decisions.md`, with the date.

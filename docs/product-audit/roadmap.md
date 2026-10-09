@@ -67,7 +67,7 @@ bars, is in [launch-readiness.md](launch-readiness.md).
 | P2-04 | D-02; ONBOARD-009 | First Match reveal moment after the first home | Match panel | P2-01, P2-03 | M | Low | — | Render/flow test | First home on device | G2 | Reveal shows the pre-tour Match + explanation |
 | P2-05 | D-02; ONBOARD-010 | Homes + Get Started contextual checklist | `flhMoments`, empty states | P2-01 | M | Low | — | Unit tests | Device | G2 | Checklist reflects real progress; dismissible |
 | P2-06 | D-15; HOMES-007; C-07 | Offer Submitted / Under Contract: `homes.offer_stage` + badge, set/clear, filter, Compare, Realtor read-only, archive warning | `homes` update policy, `HomeDetail`, `CompareBoard` | P0-03 (legacy counts), **Q-08** | M | Low–Med | SQL ✔ (additive columns + check) | DB: buyers set, Realtor can't; personal states unchanged; Match unchanged | Set/clear on device; co-buyer sees it | G2 | Search-wide stage visible to all members; nothing else in the lifecycle changes |
-| P2-07 | D-03, D-02, D-07…D-09; QA J-1, J-7…J-9 | Journey regression across existing-account, co-buyer and Realtor flows on the V2 build | QA matrix | P1-01…P1-04, P2-01…P2-06 | M | Med | — | Full suite + new Playwright smoke (if added) | QA matrix rows J-1…J-10 + E-1…E-16 | G2 | Results log complete; no P0/P1 defects open |
+| P2-07 | D-03, D-02, D-07…D-09; QA J-1, J-7…J-9 | Journey regression across existing-account, co-buyer and Realtor flows on the V2 build | QA matrix | P1-01…P1-04, P2-01…P2-06 | M | Med | — | Full suite + new Playwright smoke (if added) | QA matrix rows J-1…J-22 + E-1…E-18 | G2 | Results log complete; no P0/P1 defects open |
 
 ## Phase 3 — Native polish and free TestFlight
 
