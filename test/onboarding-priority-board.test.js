@@ -124,7 +124,7 @@ test('the old Dealbreakers onboarding state cannot trap an existing user', () =>
   const page = read('src/app/onboarding/page.js');
   // A finished account re-enters only to set up its own preferences on a shared
   // search it joined as a co-buyer (cobuyer-journey-db.test.js).
-  assert.match(page, /if \(profile\?\.onboarding_complete && !\(await needsSharedSearchSetup\(supabase, user\.id, search, role === 'owner'\)\)\) redirect\('\/homes'\);/);
+  assert.match(page, /if \(sharedSetup && !\(await needsSharedSearchSetup\(supabase, user\.id, search, role === 'owner'\)\)\) redirect\('\/homes'\);/);
   assert.match(page, /beginOnboarding\(\{/);
   const onboarding = read('src/components/onboarding/Onboarding.jsx');
   assert.match(onboarding, /const \[progressState, setProgressState\] = useState\(initialProgress\.state\);/);
