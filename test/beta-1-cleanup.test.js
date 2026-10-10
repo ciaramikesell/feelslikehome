@@ -70,9 +70,12 @@ test('new onboarding search choices set an explicit, accessible rental subtype',
 
 test('auth mobile and onboarding brand placement use focused centering classes', () => {
   assert.match(read('src/components/auth/AuthShell.jsx'), /className="afh-brand"/);
-  assert.match(read('src/components/onboarding/Onboarding.jsx'), /className="flh-onboarding-brand"/);
+  // Onboarding's brand sits in the shell's top bar, centred whether or not Back shows.
+  assert.match(read('src/components/onboarding/Onboarding.jsx'), /<OnboardingTopBar /);
+  assert.match(read('src/components/onboarding/OnboardingShell.jsx'), /<span className="flh-ob-brand">/);
   const css = read('src/app/globals.css');
-  assert.match(css, /\.flh-onboarding-brand \{[^}]*justify-content: center/);
+  assert.match(css, /\.flh-ob-topbar-row \{[^}]*grid-template-areas: "back brand count"/);
+  assert.match(css, /\.flh-ob-topbar \.flh-ob-brand \{ grid-area: brand; justify-self: center; \}/);
   assert.match(css, /@media \(max-width: 640px\) \{[\s\S]*\.afh-brand \{ justify-content: center; \}/);
 });
 

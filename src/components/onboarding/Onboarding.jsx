@@ -22,6 +22,7 @@ import { ANALYTICS_EVENTS, track } from '@/lib/analytics';
 import { savePriorities, setActiveSearch } from '@/lib/supabase/collaboration';
 import { sanitizeRedirectPath } from '@/lib/safeRedirect';
 import BetaFeedback from '@/components/BetaFeedback';
+import { OnboardingAction, OnboardingRail, OnboardingTopBar } from '@/components/onboarding/OnboardingShell';
 
 // Screen labels for the flow-1 steps (src/lib/onboardingFlow.js owns order and branching).
 const STEP_LABELS = { basics: 'The Basics', what_matters: 'What Matters', rank: 'Rank Priorities' };
@@ -30,11 +31,12 @@ const CHOICE_LABELS = { home_buy: 'Home to Buy', home_rent: 'Home to Rent', apar
 
 // sharedFor: null in first-time account onboarding; in shared-search setup, the
 // search the preferences are for (e.g. "Ciara’s search").
-function StepHeader({ step, progress, title, lead, sharedFor = null }) {
+// The progress bar and step count live in the shell's top bar (OnboardingShell);
+// the eyebrow names the step and, once chosen, the kind of search.
+function StepHeader({ step, progress, title, lead, sharedFor = null, searchType = '' }) {
   return (
     <header className="flh-onboarding-header">
-      <div className="flh-onboarding-progress" aria-hidden="true">{progress.steps.map((key, index) => <span key={key} className={index < progress.position ? 'is-done' : ''} />)}</div>
-      <p className="flh-eyebrow">{sharedFor ? `Your preferences for ${sharedFor} · Step ${progress.position} of ${progress.total}` : `Step ${progress.position} of ${progress.total} · ${STEP_LABELS[step]}`}</p>
+      <p className="flh-eyebrow">{sharedFor ? `Your preferences for ${sharedFor}` : `Step ${progress.position} · ${CHOICE_LABELS[searchType] || STEP_LABELS[step]}`}</p>
       <h1 className="flh-page-title">{title}</h1>
       {lead && <p className="flh-lead">{lead}</p>}
     </header>
@@ -94,7 +96,7 @@ function BasicsStep({ priorities, patch, onNext, progress, sharedFor = null, own
           />
         </>
       ) : (
-        <StepHeader step="basics" progress={progress} title="Let’s find what feels like home." lead="Start with the kind of search you’re making. Add a few helpful details now—you can change everything later." />
+        <StepHeader step="basics" progress={progress} searchType={choice} title="Let’s find what feels like home." lead="Start with the kind of search you’re making. Add a few helpful details now—you can change everything later." />
       )}
       <fieldset className="flh-option-group">
         <legend className="flh-section-kicker">Search type</legend>
@@ -127,8 +129,7 @@ function BasicsStep({ priorities, patch, onNext, progress, sharedFor = null, own
         </SectionCard>
       )}
       <nav className="flh-onboarding-actions">
-        <span />
-        <button type="button" className="flh-button flh-button-primary" disabled={!choice} onClick={onNext}>Continue</button>
+        <OnboardingAction disabled={!choice} onClick={onNext}>Continue</OnboardingAction>
       </nav>
     </div>
   );
@@ -148,7 +149,7 @@ function GarageQualifier({ priorities, patch }) {
   );
 }
 
-function WhatMattersStep({ priorities, patch, onNext, onBack, isSaving, progress, sharedFor = null }) {
+function WhatMattersStep({ priorities, patch, onNext, isSaving, progress, sharedFor = null }) {
   const groups = ONBOARDING_SUGGESTIONS[priorities.onboardingSearchType] || [];
   const offered = groups.flatMap(([, items]) => items);
   const offeredKeys = new Set(offered.map((criterion) => `${criterion.categoryKey}:${criterion.label}`));
@@ -171,7 +172,7 @@ function WhatMattersStep({ priorities, patch, onNext, onBack, isSaving, progress
 
   return (
     <div className="flh-onboarding-step">
-      <StepHeader step="what_matters" progress={progress} sharedFor={sharedFor} title="What matters to you?" lead="For now, just choose what matters. You’ll decide what’s a Must Have, Important, or Nice to Have next." />
+      <StepHeader step="what_matters" progress={progress} sharedFor={sharedFor} searchType={priorities.onboardingSearchType} title="What matters to you?" lead="For now, just choose what matters. You’ll decide what’s a Must Have, Important, or Nice to Have next." />
       <HelperRow
         className="flh-count-row"
         tone="sage"
@@ -214,18 +215,17 @@ function WhatMattersStep({ priorities, patch, onNext, onBack, isSaving, progress
         </SectionCard>
       )}
       <nav className="flh-onboarding-actions">
-        <button type="button" className="flh-text-action" onClick={onBack}>Back</button>
-        <button type="button" className="flh-button flh-button-primary" disabled={isSaving} onClick={onNext}>{isSaving ? 'Saving…' : 'Rank my priorities'}</button>
+        <OnboardingAction disabled={isSaving} onClick={onNext}>{isSaving ? 'Saving…' : 'Rank my priorities'}</OnboardingAction>
       </nav>
     </div>
   );
 }
 
-function RankStep({ priorities, patch, onBack, onFinish, finishing, progress, sharedFor = null }) {
+function RankStep({ priorities, patch, onFinish, finishing, progress, sharedFor = null }) {
   const levels = priorityLevels(priorities);
   return (
     <div className="flh-onboarding-step">
-      <StepHeader step="rank" progress={progress} sharedFor={sharedFor} title="Now rank what matters most." lead="Everything you chose began as Important. Drag a priority between levels, or tap it and choose where it belongs." />
+      <StepHeader step="rank" progress={progress} sharedFor={sharedFor} searchType={priorities.onboardingSearchType} title="Now rank what matters most." lead="Everything you chose began as Important. Drag a priority between levels, or tap it and choose where it belongs." />
       <RankBoard
         levels={levels}
         showDescriptions
@@ -234,8 +234,7 @@ function RankStep({ priorities, patch, onBack, onFinish, finishing, progress, sh
         onGaragePreferenceChange={(value) => patch((next) => setGaragePreference(next, value))}
       />
       <nav className="flh-onboarding-actions">
-        <button type="button" className="flh-text-action" onClick={onBack}>Back</button>
-        <button type="button" className="flh-button flh-button-primary" disabled={finishing} onClick={onFinish}>{finishing ? 'Saving your search…' : (sharedFor ? 'Save and see the homes' : 'Finish')}</button>
+        <OnboardingAction disabled={finishing} onClick={onFinish}>{finishing ? 'Saving your search…' : (sharedFor ? 'Save and see the homes' : 'Finish')}</OnboardingAction>
       </nav>
     </div>
   );
@@ -397,19 +396,23 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
 
   return (
     <div className="hh-root flh-onboarding-root">
-      <main className="flh-onboarding">
-        <div className="flh-onboarding-brand"><BrandMark size={28} /><span className="hh-serif"><span>Feels Like </span><b>Home</b></span></div>
-        {sharedSetup && ownedSearchId && (
-          <p className="flh-shared-setup-exit">
-            <button type="button" className="flh-text-action" onClick={backToOwnSearch} disabled={leavingSetup}>{leavingSetup ? 'Switching…' : 'Not now—go to your own search'}</button>
-          </p>
-        )}
-        {(saveError || finishError) && <p className="hh-save-error" role="alert">{saveError || finishError} <button type="button" onClick={saveError ? retry : () => setFinishError('')}>{saveError ? 'Retry' : 'Dismiss'}</button></p>}
-        {!ready && step === 'basics' && <BasicsStep priorities={priorities} patch={patch} progress={progress} sharedFor={sharedFor} ownerName={ownerName} onNext={() => goTo('basics')} />}
-        {!ready && step === 'what_matters' && <WhatMattersStep priorities={priorities} patch={patch} progress={progress} sharedFor={sharedFor} onBack={() => goBack('what_matters')} onNext={() => goTo('what_matters')} isSaving={isSaving} />}
-        {!ready && step === 'rank' && <RankStep priorities={priorities} patch={patch} progress={progress} sharedFor={sharedFor} onBack={() => goBack('rank')} onFinish={finish} finishing={finishing} />}
-        {ready && <ReadyStep onAddHome={() => leave('/homes?add=1')} onViewSearch={() => leave('/search?welcome=1')} />}
-      </main>
+      <div className="flh-ob-layout">
+        <OnboardingRail progress={progress} labels={STEP_LABELS} complete={ready} sharedFor={sharedFor} />
+        <main className="flh-onboarding">
+          {/* Back returns to the previous step; nothing precedes the first one yet. */}
+          <OnboardingTopBar progress={progress} showProgress={!ready} onBack={!ready && progress.index > 0 ? () => goBack(step) : null} />
+          {sharedSetup && ownedSearchId && (
+            <p className="flh-shared-setup-exit">
+              <button type="button" className="flh-text-action" onClick={backToOwnSearch} disabled={leavingSetup}>{leavingSetup ? 'Switching…' : 'Not now—go to your own search'}</button>
+            </p>
+          )}
+          {(saveError || finishError) && <p className="hh-save-error" role="alert">{saveError || finishError} <button type="button" onClick={saveError ? retry : () => setFinishError('')}>{saveError ? 'Retry' : 'Dismiss'}</button></p>}
+          {!ready && step === 'basics' && <BasicsStep priorities={priorities} patch={patch} progress={progress} sharedFor={sharedFor} ownerName={ownerName} onNext={() => goTo('basics')} />}
+          {!ready && step === 'what_matters' && <WhatMattersStep priorities={priorities} patch={patch} progress={progress} sharedFor={sharedFor} onNext={() => goTo('what_matters')} isSaving={isSaving} />}
+          {!ready && step === 'rank' && <RankStep priorities={priorities} patch={patch} progress={progress} sharedFor={sharedFor} onFinish={finish} finishing={finishing} />}
+          {ready && <ReadyStep onAddHome={() => leave('/homes?add=1')} onViewSearch={() => leave('/search?welcome=1')} />}
+        </main>
+      </div>
       <BetaFeedback userId={userId} searchId={searchId} searchType={priorities.searchType} appVersion={appVersion} sendFeedback={services.submitFeedback} />
     </div>
   );

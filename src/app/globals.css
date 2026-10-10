@@ -1820,13 +1820,8 @@ details[open] > summary .hh-accordion-chevron, .hh-more-home-details:has(.hh-mor
 
 /* Onboarding */
 .flh-onboarding { max-width: 600px; margin: 0 auto; padding: var(--flh-flow-top-20) 0 calc(24px + env(safe-area-inset-bottom)); }
-.flh-onboarding-brand { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 20px; font-size: 17px; }
-.flh-onboarding-brand b { color: var(--brick); }
 .flh-onboarding-step { display: grid; gap: 14px; }
 .flh-onboarding-header { margin-bottom: 4px; }
-.flh-onboarding-progress { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; margin-bottom: 18px; }
-.flh-onboarding-progress span { height: 4px; border-radius: 999px; background: var(--line); }
-.flh-onboarding-progress span.is-done { background: var(--brick); }
 .flh-onboarding-actions { position: sticky; bottom: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; padding: 14px 0 calc(10px + env(safe-area-inset-bottom)); background: linear-gradient(to bottom, rgba(250,246,239,0), var(--paper) 16px); }
 .flh-onboarding-actions .flh-button-primary { min-width: 180px; }
 .flh-basics-card .flh-option-group:first-of-type { margin-top: 18px; }
@@ -2215,3 +2210,95 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 
 /* Shared-search setup: a quiet way out to the person's own search, never a trap. */
 .flh-shared-setup-exit { margin: 4px 0 0; text-align: center; }
+
+/* ── Onboarding V2 shell (Phase 1) ───────────────────────────────────────────
+   Frame only: background, columns, top bar, progress, type scale, step rhythm
+   and the forward action. Step content keeps its existing styles. Every rule is
+   scoped to .flh-onboarding-root, so no other page can be affected.
+   Measured from the approved mobile design (393pt wide): 22px gutters,
+   6-segment 3px progress with 6px gaps, Fraunces 35/1.03 titles, 15/1.5 leads,
+   20px card radius and padding, 56px CTA with 14px corners and a 42px arrow tile.
+     ≤700px   phone: single column, sticky action bar (as today)
+     701–959  tablet: centred 600px column, sticky action bar
+     ≥960px   desktop: rail (brand, steps, reassurance) + 600px step column,
+              actions in normal document flow                                  */
+.flh-onboarding-root {
+  --ob-line: #DDD5CA;      /* card, control and back-button borders in the design */
+  --ob-track: #E2DBD0;     /* unfilled progress segments */
+  --ob-gutter: 22px;
+  --ob-measure: 600px;     /* widest step column at any size */
+  --ob-rhythm: 20px;       /* vertical gap between a step's blocks */
+  --ob-title-size: 35px;
+}
+/* The phone reservation for a bottom navigation bar does not apply: onboarding
+   has none, and it left ~130px of empty space below the last action. */
+.hh-root.flh-onboarding-root:not(.hh-focused-route):has(> .beta-feedback) { padding: 0 var(--ob-gutter); }
+.hh-root.flh-onboarding-root { padding: 0 var(--ob-gutter); }
+.flh-onboarding-root .flh-onboarding { padding-top: var(--flh-flow-top-10); }
+
+/* Top bar: back · brand · step count, then the progress segments. Grid areas keep
+   the brand centred whether or not a Back button is present. */
+.flh-ob-topbar { margin-bottom: 28px; }
+.flh-ob-topbar-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; grid-template-areas: "back brand count"; align-items: center; min-height: 44px; }
+.flh-ob-back { grid-area: back; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1px solid var(--ob-line); border-radius: 50%; background: var(--flh-card); color: var(--ink); cursor: pointer; }
+.flh-ob-back:hover { background: #fff; }
+.flh-ob-brand { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.flh-ob-topbar .flh-ob-brand { grid-area: brand; justify-self: center; }
+.flh-ob-wordmark { color: var(--ink); font: 600 17px/1.1 var(--font-serif); letter-spacing: -.01em; white-space: nowrap; }
+.flh-ob-wordmark b { color: var(--brick); font-weight: 600; }
+.flh-ob-count { grid-area: count; justify-self: end; color: var(--ink-soft); font: 600 12px/1 var(--font-sans); font-variant-numeric: tabular-nums; }
+.flh-ob-progress { display: grid; grid-template-columns: repeat(var(--ob-steps, 1), minmax(0, 1fr)); gap: 6px; margin-top: 12px; }
+.flh-ob-progress span { height: 3px; border-radius: 999px; background: var(--ob-track); }
+.flh-ob-progress span.is-done { background: var(--brick); }
+
+/* Type and rhythm inside a step. */
+.flh-onboarding-root .flh-onboarding-step { gap: var(--ob-rhythm); }
+.flh-onboarding-root .flh-onboarding-header { margin: 0; }
+.flh-onboarding-root .flh-onboarding-header .flh-eyebrow { margin: 0 0 10px; font-size: 11.5px; letter-spacing: .12em; }
+.flh-onboarding-root .flh-page-title { font-size: var(--ob-title-size); line-height: 1.03; letter-spacing: -.025em; }
+.flh-onboarding-root .flh-lead { margin-top: 16px; font-size: 15px; line-height: 1.5; }
+.flh-onboarding-root .flh-card { padding: 20px; border-color: var(--ob-line); border-radius: 20px; }
+/* Notices between the top bar and the step (save errors, the shared-setup exit) share the step rhythm. */
+.flh-onboarding-root .flh-onboarding > .hh-save-error, .flh-onboarding-root .flh-shared-setup-exit { margin: 0 0 var(--ob-rhythm); }
+
+/* Forward action: full width, label left, arrow tile right. */
+.flh-onboarding-root .flh-onboarding-actions { display: block; margin-top: 8px; }
+.flh-ob-cta { justify-content: space-between; width: 100%; min-height: 56px; padding: 0 7px 0 20px; border-radius: 14px; font-size: 17px; box-shadow: 0 12px 24px -14px rgba(185,83,50,.6); }
+.flh-ob-cta-icon { display: grid; place-items: center; flex-shrink: 0; width: 42px; height: 42px; border-radius: 10px; background: rgba(255,255,255,.16); }
+
+/* Desktop-only rail: hidden on phones and tablets, where the top bar does its job. */
+.flh-ob-rail { display: none; }
+
+@media (max-width: 360px) {
+  .flh-onboarding-root { --ob-gutter: 16px; --ob-title-size: 32px; }
+}
+
+@media (min-width: 701px) {
+  .flh-onboarding-root { --ob-gutter: 32px; --ob-title-size: 40px; }
+  .flh-onboarding-root .flh-onboarding { padding-top: 32px; }
+}
+
+@media (min-width: 960px) {
+  .flh-onboarding-root { --ob-rhythm: 24px; --ob-title-size: 42px; }
+  .flh-ob-layout { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, var(--ob-measure)); column-gap: clamp(48px, 7vw, 112px); justify-content: center; align-items: start; padding: 56px 0 72px; }
+  .flh-onboarding-root .flh-onboarding { max-width: none; margin: 0; padding: 0; }
+  .flh-ob-rail { position: sticky; top: calc(var(--flh-safe-top) + 56px); display: grid; gap: 32px; }
+  .flh-ob-rail .flh-ob-wordmark { font-size: 24px; }
+  .flh-ob-rail-head { display: grid; justify-items: start; gap: 10px; }
+  .flh-ob-rail-context { margin: 0; color: var(--ink-soft); font-size: 14px; line-height: 1.45; }
+  .flh-ob-steps { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+  .flh-ob-steps li { display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: center; gap: 12px; min-height: 40px; color: var(--ink-soft); font: 500 15px/1.3 var(--font-sans); }
+  .flh-ob-steps li.is-current { color: var(--ink); font-weight: 700; }
+  .flh-ob-step-marker { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--ob-line); border-radius: 50%; background: var(--flh-card); font: 700 12px/1 var(--font-sans); font-variant-numeric: tabular-nums; }
+  .flh-ob-steps li.is-current .flh-ob-step-marker { border-color: var(--brick); background: var(--brick); color: #fff; }
+  .flh-ob-steps li.is-done .flh-ob-step-marker { border-color: var(--flh-sage-line); background: var(--flh-sage-bg); color: var(--flh-sage-ink); }
+  .flh-ob-reassurance { display: grid; gap: 10px; margin: 0; padding: 20px 0 0; border-top: 1px solid var(--ob-line); list-style: none; color: var(--ink-soft); font-size: 14px; line-height: 1.45; }
+  /* Brand and progress move to the rail; the top bar keeps only Back. */
+  .flh-ob-topbar .flh-ob-brand, .flh-ob-count, .flh-ob-topbar .flh-ob-progress { display: none; }
+  .flh-ob-topbar { margin-bottom: 20px; }
+  .flh-ob-topbar:not(:has(.flh-ob-back)) { display: none; }
+  .flh-ob-topbar-row { display: flex; }
+  /* Actions in normal document flow, not a sticky phone bar. */
+  .flh-onboarding-root .flh-onboarding-actions { position: static; margin-top: 12px; padding: 0; background: none; }
+  .flh-ob-cta { width: auto; min-width: 280px; gap: 32px; }
+}
