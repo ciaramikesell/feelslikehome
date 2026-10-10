@@ -154,7 +154,10 @@ test('drag and tap both move a priority by changing only its level', () => {
 test('final persistence: onboarding saves through the participant’s own row before completing', () => {
   const onboarding = read('src/components/onboarding/Onboarding.jsx');
   assert.match(onboarding, /savePriorities\(createClient\(\), \{ id: searchId \}, userId, next\)/);
-  assert.match(onboarding, /await flush\(\);\n(?:\s+\/\/.*\n)*\s+await persistPriorities\(priorities\);\n\s+await completeOnboarding\(createClient\(\), userId, \{ version, state: completeOnboardingState\(version, progressRef\.current\) \}\);/);
+  // Real pages persist through Supabase; only the dev preview swaps these out.
+  assert.match(onboarding, /completeOnboarding: \(userId, progress\) => completeOnboarding\(createClient\(\), userId, progress\)/);
+  assert.match(onboarding, /services = SUPABASE_SERVICES \}\) \{/);
+  assert.match(onboarding, /await flush\(\);\n(?:\s+\/\/.*\n)*\s+await persistPriorities\(priorities\);\n\s+await services\.completeOnboarding\(userId, \{ version, state: completeOnboardingState\(version, progressRef\.current\) \}\);/);
   assert.match(onboarding, /onMove=\{\(item, tier\) => patch\(\(next\) => moveCriterion\(next, item\.categoryKey, item\.label, tier\)\)\}/);
 });
 

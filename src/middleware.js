@@ -46,6 +46,9 @@ export const config = {
     // publicly-cacheable 200 — it's fetched by Apple's crawler, not a user
     // session, so running the Supabase session-refresh above on it would be
     // pure overhead with no benefit.
-    '/((?!_next/static|_next/image|favicon.ico|\\.well-known/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    // dev/ is the development-only onboarding preview (src/app/dev/onboarding,
+    // a 404 in production): it has no session and must render with no
+    // Supabase configuration at all.
+    '/((?!_next/static|_next/image|favicon.ico|\\.well-known/|dev/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

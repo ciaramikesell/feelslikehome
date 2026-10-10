@@ -87,7 +87,7 @@ test('three-step journey preserves choices on Back, persists before completion, 
   assert.match(onboarding, /Rank my priorities/);
   // Every step change flushes pending saves; completion flushes before marking onboarding complete.
   assert.match(onboarding, /const goTo = async \(fromStep\) => \{\n\s+await flush\(\);\n\s+const \{ state: next \} = advanceOnboarding\(version, progressRef\.current, fromStep\);/);
-  assert.match(onboarding, /await flush\(\);\n(?:\s+\/\/.*\n)*\s+await persistPriorities\(priorities\);\n\s+await completeOnboarding\(createClient\(\), userId, \{ version, state: completeOnboardingState\(version, progressRef\.current\) \}\);/);
+  assert.match(onboarding, /await flush\(\);\n(?:\s+\/\/.*\n)*\s+await persistPriorities\(priorities\);\n\s+await services\.completeOnboarding\(userId, \{ version, state: completeOnboardingState\(version, progressRef\.current\) \}\);/);
   // #73: a pending share-intake destination (see (app)/layout.js) takes over when present.
   assert.match(onboarding, /if \(pendingRedirect\) \{ router\.push\(pendingRedirect\); router\.refresh\(\); return; \}/);
   assert.match(onboarding, /Your search is ready\./);

@@ -259,6 +259,17 @@ function ReadyStep({ onAddHome, onViewSearch }) {
   );
 }
 
+// Every write onboarding makes, in one place. Real pages use these defaults;
+// the development-only preview (src/app/dev/onboarding) passes in-memory
+// stand-ins so it can never touch Supabase.
+const SUPABASE_SERVICES = Object.freeze({
+  savePriorities: (searchId, userId, next) => savePriorities(createClient(), { id: searchId }, userId, next),
+  saveProgress: (userId, progress) => saveOnboardingProgress(createClient(), userId, progress),
+  completeOnboarding: (userId, progress) => completeOnboarding(createClient(), userId, progress),
+  setActiveSearch: (userId, searchId) => setActiveSearch(createClient(), userId, searchId),
+  submitFeedback: undefined, // BetaFeedback's own Supabase default
+});
+
 // mode:
 //   'account'             first-time account onboarding (records account-level
 //                         onboarding completion and resumable progress).
@@ -268,7 +279,7 @@ function ReadyStep({ onAddHome, onViewSearch }) {
 //                         onboarding state, never another search, never another
 //                         person's preferences. Ends on that search's Homes, and
 //                         can be left for the person's own search at any time.
-export default function Onboarding({ userId, searchId, initialPriorities, initialProgress, appVersion = null, mode = 'account', ownerName = null, ownedSearchId = null }) {
+export default function Onboarding({ userId, searchId, initialPriorities, initialProgress, appVersion = null, mode = 'account', ownerName = null, ownedSearchId = null, services = SUPABASE_SERVICES }) {
   const sharedSetup = mode === 'shared_search_setup';
   const sharedFor = sharedSetup ? (ownerName ? `${/s$/i.test(ownerName) ? `${ownerName}’` : `${ownerName}’s`} search` : 'this shared search') : null;
   const router = useRouter();
@@ -279,7 +290,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
   // handoff, so finishing goes straight there when present (the canonical
   // /homes?url= intake then takes over); otherwise the completion screen shows.
   const pendingRedirect = sanitizeRedirectPath(searchParams.get('redirect'));
-  const persistPriorities = useCallback((next) => savePriorities(createClient(), { id: searchId }, userId, next), [searchId, userId]);
+  const persistPriorities = useCallback((next) => services.savePriorities(searchId, userId, next), [services, searchId, userId]);
   const { state: priorities, patch, saveError, retry, flush, isSaving } = useReliableOptimisticState(normalizePriorities(initialPriorities), persistPriorities);
   // Resumable progress (src/lib/onboardingFlow.js): the server page resolved
   // where to land for this person and this search. The gate itself is still
@@ -301,9 +312,9 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
   const saveProgress = useCallback(() => {
     // Shared-search setup is not account onboarding: its position is never stored.
     if (sharedSetup) return Promise.resolve(false);
-    saveChainRef.current = saveChainRef.current.then(() => saveOnboardingProgress(createClient(), userId, { version, state: progressRef.current }));
+    saveChainRef.current = saveChainRef.current.then(() => services.saveProgress(userId, { version, state: progressRef.current }));
     return saveChainRef.current;
-  }, [userId, version, sharedSetup]);
+  }, [services, userId, version, sharedSetup]);
   const persistProgress = useCallback((next) => {
     progressRef.current = next;
     setProgressState(next);
@@ -355,7 +366,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
   const backToOwnSearch = async () => {
     setLeavingSetup(true);
     try {
-      await setActiveSearch(createClient(), userId, ownedSearchId);
+      await services.setActiveSearch(userId, ownedSearchId);
       leave('/homes');
     } catch {
       setFinishError('Couldn’t switch back to your search. Please try again.');
@@ -372,7 +383,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
       // ends — it is what the shared-search setup gate checks — even if the
       // last screen changed nothing. Idempotent upsert of the caller's own row.
       await persistPriorities(priorities);
-      await completeOnboarding(createClient(), userId, { version, state: completeOnboardingState(version, progressRef.current) });
+      await services.completeOnboarding(userId, { version, state: completeOnboardingState(version, progressRef.current) });
       track(ANALYTICS_EVENTS.ONBOARDING_COMPLETED, eventContext);
       if (pendingRedirect) { router.push(pendingRedirect); router.refresh(); return; }
       setReady(true);
@@ -399,7 +410,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
         {!ready && step === 'rank' && <RankStep priorities={priorities} patch={patch} progress={progress} sharedFor={sharedFor} onBack={() => goBack('rank')} onFinish={finish} finishing={finishing} />}
         {ready && <ReadyStep onAddHome={() => leave('/homes?add=1')} onViewSearch={() => leave('/search?welcome=1')} />}
       </main>
-      <BetaFeedback userId={userId} searchId={searchId} searchType={priorities.searchType} appVersion={appVersion} />
+      <BetaFeedback userId={userId} searchId={searchId} searchType={priorities.searchType} appVersion={appVersion} sendFeedback={services.submitFeedback} />
     </div>
   );
 }

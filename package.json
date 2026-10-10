@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "test": "node --test test/*.test.js",
-    "start": "next start"
+    "start": "next start",
+    "visual:onboarding": "node scripts/visual/onboarding-screens.mjs"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.1",
@@ -20,6 +21,7 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@capacitor/cli": "^8.5.2"
+    "@capacitor/cli": "^8.5.2",
+    "playwright": "1.56.1"
   }
 }

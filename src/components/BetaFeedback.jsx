@@ -19,7 +19,11 @@ const TYPE_LABELS = {
   idea: 'Idea',
 };
 
-export default function BetaFeedback({ userId, searchId = null, searchType = null, appVersion = null, enabled = BETA_FEEDBACK_ENABLED }) {
+const submitToSupabase = (payload) => submitBetaFeedback(createClient(), payload);
+
+// sendFeedback: where a finished report goes. Always Supabase in the app; the
+// development-only onboarding preview passes a no-op so it can never write.
+export default function BetaFeedback({ userId, searchId = null, searchType = null, appVersion = null, enabled = BETA_FEEDBACK_ENABLED, sendFeedback = submitToSupabase }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('');
@@ -72,7 +76,7 @@ export default function BetaFeedback({ userId, searchId = null, searchType = nul
         userAgent: navigator.userAgent,
         appVersion,
       });
-      await submitBetaFeedback(createClient(), payload);
+      await sendFeedback(payload);
       setStatus('success');
       resetTimer.current = setTimeout(() => {
         setMessage('');

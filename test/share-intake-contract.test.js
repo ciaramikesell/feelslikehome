@@ -159,7 +159,7 @@ test('onboarding honors a pending redirect destination on completion, without ch
   assert.match(onboarding, /const pendingRedirect = sanitizeRedirectPath\(searchParams\.get\('redirect'\)\);/);
   // A pending /homes?url= (or other) destination goes straight there once
   // onboarding is complete; otherwise the three-step flow ends on its ready state.
-  assert.match(onboarding, /await completeOnboarding\(createClient\(\), userId, \{ version, state: completeOnboardingState\(version, progressRef\.current\) \}\);\n\s+track\(ANALYTICS_EVENTS\.ONBOARDING_COMPLETED, eventContext\);\n\s+if \(pendingRedirect\) \{ router\.push\(pendingRedirect\); router\.refresh\(\); return; \}\n\s+setReady\(true\);/);
+  assert.match(onboarding, /await services\.completeOnboarding\(userId, \{ version, state: completeOnboardingState\(version, progressRef\.current\) \}\);\n\s+track\(ANALYTICS_EVENTS\.ONBOARDING_COMPLETED, eventContext\);\n\s+if \(pendingRedirect\) \{ router\.push\(pendingRedirect\); router\.refresh\(\); return; \}\n\s+setReady\(true\);/);
   assert.match(onboarding, /const STEP_LABELS = \{ basics: 'The Basics', what_matters: 'What Matters', rank: 'Rank Priorities' \};/);
 });
 
