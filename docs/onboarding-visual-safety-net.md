@@ -10,11 +10,12 @@ fixtures.
 
 - **No sign-in, and no Supabase reads or writes.** Every write goes through the
   component's `services` prop. The preview passes in-memory stand-ins, and that
-  includes feedback submission. The middleware skips `/dev/`, so the page renders
-  with no Supabase configuration at all.
-- **404 in production.** Production builds always return 404, and that includes
-  Vercel previews, which run `NODE_ENV=production`. Tests in
-  `test/onboarding-preview.test.js` guard this.
+  includes feedback submission. In development the middleware skips its session
+  refresh for `/dev/`, so the page renders with no Supabase configuration at all.
+- **404 in production.** In production builds, which includes Vercel previews
+  (they run `NODE_ENV=production`), the middleware answers a real HTTP 404 for
+  every `/dev/` path before anything renders. The page itself also calls
+  `notFound()`. Tests in `test/onboarding-preview.test.js` guard both.
 
 Query parameters:
 
@@ -41,6 +42,12 @@ npm run visual:onboarding -- reference figma/basics.png visual/after/basics-popu
 
 - **Widths:** 390, 768, 1024 and 1440 px, at a device scale factor of 1, with
   reduced motion. Captures wait until fonts and images have loaded.
+- **Scenarios:**
+  - Basics: empty, populated and save error;
+  - What Matters;
+  - Rank;
+  - the completion screen;
+  - shared-search setup.
 - **Views:** for each scenario and width, three views:
   - `top`: the first screen;
   - `end`: scrolled to the bottom, which shows where a sticky action bar meets the

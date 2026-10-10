@@ -2,6 +2,15 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 
 export async function middleware(request) {
+  // /dev/ holds development-only tools (the onboarding preview). Production
+  // answers a real 404 before anything else runs; in development they need no
+  // session and no Supabase configuration, so the session refresh is skipped.
+  if (request.nextUrl.pathname.startsWith('/dev/')) {
+    return process.env.NODE_ENV === 'production'
+      ? new NextResponse('Not found', { status: 404 })
+      : NextResponse.next();
+  }
+
   // Layouts (unlike page.js) never receive the current path/query as a prop —
   // a well-known Next.js App Router gap — so the auth gate in
   // src/app/(app)/layout.js has no way to know it was e.g. `/homes?url=...`
@@ -46,9 +55,6 @@ export const config = {
     // publicly-cacheable 200 — it's fetched by Apple's crawler, not a user
     // session, so running the Supabase session-refresh above on it would be
     // pure overhead with no benefit.
-    // dev/ is the development-only onboarding preview (src/app/dev/onboarding,
-    // a 404 in production): it has no session and must render with no
-    // Supabase configuration at all.
-    '/((?!_next/static|_next/image|favicon.ico|\\.well-known/|dev/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|\\.well-known/|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

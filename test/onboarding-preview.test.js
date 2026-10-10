@@ -32,7 +32,9 @@ test('every onboarding write goes through the injectable services, defaulting to
   assert.match(feedback, /sendFeedback = submitToSupabase \}\) \{/);
 });
 
-test('middleware skips only the preview path, keeping every product route session-refreshed', () => {
+test('middleware answers 404 for /dev/ in production and skips only that path in development', () => {
   const middleware = read('src/middleware.js');
-  assert.match(middleware, /'\/\(\(\?!_next\/static\|_next\/image\|favicon\.ico\|\\\\\.well-known\/\|dev\/\|/);
+  assert.match(middleware, /if \(request\.nextUrl\.pathname\.startsWith\('\/dev\/'\)\) \{\n\s+return process\.env\.NODE_ENV === 'production'\n\s+\? new NextResponse\('Not found', \{ status: 404 \}\)\n\s+: NextResponse\.next\(\);/);
+  // Every other route still refreshes the session: the matcher is unchanged.
+  assert.doesNotMatch(middleware, /\|dev\/\|/);
 });
