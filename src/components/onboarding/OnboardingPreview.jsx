@@ -126,9 +126,11 @@ export default function OnboardingPreview({ step = 'basics', state = 'empty', mo
     const sixStepDetails = version === 3 && ['priorities', 'rank'].includes(target);
     const withDetails = (next) => {
       if (!sixStepDetails) return next;
+      // A fresh buyer: only what choosing "a home to buy" sets (House).
+      if (state === 'empty') return applySearchChoice(normalizePriorities({}), 'home_buy');
       if (state === 'legacy') return { ...next, homeLayout: { values: ['Ranch / Single Story'], tier: 'dontcare' } };
       if (state !== 'populated') return next;
-      return { ...next, homeLayout: { values: ['Ranch / Single Story', 'Two Story'], tier: 'important' }, homeCondition: { values: ['Move-In Ready'], tier: 'nice' }, preferredPropertyTypes: { values: ['house', 'condo'], tier: 'must' } };
+      return { ...next, homeLayout: { values: ['Ranch / Single Story', 'Two Story'], tier: 'important' }, homeCondition: { values: ['Move-In Ready', 'New Construction'], tier: 'nice' }, preferredPropertyTypes: { values: ['house', 'condo'], tier: 'must' } };
     };
     return {
       progress,

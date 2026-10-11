@@ -23,7 +23,7 @@ const choicesOf = (priorities) => Object.fromEntries(whatMattersGroups(prioritie
 test('Step 4 offers the approved home details for buyers, using the existing option values', () => {
   assert.deepEqual(choicesOf(buy()), {
     preferredPropertyTypes: ['House', 'Condo', 'Multifamily'],
-    homeLayout: ['Ranch', 'Two Story'],
+    homeLayout: ['Ranch', 'Two Story', 'Other'],
     homeCondition: ['New Construction', 'Move-in Ready', 'Renovation Potential'],
   });
   // Renting a home keeps its existing property types and has no layout/condition; apartments have none.
@@ -37,9 +37,6 @@ test('no duplicate concepts: Garage is the existing criterion, and condition is 
   for (const duplicate of ['features:Move-in Ready', 'features:Renovation Potential', 'features:New Construction', 'exterior:Attached garage']) {
     assert.ok(!offered.includes(duplicate), duplicate);
   }
-  const onboarding = read('src/components/onboarding/Onboarding.jsx');
-  // In Step 4 Garage is moved into Home Features (shown once), never duplicated.
-  assert.match(onboarding, /title === 'Home Features' \? \[\.\.\.items\.filter\(\(criterion\) => !isGarage\(criterion\)\), garageItem\] : items\.filter\(\(criterion\) => !isGarage\(criterion\)\)/);
   // Ranking keys never collide with criterion keys.
   let priorities = addCriterion(buy(), { categoryKey: 'exterior', label: 'Garage', kind: 'check' });
   priorities = toggleGroupValue(toggleGroupValue(priorities, 'homeLayout', 'Ranch / Single Story'), 'homeCondition', 'Move-In Ready');
@@ -93,7 +90,7 @@ test('earlier Basics answers are kept and shown, but never ranked or scored with
   // As the old Basics stored them: values with no importance.
   const legacy = normalizePriorities({ ...buy(), homeLayout: { values: ['Ranch / Single Story', 'Other'], tier: 'dontcare' }, preferredPropertyTypes: { values: ['house', 'townhome'], tier: 'important' } });
   assert.equal(isGroupValueSelected(legacy, 'homeLayout', 'Ranch / Single Story'), true);
-  assert.deepEqual(choicesOf(legacy).homeLayout, ['Ranch', 'Two Story', 'Other'], 'a saved value no longer offered stays visible');
+  assert.deepEqual(choicesOf(legacy).homeLayout, ['Ranch', 'Two Story', 'Other']);
   assert.deepEqual(choicesOf(legacy).preferredPropertyTypes, ['House', 'Condo', 'Multifamily', 'Townhome']);
   assert.deepEqual(unrankedGroups(legacy), ['homeLayout']);
   assert.ok(!groupPriorityItems(legacy).some((item) => item.key === 'group:homeLayout'));
@@ -115,8 +112,10 @@ test('the six-step flow hides home details on Step 1; the live flow keeps them',
   // The live Rank step and What Matters step are unchanged when not in the six-step flow.
   assert.match(onboarding, /const levels = sixStep \? priorityLevelsWithGroups\(priorities\) : priorityLevels\(priorities\);/);
   assert.match(onboarding, /title="What matters to you\?" lead="For now, just choose what matters\./);
-  // Step 4 copy (approved Figma).
+  // Step 4 copy (approved Figma), on its own screen; the live What Matters step is the original.
   assert.match(onboarding, /title=\{<>What matters <em>most\?<\/em><\/>\} lead="Choose anything you’d weigh when comparing homes\. You’ll rank your picks next\."/);
+  assert.match(onboarding, /step === 'priorities' && \(\n\s+<WhatMattersStepV2/);
+  assert.doesNotMatch(onboarding, /sixStep = false \}\) \{\n  const suggested/);
   // The existing criteria board is unchanged.
   assert.deepEqual(priorityLevels(buy()).map((level) => level.items.length), [0, 0, 0]);
 });
@@ -150,4 +149,63 @@ dbTest('Step 4 choices and Step 5 ranks persist in the person’s own preference
   assert.deepEqual(reloaded.homeCondition, { values: ['Renovation Potential'], tier: 'nice' });
   assert.deepEqual(reloaded.preferredPropertyTypes.values, ['house', 'condo']);
   assert.deepEqual(priorityLevelsWithGroups(reloaded).map((level) => level.items.map((item) => item.key)), priorityLevelsWithGroups(priorities).map((level) => level.items.map((item) => item.key)));
+});
+
+/* --------------------------- Step 4 Figma catalog --------------------------- */
+
+const { UNSUPPORTED_FIGMA_OPTIONS, chipKey, isChipSelected, moreToConsider, picksCount, whatMattersSections } = await import('../src/lib/whatMattersCatalog.js');
+const { toggleCriterion, moveCriterion, isCriterionSelected } = await import('../src/lib/searchProfile.js');
+
+test('the Step 4 catalog uses only existing canonical identities, with the approved wording', () => {
+  const sections = whatMattersSections(buy());
+  const table = sections.map((section) => [section.title, section.chips.map((chip) => `${chip.text} → ${chipKey(chip)}`)]);
+  assert.deepEqual(table, [
+    ['Neighborhood', ['Quiet street → location:Quiet street', 'Walkable to town → location:Walkable to Town', 'Great schools → location:Reputable Schools', 'Parks nearby → location:Parks nearby', 'Near the water → location:Near waterfront']],
+    ['The home', ['Big backyard → exterior:Large backyard', 'Home office → features:Home office', 'Primary suite → features:Primary ensuite', 'Guest space → features:Guest Bedroom', 'Finished basement → features:Finished basement', 'Move-in ready → homeCondition=Move-In Ready', 'Room to renovate → homeCondition=Renovation Potential']],
+    ['Property type', ['House → preferredPropertyTypes=house', 'Condo → preferredPropertyTypes=condo', 'Multifamily → preferredPropertyTypes=multifamily']],
+    ['Layout', ['Ranch → homeLayout=Ranch / Single Story', 'Two story → homeLayout=Two Story', 'Other → homeLayout=Other']],
+    ['Home features', ['Garage → exterior:Garage', 'New construction → homeCondition=New Construction']],
+  ]);
+  const offered = new Set(flatOnboardingSuggestions('home_buy').map((item) => `${item.categoryKey}:${item.label}`));
+  for (const chip of sections.flatMap((section) => section.chips).filter((entry) => entry.type === 'criterion')) assert.ok(offered.has(chipKey(chip)), chipKey(chip));
+  assert.deepEqual(UNSUPPORTED_FIGMA_OPTIONS.map((option) => option.text), ['Easy commute', 'Natural light', 'Open kitchen']);
+});
+
+test('nothing currently offered is removed: every other criterion stays under More to consider, with no duplicates', () => {
+  const priorities = buy();
+  const shown = [...whatMattersSections(priorities).flatMap((section) => section.chips), ...moreToConsider(priorities)].filter((chip) => chip.type === 'criterion').map(chipKey);
+  assert.equal(new Set(shown).size, shown.length, 'no chip appears twice');
+  assert.deepEqual([...shown].sort(), flatOnboardingSuggestions('home_buy').map((item) => `${item.categoryKey}:${item.label}`).sort());
+});
+
+test('renters see their own supported options; apartments keep their catalog', () => {
+  const rent = whatMattersSections(applySearchChoice(normalizePriorities({}), 'home_rent'));
+  const keys = rent.flatMap((section) => section.chips.map(chipKey));
+  assert.ok(!keys.some((key) => key.startsWith('homeLayout') || key.startsWith('homeCondition')));
+  assert.deepEqual(rent.find((section) => section.title === 'Property type').chips.map((chip) => chip.text), ['House', 'Townhome', 'Condo']);
+  const apartment = whatMattersSections(applySearchChoice(normalizePriorities({}), 'apartment_rent'));
+  assert.deepEqual(apartment.map((section) => section.title), ['The Unit', 'The Property', 'Living There']);
+  assert.deepEqual(moreToConsider(applySearchChoice(normalizePriorities({}), 'apartment_rent')), []);
+});
+
+test('choosing a chip adds it at Important; a saved level is kept; deselecting removes it', () => {
+  const garage = whatMattersSections(buy()).flatMap((section) => section.chips).find((chip) => chipKey(chip) === 'exterior:Garage');
+  let priorities = toggleCriterion(buy(), garage);
+  assert.equal(priorities.exterior.tiers.Garage, 'important');
+  priorities = moveCriterion(priorities, 'exterior', 'Garage', 'must');
+  assert.equal(isChipSelected(priorities, garage), true, 'a Must Have shows as chosen and is not reset');
+  assert.equal(priorities.exterior.tiers.Garage, 'must');
+  priorities = toggleCriterion(priorities, garage);
+  assert.equal(isCriterionSelected(priorities, 'exterior', 'Garage'), false);
+});
+
+test('picks count every chosen criterion and option; the CTA reads Skip for now only with nothing chosen', () => {
+  const none = { ...buy(), preferredPropertyTypes: { values: [], tier: 'important' } };
+  assert.equal(picksCount(none), 0);
+  assert.equal(picksCount(buy()), 1, 'House is chosen by "a home to buy"');
+  const step = read('src/components/onboarding/WhatMattersStepV2.jsx');
+  assert.match(step, /\{isSaving \? 'Saving…' : picks \? 'Rank my priorities' : 'Skip for now'\}/);
+  assert.match(step, /aria-pressed=\{selected\}/);
+  // No counter at the top of the step.
+  assert.doesNotMatch(step, /HelperRow|flh-count-row/);
 });

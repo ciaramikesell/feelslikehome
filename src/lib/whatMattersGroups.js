@@ -2,7 +2,7 @@
 // "What Matters" choices. Not a new priority system — each is one of the
 // existing grouped preferences on the participant's priorities document:
 //
-//   homeLayout             { values: [...], tier }   (Ranch / Two Story)
+//   homeLayout             { values: [...], tier }   (Ranch / Two Story / Other)
 //   homeCondition          { values: [...], tier }   (New Construction / Move-In Ready / Renovation Potential)
 //   preferredPropertyTypes { values: [...], tier }   (house / condo / multifamily)
 //
@@ -17,12 +17,11 @@ import { normalizePriorities } from './constants.js';
 import { PROPERTY_TYPE_LABELS } from './searchIntent.js';
 import { CONDITION_CHOICES, LAYOUT_CHOICES, PRIORITY_LEVELS, basicsFieldsFor, priorityLevels, searchExperienceKey } from './searchProfile.js';
 
-const LAYOUT_OFFERED = LAYOUT_CHOICES.filter((choice) => choice.value !== 'Other');
 const NO_PREFERENCE = 'No Preference';
 
 const GROUP_DEFS = Object.freeze({
   preferredPropertyTypes: { title: 'Property type', rankLabel: 'Property type', hint: 'Choose any that would work. A home only needs to be one of them.' },
-  homeLayout: { title: 'Home style', rankLabel: 'Home style', hint: 'Choose any that would work. A home only needs to be one of them.' },
+  homeLayout: { title: 'Layout', rankLabel: 'Layout', hint: 'Choose any that would work. A home only needs to be one of them.' },
   homeCondition: { title: 'Condition', rankLabel: 'Condition', hint: 'Choose any that would work. A home only needs to match one.' },
 });
 
@@ -39,7 +38,7 @@ export function whatMattersGroups(raw) {
   const fields = basicsFieldsFor(searchExperienceKey(priorities));
   const offered = {
     preferredPropertyTypes: fields.propertyTypes,
-    homeLayout: fields.layout ? LAYOUT_OFFERED.map((choice) => choice.value) : [],
+    homeLayout: fields.layout ? LAYOUT_CHOICES.map((choice) => choice.value) : [],
     homeCondition: fields.condition ? CONDITION_CHOICES.map((choice) => choice.value) : [],
   };
   return Object.entries(offered)
