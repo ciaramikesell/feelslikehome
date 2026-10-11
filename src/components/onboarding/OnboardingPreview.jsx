@@ -61,6 +61,7 @@ function previewAreaSearch(query) {
 function previewServices(fail) {
   const settle = () => (fail ? Promise.reject(new Error('Preview save failure')) : Promise.resolve(true));
   let nextPlace = 1;
+  const invites = new Map();
   return {
     savePriorities: settle,
     saveProgress: () => Promise.resolve(true),
@@ -70,6 +71,15 @@ function previewServices(fail) {
     createPlace: (searchId, userId, place) => (fail ? Promise.reject(new Error('Preview save failure')) : Promise.resolve({ id: `preview-place-${nextPlace++}`, ...place, maxDriveMinutes: null })),
     deletePlace: () => settle(),
     searchAreas: previewAreaSearch,
+    // Invite links held in memory. Reuses an open link for the same email and
+    // relationship, as the real service does; state=error makes creation fail.
+    createInvite: (searchId, userId, email, relationshipType) => {
+      if (fail) return Promise.reject(new Error('Preview invite failure'));
+      const key = `${relationshipType}:${email.trim().toLowerCase()}`;
+      if (!invites.has(key)) invites.set(key, { id: `preview-invite-${invites.size + 1}`, invited_email: email.trim().toLowerCase(), relationship_type: relationshipType, token: `00000000-0000-4000-8000-${String(invites.size + 1).padStart(12, '0')}`, status: 'pending', expires_at: '2026-01-08T00:00:00.000Z' });
+      else return Promise.resolve({ ...invites.get(key), reused: true });
+      return Promise.resolve(invites.get(key));
+    },
     AddressField: PreviewAddressField,
   };
 }
@@ -92,6 +102,14 @@ function PreviewAddressField({ value, onChange, onSelect, placeholder }) {
   );
 }
 
+// Step 3 "returning" sample: a co-buyer who joined and an open Realtor invite link.
+const PREVIEW_PEOPLE = {
+  coBuyers: [{ name: 'Jordan' }],
+  realtors: 0,
+  pending: [{ id: 'preview-invite-realtor', email: 'agent@example.com', type: 'realtor', token: '00000000-0000-4000-8000-0000000000aa', expiresAt: '2026-01-08T00:00:00.000Z' }],
+  ownerName: null,
+};
+
 const PREVIEW_PLACES = [{ id: 'preview-place-work', label: 'Work', address: '500 Woodward Ave, Detroit, MI 48226', maxDriveMinutes: null }];
 
 function withPreviewAreas(priorities) {
@@ -106,8 +124,9 @@ export default function OnboardingPreview({ step = 'basics', state = 'empty', mo
     const context = { searchId: SEARCH_ID, role: shared ? 'co_buyer' : 'owner' };
     const steps = onboardingStepsFor(version, { context });
     const target = steps.includes(step) ? step : steps[0];
+    const returningToPeople = target === 'collaboration' && state === 'populated' && !shared;
     const progress = beginOnboarding({
-      storedState: { step: target, completed: steps.slice(0, steps.indexOf(target)), startedAt: NOW, context },
+      storedState: { step: target, completed: steps.slice(0, steps.indexOf(target)), startedAt: NOW, context, answers: returningToPeople ? { collaboration: 'co_buyer_and_realtor' } : {} },
       storedVersion: version,
       context,
       now: NOW,
@@ -120,6 +139,7 @@ export default function OnboardingPreview({ step = 'basics', state = 'empty', mo
       progress,
       priorities: target === 'locations' && state === 'populated' ? withPreviewAreas(priorities) : priorities,
       places: target === 'locations' && state === 'populated' ? PREVIEW_PLACES : [],
+      people: shared ? { coBuyers: [], realtors: 0, pending: [], ownerName: 'Ciara' } : returningToPeople ? PREVIEW_PEOPLE : null,
     };
   }, [step, state, shared, version]);
   const services = useMemo(() => previewServices(state === 'error'), [state]);
@@ -128,6 +148,8 @@ export default function OnboardingPreview({ step = 'basics', state = 'empty', mo
     <Onboarding
       key={`${step}:${state}:${mode}:${flow}`}
       initialPlaces={fixture.places}
+      initialPeople={fixture.people}
+      accountEmail="you@example.com"
       userId={USER_ID}
       searchId={SEARCH_ID}
       initialPriorities={fixture.priorities}

@@ -9,7 +9,7 @@ import OnboardingPreview from '@/components/onboarding/OnboardingPreview';
 // Vercel previews, which run NODE_ENV=production) always answer 404.
 //
 //   /dev/onboarding?step=basics|what_matters|rank&state=empty|populated|error&mode=account|shared
-//   /dev/onboarding?flow=v2&step=basics|locations&…   (the approved six-step flow, not live)
+//   /dev/onboarding?flow=v2&step=basics|locations|collaboration&…   (the approved six-step flow, not live)
 export const dynamic = 'force-dynamic';
 export const metadata = { robots: { index: false, follow: false } };
 

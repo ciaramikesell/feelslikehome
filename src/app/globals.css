@@ -2458,3 +2458,69 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-ob-place-address .hh-input { min-height: 48px; border-radius: 12px; font-size: 16px; }
 .flh-ob-place-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 .flh-ob-unbuilt { color: var(--ink-soft); }
+
+/* ── Onboarding V2 — Step 3: Your People (Phase 2C) ────────────────────────────
+   From the approved Your People design: two softly rounded person cards (peach
+   icon tile, Fraunces title, round add control on the right), a sage "How
+   sharing works" disclosure, a quiet centred note, and "Maybe later" beside
+   Continue. Selected cards take the terracotta selected state used in Steps 1–2.
+   Scoped to the onboarding root and the flh-ob- prefix. */
+.flh-ob-people-cards { display: grid; gap: 14px; }
+.flh-ob-person { border: 1px solid var(--ob-line); border-radius: 20px; background: var(--flh-card); transition: border-color .15s ease, background-color .15s ease; }
+.flh-ob-person.is-selected { border-color: var(--brick); background: #FDF6F1; }
+.flh-ob-person-toggle { display: flex; align-items: center; gap: 16px; width: 100%; min-height: 112px; padding: 20px; border: 0; border-radius: inherit; background: none; color: inherit; text-align: left; cursor: pointer; }
+.flh-ob-person-toggle[aria-disabled="true"] { cursor: default; }
+.flh-ob-person-toggle:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.flh-ob-person-icon { display: grid; flex-shrink: 0; place-items: center; width: 56px; aspect-ratio: 1; border-radius: 16px; background: #F6E3D8; color: var(--brick); }
+.flh-ob-person-copy { display: grid; flex: 1 1 auto; gap: 6px; min-width: 0; }
+.flh-ob-person-title { color: var(--ink); font: 600 20px/1.2 var(--font-serif); letter-spacing: -.01em; }
+.flh-ob-person-desc { color: var(--ink-soft); font: 500 12px/1.45 var(--font-sans); }
+.flh-ob-person-check { display: grid; flex-shrink: 0; place-items: center; width: 32px; aspect-ratio: 1; border: 1px solid var(--ob-line); border-radius: 50%; background: #fff; color: var(--ink); }
+.flh-ob-person.is-selected .flh-ob-person-check { border-color: var(--brick); background: var(--brick); color: #fff; }
+.flh-ob-person-status { justify-self: start; margin-top: 2px; padding: 3px 9px; border-radius: 999px; font: 700 10px/1.4 var(--font-sans); letter-spacing: .05em; text-transform: uppercase; }
+.flh-ob-person-status.is-joined { background: var(--sage); color: var(--positive); }
+.flh-ob-person-status.is-pending { background: var(--ob-warm); color: var(--brick-deep); }
+
+/* The optional invitation, inside the selected card. */
+.flh-ob-invite { display: grid; gap: 14px; margin: 0 20px 20px; padding-top: 16px; border-top: 1px solid var(--ob-line); }
+.flh-ob-invite-note { margin: 0; color: var(--ink-soft); font: 500 13px/1.45 var(--font-sans); }
+.flh-ob-invite-form { display: grid; gap: 8px; }
+.flh-ob-invite-form .flh-ob-sublabel { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--ink); }
+.flh-ob-invite-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+@media (min-width: 560px) { .flh-ob-invite-row { grid-template-columns: minmax(0, 1fr) auto; } }
+.flh-ob-invite-create { min-height: 48px; border-radius: 12px; white-space: nowrap; }
+.flh-ob-invite-notice { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--sage); color: var(--positive); font: 600 12.5px/1.45 var(--font-sans); }
+.flh-ob-invite-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.flh-ob-invite-list li { display: grid; gap: 8px; padding: 12px; border: 1px solid var(--ob-line); border-radius: 14px; background: #fff; }
+.flh-ob-invite-who { display: grid; gap: 2px; min-width: 0; }
+.flh-ob-invite-who strong { color: var(--ink); font: 600 13.5px/1.3 var(--font-sans); overflow-wrap: anywhere; }
+.flh-ob-invite-who span { color: var(--ink-soft); font: 500 11.5px/1.4 var(--font-sans); }
+.flh-ob-invite-link { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.flh-ob-invite-link input { min-width: 0; min-height: 38px; padding: 0 10px; border: 1px solid var(--ob-line); border-radius: 10px; background: var(--ob-warm-row); color: var(--ink-soft); font: 500 12px var(--font-sans); }
+.flh-ob-invite-link .flh-button { gap: 6px; }
+
+/* How sharing works (sage disclosure). */
+.flh-ob-sharing { border: 1px solid rgba(86,114,77,.22); border-radius: 16px; background: var(--sage); }
+.flh-ob-sharing-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 64px; padding: 12px 18px; border: 0; border-radius: inherit; background: none; color: var(--brick); text-align: left; cursor: pointer; }
+.flh-ob-sharing-toggle > span { display: grid; gap: 3px; }
+.flh-ob-sharing-toggle svg { flex-shrink: 0; transition: transform .15s ease; }
+.flh-ob-sharing.is-open .flh-ob-sharing-toggle svg { transform: rotate(180deg); }
+.flh-ob-sharing-title { color: #3F5238; font: 600 16px/1.2 var(--font-serif); }
+.flh-ob-sharing-summary { color: var(--moss); font: 500 11px/1.3 var(--font-sans); }
+.flh-ob-sharing-panel { padding: 0 18px 16px; }
+.flh-ob-sharing-panel[hidden] { display: none; }
+.flh-ob-sharing-panel ul { display: grid; gap: 8px; margin: 0; padding-left: 18px; color: #3F5238; font: 500 12.5px/1.5 var(--font-sans); }
+.flh-ob-people-note { margin: 0; color: var(--ink-soft); font: 500 12px/1.45 var(--font-sans); text-align: center; }
+
+/* "Maybe later" beside Continue, as in the design. */
+.flh-onboarding-root .flh-ob-people-actions { display: flex; align-items: center; gap: 12px; }
+.flh-onboarding-root .flh-ob-people-actions .flh-ob-cta { flex: 1 1 auto; width: auto; min-width: 0; }
+.flh-ob-later { flex-shrink: 0; min-height: 48px; padding: 0 14px; font-size: 13.5px; }
+@media (max-width: 380px) {
+  .flh-ob-person-toggle { gap: 12px; padding: 16px; }
+  .flh-ob-person-icon { width: 48px; }
+}
+@media (min-width: 960px) {
+  .flh-onboarding-root .flh-ob-people-actions { justify-content: flex-end; }
+  .flh-onboarding-root .flh-ob-people-actions .flh-ob-cta { flex: 0 0 auto; min-width: 240px; }
+}

@@ -16,14 +16,16 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { useReliableOptimisticState } from '@/lib/useReliableOptimisticState';
 import { completeOnboarding, saveOnboardingProgress } from '@/lib/supabase/data';
-import { advanceOnboarding, completeOnboardingState, onboardingProgress, retreatOnboarding } from '@/lib/onboardingFlow';
+import { advanceOnboarding, completeOnboardingState, onboardingProgress, retreatOnboarding, setOnboardingAnswer } from '@/lib/onboardingFlow';
 import { ANALYTICS_EVENTS, track } from '@/lib/analytics';
-import { createCommuteDestination, deleteCommuteDestination, savePriorities, setActiveSearch } from '@/lib/supabase/collaboration';
+import { createCommuteDestination, createOrReuseInvitation, deleteCommuteDestination, savePriorities, setActiveSearch } from '@/lib/supabase/collaboration';
+import { addPending, choiceFromSelection, initialChoice, normalizePeople, pendingInvite } from '@/lib/onboardingPeople';
 import { googleAreaSuggestions } from '@/lib/areaSearchProvider';
 import { sanitizeRedirectPath } from '@/lib/safeRedirect';
 import { OnboardingAction, OnboardingRail, OnboardingTopBar } from '@/components/onboarding/OnboardingShell';
 import BasicsStep from '@/components/onboarding/BasicsStep';
 import LocationsStep from '@/components/onboarding/LocationsStep';
+import CollaborationStep from '@/components/onboarding/CollaborationStep';
 
 // Screen labels for the flow-1 steps (src/lib/onboardingFlow.js owns order and branching).
 // Flow 1 is live; the approved six-step flow (3) is built and previewed step by step.
@@ -32,7 +34,7 @@ const STEP_LABELS = {
   locations: 'Location', collaboration: 'Your People', priorities: 'What Matters', review: 'Review',
 };
 
-const BUILT_STEPS = new Set(['basics', 'locations', 'what_matters', 'rank']);
+const BUILT_STEPS = new Set(['basics', 'locations', 'collaboration', 'what_matters', 'rank']);
 
 // sharedFor: null in first-time account onboarding; in shared-search setup, the
 // search the preferences are for (e.g. "Ciara’s search").
@@ -187,6 +189,10 @@ const SUPABASE_SERVICES = Object.freeze({
   deletePlace: (placeId) => deleteCommuteDestination(createClient(), placeId),
   // Areas of interest come only from the area-search provider (Google Places).
   searchAreas: (query) => googleAreaSuggestions(query),
+  // An invite link is created only when the owner asks for one (never because
+  // a card was chosen). An open link for the same person and relationship is
+  // returned instead of creating a duplicate. FLH sends no email.
+  createInvite: (searchId, userId, email, relationshipType) => createOrReuseInvitation(createClient(), searchId, userId, email, relationshipType),
 });
 
 // mode:
@@ -198,7 +204,7 @@ const SUPABASE_SERVICES = Object.freeze({
 //                         onboarding state, never another search, never another
 //                         person's preferences. Ends on that search's Homes, and
 //                         can be left for the person's own search at any time.
-export default function Onboarding({ userId, searchId, initialPriorities, initialProgress, appVersion = null, mode = 'account', ownerName = null, ownedSearchId = null, initialPlaces = [], placesError = null, services = SUPABASE_SERVICES }) {
+export default function Onboarding({ userId, searchId, initialPriorities, initialProgress, appVersion = null, mode = 'account', ownerName = null, ownedSearchId = null, initialPlaces = [], placesError = null, initialPeople = null, peopleError = null, accountEmail = null, services = SUPABASE_SERVICES }) {
   const sharedSetup = mode === 'shared_search_setup';
   const sharedFor = sharedSetup ? (ownerName ? `${/s$/i.test(ownerName) ? `${ownerName}’` : `${ownerName}’s`} search` : 'this shared search') : null;
   const router = useRouter();
@@ -221,6 +227,15 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
   const deletePlace = async (place) => {
     await services.deletePlace(place.id);
     setPlaces((current) => current.filter((entry) => entry.id !== place.id));
+  };
+  // Step 3: who is already in this search and which invite links are open.
+  // Updated only after an invitation write is confirmed.
+  const [people, setPeople] = useState(() => normalizePeople(initialPeople));
+  const createInvite = async (relationshipType, email) => {
+    const row = await services.createInvite(searchId, userId, email, relationshipType);
+    const invite = pendingInvite(row);
+    setPeople((current) => addPending(current, invite));
+    return { ...invite, reused: Boolean(row.reused) };
   };
   // Resumable progress (src/lib/onboardingFlow.js): the server page resolved
   // where to land for this person and this search. The gate itself is still
@@ -284,6 +299,12 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
   // Going back never clears an answer: priorities stay saved, and the
   // screen re-renders from them.
   const goBack = (fromStep) => { persistProgress(retreatOnboarding(version, progressRef.current, fromStep)); window.scrollTo?.({ top: 0 }); };
+  // Step 3's cards are the onboarding answer only: saved with progress, never an invitation.
+  const chooseCollaboration = (selection) => {
+    const choice = choiceFromSelection(selection);
+    try { persistProgress(setOnboardingAnswer(progressRef.current, 'collaboration', choice)); } catch { /* an invited co-buyer always searches with a co-buyer */ }
+  };
+  const collaborationChoice = initialChoice(progressState.answers?.collaboration || null, people);
   const leave = (destination) => { router.push(destination); router.refresh(); };
   // Shared-search setup ends by saving this person's own preferences on this
   // search (the document the setup gate checks) and opening its Homes.
@@ -371,6 +392,20 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
               onDeletePlace={deletePlace}
               onNext={() => goTo('locations')}
               header={<StepHeader step="locations" progress={progress} sharedFor={sharedFor} title={<>Where are you <em>looking?</em></>} lead="Every search starts somewhere. Add the areas you’re drawn to, and we’ll keep them in mind as you explore." />}
+            />
+          )}
+          {!ready && step === 'collaboration' && (
+            <CollaborationStep
+              choice={collaborationChoice}
+              onChoose={chooseCollaboration}
+              people={people}
+              peopleError={peopleError}
+              role={progressState.context?.role === 'co_buyer' ? 'co_buyer' : 'owner'}
+              accountEmail={accountEmail}
+              onInvite={createInvite}
+              onNext={() => goTo('collaboration')}
+              onMaybeLater={() => goTo('collaboration')}
+              header={<StepHeader step="collaboration" progress={progress} sharedFor={sharedFor} title={<>Searching with <em>someone?</em></>} lead="Home searching is better together. Invite the people who are part of your journey—or add them later." />}
             />
           )}
           {/* Approved-flow steps not built yet (only reachable in the development preview). */}

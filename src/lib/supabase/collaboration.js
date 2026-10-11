@@ -727,6 +727,46 @@ export async function createInvitation(supabase, searchId, invitedBy, invitedEma
   return data;
 }
 
+// The open (pending, unexpired) invitation for this person and relationship on
+// this search, if the owner already created one, so it is reused rather than
+// duplicated. Owner-only under the existing search_invitations_owner_select policy.
+export async function findPendingInvitation(supabase, searchId, invitedEmail, relationshipType) {
+  const { data, error } = await supabase.from('search_invitations')
+    .select('id,invited_email,relationship_type,token,status,expires_at')
+    .eq('search_id', searchId).eq('invited_email', invitedEmail.trim().toLowerCase())
+    .eq('relationship_type', relationshipType).eq('status', 'pending')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  const now = Date.now();
+  return (data || []).find((row) => new Date(row.expires_at).getTime() > now) || null;
+}
+
+// Onboarding V2 Step 3: an open invitation for the same person and
+// relationship is returned (reused: true) instead of creating a duplicate.
+export async function createOrReuseInvitation(supabase, searchId, invitedBy, invitedEmail, relationshipType) {
+  const existing = await findPendingInvitation(supabase, searchId, invitedEmail, relationshipType);
+  if (existing) return { ...existing, reused: true };
+  return createInvitation(supabase, searchId, invitedBy, invitedEmail, relationshipType);
+}
+
+// Who is in this search and which invitations are still open, for the owner
+// (Onboarding V2 Step 3). Reads only what the existing owner policies allow:
+// member roles on their own search, their own invitations, and the co-buyer's
+// display name through the existing collaborator-context RPC.
+export async function getSearchPeopleRows(supabase, search) {
+  const [{ data: members, error: memberError }, { data: invitations, error: inviteError }] = await Promise.all([
+    supabase.from('search_members').select('role').eq('search_id', search.id),
+    supabase.from('search_invitations').select('id,invited_email,relationship_type,token,status,expires_at')
+      .eq('search_id', search.id).eq('status', 'pending').order('created_at'),
+  ]);
+  if (memberError) throw memberError;
+  if (inviteError) throw inviteError;
+  const coBuyerName = (members || []).some((member) => member.role === 'co_buyer')
+    ? (await resolveCollaboratorSearchContext(supabase, search).catch(() => null))?.displayName || null
+    : null;
+  return { members: members || [], invitations: invitations || [], coBuyerName };
+}
+
 export async function createBuyerInvitation(supabase, invitedEmail) {
   const { data, error } = await supabase.rpc('create_buyer_invitation', { p_invited_email: invitedEmail.trim().toLowerCase() });
   if (error) throw error;

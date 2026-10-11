@@ -2,7 +2,8 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getProfile } from '@/lib/supabase/data';
 import { normalizePriorities } from '@/lib/constants';
-import { getCommuteDestinations, needsSharedSearchSetup, resolveCollaboratorSearchContext, resolveOnboardingSearch, resolvePriorities } from '@/lib/supabase/collaboration';
+import { getCommuteDestinations, getSearchPeopleRows, needsSharedSearchSetup, resolveCollaboratorSearchContext, resolveOnboardingSearch, resolvePriorities } from '@/lib/supabase/collaboration';
+import { emptyPeople, peopleFromRows } from '@/lib/onboardingPeople';
 import { beginOnboarding, onboardingStepsFor } from '@/lib/onboardingFlow';
 import Onboarding from '@/components/onboarding/Onboarding';
 
@@ -15,6 +16,24 @@ async function initialPlacesFor(supabase, progress, searchId, userId) {
     return { initialPlaces: await getCommuteDestinations(supabase, searchId, userId), placesError: null };
   } catch {
     return { initialPlaces: [], placesError: 'Couldn’t load your saved places. You can add them later in My Search.' };
+  }
+}
+
+// Your People (Step 3): who is already in this search and which invite links
+// are open, so the step shows real relationships rather than only the cards
+// last chosen. The owner reads members and their own invitations (existing
+// policies); a co-buyer sees only whose search it is. Loaded only when the
+// flow includes that step; a failed read is reported, never shown as "nobody".
+async function initialPeopleFor(supabase, progress, search, role) {
+  if (!onboardingStepsFor(progress.version, progress.state).includes('collaboration')) return { initialPeople: null, peopleError: null };
+  try {
+    if (role !== 'owner') {
+      const owner = await resolveCollaboratorSearchContext(supabase, search).catch(() => null);
+      return { initialPeople: { ...emptyPeople(), ownerName: owner?.displayName || null }, peopleError: null };
+    }
+    return { initialPeople: peopleFromRows(await getSearchPeopleRows(supabase, search)), peopleError: null };
+  } catch {
+    return { initialPeople: null, peopleError: 'Couldn’t load who’s already in your search. You can still continue, and manage people in My Search.' };
   }
 }
 
@@ -50,10 +69,12 @@ export default async function OnboardingPage() {
     ]);
     // Ephemeral: shared-search setup never reads or writes account onboarding progress.
     const progress = beginOnboarding({ context: { searchId: search.id, role } });
-    const places = await initialPlacesFor(supabase, progress, search.id, user.id);
+    const [places, people] = await Promise.all([initialPlacesFor(supabase, progress, search.id, user.id), initialPeopleFor(supabase, progress, search, role)]);
     return (
       <Onboarding
         {...places}
+        {...people}
+        accountEmail={user.email || null}
         mode="shared_search_setup"
         userId={user.id}
         searchId={search.id}
@@ -74,6 +95,6 @@ export default async function OnboardingPage() {
     context: { searchId: search.id, role },
   });
 
-  const places = await initialPlacesFor(supabase, progress, search.id, user.id);
-  return <Onboarding {...places} userId={user.id} searchId={search.id} initialPriorities={normalizePriorities(priorities)} initialProgress={progress} appVersion={appVersion} />;
+  const [places, people] = await Promise.all([initialPlacesFor(supabase, progress, search.id, user.id), initialPeopleFor(supabase, progress, search, role)]);
+  return <Onboarding {...places} {...people} accountEmail={user.email || null} userId={user.id} searchId={search.id} initialPriorities={normalizePriorities(priorities)} initialProgress={progress} appVersion={appVersion} />;
 }
