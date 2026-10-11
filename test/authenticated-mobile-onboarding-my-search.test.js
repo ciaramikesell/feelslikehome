@@ -23,8 +23,9 @@ test('all three search types map to their existing intents and property types', 
   const [homeBuy, homeRent, apartment] = ['home_buy', 'home_rent', 'apartment_rent'].map((key) => applySearchChoice({}, key));
   assert.deepEqual([homeBuy.searchType, homeRent.searchType, apartment.searchType], ['purchase', 'rental', 'rental']);
   assert.deepEqual([homeBuy.onboardingSearchType, homeRent.onboardingSearchType, apartment.onboardingSearchType], ['home_buy', 'home_rent', 'apartment_rent']);
-  const onboarding = read('src/components/onboarding/Onboarding.jsx');
-  assert.match(onboarding, /home_buy: 'Home to Buy', home_rent: 'Home to Rent', apartment_rent: 'Apartment to Rent'/);
+  // Onboarding V2 Basics offers all three through a compact labelled control.
+  const basics = read('src/components/onboarding/BasicsStep.jsx');
+  assert.match(basics, /home_buy: 'Home to buy', home_rent: 'Home to rent', apartment_rent: 'Apartment'/);
 });
 
 test('Basics field applicability is audited per search type, not cloned from purchase', () => {

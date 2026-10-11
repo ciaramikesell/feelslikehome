@@ -43,7 +43,7 @@ npm run visual:onboarding -- reference figma/basics.png visual/after/basics-popu
 - **Widths:** 390, 768, 1024 and 1440 px, at a device scale factor of 1, with
   reduced motion. Captures wait until fonts and images have loaded.
 - **Scenarios:**
-  - Basics: empty, populated and save error;
+  - Basics: empty, populated, save error, and the Garage preferences panel expanded;
   - What Matters;
   - Rank;
   - the completion screen;

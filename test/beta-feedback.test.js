@@ -21,7 +21,8 @@ test('central flag controls widget visibility without deployment configuration',
   assert.match(read('src/lib/betaFeedback.js'), /BETA_FEEDBACK_ENABLED = true/);
   assert.match(component, /if \(!shouldShowBetaFeedback\(enabled\)\) return null/);
   assert.match(read('src/components/AppShell.jsx'), /<BetaFeedback userId=\{userId\}/);
-  assert.match(read('src/components/onboarding/Onboarding.jsx'), /<BetaFeedback userId=\{userId\}/);
+  // Onboarding no longer shows the floating tab (D-11; Phase 2A). Feedback stays in the app shell.
+  assert.doesNotMatch(read('src/components/onboarding/Onboarding.jsx'), /<BetaFeedback/);
 });
 
 test('context payload is a strict privacy-safe allowlist', () => {

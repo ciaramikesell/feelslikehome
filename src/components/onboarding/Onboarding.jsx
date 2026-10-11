@@ -2,16 +2,15 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowRight, Building2, Home as HomeIcon, KeyRound, Plus, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowRight, Plus, ShieldCheck, Sparkles } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
-import { ChoiceChip, HelperRow, SectionCard, SelectCard } from '@/components/MobileSystem';
+import { ChoiceChip, HelperRow, SectionCard } from '@/components/MobileSystem';
 import RankBoard from '@/components/RankBoard';
 import { GARAGE_PREFERENCE_OPTIONS, normalizePriorities } from '@/lib/constants';
-import { PROPERTY_TYPE_LABELS } from '@/lib/searchIntent';
-import { NEW_SEARCH_CHOICES, ONBOARDING_SUGGESTIONS, applySearchChoice } from '@/lib/onboarding';
+import { ONBOARDING_SUGGESTIONS } from '@/lib/onboarding';
 import {
-  CONDITION_CHOICES, LAYOUT_CHOICES, addCustomCriterion, basicsFieldsFor, customCategoryOptions,
-  isCriterionSelected, moveCriterion, priorityLevels, sanitizeNumericInput, selectedPriorityCount,
+  addCustomCriterion, customCategoryOptions,
+  isCriterionSelected, moveCriterion, priorityLevels, selectedPriorityCount,
   setGaragePreference, toggleCriterion,
 } from '@/lib/searchProfile';
 import { createClient } from '@/lib/supabase/client';
@@ -21,117 +20,23 @@ import { advanceOnboarding, completeOnboardingState, onboardingProgress, retreat
 import { ANALYTICS_EVENTS, track } from '@/lib/analytics';
 import { savePriorities, setActiveSearch } from '@/lib/supabase/collaboration';
 import { sanitizeRedirectPath } from '@/lib/safeRedirect';
-import BetaFeedback from '@/components/BetaFeedback';
 import { OnboardingAction, OnboardingRail, OnboardingTopBar } from '@/components/onboarding/OnboardingShell';
+import BasicsStep from '@/components/onboarding/BasicsStep';
 
 // Screen labels for the flow-1 steps (src/lib/onboardingFlow.js owns order and branching).
 const STEP_LABELS = { basics: 'The Basics', what_matters: 'What Matters', rank: 'Rank Priorities' };
-const CHOICE_ICONS = { home_buy: HomeIcon, home_rent: KeyRound, apartment_rent: Building2 };
-const CHOICE_LABELS = { home_buy: 'Home to Buy', home_rent: 'Home to Rent', apartment_rent: 'Apartment to Rent' };
 
 // sharedFor: null in first-time account onboarding; in shared-search setup, the
 // search the preferences are for (e.g. "Ciara’s search").
 // The progress bar and step count live in the shell's top bar (OnboardingShell);
-// the eyebrow names the step and, once chosen, the kind of search.
-function StepHeader({ step, progress, title, lead, sharedFor = null, searchType = '' }) {
+// the eyebrow names the step (approved copy: "STEP 1 · THE BASICS").
+function StepHeader({ step, progress, title, lead, sharedFor = null }) {
   return (
     <header className="flh-onboarding-header">
-      <p className="flh-eyebrow">{sharedFor ? `Your preferences for ${sharedFor}` : `Step ${progress.position} · ${CHOICE_LABELS[searchType] || STEP_LABELS[step]}`}</p>
+      <p className="flh-eyebrow">{sharedFor ? `Your preferences for ${sharedFor}` : `Step ${progress.position} · ${STEP_LABELS[step]}`}</p>
       <h1 className="flh-page-title">{title}</h1>
       {lead && <p className="flh-lead">{lead}</p>}
     </header>
-  );
-}
-
-function NumberField({ label, value, onChange, prefix, suffix, placeholder, decimal = false, optional = false }) {
-  return (
-    <label className="flh-number-field">
-      <span className="flh-field-label">{label}{optional && <em> (optional)</em>}</span>
-      <span className="flh-number-input">
-        {prefix && <span aria-hidden="true">{prefix}</span>}
-        <input inputMode={decimal ? 'decimal' : 'numeric'} value={value ?? ''} placeholder={placeholder} onChange={(event) => onChange(sanitizeNumericInput(event.target.value, { decimal }))} />
-        {suffix && <span aria-hidden="true">{suffix}</span>}
-      </span>
-    </label>
-  );
-}
-
-function OptionGroup({ legend, options, selected, onToggle }) {
-  return (
-    <fieldset className="flh-option-group">
-      <legend className="flh-field-label">{legend} <em>(optional)</em></legend>
-      <div className="flh-chip-row">
-        {options.map((option) => <ChoiceChip key={option.value} selected={selected.includes(option.value)} onClick={() => onToggle(option.value)}>{option.label}</ChoiceChip>)}
-      </div>
-    </fieldset>
-  );
-}
-
-// Multi-select Basics never carry "No Preference" forward once a real choice is made;
-// an option retained from older data (e.g. 'Split Level', 'Townhome') stays visible
-// and removable instead of silently disappearing.
-const toggleValue = (values, value) => {
-  const current = (values || []).filter((entry) => entry !== 'No Preference');
-  return current.includes(value) ? current.filter((entry) => entry !== value) : [...current, value];
-};
-const withRetained = (choices, values, labelFor = (value) => value) => [
-  ...choices,
-  ...(values || []).filter((value) => value !== 'No Preference' && !choices.some((choice) => choice.value === value)).map((value) => ({ value, label: labelFor(value) })),
-];
-
-function BasicsStep({ priorities, patch, onNext, progress, sharedFor = null, ownerName = null }) {
-  const choice = priorities.onboardingSearchType || '';
-  const fields = basicsFieldsFor(choice);
-  const setValue = (key, value) => patch((next) => { next[key] = { ...next[key], value }; return next; });
-  const setValues = (key, value) => patch((next) => { next[key] = { ...next[key], values: toggleValue(next[key]?.values, value) }; return next; });
-  return (
-    <div className="flh-onboarding-step">
-      {sharedFor ? (
-        <>
-          <StepHeader step="basics" progress={progress} sharedFor={sharedFor} title={`Set up your preferences for ${sharedFor}.`} lead="Tell us what you’re looking for. These are yours alone—you can change them anytime." />
-          <HelperRow
-            tone="sage"
-            title="You don’t have to agree on everything."
-            body={`${ownerName || 'Your co-buyer'} keeps their own preferences, and FLH shows how each home works for each of you. Your own search and its homes aren’t affected.`}
-          />
-        </>
-      ) : (
-        <StepHeader step="basics" progress={progress} searchType={choice} title="Let’s find what feels like home." lead="Start with the kind of search you’re making. Add a few helpful details now—you can change everything later." />
-      )}
-      <fieldset className="flh-option-group">
-        <legend className="flh-section-kicker">Search type</legend>
-        <div className="flh-select-grid">
-          {NEW_SEARCH_CHOICES.map((option) => (
-            <SelectCard key={option.key} icon={CHOICE_ICONS[option.key]} selected={choice === option.key} onClick={() => patch((next) => applySearchChoice(next, option.key))}>{CHOICE_LABELS[option.key]}</SelectCard>
-          ))}
-        </div>
-      </fieldset>
-      {choice && (
-        <SectionCard className="flh-basics-card">
-          <p className="flh-section-kicker">A few guideposts</p>
-          <div className="flh-number-grid">
-            <NumberField label={fields.budgetLabel} prefix="$" placeholder={fields.budgetPlaceholder} value={priorities.budget.value} onChange={(value) => setValue('budget', value)} />
-            <NumberField label="Minimum bedrooms" placeholder="3" suffix="beds" value={priorities.bedsMin.value} onChange={(value) => setValue('bedsMin', value)} />
-            <NumberField label="Minimum bathrooms" placeholder="2" suffix="baths" decimal value={priorities.bathsMin.value} onChange={(value) => setValue('bathsMin', value)} />
-            <NumberField label="Minimum square footage" placeholder="1,800" suffix="sq ft" value={priorities.sqftTarget.value} onChange={(value) => setValue('sqftTarget', value)} />
-            {fields.lotSize && <NumberField label="Minimum lot size" optional placeholder="0.25" suffix="acres" decimal value={priorities.lotSizeTarget.value} onChange={(value) => setValue('lotSizeTarget', value)} />}
-          </div>
-          {fields.propertyTypes.length > 0 && (
-            <OptionGroup
-              legend="What kinds of homes are you considering?"
-              options={withRetained(fields.propertyTypes.map((value) => ({ value, label: PROPERTY_TYPE_LABELS[value] })), priorities.preferredPropertyTypes.values, (value) => PROPERTY_TYPE_LABELS[value] || value)}
-              selected={priorities.preferredPropertyTypes.values}
-              onToggle={(value) => setValues('preferredPropertyTypes', value)}
-            />
-          )}
-          {fields.layout && <OptionGroup legend="Home layout" options={withRetained(LAYOUT_CHOICES, priorities.homeLayout.values)} selected={priorities.homeLayout.values} onToggle={(value) => setValues('homeLayout', value)} />}
-          {fields.condition && <OptionGroup legend="Home condition" options={withRetained(CONDITION_CHOICES, priorities.homeCondition.values)} selected={priorities.homeCondition.values} onToggle={(value) => setValues('homeCondition', value)} />}
-        </SectionCard>
-      )}
-      <nav className="flh-onboarding-actions">
-        <OnboardingAction disabled={!choice} onClick={onNext}>Continue</OnboardingAction>
-      </nav>
-    </div>
   );
 }
 
@@ -407,13 +312,30 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
             </p>
           )}
           {(saveError || finishError) && <p className="hh-save-error" role="alert">{saveError || finishError} <button type="button" onClick={saveError ? retry : () => setFinishError('')}>{saveError ? 'Retry' : 'Dismiss'}</button></p>}
-          {!ready && step === 'basics' && <BasicsStep priorities={priorities} patch={patch} progress={progress} sharedFor={sharedFor} ownerName={ownerName} onNext={() => goTo('basics')} />}
+          {!ready && step === 'basics' && (
+            <BasicsStep
+              priorities={priorities}
+              patch={patch}
+              onNext={() => goTo('basics')}
+              header={sharedFor ? (
+                <>
+                  <StepHeader step="basics" progress={progress} sharedFor={sharedFor} title={`Set up your preferences for ${sharedFor}.`} lead="Tell us what you’re looking for. These are yours alone—you can change them anytime." />
+                  <HelperRow
+                    tone="sage"
+                    title="You don’t have to agree on everything."
+                    body={`${ownerName || 'Your co-buyer'} keeps their own preferences, and FLH shows how each home works for each of you. Your own search and its homes aren’t affected.`}
+                  />
+                </>
+              ) : (
+                <StepHeader step="basics" progress={progress} title={<>The Basics of <em>Your Search</em></>} lead="What does home look like to you? You can adjust these anytime." />
+              )}
+            />
+          )}
           {!ready && step === 'what_matters' && <WhatMattersStep priorities={priorities} patch={patch} progress={progress} sharedFor={sharedFor} onNext={() => goTo('what_matters')} isSaving={isSaving} />}
           {!ready && step === 'rank' && <RankStep priorities={priorities} patch={patch} progress={progress} sharedFor={sharedFor} onFinish={finish} finishing={finishing} />}
           {ready && <ReadyStep onAddHome={() => leave('/homes?add=1')} onViewSearch={() => leave('/search?welcome=1')} />}
         </main>
       </div>
-      <BetaFeedback userId={userId} searchId={searchId} searchType={priorities.searchType} appVersion={appVersion} sendFeedback={services.submitFeedback} />
     </div>
   );
 }

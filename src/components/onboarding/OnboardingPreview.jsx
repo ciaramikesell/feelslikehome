@@ -5,7 +5,7 @@ import Onboarding from '@/components/onboarding/Onboarding';
 import { normalizePriorities } from '@/lib/constants';
 import { ONBOARDING_SUGGESTIONS, applySearchChoice } from '@/lib/onboarding';
 import { beginOnboarding, onboardingStepsFor, CURRENT_ONBOARDING_VERSION } from '@/lib/onboardingFlow';
-import { moveCriterion, toggleCriterion } from '@/lib/searchProfile';
+import { addCriterion, isCriterionSelected, moveCriterion, setGaragePreference, toggleCriterion } from '@/lib/searchProfile';
 
 // Fixtures for the development-only preview (src/app/dev/onboarding). Fixed ids
 // and timestamps keep every render, and every screenshot, identical.
@@ -29,6 +29,10 @@ function populatedPriorities() {
     if (index % 3 === 0) next = moveCriterion(next, criterion.categoryKey, criterion.label, 'must');
     if (index % 3 === 2) next = moveCriterion(next, criterion.categoryKey, criterion.label, 'nice');
   });
+  // Basics garage answer: Important, attached (existing Garage criterion + qualifier).
+  const garage = { categoryKey: 'exterior', label: 'Garage', kind: 'check' };
+  next = isCriterionSelected(next, 'exterior', 'Garage') ? moveCriterion(next, 'exterior', 'Garage', 'important') : addCriterion(next, garage, 'important');
+  next = setGaragePreference(next, 'attached');
   return next;
 }
 

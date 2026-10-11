@@ -2302,3 +2302,78 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
   .flh-onboarding-root .flh-onboarding-actions { position: static; margin-top: 12px; padding: 0; background: none; }
   .flh-ob-cta { width: auto; min-width: 280px; gap: 32px; }
 }
+
+/* ── Onboarding V2 — Step 1: The Basics (Phase 2A) ─────────────────────────────
+   Measured from the approved Basics design (393pt frame): 20px card padding,
+   14/600 ink field labels, 48px inputs (12px corners), 52px steppers (14px
+   corners, 40px warm-grey buttons), 1px dividers with 20px either side, a 12px
+   column gap, and the 56px warm expandable Garage row. Scoped to the
+   onboarding root and the flh-ob- prefix; nothing outside onboarding uses them. */
+.flh-onboarding-root .flh-page-title em { font-style: normal; color: var(--brick); }
+.flh-onboarding-root {
+  --ob-warm: #F1EBE3;      /* stepper buttons, search-type track */
+  --ob-warm-row: #F7F2EB;  /* expandable rows */
+  --ob-placeholder: #9A8E84;
+}
+.flh-ob-basics-card { display: block; }
+.flh-ob-field { display: grid; align-content: start; gap: 8px; min-width: 0; }
+.flh-ob-label { display: block; color: var(--ink); font: 600 14px/1.3 var(--font-sans); }
+.flh-ob-optional { display: block; margin-top: 2px; color: var(--ink-soft); font: 600 10px/1.2 var(--font-sans); letter-spacing: .08em; text-transform: uppercase; }
+.flh-ob-help { margin: 0; color: var(--ink-soft); font-size: 11.5px; line-height: 1.4; }
+.flh-ob-hint { margin: 8px 0 0; color: var(--ink-soft); font-size: 12px; line-height: 1.4; }
+.flh-ob-divider { margin: 20px 0; border: 0; border-top: 1px solid var(--ob-line); }
+.flh-ob-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+
+/* Text inputs: currency and unit fields. */
+.flh-ob-input { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 14px; border: 1px solid var(--ob-line); border-radius: 12px; background: #fff; }
+.flh-ob-input:focus-within { border-color: var(--brick); outline: 3px solid var(--focus-ring); outline-offset: 1px; }
+.flh-ob-input input { flex: 1 1 0; width: 0; min-width: 0; padding: 0; border: 0; outline: none; background: transparent; color: var(--ink); font: 500 16px var(--font-sans); font-variant-numeric: tabular-nums; }
+.flh-ob-input input::placeholder { color: var(--ob-placeholder); font-weight: 400; }
+.flh-ob-currency { color: var(--brick); font: 600 18px/1 var(--font-sans); }
+.flh-ob-unit { flex-shrink: 0; color: var(--ink-soft); font: 500 12.5px/1 var(--font-sans); white-space: nowrap; }
+
+/* Steppers: − · value · +, with a real "not set" state. */
+.flh-ob-stepper { display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; min-height: 52px; overflow: hidden; border: 1px solid var(--ob-line); border-radius: 14px; background: #fff; }
+.flh-ob-stepper button { display: grid; place-items: center; padding: 0; border: 0; background: var(--ob-warm); color: var(--ink); cursor: pointer; }
+.flh-ob-stepper button:hover:not(:disabled) { background: #EAE2D8; }
+.flh-ob-stepper button:disabled { color: rgba(46,38,33,.3); cursor: default; }
+.flh-ob-stepper button:focus-visible { outline-offset: -3px; }
+.flh-ob-stepper output { display: grid; align-content: center; justify-items: center; gap: 3px; min-width: 0; }
+.flh-ob-stepper-value { color: var(--ink); font: 600 18px/1 var(--font-sans); font-variant-numeric: tabular-nums; }
+.flh-ob-stepper-value.is-unset { color: #A99D92; font-weight: 400; }
+.flh-ob-stepper-note { color: var(--ink-soft); font: 500 10px/1 var(--font-sans); }
+
+/* The required kind of search: a quiet segmented control above the card. */
+.flh-ob-searchtype { min-width: 0; margin: 0; padding: 0; border: 0; }
+.flh-ob-searchtype > legend { margin-bottom: 8px; padding: 0; }
+.flh-ob-segmented { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border: 1px solid var(--ob-line); border-radius: 14px; background: var(--ob-warm); }
+.flh-ob-segmented label { display: grid; place-items: center; min-height: 40px; padding: 0 6px; border-radius: 10px; color: var(--ink-soft); font: 600 13px/1.2 var(--font-sans); text-align: center; cursor: pointer; }
+.flh-ob-segmented label.is-selected { background: #fff; color: var(--brick-deep); box-shadow: inset 0 0 0 1px var(--brick), 0 1px 2px rgba(46,38,33,.08); }
+.flh-ob-segmented label:has(:focus-visible) { outline: 3px solid var(--focus-ring); outline-offset: 1px; }
+
+/* Expandable rows (Garage preferences; More about the home). */
+.flh-ob-disclosures { display: grid; gap: 12px; margin-top: 20px; }
+.flh-ob-disclosure { border: 1px solid var(--ob-line); border-radius: 14px; background: var(--ob-warm-row); }
+.flh-ob-disclosure-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 56px; padding: 10px 14px; border: 0; border-radius: inherit; background: none; color: var(--brick); text-align: left; cursor: pointer; }
+.flh-ob-disclosure-toggle svg { flex-shrink: 0; transition: transform .15s ease; }
+.flh-ob-disclosure.is-open .flh-ob-disclosure-toggle svg { transform: rotate(180deg); }
+.flh-ob-disclosure-copy { display: grid; gap: 3px; min-width: 0; }
+.flh-ob-disclosure-title { color: var(--ink); font: 600 14px/1.25 var(--font-sans); }
+.flh-ob-disclosure-summary { color: var(--ink-soft); font: 500 11.5px/1.3 var(--font-sans); overflow-wrap: anywhere; }
+.flh-ob-disclosure-panel { display: grid; gap: 16px; padding: 2px 14px 16px; }
+.flh-ob-disclosure-panel[hidden] { display: none; }
+.flh-ob-pills { min-width: 0; margin: 0; padding: 0; border: 0; }
+.flh-ob-pills > legend { margin-bottom: 8px; padding: 0; }
+.flh-ob-sublabel { color: var(--ink-soft); font: 600 12.5px/1.3 var(--font-sans); }
+.flh-ob-pill { display: inline-flex; align-items: center; min-height: 38px; padding: 0 14px; border: 1px solid var(--flh-control-line); border-radius: 999px; background: #fff; color: var(--ink-soft); font: 500 13.5px/1.2 var(--font-sans); cursor: pointer; }
+.flh-ob-pill.is-selected { border-color: var(--brick); background: #FDF1EA; color: var(--brick-deep); font-weight: 600; }
+.flh-ob-pill:has(:focus-visible) { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+
+@media (min-width: 960px) {
+  /* Readable desktop type without changing the phone scale. */
+  .flh-onboarding-root .flh-lead { font-size: 16px; }
+  /* The action row aligns to the card's right edge; Continue keeps a button's
+     proportions instead of a phone-width bar. */
+  .flh-onboarding-root .flh-onboarding-actions { display: flex; justify-content: flex-end; }
+  .flh-ob-cta { min-width: 240px; min-height: 52px; font-size: 16px; }
+}

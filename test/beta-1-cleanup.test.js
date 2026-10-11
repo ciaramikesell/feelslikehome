@@ -60,12 +60,14 @@ test('signed-out auth makes account creation explicit without removing recovery 
 });
 
 test('new onboarding search choices set an explicit, accessible rental subtype', () => {
-  const onboarding = read('src/components/onboarding/Onboarding.jsx');
-  const system = read('src/components/MobileSystem.jsx');
-  assert.match(onboarding, /NEW_SEARCH_CHOICES\.map/);
-  assert.match(onboarding, /selected=\{choice === option\.key\}/);
-  assert.match(system, /className=\{`flh-select-card \$\{selected \? 'is-selected' : ''\}`\} aria-pressed=\{selected\}/);
-  assert.match(onboarding, /applySearchChoice\(next, option\.key\)/);
+  // Onboarding V2 Basics: native radios (accessible name = the full choice label),
+  // and choosing still goes through applySearchChoice (via chooseSearchType).
+  const basics = read('src/components/onboarding/BasicsStep.jsx');
+  const lib = read('src/lib/onboardingBasics.js');
+  assert.match(basics, /NEW_SEARCH_CHOICES\.map/);
+  assert.match(basics, /type="radio" className="sr-only" name=\{name\} value=\{option\.key\} checked=\{choice === option\.key\} onChange=\{\(\) => onChoose\(option\.key\)\} aria-label=\{option\.label\}/);
+  assert.match(basics, /onChoose=\{\(key\) => patch\(\(next\) => chooseSearchType\(next, key\)\)\}/);
+  assert.match(lib, /const next = applySearchChoice\(priorities, choiceKey\);/);
 });
 
 test('auth mobile and onboarding brand placement use focused centering classes', () => {
