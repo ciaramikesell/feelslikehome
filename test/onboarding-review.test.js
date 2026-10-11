@@ -9,7 +9,7 @@ import { createTestDatabase, DB_TESTS_ENABLED, DB_SKIP_REASON } from './support/
 import { normalizePriorities } from '../src/lib/constants.js';
 import { chooseSearchType } from '../src/lib/onboardingBasics.js';
 import { beginOnboarding, completeOnboardingState, setOnboardingAnswer } from '../src/lib/onboardingFlow.js';
-import { areasSummary, basicsSummary, peopleSummary, placesSummary, prioritiesSummary } from '../src/lib/onboardingReview.js';
+import { areasSummary, basicsDisplay, basicsSummary, peopleSummary, placesSummary, prioritiesSummary } from '../src/lib/onboardingReview.js';
 import { addSearchArea } from '../src/lib/searchAreas.js';
 import { addCriterion, moveCriterion } from '../src/lib/searchProfile.js';
 import { moveGroup, toggleGroupValue } from '../src/lib/whatMattersGroups.js';
@@ -24,6 +24,31 @@ test('The Basics: unanswered questions are null ("Not set yet"); optional sizes 
   const rent = chooseSearchType(normalizePriorities({ budget: { value: '2200', tier: 'important' } }), 'home_rent', { presetPropertyType: false });
   assert.deepEqual(basicsSummary(rent)[1], { key: 'budget', label: 'Maximum monthly rent', value: '$2,200/mo' });
   assert.equal(basicsSummary(normalizePriorities({}))[0].value, null, 'no search type chosen is not invented');
+});
+
+test('The Basics collapse to one invitation when only the search type is answered', () => {
+  assert.deepEqual(basicsDisplay(basicsSummary(fresh())), { mode: 'compact', type: 'Home to buy', prompt: 'Budget, bedrooms and bathrooms aren’t set yet.' });
+  const rent = chooseSearchType(normalizePriorities({}), 'home_rent', { presetPropertyType: false });
+  assert.equal(basicsDisplay(basicsSummary(rent)).prompt, 'Rent, bedrooms and bathrooms aren’t set yet.');
+  // Any one answer brings back every row, so each answer and gap stays visible.
+  assert.equal(basicsDisplay(basicsSummary({ ...fresh(), bedsMin: { value: '2', tier: 'important' } })).mode, 'full');
+  assert.equal(basicsDisplay(basicsSummary({ ...fresh(), sqftTarget: { value: '1500', tier: 'nice' } })).mode, 'full');
+  assert.equal(basicsDisplay(basicsSummary(normalizePriorities({}))).mode, 'empty');
+  const step = read('src/components/onboarding/ReviewStep.jsx');
+  assert.match(step, /basicsView\.mode === 'compact'/);
+  assert.match(step, />Add details<\/button>/);
+});
+
+test('a co-buyer on someone else\'s search reviews their own preferences, never "My Search"', () => {
+  const onboarding = read('src/components/onboarding/Onboarding.jsx');
+  const step = read('src/components/onboarding/ReviewStep.jsx');
+  assert.match(onboarding, /Your preferences are <em>ready\.<\/em>/);
+  assert.match(onboarding, /These are your own preferences: they won’t change anyone else’s/);
+  // The owner's copy is unchanged.
+  assert.match(onboarding, /Your search is <em>ready\.<\/em><\/>\} lead="Here’s what home looks like to you so far\. It’s yours alone/);
+  assert.match(step, /\{!sharedFor && <button .*>Go to My Search<\/button>\}/);
+  assert.match(step, /sharedFor \? \(finishing \? 'Saving your preferences…' : 'Save and see the homes'\)/);
+  assert.match(step, /onFinish\(sharedFor \? '\/homes' : '\/homes\?add=1'\)/);
 });
 
 test('areas, places, people and priorities are summarised as saved — intentions are never invitations', () => {
@@ -53,8 +78,8 @@ test('Review completes once through the existing services, then leaves; failures
   const onboarding = read('src/components/onboarding/Onboarding.jsx');
   const step = read('src/components/onboarding/ReviewStep.jsx');
   assert.match(onboarding, /title=\{<>Your search is <em>ready\.<\/em><\/>\}/);
-  assert.match(step, /\{finishing \? 'Saving your search…' : 'Add my first home'\}/);
-  assert.match(step, /onFinish\('\/homes\?add=1'\)/, 'the existing add-home flow');
+  assert.match(step, /\(finishing \? 'Saving your search…' : 'Add my first home'\)/);
+  assert.match(step, /onFinish\(sharedFor \? '\/homes' : '\/homes\?add=1'\)/, 'the existing add-home flow');
   assert.match(step, /onFinish\('\/search\?welcome=1'\)/, 'My Search');
   const finish = onboarding.slice(onboarding.indexOf('const finishToDestination'), onboarding.indexOf('const finish = async'));
   assert.match(finish, /if \(finishingRef\.current\) return;/);

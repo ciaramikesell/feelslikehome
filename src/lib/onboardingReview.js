@@ -34,6 +34,19 @@ export function basicsSummary(raw) {
   ];
 }
 
+// How The Basics card shows: 'empty' (nothing answered), 'compact' (only the
+// search type — the three core questions collapse into one invitation instead
+// of three "Not set yet" rows), or 'full' (every row, answered or not).
+export function basicsDisplay(rows) {
+  const value = (key) => rows.find((row) => row.key === key)?.value || null;
+  if (!rows.some((row) => row.value)) return { mode: 'empty' };
+  if (rows.every((row) => row.key === 'type' || !row.value)) {
+    const money = rows.find((row) => row.key === 'budget')?.label === 'Maximum monthly rent' ? 'Rent' : 'Budget';
+    return { mode: 'compact', type: value('type'), prompt: `${money}, bedrooms and bathrooms aren’t set yet.` };
+  }
+  return { mode: 'full' };
+}
+
 export function areasSummary(raw) {
   return searchAreasOf(normalizePriorities(raw)).map((area) => ({ key: area.placeId, name: area.name, type: AREA_TYPES[area.type] }));
 }

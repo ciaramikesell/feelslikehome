@@ -473,7 +473,10 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
               onFinish={finishToDestination}
               finishing={finishing}
               finishError={finishError}
-              header={<StepHeader step="review" progress={progress} sharedFor={sharedFor} title={<>Your search is <em>ready.</em></>} lead="Here’s what home looks like to you so far. It’s yours alone, easy to change anytime, and it’ll grow as you discover homes." />}
+              sharedFor={sharedFor}
+              header={sharedFor
+                ? <StepHeader step="review" progress={progress} sharedFor={sharedFor} title={<>Your preferences are <em>ready.</em></>} lead={`Here’s what home looks like to you in ${sharedFor}. These are your own preferences: they won’t change anyone else’s, and you can edit them anytime.`} />
+                : <StepHeader step="review" progress={progress} title={<>Your search is <em>ready.</em></>} lead="Here’s what home looks like to you so far. It’s yours alone, easy to change anytime, and it’ll grow as you discover homes." />}
             />
           )}
           {/* Approved-flow steps not built yet (only reachable in the development preview). */}

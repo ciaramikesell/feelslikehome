@@ -2,15 +2,19 @@
 
 import { ArrowRight, Check } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
-import { areasSummary, basicsSummary, peopleSummary, placesSummary, prioritiesSummary } from '@/lib/onboardingReview';
+import { areasSummary, basicsDisplay, basicsSummary, peopleSummary, placesSummary, prioritiesSummary } from '@/lib/onboardingReview';
 
 // Step 6 of Onboarding V2: "Your search is ready." (approved Figma design).
 //
 // A read-only summary of what the earlier steps saved, one numbered card per
 // part, each with an Edit link back to its step. Unanswered questions read
-// "Not set yet"; nothing is inferred. "Add my first home" completes onboarding
-// through the existing completion service and only then opens the existing
-// add-home flow; "Go to My Search" completes and opens My Search instead.
+// "Not set yet"; nothing is inferred — except that when only the search type is
+// answered, the core Basics collapse into one compact invitation to add them.
+// "Add my first home" completes onboarding through the existing completion
+// service and only then opens the existing add-home flow; "Go to My Search"
+// completes and opens My Search instead. A co-buyer setting up preferences on
+// someone else's search (sharedFor) gets one action that saves their own
+// preferences and opens that search's homes — never "My Search".
 
 function SummaryCard({ number, title, editLabel, onEdit, empty, emptyText, children }) {
   const headingId = `flh-ob-review-${number}`;
@@ -30,29 +34,41 @@ function SummaryCard({ number, title, editLabel, onEdit, empty, emptyText, child
   );
 }
 
-export default function ReviewStep({ header, priorities, places, people, choice, role, onEdit, onFinish, finishing, finishError }) {
+export default function ReviewStep({ header, sharedFor = null, priorities, places, people, choice, role, onEdit, onFinish, finishing, finishError }) {
   const basics = basicsSummary(priorities);
   const areas = areasSummary(priorities);
   const savedPlaces = placesSummary(places);
   const who = peopleSummary({ choice, people, role });
   const levels = prioritiesSummary(priorities);
   const rankedCount = levels.reduce((sum, level) => sum + level.items.length, 0);
-  const anyBasics = basics.some((row) => row.value);
+  const basicsView = basicsDisplay(basics);
 
   return (
     <div className="flh-onboarding-step flh-ob-review">
       <span className="flh-ob-review-mark" aria-hidden="true"><BrandMark size={44} /></span>
       {header}
 
-      <SummaryCard number={1} title="The Basics" editLabel="Add details" onEdit={() => onEdit('basics')} empty={!anyBasics} emptyText="No basics added yet.">
-        <dl className="flh-ob-review-list">
-          {basics.map((row) => (
-            <div key={row.key} className="flh-ob-review-row">
-              <dt>{row.label}</dt>
-              <dd className={row.value ? '' : 'is-unset'}>{row.value || 'Not set yet'}</dd>
+      <SummaryCard number={1} title="The Basics" editLabel="Add details" onEdit={() => onEdit('basics')} empty={basicsView.mode === 'empty'} emptyText="No basics added yet.">
+        {basicsView.mode === 'compact' ? (
+          <>
+            <dl className="flh-ob-review-list">
+              <div className="flh-ob-review-row"><dt>Looking for</dt><dd>{basicsView.type}</dd></div>
+            </dl>
+            <div className="flh-ob-review-empty flh-ob-review-prompt">
+              <span>{basicsView.prompt}</span>
+              <button type="button" className="flh-ob-review-add" onClick={() => onEdit('basics')} aria-label="Add details: budget, bedrooms and bathrooms">Add details</button>
             </div>
-          ))}
-        </dl>
+          </>
+        ) : (
+          <dl className="flh-ob-review-list">
+            {basics.map((row) => (
+              <div key={row.key} className="flh-ob-review-row">
+                <dt>{row.label}</dt>
+                <dd className={row.value ? '' : 'is-unset'}>{row.value || 'Not set yet'}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
       </SummaryCard>
 
       <SummaryCard number={2} title="Areas of Interest" editLabel="Add areas" onEdit={() => onEdit('locations')} empty={!areas.length} emptyText="No areas added yet.">
@@ -96,9 +112,9 @@ export default function ReviewStep({ header, priorities, places, people, choice,
 
       {finishError && <p className="hh-save-error flh-ob-review-error" role="alert">{finishError}</p>}
       <nav className="flh-onboarding-actions flh-ob-review-actions" aria-label="Finish setup">
-        <button type="button" className="flh-text-action flh-ob-later" disabled={finishing} onClick={() => onFinish('/search?welcome=1')}>Go to My Search</button>
-        <button type="button" className="flh-button flh-button-primary flh-ob-cta" disabled={finishing} aria-busy={finishing || undefined} onClick={() => onFinish('/homes?add=1')}>
-          <span>{finishing ? 'Saving your search…' : 'Add my first home'}</span>
+        {!sharedFor && <button type="button" className="flh-text-action flh-ob-later" disabled={finishing} onClick={() => onFinish('/search?welcome=1')}>Go to My Search</button>}
+        <button type="button" className="flh-button flh-button-primary flh-ob-cta" disabled={finishing} aria-busy={finishing || undefined} onClick={() => onFinish(sharedFor ? '/homes' : '/homes?add=1')}>
+          <span>{sharedFor ? (finishing ? 'Saving your preferences…' : 'Save and see the homes') : (finishing ? 'Saving your search…' : 'Add my first home')}</span>
           <span className="flh-ob-cta-icon" aria-hidden="true"><ArrowRight size={20} strokeWidth={2.2} /></span>
         </button>
       </nav>
