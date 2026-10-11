@@ -105,7 +105,15 @@ export const SCENARIOS = [
     await page.getByRole('button', { name: 'Fireplace', exact: true }).waitFor();
   } },
   { name: 'v2-what-matters-earlier-answer', query: 'flow=v2&step=priorities&state=legacy' },
-  { name: 'v2-rank', query: 'flow=v2&step=rank&state=populated' },
+  // Step 5: no priorities, all Important, distributed across levels (returning), and many.
+  { name: 'v2-rank-none', query: 'flow=v2&step=rank&state=empty' },
+  { name: 'v2-rank-all-important', query: 'flow=v2&step=rank&state=fresh' },
+  { name: 'v2-rank-returning', query: 'flow=v2&step=rank&state=populated' },
+  { name: 'v2-rank-many', query: 'flow=v2&step=rank&state=many' },
+  { name: 'v2-rank-info-open', query: 'flow=v2&step=rank&state=fresh', act: async (page) => {
+    await page.getByRole('button', { name: /How Match handles missing information/ }).click();
+    await page.getByText('Unknown never counts against a home').waitFor();
+  } },
 ];
 
 async function settle(page) {

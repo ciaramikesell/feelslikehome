@@ -112,7 +112,8 @@ test('the six-step flow hides home details on Step 1; the live flow keeps them',
   assert.equal(CURRENT_ONBOARDING_VERSION, 1);
   assert.deepEqual(onboardingStepsFor(1, {}), ['basics', 'what_matters', 'rank']);
   // The live Rank step and What Matters step are unchanged when not in the six-step flow.
-  assert.match(onboarding, /const levels = sixStep \? priorityLevelsWithGroups\(priorities\) : priorityLevels\(priorities\);/);
+  assert.match(onboarding, /step === 'rank' && !sixStep && <RankStep /);
+  assert.match(read('src/components/onboarding/RankStepV2.jsx'), /const levels = priorityLevelsWithGroups\(priorities\);/);
   assert.match(onboarding, /title="What matters to you\?" lead="For now, just choose what matters\./);
   // Step 4 copy (approved Figma), on its own screen; the live What Matters step is the original.
   assert.match(onboarding, /title=\{<>What matters <em>most\?<\/em><\/>\} lead="Choose anything you’d weigh when comparing homes\. You’ll rank your picks next\."/);
@@ -258,7 +259,8 @@ test('alternatives stay one Step 5 item each, so they can never become separate 
 
 test('Garage ranks without an Attached/Detached question in the six-step flow; a saved qualifier is kept', () => {
   const onboarding = read('src/components/onboarding/Onboarding.jsx');
-  assert.match(onboarding, /onGaragePreferenceChange=\{sixStep \? undefined : \(value\) => patch\(\(next\) => setGaragePreference\(next, value\)\)\}/);
+  assert.doesNotMatch(read('src/components/onboarding/RankStepV2.jsx'), /garagePreference|GaragePreference/);
+  assert.match(onboarding, /onGaragePreferenceChange=\{\(value\) => patch\(\(next\) => setGaragePreference\(next, value\)\)\}/, 'the live Rank step keeps it');
   assert.doesNotMatch(read('src/components/onboarding/WhatMattersStepV2.jsx'), /GarageQualifier|garagePreference/);
   const ranked = priorityLevelsWithGroups(addCriterion(v2Buyer(), { categoryKey: 'exterior', label: 'Garage', kind: 'check' })).flatMap((level) => level.items);
   assert.deepEqual(ranked.map((item) => [item.key, item.qualifier]), [['exterior:Garage', null]]);

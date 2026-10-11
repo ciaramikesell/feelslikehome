@@ -7,6 +7,7 @@ import { ONBOARDING_SUGGESTIONS, applySearchChoice } from '@/lib/onboarding';
 import { beginOnboarding, onboardingStepsFor, CURRENT_ONBOARDING_VERSION } from '@/lib/onboardingFlow';
 import { addSearchArea } from '@/lib/searchAreas';
 import { chooseSearchType } from '@/lib/onboardingBasics';
+import { toggleGroupValue } from '@/lib/whatMattersGroups';
 import { addCriterion, isCriterionSelected, moveCriterion, setGaragePreference, toggleCriterion } from '@/lib/searchProfile';
 
 // Fixtures for the development-only preview (src/app/dev/onboarding). Fixed ids
@@ -130,6 +131,17 @@ export default function OnboardingPreview({ step = 'basics', state = 'empty', mo
       // A fresh six-step buyer: nothing chosen yet.
       if (state === 'empty') return chooseSearchType(normalizePriorities({}), 'home_buy', { presetPropertyType: false });
       if (state === 'legacy') return { ...next, homeLayout: { values: ['Ranch / Single Story'], tier: 'dontcare' } };
+      // Fresh picks from Step 4, all still Important (state=fresh), or a lot of them (state=many).
+      if (state === 'fresh' || state === 'many') {
+        const fresh = chooseSearchType(normalizePriorities({}), 'home_buy', { presetPropertyType: false });
+        const criteria = state === 'many'
+          ? [['location', 'Quiet street'], ['location', 'Walkable to Town'], ['location', 'Reputable Schools'], ['location', 'Parks nearby'], ['location', 'Near waterfront'], ['exterior', 'Large backyard'], ['features', 'Home office'], ['features', 'Primary ensuite'], ['features', 'Guest Bedroom'], ['features', 'Finished basement'], ['exterior', 'Garage'], ['features', 'Fireplace'], ['exterior', 'Fenced yard'], ['features', 'Central air']]
+          : [['location', 'Reputable Schools'], ['features', 'Home office'], ['exterior', 'Garage']];
+        let picked = criteria.reduce((acc, [categoryKey, label]) => addCriterion(acc, { categoryKey, label, kind: 'check' }), fresh);
+        picked = toggleGroupValue(toggleGroupValue(picked, 'preferredPropertyTypes', 'house'), 'preferredPropertyTypes', 'condo');
+        picked = toggleGroupValue(toggleGroupValue(picked, 'homeLayout', 'Ranch / Single Story'), 'homeLayout', 'Two Story');
+        return state === 'many' ? toggleGroupValue(toggleGroupValue(picked, 'homeCondition', 'Move-In Ready'), 'homeCondition', 'Renovation Potential') : picked;
+      }
       if (state !== 'populated') return next;
       return { ...next, homeLayout: { values: ['Ranch / Single Story', 'Two Story'], tier: 'important' }, homeCondition: { values: ['Move-In Ready', 'New Construction'], tier: 'nice' }, preferredPropertyTypes: { values: ['house', 'condo'], tier: 'must' } };
     };

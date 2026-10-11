@@ -26,8 +26,8 @@ import { OnboardingAction, OnboardingRail, OnboardingTopBar } from '@/components
 import BasicsStep from '@/components/onboarding/BasicsStep';
 import LocationsStep from '@/components/onboarding/LocationsStep';
 import CollaborationStep from '@/components/onboarding/CollaborationStep';
-import { moveGroup, priorityLevelsWithGroups } from '@/lib/whatMattersGroups';
 import WhatMattersStepV2 from '@/components/onboarding/WhatMattersStepV2';
+import RankStepV2 from '@/components/onboarding/RankStepV2';
 
 // Screen labels for the flow-1 steps (src/lib/onboardingFlow.js owns order and branching).
 // Flow 1 is live; the approved six-step flow (3) is built and previewed step by step.
@@ -138,26 +138,20 @@ function WhatMattersStep({ priorities, patch, onNext, isSaving, progress, shared
   );
 }
 
-// sixStep (flow 3, Step 5): the board also ranks the grouped preferences chosen
-// in Step 4 (one item per group, e.g. "Property type · House or Condo"), and
-// Continue leads to Review instead of finishing. The live flow is unchanged.
-function RankStep({ priorities, patch, onFinish, finishing, progress, sharedFor = null, sixStep = false, onNext = null }) {
-  const levels = sixStep ? priorityLevelsWithGroups(priorities) : priorityLevels(priorities);
+function RankStep({ priorities, patch, onFinish, finishing, progress, sharedFor = null }) {
+  const levels = priorityLevels(priorities);
   return (
     <div className="flh-onboarding-step">
       <StepHeader step="rank" progress={progress} sharedFor={sharedFor} searchType={priorities.onboardingSearchType} title="Now rank what matters most." lead="Everything you chose began as Important. Drag a priority between levels, or tap it and choose where it belongs." />
       <RankBoard
         levels={levels}
         showDescriptions
-        onMove={(item, tier) => patch((next) => (item.group ? moveGroup(next, item.categoryKey, tier) : moveCriterion(next, item.categoryKey, item.label, tier)))}
+        onMove={(item, tier) => patch((next) => moveCriterion(next, item.categoryKey, item.label, tier))}
         garagePreference={priorities.exterior?.garagePreference || 'any'}
-        // Onboarding V2 doesn't ask Attached vs Detached; a saved choice is kept (and still shown).
-        onGaragePreferenceChange={sixStep ? undefined : (value) => patch((next) => setGaragePreference(next, value))}
+        onGaragePreferenceChange={(value) => patch((next) => setGaragePreference(next, value))}
       />
       <nav className="flh-onboarding-actions">
-        {sixStep
-          ? <OnboardingAction onClick={onNext}>Continue</OnboardingAction>
-          : <OnboardingAction disabled={finishing} onClick={onFinish}>{finishing ? 'Saving your search…' : (sharedFor ? 'Save and see the homes' : 'Finish')}</OnboardingAction>}
+        <OnboardingAction disabled={finishing} onClick={onFinish}>{finishing ? 'Saving your search…' : (sharedFor ? 'Save and see the homes' : 'Finish')}</OnboardingAction>
       </nav>
     </div>
   );
@@ -389,7 +383,16 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
               header={<StepHeader step="priorities" progress={progress} sharedFor={sharedFor} searchType={priorities.onboardingSearchType} title={<>What matters <em>most?</em></>} lead="Choose anything you’d weigh when comparing homes. You’ll rank your picks next." />}
             />
           )}
-          {!ready && step === 'rank' && <RankStep sixStep={sixStep} onNext={() => goTo('rank')} priorities={priorities} patch={patch} progress={progress} sharedFor={sharedFor} onFinish={finish} finishing={finishing} />}
+          {!ready && step === 'rank' && !sixStep && <RankStep priorities={priorities} patch={patch} progress={progress} sharedFor={sharedFor} onFinish={finish} finishing={finishing} />}
+          {!ready && step === 'rank' && sixStep && (
+            <RankStepV2
+              priorities={priorities}
+              patch={patch}
+              onNext={() => goTo('rank')}
+              onChoose={() => goBack('rank')}
+              header={<StepHeader step="rank" progress={progress} sharedFor={sharedFor} searchType={priorities.onboardingSearchType} title={<>Let’s put things <em>in order.</em></>} lead="Everything you picked starts as Important. Move each priority into Must-Have, Important, or Nice-to-Have." />}
+            />
+          )}
           {!ready && step === 'locations' && (
             <LocationsStep
               priorities={priorities}

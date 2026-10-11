@@ -2556,3 +2556,49 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
   .flh-onboarding-root .flh-ob-matters-actions { justify-content: flex-end; }
   .flh-onboarding-root .flh-ob-matters-actions .flh-ob-cta { flex: 0 0 auto; min-width: 260px; }
 }
+
+/* ── Onboarding V2 — Step 5: Let's put things in order (Phase 2E) ──────────────
+   From the approved Rank design: three rounded level cards whose headers are
+   tinted (peach Must-Have, sage Important, warm grey Nice-to-Have) with a
+   Fraunces title, a short description and a round count; cream bodies with a
+   quiet placeholder; a dashed empty state; and a sage "How Match handles
+   missing information" disclosure. Each row has a drag handle and an assignment
+   menu. Scoped to the onboarding root and the flh-ob- prefix. */
+.flh-ob-rank-info { background: #EEF2EA; }
+.flh-ob-rank-info-title { color: #3F5238; font: 600 13px/1.3 var(--font-sans); }
+.flh-ob-rank-hint { margin: -6px 0 0; color: var(--ink-soft); font: 500 11.5px/1.4 var(--font-sans); }
+.flh-ob-rank-empty { display: grid; justify-items: center; gap: 8px; padding: 24px 20px; border: 1px dashed rgba(46,38,33,.28); border-radius: 20px; background: var(--flh-card); text-align: center; }
+.flh-ob-rank-empty-title { margin: 0; color: var(--ink); font: 600 18px/1.25 var(--font-serif); }
+.flh-ob-rank-empty-copy { margin: 0 0 6px; color: var(--ink-soft); font: 500 12.5px/1.45 var(--font-sans); }
+.flh-ob-rank-empty .flh-button { border-color: var(--brick); color: var(--brick-deep); }
+.flh-ob-rank-levels { display: grid; gap: 14px; }
+.flh-ob-rank-level { overflow: hidden; border: 1px solid var(--ob-line); border-radius: 20px; background: var(--flh-card); transition: box-shadow .15s ease; }
+.flh-ob-rank-level.is-drop-target { box-shadow: 0 0 0 3px var(--focus-ring); }
+.flh-ob-rank-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; }
+.flh-ob-rank-head > span:first-child { display: grid; gap: 4px; min-width: 0; }
+.flh-ob-rank-level.is-must .flh-ob-rank-head { background: #F4E0D7; }
+.flh-ob-rank-level.is-important .flh-ob-rank-head { background: #E1E7DB; }
+.flh-ob-rank-level.is-nice .flh-ob-rank-head { background: #EFEAE3; }
+.flh-ob-rank-title { margin: 0; color: var(--ink); font: 600 22px/1.15 var(--font-serif); letter-spacing: -.01em; }
+.flh-ob-rank-desc { color: var(--ink-soft); font: 500 11.5px/1.35 var(--font-sans); }
+.flh-ob-rank-count { display: grid; flex-shrink: 0; place-items: center; width: 32px; aspect-ratio: 1; border-radius: 50%; color: #fff; font: 700 14px/1 var(--font-sans); }
+.flh-ob-rank-level.is-must .flh-ob-rank-count { background: var(--brick); }
+.flh-ob-rank-level.is-important .flh-ob-rank-count { background: var(--moss); }
+.flh-ob-rank-level.is-nice .flh-ob-rank-count { background: #9A8E84; }
+.flh-ob-rank-placeholder { margin: 0; padding: 18px; color: var(--ink-soft); font: 500 11.5px/1.4 var(--font-sans); text-align: center; }
+.flh-ob-rank-list { margin: 0; padding: 0; list-style: none; }
+.flh-ob-rank-row { display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 6px 12px 6px 4px; border-top: 1px solid var(--ob-line); background: var(--flh-card); }
+.flh-ob-rank-row.is-dragged { opacity: .55; }
+.flh-ob-rank-handle { display: grid; flex-shrink: 0; place-items: center; width: 36px; min-height: 44px; padding: 0; border: 0; border-radius: 10px; background: none; color: #A99D92; cursor: grab; touch-action: none; }
+.flh-ob-rank.is-dragging .flh-ob-rank-handle { cursor: grabbing; }
+.flh-ob-rank-label { display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; color: var(--ink); font: 600 14px/1.3 var(--font-sans); overflow-wrap: anywhere; }
+.flh-ob-rank-qualifier { padding: 2px 8px; border-radius: 999px; background: var(--ob-warm); color: var(--ink-soft); font: 600 11px/1.4 var(--font-sans); }
+.flh-ob-rank-menu { position: relative; display: inline-flex; flex-shrink: 0; align-items: center; color: var(--brick-deep); }
+.flh-ob-rank-menu select { appearance: none; -webkit-appearance: none; min-height: 40px; margin: 0; padding: 0 28px 0 12px; border: 1px solid var(--ob-line); border-radius: 999px; background: #fff; color: inherit; font: 600 12.5px/1.2 var(--font-sans); cursor: pointer; }
+.flh-ob-rank-menu select:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 1px; }
+.flh-ob-rank-menu svg { position: absolute; right: 10px; pointer-events: none; }
+/* Long, list-like screen: actions sit at the end of the content (as in Step 4). */
+.flh-onboarding-root .flh-ob-rank-actions { position: static; margin-top: 8px; padding: 6px 0 calc(16px + env(safe-area-inset-bottom)); background: none; }
+@media (min-width: 960px) {
+  .flh-onboarding-root .flh-ob-rank-actions { display: flex; justify-content: flex-end; }
+}
