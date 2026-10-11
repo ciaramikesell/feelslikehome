@@ -2540,8 +2540,12 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-ob-own-form { display: grid; gap: 10px; padding: 16px; border: 1px solid var(--ob-line); border-radius: 16px; background: var(--flh-card); }
 .flh-ob-own-category { min-height: 44px; padding: 0 12px; border: 1px solid var(--ob-line); border-radius: 12px; background: #fff; color: var(--ink); font: 500 14px var(--font-sans); }
 
-/* Picks count beside the CTA, as in the design. */
-.flh-onboarding-root .flh-ob-matters-actions { display: flex; align-items: center; gap: 14px; }
+/* Picks count beside the CTA, as in the design. On this long, chip-only screen
+   the action row sits at the end of the content on every width (not sticky):
+   compared on a 390px phone, the sticky bar covered chips mid-scroll, while the
+   in-flow row never overlaps an option and is still reached by Tab. Each chip
+   already shows its own chosen state, so the count isn't needed mid-scroll. */
+.flh-onboarding-root .flh-ob-matters-actions { position: static; display: flex; align-items: center; gap: 14px; margin-top: 8px; padding: 6px 0 calc(16px + env(safe-area-inset-bottom)); background: none; }
 .flh-onboarding-root .flh-ob-matters-actions .flh-ob-cta { flex: 1 1 auto; width: auto; min-width: 0; }
 .flh-ob-picks { display: grid; flex-shrink: 0; justify-items: center; min-width: 44px; color: var(--brick); }
 .flh-ob-picks strong { font: 600 24px/1 var(--font-serif); }

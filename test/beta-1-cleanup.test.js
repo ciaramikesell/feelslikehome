@@ -67,8 +67,8 @@ test('new onboarding search choices set an explicit, accessible rental subtype',
   assert.match(basics, /NEW_SEARCH_CHOICES\.map/);
   assert.match(basics, /<label className="flh-ob-searchtype-label" htmlFor=\{id\}>I’m looking for<\/label>/);
   assert.match(basics, /<select id=\{id\} required value=\{choice\} onChange=\{\(event\) => onChoose\(event\.target\.value\)\}/);
-  assert.match(basics, /onChoose=\{\(key\) => patch\(\(next\) => chooseSearchType\(next, key\)\)\}/);
-  assert.match(lib, /const next = applySearchChoice\(priorities, choiceKey\);/);
+  assert.match(basics, /onChoose=\{\(key\) => patch\(\(next\) => chooseSearchType\(next, key, \{ presetPropertyType \}\)\)\}/);
+  assert.match(lib, /let next = applySearchChoice\(priorities, choiceKey\);/);
 });
 
 test('auth mobile and onboarding brand placement use focused centering classes', () => {

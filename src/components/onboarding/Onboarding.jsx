@@ -151,7 +151,8 @@ function RankStep({ priorities, patch, onFinish, finishing, progress, sharedFor 
         showDescriptions
         onMove={(item, tier) => patch((next) => (item.group ? moveGroup(next, item.categoryKey, tier) : moveCriterion(next, item.categoryKey, item.label, tier)))}
         garagePreference={priorities.exterior?.garagePreference || 'any'}
-        onGaragePreferenceChange={(value) => patch((next) => setGaragePreference(next, value))}
+        // Onboarding V2 doesn't ask Attached vs Detached; a saved choice is kept (and still shown).
+        onGaragePreferenceChange={sixStep ? undefined : (value) => patch((next) => setGaragePreference(next, value))}
       />
       <nav className="flh-onboarding-actions">
         {sixStep
@@ -363,6 +364,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
               patch={patch}
               onNext={() => goTo('basics')}
               homeDetails={!sixStep}
+              presetPropertyType={!sixStep}
               header={sharedFor ? (
                 <>
                   <StepHeader step="basics" progress={progress} sharedFor={sharedFor} title={`Set up your preferences for ${sharedFor}.`} lead="Tell us what you’re looking for. These are yours alone—you can change them anytime." />

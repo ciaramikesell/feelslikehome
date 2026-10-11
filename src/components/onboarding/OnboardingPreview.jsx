@@ -6,6 +6,7 @@ import { normalizePriorities } from '@/lib/constants';
 import { ONBOARDING_SUGGESTIONS, applySearchChoice } from '@/lib/onboarding';
 import { beginOnboarding, onboardingStepsFor, CURRENT_ONBOARDING_VERSION } from '@/lib/onboardingFlow';
 import { addSearchArea } from '@/lib/searchAreas';
+import { chooseSearchType } from '@/lib/onboardingBasics';
 import { addCriterion, isCriterionSelected, moveCriterion, setGaragePreference, toggleCriterion } from '@/lib/searchProfile';
 
 // Fixtures for the development-only preview (src/app/dev/onboarding). Fixed ids
@@ -126,8 +127,8 @@ export default function OnboardingPreview({ step = 'basics', state = 'empty', mo
     const sixStepDetails = version === 3 && ['priorities', 'rank'].includes(target);
     const withDetails = (next) => {
       if (!sixStepDetails) return next;
-      // A fresh buyer: only what choosing "a home to buy" sets (House).
-      if (state === 'empty') return applySearchChoice(normalizePriorities({}), 'home_buy');
+      // A fresh six-step buyer: nothing chosen yet.
+      if (state === 'empty') return chooseSearchType(normalizePriorities({}), 'home_buy', { presetPropertyType: false });
       if (state === 'legacy') return { ...next, homeLayout: { values: ['Ranch / Single Story'], tier: 'dontcare' } };
       if (state !== 'populated') return next;
       return { ...next, homeLayout: { values: ['Ranch / Single Story', 'Two Story'], tier: 'important' }, homeCondition: { values: ['Move-In Ready', 'New Construction'], tier: 'nice' }, preferredPropertyTypes: { values: ['house', 'condo'], tier: 'must' } };

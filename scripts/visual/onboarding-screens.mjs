@@ -94,12 +94,8 @@ export const SCENARIOS = [
   // Six-step flow: home details move from Step 1 to Step 4, and rank in Step 5.
   { name: 'v2-basics-empty', query: 'flow=v2&step=basics&state=empty' },
   { name: 'v2-basics-populated', query: 'flow=v2&step=basics&state=populated' },
+  // A fresh buyer: nothing chosen, "Skip for now".
   { name: 'v2-what-matters-fresh', query: 'flow=v2&step=priorities&state=empty' },
-  { name: 'v2-what-matters-none', query: 'flow=v2&step=priorities&state=empty', act: async (page) => {
-    await page.getByRole('button', { name: 'House', exact: true }).click();
-    await page.getByRole('button', { name: /Skip for now/ }).waitFor();
-    await page.mouse.move(0, 0);
-  } },
   { name: 'v2-what-matters-several', query: 'flow=v2&step=priorities&state=empty', act: async (page) => {
     for (const name of ['Quiet street', 'Great schools', 'Home office', 'Move-in ready', 'Room to renovate', 'Condo', 'Ranch', 'Two story', 'Garage']) await page.getByRole('button', { name, exact: true }).click();
   } },

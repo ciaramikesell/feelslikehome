@@ -1,5 +1,6 @@
 import { ONBOARDING_SUGGESTIONS, applySearchChoice } from './onboarding.js';
-import { addCriterion, moveCriterion, priorityLevels } from './searchProfile.js';
+import { normalizePriorities } from './constants.js';
+import { addCriterion, basicsFieldsFor, moveCriterion, priorityLevels } from './searchProfile.js';
 
 // Pure helpers for the Onboarding V2 Basics step. Every stored value keeps the
 // format the rest of FLH already reads: Basics are digit strings that parseNum
@@ -103,9 +104,20 @@ export function setGarageLevel(priorities, level, choiceKey) {
 // abandoned path (applySearchChoice). A garage answer given on the Basics screen is
 // the person's own, so it carries across — except to Apartment, which has no
 // garage question.
-export function chooseSearchType(priorities, choiceKey) {
+// presetPropertyType: the live flow presets the property type from the kind of
+// search (e.g. House for "a home to buy"). The six-step flow asks it in Step 4
+// instead, so there nothing is preset: property types the person already chose
+// that still apply to the new kind of search are kept, and otherwise it stays
+// genuinely unset. Apartments always mean 'apartment' (that is what makes a
+// search an apartment search).
+export function chooseSearchType(priorities, choiceKey, { presetPropertyType = true } = {}) {
   const level = garageLevel(priorities);
-  const next = applySearchChoice(priorities, choiceKey);
+  const before = normalizePriorities(priorities).preferredPropertyTypes;
+  let next = applySearchChoice(priorities, choiceKey);
+  if (!presetPropertyType && choiceKey !== 'apartment_rent') {
+    const allowed = basicsFieldsFor(choiceKey).propertyTypes;
+    next = { ...next, preferredPropertyTypes: { ...before, values: (before.values || []).filter((value) => allowed.includes(value)) } };
+  }
   if (level === 'unset' || choiceKey === 'apartment_rent') return next;
   return setGarageLevel(next, level, choiceKey);
 }

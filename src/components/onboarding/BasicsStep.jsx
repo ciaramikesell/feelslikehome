@@ -241,8 +241,9 @@ function HomeDetails({ priorities, fields, setValues }) {
 
 // homeDetails: the live flow keeps Garage preferences and More about the home
 // here. The six-step flow (3) asks those in Step 4 (What Matters) instead; the
-// saved values are never cleared, only not shown on this step.
-export default function BasicsStep({ header, priorities, patch, onNext, homeDetails = true }) {
+// saved values are never cleared, only not shown on this step. presetPropertyType:
+// see chooseSearchType (the six-step flow leaves property type unset).
+export default function BasicsStep({ header, priorities, patch, onNext, homeDetails = true, presetPropertyType = true }) {
   const choice = priorities.onboardingSearchType || '';
   const fields = basicsFieldsFor(choice);
   const rent = choice === 'home_rent' || choice === 'apartment_rent';
@@ -257,7 +258,7 @@ export default function BasicsStep({ header, priorities, patch, onNext, homeDeta
   return (
     <div className="flh-onboarding-step flh-ob-basics">
       {header}
-      <SearchTypeControl choice={choice} onChoose={(key) => patch((next) => chooseSearchType(next, key))} />
+      <SearchTypeControl choice={choice} onChoose={(key) => patch((next) => chooseSearchType(next, key, { presetPropertyType }))} />
       <section className="flh-card flh-ob-basics-card" aria-label="The basics">
         <BudgetField label={fields.budgetLabel} rent={rent} value={priorities.budget.value} onChange={(value) => setValue('budget', value)} />
         <hr className="flh-ob-divider" />

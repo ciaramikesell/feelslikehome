@@ -11,7 +11,9 @@ import { normalizePriorities } from '../src/lib/constants.js';
 import { computeMatch } from '../src/lib/matching.js';
 import { applySearchChoice, flatOnboardingSuggestions } from '../src/lib/onboarding.js';
 import { CURRENT_ONBOARDING_VERSION, onboardingStepsFor } from '../src/lib/onboardingFlow.js';
-import { addCriterion, priorityLevels } from '../src/lib/searchProfile.js';
+import { addCriterion, isCriterionSelected, moveCriterion, priorityLevels, toggleCriterion } from '../src/lib/searchProfile.js';
+import { chooseSearchType } from '../src/lib/onboardingBasics.js';
+import { UNSUPPORTED_FIGMA_OPTIONS, chipKey, isChipSelected, moreToConsider, picksCount, whatMattersSections } from '../src/lib/whatMattersCatalog.js';
 import {
   groupPriorityItems, isGroupValueSelected, moveGroup, priorityLevelsWithGroups, toggleGroupValue, unrankedGroups, whatMattersGroups,
 } from '../src/lib/whatMattersGroups.js';
@@ -102,7 +104,7 @@ test('earlier Basics answers are kept and shown, but never ranked or scored with
 test('the six-step flow hides home details on Step 1; the live flow keeps them', () => {
   const basics = read('src/components/onboarding/BasicsStep.jsx');
   const onboarding = read('src/components/onboarding/Onboarding.jsx');
-  assert.match(basics, /export default function BasicsStep\(\{ header, priorities, patch, onNext, homeDetails = true \}\)/);
+  assert.match(basics, /export default function BasicsStep\(\{ header, priorities, patch, onNext, homeDetails = true, presetPropertyType = true \}\)/);
   assert.match(basics, /const showGarage = homeDetails && choice !== 'apartment_rent';/);
   assert.match(basics, /const showDetails = homeDetails && choice && /);
   assert.match(onboarding, /homeDetails=\{!sixStep\}/);
@@ -153,8 +155,6 @@ dbTest('Step 4 choices and Step 5 ranks persist in the person’s own preference
 
 /* --------------------------- Step 4 Figma catalog --------------------------- */
 
-const { UNSUPPORTED_FIGMA_OPTIONS, chipKey, isChipSelected, moreToConsider, picksCount, whatMattersSections } = await import('../src/lib/whatMattersCatalog.js');
-const { toggleCriterion, moveCriterion, isCriterionSelected } = await import('../src/lib/searchProfile.js');
 
 test('the Step 4 catalog uses only existing canonical identities, with the approved wording', () => {
   const sections = whatMattersSections(buy());
@@ -208,4 +208,86 @@ test('picks count every chosen criterion and option; the CTA reads Skip for now 
   assert.match(step, /aria-pressed=\{selected\}/);
   // No counter at the top of the step.
   assert.doesNotMatch(step, /HelperRow|flh-count-row/);
+});
+
+/* ------------------------ Step 4 locked decisions (2D) ------------------------ */
+
+const v2Buyer = () => chooseSearchType(normalizePriorities({}), 'home_buy', { presetPropertyType: false });
+
+test('six-step flow: a fresh buyer has zero picks and property type genuinely unset; the live flow still presets House', () => {
+  assert.deepEqual(v2Buyer().preferredPropertyTypes.values, []);
+  assert.equal(picksCount(v2Buyer()), 0);
+  assert.deepEqual(chooseSearchType(normalizePriorities({}), 'home_buy').preferredPropertyTypes.values, ['house']);
+  // Skipping Step 4 leaves it unset: Match has no property-type entry at all.
+  assert.doesNotMatch(JSON.stringify(computeMatch({ propertyType: 'condo' }, v2Buyer())), /preferredPropertyTypes/);
+  // Explicit choices survive a change of search type where they still apply; apartments are always 'apartment'.
+  const chosen = toggleGroupValue(toggleGroupValue(v2Buyer(), 'preferredPropertyTypes', 'house'), 'preferredPropertyTypes', 'condo');
+  assert.deepEqual(chooseSearchType(chosen, 'home_rent', { presetPropertyType: false }).preferredPropertyTypes.values, ['house', 'condo']);
+  assert.deepEqual(chooseSearchType(chosen, 'home_buy', { presetPropertyType: false }).preferredPropertyTypes, chosen.preferredPropertyTypes);
+  assert.deepEqual(chooseSearchType(chosen, 'apartment_rent', { presetPropertyType: false }).preferredPropertyTypes.values, ['apartment']);
+  const basics = read('src/components/onboarding/BasicsStep.jsx');
+  assert.match(basics, /chooseSearchType\(next, key, \{ presetPropertyType \}\)/);
+  assert.match(basics, /homeDetails = true, presetPropertyType = true \}\)/);
+  assert.match(read('src/components/onboarding/Onboarding.jsx'), /presetPropertyType=\{!sixStep\}/);
+});
+
+test('existing buyer data is never rewritten by viewing the six-step steps', () => {
+  const existing = normalizePriorities({ ...buy(), preferredPropertyTypes: { values: ['house', 'townhome'], tier: 'must' }, exterior: { customItems: [], tiers: {}, order: [], hiddenCore: [], garagePreference: 'attached' } });
+  const copy = JSON.parse(JSON.stringify(existing));
+  whatMattersSections(existing); moreToConsider(existing); picksCount(existing); priorityLevelsWithGroups(existing);
+  assert.deepEqual(existing, copy);
+  assert.deepEqual(choicesOf(existing).preferredPropertyTypes, ['House', 'Condo', 'Multifamily', 'Townhome']);
+});
+
+test('alternatives stay one Step 5 item each, so they can never become separate simultaneous Must Haves', () => {
+  let priorities = v2Buyer();
+  for (const [key, value] of [['preferredPropertyTypes', 'house'], ['preferredPropertyTypes', 'condo'], ['homeLayout', 'Ranch / Single Story'], ['homeLayout', 'Two Story'], ['homeCondition', 'Move-In Ready'], ['homeCondition', 'Renovation Potential']]) {
+    priorities = toggleGroupValue(priorities, key, value);
+  }
+  priorities = moveGroup(priorities, 'preferredPropertyTypes', 'must');
+  const items = priorityLevelsWithGroups(priorities).flatMap((level) => level.items);
+  assert.deepEqual(items.map((item) => [item.key, item.qualifier, item.tier]), [
+    ['group:preferredPropertyTypes', 'House or Condo', 'must'],
+    ['group:homeLayout', 'Ranch or Two Story', 'important'],
+    ['group:homeCondition', 'Move-in Ready or Renovation Potential', 'important'],
+  ]);
+  // Match: a condo meets the Must Have; a house meets it; neither needs to be both.
+  for (const propertyType of ['house', 'condo']) assert.match(JSON.stringify(computeMatch({ propertyType }, priorities)), /"key":"preferredPropertyTypes"[^}]*"met":true/);
+  assert.match(JSON.stringify(computeMatch({ homeCondition: ['Renovation Potential'] }, priorities)), /"key":"homeCondition"[^}]*"met":true/);
+});
+
+test('Garage ranks without an Attached/Detached question in the six-step flow; a saved qualifier is kept', () => {
+  const onboarding = read('src/components/onboarding/Onboarding.jsx');
+  assert.match(onboarding, /onGaragePreferenceChange=\{sixStep \? undefined : \(value\) => patch\(\(next\) => setGaragePreference\(next, value\)\)\}/);
+  assert.doesNotMatch(read('src/components/onboarding/WhatMattersStepV2.jsx'), /GarageQualifier|garagePreference/);
+  const ranked = priorityLevelsWithGroups(addCriterion(v2Buyer(), { categoryKey: 'exterior', label: 'Garage', kind: 'check' })).flatMap((level) => level.items);
+  assert.deepEqual(ranked.map((item) => [item.key, item.qualifier]), [['exterior:Garage', null]]);
+  const established = { ...addCriterion(v2Buyer(), { categoryKey: 'exterior', label: 'Garage', kind: 'check' }, 'must') };
+  established.exterior = { ...established.exterior, garagePreference: 'detached' };
+  assert.equal(priorityLevelsWithGroups(established)[0].items[0].qualifier, 'Detached');
+});
+
+test('the gaps are tracked, not offered: unsupported options are documented and never become chips', () => {
+  const doc = read('docs/onboarding-v2-priority-gaps.md');
+  for (const heading of ['### Natural light', '### Open kitchen', '### Easy commute', '## 2. Follow-up task — manual assessment on saved homes']) assert.ok(doc.includes(heading), heading);
+  const texts = [...whatMattersSections(v2Buyer()).flatMap((section) => section.chips), ...moreToConsider(v2Buyer())].map((chip) => chip.text.toLowerCase());
+  for (const option of UNSUPPORTED_FIGMA_OPTIONS) assert.ok(!texts.includes(option.text.toLowerCase()), option.text);
+});
+
+test('Step 4 actions sit at the end of the content (never over an option)', () => {
+  const css = read('src/app/globals.css');
+  assert.match(css, /\.flh-onboarding-root \.flh-ob-matters-actions \{ position: static;/);
+});
+
+dbTest('choosing a layout in Step 4 makes the home’s layout recordable on saved homes (existing Home details field)', async () => {
+  const { resolveSharedFactPriorityAwareness } = await import('../src/lib/supabase/collaboration.js');
+  const owner = db.createUser({ email: 'owner.layoutfact@example.com' });
+  const search = { id: db.admin(`select id from public.searches where user_id = '${owner}'`)[0].id, user_id: owner };
+  const client = db.clientFor(owner);
+  await savePriorities(client, search, owner, v2Buyer());
+  const before = await resolveSharedFactPriorityAwareness(client, search);
+  assert.equal(before.homeLayout?.eligibleForSharedFactCapture, false);
+  await savePriorities(client, search, owner, toggleGroupValue(v2Buyer(), 'homeLayout', 'Ranch / Single Story'));
+  const after = await resolveSharedFactPriorityAwareness(client, search);
+  assert.equal(after.homeLayout?.eligibleForSharedFactCapture, true);
 });
