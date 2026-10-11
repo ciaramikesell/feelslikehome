@@ -64,7 +64,8 @@ test('realtors never become Match, compare, or archive decision participants', (
 test('same account may have a different relationship on each search', () => {
   assert.match(schema, /unique \(search_id, user_id\)/);
   assert.doesNotMatch(schema, /unique\s*\(user_id, role\)/);
-  assert.match(collaboration, /membership\?\.role === 'realtor'/);
+  // Each search's relationship comes from that search's own membership row.
+  assert.match(collaboration, /const relationshipType = memberships\.find\(\(m\) => m\.search_id === s\.id\)\?\.role/);
 });
 
 test('archived-home and Match visibility do not grant input mutation', () => {

@@ -121,9 +121,30 @@ export async function needsSharedSearchSetup(supabase, userId, search, isOwner) 
   return membership?.role === 'co_buyer' && !ownPriorities;
 }
 
-// Every search the current user can access, for the search switcher. Small
-// by design — V1 is one owned search plus at most one shared search, never a
-// full workspace list.
+// Every search the current user can access, for the search switcher: the
+// one they own plus each search they are a member of. Reading this list never
+// writes anything. Labels name the owner ("Ciara's search") so the active
+// search is unambiguous; names come from the existing resolve_display_name
+// RPC and fall back to generic labels if it is unavailable. Small by design —
+// V1 is one owned search plus a handful of shared ones, not a workspace list.
+const RELATIONSHIP_FALLBACK_LABEL = { co_buyer: 'Shared search', realtor: 'Client search' };
+
+async function ownerDisplayName(supabase, ownerId, fallback) {
+  try {
+    const { data, error } = await supabase.rpc('resolve_display_name', { p_user_id: ownerId, p_fallback: fallback });
+    if (error) return null;
+    // PostgREST returns a scalar function's value directly; tolerate a
+    // single-row/array shape too rather than misreading it.
+    const first = Array.isArray(data) ? data[0] : data;
+    const value = first && typeof first === 'object' ? Object.values(first)[0] : first;
+    return typeof value === 'string' && value.trim() ? value.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+const possessive = (name) => (/s$/i.test(name) ? `${name}’` : `${name}’s`);
+
 export async function getAccessibleSearches(supabase, userId) {
   const [{ data: owned, error: ownedError }, { data: memberships, error: memberError }] = await Promise.all([
     supabase.from('searches').select(SEARCH_SHARED_COLUMNS).eq('user_id', userId).maybeSingle(),
@@ -141,17 +162,19 @@ export async function getAccessibleSearches(supabase, userId) {
   }
 
   const list = [];
-  if (owned) list.push({ id: owned.id, label: 'My Search', isOwner: true });
-  memberSearches.forEach((s) => {
-    const membership = memberships.find((m) => m.search_id === s.id);
-    list.push({
+  if (owned) list.push({ id: owned.id, label: 'Your search', ownerName: null, isOwner: true, relationshipType: 'owner' });
+  const shared = await Promise.all(memberSearches.map(async (s) => {
+    const relationshipType = memberships.find((m) => m.search_id === s.id)?.role || 'co_buyer';
+    const name = await ownerDisplayName(supabase, s.user_id, null);
+    return {
       id: s.id,
-      label: membership?.role === 'realtor' ? 'Realtor Search' : 'Shared Search',
+      label: name ? `${possessive(name)} search` : (RELATIONSHIP_FALLBACK_LABEL[relationshipType] || 'Shared search'),
+      ownerName: name,
       isOwner: false,
-      relationshipType: membership?.role || 'co_buyer',
-    });
-  });
-  return list;
+      relationshipType,
+    };
+  }));
+  return [...list, ...shared.sort((a, b) => a.label.localeCompare(b.label))];
 }
 
 export async function setActiveSearch(supabase, userId, searchId) {

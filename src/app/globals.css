@@ -42,7 +42,19 @@ html { scroll-behavior: smooth; }
 .hh-shell-action-primary { color: var(--ink); background: rgba(116,128,79,.09); }
 .hh-shell-action-primary:hover, .hh-shell-action-primary.active { color: var(--brick); background: rgba(193,89,47,.08); }
 .hh-shell-action-quiet { font-weight: 500; }
-.hh-search-switcher { max-width: 190px; min-height: 36px; border: 0; border-radius: 9px; padding: 7px 30px 7px 10px; background: rgba(116,128,79,.09); color: var(--ink); cursor: pointer; font: 600 12px 'Plus Jakarta Sans', sans-serif; }
+.hh-search-switcher { display: inline-flex; align-items: center; gap: 6px; max-width: 220px; min-height: 40px; border: 1px solid rgba(116,128,79,.28); border-radius: 999px; padding: 6px 12px 6px 14px; background: var(--sage); color: var(--ink); cursor: pointer; font: 700 12.5px 'Plus Jakarta Sans', sans-serif; }
+.hh-search-switcher:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+.hh-search-switcher-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hh-search-sheet-lead { margin: 0 0 12px; color: var(--ink-soft); font-size: 13px; line-height: 1.45; }
+.hh-search-options { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.hh-search-option { width: 100%; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; gap: 12px; min-height: 60px; padding: 10px 12px; border: 1px solid rgba(138,124,110,.24); border-radius: 14px; background: var(--paper-raised); color: var(--ink); text-align: left; cursor: pointer; font: inherit; }
+.hh-search-option.is-current { border-color: rgba(116,128,79,.55); background: var(--sage); }
+.hh-search-option:disabled { cursor: progress; opacity: .7; }
+.hh-search-option-icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 999px; background: rgba(193,89,47,.1); color: var(--brick); }
+.hh-search-option-text { display: grid; gap: 2px; min-width: 0; }
+.hh-search-option-text strong { font-size: 14.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hh-search-option-text span { font-size: 12.5px; color: var(--ink-soft); }
+.hh-search-option-check { color: var(--positive); }
 .hh-name-prompt { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 16px 34px 0; padding: 14px 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper-raised); }
 .hh-name-prompt form { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; flex: 1; }
 .hh-name-prompt strong { font-size: 13.5px; color: var(--ink); }
@@ -2191,3 +2203,15 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 @media (max-width: 360px) {
   .pl-header { gap: 8px; width: calc(100% - 24px); }
 }
+
+/* Search switcher on phones: stays visible in the compact header, full-height tap
+   target, long owner names truncate instead of pushing the header off-screen. */
+@media (max-width: 700px) {
+  .hh-search-switcher { max-width: min(58vw, 220px); min-height: 40px; }
+}
+@media (max-width: 360px) {
+  .hh-search-switcher { max-width: 46vw; padding: 6px 10px; font-size: 12px; }
+}
+
+/* Shared-search setup: a quiet way out to the person's own search, never a trap. */
+.flh-shared-setup-exit { margin: 4px 0 0; text-align: center; }

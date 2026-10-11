@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Fragment } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { LogOut, Home as HomeIcon, Columns, HelpCircle, Footprints, SlidersHorizontal, Map, Users, Search, Plus, Heart, DoorOpen, Sparkles, Scale, Compass, X, UserRound } from 'lucide-react';
@@ -339,7 +339,10 @@ export default function AppShell({ children, userEmail, userId, firstName = null
           })}
         </nav>}
 
-        {children}
+        {/* Keyed by the active search: switching searches remounts every page's
+            client state (homes list, My Search editor, Compare, Map), so nothing
+            from the previous search can linger after the server re-resolves it. */}
+        <Fragment key={activeSearchId || workspace}>{children}</Fragment>
       </div>
 
       {hasBuyerSearch && <MobileNav pathname={pathname} vocabulary={vocabulary} highlightKey={tourOpen ? mobileTourSteps(vocabulary)[tourStep]?.key : undefined} />}
