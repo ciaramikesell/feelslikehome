@@ -239,6 +239,31 @@ export function parseListingText(text, searchType = null) {
   return out;
 }
 
+// Rental facts stored on the shared home (one answer per property, visible to
+// everyone in the search) rather than in each person's own Yes/No checks.
+// Match reads only these fields for these criteria, so every surface that
+// records an answer for them must write the field (see sharedFactAnswer).
+export const SHARED_BOOLEAN_FACT_FIELDS = Object.freeze({
+  'features:Pets Allowed': 'petsAllowed',
+  'features:Utilities Included': 'utilitiesIncluded',
+  'features:In-Unit Laundry': 'inUnitLaundry',
+});
+
+// The shared field as the editor's Yes / No / Unknown answer (true / 'no' /
+// undefined), and back. Only true and false are answers; null, undefined and
+// anything else stay Unknown, which Match never counts as a miss.
+export function sharedFactAnswer(home, key) {
+  const value = home?.[SHARED_BOOLEAN_FACT_FIELDS[key]];
+  if (value === true) return true;
+  if (value === false) return 'no';
+  return undefined;
+}
+export function sharedFactValue(answer) {
+  if (answer === true) return true;
+  if (answer === 'no') return false;
+  return null;
+}
+
 /** Adapt explicit raw listing text facts to the shared import-domain contract. */
 export function parseListingTextFindings(text, searchType = null) {
   return findingsFromFields(parseListingText(text, searchType), {
@@ -400,11 +425,7 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
         return;
       }
 
-      const sharedBooleanField = {
-        'features:Pets Allowed': 'petsAllowed',
-        'features:Utilities Included': 'utilitiesIncluded',
-        'features:In-Unit Laundry': 'inUnitLaundry',
-      }[ns];
+      const sharedBooleanField = SHARED_BOOLEAN_FACT_FIELDS[ns];
       if (sharedBooleanField) {
         const actual = home[sharedBooleanField];
         if (actual === true) push(ns, item.label, tier, true, 1, true, 'Yes', true);

@@ -8,7 +8,7 @@ import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
   isArchivedStatus, isRentalType, TOUR_RATING_KEY, criterionDisplayLabel, TIER_ORDER, foldLegacyCheckAliases,
 } from '@/lib/constants';
-import { visibleOrderedItems, parseListingTextFindings, selectedSubjectiveCriteria, computeMatch } from '@/lib/matching';
+import { visibleOrderedItems, parseListingTextFindings, selectedSubjectiveCriteria, computeMatch, SHARED_BOOLEAN_FACT_FIELDS, sharedFactAnswer, sharedFactValue } from '@/lib/matching';
 import { extractAddressFromListingUrl, extractApartmentIdentityFromListingUrl, isLikelyListingUrl, findHomeByListingUrl } from '@/lib/listingUrl';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { mergeImportFields, resolveImport } from '@/lib/importDomain';
@@ -334,6 +334,15 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
   // unification legacy label (e.g. 'features:Home Office') stays visible here once the
   // search's own priority has folded onto the canonical label.
   const foldedChecks = foldLegacyCheckAliases(form.checks, priorities.searchType);
+  // Pets Allowed, Utilities Included and In-Unit Laundry are shared facts on the
+  // home (the fields Match reads), not personal checks: their Yes / No / Unknown
+  // reads and writes that field so a recorded answer counts in Match.
+  const answerOf = (key) => (SHARED_BOOLEAN_FACT_FIELDS[key] ? sharedFactAnswer(form, key) : foldedChecks[key]);
+  const setAnswer = (item, next) => {
+    const key = `${item.categoryKey}:${item.label}`;
+    if (SHARED_BOOLEAN_FACT_FIELDS[key]) set(SHARED_BOOLEAN_FACT_FIELDS[key], sharedFactValue(next));
+    else setCheckItem(item.categoryKey, item.label, next);
+  };
   const criteria = getItemlistCategories(priorities.searchType).flatMap((category) =>
     visibleOrderedItems(category, priorities).filter((item) => item.kind === 'check').map((item) => ({
       ...item,
@@ -341,8 +350,8 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
       tier: priorities[category.key]?.tiers?.[item.label] || 'dontcare',
     })),
   ).sort((a, b) => {
-    const aKnown = foldedChecks[`${a.categoryKey}:${a.label}`] !== undefined;
-    const bKnown = foldedChecks[`${b.categoryKey}:${b.label}`] !== undefined;
+    const aKnown = answerOf(`${a.categoryKey}:${a.label}`) !== undefined;
+    const bKnown = answerOf(`${b.categoryKey}:${b.label}`) !== undefined;
     return (aKnown - bKnown) || (TIER_ORDER.indexOf(a.tier) - TIER_ORDER.indexOf(b.tier));
   });
   const shownCriteria = allCriteriaOpen ? criteria : criteria.slice(0, 6);
@@ -421,9 +430,9 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
             <p className="hh-edit-context">Confirm what’s true for this {vocabulary.singularLower}. Priority levels come from My Search. Unknown is never treated as No — it won’t count against this {vocabulary.singularLower}.</p>
             {shownCriteria.length ? <div className="hh-edit-criteria">{shownCriteria.map((item) => {
               const key = `${item.categoryKey}:${item.label}`;
-              const value = foldedChecks[key];
+              const value = answerOf(key);
               return <div className="hh-edit-criterion" key={key}><div><b>{criterionDisplayLabel(item.categoryKey, item.label)}</b><span className={`flh-tier-label is-${item.tier}`}>{priorityLabel(item)}</span>{value === undefined && <span className="flh-provenance is-unknown">Not confirmed</span>}</div><div className="hh-edit-tristate" role="group" aria-label={`${criterionDisplayLabel(item.categoryKey, item.label)} property fact`}>
-                {[['yes', 'Yes', true], ['no', 'No', 'no'], ['unknown', 'Unknown', undefined]].map(([id, label, next]) => { const selected = next === undefined ? value === undefined : value === next; return <button type="button" key={id} className={`hh-chip is-${id} ${selected ? 'on' : ''}`} aria-pressed={selected} onClick={() => setCheckItem(item.categoryKey, item.label, next)}>{label}</button>; })}
+                {[['yes', 'Yes', true], ['no', 'No', 'no'], ['unknown', 'Unknown', undefined]].map(([id, label, next]) => { const selected = next === undefined ? value === undefined : value === next; return <button type="button" key={id} className={`hh-chip is-${id} ${selected ? 'on' : ''}`} aria-pressed={selected} onClick={() => setAnswer(item, next)}>{label}</button>; })}
               </div></div>;
             })}</div> : <p className="hh-edit-empty">No Match criteria are configured for this search.</p>}
             {criteria.length > 6 && <button type="button" className="hh-btn hh-btn-ghost hh-edit-disclosure" aria-expanded={allCriteriaOpen} onClick={() => setAllCriteriaOpen((value) => !value)}>{allCriteriaOpen ? 'Show prioritized criteria' : 'View all Match criteria'}</button>}
