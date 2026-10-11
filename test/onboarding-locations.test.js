@@ -206,6 +206,25 @@ test('a place is saved only with an address Google resolved', () => {
   assert.match(step, /onChange=\{\(next\) => \{ setAddress\(next\); setResolved\(''\); \}\}/);
 });
 
+test('harness diagnostics never show the API key', async () => {
+  const { redact, describeError, PROBES } = await import('../src/lib/placesDiagnostics.js');
+  const fakeKey = `AIza${'x'.repeat(35)}`;
+  assert.doesNotMatch(redact(`Script https://maps.googleapis.com/maps/api/js?key=${fakeKey}&loading=async failed`), /AIza|xxxxxxxx/);
+  assert.doesNotMatch(redact(`key=${fakeKey}`), /AIza/);
+  const described = describeError(Object.assign(new Error(`RefererNotAllowedMapError for ${fakeKey}`), { name: 'MapsRequestError', code: 'REQUEST_DENIED', endpoint: 'PLACES_AUTOCOMPLETE' }));
+  assert.deepEqual(described, { name: 'MapsRequestError', code: 'REQUEST_DENIED', endpoint: 'PLACES_AUTOCOMPLETE', message: 'RefererNotAllowedMapError for [key redacted]' });
+  const { interpret } = await import('../src/lib/placesDiagnostics.js');
+  assert.equal(interpret('RpcError · code 3 · API key not valid. Please pass a valid API key.').where, 'Vercel or Google Cloud');
+  assert.equal(interpret({ name: 'RpcError', code: '7', message: 'Requests from referer https://x.vercel.app/ are blocked.' }).where, 'Google Cloud');
+  assert.match(interpret({ message: 'Places API (New) has not been used in project 123 before or it is disabled.' }).cause, /not enabled/);
+  assert.equal(interpret('NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set in this build, so the browser never contacts Google.').where, 'Vercel');
+  // Each Step 2 type is probed on its own, plus the exact combination Step 2 sends.
+  assert.deepEqual(PROBES.map(([label]) => label).slice(1, 6), ['locality', 'sublocality', 'neighborhood', 'postal_code', 'school_district']);
+  // The harness renders only redacted diagnostics, and nothing shows the raw key variable.
+  assert.doesNotMatch(read('src/components/onboarding/Step2Harness.jsx'), /NEXT_PUBLIC_GOOGLE_MAPS_API_KEY/);
+  assert.doesNotMatch(read('src/lib/placesDiagnostics.js'), /detail: key\b|\$\{key\}|key\.slice/);
+});
+
 /* ------------------------------ real Postgres ------------------------------ */
 
 const {

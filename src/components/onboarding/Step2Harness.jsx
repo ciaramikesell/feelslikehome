@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Onboarding from '@/components/onboarding/Onboarding';
 import { normalizePriorities } from '@/lib/constants';
 import { applySearchChoice } from '@/lib/onboarding';
 import { beginOnboarding } from '@/lib/onboardingFlow';
 import { googleAreaSuggestions } from '@/lib/areaSearchProvider';
 import { searchAreasOf } from '@/lib/searchAreas';
+import { capturedGoogleErrors, describeError, installGoogleErrorCapture, interpret, runPlacesDiagnostics } from '@/lib/placesDiagnostics';
 
 // TEMPORARY Preview QA harness for Onboarding V2 Step 2 (see
 // docs/onboarding-step2-preview-qa.md). The real <Onboarding> on the inactive
@@ -21,11 +22,45 @@ const SEARCH_ID = '00000000-0000-4000-8000-0000000000a2';
 
 const fail = () => Promise.reject(new Error('Simulated provider failure (QA toggle)'));
 
+function DiagnosticsReport({ report }) {
+  const cell = { padding: '6px 8px', borderTop: '1px solid var(--line)', verticalAlign: 'top', overflowWrap: 'anywhere' };
+  const text = (detail) => (typeof detail === 'string' ? detail : [detail.name, detail.code && `code ${detail.code}`, detail.endpoint && `endpoint ${detail.endpoint}`, detail.message].filter(Boolean).join(' · '));
+  return (
+    <section data-qa="diagnostics" aria-label="Google diagnostics" style={{ maxWidth: 960, margin: '16px auto', padding: 16, background: '#fff', borderRadius: 8, font: '13px/1.45 var(--font-sans)', color: 'var(--ink)' }}>
+      <h2 style={{ margin: '0 0 8px', font: '600 18px var(--font-serif)' }}>Google diagnostics — {report.host} · “{report.query}” · {report.at}</h2>
+      <p style={{ margin: '0 0 8px' }}>The Maps script and Places library load even with a bad key; the Autocomplete rows are the real test.</p>
+      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <tbody>
+          <tr><td style={cell}>Key in this build</td><td style={cell}>{report.config.keyPresentInBuild ? `present${report.config.keyLooksLikeBrowserKey ? '' : ' (unexpected format)'}` : 'MISSING'}</td></tr>
+          {report.stages.map((entry) => <tr key={entry.name}><td style={cell}>{entry.ok ? '✅' : '❌'} {entry.name}</td><td style={cell}>{text(entry.detail)}{!entry.ok && <><br /><strong>Likely cause ({interpret(entry.detail).where}):</strong> {interpret(entry.detail).cause}</>}</td></tr>)}
+          {report.probes.map((probe) => (
+            <tr key={probe.label}>
+              <td style={cell}>{probe.ok ? '✅' : '❌'} Autocomplete: {probe.label}</td>
+              <td style={cell}>{probe.ok ? `${probe.count} result(s)${probe.sample.length ? ` — ${probe.sample.map((item) => `${item.text} [${item.types.join(', ')}]`).join('; ')}` : ''}` : <>{text(probe.error)}<br /><strong>Likely cause ({interpret(probe.error).where}):</strong> {interpret(probe.error).cause}</>}</td>
+            </tr>
+          ))}
+          <tr><td style={cell}>Google authorisation failure (gm_authFailure)</td><td style={cell}>{report.google.authFailure ? 'YES — Google rejected this key for this page' : 'not reported'}</td></tr>
+          <tr><td style={cell}>Google console messages</td><td style={cell}>{report.google.console.length ? report.google.console.join(' | ') : 'none captured'}</td></tr>
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
 export default function Step2Harness() {
   const [log, setLog] = useState([]);
   const [saved, setSaved] = useState({ priorities: null, places: [] });
   const [simulateFailure, setSimulateFailure] = useState(false);
   const [round, setRound] = useState(0);
+  const [diagnostics, setDiagnostics] = useState(null);
+  const [diagnosing, setDiagnosing] = useState(false);
+  // Record Google's own key/referrer/API errors (redacted) from the first load.
+  useEffect(() => { installGoogleErrorCapture(); }, []);
+  const lastError = log[0]?.error ? log[0] : null;
+  const diagnose = async () => {
+    setDiagnosing(true);
+    try { setDiagnostics(await runPlacesDiagnostics('grosse')); } finally { setDiagnosing(false); }
+  };
 
   const initial = useMemo(() => {
     const context = { searchId: SEARCH_ID, role: 'owner' };
@@ -63,7 +98,9 @@ export default function Step2Harness() {
           setLog((entries) => [{ at, query, ...response }, ...entries].slice(0, 30));
           return response;
         } catch (error) {
-          setLog((entries) => [{ at, query, error: `${error?.name || 'Error'}: ${error?.message || 'unknown'}` }, ...entries].slice(0, 30));
+          const detail = describeError(error);
+          const google = capturedGoogleErrors();
+          setLog((entries) => [{ at, query, error: [detail.name, detail.code && `code ${detail.code}`, detail.message].filter(Boolean).join(' · '), google }, ...entries].slice(0, 30));
           throw error;
         }
       },
@@ -81,7 +118,18 @@ export default function Step2Harness() {
         </label>
         {' '}
         <button type="button" onClick={() => setRound((value) => value + 1)} style={{ marginLeft: 8 }}>Reload from saved</button>
+        {' '}
+        <button type="button" onClick={diagnose} disabled={diagnosing} style={{ marginLeft: 8 }}>{diagnosing ? 'Running…' : 'Run Google diagnostics'}</button>
+        {lastError && (
+          <p data-qa="last-error" role="alert" style={{ margin: '8px 0 0', padding: '8px 10px', borderRadius: 6, background: '#5A1F17', fontWeight: 500, overflowWrap: 'anywhere' }}>
+            Last search failed (“{lastError.query}”): {lastError.error}
+            <br />Likely cause ({interpret(lastError.error).where}): {interpret(lastError.error).cause}
+            {lastError.google?.authFailure && ' · Google reported an authorisation failure for this key (gm_authFailure).'}
+            {lastError.google?.console?.length > 0 && <><br />Google console: {lastError.google.console.join(' | ')}</>}
+          </p>
+        )}
       </div>
+      {diagnostics && <DiagnosticsReport report={diagnostics} />}
       <Onboarding
         key={round}
         userId={USER_ID}
