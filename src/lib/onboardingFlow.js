@@ -71,6 +71,21 @@ export const ONBOARDING_FLOWS = Object.freeze({
       step('import_lesson', SCOPE.ACCOUNT),
     ]),
   }),
+  // The approved Onboarding V2 sequence (docs/onboarding-v2-design-decisions.md):
+  // six numbered steps shared by web and iPhone; Welcome comes before them and
+  // the first-home experience after. Defined so each screen can be built and
+  // previewed in order; NOT live — CURRENT_ONBOARDING_VERSION stays 1 until
+  // every step exists. Flow 2 above is the earlier plan, left as it was.
+  3: Object.freeze({
+    steps: Object.freeze([
+      step('basics', SCOPE.SEARCH, { legacyKeys: ['basics'] }),
+      step('locations', SCOPE.SEARCH),
+      step('collaboration', SCOPE.ACCOUNT),
+      step('priorities', SCOPE.SEARCH, { legacyKeys: ['what_matters'] }),
+      step('rank', SCOPE.SEARCH, { legacyKeys: ['rank'] }),
+      step('review', SCOPE.SEARCH),
+    ]),
+  }),
 });
 
 // The flow new onboarding sessions start in. Phase 2 moves this to 2 once its

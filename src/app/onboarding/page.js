@@ -2,9 +2,21 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { getProfile } from '@/lib/supabase/data';
 import { normalizePriorities } from '@/lib/constants';
-import { needsSharedSearchSetup, resolveCollaboratorSearchContext, resolveOnboardingSearch, resolvePriorities } from '@/lib/supabase/collaboration';
-import { beginOnboarding } from '@/lib/onboardingFlow';
+import { getCommuteDestinations, needsSharedSearchSetup, resolveCollaboratorSearchContext, resolveOnboardingSearch, resolvePriorities } from '@/lib/supabase/collaboration';
+import { beginOnboarding, onboardingStepsFor } from '@/lib/onboardingFlow';
 import Onboarding from '@/components/onboarding/Onboarding';
+
+// Places That Matter (Step 2) are this person's own commute destinations on
+// this search. Loaded only when the flow actually includes that step, and a
+// failed read is reported on the screen rather than shown as "no places".
+async function initialPlacesFor(supabase, progress, searchId, userId) {
+  if (!onboardingStepsFor(progress.version, progress.state).includes('locations')) return { initialPlaces: [], placesError: null };
+  try {
+    return { initialPlaces: await getCommuteDestinations(supabase, searchId, userId), placesError: null };
+  } catch {
+    return { initialPlaces: [], placesError: 'Couldn’t load your saved places. You can add them later in My Search.' };
+  }
+}
 
 export default async function OnboardingPage() {
   const supabase = await createClient();
@@ -38,8 +50,10 @@ export default async function OnboardingPage() {
     ]);
     // Ephemeral: shared-search setup never reads or writes account onboarding progress.
     const progress = beginOnboarding({ context: { searchId: search.id, role } });
+    const places = await initialPlacesFor(supabase, progress, search.id, user.id);
     return (
       <Onboarding
+        {...places}
         mode="shared_search_setup"
         userId={user.id}
         searchId={search.id}
@@ -60,5 +74,6 @@ export default async function OnboardingPage() {
     context: { searchId: search.id, role },
   });
 
-  return <Onboarding userId={user.id} searchId={search.id} initialPriorities={normalizePriorities(priorities)} initialProgress={progress} appVersion={appVersion} />;
+  const places = await initialPlacesFor(supabase, progress, search.id, user.id);
+  return <Onboarding {...places} userId={user.id} searchId={search.id} initialPriorities={normalizePriorities(priorities)} initialProgress={progress} appVersion={appVersion} />;
 }

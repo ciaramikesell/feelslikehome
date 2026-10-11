@@ -5,6 +5,7 @@ import Onboarding from '@/components/onboarding/Onboarding';
 import { normalizePriorities } from '@/lib/constants';
 import { ONBOARDING_SUGGESTIONS, applySearchChoice } from '@/lib/onboarding';
 import { beginOnboarding, onboardingStepsFor, CURRENT_ONBOARDING_VERSION } from '@/lib/onboardingFlow';
+import { addSearchArea } from '@/lib/searchAreas';
 import { addCriterion, isCriterionSelected, moveCriterion, setGaragePreference, toggleCriterion } from '@/lib/searchProfile';
 
 // Fixtures for the development-only preview (src/app/dev/onboarding). Fixed ids
@@ -36,41 +37,78 @@ function populatedPriorities() {
   return next;
 }
 
+// Development-only area-search results, so the preview is deterministic without
+// a Google key. The app itself only ever uses the real provider
+// (src/lib/areaSearchProvider.js). Typing "fail" shows a provider failure and
+// "zzz" shows no results.
+const PREVIEW_AREAS = [
+  { placeId: 'preview-gp-city', name: 'Grosse Pointe', secondary: 'Michigan, USA', type: 'city' },
+  { placeId: 'preview-gp-park', name: 'Grosse Pointe Park', secondary: 'Michigan, USA', type: 'city' },
+  { placeId: 'preview-gp-schools', name: 'Grosse Pointe Public School System', secondary: 'Michigan, USA', type: 'school_district' },
+  { placeId: 'preview-gp-farms', name: 'The Farms', secondary: 'Grosse Pointe Farms, MI, USA', type: 'neighborhood' },
+  { placeId: 'preview-48230', name: '48230', secondary: 'Grosse Pointe, MI, USA', type: 'zip' },
+  { placeId: 'preview-royal-oak', name: 'Royal Oak', secondary: 'Michigan, USA', type: 'city' },
+].map((area) => ({ ...area, source: 'google_places' }));
+
+function previewAreaSearch(query) {
+  const term = query.trim().toLowerCase();
+  if (term.includes('fail')) return Promise.reject(new Error('Preview provider failure'));
+  return Promise.resolve({ results: PREVIEW_AREAS.filter((area) => `${area.name} ${area.secondary}`.toLowerCase().includes(term)), schoolDistricts: true });
+}
+
 // In-memory stand-ins for every write <Onboarding> makes. state=error makes
 // saving fail, so the real save-error path renders after the first change.
 function previewServices(fail) {
   const settle = () => (fail ? Promise.reject(new Error('Preview save failure')) : Promise.resolve(true));
+  let nextPlace = 1;
   return {
     savePriorities: settle,
     saveProgress: () => Promise.resolve(true),
     completeOnboarding: settle,
     setActiveSearch: settle,
     submitFeedback: () => Promise.resolve(true),
+    createPlace: (searchId, userId, place) => (fail ? Promise.reject(new Error('Preview save failure')) : Promise.resolve({ id: `preview-place-${nextPlace++}`, ...place, maxDriveMinutes: null })),
+    deletePlace: () => settle(),
+    searchAreas: previewAreaSearch,
   };
 }
 
-export default function OnboardingPreview({ step = 'basics', state = 'empty', mode = 'account' }) {
+const PREVIEW_PLACES = [{ id: 'preview-place-work', label: 'Work', address: '500 Woodward Ave, Detroit, MI 48226', maxDriveMinutes: null }];
+
+function withPreviewAreas(priorities) {
+  return [PREVIEW_AREAS[0], PREVIEW_AREAS[2]].reduce((next, area) => addSearchArea(next, area), priorities);
+}
+
+// flow=v2 previews the approved six-step sequence (flow 3), which is not live.
+export default function OnboardingPreview({ step = 'basics', state = 'empty', mode = 'account', flow = 'live' }) {
   const shared = mode === 'shared';
+  const version = flow === 'v2' ? 3 : CURRENT_ONBOARDING_VERSION;
   const fixture = useMemo(() => {
     const context = { searchId: SEARCH_ID, role: shared ? 'co_buyer' : 'owner' };
-    const steps = onboardingStepsFor(CURRENT_ONBOARDING_VERSION, { context });
+    const steps = onboardingStepsFor(version, { context });
     const target = steps.includes(step) ? step : steps[0];
     const progress = beginOnboarding({
       storedState: { step: target, completed: steps.slice(0, steps.indexOf(target)), startedAt: NOW, context },
-      storedVersion: CURRENT_ONBOARDING_VERSION,
+      storedVersion: version,
       context,
       now: NOW,
+      targetVersion: version,
     });
+    const populated = state === 'populated' || target !== 'basics';
+    // Step 2 starts empty unless state=populated (returning with answers).
+    const priorities = populated ? populatedPriorities() : normalizePriorities({});
     return {
       progress,
-      priorities: state === 'populated' || target !== 'basics' ? populatedPriorities() : normalizePriorities({}),
+      priorities: target === 'locations' && state === 'populated' ? withPreviewAreas(priorities) : priorities,
+      places: target === 'locations' && state === 'populated' ? PREVIEW_PLACES : [],
     };
-  }, [step, state, shared]);
+  }, [step, state, shared, version]);
   const services = useMemo(() => previewServices(state === 'error'), [state]);
 
   return (
     <Onboarding
-      key={`${step}:${state}:${mode}`}
+      key={`${step}:${state}:${mode}:${flow}`}
+      initialPlaces={fixture.places}
       userId={USER_ID}
       searchId={SEARCH_ID}
       initialPriorities={fixture.priorities}

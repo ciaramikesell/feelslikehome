@@ -2391,3 +2391,70 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
   .flh-onboarding-root .flh-onboarding-actions { display: flex; justify-content: flex-end; }
   .flh-ob-cta { min-width: 240px; min-height: 52px; font-size: 16px; }
 }
+
+/* ── Onboarding V2 — Step 2: Where are you looking? (Phase 2B) ─────────────────
+   From the approved Location design: one "Areas of interest" card (search
+   field with a terracotta search icon, removable area chips, a warm hint row
+   with a terracotta icon tile) and an optional "What places matter to you?"
+   card (sage icon tile, Fraunces title, dashed add row, quiet footnote).
+   Scoped to the onboarding root and the flh-ob- prefix. */
+.flh-ob-locations .flh-ob-areas-card { display: grid; gap: 12px; }
+.flh-ob-area-search { position: relative; display: grid; gap: 10px; }
+.flh-ob-search-input { min-height: 56px; border-radius: 14px; }
+.flh-ob-search-input > svg { flex-shrink: 0; color: var(--brick); }
+.flh-ob-search-input input:disabled { color: var(--ink-soft); }
+/* The value stays 16px (no iOS zoom); the long hint is set smaller so it fits a phone. */
+.flh-ob-search-input input::placeholder { font-size: 14px; }
+
+/* Suggestions open over the content below rather than pushing it down. */
+.flh-ob-area-menu { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; right: 0; max-height: 300px; overflow-y: auto; padding: 6px; border: 1px solid var(--ob-line); border-radius: 14px; background: #fff; box-shadow: 0 12px 28px rgba(46,38,33,.16); }
+.flh-ob-area-menu ul { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.flh-ob-area-menu li { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding: 8px 10px; border-radius: 10px; cursor: pointer; }
+.flh-ob-area-menu li.is-active { background: #FDF1EA; }
+.flh-ob-area-menu li.is-added { cursor: default; }
+.flh-ob-area-status { margin: 0; padding: 12px 10px; color: var(--ink-soft); font: 500 13px/1.4 var(--font-sans); }
+.flh-ob-area-status.is-error { color: var(--negative); }
+.flh-ob-area-copy { display: grid; gap: 2px; min-width: 0; }
+.flh-ob-area-name { color: var(--ink); font: 600 14px/1.3 var(--font-sans); overflow-wrap: anywhere; }
+.flh-ob-area-secondary { color: var(--ink-soft); font: 500 12px/1.35 var(--font-sans); overflow-wrap: anywhere; }
+.flh-ob-area-type, .flh-ob-area-added { flex-shrink: 0; justify-self: start; padding: 3px 8px; border-radius: 999px; background: var(--ob-warm); color: var(--ink-soft); font: 700 10px/1.3 var(--font-sans); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.flh-ob-area-type.is-school_district { background: var(--sage); color: var(--positive); }
+.flh-ob-area-type.is-zip { background: #EEF0F4; color: #4F5868; }
+.flh-ob-area-added { background: none; color: var(--positive); }
+
+/* Selected areas: removable chips. Each is an alternative, not a requirement. */
+.flh-ob-areas { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.flh-ob-area-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-height: 44px; padding: 4px 4px 4px 14px; border: 1px solid var(--brick); border-radius: 999px; background: #FDF1EA; }
+.flh-ob-area-chip .flh-ob-area-copy { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+.flh-ob-area-chip .flh-ob-area-name { color: var(--brick-deep); font-size: 13.5px; }
+.flh-ob-area-chip .flh-ob-area-type { background: rgba(255,255,255,.7); }
+.flh-ob-area-chip button { display: grid; flex-shrink: 0; place-items: center; width: 36px; aspect-ratio: 1; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--brick-deep); cursor: pointer; }
+.flh-ob-area-chip button:hover { background: rgba(193,89,47,.12); }
+
+.flh-ob-area-hint { display: flex; align-items: center; gap: 14px; padding: 18px 16px; border-radius: 14px; background: var(--ob-warm-row); }
+.flh-ob-area-hint > span:last-child { display: grid; gap: 4px; min-width: 0; }
+.flh-ob-area-hint strong { color: var(--ink); font: 600 13px/1.3 var(--font-sans); }
+.flh-ob-area-hint strong + span { color: var(--ink-soft); font: 500 11px/1.4 var(--font-sans); }
+.flh-ob-area-hint-icon { display: grid; flex-shrink: 0; place-items: center; width: 36px; aspect-ratio: 1; border-radius: 10px; background: #F6E3D8; color: var(--brick); }
+
+/* What places matter to you? */
+.flh-onboarding-root .flh-card.flh-ob-places { display: grid; gap: 16px; }
+.flh-ob-places-head { display: flex; align-items: flex-start; gap: 12px; }
+.flh-ob-places-icon { display: grid; flex-shrink: 0; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: var(--sage); color: var(--moss); }
+.flh-ob-places-title { margin: 6px 0 6px; color: var(--ink); font: 600 19px/1.2 var(--font-serif); letter-spacing: -.015em; }
+.flh-ob-places-copy { margin: 0; color: var(--ink-soft); font: 500 12px/1.45 var(--font-sans); }
+.flh-ob-place-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.flh-ob-place-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; padding: 8px 6px 8px 14px; border: 1px solid var(--ob-line); border-radius: 14px; background: #fff; }
+.flh-ob-place-row button { display: grid; flex-shrink: 0; place-items: center; width: 40px; aspect-ratio: 1; padding: 0; border: 0; border-radius: 10px; background: none; color: var(--ink-soft); cursor: pointer; }
+.flh-ob-place-row button:hover:not(:disabled) { background: var(--ob-warm); color: var(--negative); }
+.flh-ob-add-place { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 0 14px 0 16px; border: 1px dashed rgba(46,38,33,.28); border-radius: 14px; background: var(--ob-warm-row); color: var(--brick-deep); font: 600 13px/1.2 var(--font-sans); text-align: left; cursor: pointer; }
+.flh-ob-add-place:hover:not(:disabled) { border-color: var(--brick); }
+.flh-ob-add-place:disabled { opacity: .55; cursor: default; }
+.flh-ob-add-place > span:first-of-type { flex: 1 1 auto; }
+.flh-ob-optional-tag { color: var(--ink-soft); font: 600 9.5px/1 var(--font-sans); letter-spacing: .08em; text-transform: uppercase; }
+.flh-ob-places-note { margin: 0; color: var(--brick-deep); font: 500 11px/1.4 var(--font-sans); }
+.flh-ob-place-form { display: grid; gap: 16px; padding: 16px; border: 1px solid var(--ob-line); border-radius: 14px; background: var(--ob-warm-row); }
+.flh-ob-place-form .flh-chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.flh-ob-place-address .hh-input { min-height: 48px; border-radius: 12px; font-size: 16px; }
+.flh-ob-place-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.flh-ob-unbuilt { color: var(--ink-soft); }

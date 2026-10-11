@@ -18,13 +18,21 @@ import { useReliableOptimisticState } from '@/lib/useReliableOptimisticState';
 import { completeOnboarding, saveOnboardingProgress } from '@/lib/supabase/data';
 import { advanceOnboarding, completeOnboardingState, onboardingProgress, retreatOnboarding } from '@/lib/onboardingFlow';
 import { ANALYTICS_EVENTS, track } from '@/lib/analytics';
-import { savePriorities, setActiveSearch } from '@/lib/supabase/collaboration';
+import { createCommuteDestination, deleteCommuteDestination, savePriorities, setActiveSearch } from '@/lib/supabase/collaboration';
+import { googleAreaSuggestions } from '@/lib/areaSearchProvider';
 import { sanitizeRedirectPath } from '@/lib/safeRedirect';
 import { OnboardingAction, OnboardingRail, OnboardingTopBar } from '@/components/onboarding/OnboardingShell';
 import BasicsStep from '@/components/onboarding/BasicsStep';
+import LocationsStep from '@/components/onboarding/LocationsStep';
 
 // Screen labels for the flow-1 steps (src/lib/onboardingFlow.js owns order and branching).
-const STEP_LABELS = { basics: 'The Basics', what_matters: 'What Matters', rank: 'Rank Priorities' };
+// Flow 1 is live; the approved six-step flow (3) is built and previewed step by step.
+const STEP_LABELS = {
+  basics: 'The Basics', what_matters: 'What Matters', rank: 'Rank Priorities',
+  locations: 'Location', collaboration: 'Your People', priorities: 'What Matters', review: 'Review',
+};
+
+const BUILT_STEPS = new Set(['basics', 'locations', 'what_matters', 'rank']);
 
 // sharedFor: null in first-time account onboarding; in shared-search setup, the
 // search the preferences are for (e.g. "Ciara’s search").
@@ -172,6 +180,13 @@ const SUPABASE_SERVICES = Object.freeze({
   completeOnboarding: (userId, progress) => completeOnboarding(createClient(), userId, progress),
   setActiveSearch: (userId, searchId) => setActiveSearch(createClient(), userId, searchId),
   submitFeedback: undefined, // BetaFeedback's own Supabase default
+  // Places That Matter are the participant's own commute destinations on this
+  // search. Onboarding never sets a maximum drive time (null), so a place adds
+  // distance context only and never becomes a requirement.
+  createPlace: (searchId, userId, place) => createCommuteDestination(createClient(), searchId, userId, { ...place, maxDriveMinutes: null }),
+  deletePlace: (placeId) => deleteCommuteDestination(createClient(), placeId),
+  // Areas of interest come only from the area-search provider (Google Places).
+  searchAreas: (query) => googleAreaSuggestions(query),
 });
 
 // mode:
@@ -183,7 +198,7 @@ const SUPABASE_SERVICES = Object.freeze({
 //                         onboarding state, never another search, never another
 //                         person's preferences. Ends on that search's Homes, and
 //                         can be left for the person's own search at any time.
-export default function Onboarding({ userId, searchId, initialPriorities, initialProgress, appVersion = null, mode = 'account', ownerName = null, ownedSearchId = null, services = SUPABASE_SERVICES }) {
+export default function Onboarding({ userId, searchId, initialPriorities, initialProgress, appVersion = null, mode = 'account', ownerName = null, ownedSearchId = null, initialPlaces = [], placesError = null, services = SUPABASE_SERVICES }) {
   const sharedSetup = mode === 'shared_search_setup';
   const sharedFor = sharedSetup ? (ownerName ? `${/s$/i.test(ownerName) ? `${ownerName}’` : `${ownerName}’s`} search` : 'this shared search') : null;
   const router = useRouter();
@@ -196,6 +211,17 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
   const pendingRedirect = sanitizeRedirectPath(searchParams.get('redirect'));
   const persistPriorities = useCallback((next) => services.savePriorities(searchId, userId, next), [services, searchId, userId]);
   const { state: priorities, patch, saveError, retry, flush, isSaving } = useReliableOptimisticState(normalizePriorities(initialPriorities), persistPriorities);
+  // Saved places are rows of their own (not part of the priorities document):
+  // shown only once the database has confirmed each write.
+  const [places, setPlaces] = useState(initialPlaces);
+  const createPlace = async (place) => {
+    const saved = await services.createPlace(searchId, userId, place);
+    setPlaces((current) => [...current, saved]);
+  };
+  const deletePlace = async (place) => {
+    await services.deletePlace(place.id);
+    setPlaces((current) => current.filter((entry) => entry.id !== place.id));
+  };
   // Resumable progress (src/lib/onboardingFlow.js): the server page resolved
   // where to land for this person and this search. The gate itself is still
   // only profiles.onboarding_complete; stored progress steers, never traps —
@@ -333,6 +359,21 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
           )}
           {!ready && step === 'what_matters' && <WhatMattersStep priorities={priorities} patch={patch} progress={progress} sharedFor={sharedFor} onNext={() => goTo('what_matters')} isSaving={isSaving} />}
           {!ready && step === 'rank' && <RankStep priorities={priorities} patch={patch} progress={progress} sharedFor={sharedFor} onFinish={finish} finishing={finishing} />}
+          {!ready && step === 'locations' && (
+            <LocationsStep
+              priorities={priorities}
+              patch={patch}
+              searchAreas={services.searchAreas}
+              places={places}
+              placesError={placesError}
+              onCreatePlace={createPlace}
+              onDeletePlace={deletePlace}
+              onNext={() => goTo('locations')}
+              header={<StepHeader step="locations" progress={progress} sharedFor={sharedFor} title={<>Where are you <em>looking?</em></>} lead="Every search starts somewhere. Add the areas you’re drawn to, and we’ll keep them in mind as you explore." />}
+            />
+          )}
+          {/* Approved-flow steps not built yet (only reachable in the development preview). */}
+          {!ready && !BUILT_STEPS.has(step) && <p className="flh-ob-unbuilt" role="status">This step isn’t built yet.</p>}
           {ready && <ReadyStep onAddHome={() => leave('/homes?add=1')} onViewSearch={() => leave('/search?welcome=1')} />}
         </main>
       </div>

@@ -50,6 +50,26 @@ export const SCENARIOS = [
     await page.getByRole('heading', { name: 'Your search is ready.' }).waitFor();
   } },
   { name: 'shared-basics', query: 'step=basics&state=populated&mode=shared' },
+  // Step 2 (approved six-step flow, previewed with flow=v2; not live).
+  { name: 'locations-empty', query: 'flow=v2&step=locations&state=empty' },
+  { name: 'locations-typing', query: 'flow=v2&step=locations&state=empty', act: async (page) => {
+    await page.getByRole('combobox', { name: 'Areas of interest' }).fill('grosse');
+    await page.getByRole('listbox', { name: 'Matching areas' }).waitFor();
+  } },
+  { name: 'locations-no-results', query: 'flow=v2&step=locations&state=empty', act: async (page) => {
+    await page.getByRole('combobox', { name: 'Areas of interest' }).fill('zzz');
+    await page.getByText('No matching cities').waitFor();
+  } },
+  { name: 'locations-provider-error', query: 'flow=v2&step=locations&state=empty', act: async (page) => {
+    await page.getByRole('combobox', { name: 'Areas of interest' }).fill('fail');
+    await page.getByText('Area search isn’t available right now').waitFor();
+  } },
+  { name: 'locations-populated', query: 'flow=v2&step=locations&state=populated' },
+  { name: 'locations-place-form', query: 'flow=v2&step=locations&state=empty', act: async (page) => {
+    await page.getByRole('button', { name: /Add a place/ }).click();
+    await page.getByRole('button', { name: 'Save place' }).waitFor();
+  } },
+  { name: 'locations-shared', query: 'flow=v2&step=locations&state=populated&mode=shared' },
 ];
 
 async function settle(page) {
