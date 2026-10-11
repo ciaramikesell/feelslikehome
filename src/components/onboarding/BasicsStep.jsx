@@ -10,6 +10,7 @@ import {
   GARAGE_LEVELS, STEPPERS, chooseSearchType, editFormattedNumber, formatThousands, garageLevel, isUnset,
   setGarageLevel, stepDown, stepUp,
 } from '@/lib/onboardingBasics';
+import { switchSearchType } from '@/lib/whatMattersCatalog';
 import { OnboardingAction } from '@/components/onboarding/OnboardingShell';
 
 // Step 1 of Onboarding V2: "The Basics of Your Search" (approved Figma design).
@@ -252,13 +253,35 @@ export default function BasicsStep({ header, priorities, patch, onNext, homeDeta
   const showLotSize = choice ? fields.lotSize : true;
   const showGarage = homeDetails && choice !== 'apartment_rent';
   const showDetails = homeDetails && choice && (fields.propertyTypes.length > 0 || fields.layout || fields.condition);
+  // Six-step flow: changing the kind of search keeps what still applies and
+  // says what it removed, with Undo (switchSearchType). The live flow keeps
+  // its existing behavior.
+  // Several switches in a row add up: the note keeps everything removed since
+  // the first switch, and Undo returns to how things were before it.
+  const [switched, setSwitched] = useState(null);
+  const chooseType = (key) => {
+    if (presetPropertyType) { patch((next) => chooseSearchType(next, key, { presetPropertyType })); return; }
+    const { priorities: next, removed } = switchSearchType(priorities, key);
+    patch(() => next);
+    setSwitched((earlier) => {
+      const all = [...new Set([...(earlier?.removed || []), ...removed])];
+      return all.length ? { removed: all, previous: earlier?.previous || priorities } : null;
+    });
+  };
+  const undoSwitch = () => { patch(() => switched.previous); setSwitched(null); };
   const setValue = (key, value) => patch((next) => { next[key] = { ...next[key], value }; return next; });
   const setValues = (key, value) => patch((next) => { next[key] = { ...next[key], values: toggleValue(next[key]?.values, value) }; return next; });
 
   return (
     <div className="flh-onboarding-step flh-ob-basics">
       {header}
-      <SearchTypeControl choice={choice} onChoose={(key) => patch((next) => chooseSearchType(next, key, { presetPropertyType }))} />
+      <SearchTypeControl choice={choice} onChoose={chooseType} />
+      {switched && (
+        <div className="flh-ob-switch-note" role="status">
+          <p>Now looking for {SEARCH_TYPE_PHRASES[choice]}. Removed what no longer applies: {switched.removed.join(', ')}. Everything else is kept.</p>
+          <button type="button" className="flh-text-action" onClick={undoSwitch}>Undo</button>
+        </div>
+      )}
       <section className="flh-card flh-ob-basics-card" aria-label="The basics">
         <BudgetField label={fields.budgetLabel} rent={rent} value={priorities.budget.value} onChange={(value) => setValue('budget', value)} />
         <hr className="flh-ob-divider" />

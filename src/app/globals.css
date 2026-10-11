@@ -2347,6 +2347,9 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
    The select reads as inline terracotta text; unset, it carries a dashed outline
    so the one required answer is easy to spot without a separate card. */
 .flh-ob-searchtype { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-height: 40px; }
+.flh-onboarding-root .flh-ob-switch-note { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 0 0; padding: 10px 12px 10px 14px; border-radius: 12px; background: var(--ob-warm-row); color: var(--ink-soft); font: 500 12.5px/1.45 var(--font-sans); }
+.flh-onboarding-root .flh-ob-switch-note p { margin: 0; }
+.flh-onboarding-root .flh-ob-switch-note .flh-text-action { flex-shrink: 0; min-height: 40px; }
 .flh-ob-searchtype-label { color: var(--ink); font: 600 14px/1.3 var(--font-sans); }
 .flh-ob-searchtype-select { position: relative; display: inline-flex; align-items: center; color: var(--brick-deep); }
 .flh-ob-searchtype-select select { appearance: none; -webkit-appearance: none; min-height: 40px; margin: 0; padding: 0 30px 0 12px; border: 1px solid var(--ob-line); border-radius: 12px; background: #fff; color: inherit; font: 600 15px/1.2 var(--font-sans); cursor: pointer; }
@@ -2519,6 +2522,7 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-ob-matters-note { margin: -6px 0 0; color: var(--ink-soft); font: 500 12px/1.4 var(--font-sans); }
 .flh-ob-chips { display: flex; flex-wrap: wrap; gap: 10px; }
 .flh-ob-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 16px 0 14px; border: 1px solid var(--ob-line); border-radius: 999px; background: var(--flh-card); color: var(--ink-soft); font: 500 13.5px/1.2 var(--font-sans); text-align: left; cursor: pointer; transition: border-color .15s ease, background-color .15s ease; }
+.flh-ob-chip-tag { margin-left: -2px; padding: 2px 7px; border-radius: 999px; background: var(--ob-warm-row); color: var(--ink-soft); font: 600 10.5px/1.2 var(--font-sans); letter-spacing: .02em; white-space: nowrap; }
 .flh-ob-chip svg { flex-shrink: 0; color: var(--ink-soft); }
 .flh-ob-chip:hover:not(.is-selected) { border-color: rgba(185,83,50,.45); }
 .flh-ob-chip:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }

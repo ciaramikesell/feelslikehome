@@ -1,4 +1,4 @@
-import { getItemlistCategories } from './constants.js';
+import { getItemlistCategories, isRentalType } from './constants.js';
 
 const SHARED_CRITERIA = new Set([
   'exterior:Garage', 'features:Pets Allowed', 'features:Utilities Included', 'features:In-Unit Laundry',
@@ -36,9 +36,22 @@ const MARKETING_OR_AMBIGUOUS = /\b(?:possible|potential|space for|ready for|near
 
 export function derivePriorityCheckPatch(text, priorities, currentChecks = {}) {
   const patch = {};
-  const catalog = new Map(getItemlistCategories(priorities?.searchType).flatMap((category) =>
+  const categories = getItemlistCategories(priorities?.searchType);
+  const catalog = new Map(categories.flatMap((category) =>
     [...category.coreItems, ...category.suggestedItems, ...(category.specificItems || [])]
       .map((item) => [`${category.key}:${item.label}`, item])));
+  // Home to Rent offers the canonical Home criteria (e.g. "Central air",
+  // "Fenced yard"), which a rental search keeps as its own selected items
+  // rather than in the rental catalog. Those offered criteria use the same
+  // rules; a person's own typed priorities never do.
+  if (isRentalType(priorities?.searchType)) {
+    for (const category of categories) {
+      for (const item of priorities?.[category.key]?.customItems || []) {
+        const key = `${category.key}:${item.label}`;
+        if (item.source !== 'custom' && !catalog.has(key)) catalog.set(key, item);
+      }
+    }
+  }
 
   Object.entries(RULES).forEach(([key, rule]) => {
     const [category, label] = key.split(':');

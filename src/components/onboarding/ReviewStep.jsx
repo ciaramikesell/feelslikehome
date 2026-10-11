@@ -10,8 +10,9 @@ import { areasSummary, basicsDisplay, basicsSummary, peopleSummary, placesSummar
 // part, each with an Edit link back to its step. Unanswered questions read
 // "Not set yet"; nothing is inferred — except that when only the search type is
 // answered, the core Basics collapse into one compact invitation to add them.
-// "Add my first home" completes onboarding through the existing completion
-// service and only then opens the existing add-home flow; "Go to My Search"
+// "Add my first home" ("…apartment" for Apartment to Rent) completes onboarding
+// through the existing completion service and only then opens the existing
+// add-home flow; "Go to My Search"
 // completes and opens My Search instead. A co-buyer setting up preferences on
 // someone else's search (sharedFor) gets one action that saves their own
 // preferences and opens that search's homes — never "My Search".
@@ -38,7 +39,8 @@ export default function ReviewStep({ header, sharedFor = null, priorities, place
   const basics = basicsSummary(priorities);
   const areas = areasSummary(priorities);
   const savedPlaces = placesSummary(places);
-  const who = peopleSummary({ choice, people, role });
+  const who = peopleSummary({ choice, people, role, searchType: priorities?.onboardingSearchType || null });
+  const firstPlace = priorities?.onboardingSearchType === 'apartment_rent' ? 'Add my first apartment' : 'Add my first home';
   const levels = prioritiesSummary(priorities);
   const rankedCount = levels.reduce((sum, level) => sum + level.items.length, 0);
   const basicsView = basicsDisplay(basics);
@@ -114,7 +116,7 @@ export default function ReviewStep({ header, sharedFor = null, priorities, place
       <nav className="flh-onboarding-actions flh-ob-review-actions" aria-label="Finish setup">
         {!sharedFor && <button type="button" className="flh-text-action flh-ob-later" disabled={finishing} onClick={() => onFinish('/search?welcome=1')}>Go to My Search</button>}
         <button type="button" className="flh-button flh-button-primary flh-ob-cta" disabled={finishing} aria-busy={finishing || undefined} onClick={() => onFinish(sharedFor ? '/homes' : '/homes?add=1')}>
-          <span>{sharedFor ? (finishing ? 'Saving your preferences…' : 'Save and see the homes') : (finishing ? 'Saving your search…' : 'Add my first home')}</span>
+          <span>{sharedFor ? (finishing ? 'Saving your preferences…' : 'Save and see the homes') : (finishing ? 'Saving your search…' : firstPlace)}</span>
           <span className="flh-ob-cta-icon" aria-hidden="true"><ArrowRight size={20} strokeWidth={2.2} /></span>
         </button>
       </nav>

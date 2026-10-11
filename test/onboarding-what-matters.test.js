@@ -28,9 +28,10 @@ test('Step 4 offers the approved home details for buyers, using the existing opt
     homeLayout: ['Ranch', 'Two Story', 'Other'],
     homeCondition: ['New Construction', 'Move-in Ready', 'Renovation Potential'],
   });
-  // Renting a home keeps its existing property types and has no layout/condition; apartments have none.
+  // Renting a home keeps its existing property types and has no layout/condition;
+  // apartments get an optional Building type (Apartment, Condo, Townhome).
   assert.deepEqual(Object.keys(choicesOf(applySearchChoice(normalizePriorities({}), 'home_rent'))), ['preferredPropertyTypes']);
-  assert.deepEqual(choicesOf(applySearchChoice(normalizePriorities({}), 'apartment_rent')), {});
+  assert.deepEqual(choicesOf(applySearchChoice(normalizePriorities({}), 'apartment_rent')), { preferredPropertyTypes: ['Apartment', 'Condo', 'Townhome'] });
 });
 
 test('no duplicate concepts: Garage is the existing criterion, and condition is never a second features criterion', () => {
@@ -113,7 +114,7 @@ test('the six-step flow hides home details on Step 1; the live flow keeps them',
   assert.deepEqual(onboardingStepsFor(1, {}), ['basics', 'what_matters', 'rank']);
   // The live Rank step and What Matters step are unchanged when not in the six-step flow.
   assert.match(onboarding, /step === 'rank' && !sixStep && <RankStep /);
-  assert.match(read('src/components/onboarding/RankStepV2.jsx'), /const levels = priorityLevelsWithGroups\(priorities\);/);
+  assert.match(read('src/components/onboarding/RankStepV2.jsx'), /const levels = onboardingPriorityLevels\(priorities\);/);
   assert.match(onboarding, /title="What matters to you\?" lead="For now, just choose what matters\./);
   // Step 4 copy (approved Figma), on its own screen; the live What Matters step is the original.
   assert.match(onboarding, /title=\{<>What matters <em>most\?<\/em><\/>\} lead="Choose anything you’d weigh when comparing homes\. You’ll rank your picks next\."/);
@@ -184,9 +185,10 @@ test('renters see their own supported options; apartments keep their catalog', (
   const keys = rent.flatMap((section) => section.chips.map(chipKey));
   assert.ok(!keys.some((key) => key.startsWith('homeLayout') || key.startsWith('homeCondition')));
   assert.deepEqual(rent.find((section) => section.title === 'Property type').chips.map((chip) => chip.text), ['House', 'Townhome', 'Condo']);
+  assert.deepEqual(rent.map((section) => section.title), ['Rental essentials', 'Neighborhood', 'The home', 'Outdoor space', 'Property type']);
   const apartment = whatMattersSections(applySearchChoice(normalizePriorities({}), 'apartment_rent'));
-  assert.deepEqual(apartment.map((section) => section.title), ['The Unit', 'The Property', 'Living There']);
-  assert.deepEqual(moreToConsider(applySearchChoice(normalizePriorities({}), 'apartment_rent')), []);
+  assert.deepEqual(apartment.map((section) => section.title), ['Rental essentials', 'The unit', 'Building & amenities', 'Building type', 'After you tour']);
+  assert.ok(moreToConsider(applySearchChoice(normalizePriorities({}), 'apartment_rent')).length > 0, 'secondary apartment options sit under More to consider');
 });
 
 test('choosing a chip adds it at Important; a saved level is kept; deselecting removes it', () => {
@@ -221,11 +223,15 @@ test('six-step flow: a fresh buyer has zero picks and property type genuinely un
   assert.deepEqual(chooseSearchType(normalizePriorities({}), 'home_buy').preferredPropertyTypes.values, ['house']);
   // Skipping Step 4 leaves it unset: Match has no property-type entry at all.
   assert.doesNotMatch(JSON.stringify(computeMatch({ propertyType: 'condo' }, v2Buyer())), /preferredPropertyTypes/);
-  // Explicit choices survive a change of search type where they still apply; apartments are always 'apartment'.
+  // Explicit choices survive a change of search type where they still apply. An
+  // apartment's Building type is optional too: never preset to Apartment.
   const chosen = toggleGroupValue(toggleGroupValue(v2Buyer(), 'preferredPropertyTypes', 'house'), 'preferredPropertyTypes', 'condo');
   assert.deepEqual(chooseSearchType(chosen, 'home_rent', { presetPropertyType: false }).preferredPropertyTypes.values, ['house', 'condo']);
   assert.deepEqual(chooseSearchType(chosen, 'home_buy', { presetPropertyType: false }).preferredPropertyTypes, chosen.preferredPropertyTypes);
-  assert.deepEqual(chooseSearchType(chosen, 'apartment_rent', { presetPropertyType: false }).preferredPropertyTypes.values, ['apartment']);
+  assert.deepEqual(chooseSearchType(chosen, 'apartment_rent', { presetPropertyType: false }).preferredPropertyTypes.values, ['condo']);
+  assert.deepEqual(chooseSearchType(v2Buyer(), 'apartment_rent', { presetPropertyType: false }).preferredPropertyTypes.values, []);
+  // The live flow still presets Apartment.
+  assert.deepEqual(chooseSearchType(normalizePriorities({}), 'apartment_rent').preferredPropertyTypes.values, ['apartment']);
   const basics = read('src/components/onboarding/BasicsStep.jsx');
   assert.match(basics, /chooseSearchType\(next, key, \{ presetPropertyType \}\)/);
   assert.match(basics, /homeDetails = true, presetPropertyType = true \}\)/);

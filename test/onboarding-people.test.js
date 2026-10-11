@@ -82,12 +82,17 @@ test('Step 3 uses the approved copy', () => {
   const onboarding = read('src/components/onboarding/Onboarding.jsx');
   assert.match(onboarding, /collaboration: 'Your People'/);
   assert.match(onboarding, /title=\{<>Searching with <em>someone\?<\/em><\/>\}/);
-  assert.match(step, /co_buyer: \{ title: 'Co-buyer', description: 'Compare priorities and see how each home fits both of you\.'/);
-  assert.match(step, /realtor: \{ title: 'Realtor', description: 'Share your wishlist and receive home suggestions from your agent\.'/);
+  const people = read('src/lib/onboardingPeople.js');
+  // Buyers keep the approved words; renters see Co-renter and Agent. The roles are unchanged.
+  assert.match(people, /coBuyer: 'Co-buyer', coBuyers: 'Co-buyers', coBuyerLower: 'co-buyer',\n\s+coBuyerDescription: 'Compare priorities and see how each home fits both of you\.',\n\s+coBuyerSharing: 'share homes but keep their own priorities and ratings\.',\n\s+realtor: 'Realtor', realtors: 'Realtors', realtorLower: 'Realtor',\n\s+realtorDescription: 'Share your wishlist and receive home suggestions from your agent\.',\n\s+realtorSharing: 'can view what you share with them and suggest homes\.',/);
+  assert.match(people, /coBuyer: 'Co-renter', coBuyers: 'Co-renters', coBuyerLower: 'co-renter',/);
+  assert.match(people, /realtor: 'Agent', realtors: 'Agents', realtorLower: 'agent',/);
+  assert.match(step, /co_buyer: \{ title: words\.coBuyer, description: words\.coBuyerDescription, Icon: Users \}/);
+  assert.match(step, /realtor: \{ title: words\.realtor, description: words\.realtorDescription, Icon: Home \}/);
   assert.match(step, /You’re searching with \$\{coBuyerName\}/);
-  assert.match(step, /'Your Realtor is connected'/);
-  assert.match(step, /<strong>Co-buyers<\/strong> share homes but keep their own priorities and ratings\./);
-  assert.match(step, /<strong>Realtors<\/strong> can view what you share with them and suggest homes\./);
+  assert.match(step, /`Your \$\{words\.realtorLower\} is connected`/);
+  assert.match(step, /<li><strong>\{words\.coBuyers\}<\/strong> \{words\.coBuyerSharing\}<\/li>/);
+  assert.match(step, /<li><strong>\{words\.realtors\}<\/strong> \{words\.realtorSharing\}<\/li>/);
   assert.match(step, /<strong>Invitations<\/strong> can be sent later from My Search\./);
   assert.match(step, /No invitations now—you can bring someone in whenever you’re ready\./);
 });

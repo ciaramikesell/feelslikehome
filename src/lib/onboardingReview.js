@@ -6,10 +6,10 @@
 import { normalizePriorities } from './constants.js';
 import { NEW_SEARCH_CHOICES } from './onboarding.js';
 import { formatThousands } from './onboardingBasics.js';
-import { hasRelationship, normalizePeople, selectionFromChoice } from './onboardingPeople.js';
+import { hasRelationship, normalizePeople, peopleWords, selectionFromChoice } from './onboardingPeople.js';
 import { AREA_TYPES, searchAreasOf } from './searchAreas.js';
 import { PRIORITY_LEVELS, searchExperienceKey } from './searchProfile.js';
-import { priorityLevelsWithGroups } from './whatMattersGroups.js';
+import { onboardingPriorityLevels } from './whatMattersCatalog.js';
 
 const entered = (value) => String(value ?? '').trim();
 
@@ -56,23 +56,24 @@ export function placesSummary(places = []) {
 }
 
 // Real relationships first; an intention is only ever "interested in".
-export function peopleSummary({ choice = null, people = null, role = 'owner' } = {}) {
+export function peopleSummary({ choice = null, people = null, role = 'owner', searchType = null } = {}) {
+  const words = peopleWords(searchType);
   const known = normalizePeople(people);
   const selection = selectionFromChoice(choice);
   const lines = [];
-  if (role === 'co_buyer') lines.push({ key: 'joined-owner', kind: 'joined', text: `You’re searching with ${known.ownerName || 'your co-buyer'}` });
-  else if (hasRelationship(known, 'co_buyer')) lines.push({ key: 'joined-co-buyer', kind: 'joined', text: `You’re searching with ${known.coBuyers[0]?.name || 'a co-buyer'}` });
-  else if (selection.co_buyer) lines.push({ key: 'want-co-buyer', kind: 'intent', text: 'You’d like to search with a co-buyer' });
-  if (role === 'owner' && hasRelationship(known, 'realtor')) lines.push({ key: 'joined-realtor', kind: 'joined', text: 'Your Realtor is connected' });
-  else if (selection.realtor) lines.push({ key: 'want-realtor', kind: 'intent', text: 'You’d like to work with a Realtor' });
+  if (role === 'co_buyer') lines.push({ key: 'joined-owner', kind: 'joined', text: `You’re searching with ${known.ownerName || `your ${words.coBuyerLower}`}` });
+  else if (hasRelationship(known, 'co_buyer')) lines.push({ key: 'joined-co-buyer', kind: 'joined', text: `You’re searching with ${known.coBuyers[0]?.name || `a ${words.coBuyerLower}`}` });
+  else if (selection.co_buyer) lines.push({ key: 'want-co-buyer', kind: 'intent', text: `You’d like to search with a ${words.coBuyerLower}` });
+  if (role === 'owner' && hasRelationship(known, 'realtor')) lines.push({ key: 'joined-realtor', kind: 'joined', text: `Your ${words.realtorLower} is connected` });
+  else if (selection.realtor) lines.push({ key: 'want-realtor', kind: 'intent', text: `You’d like to work with ${words.realtorLower === 'agent' ? 'an agent' : 'a Realtor'}` });
   return lines;
 }
 
-// The same level names Step 5 uses.
+// The same level names and priority labels Steps 4 and 5 use.
 const LEVEL_TITLES = Object.freeze({ must: 'Must-Have', important: 'Important', nice: 'Nice-to-Have' });
 
 export function prioritiesSummary(raw) {
-  return priorityLevelsWithGroups(raw)
+  return onboardingPriorityLevels(raw)
     .filter((level) => PRIORITY_LEVELS.includes(level.tier))
     .map((level) => ({
       tier: level.tier,

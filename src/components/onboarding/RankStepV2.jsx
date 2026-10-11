@@ -3,7 +3,8 @@
 import { useId, useRef, useState } from 'react';
 import { ArrowRight, ChevronDown, GripVertical } from 'lucide-react';
 import { moveCriterion } from '@/lib/searchProfile';
-import { moveGroup, priorityLevelsWithGroups } from '@/lib/whatMattersGroups';
+import { moveGroup } from '@/lib/whatMattersGroups';
+import { onboardingPriorityLevels } from '@/lib/whatMattersCatalog';
 
 // Step 5 of Onboarding V2: "Let's put things in order." (approved Figma design).
 //
@@ -44,7 +45,8 @@ function MissingInfo() {
 }
 
 export default function RankStepV2({ header, priorities, patch, onNext, onChoose }) {
-  const levels = priorityLevelsWithGroups(priorities);
+  // Labels are Step 4's words (onboardingPriorityLevels).
+  const levels = onboardingPriorityLevels(priorities);
   const total = levels.reduce((sum, level) => sum + level.items.length, 0);
   const [drag, setDrag] = useState(null);
   const dragRef = useRef(null);

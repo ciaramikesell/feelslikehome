@@ -452,6 +452,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
           )}
           {!ready && step === 'collaboration' && (
             <CollaborationStep
+              searchType={priorities.onboardingSearchType || null}
               choice={progressState.answers?.collaboration || null}
               onChoose={chooseCollaboration}
               people={people}

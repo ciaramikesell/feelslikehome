@@ -4,7 +4,9 @@
 //
 //   homeLayout             { values: [...], tier }   (Ranch / Two Story / Other)
 //   homeCondition          { values: [...], tier }   (New Construction / Move-In Ready / Renovation Potential)
-//   preferredPropertyTypes { values: [...], tier }   (house / condo / multifamily)
+//   preferredPropertyTypes { values: [...], tier }   (house / condo / multifamily;
+//                                                     apartment / condo / townhome as
+//                                                     an apartment's Building type)
 //
 // A group's values are ALTERNATIVES: computeMatch counts it as met when the
 // home matches ANY chosen value, and Not evaluated (never a miss) when the
@@ -15,7 +17,7 @@
 
 import { normalizePriorities } from './constants.js';
 import { PROPERTY_TYPE_LABELS } from './searchIntent.js';
-import { CONDITION_CHOICES, LAYOUT_CHOICES, PRIORITY_LEVELS, basicsFieldsFor, priorityLevels, searchExperienceKey } from './searchProfile.js';
+import { CONDITION_CHOICES, LAYOUT_CHOICES, PRIORITY_LEVELS, basicsFieldsFor, priorityLevels, propertyTypeChoicesFor, searchExperienceKey } from './searchProfile.js';
 
 const NO_PREFERENCE = 'No Preference';
 
@@ -24,6 +26,9 @@ const GROUP_DEFS = Object.freeze({
   homeLayout: { title: 'Layout', rankLabel: 'Layout', hint: 'Choose any that would work. A home only needs to be one of them.' },
   homeCondition: { title: 'Condition', rankLabel: 'Condition', hint: 'Choose any that would work. A home only needs to match one.' },
 });
+
+// Apartment to Rent words the same group as the building.
+const BUILDING_TYPE = Object.freeze({ title: 'Building type', rankLabel: 'Building type' });
 
 const labelFor = (key, value) => {
   if (key === 'preferredPropertyTypes') return PROPERTY_TYPE_LABELS[value] || value;
@@ -35,9 +40,10 @@ const labelFor = (key, value) => {
 // nothing they chose disappears.
 export function whatMattersGroups(raw) {
   const priorities = normalizePriorities(raw);
-  const fields = basicsFieldsFor(searchExperienceKey(priorities));
+  const experience = searchExperienceKey(priorities);
+  const fields = basicsFieldsFor(experience);
   const offered = {
-    preferredPropertyTypes: fields.propertyTypes,
+    preferredPropertyTypes: propertyTypeChoicesFor(experience),
     homeLayout: fields.layout ? LAYOUT_CHOICES.map((choice) => choice.value) : [],
     homeCondition: fields.condition ? CONDITION_CHOICES.map((choice) => choice.value) : [],
   };
@@ -48,6 +54,7 @@ export function whatMattersGroups(raw) {
       return {
         key,
         ...GROUP_DEFS[key],
+        ...(key === 'preferredPropertyTypes' && experience === 'apartment_rent' ? BUILDING_TYPE : {}),
         choices: [...values, ...saved].map((value) => ({ value, label: labelFor(key, value) })),
       };
     });

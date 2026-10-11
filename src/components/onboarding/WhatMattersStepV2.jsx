@@ -2,13 +2,14 @@
 
 import { useId, useState } from 'react';
 import {
-  ArrowRight, BedDouble, Building, Building2, Car, Check, ChevronDown, Columns2, Hammer, HardHat, Hotel, House, Laptop,
-  Layers, Leaf, Plus, Route, Rows2, School, Shapes, Sofa, Sparkles, Store, Trees, Waves,
+  AirVent, ArrowRight, ArrowUpDown, BedDouble, Building, Building2, Car, Check, ChevronDown, Columns2, Dumbbell, EyeOff, Fence,
+  Hammer, HardHat, Hotel, House, Laptop, Layers, Leaf, PaintRoller, PawPrint, Plus, PlugZap, Route, Rows2, School, Shapes,
+  ShieldCheck, Sofa, Sparkles, SquareParking, Store, Sun, Trees, Utensils, VolumeX, WashingMachine, Waves,
 } from 'lucide-react';
 import { customCategoryOptions, moveCriterion, priorityLevels, toggleCriterion, addCustomCriterion } from '@/lib/searchProfile';
 import { flatOnboardingSuggestions } from '@/lib/onboarding';
 import { toggleGroupValue } from '@/lib/whatMattersGroups';
-import { chipKey, isChipSelected, moreToConsider, picksCount, whatMattersSections } from '@/lib/whatMattersCatalog';
+import { chipKey, isChipSelected, moreToConsider, offeredChips, picksCount, whatMattersSections } from '@/lib/whatMattersCatalog';
 import { searchExperienceKey } from '@/lib/searchProfile';
 
 // Step 4 of Onboarding V2: "What matters most?" (approved Figma design).
@@ -18,7 +19,11 @@ import { searchExperienceKey } from '@/lib/searchProfile';
 // priority keeps its level. Nothing here says anything about a particular
 // home. See src/lib/whatMattersCatalog.js for the chip → canonical ID mapping.
 
-const ICONS = { BedDouble, Building, Building2, Car, Columns2, Hammer, HardHat, Hotel, House, Laptop, Layers, Leaf, Route, Rows2, School, Shapes, Sofa, Sparkles, Store, Trees, Waves };
+const ICONS = {
+  AirVent, ArrowUpDown, BedDouble, Building, Building2, Car, Columns2, Dumbbell, EyeOff, Fence, Hammer, HardHat, Hotel, House,
+  Laptop, Layers, Leaf, PaintRoller, PawPrint, PlugZap, Route, Rows2, School, Shapes, ShieldCheck, Sofa, Sparkles, SquareParking,
+  Store, Sun, Trees, Utensils, VolumeX, WashingMachine, Waves,
+};
 
 function Chip({ chip, selected, onToggle }) {
   const Icon = (chip.icon && ICONS[chip.icon]) || null;
@@ -26,6 +31,7 @@ function Chip({ chip, selected, onToggle }) {
     <button type="button" className={`flh-ob-chip${selected ? ' is-selected' : ''}`} aria-pressed={selected} onClick={onToggle}>
       {selected ? <Check size={16} strokeWidth={2.2} aria-hidden="true" /> : Icon ? <Icon size={16} strokeWidth={1.7} aria-hidden="true" /> : null}
       <span>{chip.text}</span>
+      {chip.afterTour && <span className="flh-ob-chip-tag">after tour</span>}
     </button>
   );
 }
@@ -70,7 +76,12 @@ export default function WhatMattersStepV2({ header, priorities, patch, onNext, i
   const [customCategory, setCustomCategory] = useState(categories[0]?.key || 'location');
   const addCustom = () => {
     if (!customLabel.trim()) return;
-    patch((next) => addCustomCriterion(next, customCategory, customLabel, flatOnboardingSuggestions(searchExperienceKey(next))));
+    // A typed label that matches something offered here selects that instead.
+    const offered = [
+      ...flatOnboardingSuggestions(searchExperienceKey(priorities)),
+      ...offeredChips(priorities).filter((chip) => chip.type === 'criterion').map((chip) => ({ categoryKey: chip.categoryKey, label: chip.label, kind: chip.kind, displayLabel: chip.text })),
+    ];
+    patch((next) => addCustomCriterion(next, customCategory, customLabel, offered));
     setCustomLabel('');
     setCustomOpen(false);
   };

@@ -57,12 +57,30 @@ Edit answers, then finish. The finished panel confirms that onboarding completio
 was **not** recorded (count 0), that no search was created and that the owner's
 preferences weren't touched.
 
+### D — Home to Rent
+1. Choose "a home to rent", then set a monthly rent and bedrooms.
+2. In What Matters, start with **Rental essentials** (Pet-friendly, In-unit laundry, …), choose House or Townhome, and look under **More to consider**.
+3. Rank your priorities and go to Review.
+4. Go back to The Basics and switch to an apartment and back. Answers that still apply are kept, and Step 1 lists what was removed, with **Undo**.
+5. Finish, then use **Try Match on a sample listing**.
+
+### E — Apartment to Rent
+1. Choose "an apartment to rent". Building type isn't preset; choose Apartment or Condo yourself if it matters.
+2. Check that Quiet community and Privacy are tagged "after tour".
+3. Check that Review says **Add my first apartment**.
+4. Finish, then record Yes / No / Unknown on the sample listing. Unknown never counts against the place.
+
+### F — Co-renter
+You've joined Sam (demo)'s apartment search. Step 3 and Review say "co-renter" and "agent". Your picks and levels are your own.
+
+**Try Match on a sample listing** appears after finishing. It records facts about one made-up listing the way the saved-home editor would, and shows the existing Match result. Nothing is saved. Pets, laundry and utilities are recorded as shared facts about the property.
+
 ## Removal
 
 Delete:
 
 - `src/app/qa/onboarding/`
-- `src/components/onboarding/OnboardingJourneyHarness.jsx`
+- `src/components/onboarding/OnboardingJourneyHarness.jsx` (scenarios A–F and the sample-listing Match panel)
 - the "Preview journey harness" tests in `test/onboarding-review.test.js`
 - this file
 

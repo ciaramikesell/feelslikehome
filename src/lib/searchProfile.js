@@ -228,6 +228,14 @@ export function basicsFieldsFor(experienceKey) {
   };
 }
 
+// The property-type alternatives the six-step flow offers in Step 4. Apartment
+// to Rent gets an optional Building type group (never preset, never hidden);
+// every other kind of search uses the same options as its Basics.
+export const APARTMENT_BUILDING_TYPES = Object.freeze(['apartment', 'condo', 'townhome']);
+export function propertyTypeChoicesFor(experienceKey) {
+  return experienceKey === 'apartment_rent' ? APARTMENT_BUILDING_TYPES : basicsFieldsFor(experienceKey).propertyTypes;
+}
+
 // Keeps what a person types in a numeric Basics field to digits (and one decimal
 // point where fractions are meaningful), so a stored value is always something
 // parseNum — and therefore Match — reads exactly as intended.

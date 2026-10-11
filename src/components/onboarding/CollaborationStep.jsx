@@ -3,7 +3,7 @@
 import { useId, useState } from 'react';
 import { Check, ChevronDown, Home, Plus, Users } from 'lucide-react';
 import { OnboardingAction } from '@/components/onboarding/OnboardingShell';
-import { hasRelationship, selectionFromChoice } from '@/lib/onboardingPeople';
+import { hasRelationship, peopleWords, selectionFromChoice } from '@/lib/onboardingPeople';
 
 // Step 3 of Onboarding V2: "Searching with someone?" (approved Figma design).
 //
@@ -12,13 +12,14 @@ import { hasRelationship, selectionFromChoice } from '@/lib/onboardingPeople';
 // happens in My Search. People already in the search are shown as they are
 // (and their card can't be unchosen here); nobody is ever invented.
 
-const KINDS = {
-  co_buyer: { title: 'Co-buyer', description: 'Compare priorities and see how each home fits both of you.', Icon: Users },
-  realtor: { title: 'Realtor', description: 'Share your wishlist and receive home suggestions from your agent.', Icon: Home },
-};
+// Renters see "Co-renter" and "Agent" (peopleWords); the roles are the same.
+const kinds = (words) => ({
+  co_buyer: { title: words.coBuyer, description: words.coBuyerDescription, Icon: Users },
+  realtor: { title: words.realtor, description: words.realtorDescription, Icon: Home },
+});
 
-function PersonCard({ kind, selected, relationship, onToggle }) {
-  const { title, description, Icon } = KINDS[kind];
+function PersonCard({ kind, words, selected, relationship, onToggle }) {
+  const { title, description, Icon } = kinds(words)[kind];
   const fixed = Boolean(relationship);
   return (
     <button
@@ -39,7 +40,7 @@ function PersonCard({ kind, selected, relationship, onToggle }) {
   );
 }
 
-function SharingInfo() {
+function SharingInfo({ words }) {
   const [open, setOpen] = useState(false);
   const id = useId();
   return (
@@ -53,8 +54,8 @@ function SharingInfo() {
       </button>
       <div id={id} className="flh-ob-sharing-panel" hidden={!open}>
         <ul>
-          <li><strong>Co-buyers</strong> share homes but keep their own priorities and ratings.</li>
-          <li><strong>Realtors</strong> can view what you share with them and suggest homes.</li>
+          <li><strong>{words.coBuyers}</strong> {words.coBuyerSharing}</li>
+          <li><strong>{words.realtors}</strong> {words.realtorSharing}</li>
           <li><strong>Invitations</strong> can be sent later from My Search.</li>
         </ul>
       </div>
@@ -64,14 +65,15 @@ function SharingInfo() {
 
 // role: 'owner' for someone's own search; 'co_buyer' for someone joining
 // another person's search (their co-buyer relationship is already real).
-export default function CollaborationStep({ header, choice, onChoose, people, peopleError, role, onNext, onMaybeLater }) {
+export default function CollaborationStep({ header, choice, onChoose, people, peopleError, role, searchType = null, onNext, onMaybeLater }) {
+  const words = peopleWords(searchType);
   const selection = selectionFromChoice(choice);
   const coBuyerName = role === 'co_buyer' ? people.ownerName : people.coBuyers[0]?.name;
   const relationships = {
     co_buyer: role === 'co_buyer' || hasRelationship(people, 'co_buyer')
-      ? (coBuyerName ? `You’re searching with ${coBuyerName}` : 'You’re searching with a co-buyer')
+      ? (coBuyerName ? `You’re searching with ${coBuyerName}` : `You’re searching with a ${words.coBuyerLower}`)
       : null,
-    realtor: role === 'owner' && hasRelationship(people, 'realtor') ? 'Your Realtor is connected' : null,
+    realtor: role === 'owner' && hasRelationship(people, 'realtor') ? `Your ${words.realtorLower} is connected` : null,
   };
   // The saved answer keeps people who are already in the search.
   const toggle = (kind) => onChoose({
@@ -87,13 +89,14 @@ export default function CollaborationStep({ header, choice, onChoose, people, pe
           <PersonCard
             key={kind}
             kind={kind}
+            words={words}
             selected={selection[kind] || Boolean(relationships[kind])}
             relationship={relationships[kind]}
             onToggle={() => toggle(kind)}
           />
         ))}
       </div>
-      <SharingInfo />
+      <SharingInfo words={words} />
       <p className="flh-ob-people-note">No invitations now—you can bring someone in whenever you’re ready.</p>
       <nav className="flh-onboarding-actions flh-ob-people-actions" aria-label="Step actions">
         <button type="button" className="flh-text-action flh-ob-later" onClick={onMaybeLater}>Maybe later</button>

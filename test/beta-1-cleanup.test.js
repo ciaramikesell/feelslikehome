@@ -67,7 +67,11 @@ test('new onboarding search choices set an explicit, accessible rental subtype',
   assert.match(basics, /NEW_SEARCH_CHOICES\.map/);
   assert.match(basics, /<label className="flh-ob-searchtype-label" htmlFor=\{id\}>I’m looking for<\/label>/);
   assert.match(basics, /<select id=\{id\} required value=\{choice\} onChange=\{\(event\) => onChoose\(event\.target\.value\)\}/);
-  assert.match(basics, /onChoose=\{\(key\) => patch\(\(next\) => chooseSearchType\(next, key, \{ presetPropertyType \}\)\)\}/);
+  // The live flow (presetPropertyType) still goes through chooseSearchType; the
+  // six-step flow uses switchSearchType, which calls chooseSearchType too.
+  assert.match(basics, /if \(presetPropertyType\) \{ patch\(\(next\) => chooseSearchType\(next, key, \{ presetPropertyType \}\)\); return; \}/);
+  assert.match(basics, /<SearchTypeControl choice=\{choice\} onChoose=\{chooseType\} \/>/);
+  assert.match(read('src/lib/whatMattersCatalog.js'), /let next = chooseSearchType\(before, choiceKey, \{ presetPropertyType: false \}\);/);
   assert.match(lib, /let next = applySearchChoice\(priorities, choiceKey\);/);
 });
 

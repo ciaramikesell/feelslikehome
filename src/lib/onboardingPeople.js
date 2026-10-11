@@ -55,3 +55,26 @@ export function peopleFromRows({ members = [], coBuyerName = null, ownerName = n
 export function hasRelationship(people, kind) {
   return kind === 'co_buyer' ? people.coBuyers.length > 0 : people.realtors > 0;
 }
+
+// How Step 3 and Review name the existing relationships. Renters see
+// "Co-renter" and "Agent"; the stored roles (co_buyer, realtor), invitations
+// and permissions are exactly the same for every kind of search.
+const BUYER_WORDS = Object.freeze({
+  coBuyer: 'Co-buyer', coBuyers: 'Co-buyers', coBuyerLower: 'co-buyer',
+  coBuyerDescription: 'Compare priorities and see how each home fits both of you.',
+  coBuyerSharing: 'share homes but keep their own priorities and ratings.',
+  realtor: 'Realtor', realtors: 'Realtors', realtorLower: 'Realtor',
+  realtorDescription: 'Share your wishlist and receive home suggestions from your agent.',
+  realtorSharing: 'can view what you share with them and suggest homes.',
+});
+const RENTER_WORDS = Object.freeze({
+  coBuyer: 'Co-renter', coBuyers: 'Co-renters', coBuyerLower: 'co-renter',
+  coBuyerDescription: 'Compare priorities and see how each place fits both of you.',
+  coBuyerSharing: 'share places but keep their own priorities and ratings.',
+  realtor: 'Agent', realtors: 'Agents', realtorLower: 'agent',
+  realtorDescription: 'Share your wishlist and receive rental suggestions from your agent.',
+  realtorSharing: 'can view what you share with them and suggest places.',
+});
+export function peopleWords(experienceKey) {
+  return experienceKey === 'home_rent' || experienceKey === 'apartment_rent' ? RENTER_WORDS : BUYER_WORDS;
+}

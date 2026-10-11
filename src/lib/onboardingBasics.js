@@ -1,6 +1,6 @@
 import { ONBOARDING_SUGGESTIONS, applySearchChoice } from './onboarding.js';
 import { normalizePriorities } from './constants.js';
-import { addCriterion, basicsFieldsFor, moveCriterion, priorityLevels } from './searchProfile.js';
+import { addCriterion, basicsFieldsFor, moveCriterion, priorityLevels, propertyTypeChoicesFor } from './searchProfile.js';
 
 // Pure helpers for the Onboarding V2 Basics step. Every stored value keeps the
 // format the rest of FLH already reads: Basics are digit strings that parseNum
@@ -105,17 +105,18 @@ export function setGarageLevel(priorities, level, choiceKey) {
 // the person's own, so it carries across — except to Apartment, which has no
 // garage question.
 // presetPropertyType: the live flow presets the property type from the kind of
-// search (e.g. House for "a home to buy"). The six-step flow asks it in Step 4
-// instead, so there nothing is preset: property types the person already chose
-// that still apply to the new kind of search are kept, and otherwise it stays
-// genuinely unset. Apartments always mean 'apartment' (that is what makes a
-// search an apartment search).
+// search (e.g. House for "a home to buy"; Apartment for "an apartment to rent").
+// The six-step flow asks it in Step 4 instead, so there nothing is preset —
+// not even Apartment, which is an optional Building type there: property types
+// the person already chose that still apply to the new kind of search are
+// kept, and otherwise it stays genuinely unset. (onboardingSearchType is what
+// makes a search an apartment search.)
 export function chooseSearchType(priorities, choiceKey, { presetPropertyType = true } = {}) {
   const level = garageLevel(priorities);
   const before = normalizePriorities(priorities).preferredPropertyTypes;
   let next = applySearchChoice(priorities, choiceKey);
-  if (!presetPropertyType && choiceKey !== 'apartment_rent') {
-    const allowed = basicsFieldsFor(choiceKey).propertyTypes;
+  if (!presetPropertyType) {
+    const allowed = propertyTypeChoicesFor(choiceKey);
     next = { ...next, preferredPropertyTypes: { ...before, values: (before.values || []).filter((value) => allowed.includes(value)) } };
   }
   if (level === 'unset' || choiceKey === 'apartment_rent') return next;

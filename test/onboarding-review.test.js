@@ -78,7 +78,8 @@ test('Review completes once through the existing services, then leaves; failures
   const onboarding = read('src/components/onboarding/Onboarding.jsx');
   const step = read('src/components/onboarding/ReviewStep.jsx');
   assert.match(onboarding, /title=\{<>Your search is <em>ready\.<\/em><\/>\}/);
-  assert.match(step, /\(finishing \? 'Saving your search…' : 'Add my first home'\)/);
+  assert.match(step, /\(finishing \? 'Saving your search…' : firstPlace\)/);
+  assert.match(step, /const firstPlace = priorities\?\.onboardingSearchType === 'apartment_rent' \? 'Add my first apartment' : 'Add my first home';/);
   assert.match(step, /onFinish\(sharedFor \? '\/homes' : '\/homes\?add=1'\)/, 'the existing add-home flow');
   assert.match(step, /onFinish\('\/search\?welcome=1'\)/, 'My Search');
   const finish = onboarding.slice(onboarding.indexOf('const finishToDestination'), onboarding.indexOf('const finish = async'));

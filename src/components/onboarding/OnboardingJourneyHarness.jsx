@@ -11,6 +11,8 @@ import { addSearchArea } from '@/lib/searchAreas';
 import { addCriterion, moveCriterion } from '@/lib/searchProfile';
 import { moveGroup, toggleGroupValue } from '@/lib/whatMattersGroups';
 import { basicsSummary, prioritiesSummary } from '@/lib/onboardingReview';
+import { computeMatch } from '@/lib/matching';
+import { onboardingPriorityLevels } from '@/lib/whatMattersCatalog';
 
 // TEMPORARY Preview-only QA journey for the six-step onboarding (flow 3,
 // not live). See docs/onboarding-v2-preview-qa.md.
@@ -27,6 +29,7 @@ const DEMO_SEARCH = '00000000-0000-4000-8000-0000000000d1';
 const DEMO_OWN_SEARCH = '00000000-0000-4000-8000-0000000000d2';
 const DEMO_USER = '00000000-0000-4000-8000-0000000000d3';
 const OWNER_NAME = 'Ciara (demo)';
+const RENTAL_OWNER_NAME = 'Sam (demo)';
 
 const SCENARIOS = {
   decisive: {
@@ -42,7 +45,27 @@ const SCENARIOS = {
   cobuyer: {
     title: 'C · The co-buyer',
     role: 'co_buyer',
+    ownerName: OWNER_NAME,
     script: `You’ve joined ${OWNER_NAME}’s shared search. Set your own preferences, then edit an answer from Review and finish. Nothing about ${OWNER_NAME}’s preferences or your own search changes; “Not now—go to your own search” is also available.`,
+  },
+  homeRent: {
+    title: 'D · Home to Rent',
+    role: 'owner',
+    sample: () => homeRentAnswers(),
+    script: 'Choose “a home to rent”, a monthly rent and bedrooms. On What Matters, start with Rental essentials (Pet-friendly, In-unit laundry…), pick House or Townhome, and look under More to consider. Rank, review, then go back to Step 1 and switch to an apartment and back: compatible answers stay, and Step 1 lists anything removed (with Undo). Finish and try Match on a sample listing.',
+  },
+  apartment: {
+    title: 'E · Apartment to Rent',
+    role: 'owner',
+    sample: () => apartmentAnswers(),
+    script: 'Choose “an apartment to rent”. Nothing about the building type is preset: choose Apartment or Condo yourself if it matters. Quiet community and Privacy are marked “after tour”. Review should say “Add my first apartment”. Finish and try Match on a sample listing, including Unknown answers.',
+  },
+  coRenter: {
+    title: 'F · The co-renter',
+    role: 'co_buyer',
+    ownerName: RENTAL_OWNER_NAME,
+    start: () => chooseSearchType(normalizePriorities({}), 'apartment_rent', { presetPropertyType: false }),
+    script: `You’ve joined ${RENTAL_OWNER_NAME}’s apartment search as a co-renter. Your picks and levels are your own; ${RENTAL_OWNER_NAME}’s don’t change. Step 3 and Review use “co-renter” and “agent”.`,
   },
 };
 
@@ -84,6 +107,28 @@ function decisiveAnswers() {
   return p;
 }
 
+// "Start at Review" for the rental scenarios.
+function homeRentAnswers() {
+  let p = chooseSearchType(normalizePriorities({}), 'home_rent', { presetPropertyType: false });
+  p = { ...p, budget: { ...p.budget, value: '2400' }, bedsMin: { ...p.bedsMin, value: '3' }, bathsMin: { ...p.bathsMin, value: '2' } };
+  for (const area of [SAMPLE_AREAS[5], SAMPLE_AREAS[4]]) p = addSearchArea(p, area);
+  for (const [categoryKey, label] of [['features', 'Pets Allowed'], ['features', 'In-Unit Laundry'], ['exterior', 'Parking'], ['location', 'Reputable Schools'], ['exterior', 'Fenced yard'], ['exterior', 'Garage']]) p = addCriterion(p, { categoryKey, label, kind: 'check' });
+  p = moveCriterion(p, 'features', 'Pets Allowed', 'must');
+  p = moveCriterion(p, 'exterior', 'Garage', 'nice');
+  p = toggleGroupValue(toggleGroupValue(p, 'preferredPropertyTypes', 'house'), 'preferredPropertyTypes', 'townhome');
+  return p;
+}
+function apartmentAnswers() {
+  let p = chooseSearchType(normalizePriorities({}), 'apartment_rent', { presetPropertyType: false });
+  p = { ...p, budget: { ...p.budget, value: '1900' }, bedsMin: { ...p.bedsMin, value: '1' } };
+  p = addSearchArea(p, SAMPLE_AREAS[5]);
+  for (const [categoryKey, label, kind] of [['features', 'Pets Allowed', 'check'], ['features', 'In-Unit Laundry', 'check'], ['features', 'Utilities Included', 'check'], ['exterior', 'Fitness Center', 'check'], ['exterior', 'Noise Level', 'rating']]) p = addCriterion(p, { categoryKey, label, kind });
+  p = moveCriterion(moveCriterion(p, 'features', 'Pets Allowed', 'must'), 'features', 'In-Unit Laundry', 'must');
+  p = moveCriterion(p, 'exterior', 'Fitness Center', 'nice');
+  p = toggleGroupValue(toggleGroupValue(p, 'preferredPropertyTypes', 'apartment'), 'preferredPropertyTypes', 'condo');
+  return p;
+}
+
 function initialFor(scenarioKey, startAt) {
   const scenario = SCENARIOS[scenarioKey];
   const context = { searchId: DEMO_SEARCH, role: scenario.role };
@@ -102,25 +147,96 @@ function initialFor(scenarioKey, startAt) {
   });
   return {
     progress,
-    priorities: atReview ? decisiveAnswers() : normalizePriorities({}),
+    priorities: atReview ? (scenario.sample || decisiveAnswers)() : scenario.start ? scenario.start() : normalizePriorities({}),
     places: atReview ? [{ id: 'demo-place-1', label: 'Work', address: SAMPLE_ADDRESSES[0], maxDriveMinutes: null }] : [],
   };
 }
 
+// The shared facts Match reads from the saved property itself (one answer for
+// everyone in the search), not from each person's own Yes/No checks.
+const SHARED_FACTS = { 'features:Pets Allowed': 'petsAllowed', 'features:Utilities Included': 'utilitiesIncluded', 'features:In-Unit Laundry': 'inUnitLaundry' };
+const ANSWERS = [['yes', 'Yes'], ['no', 'No'], ['unknown', 'Unknown']];
+const STATUS = { met: 'Matches', missed: 'Doesn’t match', unknown: 'Unknown — not counted', neutral: 'Neutral' };
+
+// QA only: record facts about one made-up listing, the way the saved-home
+// editor would, and see how the existing Match treats them. Unknown is the
+// default for every fact and never counts as a mismatch.
+function SampleListingMatch({ priorities }) {
+  const [home, setHome] = useState({ checks: {}, ratings: {}, propertyType: null, price: '', beds: '', petsAllowed: null, utilitiesIncluded: null, inUnitLaundry: null, garageSpaces: '' });
+  const items = onboardingPriorityLevels(priorities).flatMap((level) => level.items.map((item) => ({ ...item, tier: level.tier })));
+  const match = computeMatch(home, priorities);
+  const statusOf = (key) => {
+    const criterion = match?.allSelected.find((entry) => entry.key === key);
+    if (!criterion || !criterion.evaluated) return 'unknown';
+    return criterion.met === true ? 'met' : criterion.met === false ? 'missed' : 'neutral';
+  };
+  const answerOf = (item) => {
+    if (SHARED_FACTS[item.key]) return home[SHARED_FACTS[item.key]] === true ? 'yes' : home[SHARED_FACTS[item.key]] === false ? 'no' : 'unknown';
+    if (item.key === 'exterior:Garage') return home.garageSpaces === '' ? 'unknown' : Number(home.garageSpaces) > 0 ? 'yes' : 'no';
+    return home.checks[item.key] === true ? 'yes' : home.checks[item.key] === 'no' ? 'no' : 'unknown';
+  };
+  const setAnswer = (item, answer) => setHome((current) => {
+    if (SHARED_FACTS[item.key]) return { ...current, [SHARED_FACTS[item.key]]: answer === 'yes' ? true : answer === 'no' ? false : null };
+    if (item.key === 'exterior:Garage') return { ...current, garageSpaces: answer === 'yes' ? '1' : answer === 'no' ? '0' : '' };
+    const checks = { ...current.checks };
+    if (answer === 'unknown') delete checks[item.key]; else checks[item.key] = answer === 'yes' ? true : 'no';
+    return { ...current, checks };
+  });
+  const groupChoices = ['apartment', 'house', 'townhome', 'condo', 'multifamily'];
+  const row = { display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 0', borderTop: '1px solid var(--line)' };
+  return (
+    <details open style={{ margin: '16px 0', padding: 12, background: '#fff', borderRadius: 12 }} aria-label="Try Match on a sample listing">
+      <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Try Match on a sample listing (demo)</summary>
+      <p style={{ color: 'var(--ink-soft)', margin: '6px 0' }}>Record what you know about one made-up listing, as you would in the saved-home editor. Pets, laundry and utilities are <strong>shared facts</strong> about the property; your priority levels stay your own.</p>
+      <div style={row}><span>Monthly rent / price</span><input className="hh-input" style={{ width: 120 }} aria-label="Sample listing price" inputMode="numeric" value={home.price} placeholder="Unknown" onChange={(event) => setHome({ ...home, price: event.target.value.replace(/[^0-9]/g, '') })} /></div>
+      <div style={row}><span>Bedrooms</span><input className="hh-input" style={{ width: 120 }} aria-label="Sample listing bedrooms" inputMode="numeric" value={home.beds} placeholder="Unknown" onChange={(event) => setHome({ ...home, beds: event.target.value.replace(/[^0-9]/g, '') })} /></div>
+      {items.map((item) => (
+        <div key={item.key} style={row} data-sample-criterion={item.key}>
+          <span><strong>{item.displayLabel}</strong>{item.qualifier ? ` · ${item.qualifier}` : ''} <small style={{ color: 'var(--ink-soft)' }}>({item.tier}) — {STATUS[statusOf(item.group ? item.categoryKey : item.key)]}</small></span>
+          {item.group && item.categoryKey === 'preferredPropertyTypes' ? (
+            <select aria-label={`Sample listing ${item.displayLabel}`} value={home.propertyType || ''} onChange={(event) => setHome({ ...home, propertyType: event.target.value || null })}>
+              <option value="">Unknown</option>
+              {groupChoices.map((value) => <option key={value} value={value}>{value[0].toUpperCase() + value.slice(1)}</option>)}
+            </select>
+          ) : item.experiential ? (
+            <small style={{ color: 'var(--ink-soft)' }}>Answered after a tour</small>
+          ) : item.kind === 'rating' || item.group ? (
+            <small style={{ color: 'var(--ink-soft)' }}>Not recorded here</small>
+          ) : (
+            <span role="group" aria-label={`${item.displayLabel} on the sample listing`} style={{ display: 'flex', gap: 4 }}>
+              {ANSWERS.map(([answer, text]) => <button key={answer} type="button" className={`hh-chip ${answerOf(item) === answer ? 'on' : ''}`} aria-pressed={answerOf(item) === answer} onClick={() => setAnswer(item, answer)}>{text}</button>)}
+            </span>
+          )}
+        </div>
+      ))}
+      <p role="status" style={{ margin: '10px 0 0', fontWeight: 600 }}>
+        {!match ? 'No priorities to match yet.' : match.pct == null ? 'Match needs at least one known fact.' : `${match.pct}% Match`}
+        {match && ` · ${match.evaluatedCount} of ${match.selectedCount} evaluated · ${match.missing.length} confirmed mismatch${match.missing.length === 1 ? '' : 'es'}`}
+      </p>
+    </details>
+  );
+}
+
 function Finished({ result, scenario, onReview, onRestart }) {
+  // A co-buyer/co-renter leaves either by finishing (their own preferences are
+  // saved in the shared search, which then opens) or by "Not now—go to your
+  // own search" (which switches their active search first).
+  const what = result.switchedToOwnSearch
+    ? <>switch you back to your own search</>
+    : scenario.role === 'co_buyer'
+      ? <>save <strong>your own</strong> preferences in {scenario.ownerName}’s shared search (without changing theirs, creating a search, or marking account onboarding complete)</>
+      : <>save your preferences and mark onboarding complete</>;
   const where = {
     '/homes?add=1': 'open Add a home (the existing add-home flow)',
     '/search?welcome=1': 'open My Search',
-    '/homes': scenario.role === 'co_buyer' ? 'return to your own search (switching your active search)' : 'open Homes',
+    '/homes': result.switchedToOwnSearch ? 'open your own search’s Homes' : scenario.role === 'co_buyer' ? `open ${scenario.ownerName}’s shared Homes` : 'open Homes',
   }[result.destination.split('#')[0]] || `open ${result.destination}`;
   const saved = result.priorities;
   return (
     <section role="status" aria-live="polite" style={{ maxWidth: 640, margin: '32px auto 120px', padding: '0 16px', font: '14px/1.5 var(--font-sans)', color: 'var(--ink)' }}>
       <p className="flh-eyebrow">Demo finished — nothing was saved</p>
       <h1 className="flh-page-title" style={{ margin: '6px 0 12px' }}>This is where the real app would take over.</h1>
-      <p>In the real app, Feels Like Home would now {scenario.role === 'co_buyer' && result.destination !== '/homes'
-        ? <>save <strong>your own</strong> preferences in {OWNER_NAME}’s shared search (without changing theirs or creating a new search)</>
-        : result.destination === '/homes' ? <>switch you back to your own search</> : <>save your preferences and mark onboarding complete</>}, then {where}.</p>
+      <p>In the real app, Feels Like Home would now {what}, then {where}.</p>
       <p style={{ color: 'var(--ink-soft)' }}>No account, search, invitation, member or place was created or changed. Completion calls in this demo: {result.completions}.</p>
       {saved && (
         <details style={{ margin: '16px 0', padding: 12, background: '#fff', borderRadius: 12 }}>
@@ -133,6 +249,7 @@ function Finished({ result, scenario, onReview, onRestart }) {
           <ul>{result.places.length ? result.places.map((place) => <li key={place.id}>{place.label}: {place.address}</li>) : <li>None</li>}</ul>
         </details>
       )}
+      {saved && <SampleListingMatch priorities={saved} />}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
         <button type="button" className="flh-button flh-button-outline" onClick={onReview}>Back to Review (keep answers)</button>
         <button type="button" className="flh-button flh-button-primary" onClick={onRestart}>Restart this scenario</button>
@@ -167,7 +284,7 @@ export default function OnboardingJourneyHarness() {
       savePriorities: (searchId, userId, priorities) => { if (failSaves) return failing(); store.current.priorities = priorities; return Promise.resolve(true); },
       saveProgress: (userId, progress) => { store.current.answers = progress?.state?.answers || {}; return Promise.resolve(true); },
       completeOnboarding: () => { if (failSaves) return failing(); store.current.completions += 1; return Promise.resolve(true); },
-      setActiveSearch: () => (failSaves ? failing() : Promise.resolve(true)),
+      setActiveSearch: () => { if (failSaves) return failing(); store.current.switchedToOwnSearch = true; return Promise.resolve(true); },
       submitFeedback: () => Promise.resolve(true),
       createPlace: (searchId, userId, place) => {
         if (failSaves) return failing();
@@ -185,7 +302,7 @@ export default function OnboardingJourneyHarness() {
         return googleAreaSuggestions(query);
       },
       AddressField: provider === 'live' ? AddressAutocomplete : SampleAddressField,
-      navigate: (destination) => setFinished({ destination, completions: store.current.completions, priorities: store.current.priorities, places: store.current.places }),
+      navigate: (destination) => setFinished({ destination, completions: store.current.completions, priorities: store.current.priorities, places: store.current.places, switchedToOwnSearch: Boolean(store.current.switchedToOwnSearch) }),
     };
   }, [provider, failSaves]);
 
@@ -201,7 +318,7 @@ export default function OnboardingJourneyHarness() {
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
           {Object.entries(SCENARIOS).map(([key, entry]) => <button key={key} type="button" aria-pressed={scenarioKey === key} style={pill(scenarioKey === key)} onClick={() => chooseScenario(key)}>{entry.title}</button>)}
           <button type="button" style={pill(false)} onClick={() => restart('basics')}>Restart</button>
-          {scenarioKey === 'decisive' && <button type="button" style={pill(false)} onClick={() => restart('review')}>Start at Review (sample answers)</button>}
+          {(scenarioKey === 'decisive' || scenario.sample) && <button type="button" style={pill(false)} onClick={() => restart('review')}>Start at Review (sample answers)</button>}
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginTop: 8 }}>
           <label>Area &amp; address search:{' '}
@@ -225,9 +342,9 @@ export default function OnboardingJourneyHarness() {
           initialPriorities={initial.priorities}
           initialProgress={initial.progress}
           initialPlaces={initial.places}
-          initialPeople={scenario.role === 'co_buyer' ? { coBuyers: [], realtors: 0, ownerName: OWNER_NAME } : null}
+          initialPeople={scenario.role === 'co_buyer' ? { coBuyers: [], realtors: 0, ownerName: scenario.ownerName } : null}
           mode={scenario.role === 'co_buyer' ? 'shared_search_setup' : 'account'}
-          ownerName={scenario.role === 'co_buyer' ? OWNER_NAME : null}
+          ownerName={scenario.role === 'co_buyer' ? scenario.ownerName : null}
           ownedSearchId={scenario.role === 'co_buyer' ? DEMO_OWN_SEARCH : null}
           services={services}
         />
