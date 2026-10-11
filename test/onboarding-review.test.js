@@ -119,3 +119,32 @@ dbTest('a co-buyer finishing setup in a shared search saves only their own prefe
   assert.deepEqual(db.admin(`select role from public.search_members where search_id = '${search.id}'`), [{ role: 'co_buyer' }]);
   assert.equal(db.admin(`select count(*)::int as n from public.search_member_priorities where search_id = '${partnerOwn}' and user_id = '${partner}'`)[0].n, 0, 'their own search is untouched');
 });
+
+/* ------------------------- Preview journey harness ------------------------- */
+
+test('the six-step journey harness is Preview-only, signed-in, unindexed and writes nothing', () => {
+  const harness = read('src/components/onboarding/OnboardingJourneyHarness.jsx');
+  const page = read('src/app/qa/onboarding/page.js');
+  // No Supabase client anywhere in the harness; every write <Onboarding> can make is an in-memory stand-in.
+  assert.doesNotMatch(harness, /@\/lib\/supabase|createClient\(|SUPABASE_SERVICES/);
+  for (const key of ['savePriorities', 'saveProgress', 'completeOnboarding', 'setActiveSearch', 'submitFeedback', 'createPlace', 'deletePlace', 'searchAreas', 'navigate']) {
+    assert.match(harness, new RegExp(`${key}: `), `${key} must be stubbed`);
+  }
+  // Finishing never claims a real update.
+  assert.match(harness, /nothing was saved/);
+  assert.match(page, /if \(!previewQaAllowedHere\(host\)\) notFound\(\);/);
+  assert.match(page, /if \(!user\) redirect\(/);
+  assert.match(page, /\} else if \(process\.env\.NODE_ENV !== 'development'\) \{\n\s+notFound\(\);/);
+  assert.match(page, /robots: \{ index: false, follow: false \}/);
+  assert.match(read('src/middleware.js'), /pathname\.startsWith\('\/qa\/'\)[\s\S]*?previewQaAllowedHere/);
+});
+
+test('leaving onboarding goes through services.navigate when injected; real pages still use the router', () => {
+  const onboarding = read('src/components/onboarding/Onboarding.jsx');
+  assert.match(onboarding, /if \(services\.navigate\) \{ services\.navigate\(destination\); return; \}\n\s+router\.push\(destination\); router\.refresh\(\);/);
+  // The real services define no navigate, so live pages are unchanged.
+  const defaults = onboarding.slice(onboarding.indexOf('const SUPABASE_SERVICES'), onboarding.indexOf('});', onboarding.indexOf('const SUPABASE_SERVICES')));
+  assert.doesNotMatch(defaults, /navigate/);
+  // The six-step flow stays inactive.
+  assert.match(read('src/lib/onboardingFlow.js'), /export const CURRENT_ONBOARDING_VERSION = 1;/);
+});
