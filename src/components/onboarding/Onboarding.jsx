@@ -363,6 +363,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
             <LocationsStep
               priorities={priorities}
               patch={patch}
+              AddressField={services.AddressField}
               searchAreas={services.searchAreas}
               places={places}
               placesError={placesError}

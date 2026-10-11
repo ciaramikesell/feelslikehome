@@ -38,6 +38,38 @@ function AreaSearch({ priorities, onAdd, searchAreas }) {
   const [schoolDistricts, setSchoolDistricts] = useState(true);
   const [announcement, setAnnouncement] = useState('');
   const full = searchAreasOf(priorities).length >= MAX_SEARCH_AREAS;
+  const fieldRef = useRef(null);
+  const [menuMax, setMenuMax] = useState(null);
+
+  // Keep suggestions visible on phones: the space below the field ends at the
+  // software keyboard (visual viewport) or the sticky Continue bar, whichever
+  // is higher. If there is too little room when the menu opens, the field is
+  // lifted toward the top of the screen once; the menu then fits what is left.
+  useEffect(() => {
+    if (!open) return undefined;
+    const viewport = window.visualViewport;
+    const fit = (lift) => {
+      const field = fieldRef.current;
+      if (!field) return;
+      // Lowest visible point: the keyboard's top edge or the sticky bar's.
+      const limit = () => {
+        const bar = document.querySelector('.flh-onboarding-root .flh-onboarding-actions');
+        const barTop = bar && getComputedStyle(bar).position === 'sticky' ? bar.getBoundingClientRect().top : Infinity;
+        return Math.min(viewport ? viewport.offsetTop + viewport.height : window.innerHeight, barTop);
+      };
+      let rect = field.getBoundingClientRect();
+      if (lift && limit() - rect.bottom < 220 && window.innerWidth <= 700) {
+        window.scrollBy({ top: rect.top - (viewport?.offsetTop || 0) - 72, behavior: 'instant' });
+        rect = field.getBoundingClientRect();
+      }
+      setMenuMax(Math.max(120, Math.min(300, Math.floor(limit() - rect.bottom - 12))));
+    };
+    fit(true);
+    const refit = () => fit(false);
+    viewport?.addEventListener('resize', refit);
+    window.addEventListener('resize', refit);
+    return () => { viewport?.removeEventListener('resize', refit); window.removeEventListener('resize', refit); };
+  }, [open]);
 
   useEffect(() => {
     const term = query.trim();
@@ -98,7 +130,7 @@ function AreaSearch({ priorities, onAdd, searchAreas }) {
   return (
     <div ref={rootRef} className="flh-ob-area-search">
       <label className="flh-ob-label" htmlFor={id}>Areas of interest</label>
-      <span className="flh-ob-input flh-ob-search-input">
+      <span ref={fieldRef} className="flh-ob-input flh-ob-search-input">
         <Search size={18} strokeWidth={2} aria-hidden="true" />
         <input
           id={id}
@@ -119,7 +151,7 @@ function AreaSearch({ priorities, onAdd, searchAreas }) {
       </span>
       <span id={`${id}-help`} className="sr-only">Type at least two letters, then choose a city, neighborhood, school district or ZIP code with the arrow keys and Enter.</span>
       {open && (
-        <div className="flh-ob-area-menu">
+        <div className="flh-ob-area-menu" style={menuMax ? { maxHeight: menuMax } : undefined}>
           {status === 'loading' && <p className="flh-ob-area-status" role="status">Searching…</p>}
           {status === 'empty' && <p className="flh-ob-area-status" role="status">No matching cities, neighborhoods, school districts or ZIP codes.</p>}
           {status === 'error' && <p className="flh-ob-area-status is-error" role="alert">Area search isn’t available right now. You can add areas later in My Search.</p>}
@@ -177,17 +209,21 @@ function SelectedAreas({ priorities, onRemove }) {
   );
 }
 
-function PlaceForm({ onSave, onCancel, saving, error }) {
+// The address must be one Google resolved (chosen from the suggestions), so a
+// saved place can always be measured; typing after choosing clears it.
+function PlaceForm({ onSave, onCancel, saving, error, AddressField }) {
   const id = useId();
   const firstRef = useRef(null);
   useEffect(() => { firstRef.current?.focus(); }, []);
   const [preset, setPreset] = useState('Work');
   const [custom, setCustom] = useState('');
   const [address, setAddress] = useState('');
+  const [resolved, setResolved] = useState('');
   const label = preset === 'custom' ? custom.trim() : preset;
-  const valid = label.length > 0 && label.length <= 80 && address.trim().length > 0;
+  const addressReady = Boolean(resolved) && resolved === address;
+  const valid = label.length > 0 && label.length <= 80 && addressReady;
   return (
-    <form className="flh-ob-place-form" onSubmit={(event) => { event.preventDefault(); if (valid && !saving) onSave({ label, address: address.trim() }); }}>
+    <form className="flh-ob-place-form" onSubmit={(event) => { event.preventDefault(); if (valid && !saving) onSave({ label, address: resolved }); }}>
       <fieldset className="flh-ob-pills">
         <legend className="flh-ob-sublabel">What is it?</legend>
         <div className="flh-chip-row">
@@ -208,8 +244,9 @@ function PlaceForm({ onSave, onCancel, saving, error }) {
       <div className="flh-ob-field">
         <span className="flh-ob-sublabel" aria-hidden="true">Address</span>
         <div className="flh-ob-place-address">
-          <AddressAutocomplete value={address} onChange={setAddress} onSelect={setAddress} placeholder="Street address" />
+          <AddressField value={address} onChange={(next) => { setAddress(next); setResolved(''); }} onSelect={(next) => { setAddress(next); setResolved(next); }} placeholder="Street address" />
         </div>
+        {address.trim() && !addressReady && <p className="flh-ob-help" role="status">Choose an address from the suggestions so we can measure distance. If none appear, you can add places later in My Search.</p>}
       </div>
       {error && <p className="flh-field-error" role="alert">{error}</p>}
       <div className="flh-ob-place-actions">
@@ -220,7 +257,7 @@ function PlaceForm({ onSave, onCancel, saving, error }) {
   );
 }
 
-function PlacesThatMatter({ places, placesError, onCreate, onDelete }) {
+function PlacesThatMatter({ places, placesError, onCreate, onDelete, AddressField }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -272,7 +309,7 @@ function PlacesThatMatter({ places, placesError, onCreate, onDelete }) {
         </ul>
       )}
       {open ? (
-        <PlaceForm onSave={save} onCancel={() => { close(); setError(''); }} saving={saving} error={error} />
+        <PlaceForm AddressField={AddressField} onSave={save} onCancel={() => { close(); setError(''); }} saving={saving} error={error} />
       ) : (
         <>
           {error && <p className="flh-field-error" role="alert">{error}</p>}
@@ -288,7 +325,7 @@ function PlacesThatMatter({ places, placesError, onCreate, onDelete }) {
   );
 }
 
-export default function LocationsStep({ header, priorities, patch, searchAreas, places, placesError, onCreatePlace, onDeletePlace, onNext }) {
+export default function LocationsStep({ header, priorities, patch, searchAreas, places, placesError, onCreatePlace, onDeletePlace, onNext, AddressField = AddressAutocomplete }) {
   const areas = searchAreasOf(priorities);
   const cardRef = useRef(null);
   // After a chip is removed, keep keyboard focus in place: the next chip's
@@ -311,12 +348,12 @@ export default function LocationsStep({ header, priorities, patch, searchAreas, 
           <span className="flh-ob-area-hint-icon" aria-hidden="true"><Building2 size={18} strokeWidth={1.9} /></span>
           <span>
             {areas.length > 1
-              ? <><strong>Any of these can fit</strong><span>A home only needs to be in one of your areas.</span></>
+              ? <><strong>Any of these can fit</strong><span>Each area is an alternative, not a requirement.</span></>
               : <><strong>Start with any area</strong><span>City and school district selections can be added independently.</span></>}
           </span>
         </div>
       </section>
-      <PlacesThatMatter places={places} placesError={placesError} onCreate={onCreatePlace} onDelete={onDeletePlace} />
+      <PlacesThatMatter AddressField={AddressField} places={places} placesError={placesError} onCreate={onCreatePlace} onDelete={onDeletePlace} />
       <nav className="flh-onboarding-actions">
         <OnboardingAction onClick={onNext}>Continue</OnboardingAction>
       </nav>

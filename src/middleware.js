@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
+import { previewQaAllowedHere } from '@/lib/previewQa';
 
 export async function middleware(request) {
   // /dev/ holds development-only tools (the onboarding preview). Production
@@ -9,6 +10,14 @@ export async function middleware(request) {
     return process.env.NODE_ENV === 'production'
       ? new NextResponse('Not found', { status: 404 })
       : NextResponse.next();
+  }
+
+  // /qa/ holds the temporary Step 2 Preview QA harness: a real 404 anywhere
+  // but local development and this Preview's own URL (src/lib/previewQa.js).
+  if (request.nextUrl.pathname.startsWith('/qa/')) {
+    if (!previewQaAllowedHere(request.headers.get('host'))) return new NextResponse('Not found', { status: 404 });
+    // Local development without Supabase configured: nothing to refresh.
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NODE_ENV === 'development') return NextResponse.next();
   }
 
   // Layouts (unlike page.js) never receive the current path/query as a prop —

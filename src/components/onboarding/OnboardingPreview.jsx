@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Onboarding from '@/components/onboarding/Onboarding';
 import { normalizePriorities } from '@/lib/constants';
 import { ONBOARDING_SUGGESTIONS, applySearchChoice } from '@/lib/onboarding';
@@ -70,7 +70,26 @@ function previewServices(fail) {
     createPlace: (searchId, userId, place) => (fail ? Promise.reject(new Error('Preview save failure')) : Promise.resolve({ id: `preview-place-${nextPlace++}`, ...place, maxDriveMinutes: null })),
     deletePlace: () => settle(),
     searchAreas: previewAreaSearch,
+    AddressField: PreviewAddressField,
   };
+}
+
+// Development-only address field with fixed sample suggestions, standing in
+// for Google address autocomplete (which needs a key the preview doesn't have).
+const PREVIEW_ADDRESSES = ['500 Woodward Ave, Detroit, MI 48226, USA', '1 Kercheval Ave, Grosse Pointe Farms, MI 48236, USA'];
+function PreviewAddressField({ value, onChange, onSelect, placeholder }) {
+  const [open, setOpen] = useState(false);
+  const matches = value.trim().length >= 3 ? PREVIEW_ADDRESSES.filter((address) => address.toLowerCase().includes(value.trim().toLowerCase().slice(0, 3))) : [];
+  return (
+    <div style={{ position: 'relative' }}>
+      <input className="hh-input" style={{ width: '100%' }} aria-label="Search for or enter the street address" value={value} placeholder={placeholder} onChange={(event) => { onChange(event.target.value); setOpen(true); }} />
+      {open && matches.length > 0 && (
+        <ul role="listbox" aria-label="Sample addresses" style={{ position: 'absolute', zIndex: 20, inset: '100% 0 auto', margin: '4px 0 0', padding: 4, listStyle: 'none', background: '#fff', border: '1px solid var(--line)', borderRadius: 10 }}>
+          {matches.map((address) => <li key={address} role="option" aria-selected="false" style={{ padding: 10, cursor: 'pointer' }} onClick={() => { onSelect(address); setOpen(false); }}>{address}</li>)}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 const PREVIEW_PLACES = [{ id: 'preview-place-work', label: 'Work', address: '500 Woodward Ave, Detroit, MI 48226', maxDriveMinutes: null }];

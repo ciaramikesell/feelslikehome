@@ -94,8 +94,11 @@ test('Step 2 copy, persistence wiring and no-requirement guarantees', () => {
   assert.match(step, /Start with any area/);
   assert.match(step, /City and school district selections can be added independently\./);
   assert.doesNotMatch(step, /maxDriveMinutes|max_drive|tiers?\b|'must'|"must"/);
+  // Areas are saved preferences: no claim that listings are searched, filtered or scored by them.
+  assert.doesNotMatch(step, /filter|listings|we(’|')ll (search|find|match)|match(es|ing)? homes/i);
+  assert.match(step, /Each area is an alternative, not a requirement\./);
   // Area results come only from the provider; the provider owns no sample data.
-  assert.doesNotMatch(read('src/lib/areaSearchProvider.js'), /Grosse|preview/i);
+  assert.doesNotMatch(read('src/lib/areaSearchProvider.js'), /Grosse|PREVIEW_|sample/i);
 });
 
 test('Step 2 styles are scoped to onboarding', () => {
@@ -107,12 +110,107 @@ test('Step 2 styles are scoped to onboarding', () => {
   }
 });
 
-/* ------------------------------ real Postgres ------------------------------ */
+/* ---------------------- provider rules (fake Google) ---------------------- */
 
 register('./support/aliasHooks.mjs', import.meta.url);
+const { fetchAreaSuggestions } = await import('../src/lib/areaSearchProvider.js');
+const { previewQaAllowed } = await import('../src/lib/previewQa.js');
+
+const prediction = (placeId, text, types) => ({ placePrediction: { placeId, types, text: { text }, mainText: { text }, secondaryText: { text: 'MI, USA' } } });
+function fakePlaces({ rejectDistricts = false, failAll = false, suggestions = [] } = {}) {
+  const calls = [];
+  return {
+    calls,
+    AutocompleteSuggestion: {
+      async fetchAutocompleteSuggestions(request) {
+        calls.push(request.includedPrimaryTypes);
+        if (failAll) throw new Error('API key not valid');
+        if (rejectDistricts && request.includedPrimaryTypes.includes('school_district')) throw new Error('INVALID_ARGUMENT: invalid included primary type school_district');
+        return { suggestions };
+      },
+    },
+  };
+}
+
+test('school districts are requested; results keep Google\'s own type, and unsupported types are dropped', async () => {
+  const places = fakePlaces({ suggestions: [
+    prediction('d', 'Grosse Pointe Public School System', ['school_district', 'political']),
+    prediction('c', 'Grosse Pointe', ['locality', 'political']),
+    prediction('s', 'Grosse Pointe South High School', ['secondary_school', 'school', 'establishment']),
+  ] });
+  const response = await fetchAreaSuggestions(places, 'grosse', { state: {} });
+  assert.deepEqual(places.calls, [['locality', 'sublocality', 'neighborhood', 'postal_code', 'school_district']]);
+  assert.equal(response.schoolDistricts, true);
+  assert.deepEqual(response.results.map((result) => [result.name, result.type]), [['Grosse Pointe Public School System', 'school_district'], ['Grosse Pointe', 'city']]);
+  // The raw provider view keeps everything Google returned, including what was not shown.
+  assert.deepEqual(response.provider.map((entry) => entry.placeId), ['d', 'c', 's']);
+});
+
+test('a city whose name mentions schools is still a city; nothing is relabelled as a district', async () => {
+  const places = fakePlaces({ suggestions: [prediction('x', 'School District City', ['locality', 'political'])] });
+  const { results } = await fetchAreaSuggestions(places, 'school', { state: {} });
+  assert.deepEqual(results.map((result) => result.type), ['city']);
+});
+
+test('if Google rejects school_district, search continues without it and says so; other failures are failures', async () => {
+  const state = {};
+  const rejecting = fakePlaces({ rejectDistricts: true, suggestions: [prediction('c', 'Grosse Pointe', ['locality'])] });
+  const first = await fetchAreaSuggestions(rejecting, 'grosse', { state });
+  assert.equal(first.schoolDistricts, false);
+  assert.match(first.schoolDistrictsRejection, /school_district/);
+  assert.deepEqual(first.results.map((result) => result.name), ['Grosse Pointe']);
+  await fetchAreaSuggestions(rejecting, 'royal', { state });
+  assert.equal(rejecting.calls.length, 3, 'later searches skip the rejected type');
+  assert.ok(!rejecting.calls[2].includes('school_district'));
+  // A key/network failure is not mistaken for "districts unsupported".
+  const failingState = {};
+  await assert.rejects(fetchAreaSuggestions(fakePlaces({ failAll: true }), 'grosse', { state: failingState }));
+  assert.notEqual(failingState.schoolDistrictsRejected, true);
+});
+
+test('the Step 2 QA harness is reachable only locally or on this Preview\'s own URL', () => {
+  const preview = { nodeEnv: 'production', vercelEnv: 'preview', branchUrl: 'feelslikehome-git-claude-onboarding-v2-phase1-tbd-fcfc.vercel.app', deploymentUrl: 'feelslikehome-abc123-tbd-fcfc.vercel.app' };
+  assert.equal(previewQaAllowed({ nodeEnv: 'development' }), true);
+  assert.equal(previewQaAllowed({ ...preview, host: preview.branchUrl }), true);
+  assert.equal(previewQaAllowed({ ...preview, host: `${preview.deploymentUrl}:443` }), true);
+  assert.equal(previewQaAllowed({ ...preview, vercelEnv: 'production', host: preview.branchUrl }), false);
+  assert.equal(previewQaAllowed({ ...preview, host: 'feelslikehome.app' }), false);
+  assert.equal(previewQaAllowed({ ...preview, host: 'www.feelslikehome.app' }), false);
+  assert.equal(previewQaAllowed({ ...preview, host: 'feelslikehome-tbd-fcfc.vercel.app' }), false);
+  assert.equal(previewQaAllowed({ ...preview, host: '' }), false);
+  assert.equal(previewQaAllowed({ nodeEnv: 'production', host: 'localhost' }), false);
+  assert.equal(previewQaAllowed({ nodeEnv: 'test' }), false);
+});
+
+test('the QA harness writes nothing to Supabase and requires sign-in', () => {
+  const harness = read('src/components/onboarding/Step2Harness.jsx');
+  const page = read('src/app/qa/step-2/page.js');
+  const middleware = read('src/middleware.js');
+  assert.doesNotMatch(harness, /@\/lib\/supabase|createClient\(|SUPABASE_SERVICES/);
+  for (const key of ['savePriorities', 'saveProgress', 'completeOnboarding', 'setActiveSearch', 'submitFeedback', 'createPlace', 'deletePlace', 'searchAreas']) {
+    assert.match(harness, new RegExp(`${key}: `), `${key} must be stubbed`);
+  }
+  assert.match(page, /if \(!previewQaAllowedHere\(host\)\) notFound\(\);/);
+  assert.match(page, /if \(!user\) redirect\(/);
+  assert.match(page, /\} else if \(process\.env\.NODE_ENV !== 'development'\) \{\n\s+notFound\(\);/);
+  assert.match(page, /robots: \{ index: false, follow: false \}/);
+  assert.match(middleware, /pathname\.startsWith\('\/qa\/'\)[\s\S]*?previewQaAllowedHere/);
+});
+
+test('a place is saved only with an address Google resolved', () => {
+  const step = read('src/components/onboarding/LocationsStep.jsx');
+  assert.match(step, /const addressReady = Boolean\(resolved\) && resolved === address;/);
+  assert.match(step, /const valid = label\.length > 0 && label\.length <= 80 && addressReady;/);
+  assert.match(step, /onSave\(\{ label, address: resolved \}\)/);
+  // Typing after choosing clears the resolved address.
+  assert.match(step, /onChange=\{\(next\) => \{ setAddress\(next\); setResolved\(''\); \}\}/);
+});
+
+/* ------------------------------ real Postgres ------------------------------ */
+
 const {
   acceptInvitation, createCommuteDestination, createInvitation, deleteCommuteDestination, getCommuteDestinations,
-  resolvePriorities, savePriorities,
+  resolvePriorities, savePriorities, updateCommuteDestination,
 } = await import('../src/lib/supabase/collaboration.js');
 
 const dbTest = (name, fn) => test(name, { skip: DB_TESTS_ENABLED ? false : DB_SKIP_REASON }, fn);
@@ -159,4 +257,23 @@ dbTest('places are saved per person without a drive-time limit, and stay private
   assert.equal(db.admin(`select count(*)::int as n from public.commute_destinations where id = '${place.id}'`)[0].n, 1);
   await deleteCommuteDestination(db.clientFor(coBuyer), place.id);
   assert.equal(db.admin(`select count(*)::int as n from public.commute_destinations where id = '${place.id}'`)[0].n, 0);
+});
+
+dbTest('existing places load as saved, and their drive-time thresholds are untouched by onboarding', async () => {
+  const { owner, coBuyer, search } = await household('thresholds');
+  // Places set up earlier in My Search, each with a threshold.
+  const ownerGym = await createCommuteDestination(db.clientFor(owner), search.id, owner, { label: 'Gym', address: '1 Main St, Detroit, MI', maxDriveMinutes: 15 });
+  const coWork = await createCommuteDestination(db.clientFor(coBuyer), search.id, coBuyer, { label: 'Work', address: '500 Woodward Ave, Detroit, MI', maxDriveMinutes: 25 });
+  // Step 2 loads the co-buyer's own places (what src/app/onboarding/page.js passes as initialPlaces).
+  const loaded = await getCommuteDestinations(db.clientFor(coBuyer), search.id, coBuyer);
+  assert.deepEqual(loaded.map((place) => [place.label, place.address, place.maxDriveMinutes]), [['Work', '500 Woodward Ave, Detroit, MI', 25]]);
+  // Onboarding adds and removes a place of its own (no threshold) ...
+  const added = await createCommuteDestination(db.clientFor(coBuyer), search.id, coBuyer, { label: 'Family', address: '1 Kercheval Ave, Grosse Pointe Farms, MI', maxDriveMinutes: null });
+  await deleteCommuteDestination(db.clientFor(coBuyer), added.id);
+  // ... and nobody's existing threshold changed.
+  const thresholds = db.admin(`select id, max_drive_minutes from public.commute_destinations where id in ('${ownerGym.id}', '${coWork.id}') order by label`);
+  assert.deepEqual(thresholds.map((row) => row.max_drive_minutes), [15, 25]);
+  // The owner cannot change the co-buyer's place either.
+  await updateCommuteDestination(db.clientFor(owner), coWork.id, { maxDriveMinutes: 90 }).catch(() => {});
+  assert.equal(db.admin(`select max_drive_minutes from public.commute_destinations where id = '${coWork.id}'`)[0].max_drive_minutes, 25);
 });
