@@ -18,8 +18,8 @@ import { useReliableOptimisticState } from '@/lib/useReliableOptimisticState';
 import { completeOnboarding, saveOnboardingProgress } from '@/lib/supabase/data';
 import { advanceOnboarding, completeOnboardingState, onboardingProgress, retreatOnboarding, setOnboardingAnswer } from '@/lib/onboardingFlow';
 import { ANALYTICS_EVENTS, track } from '@/lib/analytics';
-import { createCommuteDestination, createOrReuseInvitation, deleteCommuteDestination, savePriorities, setActiveSearch } from '@/lib/supabase/collaboration';
-import { addPending, choiceFromSelection, initialChoice, normalizePeople, pendingInvite } from '@/lib/onboardingPeople';
+import { createCommuteDestination, deleteCommuteDestination, savePriorities, setActiveSearch } from '@/lib/supabase/collaboration';
+import { choiceFromSelection, normalizePeople } from '@/lib/onboardingPeople';
 import { googleAreaSuggestions } from '@/lib/areaSearchProvider';
 import { sanitizeRedirectPath } from '@/lib/safeRedirect';
 import { OnboardingAction, OnboardingRail, OnboardingTopBar } from '@/components/onboarding/OnboardingShell';
@@ -189,10 +189,6 @@ const SUPABASE_SERVICES = Object.freeze({
   deletePlace: (placeId) => deleteCommuteDestination(createClient(), placeId),
   // Areas of interest come only from the area-search provider (Google Places).
   searchAreas: (query) => googleAreaSuggestions(query),
-  // An invite link is created only when the owner asks for one (never because
-  // a card was chosen). An open link for the same person and relationship is
-  // returned instead of creating a duplicate. FLH sends no email.
-  createInvite: (searchId, userId, email, relationshipType) => createOrReuseInvitation(createClient(), searchId, userId, email, relationshipType),
 });
 
 // mode:
@@ -204,7 +200,7 @@ const SUPABASE_SERVICES = Object.freeze({
 //                         onboarding state, never another search, never another
 //                         person's preferences. Ends on that search's Homes, and
 //                         can be left for the person's own search at any time.
-export default function Onboarding({ userId, searchId, initialPriorities, initialProgress, appVersion = null, mode = 'account', ownerName = null, ownedSearchId = null, initialPlaces = [], placesError = null, initialPeople = null, peopleError = null, accountEmail = null, services = SUPABASE_SERVICES }) {
+export default function Onboarding({ userId, searchId, initialPriorities, initialProgress, appVersion = null, mode = 'account', ownerName = null, ownedSearchId = null, initialPlaces = [], placesError = null, initialPeople = null, peopleError = null, services = SUPABASE_SERVICES }) {
   const sharedSetup = mode === 'shared_search_setup';
   const sharedFor = sharedSetup ? (ownerName ? `${/s$/i.test(ownerName) ? `${ownerName}’` : `${ownerName}’s`} search` : 'this shared search') : null;
   const router = useRouter();
@@ -228,15 +224,8 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
     await services.deletePlace(place.id);
     setPlaces((current) => current.filter((entry) => entry.id !== place.id));
   };
-  // Step 3: who is already in this search and which invite links are open.
-  // Updated only after an invitation write is confirmed.
-  const [people, setPeople] = useState(() => normalizePeople(initialPeople));
-  const createInvite = async (relationshipType, email) => {
-    const row = await services.createInvite(searchId, userId, email, relationshipType);
-    const invite = pendingInvite(row);
-    setPeople((current) => addPending(current, invite));
-    return { ...invite, reused: Boolean(row.reused) };
-  };
+  // Step 3: who is already in this search (read-only; onboarding never invites).
+  const [people] = useState(() => normalizePeople(initialPeople));
   // Resumable progress (src/lib/onboardingFlow.js): the server page resolved
   // where to land for this person and this search. The gate itself is still
   // only profiles.onboarding_complete; stored progress steers, never traps —
@@ -299,12 +288,12 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
   // Going back never clears an answer: priorities stay saved, and the
   // screen re-renders from them.
   const goBack = (fromStep) => { persistProgress(retreatOnboarding(version, progressRef.current, fromStep)); window.scrollTo?.({ top: 0 }); };
-  // Step 3's cards are the onboarding answer only: saved with progress, never an invitation.
+  // Step 3's cards are the onboarding answer only: saved with progress, never
+  // an invitation or a membership.
   const chooseCollaboration = (selection) => {
     const choice = choiceFromSelection(selection);
     try { persistProgress(setOnboardingAnswer(progressRef.current, 'collaboration', choice)); } catch { /* an invited co-buyer always searches with a co-buyer */ }
   };
-  const collaborationChoice = initialChoice(progressState.answers?.collaboration || null, people);
   const leave = (destination) => { router.push(destination); router.refresh(); };
   // Shared-search setup ends by saving this person's own preferences on this
   // search (the document the setup gate checks) and opening its Homes.
@@ -396,13 +385,11 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
           )}
           {!ready && step === 'collaboration' && (
             <CollaborationStep
-              choice={collaborationChoice}
+              choice={progressState.answers?.collaboration || null}
               onChoose={chooseCollaboration}
               people={people}
               peopleError={peopleError}
               role={progressState.context?.role === 'co_buyer' ? 'co_buyer' : 'owner'}
-              accountEmail={accountEmail}
-              onInvite={createInvite}
               onNext={() => goTo('collaboration')}
               onMaybeLater={() => goTo('collaboration')}
               header={<StepHeader step="collaboration" progress={progress} sharedFor={sharedFor} title={<>Searching with <em>someone?</em></>} lead="Home searching is better together. Invite the people who are part of your journey—or add them later." />}

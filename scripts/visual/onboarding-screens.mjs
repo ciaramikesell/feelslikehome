@@ -73,28 +73,22 @@ export const SCENARIOS = [
   // Step 3 (approved six-step flow, previewed with flow=v2; not live).
   { name: 'people-neither', query: 'flow=v2&step=collaboration&state=empty' },
   { name: 'people-cobuyer', query: 'flow=v2&step=collaboration&state=empty', act: async (page) => {
-    await page.getByRole('button', { name: /A co-buyer/ }).click();
-    await page.getByLabel('Invite your co-buyer').waitFor();
+    await page.getByRole('button', { name: /Co-buyer/ }).click();
+    await page.locator('.flh-ob-person.is-selected').waitFor();
   } },
   { name: 'people-realtor', query: 'flow=v2&step=collaboration&state=empty', act: async (page) => {
-    await page.getByRole('button', { name: /A Realtor/ }).click();
-    await page.getByLabel('Invite your Realtor').waitFor();
+    await page.getByRole('button', { name: /Realtor/ }).click();
+    await page.locator('.flh-ob-person.is-selected').waitFor();
   } },
   { name: 'people-both', query: 'flow=v2&step=collaboration&state=empty', act: async (page) => {
-    await page.getByRole('button', { name: /A co-buyer/ }).click();
-    await page.getByRole('button', { name: /A Realtor/ }).click();
-    await page.getByLabel('Invite your Realtor').waitFor();
-  } },
-  { name: 'people-invite-created', query: 'flow=v2&step=collaboration&state=empty', act: async (page) => {
-    await page.getByRole('button', { name: /A co-buyer/ }).click();
-    await page.getByLabel('Invite your co-buyer').fill('partner@example.com');
-    await page.getByRole('button', { name: 'Create invite link' }).click();
-    await page.getByText('Invite link created for partner@example.com').waitFor();
+    await page.getByRole('button', { name: /Co-buyer/ }).click();
+    await page.getByRole('button', { name: /Realtor/ }).click();
+    await page.locator('.flh-ob-person.is-selected').nth(1).waitFor();
   } },
   { name: 'people-existing', query: 'flow=v2&step=collaboration&state=populated' },
   { name: 'people-sharing-open', query: 'flow=v2&step=collaboration&state=empty', act: async (page) => {
     await page.getByRole('button', { name: /How sharing works/ }).click();
-    await page.getByText('Invites are links you share yourself.').waitFor();
+    await page.getByText('can be sent later from My Search.').waitFor();
   } },
   { name: 'people-shared-setup', query: 'flow=v2&step=collaboration&state=populated&mode=shared' },
 ];

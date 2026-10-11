@@ -19,10 +19,9 @@ async function initialPlacesFor(supabase, progress, searchId, userId) {
   }
 }
 
-// Your People (Step 3): who is already in this search and which invite links
-// are open, so the step shows real relationships rather than only the cards
-// last chosen. The owner reads members and their own invitations (existing
-// policies); a co-buyer sees only whose search it is. Loaded only when the
+// Your People (Step 3): who is already in this search, so the step shows real
+// relationships rather than only the cards last chosen. The owner reads member
+// roles (existing policy); a co-buyer sees only whose search it is. Loaded only when the
 // flow includes that step; a failed read is reported, never shown as "nobody".
 async function initialPeopleFor(supabase, progress, search, role) {
   if (!onboardingStepsFor(progress.version, progress.state).includes('collaboration')) return { initialPeople: null, peopleError: null };
@@ -74,7 +73,6 @@ export default async function OnboardingPage() {
       <Onboarding
         {...places}
         {...people}
-        accountEmail={user.email || null}
         mode="shared_search_setup"
         userId={user.id}
         searchId={search.id}
@@ -96,5 +94,5 @@ export default async function OnboardingPage() {
   });
 
   const [places, people] = await Promise.all([initialPlacesFor(supabase, progress, search.id, user.id), initialPeopleFor(supabase, progress, search, role)]);
-  return <Onboarding {...places} {...people} accountEmail={user.email || null} userId={user.id} searchId={search.id} initialPriorities={normalizePriorities(priorities)} initialProgress={progress} appVersion={appVersion} />;
+  return <Onboarding {...places} {...people} userId={user.id} searchId={search.id} initialPriorities={normalizePriorities(priorities)} initialProgress={progress} appVersion={appVersion} />;
 }
