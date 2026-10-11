@@ -91,6 +91,12 @@ export const SCENARIOS = [
     await page.getByText('can be sent later from My Search.').waitFor();
   } },
   { name: 'people-shared-setup', query: 'flow=v2&step=collaboration&state=populated&mode=shared' },
+  // Six-step flow: home details move from Step 1 to Step 4, and rank in Step 5.
+  { name: 'v2-basics-empty', query: 'flow=v2&step=basics&state=empty' },
+  { name: 'v2-basics-populated', query: 'flow=v2&step=basics&state=populated' },
+  { name: 'v2-what-matters', query: 'flow=v2&step=priorities&state=populated' },
+  { name: 'v2-what-matters-earlier-answer', query: 'flow=v2&step=priorities&state=legacy' },
+  { name: 'v2-rank', query: 'flow=v2&step=rank&state=populated' },
 ];
 
 async function settle(page) {

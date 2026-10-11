@@ -239,15 +239,18 @@ function HomeDetails({ priorities, fields, setValues }) {
   );
 }
 
-export default function BasicsStep({ header, priorities, patch, onNext }) {
+// homeDetails: the live flow keeps Garage preferences and More about the home
+// here. The six-step flow (3) asks those in Step 4 (What Matters) instead; the
+// saved values are never cleared, only not shown on this step.
+export default function BasicsStep({ header, priorities, patch, onNext, homeDetails = true }) {
   const choice = priorities.onboardingSearchType || '';
   const fields = basicsFieldsFor(choice);
   const rent = choice === 'home_rent' || choice === 'apartment_rent';
   // Before a kind of search is chosen, show the purchase-style card (the approved
   // design); lot size is hidden only once "Apartment" is actually chosen.
   const showLotSize = choice ? fields.lotSize : true;
-  const showGarage = choice !== 'apartment_rent';
-  const showDetails = choice && (fields.propertyTypes.length > 0 || fields.layout || fields.condition);
+  const showGarage = homeDetails && choice !== 'apartment_rent';
+  const showDetails = homeDetails && choice && (fields.propertyTypes.length > 0 || fields.layout || fields.condition);
   const setValue = (key, value) => patch((next) => { next[key] = { ...next[key], value }; return next; });
   const setValues = (key, value) => patch((next) => { next[key] = { ...next[key], values: toggleValue(next[key]?.values, value) }; return next; });
 

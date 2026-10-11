@@ -2506,3 +2506,11 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
   .flh-onboarding-root .flh-ob-people-actions { justify-content: flex-end; }
   .flh-onboarding-root .flh-ob-people-actions .flh-ob-cta { flex: 0 0 auto; min-width: 240px; }
 }
+
+/* ── Onboarding V2 — Step 4: home style, condition and property type ───────────
+   Grouped "choose any that would work" chips inside the What Matters cards.
+   Scoped to the flh-ob- prefix. */
+.flh-ob-value-group { display: grid; gap: 8px; min-width: 0; margin: 18px 0 0; padding: 16px 0 0; border: 0; border-top: 1px solid var(--ob-line); }
+.flh-ob-value-group.is-bare { margin: 0; padding: 0; border-top: 0; }
+.flh-ob-value-group > legend:not(.sr-only) { float: left; width: 100%; margin-bottom: 8px; padding: 0; color: var(--ink); }
+.flh-ob-value-group > legend + * { clear: both; }

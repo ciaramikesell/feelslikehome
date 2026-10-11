@@ -159,7 +159,7 @@ test('final persistence: onboarding saves through the participant’s own row be
   assert.match(onboarding, /completeOnboarding: \(userId, progress\) => completeOnboarding\(createClient\(\), userId, progress\)/);
   assert.match(onboarding, /services = SUPABASE_SERVICES \}\) \{/);
   assert.match(onboarding, /await flush\(\);\n(?:\s+\/\/.*\n)*\s+await persistPriorities\(priorities\);\n\s+await services\.completeOnboarding\(userId, \{ version, state: completeOnboardingState\(version, progressRef\.current\) \}\);/);
-  assert.match(onboarding, /onMove=\{\(item, tier\) => patch\(\(next\) => moveCriterion\(next, item\.categoryKey, item\.label, tier\)\)\}/);
+  assert.match(onboarding, /onMove=\{\(item, tier\) => patch\(\(next\) => \(item\.group \? moveGroup\(next, item\.categoryKey, tier\) : moveCriterion\(next, item\.categoryKey, item\.label, tier\)\)\)\}/);
 });
 
 test('Unknown ≠ mismatch is unchanged for the new and legacy criteria', () => {

@@ -120,9 +120,19 @@ export default function OnboardingPreview({ step = 'basics', state = 'empty', mo
     const populated = state === 'populated' || target !== 'basics';
     // Step 2 starts empty unless state=populated (returning with answers).
     const priorities = populated ? populatedPriorities() : normalizePriorities({});
+    // Steps 4–5 of the six-step flow: chosen home style and property types
+    // (state=populated), or a style saved earlier without an importance
+    // (state=legacy, as the old Basics stored it).
+    const sixStepDetails = version === 3 && ['priorities', 'rank'].includes(target);
+    const withDetails = (next) => {
+      if (!sixStepDetails) return next;
+      if (state === 'legacy') return { ...next, homeLayout: { values: ['Ranch / Single Story'], tier: 'dontcare' } };
+      if (state !== 'populated') return next;
+      return { ...next, homeLayout: { values: ['Ranch / Single Story', 'Two Story'], tier: 'important' }, homeCondition: { values: ['Move-In Ready'], tier: 'nice' }, preferredPropertyTypes: { values: ['house', 'condo'], tier: 'must' } };
+    };
     return {
       progress,
-      priorities: target === 'locations' && state === 'populated' ? withPreviewAreas(priorities) : priorities,
+      priorities: withDetails(target === 'locations' && state === 'populated' ? withPreviewAreas(priorities) : priorities),
       places: target === 'locations' && state === 'populated' ? PREVIEW_PLACES : [],
       people: shared ? { coBuyers: [], realtors: 0, ownerName: 'Ciara' } : returningToPeople ? PREVIEW_PEOPLE : null,
     };

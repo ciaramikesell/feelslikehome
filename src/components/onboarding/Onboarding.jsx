@@ -26,6 +26,7 @@ import { OnboardingAction, OnboardingRail, OnboardingTopBar } from '@/components
 import BasicsStep from '@/components/onboarding/BasicsStep';
 import LocationsStep from '@/components/onboarding/LocationsStep';
 import CollaborationStep from '@/components/onboarding/CollaborationStep';
+import { isGroupValueSelected, moveGroup, priorityLevelsWithGroups, selectedGroupCount, toggleGroupValue, unrankedGroups, whatMattersGroups } from '@/lib/whatMattersGroups';
 
 // Screen labels for the flow-1 steps (src/lib/onboardingFlow.js owns order and branching).
 // Flow 1 is live; the approved six-step flow (3) is built and previewed step by step.
@@ -34,7 +35,7 @@ const STEP_LABELS = {
   locations: 'Location', collaboration: 'Your People', priorities: 'What Matters', review: 'Review',
 };
 
-const BUILT_STEPS = new Set(['basics', 'locations', 'collaboration', 'what_matters', 'rank']);
+const BUILT_STEPS = new Set(['basics', 'locations', 'collaboration', 'priorities', 'what_matters', 'rank']);
 
 // sharedFor: null in first-time account onboarding; in shared-search setup, the
 // search the preferences are for (e.g. "Ciara’s search").
@@ -64,15 +65,44 @@ function GarageQualifier({ priorities, patch }) {
   );
 }
 
-function WhatMattersStep({ priorities, patch, onNext, isSaving, progress, sharedFor = null }) {
-  const groups = ONBOARDING_SUGGESTIONS[priorities.onboardingSearchType] || [];
+// One grouped preference (alternatives with a single importance): its chips
+// toggle values in the existing priorities field; a saved value that has no
+// importance yet is shown as chosen and noted, never silently ranked.
+function ValueGroup({ group, priorities, patch, bare = false }) {
+  const unranked = unrankedGroups(priorities).includes(group.key);
+  return (
+    <fieldset className={`flh-ob-value-group${bare ? ' is-bare' : ''}`}>
+      <legend className={bare ? 'sr-only' : 'flh-ob-sublabel'}>{group.title}</legend>
+      <div className="flh-chip-row">
+        {group.choices.map((choice) => (
+          <ChoiceChip key={choice.value} selected={isGroupValueSelected(priorities, group.key, choice.value)} onClick={() => patch((next) => toggleGroupValue(next, group.key, choice.value))}>{choice.label}</ChoiceChip>
+        ))}
+      </div>
+      <p className="flh-ob-help">{unranked ? 'Saved from your earlier answers but not ranked yet—choose another option, or rank it in My Search.' : group.hint}</p>
+    </fieldset>
+  );
+}
+
+// sixStep (flow 3, Step 4): also offers home style, condition and property type
+// (the existing grouped preferences — see src/lib/whatMattersGroups.js) and shows
+// Garage with the home features. The live flow (what_matters) is unchanged.
+function WhatMattersStep({ priorities, patch, onNext, isSaving, progress, sharedFor = null, sixStep = false }) {
+  const suggested = ONBOARDING_SUGGESTIONS[priorities.onboardingSearchType] || [];
+  const isGarage = (criterion) => criterion.categoryKey === 'exterior' && criterion.label === 'Garage';
+  const garageItem = sixStep ? suggested.flatMap(([, items]) => items).find(isGarage) : null;
+  const groups = garageItem
+    ? suggested.map(([title, items]) => [title, title === 'Home Features' ? [...items.filter((criterion) => !isGarage(criterion)), garageItem] : items.filter((criterion) => !isGarage(criterion))]).filter(([, items]) => items.length)
+    : suggested;
+  const valueGroups = sixStep ? whatMattersGroups(priorities) : [];
+  const homeGroups = valueGroups.filter((group) => group.key !== 'preferredPropertyTypes');
+  const typeGroup = valueGroups.find((group) => group.key === 'preferredPropertyTypes');
   const offered = groups.flatMap(([, items]) => items);
   const offeredKeys = new Set(offered.map((criterion) => `${criterion.categoryKey}:${criterion.label}`));
   const categories = customCategoryOptions(priorities);
   const [customOpen, setCustomOpen] = useState(false);
   const [customLabel, setCustomLabel] = useState('');
   const [customCategory, setCustomCategory] = useState(categories[0]?.key || 'location');
-  const count = selectedPriorityCount(priorities);
+  const count = selectedPriorityCount(priorities) + (sixStep ? selectedGroupCount(priorities) : 0);
   // Anything selected that isn't one of the offered chips — the buyer's own typed
   // priorities and any earlier selection — stays visible (and removable) here.
   const ownItems = priorityLevels(priorities).flatMap((level) => level.items).filter((item) => !offeredKeys.has(item.key));
@@ -87,7 +117,9 @@ function WhatMattersStep({ priorities, patch, onNext, isSaving, progress, shared
 
   return (
     <div className="flh-onboarding-step">
-      <StepHeader step="what_matters" progress={progress} sharedFor={sharedFor} searchType={priorities.onboardingSearchType} title="What matters to you?" lead="For now, just choose what matters. You’ll decide what’s a Must Have, Important, or Nice to Have next." />
+      {sixStep
+        ? <StepHeader step="priorities" progress={progress} sharedFor={sharedFor} searchType={priorities.onboardingSearchType} title={<>What matters <em>most?</em></>} lead="Choose anything you’d weigh when comparing homes. You’ll rank your picks next." />
+        : <StepHeader step="what_matters" progress={progress} sharedFor={sharedFor} searchType={priorities.onboardingSearchType} title="What matters to you?" lead="For now, just choose what matters. You’ll decide what’s a Must Have, Important, or Nice to Have next." />}
       <HelperRow
         className="flh-count-row"
         tone="sage"
@@ -103,9 +135,16 @@ function WhatMattersStep({ priorities, patch, onNext, isSaving, progress, shared
               <ChoiceChip key={`${criterion.categoryKey}:${criterion.label}`} selected={isCriterionSelected(priorities, criterion.categoryKey, criterion.label)} onClick={() => patch((next) => toggleCriterion(next, criterion))}>{criterion.displayLabel}</ChoiceChip>
             ))}
           </div>
-          {garageSelected && items.some((criterion) => criterion.categoryKey === 'exterior' && criterion.label === 'Garage') && <GarageQualifier priorities={priorities} patch={patch} />}
+          {garageSelected && items.some(isGarage) && <GarageQualifier priorities={priorities} patch={patch} />}
+          {sixStep && title === 'Home Features' && homeGroups.map((group) => <ValueGroup key={group.key} group={group} priorities={priorities} patch={patch} />)}
         </SectionCard>
       ))}
+      {typeGroup && (
+        <SectionCard className="flh-criteria-card">
+          <h2 className="flh-card-title">{typeGroup.title}</h2>
+          <ValueGroup group={typeGroup} priorities={priorities} patch={patch} bare />
+        </SectionCard>
+      )}
       {ownItems.length > 0 && (
         <SectionCard className="flh-criteria-card">
           <h2 className="flh-card-title">Your own</h2>
@@ -136,20 +175,25 @@ function WhatMattersStep({ priorities, patch, onNext, isSaving, progress, shared
   );
 }
 
-function RankStep({ priorities, patch, onFinish, finishing, progress, sharedFor = null }) {
-  const levels = priorityLevels(priorities);
+// sixStep (flow 3, Step 5): the board also ranks the grouped preferences chosen
+// in Step 4 (one item per group, e.g. "Property type · House or Condo"), and
+// Continue leads to Review instead of finishing. The live flow is unchanged.
+function RankStep({ priorities, patch, onFinish, finishing, progress, sharedFor = null, sixStep = false, onNext = null }) {
+  const levels = sixStep ? priorityLevelsWithGroups(priorities) : priorityLevels(priorities);
   return (
     <div className="flh-onboarding-step">
       <StepHeader step="rank" progress={progress} sharedFor={sharedFor} searchType={priorities.onboardingSearchType} title="Now rank what matters most." lead="Everything you chose began as Important. Drag a priority between levels, or tap it and choose where it belongs." />
       <RankBoard
         levels={levels}
         showDescriptions
-        onMove={(item, tier) => patch((next) => moveCriterion(next, item.categoryKey, item.label, tier))}
+        onMove={(item, tier) => patch((next) => (item.group ? moveGroup(next, item.categoryKey, tier) : moveCriterion(next, item.categoryKey, item.label, tier)))}
         garagePreference={priorities.exterior?.garagePreference || 'any'}
         onGaragePreferenceChange={(value) => patch((next) => setGaragePreference(next, value))}
       />
       <nav className="flh-onboarding-actions">
-        <OnboardingAction disabled={finishing} onClick={onFinish}>{finishing ? 'Saving your search…' : (sharedFor ? 'Save and see the homes' : 'Finish')}</OnboardingAction>
+        {sixStep
+          ? <OnboardingAction onClick={onNext}>Continue</OnboardingAction>
+          : <OnboardingAction disabled={finishing} onClick={onFinish}>{finishing ? 'Saving your search…' : (sharedFor ? 'Save and see the homes' : 'Finish')}</OnboardingAction>}
       </nav>
     </div>
   );
@@ -234,6 +278,8 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
   const [progressState, setProgressState] = useState(initialProgress.state);
   const progressRef = useRef(progressState);
   const step = progressState.step;
+  // The approved six-step flow (3, not live) moves home details from Basics to Step 4.
+  const sixStep = version === 3;
   const progress = onboardingProgress(version, progressState, step);
   const [ready, setReady] = useState(false);
   const [finishing, setFinishing] = useState(false);
@@ -353,6 +399,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
               priorities={priorities}
               patch={patch}
               onNext={() => goTo('basics')}
+              homeDetails={!sixStep}
               header={sharedFor ? (
                 <>
                   <StepHeader step="basics" progress={progress} sharedFor={sharedFor} title={`Set up your preferences for ${sharedFor}.`} lead="Tell us what you’re looking for. These are yours alone—you can change them anytime." />
@@ -368,7 +415,8 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
             />
           )}
           {!ready && step === 'what_matters' && <WhatMattersStep priorities={priorities} patch={patch} progress={progress} sharedFor={sharedFor} onNext={() => goTo('what_matters')} isSaving={isSaving} />}
-          {!ready && step === 'rank' && <RankStep priorities={priorities} patch={patch} progress={progress} sharedFor={sharedFor} onFinish={finish} finishing={finishing} />}
+          {!ready && step === 'priorities' && <WhatMattersStep sixStep priorities={priorities} patch={patch} progress={progress} sharedFor={sharedFor} onNext={() => goTo('priorities')} isSaving={isSaving} />}
+          {!ready && step === 'rank' && <RankStep sixStep={sixStep} onNext={() => goTo('rank')} priorities={priorities} patch={patch} progress={progress} sharedFor={sharedFor} onFinish={finish} finishing={finishing} />}
           {!ready && step === 'locations' && (
             <LocationsStep
               priorities={priorities}
