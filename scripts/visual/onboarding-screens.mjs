@@ -31,13 +31,17 @@ export const SCENARIOS = [
   { name: 'basics-empty', query: 'step=basics&state=empty' },
   { name: 'basics-populated', query: 'step=basics&state=populated' },
   { name: 'basics-save-error', query: 'step=basics&state=error', act: async (page) => {
-    // Click the visible label, as a person does; the radio itself is visually hidden.
-    await page.locator('.flh-ob-segmented label', { hasText: 'Home to buy' }).click();
+    await page.getByLabel('I’m looking for').selectOption('home_buy');
     await page.locator('.hh-save-error').waitFor();
   } },
   { name: 'basics-garage-open', query: 'step=basics&state=populated', act: async (page) => {
     await page.getByRole('button', { name: /Garage preferences/ }).click();
     await page.getByRole('radiogroup', { name: 'How much does a garage matter?' }).or(page.getByText('How much does a garage matter?')).first().waitFor();
+  } },
+  { name: 'basics-all-open', query: 'step=basics&state=populated', act: async (page) => {
+    await page.getByRole('button', { name: /Garage preferences/ }).click();
+    await page.getByRole('button', { name: /More about the home/ }).click();
+    await page.getByText('Kinds of homes').waitFor();
   } },
   { name: 'what-matters', query: 'step=what_matters&state=populated' },
   { name: 'rank', query: 'step=rank&state=populated' },

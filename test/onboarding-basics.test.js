@@ -6,7 +6,8 @@ import { readFileSync } from 'node:fs';
 import { normalizePriorities } from '../src/lib/constants.js';
 import { computeMatch } from '../src/lib/matching.js';
 import { applySearchChoice } from '../src/lib/onboarding.js';
-import { basicsSummary, isCriterionSelected } from '../src/lib/searchProfile.js';
+import { addCriterion, basicsSummary, isCriterionSelected, moveCriterion, priorityLevels, setGaragePreference, toggleCriterion } from '../src/lib/searchProfile.js';
+import { ONBOARDING_SUGGESTIONS } from '../src/lib/onboarding.js';
 import {
   STEPPERS, chooseSearchType, editFormattedNumber, formatThousands, garageLevel, isUnset, setGarageLevel,
   stepDown, stepUp,
@@ -88,8 +89,9 @@ test('the Basics step uses the approved copy and keeps search type required', ()
   assert.match(onboarding, /title=\{<>The Basics of <em>Your Search<\/em><\/>\} lead="What does home look like to you\? You can adjust these anytime\."/);
   assert.match(onboarding, /`Step \$\{progress\.position\} · \$\{STEP_LABELS\[step\]\}`/);
   assert.match(onboarding, /basics: 'The Basics'/);
-  // Nothing is preselected and Continue waits for a kind of search.
-  assert.match(basics, /checked=\{choice === option\.key\}/);
+  // Nothing is preselected (a disabled "choose one" placeholder) and Continue waits for a kind of search.
+  assert.match(basics, /<select id=\{id\} required value=\{choice\}/);
+  assert.match(basics, /\{!choice && <option value="" disabled>choose one<\/option>\}/);
   assert.match(basics, /<OnboardingAction disabled=\{!choice\} onClick=\{onNext\}>Continue<\/OnboardingAction>/);
   // No slider anywhere on the step.
   assert.doesNotMatch(basics, /type="range"/);
@@ -110,4 +112,63 @@ test('Basics styles are scoped to onboarding', () => {
   for (const selector of block.match(/^[^@\s/}][^{]*\{/gm) || []) {
     assert.match(selector, /\.flh-onboarding-root|\.flh-ob-/, `unscoped selector: ${selector}`);
   }
+});
+
+const garageEntries = (priorities) => priorityLevels(priorities).flatMap((level) => level.items).filter((item) => item.categoryKey === 'exterior' && item.label === 'Garage');
+
+test('an existing Garage priority is shown, never duplicated, and only changed when answered', () => {
+  // Garage already chosen elsewhere (What Matters / My Search) as a Must Have, attached.
+  let priorities = applySearchChoice(normalizePriorities({}), 'home_buy');
+  priorities = setGaragePreference(addCriterion(priorities, { categoryKey: 'exterior', label: 'Garage', kind: 'check' }, 'must'), 'attached');
+  assert.equal(garageLevel(priorities), 'must');
+  // Re-answering in Basics moves the same criterion; it never adds a second Garage.
+  const changed = setGarageLevel(priorities, 'nice', 'home_buy');
+  assert.equal(garageEntries(changed).length, 1);
+  assert.equal(garageLevel(changed), 'nice');
+  assert.equal(changed.exterior.garagePreference, 'attached');
+  // Setting the same level again is a no-op in effect.
+  assert.equal(garageEntries(setGarageLevel(changed, 'nice', 'home_buy')).length, 1);
+});
+
+test('switching the kind of search keeps unrelated Basics, custom priorities, layout and condition', () => {
+  let priorities = chooseSearchType(normalizePriorities({}), 'home_buy');
+  priorities = {
+    ...priorities,
+    budget: { ...priorities.budget, value: '450000' },
+    bedsMin: { ...priorities.bedsMin, value: '3' },
+    bathsMin: { ...priorities.bathsMin, value: '2' },
+    sqftTarget: { ...priorities.sqftTarget, value: '2400' },
+    lotSizeTarget: { ...priorities.lotSizeTarget, value: '0.3' },
+    homeLayout: { ...priorities.homeLayout, values: ['Ranch'] },
+    homeCondition: { ...priorities.homeCondition, values: ['Move-in Ready'] },
+  };
+  priorities = moveCriterion(priorities, 'features', 'Mudroom', 'important');
+  priorities = setGaragePreference(setGarageLevel(priorities, 'important', 'home_buy'), 'detached');
+  for (const key of ['home_rent', 'apartment_rent', 'home_buy']) {
+    const next = chooseSearchType(priorities, key);
+    assert.equal(next.budget.value, '450000', key);
+    assert.equal(next.bedsMin.value, '3', key);
+    assert.equal(next.bathsMin.value, '2', key);
+    assert.equal(next.sqftTarget.value, '2400', key);
+    assert.equal(next.lotSizeTarget.value, '0.3', key);
+    assert.deepEqual(next.homeLayout.values, ['Ranch'], key);
+    assert.deepEqual(next.homeCondition.values, ['Move-in Ready'], key);
+    assert.equal(next.features.tiers.Mudroom, 'important', `${key}: a person's own typed priority`);
+    assert.equal(next.exterior.garagePreference, 'detached', key);
+  }
+  // Garage level carries to another home search, not to Apartment (no garage question there).
+  assert.equal(garageLevel(chooseSearchType(priorities, 'home_rent')), 'important');
+  assert.equal(garageLevel(chooseSearchType(priorities, 'apartment_rent')), 'unset');
+});
+
+test('known, documented reset on a search-type change: curated suggestions and the derived home type', () => {
+  // applySearchChoice (unchanged) clears suggestions picked from the abandoned path's
+  // curated list and re-derives the home type. Recorded here so any change is deliberate.
+  let priorities = chooseSearchType(normalizePriorities({}), 'home_buy');
+  const suggestion = ONBOARDING_SUGGESTIONS.home_buy[0][1].find((item) => !(item.categoryKey === 'exterior' && item.label === 'Garage'));
+  priorities = toggleCriterion(priorities, suggestion);
+  assert.equal(isCriterionSelected(priorities, suggestion.categoryKey, suggestion.label), true);
+  const rent = chooseSearchType(priorities, 'home_rent');
+  assert.equal(isCriterionSelected(rent, suggestion.categoryKey, suggestion.label), false);
+  assert.deepEqual(rent.preferredPropertyTypes.values, ['house']);
 });

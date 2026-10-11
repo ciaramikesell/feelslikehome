@@ -2238,7 +2238,7 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 
 /* Top bar: back · brand · step count, then the progress segments. Grid areas keep
    the brand centred whether or not a Back button is present. */
-.flh-ob-topbar { margin-bottom: 28px; }
+.flh-ob-topbar { margin-bottom: 11px; }
 .flh-ob-topbar-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; grid-template-areas: "back brand count"; align-items: center; min-height: 44px; }
 .flh-ob-back { grid-area: back; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1px solid var(--ob-line); border-radius: 50%; background: var(--flh-card); color: var(--ink); cursor: pointer; }
 .flh-ob-back:hover { background: #fff; }
@@ -2247,7 +2247,7 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-ob-wordmark { color: var(--ink); font: 600 17px/1.1 var(--font-serif); letter-spacing: -.01em; white-space: nowrap; }
 .flh-ob-wordmark b { color: var(--brick); font-weight: 600; }
 .flh-ob-count { grid-area: count; justify-self: end; color: var(--ink-soft); font: 600 12px/1 var(--font-sans); font-variant-numeric: tabular-nums; }
-.flh-ob-progress { display: grid; grid-template-columns: repeat(var(--ob-steps, 1), minmax(0, 1fr)); gap: 6px; margin-top: 12px; }
+.flh-ob-progress { display: grid; grid-template-columns: repeat(var(--ob-steps, 1), minmax(0, 1fr)); gap: 6px; margin-top: 3px; }
 .flh-ob-progress span { height: 3px; border-radius: 999px; background: var(--ob-track); }
 .flh-ob-progress span.is-done { background: var(--brick); }
 
@@ -2343,13 +2343,24 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-ob-stepper-value.is-unset { color: #A99D92; font-weight: 400; }
 .flh-ob-stepper-note { color: var(--ink-soft); font: 500 10px/1 var(--font-sans); }
 
-/* The required kind of search: a quiet segmented control above the card. */
-.flh-ob-searchtype { min-width: 0; margin: 0; padding: 0; border: 0; }
-.flh-ob-searchtype > legend { margin-bottom: 8px; padding: 0; }
-.flh-ob-segmented { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; padding: 4px; border: 1px solid var(--ob-line); border-radius: 14px; background: var(--ob-warm); }
-.flh-ob-segmented label { display: grid; place-items: center; min-height: 40px; padding: 0 6px; border-radius: 10px; color: var(--ink-soft); font: 600 13px/1.2 var(--font-sans); text-align: center; cursor: pointer; }
-.flh-ob-segmented label.is-selected { background: #fff; color: var(--brick-deep); box-shadow: inset 0 0 0 1px var(--brick), 0 1px 2px rgba(46,38,33,.08); }
-.flh-ob-segmented label:has(:focus-visible) { outline: 3px solid var(--focus-ring); outline-offset: 1px; }
+/* The required kind of search: one quiet sentence, "I’m looking for [choice ▾]".
+   The select reads as inline terracotta text; unset, it carries a dashed outline
+   so the one required answer is easy to spot without a separate card. */
+.flh-ob-searchtype { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-height: 40px; }
+.flh-ob-searchtype-label { color: var(--ink); font: 600 14px/1.3 var(--font-sans); }
+.flh-ob-searchtype-select { position: relative; display: inline-flex; align-items: center; color: var(--brick-deep); }
+.flh-ob-searchtype-select select { appearance: none; -webkit-appearance: none; min-height: 40px; margin: 0; padding: 0 30px 0 12px; border: 1px solid var(--ob-line); border-radius: 12px; background: #fff; color: inherit; font: 600 15px/1.2 var(--font-sans); cursor: pointer; }
+.flh-ob-searchtype-select svg { position: absolute; right: 10px; pointer-events: none; }
+.flh-ob-searchtype.is-unset .flh-ob-searchtype-select select { border: 1px dashed var(--brick); background: #FDF6F1; }
+.flh-ob-searchtype-select select:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 1px; }
+
+/* The sticky Continue bar covers the bottom of the viewport on phones and
+   tablets (its 56px button plus padding). Declaring that strip as scroll padding
+   makes focus, keyboard and scroll-into-view treat it as covered, so a focused
+   field or pill always lands above the bar. Desktop actions are in normal flow. */
+@media (max-width: 959px) {
+  html:has(.flh-onboarding-root .flh-onboarding-actions) { scroll-padding-bottom: 104px; }
+}
 
 /* Expandable rows (Garage preferences; More about the home). */
 .flh-ob-disclosures { display: grid; gap: 12px; margin-top: 20px; }
@@ -2365,7 +2376,10 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-ob-pills { min-width: 0; margin: 0; padding: 0; border: 0; }
 .flh-ob-pills > legend { margin-bottom: 8px; padding: 0; }
 .flh-ob-sublabel { color: var(--ink-soft); font: 600 12.5px/1.3 var(--font-sans); }
-.flh-ob-pill { display: inline-flex; align-items: center; min-height: 38px; padding: 0 14px; border: 1px solid var(--flh-control-line); border-radius: 999px; background: #fff; color: var(--ink-soft); font: 500 13.5px/1.2 var(--font-sans); cursor: pointer; }
+.flh-ob-pill { position: relative; display: inline-flex; align-items: center; min-height: 38px; padding: 0 14px; border: 1px solid var(--flh-control-line); border-radius: 999px; background: #fff; color: var(--ink-soft); font: 500 13.5px/1.2 var(--font-sans); cursor: pointer; }
+/* The real (invisible) input covers the whole pill, so taps land on it and a
+   focused pill scrolls fully into view, clear of the sticky Continue. */
+.flh-ob-pill-input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; border-radius: inherit; opacity: 0; cursor: pointer; }
 .flh-ob-pill.is-selected { border-color: var(--brick); background: #FDF1EA; color: var(--brick-deep); font-weight: 600; }
 .flh-ob-pill:has(:focus-visible) { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 

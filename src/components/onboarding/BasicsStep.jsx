@@ -2,7 +2,6 @@
 
 import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { ChevronDown, Minus, Plus } from 'lucide-react';
-import { ChoiceChip } from '@/components/MobileSystem';
 import { GARAGE_PREFERENCE_OPTIONS, garagePreferenceLabel } from '@/lib/constants';
 import { PROPERTY_TYPE_LABELS } from '@/lib/searchIntent';
 import { NEW_SEARCH_CHOICES } from '@/lib/onboarding';
@@ -17,31 +16,32 @@ import { OnboardingAction } from '@/components/onboarding/OnboardingShell';
 // Every field reads and writes the same priorities document My Search uses; an
 // empty value is "not set" and never scores as 0 or as a confirmed miss.
 
-// Short labels for the compact search-type control; the stored keys and the
+// How each kind of search reads in "I’m looking for …"; the stored keys and the
 // full names (src/lib/onboarding.js) are unchanged.
-const SEARCH_TYPE_LABELS = { home_buy: 'Home to buy', home_rent: 'Home to rent', apartment_rent: 'Apartment' };
+const SEARCH_TYPE_PHRASES = { home_buy: 'a home to buy', home_rent: 'a home to rent', apartment_rent: 'an apartment to rent' };
 
 function OptionalTag() {
   return <span className="flh-ob-optional">Optional</span>;
 }
 
-// The required kind of search, kept as a quiet segmented control above the
-// approved card. Native radios give arrow-key navigation; nothing is preselected.
+// The required kind of search, as one quiet sentence above the approved card:
+// "I’m looking for [choose one ▾]". A native select keeps it compact, accessible
+// and familiar on phones (the system picker), and nothing is preselected — it
+// starts on "choose one", so no one is assumed to be buying.
 function SearchTypeControl({ choice, onChoose }) {
-  const name = useId();
+  const id = useId();
   return (
-    <fieldset className="flh-ob-searchtype">
-      <legend className="flh-ob-label">I’m looking for</legend>
-      <div className="flh-ob-segmented">
-        {NEW_SEARCH_CHOICES.map((option) => (
-          <label key={option.key} className={choice === option.key ? 'is-selected' : ''}>
-            <input type="radio" className="sr-only" name={name} value={option.key} checked={choice === option.key} onChange={() => onChoose(option.key)} aria-label={option.label} />
-            <span aria-hidden="true">{SEARCH_TYPE_LABELS[option.key]}</span>
-          </label>
-        ))}
-      </div>
-      {!choice && <p className="flh-ob-hint">Choose one to continue. It decides which details apply.</p>}
-    </fieldset>
+    <div className={`flh-ob-searchtype ${choice ? '' : 'is-unset'}`}>
+      <label className="flh-ob-searchtype-label" htmlFor={id}>I’m looking for</label>
+      <span className="flh-ob-searchtype-select">
+        <select id={id} required value={choice} onChange={(event) => onChoose(event.target.value)} aria-describedby={choice ? undefined : `${id}-hint`}>
+          {!choice && <option value="" disabled>choose one</option>}
+          {NEW_SEARCH_CHOICES.map((option) => <option key={option.key} value={option.key}>{SEARCH_TYPE_PHRASES[option.key]}</option>)}
+        </select>
+        <ChevronDown size={16} strokeWidth={2.2} aria-hidden="true" />
+      </span>
+      {!choice && <span id={`${id}-hint`} className="sr-only">Required to continue. It decides which details apply.</span>}
+    </div>
   );
 }
 
@@ -157,7 +157,7 @@ function RadioPills({ legend, options, value, onChange }) {
       <div className="flh-chip-row">
         {options.map((option) => (
           <label key={option.key} className={`flh-ob-pill ${value === option.key ? 'is-selected' : ''}`}>
-            <input type="radio" className="sr-only" name={name} value={option.key} checked={value === option.key} onChange={() => onChange(option.key)} />
+            <input type="radio" className="flh-ob-pill-input" name={name} value={option.key} checked={value === option.key} onChange={() => onChange(option.key)} />
             <span>{option.label}</span>
           </label>
         ))}
@@ -195,12 +195,18 @@ const withRetained = (choices, values, labelFor = (value) => value) => [
 ];
 const chosen = (values) => (values || []).filter((value) => value && value !== 'No Preference');
 
+// Multi-select pills (checkboxes) in the same treatment as the Garage pills.
 function OptionGroup({ legend, options, selected, onToggle }) {
   return (
     <fieldset className="flh-ob-pills">
       <legend className="flh-ob-sublabel">{legend}</legend>
       <div className="flh-chip-row">
-        {options.map((option) => <ChoiceChip key={option.value} selected={selected.includes(option.value)} onClick={() => onToggle(option.value)}>{option.label}</ChoiceChip>)}
+        {options.map((option) => (
+          <label key={option.value} className={`flh-ob-pill ${selected.includes(option.value) ? 'is-selected' : ''}`}>
+            <input type="checkbox" className="flh-ob-pill-input" checked={selected.includes(option.value)} onChange={() => onToggle(option.value)} />
+            <span>{option.label}</span>
+          </label>
+        ))}
       </div>
     </fieldset>
   );

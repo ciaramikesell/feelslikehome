@@ -60,12 +60,13 @@ test('signed-out auth makes account creation explicit without removing recovery 
 });
 
 test('new onboarding search choices set an explicit, accessible rental subtype', () => {
-  // Onboarding V2 Basics: native radios (accessible name = the full choice label),
+  // Onboarding V2 Basics: a labelled native select ("I’m looking for …"),
   // and choosing still goes through applySearchChoice (via chooseSearchType).
   const basics = read('src/components/onboarding/BasicsStep.jsx');
   const lib = read('src/lib/onboardingBasics.js');
   assert.match(basics, /NEW_SEARCH_CHOICES\.map/);
-  assert.match(basics, /type="radio" className="sr-only" name=\{name\} value=\{option\.key\} checked=\{choice === option\.key\} onChange=\{\(\) => onChoose\(option\.key\)\} aria-label=\{option\.label\}/);
+  assert.match(basics, /<label className="flh-ob-searchtype-label" htmlFor=\{id\}>I’m looking for<\/label>/);
+  assert.match(basics, /<select id=\{id\} required value=\{choice\} onChange=\{\(event\) => onChoose\(event\.target\.value\)\}/);
   assert.match(basics, /onChoose=\{\(key\) => patch\(\(next\) => chooseSearchType\(next, key\)\)\}/);
   assert.match(lib, /const next = applySearchChoice\(priorities, choiceKey\);/);
 });
