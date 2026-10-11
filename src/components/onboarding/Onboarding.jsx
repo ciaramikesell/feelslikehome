@@ -28,6 +28,7 @@ import LocationsStep from '@/components/onboarding/LocationsStep';
 import CollaborationStep from '@/components/onboarding/CollaborationStep';
 import WhatMattersStepV2 from '@/components/onboarding/WhatMattersStepV2';
 import RankStepV2 from '@/components/onboarding/RankStepV2';
+import ReviewStep from '@/components/onboarding/ReviewStep';
 
 // Screen labels for the flow-1 steps (src/lib/onboardingFlow.js owns order and branching).
 // Flow 1 is live; the approved six-step flow (3) is built and previewed step by step.
@@ -36,7 +37,7 @@ const STEP_LABELS = {
   locations: 'Location', collaboration: 'Your People', priorities: 'What Matters', review: 'Review',
 };
 
-const BUILT_STEPS = new Set(['basics', 'locations', 'collaboration', 'priorities', 'what_matters', 'rank']);
+const BUILT_STEPS = new Set(['basics', 'locations', 'collaboration', 'priorities', 'what_matters', 'rank', 'review']);
 
 // sharedFor: null in first-time account onboarding; in shared-search setup, the
 // search the preferences are for (e.g. "Ciara’s search").
@@ -282,10 +283,17 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
     return () => document.removeEventListener('visibilitychange', onHidden);
   }, [flush, saveProgress]);
 
+  // Editing from Review (six-step flow): the edited step's Continue returns to Review.
+  const [returnToReview, setReturnToReview] = useState(false);
   const goTo = async (fromStep) => {
     await flush();
     const { state: next } = advanceOnboarding(version, progressRef.current, fromStep);
-    persistProgress(next);
+    if (returnToReview && sixStep) {
+      setReturnToReview(false);
+      persistProgress({ ...next, step: 'review' });
+    } else {
+      persistProgress(next);
+    }
     if (!sharedSetup) track(ANALYTICS_EVENTS.ONBOARDING_STEP_COMPLETED, { ...eventContext, step: fromStep });
     window.scrollTo?.({ top: 0 });
   };
@@ -299,6 +307,35 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
     try { persistProgress(setOnboardingAnswer(progressRef.current, 'collaboration', choice)); } catch { /* an invited co-buyer always searches with a co-buyer */ }
   };
   const leave = (destination) => { router.push(destination); router.refresh(); };
+  const editFromReview = (targetStep) => {
+    setReturnToReview(true);
+    persistProgress({ ...progressRef.current, step: targetStep, updatedAt: new Date().toISOString() });
+    window.scrollTo?.({ top: 0 });
+  };
+  // Six-step flow: Review's actions save and complete onboarding through the
+  // existing services, and only then leave for the destination (the existing
+  // add-home flow or My Search). A second tap while saving does nothing; a
+  // failure keeps every answer and says so, never showing completion.
+  const finishingRef = useRef(false);
+  const finishToDestination = async (destination) => {
+    if (finishingRef.current) return;
+    finishingRef.current = true;
+    setFinishError('');
+    setFinishing(true);
+    try {
+      await flush();
+      await persistPriorities(priorities);
+      if (!sharedSetup) {
+        await services.completeOnboarding(userId, { version, state: completeOnboardingState(version, progressRef.current) });
+        track(ANALYTICS_EVENTS.ONBOARDING_COMPLETED, eventContext);
+      }
+      leave(pendingRedirect || destination);
+    } catch {
+      finishingRef.current = false;
+      setFinishing(false);
+      setFinishError('Couldn’t finish setup. Your answers are all still here—please try again.');
+    }
+  };
   // Shared-search setup ends by saving this person's own preferences on this
   // search (the document the setup gate checks) and opening its Homes.
   const finishSharedSetup = async () => {
@@ -351,7 +388,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
               <button type="button" className="flh-text-action" onClick={backToOwnSearch} disabled={leavingSetup}>{leavingSetup ? 'Switching…' : 'Not now—go to your own search'}</button>
             </p>
           )}
-          {(saveError || finishError) && <p className="hh-save-error" role="alert">{saveError || finishError} <button type="button" onClick={saveError ? retry : () => setFinishError('')}>{saveError ? 'Retry' : 'Dismiss'}</button></p>}
+          {(saveError || (finishError && step !== 'review')) && <p className="hh-save-error" role="alert">{saveError || finishError} <button type="button" onClick={saveError ? retry : () => setFinishError('')}>{saveError ? 'Retry' : 'Dismiss'}</button></p>}
           {!ready && step === 'basics' && (
             <BasicsStep
               priorities={priorities}
@@ -417,6 +454,20 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
               onNext={() => goTo('collaboration')}
               onMaybeLater={() => goTo('collaboration')}
               header={<StepHeader step="collaboration" progress={progress} sharedFor={sharedFor} title={<>Searching with <em>someone?</em></>} lead="Home searching is better together. Invite the people who are part of your journey—or add them later." />}
+            />
+          )}
+          {!ready && step === 'review' && sixStep && (
+            <ReviewStep
+              priorities={priorities}
+              places={places}
+              people={people}
+              choice={progressState.answers?.collaboration || null}
+              role={progressState.context?.role === 'co_buyer' ? 'co_buyer' : 'owner'}
+              onEdit={editFromReview}
+              onFinish={finishToDestination}
+              finishing={finishing}
+              finishError={finishError}
+              header={<StepHeader step="review" progress={progress} sharedFor={sharedFor} title={<>Your search is <em>ready.</em></>} lead="Here’s what home looks like to you so far. It’s yours alone, easy to change anytime, and it’ll grow as you discover homes." />}
             />
           )}
           {/* Approved-flow steps not built yet (only reachable in the development preview). */}

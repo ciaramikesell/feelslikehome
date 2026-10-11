@@ -110,6 +110,22 @@ export const SCENARIOS = [
   { name: 'v2-rank-all-important', query: 'flow=v2&step=rank&state=fresh' },
   { name: 'v2-rank-returning', query: 'flow=v2&step=rank&state=populated' },
   { name: 'v2-rank-many', query: 'flow=v2&step=rank&state=many' },
+  // Step 6: minimal (unanswered), complete (areas, places, a joined co-buyer and
+  // Realtor, ranked priorities), a co-buyer joining a shared search, a completion
+  // error, and editing a section then returning.
+  { name: 'v2-review-minimal', query: 'flow=v2&step=review&state=empty' },
+  { name: 'v2-review-full', query: 'flow=v2&step=review&state=populated' },
+  { name: 'v2-review-shared', query: 'flow=v2&step=review&state=populated&mode=shared' },
+  { name: 'v2-review-error', query: 'flow=v2&step=review&state=error', act: async (page) => {
+    await page.getByRole('button', { name: /Add my first home/ }).click();
+    await page.locator('.flh-ob-review-error').waitFor();
+  } },
+  { name: 'v2-review-after-edit', query: 'flow=v2&step=review&state=populated', act: async (page) => {
+    await page.getByRole('button', { name: 'Edit The Basics' }).click();
+    await page.locator('.flh-ob-stepper button').nth(1).click();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.locator('h1', { hasText: 'ready' }).waitFor();
+  } },
   { name: 'v2-rank-info-open', query: 'flow=v2&step=rank&state=fresh', act: async (page) => {
     await page.getByRole('button', { name: /How Match handles missing information/ }).click();
     await page.getByText('Unknown never counts against a home').waitFor();

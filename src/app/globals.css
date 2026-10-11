@@ -2602,3 +2602,59 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 @media (min-width: 960px) {
   .flh-onboarding-root .flh-ob-rank-actions { display: flex; justify-content: flex-end; }
 }
+
+/* ── Onboarding V2 — Step 6: Your search is ready (Phase 2F) ───────────────────
+   From the approved Review design: the brand mark above the heading, then one
+   numbered card per part ("01 The Basics") with a Fraunces title; an unanswered
+   part shows a warm inner row ("No basics added yet." + "Add details"), an
+   answered one shows its summary with a quiet Edit link. "Go to My Search"
+   beside "Add my first home". Scoped to the onboarding root and flh-ob-. */
+.flh-ob-review-mark { display: block; margin-bottom: -6px; }
+.flh-ob-review-card { display: grid; gap: 14px; padding: 20px; border: 1px solid var(--ob-line); border-radius: 20px; background: var(--flh-card); }
+.flh-ob-review-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.flh-ob-review-title { display: flex; align-items: baseline; gap: 10px; margin: 0; color: var(--ink); font: 600 22px/1.15 var(--font-serif); letter-spacing: -.01em; }
+.flh-ob-review-edit { flex-shrink: 0; min-height: 44px; padding: 0 4px; border: 0; background: none; color: var(--brick); font: 600 13.5px var(--font-sans); cursor: pointer; }
+.flh-ob-review-edit:focus-visible, .flh-ob-review-add:focus-visible, .flh-ob-review-secondary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.flh-ob-review-empty { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 12px 12px 16px; border-radius: 14px; background: var(--ob-warm-row); color: var(--ink-soft); font: 500 12.5px/1.4 var(--font-sans); }
+.flh-ob-review-add { flex-shrink: 0; min-height: 40px; padding: 0 14px; border: 1px solid var(--ob-line); border-radius: 10px; background: #fff; color: var(--brick-deep); font: 600 12.5px var(--font-sans); cursor: pointer; }
+.flh-ob-review-list { display: grid; gap: 0; margin: 0; }
+.flh-ob-review-row { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 10px 0; border-top: 1px solid var(--ob-line); }
+.flh-ob-review-row:first-child { border-top: 0; padding-top: 0; }
+.flh-ob-review-row dt { color: var(--ink-soft); font: 500 13px/1.35 var(--font-sans); }
+.flh-ob-review-row dd { margin: 0; color: var(--ink); font: 600 14px/1.35 var(--font-sans); text-align: right; overflow-wrap: anywhere; }
+.flh-ob-review-row dd.is-unset { color: #A99D92; font-weight: 500; }
+.flh-ob-review-chips, .flh-ob-review-places, .flh-ob-review-people { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.flh-ob-review-chips { display: flex; flex-wrap: wrap; }
+.flh-ob-review-chips li { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 8px 12px; border: 1px solid var(--ob-line); border-radius: 999px; background: #fff; }
+.flh-ob-review-chips strong, .flh-ob-review-places strong { color: var(--ink); font: 600 13.5px/1.3 var(--font-sans); overflow-wrap: anywhere; }
+.flh-ob-review-chips span { color: var(--ink-soft); font: 700 10px/1.3 var(--font-sans); letter-spacing: .06em; text-transform: uppercase; }
+.flh-ob-review-places li { display: grid; gap: 2px; padding: 10px 12px; border-radius: 12px; background: var(--ob-warm-row); }
+.flh-ob-review-places span { color: var(--ink-soft); font: 500 12px/1.4 var(--font-sans); overflow-wrap: anywhere; }
+.flh-ob-review-people li { display: flex; align-items: center; gap: 8px; color: var(--ink); font: 600 14px/1.35 var(--font-sans); }
+.flh-ob-review-people li.is-joined svg { color: var(--positive); }
+.flh-ob-review-people li.is-intent { color: var(--ink-soft); font-weight: 500; }
+.flh-ob-review-note { margin: 0; color: var(--ink-soft); font: 500 12px/1.4 var(--font-sans); }
+.flh-ob-review-levels { display: grid; gap: 12px; }
+.flh-ob-review-level { padding: 12px 14px; border-radius: 14px; }
+.flh-ob-review-level.is-must { background: #F4E0D7; }
+.flh-ob-review-level.is-important { background: #E1E7DB; }
+.flh-ob-review-level.is-nice { background: #EFEAE3; }
+.flh-ob-review-level h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; color: var(--ink); font: 600 16px/1.2 var(--font-serif); }
+.flh-ob-review-level h3 span { color: var(--ink-soft); font: 600 12px/1 var(--font-sans); }
+.flh-ob-review-level ul { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; padding: 0; list-style: none; color: var(--ink); font: 600 13px/1.4 var(--font-sans); }
+.flh-ob-review-level li { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.flh-ob-review-secondary { justify-self: start; min-height: 44px; padding: 0 4px; border: 0; background: none; color: var(--brick); font: 600 13.5px var(--font-sans); cursor: pointer; }
+.flh-ob-review-error { margin: 0; }
+/* As in Steps 4 and 5, the actions sit at the end of the summary (never over it). */
+.flh-onboarding-root .flh-ob-review-actions { position: static; display: flex; align-items: center; gap: 12px; margin-top: 8px; padding: 6px 0 calc(16px + env(safe-area-inset-bottom)); background: none; }
+.flh-onboarding-root .flh-ob-review-actions .flh-ob-cta { flex: 1 1 auto; width: auto; min-width: 0; }
+.flh-onboarding-root .flh-ob-review-actions .flh-ob-cta > span:first-child { white-space: nowrap; }
+/* Phones: the primary action takes the full width, the quieter one sits below it. */
+@media (max-width: 559px) {
+  .flh-onboarding-root .flh-ob-review-actions { flex-direction: column-reverse; align-items: stretch; gap: 4px; }
+  .flh-onboarding-root .flh-ob-review-actions .flh-ob-later { align-self: center; }
+}
+@media (min-width: 960px) {
+  .flh-onboarding-root .flh-ob-review-actions { justify-content: flex-end; }
+  .flh-onboarding-root .flh-ob-review-actions .flh-ob-cta { flex: 0 0 auto; min-width: 260px; }
+}

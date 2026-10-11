@@ -66,7 +66,8 @@ function previewServices(fail) {
   return {
     savePriorities: settle,
     saveProgress: () => Promise.resolve(true),
-    completeOnboarding: settle,
+    // Counted (dev preview only) so QA can confirm a double tap completes once.
+    completeOnboarding: (...args) => { if (typeof window !== 'undefined') window.__flhPreviewCompletions = (window.__flhPreviewCompletions || 0) + 1; return settle(...args); },
     setActiveSearch: settle,
     submitFeedback: () => Promise.resolve(true),
     createPlace: (searchId, userId, place) => (fail ? Promise.reject(new Error('Preview save failure')) : Promise.resolve({ id: `preview-place-${nextPlace++}`, ...place, maxDriveMinutes: null })),
@@ -111,7 +112,7 @@ export default function OnboardingPreview({ step = 'basics', state = 'empty', mo
     const context = { searchId: SEARCH_ID, role: shared ? 'co_buyer' : 'owner' };
     const steps = onboardingStepsFor(version, { context });
     const target = steps.includes(step) ? step : steps[0];
-    const returningToPeople = target === 'collaboration' && state === 'populated' && !shared;
+    const returningToPeople = ['collaboration', 'review'].includes(target) && state === 'populated' && !shared;
     const progress = beginOnboarding({
       storedState: { step: target, completed: steps.slice(0, steps.indexOf(target)), startedAt: NOW, context, answers: returningToPeople ? { collaboration: 'co_buyer_and_realtor' } : {} },
       storedVersion: version,
@@ -125,11 +126,11 @@ export default function OnboardingPreview({ step = 'basics', state = 'empty', mo
     // Steps 4–5 of the six-step flow: chosen home style and property types
     // (state=populated), or a style saved earlier without an importance
     // (state=legacy, as the old Basics stored it).
-    const sixStepDetails = version === 3 && ['priorities', 'rank'].includes(target);
+    const sixStepDetails = version === 3 && ['priorities', 'rank', 'review'].includes(target);
     const withDetails = (next) => {
       if (!sixStepDetails) return next;
       // A fresh six-step buyer: nothing chosen yet.
-      if (state === 'empty') return chooseSearchType(normalizePriorities({}), 'home_buy', { presetPropertyType: false });
+      if (state === 'empty' || (target === 'review' && state === 'error')) return chooseSearchType(normalizePriorities({}), 'home_buy', { presetPropertyType: false });
       if (state === 'legacy') return { ...next, homeLayout: { values: ['Ranch / Single Story'], tier: 'dontcare' } };
       // Fresh picks from Step 4, all still Important (state=fresh), or a lot of them (state=many).
       if (state === 'fresh' || state === 'many') {
@@ -147,8 +148,8 @@ export default function OnboardingPreview({ step = 'basics', state = 'empty', mo
     };
     return {
       progress,
-      priorities: withDetails(target === 'locations' && state === 'populated' ? withPreviewAreas(priorities) : priorities),
-      places: target === 'locations' && state === 'populated' ? PREVIEW_PLACES : [],
+      priorities: withDetails(['locations', 'review'].includes(target) && state === 'populated' ? withPreviewAreas(priorities) : priorities),
+      places: ['locations', 'review'].includes(target) && state === 'populated' ? PREVIEW_PLACES : [],
       people: shared ? { coBuyers: [], realtors: 0, ownerName: 'Ciara' } : returningToPeople ? PREVIEW_PEOPLE : null,
     };
   }, [step, state, shared, version]);
