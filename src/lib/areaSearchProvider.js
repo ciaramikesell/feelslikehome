@@ -9,7 +9,7 @@ import { toAreaResults } from '@/lib/searchAreas';
 // Requested primary types: cities, neighborhoods, ZIP codes and school
 // districts (Autocomplete allows at most five). Whether Google accepts
 // school_district as a filter, and whether it returns district places, is
-// checked live in the Preview QA harness (docs/onboarding-step2-preview-qa.md).
+// checked live on a Vercel Preview during Onboarding V2 QA.
 // If Google rejects it, the search continues without it and reports
 // schoolDistricts: false, so the screen says so instead of pretending.
 const AREA_PRIMARY_TYPES = ['locality', 'sublocality', 'neighborhood', 'postal_code', 'school_district'];

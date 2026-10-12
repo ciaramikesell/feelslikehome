@@ -4,7 +4,7 @@
 // Must-Have or changes Match. The step is only reachable in the inactive flow 3.
 import test, { after, before } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { register } from 'node:module';
 import { createTestDatabase, DB_TESTS_ENABLED, DB_SKIP_REASON } from './support/supabaseDb.mjs';
 import { normalizePriorities } from '../src/lib/constants.js';
@@ -114,7 +114,6 @@ test('Step 2 styles are scoped to onboarding', () => {
 
 register('./support/aliasHooks.mjs', import.meta.url);
 const { fetchAreaSuggestions } = await import('../src/lib/areaSearchProvider.js');
-const { previewQaAllowed } = await import('../src/lib/previewQa.js');
 
 const prediction = (placeId, text, types) => ({ placePrediction: { placeId, types, text: { text }, mainText: { text }, secondaryText: { text: 'MI, USA' } } });
 function fakePlaces({ rejectDistricts = false, failAll = false, suggestions = [] } = {}) {
@@ -168,33 +167,14 @@ test('if Google rejects school_district, search continues without it and says so
   assert.notEqual(failingState.schoolDistrictsRejected, true);
 });
 
-test('the Step 2 QA harness is reachable only locally or on this Preview\'s own URL', () => {
-  const preview = { nodeEnv: 'production', vercelEnv: 'preview', branchUrl: 'feelslikehome-git-claude-onboarding-v2-phase1-tbd-fcfc.vercel.app', deploymentUrl: 'feelslikehome-abc123-tbd-fcfc.vercel.app' };
-  assert.equal(previewQaAllowed({ nodeEnv: 'development' }), true);
-  assert.equal(previewQaAllowed({ ...preview, host: preview.branchUrl }), true);
-  assert.equal(previewQaAllowed({ ...preview, host: `${preview.deploymentUrl}:443` }), true);
-  assert.equal(previewQaAllowed({ ...preview, vercelEnv: 'production', host: preview.branchUrl }), false);
-  assert.equal(previewQaAllowed({ ...preview, host: 'feelslikehome.app' }), false);
-  assert.equal(previewQaAllowed({ ...preview, host: 'www.feelslikehome.app' }), false);
-  assert.equal(previewQaAllowed({ ...preview, host: 'feelslikehome-tbd-fcfc.vercel.app' }), false);
-  assert.equal(previewQaAllowed({ ...preview, host: '' }), false);
-  assert.equal(previewQaAllowed({ nodeEnv: 'production', host: 'localhost' }), false);
-  assert.equal(previewQaAllowed({ nodeEnv: 'test' }), false);
-});
-
-test('the QA harness writes nothing to Supabase and requires sign-in', () => {
-  const harness = read('src/components/onboarding/Step2Harness.jsx');
-  const page = read('src/app/qa/step-2/page.js');
-  const middleware = read('src/middleware.js');
-  assert.doesNotMatch(harness, /@\/lib\/supabase|createClient\(|SUPABASE_SERVICES/);
-  for (const key of ['savePriorities', 'saveProgress', 'completeOnboarding', 'setActiveSearch', 'submitFeedback', 'createPlace', 'deletePlace', 'searchAreas']) {
-    assert.match(harness, new RegExp(`${key}: `), `${key} must be stubbed`);
+test('the temporary Preview QA pages, harnesses and Preview gate are gone; /dev/ stays development-only', () => {
+  for (const path of ['src/app/qa', 'src/components/onboarding/Step2Harness.jsx', 'src/components/onboarding/OnboardingJourneyHarness.jsx', 'src/lib/previewQa.js', 'src/lib/placesDiagnostics.js']) {
+    assert.equal(existsSync(new URL(`../${path}`, import.meta.url)), false, path);
   }
-  assert.match(page, /if \(!previewQaAllowedHere\(host\)\) notFound\(\);/);
-  assert.match(page, /if \(!user\) redirect\(/);
-  assert.match(page, /\} else if \(process\.env\.NODE_ENV !== 'development'\) \{\n\s+notFound\(\);/);
-  assert.match(page, /robots: \{ index: false, follow: false \}/);
-  assert.match(middleware, /pathname\.startsWith\('\/qa\/'\)[\s\S]*?previewQaAllowedHere/);
+  const middleware = read('src/middleware.js');
+  assert.doesNotMatch(middleware, /\/qa\/|previewQa/);
+  assert.match(middleware, /pathname\.startsWith\('\/dev\/'\)\) \{\n\s+return process\.env\.NODE_ENV === 'production'\n\s+\? new NextResponse\('Not found', \{ status: 404 \}\)/);
+  assert.doesNotMatch(read('src/components/onboarding/Onboarding.jsx'), /services\.navigate/);
 });
 
 test('a place is saved only with an address Google resolved', () => {
@@ -204,25 +184,6 @@ test('a place is saved only with an address Google resolved', () => {
   assert.match(step, /onSave\(\{ label, address: resolved \}\)/);
   // Typing after choosing clears the resolved address.
   assert.match(step, /onChange=\{\(next\) => \{ setAddress\(next\); setResolved\(''\); \}\}/);
-});
-
-test('harness diagnostics never show the API key', async () => {
-  const { redact, describeError, PROBES } = await import('../src/lib/placesDiagnostics.js');
-  const fakeKey = `AIza${'x'.repeat(35)}`;
-  assert.doesNotMatch(redact(`Script https://maps.googleapis.com/maps/api/js?key=${fakeKey}&loading=async failed`), /AIza|xxxxxxxx/);
-  assert.doesNotMatch(redact(`key=${fakeKey}`), /AIza/);
-  const described = describeError(Object.assign(new Error(`RefererNotAllowedMapError for ${fakeKey}`), { name: 'MapsRequestError', code: 'REQUEST_DENIED', endpoint: 'PLACES_AUTOCOMPLETE' }));
-  assert.deepEqual(described, { name: 'MapsRequestError', code: 'REQUEST_DENIED', endpoint: 'PLACES_AUTOCOMPLETE', message: 'RefererNotAllowedMapError for [key redacted]' });
-  const { interpret } = await import('../src/lib/placesDiagnostics.js');
-  assert.equal(interpret('RpcError · code 3 · API key not valid. Please pass a valid API key.').where, 'Vercel or Google Cloud');
-  assert.equal(interpret({ name: 'RpcError', code: '7', message: 'Requests from referer https://x.vercel.app/ are blocked.' }).where, 'Google Cloud');
-  assert.match(interpret({ message: 'Places API (New) has not been used in project 123 before or it is disabled.' }).cause, /not enabled/);
-  assert.equal(interpret('NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set in this build, so the browser never contacts Google.').where, 'Vercel');
-  // Each Step 2 type is probed on its own, plus the exact combination Step 2 sends.
-  assert.deepEqual(PROBES.map(([label]) => label).slice(1, 6), ['locality', 'sublocality', 'neighborhood', 'postal_code', 'school_district']);
-  // The harness renders only redacted diagnostics, and nothing shows the raw key variable.
-  assert.doesNotMatch(read('src/components/onboarding/Step2Harness.jsx'), /NEXT_PUBLIC_GOOGLE_MAPS_API_KEY/);
-  assert.doesNotMatch(read('src/lib/placesDiagnostics.js'), /detail: key\b|\$\{key\}|key\.slice/);
 });
 
 /* ------------------------------ real Postgres ------------------------------ */

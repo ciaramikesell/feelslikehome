@@ -306,11 +306,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
     const choice = choiceFromSelection(selection);
     try { persistProgress(setOnboardingAnswer(progressRef.current, 'collaboration', choice)); } catch { /* an invited co-buyer always searches with a co-buyer */ }
   };
-  // An injected navigate service lets a demonstration (the Preview-only QA journey) show
-  // where onboarding would go instead of entering the real app; real pages
-  // never pass it.
   const leave = (destination) => {
-    if (services.navigate) { services.navigate(destination); return; }
     router.push(destination); router.refresh();
   };
   const editFromReview = (targetStep) => {
