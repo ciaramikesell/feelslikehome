@@ -550,8 +550,17 @@ export function hasSharedHomeChanges(home, previousHome) {
 
 export async function saveHomePersonalAndShared(supabase, home, userId, searchId) {
   const sharedRow = homeToSharedRow(home, userId, searchId);
-  const { data: savedShared, error: sharedError } = await supabase
-    .from('homes').upsert(sharedRow).select(HOME_SHARED_COLUMNS).single();
+  // An existing home is an UPDATE of its shared facts, never an upsert. An
+  // upsert is an INSERT … ON CONFLICT, and Postgres checks the INSERT policy
+  // (only the person who added a home may insert it) even when the row already
+  // exists — so a co-buyer could not save shared facts on a home the owner
+  // added. The UPDATE policy already allows every decision-maker (owner and
+  // co-buyers) and nobody else; the identity trigger keeps id, adder and search
+  // unchangeable; personal state stays in the caller's own home_member_state row.
+  const { id: homeId, user_id: _adder, search_id: _search, ...sharedFacts } = sharedRow;
+  const { data: savedShared, error: sharedError } = homeId
+    ? await supabase.from('homes').update(sharedFacts).eq('id', homeId).select(HOME_SHARED_COLUMNS).single()
+    : await supabase.from('homes').insert(sharedRow).select(HOME_SHARED_COLUMNS).single();
   // Never retry a write without the canonical shared-fact columns. That legacy
   // compatibility path reported success after silently dropping propertyType
   // (and the other Pass B facts), so the selection disappeared on reload. A

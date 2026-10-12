@@ -9,7 +9,7 @@ import {
   TIER_META, getItemlistCategories, criterionDisplayLabel, effectiveTier,
   isRetiredPurchaseBuiltIn, isDiscontinuedOffering, isCriterionApplicable,
   isApartmentRental, isRentalType, searchExperienceLabel, normalizePriorities, isExperientialCriterion,
-  garagePreferenceLabel, GARAGE_PREFERENCE_OPTIONS, DEFAULT_SELECTED_TIER,
+  garagePreferenceLabel, GARAGE_PREFERENCE_OPTIONS, DEFAULT_SELECTED_TIER, RENTAL_ESSENTIALS,
 } from './constants.js';
 import { normalizeSearchIntent, PROPERTY_TYPE_LABELS } from './searchIntent.js';
 import { splitCategoryItems, selectPriorityItem, parseNum } from './matching.js';
@@ -134,8 +134,8 @@ const CATEGORY_GROUP_TITLES = { location: 'Location', features: 'Home Features',
 // The canonical criteria offered to this participant, grouped for display.
 // Home to Buy / Home to Rent use the curated canonical Home lists (the same lists
 // onboarding shows); Apartment to Rent, historical rentals, and Investment keep the
-// full catalog My Search already offered them. Retired and discontinued built-ins
-// are never offered.
+// full catalog My Search already offered them. Every rental search starts with
+// the Rental essentials. Retired and discontinued built-ins are never offered.
 export function offeredCriteriaGroups(raw) {
   const priorities = normalizePriorities(raw);
   const experience = priorities.onboardingSearchType;
@@ -154,8 +154,16 @@ export function offeredCriteriaGroups(raw) {
         .map((entry) => ({ categoryKey: def.key, label: entry.label, kind: entry.kind, displayLabel: criterionDisplayLabel(def.key, entry.label), key: criterionKey(def.key, entry.label) }));
       return { title: CATEGORY_GROUP_TITLES[def.key] || def.title, items };
     });
-  return groups
-    .map((group) => ({ ...group, items: group.items.filter((entry) => !isDiscontinuedOffering(entry.categoryKey, entry)) }))
+  // Renters (Home to Rent, Apartment to Rent, older rental searches) are offered
+  // the Rental essentials first, whatever their property types; anything that
+  // repeats one of them elsewhere (e.g. the canonical "Central air") is not
+  // offered twice.
+  const essentials = isRentalType(priorities.searchType)
+    ? [{ title: 'Rental Essentials', items: RENTAL_ESSENTIALS.map((entry) => ({ ...entry, displayLabel: criterionDisplayLabel(entry.categoryKey, entry.label), key: criterionKey(entry.categoryKey, entry.label) })) }]
+    : [];
+  const essentialKeys = new Set(essentials.flatMap((group) => group.items.map((entry) => entry.key.toLowerCase())));
+  return [...essentials, ...groups.map((group) => ({ ...group, items: group.items.filter((entry) => !essentialKeys.has(entry.key.toLowerCase())) }))]
+    .map((group) => ({ ...group, items: group.items.filter((entry) => !isDiscontinuedOffering(entry.categoryKey, entry, priorities.searchType)) }))
     .filter((group) => group.items.length);
 }
 
