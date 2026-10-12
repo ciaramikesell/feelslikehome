@@ -283,3 +283,47 @@ dbTest('a co-renter’s rental preferences are their own: same search, independe
   assert.equal(computeMatch(home, ownerReloaded).missing.length, 1, 'not an apartment or condo');
   assert.equal(computeMatch(home, coRenterReloaded).missing.length, 0, 'laundry unknown is not a miss');
 });
+
+/* --------------------------- follow-up QA (decisions) -------------------------- */
+
+test('Parking, Off-street parking and Garage are three distinct priorities, each answered from its own source', () => {
+  const where = (type) => Object.fromEntries(['Parking', 'Off-street parking', 'Garage'].map((text) => {
+    const section = whatMattersSections(fresh(type)).find((entry) => entry.chips.some((chip) => chip.text === text));
+    return [text, section ? section.title : chipByText(fresh(type), text) ? 'More to consider' : 'not offered'];
+  }));
+  assert.deepEqual(where('home_rent'), { Parking: 'Rental essentials', 'Off-street parking': 'More to consider', Garage: 'The home' });
+  assert.deepEqual(where('apartment_rent'), { Parking: 'Rental essentials', 'Off-street parking': 'More to consider', Garage: 'not offered' });
+
+  const all = pick(fresh('home_rent'), 'Parking', 'Off-street parking', 'Garage');
+  const ranked = onboardingPriorityLevels(all).flatMap((level) => level.items);
+  assert.deepEqual(ranked.map((item) => `${item.displayLabel} → ${item.key}`).sort(), [
+    'Garage → exterior:Garage', 'Off-street parking → exterior:Driveway / Off-Street Parking', 'Parking → exterior:Parking',
+  ]);
+  const status = (home) => Object.fromEntries(computeMatch({ checks: {}, ratings: {}, ...home }, all).allSelected.map((entry) => [entry.key, entry.evaluated ? entry.met : 'unknown']));
+  // Garage comes from garage spaces only; Parking and Off-street parking from their own answers only.
+  assert.deepEqual(status({ garageSpaces: '2' }), { 'exterior:Parking': 'unknown', 'exterior:Driveway / Off-Street Parking': 'unknown', 'exterior:Garage': true });
+  assert.deepEqual(status({ checks: { 'exterior:Parking': true } }), { 'exterior:Parking': true, 'exterior:Driveway / Off-Street Parking': 'unknown', 'exterior:Garage': 'unknown' });
+  assert.deepEqual(status({}), { 'exterior:Parking': 'unknown', 'exterior:Driveway / Off-Street Parking': 'unknown', 'exterior:Garage': 'unknown' });
+});
+
+test('a rental lot size is never a Must-Have on its own: it is not ranked and only counts once given a level', () => {
+  const rent = { ...fresh('home_rent'), lotSizeTarget: { ...fresh('home_rent').lotSizeTarget, value: '0.25' } };
+  assert.equal(rent.lotSizeTarget.tier, 'dontcare', 'entering a lot size sets no importance');
+  assert.ok(!onboardingPriorityLevels(rent).some((level) => level.items.some((item) => item.key === 'lotSize')));
+  assert.doesNotMatch(JSON.stringify(computeMatch({ lotSize: '0.1', checks: {}, ratings: {}, price: '1' }, { ...rent, budget: { value: '2', tier: 'important' } })), /lotSize/);
+  // Switching keeps it unranked (and clears it for an apartment).
+  assert.equal(switchSearchType(rent, 'home_buy').priorities.lotSizeTarget.tier, 'dontcare');
+  assert.equal(switchSearchType(rent, 'apartment_rent').priorities.lotSizeTarget.value, '');
+});
+
+test('the apartment Building type stays optional, visible and never preset — even across switches', () => {
+  const section = (priorities) => whatMattersSections(priorities).find((entry) => entry.title === 'Building type');
+  assert.deepEqual(section(fresh('apartment_rent')).chips.map((chip) => chip.text), ['Apartment', 'Condo', 'Townhome'], 'visible');
+  assert.deepEqual(fresh('apartment_rent').preferredPropertyTypes.values, [], 'not preset');
+  assert.ok(!onboardingPriorityLevels(fresh('apartment_rent')).some((level) => level.items.some((item) => item.group)), 'nothing ranked until chosen');
+  let priorities = switchSearchType(fresh('home_rent'), 'apartment_rent').priorities;
+  assert.deepEqual(priorities.preferredPropertyTypes.values, []);
+  priorities = switchSearchType(switchSearchType(fresh('home_buy'), 'apartment_rent').priorities, 'home_rent').priorities;
+  priorities = switchSearchType(priorities, 'apartment_rent').priorities;
+  assert.deepEqual(priorities.preferredPropertyTypes.values, [], 'never preset after several switches');
+});

@@ -18,17 +18,42 @@ role, a permission, a database column or a Match rule.
 | **Switching search types keeps what still applies.** That includes the Basics, compatible picks at their levels, compatible property types and typed priorities. Step 1 lists anything removed (picks the new type doesn't offer, layout or condition when renting, a lot size for an apartment) and offers Undo. | `switchSearchType`, `BasicsStep` |
 | **Home to Rent listing-text detection** now covers the canonical criteria it offers (central air, home office, finished basement, fenced yard, …). Typed priorities are never guessed. | `derivePriorityCheckPatch` |
 
-## Not offered
+## Retired, kept for existing users
 
-- **Social community, On-site management, Surrounding neighborhood.** These were earlier Apartment to Rent options, but nothing in FLH can answer them for a home: there's no listing field, no Yes/No question and no after-tour question. Match would show them as "Not evaluated" forever. Anyone who already chose one keeps it (Step 4 shows it under "Your own"). Offering them again needs a decision: make them after-tour questions, or retire them.
-- **Future rental priorities** need new property data and Match design before they can be offered:
-  - **Move-in date.** Listing text already yields `availableOn`, but the saved-home editor can't edit it and Match doesn't compare it. This needs the renter's move-in window and a rule for "available by".
-  - **Lease length.** No field, import source or rule exists yet.
-  - **Furnished.** No field, import source or rule exists yet.
-  - **Deposits and fees.** These are better kept as notes than as priorities. A fee calculation would need new fields.
+**Social community, On-site management and Surrounding neighborhood** are retired from what renters are offered. Nothing in FLH can answer them for a home: there's no listing field, no Yes/No question and no after-tour question. Anyone who already chose one keeps it; it stays on their board and keeps counting as before.
 
-## Known gaps (not changed here)
+- Onboarding V2 doesn't offer them.
+- My Search and the current onboarding list retire them on the live-fixes branch, `claude/charming-bell-i0xo4w`.
 
-- **My Search's "add a priority" list for Home to Rent** still uses the earlier Home to Rent list, so it doesn't offer the rental essentials. Anything chosen in onboarding is shown and editable there. Changing that live list needs approval.
-- **Saved-home editor wiring for Pets / Laundry / Utilities** is fixed separately: branch `claude/charming-bell-i0xo4w`, not part of this PR.
+Quiet community and Privacy remain, labelled as after-tour assessments.
+
+## Future rental priorities (not offered)
+
+These need new property data and Match design first:
+
+- **Move-in date.** Listing text already yields `availableOn`, but the saved-home editor can't edit it and Match doesn't compare it. This needs the renter's move-in window and a rule for "available by".
+- **Lease length.** No field, import source or rule exists yet.
+- **Furnished.** No field, import source or rule exists yet.
+- **Deposits and fees.** These are better kept as notes than as priorities. A fee calculation would need new fields.
+
+## Notes from QA
+
+- **Parking, Off-street parking and Garage** are three separate priorities:
+  - Parking is in Rental essentials.
+  - Off-street parking is under More to consider.
+  - Garage is in "The home", for Home to Rent only.
+
+  Each is answered from its own source: garage spaces for Garage, and its own Yes/No for the other two. The live-fixes branch also stops listing-text import from recording "No parking" against a home it says has a garage or driveway.
+- **A rental lot size** is entered as an "ideal" with no importance. It is never ranked or treated as a Must-Have, and Match ignores it until the person gives it a level in My Search. This is the same as the live flow.
+
+## Related live-app changes (separate branch `claude/charming-bell-i0xo4w`, not this PR)
+
+- The saved-home editor's Pets / Laundry / Utilities answers count in Match.
+- Co-buyers can save shared facts on homes someone else added.
+- My Search offers Rental Essentials to renters; the three options above are retired.
+- Listing text no longer produces contradictory parking answers.
+- A read-only audit of historical Pets / Laundry / Utilities answers: `docs/rental-fact-history-audit.md`.
+
+## Known gaps
+
 - **"Deck / patio" for Home to Rent** has no listing-text rule, so it's recorded manually, as before.
