@@ -96,9 +96,34 @@ const DISCONTINUED_PURCHASE_OFFERINGS = new Set([
   'exterior:Attached garage', 'exterior:Detached garage',
 ]);
 
-export function isDiscontinuedOffering(categoryKey, item) {
-  return item?.source !== 'custom' && DISCONTINUED_PURCHASE_OFFERINGS.has(`${categoryKey}:${item?.label}`);
+// Rental options retired from what renters are offered: nothing in FLH can
+// answer them for a home (no listing field, Yes/No or after-tour question), so
+// in Match they could only ever stay "Not evaluated". Same rules as above: a
+// renter who already chose one keeps it, and it keeps counting as before.
+const DISCONTINUED_RENTAL_OFFERINGS = new Set([
+  'homeFeel:Social Community',
+  'homeFeel:On-Site Management',
+  'location:Neighborhood',
+]);
+
+export function isDiscontinuedOffering(categoryKey, item, searchType = null) {
+  if (item?.source === 'custom') return false;
+  const key = `${categoryKey}:${item?.label}`;
+  return DISCONTINUED_PURCHASE_OFFERINGS.has(key)
+    || (normalizeSearchIntent(searchType) === 'rental' && DISCONTINUED_RENTAL_OFFERINGS.has(key));
 }
+
+// The rental essentials every renter is offered first, in onboarding and in My
+// Search: existing rental-catalog criteria. Pets, laundry and utilities are
+// shared facts about a property (homes.pets_allowed, …); the rest are Yes/No.
+export const RENTAL_ESSENTIALS = Object.freeze([
+  Object.freeze({ categoryKey: 'features', label: 'Pets Allowed', kind: 'check' }),
+  Object.freeze({ categoryKey: 'features', label: 'In-Unit Laundry', kind: 'check' }),
+  Object.freeze({ categoryKey: 'features', label: 'Utilities Included', kind: 'check' }),
+  Object.freeze({ categoryKey: 'exterior', label: 'Parking', kind: 'check' }),
+  Object.freeze({ categoryKey: 'features', label: 'Central Air', kind: 'check' }),
+  Object.freeze({ categoryKey: 'features', label: 'Dishwasher', kind: 'check' }),
+]);
 // These remain part of the canonical catalog. offeredCriteriaGroups
 // (src/lib/searchProfile.js) combines them with the regular suggestions so
 // onboarding and My Search discover the same criteria.
@@ -112,6 +137,9 @@ export const FEATURES_SPECIFIC = [];
 // display-only override, looked up by "categoryKey:label" wherever a criterion is
 // rendered, so it applies uniformly to both new selections and old stored data alike.
 const CRITERION_DISPLAY_LABEL_OVERRIDES = {
+  // The priority reads as the renter's wish; the stored identity is unchanged
+  // (the shared property fact itself is still shown as "Pets Allowed").
+  'features:Pets Allowed': 'Pet-Friendly',
   'exterior:Privacy': 'Yard Privacy',
   'homeFeel:Privacy': 'Privacy from Neighbors',
   // 2026 onboarding/My Search taxonomy unification — these stored identities predate

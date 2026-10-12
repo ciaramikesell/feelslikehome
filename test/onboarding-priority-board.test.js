@@ -47,7 +47,8 @@ test('Home to Rent curated suggestions are exactly the canonical Home criteria w
 });
 
 test('Apartment to Rent curated suggestions are exact', () => {
-  assert.deepEqual(displayed('apartment_rent'), ['In-Unit Laundry','Central Air','Dishwasher','Updated Interior','Balcony / Patio','Home Office Space','Parking','Fitness Center','Pool','Secure Entry','Outdoor Space','Elevator','Pet-Friendly','Quiet Community','Social Community','On-Site Management','Privacy','Surrounding Neighborhood']);
+  // Social Community, On-Site Management and Surrounding Neighborhood are retired (nothing can answer them).
+  assert.deepEqual(displayed('apartment_rent'), ['In-Unit Laundry','Central Air','Dishwasher','Updated Interior','Balcony / Patio','Home Office Space','Parking','Fitness Center','Pool','Secure Entry','Outdoor Space','Elevator','Pet-Friendly','Quiet Community','Privacy']);
 });
 
 test('selected priorities become Important, dealbreakers become Must Have, and Nice is not assigned', () => {

@@ -81,9 +81,12 @@ test('canonical weighted Home criteria are exactly the approved taxonomy, groupe
 
 test('Home to Rent uses the canonical Home criteria except No HOA; Apartment to Rent keeps its own taxonomy', () => {
   const rent = applySearchChoice({}, 'home_rent');
-  assert.deepEqual(offeredLabels(rent), offeredLabels(buy()).filter((label) => label !== 'No HOA'));
+  // Renters get the Rental Essentials first (Central Air from that group, not twice).
+  const essentials = ['Pet-Friendly', 'In-Unit Laundry', 'Utilities Included', 'Parking', 'Central Air', 'Dishwasher'];
+  assert.deepEqual(offeredLabels(rent), [...essentials, ...offeredLabels(buy()).filter((label) => label !== 'No HOA' && label !== 'Central Air')]);
+  // Social Community, On-Site Management and Surrounding Neighborhood are retired.
   assert.deepEqual(ONBOARDING_SUGGESTIONS.apartment_rent.flatMap(([, items]) => items.map((item) => item.displayLabel)),
-    ['In-Unit Laundry', 'Central Air', 'Dishwasher', 'Updated Interior', 'Balcony / Patio', 'Home Office Space', 'Parking', 'Fitness Center', 'Pool', 'Secure Entry', 'Outdoor Space', 'Elevator', 'Pet-Friendly', 'Quiet Community', 'Social Community', 'On-Site Management', 'Privacy', 'Surrounding Neighborhood']);
+    ['In-Unit Laundry', 'Central Air', 'Dishwasher', 'Updated Interior', 'Balcony / Patio', 'Home Office Space', 'Parking', 'Fitness Center', 'Pool', 'Secure Entry', 'Outdoor Space', 'Elevator', 'Pet-Friendly', 'Quiet Community', 'Privacy']);
   // An existing rental selection with the same meaning is never offered twice.
   const existing = normalizePriorities({ ...rent, features: { tiers: { 'Home Office': 'important' }, customItems: [{ label: 'Home Office', kind: 'check' }] } });
   const available = availableCriteriaGroups(existing).flatMap((group) => group.items.map((item) => item.displayLabel));

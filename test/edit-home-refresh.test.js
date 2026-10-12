@@ -43,7 +43,7 @@ test('Edit Home uses dialog focus management and responsive two-to-one column la
 });
 
 test('shared facts and participant-owned state retain separate persistence paths', () => {
-  assert.match(persistence, /from\('homes'\)\.upsert\(sharedRow\)/);
+  assert.match(persistence, /from\('homes'\)\.update\(sharedFacts\)\.eq\('id', homeId\)/);
   assert.match(persistence, /from\('home_member_state'\)\.upsert/);
   assert.match(persistence, /user_id: userId/);
   assert.doesNotMatch(persistence, /service_role/);

@@ -17,7 +17,9 @@ test('home reads combine shared allowlisted facts with caller-owned state and sa
 
 test('all owner and collaborator personal writes use home_member_state while shared facts use homes', async () => {
   const collaboration = await source('src/lib/supabase/collaboration.js');
-  assert.match(collaboration, /from\('homes'\)\.upsert\(sharedRow\)\.select\(HOME_SHARED_COLUMNS\)/);
+  // Shared facts go to homes (an UPDATE for an existing home, an INSERT for a new one).
+  assert.match(collaboration, /from\('homes'\)\.update\(sharedFacts\)\.eq\('id', homeId\)\.select\(HOME_SHARED_COLUMNS\)/);
+  assert.match(collaboration, /from\('homes'\)\.insert\(sharedRow\)\.select\(HOME_SHARED_COLUMNS\)/);
   assert.match(collaboration, /await upsertPersonalState\(supabase, savedHome\.id, userId, personal\)/);
   assert.match(collaboration, /saveHomePersonalState[\s\S]*upsertPersonalState\(supabase, home\.id, userId, personal\)/);
   assert.doesNotMatch(collaboration, /isLegacyOwnerSave|isCollaborativeSearch/);

@@ -66,8 +66,21 @@ export function derivePriorityCheckPatch(text, priorities, currentChecks = {}) {
     if (yes && !no && !blocked) patch[key] = true;
     else if (no && !yes && !blocked) patch[key] = 'no';
   });
+  // Parking, Off-street parking and Garage stay separate priorities, but a garage
+  // or a driveway is parking. Listing text that mentions one never records "No"
+  // for Parking or Off-street parking ("2-car garage. Street parking only.",
+  // "Driveway. No parking on street."); that answer stays Unknown instead, and
+  // Unknown never counts against a home.
+  const sentences = String(text).split(/[.\n]/);
+  const hasParkingStructure = sentences.some((part) => (/\bgarage\b/i.test(part) && !/\b(?:no|without(?: a)?) garage\b/i.test(part))
+    || (/\bdriveway\b/i.test(part) && !/\b(?:no|without(?: a)?) driveway\b/i.test(part)));
+  if (hasParkingStructure) {
+    for (const key of PARKING_CRITERIA) if (patch[key] === 'no') delete patch[key];
+  }
   return patch;
 }
+
+const PARKING_CRITERIA = ['exterior:Parking', 'exterior:Driveway / Off-Street Parking'];
 
 function stableId(type, text) {
   let hash = 2166136261;
