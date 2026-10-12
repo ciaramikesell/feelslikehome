@@ -49,7 +49,10 @@ export const ONBOARDING_SUGGESTIONS = Object.freeze({
   apartment_rent: Object.freeze([
     ['The Unit', [item('features', 'In-Unit Laundry', 'check'), item('features', 'Central Air', 'check'), item('features', 'Dishwasher', 'check'), item('features', 'Updated Interior', 'check'), item('exterior', 'Patio / Deck / Outdoor Living', 'check', 'Balcony / Patio'), item('features', 'Home Office', 'check', 'Home Office Space')]],
     ['The Property', [item('exterior', 'Parking', 'check'), item('exterior', 'Fitness Center', 'check'), item('exterior', 'Pool', 'check'), item('exterior', 'Secure Entry', 'check'), item('exterior', 'Outdoor Space'), item('exterior', 'Elevator', 'check'), item('features', 'Pets Allowed', 'check', 'Pet-Friendly')]],
-    ['Living There', [item('exterior', 'Noise Level', 'rating', 'Quiet Community'), item('homeFeel', 'Social Community'), item('homeFeel', 'On-Site Management'), item('homeFeel', 'Privacy'), item('location', 'Neighborhood', 'rating', 'Surrounding Neighborhood')]],
+    // Social Community, On-Site Management and Surrounding Neighborhood are retired
+    // here (see DISCONTINUED_RENTAL_OFFERINGS): nothing can answer them for a home.
+    // Anyone who already chose one keeps it.
+    ['Living There', [item('exterior', 'Noise Level', 'rating', 'Quiet Community'), item('homeFeel', 'Privacy')]],
   ]),
 });
 
