@@ -119,3 +119,18 @@ dbTest('editing shared facts never grants access to another person\'s priorities
   assert.deepEqual(db.admin(`select checks from public.home_member_state where home_id = '${home.id}' and user_id = '${ids.owner}'`)[0].checks, { 'exterior:Parking': true });
   assert.equal((await resolvePriorities(db.clientFor(ids.owner), { id: ids.search, user_id: ids.owner }, ids.owner)).budget.value, '2500');
 });
+
+dbTest('a solo buyer still edits their own homes; a removed home is never silently re-created', async () => {
+  const solo = db.createUser({ email: 'solo.buyer@example.com' });
+  const soloSearch = db.admin(`select id from public.searches where user_id = '${solo}'`)[0].id;
+  const added = await saveHomePersonalAndShared(db.clientFor(solo), { address: '5 Solo St', price: '450000', beds: '3', status: 'Saved', checks: { 'exterior:Garage': true }, ratings: {} }, solo, soloSearch);
+  const [view] = await getHomesForUser(db.clientFor(solo), solo, soloSearch);
+  const saved = await saveHomePersonalAndShared(db.clientFor(solo), { ...view, price: '440000', checks: { 'exterior:Garage': 'no' }, status: 'Want to Tour' }, solo, soloSearch);
+  assert.equal(saved.id, added.id);
+  assert.deepEqual(db.admin(`select price, beds, user_id from public.homes where id = '${added.id}'`)[0], { price: '440000', beds: '3', user_id: solo });
+  assert.deepEqual(db.admin(`select status, checks from public.home_member_state where home_id = '${added.id}'`)[0], { status: 'Want to Tour', checks: { 'exterior:Garage': 'no' } });
+  // Deleted elsewhere (e.g. in another tab): saving the stale copy fails visibly instead of inserting it again.
+  db.exec(`delete from public.homes where id = '${added.id}'`);
+  await assert.rejects(saveHomePersonalAndShared(db.clientFor(solo), { ...view, price: '430000' }, solo, soloSearch));
+  assert.equal(db.admin(`select count(*)::int as n from public.homes where search_id = '${soloSearch}'`)[0].n, 0);
+});
