@@ -60,19 +60,29 @@ test('signed-out auth makes account creation explicit without removing recovery 
 });
 
 test('new onboarding search choices set an explicit, accessible rental subtype', () => {
-  const onboarding = read('src/components/onboarding/Onboarding.jsx');
-  const system = read('src/components/MobileSystem.jsx');
-  assert.match(onboarding, /NEW_SEARCH_CHOICES\.map/);
-  assert.match(onboarding, /selected=\{choice === option\.key\}/);
-  assert.match(system, /className=\{`flh-select-card \$\{selected \? 'is-selected' : ''\}`\} aria-pressed=\{selected\}/);
-  assert.match(onboarding, /applySearchChoice\(next, option\.key\)/);
+  // Onboarding V2 Basics: a labelled native select ("I’m looking for …"),
+  // and choosing still goes through applySearchChoice (via chooseSearchType).
+  const basics = read('src/components/onboarding/BasicsStep.jsx');
+  const lib = read('src/lib/onboardingBasics.js');
+  assert.match(basics, /NEW_SEARCH_CHOICES\.map/);
+  assert.match(basics, /<label className="flh-ob-searchtype-label" htmlFor=\{id\}>I’m looking for<\/label>/);
+  assert.match(basics, /<select id=\{id\} required value=\{choice\} onChange=\{\(event\) => onChoose\(event\.target\.value\)\}/);
+  // The live flow (presetPropertyType) still goes through chooseSearchType; the
+  // six-step flow uses switchSearchType, which calls chooseSearchType too.
+  assert.match(basics, /if \(presetPropertyType\) \{ patch\(\(next\) => chooseSearchType\(next, key, \{ presetPropertyType \}\)\); return; \}/);
+  assert.match(basics, /<SearchTypeControl choice=\{choice\} onChoose=\{chooseType\} \/>/);
+  assert.match(read('src/lib/whatMattersCatalog.js'), /let next = chooseSearchType\(before, choiceKey, \{ presetPropertyType: false \}\);/);
+  assert.match(lib, /let next = applySearchChoice\(priorities, choiceKey\);/);
 });
 
 test('auth mobile and onboarding brand placement use focused centering classes', () => {
   assert.match(read('src/components/auth/AuthShell.jsx'), /className="afh-brand"/);
-  assert.match(read('src/components/onboarding/Onboarding.jsx'), /className="flh-onboarding-brand"/);
+  // Onboarding's brand sits in the shell's top bar, centred whether or not Back shows.
+  assert.match(read('src/components/onboarding/Onboarding.jsx'), /<OnboardingTopBar /);
+  assert.match(read('src/components/onboarding/OnboardingShell.jsx'), /<span className="flh-ob-brand">/);
   const css = read('src/app/globals.css');
-  assert.match(css, /\.flh-onboarding-brand \{[^}]*justify-content: center/);
+  assert.match(css, /\.flh-ob-topbar-row \{[^}]*grid-template-areas: "back brand count"/);
+  assert.match(css, /\.flh-ob-topbar \.flh-ob-brand \{ grid-area: brand; justify-self: center; \}/);
   assert.match(css, /@media \(max-width: 640px\) \{[\s\S]*\.afh-brand \{ justify-content: center; \}/);
 });
 

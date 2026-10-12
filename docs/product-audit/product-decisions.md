@@ -56,6 +56,11 @@ rules locked on 2026-10-07, they define the intended V1.
 | D-15 | Home lifecycle | **APPROVED** | **Add basic "Offer Submitted" and "Under Contract" statuses in V1.** Existing states and history are preserved. The smallest coherent design is recommended (see conflicts doc C-07). **Out of scope:** contracts, escrow, documents, contingencies and closing management | "Keep 4 statuses for V1" |
 | D-16 | Display-name privacy | **APPROVED** | Restrict `resolve_display_name` and related lookups to **authorized relationships**. Audit callers and permission boundaries. Prepare a narrowly scoped migration plan, **not executed** | Same direction |
 
+> **Update 2026-10-11:** the D-02 onboarding sequence above has been superseded.
+> The six numbered steps are now Basics → Locations → Collaboration → Select
+> Priorities → Rank Priorities → Review. Welcome comes before them and the
+> first-home experience follows them. See `docs/onboarding-v2-design-decisions.md`.
+
 ## Previously locked product rules (2026-10-07) — preserved, not reopened
 
 These are restated verbatim in substance. Nothing in the 2026-10-09 decisions

@@ -83,12 +83,13 @@ test('three-step journey preserves choices on Back, persists before completion, 
   // No Dealbreakers screen, no separate "My Search Criteria" summary screen.
   assert.doesNotMatch(onboarding, /Dealbreaker|dealbreaker/);
   assert.doesNotMatch(onboarding, /SummaryStep|My Search Criteria/);
-  assert.match(onboarding, /onBack=\{\(\) => goBack\('what_matters'\)\}/);
-  assert.match(onboarding, /onBack=\{\(\) => goBack\('rank'\)\}/);
+  // Back lives in the shell's top bar and returns to the previous step of whichever step is showing.
+  assert.match(onboarding, /<OnboardingTopBar progress=\{progress\} showProgress=\{!ready\} onBack=\{!ready && progress\.index > 0 \? \(\) => goBack\(step\) : null\} \/>/);
+  assert.match(read('src/components/onboarding/OnboardingShell.jsx'), /className="flh-ob-back" onClick=\{onBack\} aria-label="Back"/);
   assert.match(onboarding, /Rank my priorities/);
   // Every step change flushes pending saves; completion flushes before marking onboarding complete.
   assert.match(onboarding, /const goTo = async \(fromStep\) => \{\n\s+await flush\(\);\n\s+const \{ state: next \} = advanceOnboarding\(version, progressRef\.current, fromStep\);/);
-  assert.match(onboarding, /await flush\(\);\n(?:\s+\/\/.*\n)*\s+await persistPriorities\(priorities\);\n\s+await completeOnboarding\(createClient\(\), userId, \{ version, state: completeOnboardingState\(version, progressRef\.current\) \}\);/);
+  assert.match(onboarding, /await flush\(\);\n(?:\s+\/\/.*\n)*\s+await persistPriorities\(priorities\);\n\s+await services\.completeOnboarding\(userId, \{ version, state: completeOnboardingState\(version, progressRef\.current\) \}\);/);
   // #73: a pending share-intake destination (see (app)/layout.js) takes over when present.
   assert.match(onboarding, /if \(pendingRedirect\) \{ router\.push\(pendingRedirect\); router\.refresh\(\); return; \}/);
   assert.match(onboarding, /Your search is ready\./);

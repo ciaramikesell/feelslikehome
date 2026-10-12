@@ -100,8 +100,12 @@ test('Places are optional My Search enrichment using existing private persistenc
   const page = fs.readFileSync(new URL('../src/app/onboarding/page.js', import.meta.url), 'utf8');
   const onboarding = fs.readFileSync(new URL('../src/components/onboarding/Onboarding.jsx', import.meta.url), 'utf8');
   const destinations = fs.readFileSync(new URL('../src/components/CommuteDestinations.jsx', import.meta.url), 'utf8');
-  assert.doesNotMatch(page, /getCommuteDestinations/);
-  assert.doesNotMatch(onboarding, /CommuteDestinations/);
+  // Onboarding V2 Step 2 (approved, not live) offers Places too: loaded only when
+  // the person's flow includes that step (never in the live flow) and saved
+  // without a drive-time limit, so they stay optional enrichment, not requirements.
+  assert.match(page, /if \(!onboardingStepsFor\(progress\.version, progress\.state\)\.includes\('locations'\)\) return \{ initialPlaces: \[\], placesError: null \};/);
+  assert.doesNotMatch(onboarding, /<CommuteDestinations/);
+  assert.match(onboarding, /maxDriveMinutes: null/);
   assert.match(destinations, /createCommuteDestination\(supabase, searchId, userId, values\)/);
   assert.match(destinations, /maxDriveMinutes/);
   assert.match(destinations, /startCollapsedWhenEmpty/);

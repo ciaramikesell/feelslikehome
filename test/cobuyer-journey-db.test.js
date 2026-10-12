@@ -231,5 +231,5 @@ test('layout gate and onboarding page share one shared-search setup predicate', 
   assert.match(layout, /if \(!isAccountRoute && await needsSharedSearchSetup\(supabase, user\.id, search, isOwner\)\) redirect\(withRedirectParam\('\/onboarding', requestedPath\)\);/);
   assert.match(page, /const sharedSetup = Boolean\(profile\?\.onboarding_complete\);\n\s+if \(sharedSetup && !\(await needsSharedSearchSetup\(supabase, user\.id, search, role === 'owner'\)\)\) redirect\('\/homes'\);/);
   // Finishing always leaves a participant document, so the gate cannot loop.
-  assert.match(onboarding, /await persistPriorities\(priorities\);\n\s+await completeOnboarding\(/);
+  assert.match(onboarding, /await persistPriorities\(priorities\);\n\s+await services\.completeOnboarding\(/);
 });

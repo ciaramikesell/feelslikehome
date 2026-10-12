@@ -23,8 +23,9 @@ test('all three search types map to their existing intents and property types', 
   const [homeBuy, homeRent, apartment] = ['home_buy', 'home_rent', 'apartment_rent'].map((key) => applySearchChoice({}, key));
   assert.deepEqual([homeBuy.searchType, homeRent.searchType, apartment.searchType], ['purchase', 'rental', 'rental']);
   assert.deepEqual([homeBuy.onboardingSearchType, homeRent.onboardingSearchType, apartment.onboardingSearchType], ['home_buy', 'home_rent', 'apartment_rent']);
-  const onboarding = read('src/components/onboarding/Onboarding.jsx');
-  assert.match(onboarding, /home_buy: 'Home to Buy', home_rent: 'Home to Rent', apartment_rent: 'Apartment to Rent'/);
+  // Onboarding V2 Basics offers all three through a compact labelled control.
+  const basics = read('src/components/onboarding/BasicsStep.jsx');
+  assert.match(basics, /home_buy: 'a home to buy', home_rent: 'a home to rent', apartment_rent: 'an apartment to rent'/);
 });
 
 test('Basics field applicability is audited per search type, not cloned from purchase', () => {
@@ -157,7 +158,10 @@ test('drag and tap both move a priority by changing only its level', () => {
 test('final persistence: onboarding saves through the participant’s own row before completing', () => {
   const onboarding = read('src/components/onboarding/Onboarding.jsx');
   assert.match(onboarding, /savePriorities\(createClient\(\), \{ id: searchId \}, userId, next\)/);
-  assert.match(onboarding, /await flush\(\);\n(?:\s+\/\/.*\n)*\s+await persistPriorities\(priorities\);\n\s+await completeOnboarding\(createClient\(\), userId, \{ version, state: completeOnboardingState\(version, progressRef\.current\) \}\);/);
+  // Real pages persist through Supabase; only the dev preview swaps these out.
+  assert.match(onboarding, /completeOnboarding: \(userId, progress\) => completeOnboarding\(createClient\(\), userId, progress\)/);
+  assert.match(onboarding, /services = SUPABASE_SERVICES \}\) \{/);
+  assert.match(onboarding, /await flush\(\);\n(?:\s+\/\/.*\n)*\s+await persistPriorities\(priorities\);\n\s+await services\.completeOnboarding\(userId, \{ version, state: completeOnboardingState\(version, progressRef\.current\) \}\);/);
   assert.match(onboarding, /onMove=\{\(item, tier\) => patch\(\(next\) => moveCriterion\(next, item\.categoryKey, item\.label, tier\)\)\}/);
 });
 

@@ -736,6 +736,19 @@ export async function createInvitation(supabase, searchId, invitedBy, invitedEma
   return data;
 }
 
+// Who is already in this search, for the owner (Onboarding V2 Step 3). Reads
+// only what the existing owner policies allow: member roles on their own
+// search, and the co-buyer's display name through the existing
+// collaborator-context RPC. Invitations are managed in My Search, not here.
+export async function getSearchPeopleRows(supabase, search) {
+  const { data: members, error } = await supabase.from('search_members').select('role').eq('search_id', search.id);
+  if (error) throw error;
+  const coBuyerName = (members || []).some((member) => member.role === 'co_buyer')
+    ? (await resolveCollaboratorSearchContext(supabase, search).catch(() => null))?.displayName || null
+    : null;
+  return { members: members || [], coBuyerName };
+}
+
 export async function createBuyerInvitation(supabase, invitedEmail) {
   const { data, error } = await supabase.rpc('create_buyer_invitation', { p_invited_email: invitedEmail.trim().toLowerCase() });
   if (error) throw error;

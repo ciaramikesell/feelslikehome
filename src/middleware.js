@@ -2,6 +2,15 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 
 export async function middleware(request) {
+  // /dev/ holds development-only tools (the onboarding preview). Production
+  // answers a real 404 before anything else runs; in development they need no
+  // session and no Supabase configuration, so the session refresh is skipped.
+  if (request.nextUrl.pathname.startsWith('/dev/')) {
+    return process.env.NODE_ENV === 'production'
+      ? new NextResponse('Not found', { status: 404 })
+      : NextResponse.next();
+  }
+
   // Layouts (unlike page.js) never receive the current path/query as a prop —
   // a well-known Next.js App Router gap — so the auth gate in
   // src/app/(app)/layout.js has no way to know it was e.g. `/homes?url=...`

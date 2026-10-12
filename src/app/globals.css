@@ -1820,13 +1820,8 @@ details[open] > summary .hh-accordion-chevron, .hh-more-home-details:has(.hh-mor
 
 /* Onboarding */
 .flh-onboarding { max-width: 600px; margin: 0 auto; padding: var(--flh-flow-top-20) 0 calc(24px + env(safe-area-inset-bottom)); }
-.flh-onboarding-brand { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 20px; font-size: 17px; }
-.flh-onboarding-brand b { color: var(--brick); }
 .flh-onboarding-step { display: grid; gap: 14px; }
 .flh-onboarding-header { margin-bottom: 4px; }
-.flh-onboarding-progress { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; margin-bottom: 18px; }
-.flh-onboarding-progress span { height: 4px; border-radius: 999px; background: var(--line); }
-.flh-onboarding-progress span.is-done { background: var(--brick); }
 .flh-onboarding-actions { position: sticky; bottom: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 6px; padding: 14px 0 calc(10px + env(safe-area-inset-bottom)); background: linear-gradient(to bottom, rgba(250,246,239,0), var(--paper) 16px); }
 .flh-onboarding-actions .flh-button-primary { min-width: 180px; }
 .flh-basics-card .flh-option-group:first-of-type { margin-top: 18px; }
@@ -2215,3 +2210,456 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 
 /* Shared-search setup: a quiet way out to the person's own search, never a trap. */
 .flh-shared-setup-exit { margin: 4px 0 0; text-align: center; }
+
+/* ── Onboarding V2 shell (Phase 1) ───────────────────────────────────────────
+   Frame only: background, columns, top bar, progress, type scale, step rhythm
+   and the forward action. Step content keeps its existing styles. Every rule is
+   scoped to .flh-onboarding-root, so no other page can be affected.
+   Measured from the approved mobile design (393pt wide): 22px gutters,
+   6-segment 3px progress with 6px gaps, Fraunces 35/1.03 titles, 15/1.5 leads,
+   20px card radius and padding, 56px CTA with 14px corners and a 42px arrow tile.
+     ≤700px   phone: single column, sticky action bar (as today)
+     701–959  tablet: centred 600px column, sticky action bar
+     ≥960px   desktop: rail (brand, steps, reassurance) + 600px step column,
+              actions in normal document flow                                  */
+.flh-onboarding-root {
+  --ob-line: #DDD5CA;      /* card, control and back-button borders in the design */
+  --ob-track: #E2DBD0;     /* unfilled progress segments */
+  --ob-gutter: 22px;
+  --ob-measure: 600px;     /* widest step column at any size */
+  --ob-rhythm: 20px;       /* vertical gap between a step's blocks */
+  --ob-title-size: 35px;
+}
+/* The phone reservation for a bottom navigation bar does not apply: onboarding
+   has none, and it left ~130px of empty space below the last action. */
+.hh-root.flh-onboarding-root:not(.hh-focused-route):has(> .beta-feedback) { padding: 0 var(--ob-gutter); }
+.hh-root.flh-onboarding-root { padding: 0 var(--ob-gutter); }
+.flh-onboarding-root .flh-onboarding { padding-top: var(--flh-flow-top-10); }
+
+/* Top bar: back · brand · step count, then the progress segments. Grid areas keep
+   the brand centred whether or not a Back button is present. */
+.flh-ob-topbar { margin-bottom: 11px; }
+.flh-ob-topbar-row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; grid-template-areas: "back brand count"; align-items: center; min-height: 44px; }
+.flh-ob-back { grid-area: back; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1px solid var(--ob-line); border-radius: 50%; background: var(--flh-card); color: var(--ink); cursor: pointer; }
+.flh-ob-back:hover { background: #fff; }
+.flh-ob-brand { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+.flh-ob-topbar .flh-ob-brand { grid-area: brand; justify-self: center; }
+.flh-ob-wordmark { color: var(--ink); font: 600 17px/1.1 var(--font-serif); letter-spacing: -.01em; white-space: nowrap; }
+.flh-ob-wordmark b { color: var(--brick); font-weight: 600; }
+.flh-ob-count { grid-area: count; justify-self: end; color: var(--ink-soft); font: 600 12px/1 var(--font-sans); font-variant-numeric: tabular-nums; }
+.flh-ob-progress { display: grid; grid-template-columns: repeat(var(--ob-steps, 1), minmax(0, 1fr)); gap: 6px; margin-top: 3px; }
+.flh-ob-progress span { height: 3px; border-radius: 999px; background: var(--ob-track); }
+.flh-ob-progress span.is-done { background: var(--brick); }
+
+/* Type and rhythm inside a step. */
+.flh-onboarding-root .flh-onboarding-step { gap: var(--ob-rhythm); }
+.flh-onboarding-root .flh-onboarding-header { margin: 0; }
+.flh-onboarding-root .flh-onboarding-header .flh-eyebrow { margin: 0 0 10px; font-size: 11.5px; letter-spacing: .12em; }
+.flh-onboarding-root .flh-page-title { font-size: var(--ob-title-size); line-height: 1.03; letter-spacing: -.025em; }
+.flh-onboarding-root .flh-lead { margin-top: 16px; font-size: 15px; line-height: 1.5; }
+.flh-onboarding-root .flh-card { padding: 20px; border-color: var(--ob-line); border-radius: 20px; }
+/* Notices between the top bar and the step (save errors, the shared-setup exit) share the step rhythm. */
+.flh-onboarding-root .flh-onboarding > .hh-save-error, .flh-onboarding-root .flh-shared-setup-exit { margin: 0 0 var(--ob-rhythm); }
+
+/* Forward action: full width, label left, arrow tile right. */
+.flh-onboarding-root .flh-onboarding-actions { display: block; margin-top: 8px; }
+.flh-ob-cta { justify-content: space-between; width: 100%; min-height: 56px; padding: 0 7px 0 20px; border-radius: 14px; font-size: 17px; box-shadow: 0 12px 24px -14px rgba(185,83,50,.6); }
+.flh-ob-cta-icon { display: grid; place-items: center; flex-shrink: 0; width: 42px; height: 42px; border-radius: 10px; background: rgba(255,255,255,.16); }
+
+/* Desktop-only rail: hidden on phones and tablets, where the top bar does its job. */
+.flh-ob-rail { display: none; }
+
+@media (max-width: 360px) {
+  .flh-onboarding-root { --ob-gutter: 16px; --ob-title-size: 32px; }
+}
+
+@media (min-width: 701px) {
+  .flh-onboarding-root { --ob-gutter: 32px; --ob-title-size: 40px; }
+  .flh-onboarding-root .flh-onboarding { padding-top: 32px; }
+}
+
+@media (min-width: 960px) {
+  .flh-onboarding-root { --ob-rhythm: 24px; --ob-title-size: 42px; }
+  .flh-ob-layout { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, var(--ob-measure)); column-gap: clamp(48px, 7vw, 112px); justify-content: center; align-items: start; padding: 56px 0 72px; }
+  .flh-onboarding-root .flh-onboarding { max-width: none; margin: 0; padding: 0; }
+  .flh-ob-rail { position: sticky; top: calc(var(--flh-safe-top) + 56px); display: grid; gap: 32px; }
+  .flh-ob-rail .flh-ob-wordmark { font-size: 24px; }
+  .flh-ob-rail-head { display: grid; justify-items: start; gap: 10px; }
+  .flh-ob-rail-context { margin: 0; color: var(--ink-soft); font-size: 14px; line-height: 1.45; }
+  .flh-ob-steps { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+  .flh-ob-steps li { display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: center; gap: 12px; min-height: 40px; color: var(--ink-soft); font: 500 15px/1.3 var(--font-sans); }
+  .flh-ob-steps li.is-current { color: var(--ink); font-weight: 700; }
+  .flh-ob-step-marker { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--ob-line); border-radius: 50%; background: var(--flh-card); font: 700 12px/1 var(--font-sans); font-variant-numeric: tabular-nums; }
+  .flh-ob-steps li.is-current .flh-ob-step-marker { border-color: var(--brick); background: var(--brick); color: #fff; }
+  .flh-ob-steps li.is-done .flh-ob-step-marker { border-color: var(--flh-sage-line); background: var(--flh-sage-bg); color: var(--flh-sage-ink); }
+  .flh-ob-reassurance { display: grid; gap: 10px; margin: 0; padding: 20px 0 0; border-top: 1px solid var(--ob-line); list-style: none; color: var(--ink-soft); font-size: 14px; line-height: 1.45; }
+  /* Brand and progress move to the rail; the top bar keeps only Back. */
+  .flh-ob-topbar .flh-ob-brand, .flh-ob-count, .flh-ob-topbar .flh-ob-progress { display: none; }
+  .flh-ob-topbar { margin-bottom: 20px; }
+  .flh-ob-topbar:not(:has(.flh-ob-back)) { display: none; }
+  .flh-ob-topbar-row { display: flex; }
+  /* Actions in normal document flow, not a sticky phone bar. */
+  .flh-onboarding-root .flh-onboarding-actions { position: static; margin-top: 12px; padding: 0; background: none; }
+  .flh-ob-cta { width: auto; min-width: 280px; gap: 32px; }
+}
+
+/* ── Onboarding V2 — Step 1: The Basics (Phase 2A) ─────────────────────────────
+   Measured from the approved Basics design (393pt frame): 20px card padding,
+   14/600 ink field labels, 48px inputs (12px corners), 52px steppers (14px
+   corners, 40px warm-grey buttons), 1px dividers with 20px either side, a 12px
+   column gap, and the 56px warm expandable Garage row. Scoped to the
+   onboarding root and the flh-ob- prefix; nothing outside onboarding uses them. */
+.flh-onboarding-root .flh-page-title em { font-style: normal; color: var(--brick); }
+.flh-onboarding-root {
+  --ob-warm: #F1EBE3;      /* stepper buttons, search-type track */
+  --ob-warm-row: #F7F2EB;  /* expandable rows */
+  --ob-placeholder: #9A8E84;
+}
+.flh-ob-basics-card { display: block; }
+.flh-ob-field { display: grid; align-content: start; gap: 8px; min-width: 0; }
+.flh-ob-label { display: block; color: var(--ink); font: 600 14px/1.3 var(--font-sans); }
+.flh-ob-optional { display: block; margin-top: 2px; color: var(--ink-soft); font: 600 10px/1.2 var(--font-sans); letter-spacing: .08em; text-transform: uppercase; }
+.flh-ob-help { margin: 0; color: var(--ink-soft); font-size: 11.5px; line-height: 1.4; }
+.flh-ob-hint { margin: 8px 0 0; color: var(--ink-soft); font-size: 12px; line-height: 1.4; }
+.flh-ob-divider { margin: 20px 0; border: 0; border-top: 1px solid var(--ob-line); }
+.flh-ob-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+
+/* Text inputs: currency and unit fields. */
+.flh-ob-input { display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 14px; border: 1px solid var(--ob-line); border-radius: 12px; background: #fff; }
+.flh-ob-input:focus-within { border-color: var(--brick); outline: 3px solid var(--focus-ring); outline-offset: 1px; }
+.flh-ob-input input { flex: 1 1 0; width: 0; min-width: 0; padding: 0; border: 0; outline: none; background: transparent; color: var(--ink); font: 500 16px var(--font-sans); font-variant-numeric: tabular-nums; }
+.flh-ob-input input::placeholder { color: var(--ob-placeholder); font-weight: 400; }
+.flh-ob-currency { color: var(--brick); font: 600 18px/1 var(--font-sans); }
+.flh-ob-unit { flex-shrink: 0; color: var(--ink-soft); font: 500 12.5px/1 var(--font-sans); white-space: nowrap; }
+
+/* Steppers: − · value · +, with a real "not set" state. */
+.flh-ob-stepper { display: grid; grid-template-columns: 40px minmax(0, 1fr) 40px; min-height: 52px; overflow: hidden; border: 1px solid var(--ob-line); border-radius: 14px; background: #fff; }
+.flh-ob-stepper button { display: grid; place-items: center; padding: 0; border: 0; background: var(--ob-warm); color: var(--ink); cursor: pointer; }
+.flh-ob-stepper button:hover:not(:disabled) { background: #EAE2D8; }
+.flh-ob-stepper button:disabled { color: rgba(46,38,33,.3); cursor: default; }
+.flh-ob-stepper button:focus-visible { outline-offset: -3px; }
+.flh-ob-stepper output { display: grid; align-content: center; justify-items: center; gap: 3px; min-width: 0; }
+.flh-ob-stepper-value { color: var(--ink); font: 600 18px/1 var(--font-sans); font-variant-numeric: tabular-nums; }
+.flh-ob-stepper-value.is-unset { color: #A99D92; font-weight: 400; }
+.flh-ob-stepper-note { color: var(--ink-soft); font: 500 10px/1 var(--font-sans); }
+
+/* The required kind of search: one quiet sentence, "I’m looking for [choice ▾]".
+   The select reads as inline terracotta text; unset, it carries a dashed outline
+   so the one required answer is easy to spot without a separate card. */
+.flh-ob-searchtype { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-height: 40px; }
+.flh-onboarding-root .flh-ob-switch-note { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 0 0; padding: 10px 12px 10px 14px; border-radius: 12px; background: var(--ob-warm-row); color: var(--ink-soft); font: 500 12.5px/1.45 var(--font-sans); }
+.flh-onboarding-root .flh-ob-switch-note p { margin: 0; }
+.flh-onboarding-root .flh-ob-switch-note .flh-text-action { flex-shrink: 0; min-height: 40px; }
+.flh-ob-searchtype-label { color: var(--ink); font: 600 14px/1.3 var(--font-sans); }
+.flh-ob-searchtype-select { position: relative; display: inline-flex; align-items: center; color: var(--brick-deep); }
+.flh-ob-searchtype-select select { appearance: none; -webkit-appearance: none; min-height: 40px; margin: 0; padding: 0 30px 0 12px; border: 1px solid var(--ob-line); border-radius: 12px; background: #fff; color: inherit; font: 600 15px/1.2 var(--font-sans); cursor: pointer; }
+.flh-ob-searchtype-select svg { position: absolute; right: 10px; pointer-events: none; }
+.flh-ob-searchtype.is-unset .flh-ob-searchtype-select select { border: 1px dashed var(--brick); background: #FDF6F1; }
+.flh-ob-searchtype-select select:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 1px; }
+
+/* The sticky Continue bar covers the bottom of the viewport on phones and
+   tablets (its 56px button plus padding). Declaring that strip as scroll padding
+   makes focus, keyboard and scroll-into-view treat it as covered, so a focused
+   field or pill always lands above the bar. Desktop actions are in normal flow. */
+@media (max-width: 959px) {
+  html:has(.flh-onboarding-root .flh-onboarding-actions) { scroll-padding-bottom: 104px; }
+}
+
+/* Expandable rows (Garage preferences; More about the home). */
+.flh-ob-disclosures { display: grid; gap: 12px; margin-top: 20px; }
+.flh-ob-disclosure { border: 1px solid var(--ob-line); border-radius: 14px; background: var(--ob-warm-row); }
+.flh-ob-disclosure-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 56px; padding: 10px 14px; border: 0; border-radius: inherit; background: none; color: var(--brick); text-align: left; cursor: pointer; }
+.flh-ob-disclosure-toggle svg { flex-shrink: 0; transition: transform .15s ease; }
+.flh-ob-disclosure.is-open .flh-ob-disclosure-toggle svg { transform: rotate(180deg); }
+.flh-ob-disclosure-copy { display: grid; gap: 3px; min-width: 0; }
+.flh-ob-disclosure-title { color: var(--ink); font: 600 14px/1.25 var(--font-sans); }
+.flh-ob-disclosure-summary { color: var(--ink-soft); font: 500 11.5px/1.3 var(--font-sans); overflow-wrap: anywhere; }
+.flh-ob-disclosure-panel { display: grid; gap: 16px; padding: 2px 14px 16px; }
+.flh-ob-disclosure-panel[hidden] { display: none; }
+.flh-ob-pills { min-width: 0; margin: 0; padding: 0; border: 0; }
+.flh-ob-pills > legend { margin-bottom: 8px; padding: 0; }
+.flh-ob-sublabel { color: var(--ink-soft); font: 600 12.5px/1.3 var(--font-sans); }
+.flh-ob-pill { position: relative; display: inline-flex; align-items: center; min-height: 38px; padding: 0 14px; border: 1px solid var(--flh-control-line); border-radius: 999px; background: #fff; color: var(--ink-soft); font: 500 13.5px/1.2 var(--font-sans); cursor: pointer; }
+/* The real (invisible) input covers the whole pill, so taps land on it and a
+   focused pill scrolls fully into view, clear of the sticky Continue. */
+.flh-ob-pill-input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; border-radius: inherit; opacity: 0; cursor: pointer; }
+.flh-ob-pill.is-selected { border-color: var(--brick); background: #FDF1EA; color: var(--brick-deep); font-weight: 600; }
+.flh-ob-pill:has(:focus-visible) { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+
+@media (min-width: 960px) {
+  /* Readable desktop type without changing the phone scale. */
+  .flh-onboarding-root .flh-lead { font-size: 16px; }
+  /* The action row aligns to the card's right edge; Continue keeps a button's
+     proportions instead of a phone-width bar. */
+  .flh-onboarding-root .flh-onboarding-actions { display: flex; justify-content: flex-end; }
+  .flh-ob-cta { min-width: 240px; min-height: 52px; font-size: 16px; }
+}
+
+/* ── Onboarding V2 — Step 2: Where are you looking? (Phase 2B) ─────────────────
+   From the approved Location design: one "Areas of interest" card (search
+   field with a terracotta search icon, removable area chips, a warm hint row
+   with a terracotta icon tile) and an optional "What places matter to you?"
+   card (sage icon tile, Fraunces title, dashed add row, quiet footnote).
+   Scoped to the onboarding root and the flh-ob- prefix. */
+.flh-ob-locations .flh-ob-areas-card { display: grid; gap: 12px; }
+.flh-ob-area-search { position: relative; display: grid; gap: 10px; }
+.flh-ob-search-input { min-height: 56px; border-radius: 14px; }
+.flh-ob-search-input > svg { flex-shrink: 0; color: var(--brick); }
+.flh-ob-search-input input:disabled { color: var(--ink-soft); }
+/* The value stays 16px (no iOS zoom); the long hint is set smaller so it fits a phone. */
+.flh-ob-search-input input::placeholder { font-size: 14px; }
+
+/* Suggestions open over the content below rather than pushing it down. */
+.flh-ob-area-menu { position: absolute; z-index: 30; top: calc(100% + 6px); left: 0; right: 0; max-height: 300px; overflow-y: auto; padding: 6px; border: 1px solid var(--ob-line); border-radius: 14px; background: #fff; box-shadow: 0 12px 28px rgba(46,38,33,.16); }
+.flh-ob-area-menu ul { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.flh-ob-area-menu li { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; padding: 8px 10px; border-radius: 10px; cursor: pointer; }
+.flh-ob-area-menu li.is-active { background: #FDF1EA; }
+.flh-ob-area-menu li.is-added { cursor: default; }
+.flh-ob-area-status { margin: 0; padding: 12px 10px; color: var(--ink-soft); font: 500 13px/1.4 var(--font-sans); }
+.flh-ob-area-status.is-error { color: var(--negative); }
+.flh-ob-area-copy { display: grid; gap: 2px; min-width: 0; }
+.flh-ob-area-name { color: var(--ink); font: 600 14px/1.3 var(--font-sans); overflow-wrap: anywhere; }
+.flh-ob-area-secondary { color: var(--ink-soft); font: 500 12px/1.35 var(--font-sans); overflow-wrap: anywhere; }
+.flh-ob-area-type, .flh-ob-area-added { flex-shrink: 0; justify-self: start; padding: 3px 8px; border-radius: 999px; background: var(--ob-warm); color: var(--ink-soft); font: 700 10px/1.3 var(--font-sans); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.flh-ob-area-type.is-school_district { background: var(--sage); color: var(--positive); }
+.flh-ob-area-type.is-zip { background: #EEF0F4; color: #4F5868; }
+.flh-ob-area-added { background: none; color: var(--positive); }
+
+/* Selected areas: removable chips. Each is an alternative, not a requirement. */
+.flh-ob-areas { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.flh-ob-area-chip { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; min-height: 44px; padding: 4px 4px 4px 14px; border: 1px solid var(--brick); border-radius: 999px; background: #FDF1EA; }
+.flh-ob-area-chip .flh-ob-area-copy { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+.flh-ob-area-chip .flh-ob-area-name { color: var(--brick-deep); font-size: 13.5px; }
+.flh-ob-area-chip .flh-ob-area-type { background: rgba(255,255,255,.7); }
+.flh-ob-area-chip button { display: grid; flex-shrink: 0; place-items: center; width: 36px; aspect-ratio: 1; padding: 0; border: 0; border-radius: 50%; background: none; color: var(--brick-deep); cursor: pointer; }
+.flh-ob-area-chip button:hover { background: rgba(193,89,47,.12); }
+
+.flh-ob-area-hint { display: flex; align-items: center; gap: 14px; padding: 18px 16px; border-radius: 14px; background: var(--ob-warm-row); }
+.flh-ob-area-hint > span:last-child { display: grid; gap: 4px; min-width: 0; }
+.flh-ob-area-hint strong { color: var(--ink); font: 600 13px/1.3 var(--font-sans); }
+.flh-ob-area-hint strong + span { color: var(--ink-soft); font: 500 11px/1.4 var(--font-sans); }
+.flh-ob-area-hint-icon { display: grid; flex-shrink: 0; place-items: center; width: 36px; aspect-ratio: 1; border-radius: 10px; background: #F6E3D8; color: var(--brick); }
+
+/* What places matter to you? */
+.flh-onboarding-root .flh-card.flh-ob-places { display: grid; gap: 16px; }
+.flh-ob-places-head { display: flex; align-items: flex-start; gap: 12px; }
+.flh-ob-places-icon { display: grid; flex-shrink: 0; place-items: center; width: 42px; height: 42px; border-radius: 12px; background: var(--sage); color: var(--moss); }
+.flh-ob-places-title { margin: 6px 0 6px; color: var(--ink); font: 600 19px/1.2 var(--font-serif); letter-spacing: -.015em; }
+.flh-ob-places-copy { margin: 0; color: var(--ink-soft); font: 500 12px/1.45 var(--font-sans); }
+.flh-ob-place-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.flh-ob-place-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; padding: 8px 6px 8px 14px; border: 1px solid var(--ob-line); border-radius: 14px; background: #fff; }
+.flh-ob-place-row button { display: grid; flex-shrink: 0; place-items: center; width: 40px; aspect-ratio: 1; padding: 0; border: 0; border-radius: 10px; background: none; color: var(--ink-soft); cursor: pointer; }
+.flh-ob-place-row button:hover:not(:disabled) { background: var(--ob-warm); color: var(--negative); }
+.flh-ob-add-place { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 52px; padding: 0 14px 0 16px; border: 1px dashed rgba(46,38,33,.28); border-radius: 14px; background: var(--ob-warm-row); color: var(--brick-deep); font: 600 13px/1.2 var(--font-sans); text-align: left; cursor: pointer; }
+.flh-ob-add-place:hover:not(:disabled) { border-color: var(--brick); }
+.flh-ob-add-place:disabled { opacity: .55; cursor: default; }
+.flh-ob-add-place > span:first-of-type { flex: 1 1 auto; }
+.flh-ob-optional-tag { color: var(--ink-soft); font: 600 9.5px/1 var(--font-sans); letter-spacing: .08em; text-transform: uppercase; }
+.flh-ob-places-note { margin: 0; color: var(--brick-deep); font: 500 11px/1.4 var(--font-sans); }
+.flh-ob-place-form { display: grid; gap: 16px; padding: 16px; border: 1px solid var(--ob-line); border-radius: 14px; background: var(--ob-warm-row); }
+.flh-ob-place-form .flh-chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.flh-ob-place-address .hh-input { min-height: 48px; border-radius: 12px; font-size: 16px; }
+.flh-ob-place-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+.flh-ob-unbuilt { color: var(--ink-soft); }
+
+/* ── Onboarding V2 — Step 3: Your People (Phase 2C) ────────────────────────────
+   From the approved Your People design: two softly rounded person cards (peach
+   icon tile, Fraunces title, round plus on the right; terracotta border, tint
+   and check when chosen), a sage "How sharing works" disclosure, a quiet
+   centred note, and "Maybe later" beside Continue. The cards capture intent
+   only; inviting happens in My Search. Scoped to the onboarding root and the
+   flh-ob- prefix. */
+.flh-ob-people-cards { display: grid; gap: 14px; }
+.flh-ob-person { display: flex; align-items: center; gap: 16px; width: 100%; min-height: 128px; padding: 20px; border: 1px solid var(--ob-line); border-radius: 20px; background: var(--flh-card); color: inherit; text-align: left; cursor: pointer; transition: border-color .15s ease, background-color .15s ease; }
+.flh-ob-person:hover:not([aria-disabled="true"]) { border-color: rgba(185,83,50,.45); }
+.flh-ob-person.is-selected { border-color: var(--brick); background: #FDF6F1; }
+.flh-ob-person[aria-disabled="true"] { cursor: default; }
+.flh-ob-person:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.flh-ob-person-icon { display: grid; flex-shrink: 0; place-items: center; width: 56px; aspect-ratio: 1; border-radius: 16px; background: #F6E3D8; color: var(--brick); }
+.flh-ob-person-copy { display: grid; flex: 1 1 auto; gap: 6px; min-width: 0; }
+.flh-ob-person-title { color: var(--ink); font: 600 20px/1.2 var(--font-serif); letter-spacing: -.01em; }
+.flh-ob-person-desc { color: var(--ink-soft); font: 500 12px/1.45 var(--font-sans); }
+.flh-ob-person-check { display: grid; flex-shrink: 0; place-items: center; width: 32px; aspect-ratio: 1; border: 1px solid var(--ob-line); border-radius: 50%; background: #fff; color: var(--ink); }
+.flh-ob-person.is-selected .flh-ob-person-check { border-color: var(--brick); background: var(--brick); color: #fff; }
+.flh-ob-person-status { justify-self: start; margin-top: 2px; padding: 4px 10px; border-radius: 999px; background: var(--sage); color: var(--positive); font: 600 11.5px/1.35 var(--font-sans); }
+
+/* How sharing works (sage disclosure). */
+.flh-ob-sharing { border: 1px solid rgba(86,114,77,.22); border-radius: 16px; background: var(--sage); }
+.flh-ob-sharing-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 64px; padding: 12px 18px; border: 0; border-radius: inherit; background: none; color: var(--brick); text-align: left; cursor: pointer; }
+.flh-ob-sharing-toggle:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.flh-ob-sharing-toggle > span { display: grid; gap: 3px; }
+.flh-ob-sharing-toggle svg { flex-shrink: 0; transition: transform .15s ease; }
+.flh-ob-sharing.is-open .flh-ob-sharing-toggle svg { transform: rotate(180deg); }
+.flh-ob-sharing-title { color: #3F5238; font: 600 16px/1.2 var(--font-serif); }
+.flh-ob-sharing-summary { color: var(--moss); font: 500 11px/1.3 var(--font-sans); }
+.flh-ob-sharing-panel { padding: 0 18px 16px; }
+.flh-ob-sharing-panel[hidden] { display: none; }
+.flh-ob-sharing-panel ul { display: grid; gap: 8px; margin: 0; padding-left: 18px; color: #3F5238; font: 500 12.5px/1.5 var(--font-sans); }
+.flh-ob-people-note { margin: 0; color: var(--ink-soft); font: 500 12px/1.45 var(--font-sans); text-align: center; }
+
+/* "Maybe later" beside Continue, as in the design. */
+.flh-onboarding-root .flh-ob-people-actions { display: flex; align-items: center; gap: 12px; }
+.flh-onboarding-root .flh-ob-people-actions .flh-ob-cta { flex: 1 1 auto; width: auto; min-width: 0; }
+.flh-ob-later { flex-shrink: 0; min-height: 48px; padding: 0 14px; font-size: 13.5px; }
+@media (max-width: 380px) {
+  .flh-ob-person { gap: 12px; padding: 16px; }
+  .flh-ob-person-icon { width: 48px; }
+}
+@media (min-width: 960px) {
+  .flh-onboarding-root .flh-ob-people-actions { justify-content: flex-end; }
+  .flh-onboarding-root .flh-ob-people-actions .flh-ob-cta { flex: 0 0 auto; min-width: 240px; }
+}
+
+/* ── Onboarding V2 — Step 4: What matters most? (Phase 2D) ─────────────────────
+   From the approved What Matters design: numbered sections ("01 Neighborhood")
+   in Fraunces, divided by hairlines; pill chips with a small line icon that turn
+   terracotta (with a check) when chosen; a quiet "More to consider" disclosure;
+   and a picks count beside the CTA ("Skip for now" until something is chosen).
+   Scoped to the onboarding root and the flh-ob- prefix. */
+.flh-ob-matters-section { display: grid; gap: 14px; padding-top: 22px; border-top: 1px solid var(--ob-line); }
+.flh-ob-matters-title { display: flex; align-items: baseline; gap: 10px; margin: 0; color: var(--ink); font: 600 24px/1.15 var(--font-serif); letter-spacing: -.015em; }
+.flh-ob-matters-number { color: var(--brick); font: 600 11px/1 var(--font-sans); letter-spacing: .06em; }
+.flh-ob-matters-note { margin: -6px 0 0; color: var(--ink-soft); font: 500 12px/1.4 var(--font-sans); }
+.flh-ob-chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.flh-ob-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 16px 0 14px; border: 1px solid var(--ob-line); border-radius: 999px; background: var(--flh-card); color: var(--ink-soft); font: 500 13.5px/1.2 var(--font-sans); text-align: left; cursor: pointer; transition: border-color .15s ease, background-color .15s ease; }
+.flh-ob-chip-tag { margin-left: -2px; padding: 2px 7px; border-radius: 999px; background: var(--ob-warm-row); color: var(--ink-soft); font: 600 10.5px/1.2 var(--font-sans); letter-spacing: .02em; white-space: nowrap; }
+.flh-ob-chip svg { flex-shrink: 0; color: var(--ink-soft); }
+.flh-ob-chip:hover:not(.is-selected) { border-color: rgba(185,83,50,.45); }
+.flh-ob-chip:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.flh-ob-chip.is-selected { border-color: var(--brick); background: #FDF1EA; color: var(--brick-deep); font-weight: 600; }
+.flh-ob-chip.is-selected svg { color: var(--brick); }
+
+.flh-ob-more { border: 1px solid var(--ob-line); border-radius: 16px; background: var(--ob-warm-row); }
+.flh-ob-more-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 60px; padding: 10px 16px; border: 0; border-radius: inherit; background: none; color: var(--brick); text-align: left; cursor: pointer; }
+.flh-ob-more-toggle:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.flh-ob-more-toggle > span { display: grid; gap: 3px; }
+.flh-ob-more-toggle svg { flex-shrink: 0; transition: transform .15s ease; }
+.flh-ob-more.is-open .flh-ob-more-toggle svg { transform: rotate(180deg); }
+.flh-ob-more-title { color: var(--ink); font: 600 14px/1.25 var(--font-sans); }
+.flh-ob-more-summary { color: var(--ink-soft); font: 500 11.5px/1.3 var(--font-sans); }
+.flh-ob-more-panel { padding: 2px 16px 16px; }
+.flh-ob-more-panel[hidden] { display: none; }
+
+.flh-ob-add-own { display: inline-flex; align-items: center; justify-self: start; gap: 8px; min-height: 44px; padding: 0 4px; border: 0; background: none; color: var(--brick); font: 600 14px var(--font-sans); cursor: pointer; }
+.flh-ob-own-form { display: grid; gap: 10px; padding: 16px; border: 1px solid var(--ob-line); border-radius: 16px; background: var(--flh-card); }
+.flh-ob-own-category { min-height: 44px; padding: 0 12px; border: 1px solid var(--ob-line); border-radius: 12px; background: #fff; color: var(--ink); font: 500 14px var(--font-sans); }
+
+/* Picks count beside the CTA, as in the design. On this long, chip-only screen
+   the action row sits at the end of the content on every width (not sticky):
+   compared on a 390px phone, the sticky bar covered chips mid-scroll, while the
+   in-flow row never overlaps an option and is still reached by Tab. Each chip
+   already shows its own chosen state, so the count isn't needed mid-scroll. */
+.flh-onboarding-root .flh-ob-matters-actions { position: static; display: flex; align-items: center; gap: 14px; margin-top: 8px; padding: 6px 0 calc(16px + env(safe-area-inset-bottom)); background: none; }
+.flh-onboarding-root .flh-ob-matters-actions .flh-ob-cta { flex: 1 1 auto; width: auto; min-width: 0; }
+.flh-ob-picks { display: grid; flex-shrink: 0; justify-items: center; min-width: 44px; color: var(--brick); }
+.flh-ob-picks strong { font: 600 24px/1 var(--font-serif); }
+.flh-ob-picks span { margin-top: 2px; font: 600 9.5px/1 var(--font-sans); letter-spacing: .08em; text-transform: uppercase; }
+.flh-ob-cta-quiet { border: 1px solid var(--brick); background: var(--flh-card); color: var(--brick-deep); box-shadow: none; }
+.flh-ob-cta-quiet .flh-ob-cta-icon { background: var(--brick); color: #fff; }
+@media (min-width: 960px) {
+  .flh-onboarding-root .flh-ob-matters-actions { justify-content: flex-end; }
+  .flh-onboarding-root .flh-ob-matters-actions .flh-ob-cta { flex: 0 0 auto; min-width: 260px; }
+}
+
+/* ── Onboarding V2 — Step 5: Let's put things in order (Phase 2E) ──────────────
+   From the approved Rank design: three rounded level cards whose headers are
+   tinted (peach Must-Have, sage Important, warm grey Nice-to-Have) with a
+   Fraunces title, a short description and a round count; cream bodies with a
+   quiet placeholder; a dashed empty state; and a sage "How Match handles
+   missing information" disclosure. Each row has a drag handle and an assignment
+   menu. Scoped to the onboarding root and the flh-ob- prefix. */
+.flh-ob-rank-info { background: #EEF2EA; }
+.flh-ob-rank-info-title { color: #3F5238; font: 600 13px/1.3 var(--font-sans); }
+.flh-ob-rank-hint { margin: -6px 0 0; color: var(--ink-soft); font: 500 11.5px/1.4 var(--font-sans); }
+.flh-ob-rank-empty { display: grid; justify-items: center; gap: 8px; padding: 24px 20px; border: 1px dashed rgba(46,38,33,.28); border-radius: 20px; background: var(--flh-card); text-align: center; }
+.flh-ob-rank-empty-title { margin: 0; color: var(--ink); font: 600 18px/1.25 var(--font-serif); }
+.flh-ob-rank-empty-copy { margin: 0 0 6px; color: var(--ink-soft); font: 500 12.5px/1.45 var(--font-sans); }
+.flh-ob-rank-empty .flh-button { border-color: var(--brick); color: var(--brick-deep); }
+.flh-ob-rank-levels { display: grid; gap: 14px; }
+.flh-ob-rank-level { overflow: hidden; border: 1px solid var(--ob-line); border-radius: 20px; background: var(--flh-card); transition: box-shadow .15s ease; }
+.flh-ob-rank-level.is-drop-target { box-shadow: 0 0 0 3px var(--focus-ring); }
+.flh-ob-rank-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 18px; }
+.flh-ob-rank-head > span:first-child { display: grid; gap: 4px; min-width: 0; }
+.flh-ob-rank-level.is-must .flh-ob-rank-head { background: #F4E0D7; }
+.flh-ob-rank-level.is-important .flh-ob-rank-head { background: #E1E7DB; }
+.flh-ob-rank-level.is-nice .flh-ob-rank-head { background: #EFEAE3; }
+.flh-ob-rank-title { margin: 0; color: var(--ink); font: 600 22px/1.15 var(--font-serif); letter-spacing: -.01em; }
+.flh-ob-rank-desc { color: var(--ink-soft); font: 500 11.5px/1.35 var(--font-sans); }
+.flh-ob-rank-count { display: grid; flex-shrink: 0; place-items: center; width: 32px; aspect-ratio: 1; border-radius: 50%; color: #fff; font: 700 14px/1 var(--font-sans); }
+.flh-ob-rank-level.is-must .flh-ob-rank-count { background: var(--brick); }
+.flh-ob-rank-level.is-important .flh-ob-rank-count { background: var(--moss); }
+.flh-ob-rank-level.is-nice .flh-ob-rank-count { background: #9A8E84; }
+.flh-ob-rank-placeholder { margin: 0; padding: 18px; color: var(--ink-soft); font: 500 11.5px/1.4 var(--font-sans); text-align: center; }
+.flh-ob-rank-list { margin: 0; padding: 0; list-style: none; }
+.flh-ob-rank-row { display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 6px 12px 6px 4px; border-top: 1px solid var(--ob-line); background: var(--flh-card); }
+.flh-ob-rank-row.is-dragged { opacity: .55; }
+.flh-ob-rank-handle { display: grid; flex-shrink: 0; place-items: center; width: 36px; min-height: 44px; padding: 0; border: 0; border-radius: 10px; background: none; color: #A99D92; cursor: grab; touch-action: none; }
+.flh-ob-rank.is-dragging .flh-ob-rank-handle { cursor: grabbing; }
+.flh-ob-rank-label { display: flex; flex: 1 1 auto; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-width: 0; color: var(--ink); font: 600 14px/1.3 var(--font-sans); overflow-wrap: anywhere; }
+.flh-ob-rank-qualifier { padding: 2px 8px; border-radius: 999px; background: var(--ob-warm); color: var(--ink-soft); font: 600 11px/1.4 var(--font-sans); }
+.flh-ob-rank-menu { position: relative; display: inline-flex; flex-shrink: 0; align-items: center; color: var(--brick-deep); }
+.flh-ob-rank-menu select { appearance: none; -webkit-appearance: none; min-height: 40px; margin: 0; padding: 0 28px 0 12px; border: 1px solid var(--ob-line); border-radius: 999px; background: #fff; color: inherit; font: 600 12.5px/1.2 var(--font-sans); cursor: pointer; }
+.flh-ob-rank-menu select:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 1px; }
+.flh-ob-rank-menu svg { position: absolute; right: 10px; pointer-events: none; }
+/* Long, list-like screen: actions sit at the end of the content (as in Step 4). */
+.flh-onboarding-root .flh-ob-rank-actions { position: static; margin-top: 8px; padding: 6px 0 calc(16px + env(safe-area-inset-bottom)); background: none; }
+@media (min-width: 960px) {
+  .flh-onboarding-root .flh-ob-rank-actions { display: flex; justify-content: flex-end; }
+}
+
+/* ── Onboarding V2 — Step 6: Your search is ready (Phase 2F) ───────────────────
+   From the approved Review design: the brand mark above the heading, then one
+   numbered card per part ("01 The Basics") with a Fraunces title; an unanswered
+   part shows a warm inner row ("No basics added yet." + "Add details"), an
+   answered one shows its summary with a quiet Edit link. "Go to My Search"
+   beside "Add my first home". Scoped to the onboarding root and flh-ob-. */
+.flh-ob-review-mark { display: block; margin-bottom: -6px; }
+.flh-ob-review-card { display: grid; gap: 14px; padding: 20px; border: 1px solid var(--ob-line); border-radius: 20px; background: var(--flh-card); }
+.flh-ob-review-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.flh-ob-review-title { display: flex; align-items: baseline; gap: 10px; margin: 0; color: var(--ink); font: 600 22px/1.15 var(--font-serif); letter-spacing: -.01em; }
+.flh-ob-review-edit { flex-shrink: 0; min-height: 44px; padding: 0 4px; border: 0; background: none; color: var(--brick); font: 600 13.5px var(--font-sans); cursor: pointer; }
+.flh-ob-review-edit:focus-visible, .flh-ob-review-add:focus-visible, .flh-ob-review-secondary:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.flh-ob-review-empty { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 12px 12px 16px; border-radius: 14px; background: var(--ob-warm-row); color: var(--ink-soft); font: 500 12.5px/1.4 var(--font-sans); }
+.flh-ob-review-add { flex-shrink: 0; min-height: 40px; padding: 0 14px; border: 1px solid var(--ob-line); border-radius: 10px; background: #fff; color: var(--brick-deep); font: 600 12.5px var(--font-sans); cursor: pointer; }
+.flh-ob-review-prompt { margin-top: 4px; }
+.flh-ob-review-list { display: grid; gap: 0; margin: 0; }
+.flh-ob-review-row { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 10px 0; border-top: 1px solid var(--ob-line); }
+.flh-ob-review-row:first-child { border-top: 0; padding-top: 0; }
+.flh-ob-review-row dt { color: var(--ink-soft); font: 500 13px/1.35 var(--font-sans); }
+.flh-ob-review-row dd { margin: 0; color: var(--ink); font: 600 14px/1.35 var(--font-sans); text-align: right; overflow-wrap: anywhere; }
+.flh-ob-review-row dd.is-unset { color: #A99D92; font-weight: 500; }
+.flh-ob-review-chips, .flh-ob-review-places, .flh-ob-review-people { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.flh-ob-review-chips { display: flex; flex-wrap: wrap; }
+.flh-ob-review-chips li { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 8px 12px; border: 1px solid var(--ob-line); border-radius: 999px; background: #fff; }
+.flh-ob-review-chips strong, .flh-ob-review-places strong { color: var(--ink); font: 600 13.5px/1.3 var(--font-sans); overflow-wrap: anywhere; }
+.flh-ob-review-chips span { color: var(--ink-soft); font: 700 10px/1.3 var(--font-sans); letter-spacing: .06em; text-transform: uppercase; }
+.flh-ob-review-places li { display: grid; gap: 2px; padding: 10px 12px; border-radius: 12px; background: var(--ob-warm-row); }
+.flh-ob-review-places span { color: var(--ink-soft); font: 500 12px/1.4 var(--font-sans); overflow-wrap: anywhere; }
+.flh-ob-review-people li { display: flex; align-items: center; gap: 8px; color: var(--ink); font: 600 14px/1.35 var(--font-sans); }
+.flh-ob-review-people li.is-joined svg { color: var(--positive); }
+.flh-ob-review-people li.is-intent { color: var(--ink-soft); font-weight: 500; }
+.flh-ob-review-note { margin: 0; color: var(--ink-soft); font: 500 12px/1.4 var(--font-sans); }
+.flh-ob-review-levels { display: grid; gap: 12px; }
+.flh-ob-review-level { padding: 12px 14px; border-radius: 14px; }
+.flh-ob-review-level.is-must { background: #F4E0D7; }
+.flh-ob-review-level.is-important { background: #E1E7DB; }
+.flh-ob-review-level.is-nice { background: #EFEAE3; }
+.flh-ob-review-level h3 { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; color: var(--ink); font: 600 16px/1.2 var(--font-serif); }
+.flh-ob-review-level h3 span { color: var(--ink-soft); font: 600 12px/1 var(--font-sans); }
+.flh-ob-review-level ul { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 0; padding: 0; list-style: none; color: var(--ink); font: 600 13px/1.4 var(--font-sans); }
+.flh-ob-review-level li { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.flh-ob-review-secondary { justify-self: start; min-height: 44px; padding: 0 4px; border: 0; background: none; color: var(--brick); font: 600 13.5px var(--font-sans); cursor: pointer; }
+.flh-ob-review-error { margin: 0; }
+/* As in Steps 4 and 5, the actions sit at the end of the summary (never over it). */
+.flh-onboarding-root .flh-ob-review-actions { position: static; display: flex; align-items: center; gap: 12px; margin-top: 8px; padding: 6px 0 calc(16px + env(safe-area-inset-bottom)); background: none; }
+.flh-onboarding-root .flh-ob-review-actions .flh-ob-cta { flex: 1 1 auto; width: auto; min-width: 0; }
+.flh-onboarding-root .flh-ob-review-actions .flh-ob-cta > span:first-child { white-space: nowrap; }
+/* Phones: the primary action takes the full width, the quieter one sits below it. */
+@media (max-width: 559px) {
+  .flh-onboarding-root .flh-ob-review-actions { flex-direction: column-reverse; align-items: stretch; gap: 4px; }
+  .flh-onboarding-root .flh-ob-review-actions .flh-ob-later { align-self: center; }
+}
+@media (min-width: 960px) {
+  .flh-onboarding-root .flh-ob-review-actions { justify-content: flex-end; }
+  .flh-onboarding-root .flh-ob-review-actions .flh-ob-cta { flex: 0 0 auto; min-width: 260px; }
+}
