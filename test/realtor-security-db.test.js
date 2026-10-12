@@ -5,16 +5,19 @@
 //   original "adder may read / delete" policies let the Realtor delete it after
 //   a buyer accepted it (cascading every buyer's ratings and reactions), and
 //   keep reading it, buyers' later notes included, after being removed;
-// * buyers could not delete an accepted Realtor-suggested home at all;
+// * buyers could not delete an accepted Realtor-suggested home, or a home
+//   added by a co-buyer who had left;
 // * a removed Realtor's pending suggestions stayed visible and acceptable;
 // * a departed co-buyer kept reading (and could delete) homes they had added,
 //   and the Realtor kept reading the departed co-buyer's private priorities,
-//   home assessments and places.
+//   home assessments and places;
+// * a home outside any search stayed readable and deletable by its adder.
 //
 // Roles: owner, co-buyer, connected Realtor, removed Realtor, outsider, and a
 // departed co-buyer. Skips unless FLH_TEST_PGHOST is set (docs/database-tests.md).
 import test, { after, before } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { register } from 'node:module';
 import { createTestDatabase, DB_TESTS_ENABLED, DB_SKIP_REASON, POST_SNAPSHOT_MIGRATIONS } from './support/supabaseDb.mjs';
 
@@ -91,6 +94,10 @@ async function realtorContext(client, userId, searchId) {
   return { homes, priorities, states, suggestions: await getSuggestions(client, searchId) };
 }
 const getRealtorSearchContext = realtorContext;
+const PREFLIGHT = readFileSync(new URL('../supabase/realtor-access-preflight.sql', import.meta.url), 'utf8')
+  .replace(/^--.*$/gm, '').trim().replace(/;$/, '');
+const preflight = (target) => target.admin(PREFLIGHT);
+const suggestionStatuses = (searchId, target = db) => Object.fromEntries(target.admin(`select id, status from public.realtor_suggestions where search_id = '${searchId}'`).map((row) => [row.id, row.status]));
 const rpcRows = async (user, fn, args, target = db) => as(user, target).rpc(fn, args);
 
 /* -------------------------- connected Realtor (+) -------------------------- */
@@ -197,8 +204,8 @@ dbTest('a removed Realtor loses every home, assessment and suggestion; buyers ke
   const direct = await as(p.owner).from('suggestion_dispositions').insert({ suggestion_id: pending.suggestion_id, user_id: p.owner, disposition: 'dismissed' }).select('id');
   assert.ok(direct.error, 'a disposition cannot be written against a withdrawn suggestion');
   assert.equal(db.admin(`select suggestion_staged from public.homes where id = '${pending.home_id}'`)[0].suggestion_staged, true);
-  // Nothing was deleted to achieve that.
-  assert.equal(db.admin(`select count(*)::int as n from public.realtor_suggestions where search_id = '${p.search}'`)[0].n, 2);
+  // It is marked withdrawn; nothing was deleted to achieve that.
+  assert.deepEqual(suggestionStatuses(p.search), { [accepted.suggestion_id]: 'accepted', [pending.suggestion_id]: 'withdrawn' });
 
   // Buyers keep full control of the accepted home after the Realtor is gone.
   const view = ownerHomes.find((home) => home.id === accepted.home_id);
@@ -220,22 +227,48 @@ dbTest('a Realtor who leaves is treated exactly like one who was removed', async
   await assert.rejects(promoteSuggestion(as(p.owner), pending.suggestion_id), denied);
 });
 
-dbTest('repeat removal: re-inviting a Realtor restores their access and pending suggestions; removing again withdraws them again', async () => {
+dbTest('repeat removal: withdrawn suggestions stay withdrawn when the Realtor returns; withdrawal is idempotent', async () => {
   const p = await household();
+  const accepted = await acceptedSuggestion(db, p, '59 Again Dr');
   const pending = await suggest(db, p, '60 Again Dr');
   await removeMember(as(p.owner), p.search, p.realtor);
+  const withdrawnAt = db.admin(`select updated_at from public.realtor_suggestions where id = '${pending.suggestion_id}'`)[0].updated_at;
   // Removing someone who is already gone is a harmless no-op.
   await removeMember(as(p.owner), p.search, p.realtor);
-  assert.deepEqual(await getSuggestions(as(p.owner), p.search), []);
+  assert.equal(db.admin(`select updated_at from public.realtor_suggestions where id = '${pending.suggestion_id}'`)[0].updated_at, withdrawnAt);
+  assert.deepEqual(suggestionStatuses(p.search), { [accepted.suggestion_id]: 'accepted', [pending.suggestion_id]: 'withdrawn' });
 
+  // Invited back: access returns, the old suggestion does not.
   await invite(db, p, p.realtor, 'realtor');
-  assert.deepEqual((await getSuggestions(as(p.owner), p.search)).map((row) => [row.id, row.status]), [[pending.suggestion_id, 'pending']]);
-  assert.equal((await suggest(db, p, '60 Again Dr')).result, 'already_suggested', 'no duplicate suggestion on return');
-
-  await removeMember(as(p.owner), p.search, p.realtor);
-  assert.deepEqual(await getSuggestions(as(p.owner), p.search), []);
+  assert.deepEqual((await getSuggestions(as(p.owner), p.search)).map((row) => row.id), [accepted.suggestion_id]);
+  assert.deepEqual((await getSuggestions(as(p.realtor), p.search)).map((row) => row.id), [accepted.suggestion_id], 'hidden from the Realtor too');
   await assert.rejects(promoteSuggestion(as(p.owner), pending.suggestion_id), denied);
-  assert.equal(db.admin(`select count(*)::int as n from public.realtor_suggestions where search_id = '${p.search}'`)[0].n, 1);
+  assert.ok(homeExists(accepted.home_id));
+
+  // Suggesting the same listing again is a deliberate new suggestion: the
+  // withdrawn record is reopened (never duplicated) and credited to them.
+  const again = await suggest(db, p, '60 Again Dr');
+  assert.deepEqual([again.result, again.suggestion_id, again.home_id], ['created', pending.suggestion_id, pending.home_id]);
+  assert.equal(db.admin(`select count(*)::int as n from public.realtor_suggestions where search_id = '${p.search}'`)[0].n, 2);
+  assert.deepEqual((await getSuggestions(as(p.owner), p.search)).map((row) => [row.id, row.status]).sort(), [[accepted.suggestion_id, 'accepted'], [pending.suggestion_id, 'pending']].sort());
+
+  // Removed again: withdrawn again, and still nothing deleted.
+  await removeMember(as(p.owner), p.search, p.realtor);
+  assert.deepEqual(suggestionStatuses(p.search), { [accepted.suggestion_id]: 'accepted', [pending.suggestion_id]: 'withdrawn' });
+  assert.deepEqual((await getSuggestions(as(p.owner), p.search)).map((row) => row.id), [accepted.suggestion_id]);
+});
+
+dbTest('another Realtor suggesting a withdrawn listing reopens it under their name', async () => {
+  const p = await household();
+  const pending = await suggest(db, p, '61 Handover Dr');
+  await removeMember(as(p.owner), p.search, p.realtor);
+  const next = db.createUser({ email: `next.realtor.${seq}@example.com`, firstName: 'Next' });
+  await invite(db, p, next, 'realtor');
+  const result = await createRealtorSuggestion(as(next), p.search, { address: '61 Handover Dr', listingUrl: `https://example.com/${encodeURIComponent('61 Handover Dr')}` });
+  assert.deepEqual([result.result, result.suggestion_id], ['created', pending.suggestion_id]);
+  const [row] = db.admin(`select status, suggested_by, suggested_by_display_name from public.realtor_suggestions where id = '${pending.suggestion_id}'`);
+  assert.deepEqual(row, { status: 'pending', suggested_by: next, suggested_by_display_name: 'Next' });
+  assert.equal(await promoteSuggestion(as(p.coBuyer), pending.suggestion_id).then((r) => r[0]), pending.home_id);
 });
 
 dbTest('only the owner (or the Realtor themselves) can remove a Realtor (unchanged)', async () => {
@@ -313,6 +346,76 @@ dbTest('a departed co-buyer loses the search, including homes they added, and th
   assert.ok((await getRealtorSearchContext(as(p.realtor), p.realtor, p.search)).priorities.some((row) => row.user_id === p.coBuyer));
 });
 
+dbTest('current buyers can delete a home added by a former co-buyer; its impact is limited to that home', async () => {
+  const p = await household();
+  const second = db.createUser({ email: `second.cobuyer.${seq}@example.com` });
+  await invite(db, p, second, 'co_buyer');
+  const theirHome = await addHome(db, p.coBuyer, p.search, '85 Former St');
+  const keptHome = await addHome(db, p.coBuyer, p.search, '86 Former St');
+  const ownerHome = await addHome(db, p.owner, p.search, '87 Owner St');
+  for (const user of [p.owner, second]) {
+    for (const home of [theirHome, keptHome, ownerHome]) {
+      const view = (await getHomesForUser(as(user), user, p.search)).find((row) => row.id === home.id);
+      await saveHomePersonalAndShared(as(user), { ...view, ratings: { overall: 3 }, reaction: 'like' }, user, p.search);
+    }
+  }
+  await saveRealtorNote(as(p.realtor), p.search, theirHome.id, 'Note on the former co-buyer home');
+  await suggestHomeTour(as(p.realtor), p.search, theirHome.id);
+
+  // While they are still in the search, nobody else may delete their home.
+  for (const user of [p.owner, second, p.realtor]) await deleteHome(as(user), theirHome.id);
+  assert.ok(homeExists(theirHome.id));
+
+  await leaveSearch(as(p.coBuyer), p.coBuyer, p.search);
+  // Neither the Realtor, an outsider, nor the departed adder may delete it now.
+  for (const user of [p.realtor, p.outsider, p.coBuyer]) await deleteHome(as(user), theirHome.id);
+  assert.ok(homeExists(theirHome.id));
+
+  const others = () => db.admin(`select home_id, user_id, ratings, reaction from public.home_member_state where home_id <> '${theirHome.id}' order by home_id, user_id`);
+  const before = others();
+  // A current co-buyer (not only the owner) may delete it.
+  await deleteHome(as(second), theirHome.id);
+  assert.ok(!homeExists(theirHome.id));
+  // Impact: that home's assessments (everyone's), Realtor note and tour
+  // suggestion go with it; nothing about any other home changes.
+  assert.equal(db.admin(`select count(*)::int as n from public.home_member_state where home_id = '${theirHome.id}'`)[0].n, 0);
+  assert.equal(db.admin(`select count(*)::int as n from public.realtor_notes where home_id = '${theirHome.id}'`)[0].n, 0);
+  assert.equal(db.admin(`select count(*)::int as n from public.tour_suggestions where home_id = '${theirHome.id}'`)[0].n, 0);
+  assert.deepEqual(others(), before);
+
+  // The owner may delete the other one; the owner's own home is still not deletable by the co-buyer.
+  await deleteHome(as(p.owner), keptHome.id);
+  assert.ok(!homeExists(keptHome.id));
+  await deleteHome(as(second), ownerHome.id);
+  assert.ok(homeExists(ownerHome.id));
+});
+
+dbTest('homes outside any search are unreachable through the API, and searches with homes cannot be orphaned', async () => {
+  const p = await household();
+  const accepted = await acceptedSuggestion(db, p, '88 Orphan Rd');
+  // A search that still has homes cannot be deleted: the home-identity guard
+  // refuses the ON DELETE SET NULL, so no new orphan can be created this way.
+  const attempt = await as(p.owner).from('searches').delete().eq('id', p.search).select('id');
+  assert.ok(attempt.error);
+  assert.throws(() => db.exec(`delete from public.searches where id = '${p.search}'`), /immutable/);
+  assert.ok(homeExists(accepted.home_id));
+
+  // A legacy orphan (search_id null), added by a removed Realtor and by a buyer:
+  // neither adder can read or delete it.
+  await removeMember(as(p.owner), p.search, p.realtor);
+  db.exec(`insert into public.homes (user_id, search_id, address, notes) values
+    ('${p.realtor}', null, '89 Orphan Rd', 'buyer notes'), ('${p.owner}', null, '90 Orphan Rd', 'legacy')`);
+  const orphans = db.admin(`select id, user_id from public.homes where address in ('89 Orphan Rd', '90 Orphan Rd')`);
+  assert.equal(orphans.length, 2);
+  for (const { id, user_id: adder } of orphans) {
+    assert.deepEqual(await visible(adder, 'homes', 'id', id), []);
+    await deleteHome(as(adder), id);
+    assert.ok(homeExists(id), 'kept for an operator to resolve, not deleted');
+    const edit = await as(adder).from('homes').update({ notes: 'x' }).eq('id', id).select('id');
+    assert.ok(edit.error || (edit.data || []).length === 0);
+  }
+});
+
 /* ---------------------------- bypass attempts ---------------------------- */
 
 dbTest('direct-write bypasses are refused for Realtors, removed Realtors and outsiders', async () => {
@@ -369,6 +472,12 @@ dbTest('the migration secures Realtor-added homes and suggestions that already e
     const removedPending = await suggest(legacy, p, '102 Legacy Rd');
     const departing = await household(legacy);
     const departedHome = await addHome(legacy, departing.coBuyer, departing.search, '103 Legacy Rd');
+    // A Realtor removed before the migration, with a suggestion still pending.
+    const gone = await household(legacy);
+    const goneAccepted = await acceptedSuggestion(legacy, gone, '105 Legacy Rd');
+    const gonePending = await suggest(legacy, gone, '106 Legacy Rd');
+    await removeMember(as(gone.owner, legacy), gone.search, gone.realtor);
+    assert.equal((await getSuggestions(as(gone.owner, legacy), gone.search)).length, 2, 'pre-fix: the removed Realtor\'s pending suggestion is still shown');
 
     // The bugs, reproduced on the pre-fix schema.
     await removeMember(as(departing.owner, legacy), departing.search, departing.coBuyer);
@@ -385,10 +494,27 @@ dbTest('the migration secures Realtor-added homes and suggestions that already e
       (select json_agg(r order by r.id) from public.realtor_suggestions r) as suggestions,
       (select json_agg(m order by m.id) from public.search_members m) as members`)[0];
     const before = snapshot();
+    // The read-only preflight: valid SQL, every requirement met, the counts it
+    // reports match this data, and it changes nothing.
+    const report = preflight(legacy);
+    assert.deepEqual(report.filter((row) => row.check === 'required' && row.ok !== true), []);
+    const info = (prefix) => report.find((row) => row.item.startsWith(prefix))?.detail;
+    assert.match(info('create_realtor_suggestion body'), /^expected: 2026-09-19/);
+    assert.match(info('promote_realtor_suggestion body'), /^expected: 2026-09-16/);
+    assert.match(info('dismiss_realtor_suggestion body'), /^expected: 2026-09-16/);
+    assert.equal(info('pending suggestions whose Realtor already left'), '1');
+    assert.equal(info('of those, added by a former co-buyer'), '1');
+    assert.ok(report.some((row) => row.section === 3 && row.item.startsWith('homes.homes_select_own')));
+    assert.deepEqual(snapshot(), before, 'the preflight writes nothing');
     const applied = legacy.applyFile(MIGRATION);
     assert.equal(applied.error, null);
     assert.deepEqual(snapshot(), before, 'the migration changes no rows');
     assert.equal(legacy.applyFile(MIGRATION).error, null, 'the migration is re-runnable');
+    const after = preflight(legacy);
+    assert.deepEqual(after.filter((row) => row.check === 'required' && row.ok !== true), []);
+    for (const fn of ['create', 'promote', 'dismiss']) {
+      assert.match(after.find((row) => row.item === `${fn}_realtor_suggestion body`).detail, /^ALREADY APPLIED/);
+    }
 
     // Existing rows now follow the fixed rules.
     await deleteHome(as(p.realtor, legacy), again.home_id);
@@ -396,8 +522,19 @@ dbTest('the migration secures Realtor-added homes and suggestions that already e
     await removeMember(as(p.owner, legacy), p.search, p.realtor);
     assert.deepEqual(await visible(p.realtor, 'homes', 'id', again.home_id, legacy), []);
     assert.deepEqual((await getSuggestions(as(p.owner, legacy), p.search)).map((row) => row.status), ['accepted']);
+    // Removed after the migration: withdrawn by the trigger.
+    assert.equal(suggestionStatuses(p.search, legacy)[pending.suggestion_id], 'withdrawn');
+    assert.equal(suggestionStatuses(p.search, legacy)[removedPending.suggestion_id], 'withdrawn');
     await assert.rejects(promoteSuggestion(as(p.owner, legacy), removedPending.suggestion_id), denied);
-    await assert.rejects(promoteSuggestion(as(p.owner, legacy), pending.suggestion_id), denied);
+    // Removed before it: the row stays 'pending' (no backfill) but is hidden
+    // and refused; it is marked withdrawn, not shown, if they are invited back.
+    assert.equal(suggestionStatuses(gone.search, legacy)[gonePending.suggestion_id], 'pending');
+    assert.deepEqual((await getSuggestions(as(gone.owner, legacy), gone.search)).map((row) => row.id), [goneAccepted.suggestion_id]);
+    await assert.rejects(promoteSuggestion(as(gone.owner, legacy), gonePending.suggestion_id), denied);
+    await invite(legacy, gone, gone.realtor, 'realtor');
+    assert.equal(suggestionStatuses(gone.search, legacy)[gonePending.suggestion_id], 'withdrawn');
+    assert.deepEqual((await getSuggestions(as(gone.owner, legacy), gone.search)).map((row) => row.id), [goneAccepted.suggestion_id]);
+    assert.ok(homeExists(goneAccepted.home_id, legacy));
     await deleteHome(as(p.coBuyer, legacy), again.home_id);
     assert.ok(!homeExists(again.home_id, legacy), 'a buyer can now delete the existing accepted home');
     assert.deepEqual(await visible(departing.coBuyer, 'homes', 'id', departedHome.id, legacy), []);
@@ -410,6 +547,8 @@ dbTest('the migration refuses to apply over a leftover policy that would keep th
   const drifted = createTestDatabase({ steps: POST_SNAPSHOT_MIGRATIONS.filter((step) => step.file !== MIGRATION) });
   try {
     drifted.exec(`create policy "hms_select_members" on public.home_member_state for select using (public.can_access_home(home_id, auth.uid()))`);
+    const flagged = preflight(drifted).find((row) => row.item.startsWith('no unexpected permissive'));
+    assert.deepEqual([flagged.ok, flagged.detail], [false, 'home_member_state.hms_select_members (SELECT)']);
     const applied = drifted.applyFile(MIGRATION);
     assert.match(applied.error || '', /Unexpected policies would keep the old access: home_member_state\.hms_select_members/);
     // Nothing was applied: the transaction rolled back as a whole.

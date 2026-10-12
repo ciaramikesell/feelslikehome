@@ -11,7 +11,7 @@ They found, on first run:
 * every invitation acceptance failing with 42702 (`2026-10-07-invitation-acceptance-conflict-targets.sql`);
 * co-buyer Compare Match disagreeing with the co-buyer's own Match (`2026-10-07-cobuyer-compare-garage-parity.sql`);
 * `schema.sql` ending inside an open transaction, so a fresh `psql` install silently rolled back the Realtor-started-searches block.
-* Realtors deleting (and, after removal, still reading) homes buyers had accepted from their suggestions; buyers unable to delete those homes; a removed Realtor's pending suggestions staying acceptable; departed co-buyers keeping homes they had added (`2026-10-12-realtor-access-and-home-ownership.sql`, `test/realtor-security-db.test.js`).
+* Realtors deleting (and, after removal, still reading) homes buyers had accepted from their suggestions; buyers unable to delete those homes or homes a departed co-buyer added; a removed Realtor's pending suggestions staying acceptable (and reappearing on re-invite); departed co-buyers keeping homes they had added (`2026-10-12-realtor-access-and-home-ownership.sql`, `test/realtor-security-db.test.js`).
 
 ## Running them
 
