@@ -13,9 +13,25 @@
 -- transaction before and after the migration.
 with
 fn as (
-  select p.proname, md5(p.prosrc) as body_md5
+  select p.proname, md5(p.prosrc) as body_md5,
+         -- Bodies pasted through the SQL Editor from a Windows clipboard are
+         -- stored with CRLF line endings: same code, different md5. Match on
+         -- the LF-normalized body (as production-function-fingerprints.sql does).
+         md5(replace(p.prosrc, chr(13), '')) as body_md5_lf,
+         position(chr(13) in p.prosrc) > 0 as has_cr
   from pg_proc p where p.pronamespace = 'public'::regnamespace
 ),
+-- LF md5 of every repository version of the three functions the migration replaces.
+versions(proname, body_md5, label) as (values
+  ('create_realtor_suggestion', '38dc64a99a1441c3470a4d4d48526170', 'expected: 2026-09-19-account-name-capture-and-realtor-home.sql'),
+  ('create_realtor_suggestion', 'd4b0ac83709d201dad00c054c733144d', 'OLDER: 2026-09-16-realtor-suggestions.sql (apply the 2026-09-19 repair first)'),
+  ('create_realtor_suggestion', '37cd42b7818b8aee64b6ff23be0d678d', 'ALREADY APPLIED: 2026-10-12'),
+  ('promote_realtor_suggestion', '59f366db6c2935f9b02a8e55034dd969', 'expected: 2026-09-16-realtor-suggestions.sql'),
+  ('promote_realtor_suggestion', '99b5eca35ec7cb47420d4473ccbc2a4f', 'ALREADY APPLIED: 2026-10-12'),
+  ('dismiss_realtor_suggestion', 'ec27e647a743885bba960e7e21d25927', 'expected: 2026-09-16-realtor-suggestions.sql'),
+  ('dismiss_realtor_suggestion', '9a35df10d00dee5cb08a361009bcb5dc', 'ALREADY APPLIED: 2026-10-12')
+),
+replaced(proname) as (values ('create_realtor_suggestion'), ('promote_realtor_suggestion'), ('dismiss_realtor_suggestion')),
 col as (
   select table_name, column_name from information_schema.columns where table_schema = 'public'
 ),
@@ -70,24 +86,12 @@ select * from (
          case when (select ok from ready) then (select count(*) = 0 from public.realtor_suggestions where status not in ('pending', 'dismissed', 'accepted', 'withdrawn')) end, null
   -- 2. Which versions production runs ---------------------------------------
   union all
-  select 2, 'info', 'create_realtor_suggestion body',
-         null, case (select body_md5 from fn where proname = 'create_realtor_suggestion')
-           when '38dc64a99a1441c3470a4d4d48526170' then 'expected: 2026-09-19-account-name-capture-and-realtor-home.sql'
-           when 'd4b0ac83709d201dad00c054c733144d' then 'OLDER: 2026-09-16-realtor-suggestions.sql (apply the 2026-09-19 repair first)'
-           when '37cd42b7818b8aee64b6ff23be0d678d' then 'ALREADY APPLIED: 2026-10-12'
-           else coalesce('NO REPOSITORY MATCH: ' || (select body_md5 from fn where proname = 'create_realtor_suggestion'), 'NOT PRESENT') end
-  union all
-  select 2, 'info', 'promote_realtor_suggestion body',
-         null, case (select body_md5 from fn where proname = 'promote_realtor_suggestion')
-           when '59f366db6c2935f9b02a8e55034dd969' then 'expected: 2026-09-16-realtor-suggestions.sql'
-           when '99b5eca35ec7cb47420d4473ccbc2a4f' then 'ALREADY APPLIED: 2026-10-12'
-           else coalesce('NO REPOSITORY MATCH: ' || (select body_md5 from fn where proname = 'promote_realtor_suggestion'), 'NOT PRESENT') end
-  union all
-  select 2, 'info', 'dismiss_realtor_suggestion body',
-         null, case (select body_md5 from fn where proname = 'dismiss_realtor_suggestion')
-           when 'ec27e647a743885bba960e7e21d25927' then 'expected: 2026-09-16-realtor-suggestions.sql'
-           when '9a35df10d00dee5cb08a361009bcb5dc' then 'ALREADY APPLIED: 2026-10-12'
-           else coalesce('NO REPOSITORY MATCH: ' || (select body_md5 from fn where proname = 'dismiss_realtor_suggestion'), 'NOT PRESENT') end
+  select 2, 'info', r.proname || ' body', null,
+         case when f.proname is null then 'NOT PRESENT'
+           else coalesce((select v.label from versions v where v.proname = f.proname and v.body_md5 = f.body_md5_lf),
+                         'NO REPOSITORY MATCH: ' || f.body_md5_lf)
+             || case when f.has_cr then ' (stored with CRLF line endings)' else '' end end
+  from replaced r left join fn f on f.proname = r.proname
   union all
   select 2, 'info', 'Supabase CLI migration history (supabase_migrations.schema_migrations)',
          null, case when to_regclass('supabase_migrations.schema_migrations') is null

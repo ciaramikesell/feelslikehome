@@ -559,3 +559,37 @@ dbTest('the migration refuses to apply over a leftover policy that would keep th
     drifted.drop();
   }
 });
+
+dbTest('production\'s CRLF copies of the 2026-09-16 suggestion functions are recognised, and replaced by the same migration', async () => {
+  // Production reported promote/dismiss bodies with md5 c04c09e1… / 80f08157…:
+  // the 2026-09-16 definitions, byte for byte, saved with CRLF line endings
+  // (pasted through the SQL Editor). Rebuild exactly that state.
+  const source = readFileSync(new URL('../supabase/migrations/2026-09-16-realtor-suggestions.sql', import.meta.url), 'utf8');
+  const definitions = [...source.matchAll(/create or replace function public\.(?:promote|dismiss)_realtor_suggestion\([\s\S]*?\$\$;/g)].map((m) => m[0]);
+  assert.equal(definitions.length, 2);
+  const crlf = createTestDatabase({ steps: POST_SNAPSHOT_MIGRATIONS.filter((step) => step.file !== MIGRATION) });
+  try {
+    crlf.exec(definitions.map((sql) => sql.replace(/\r?\n/g, '\r\n')).join('\n'));
+    const bodies = Object.fromEntries(crlf.admin(`select proname, md5(prosrc) as raw, md5(replace(prosrc, chr(13), '')) as lf from pg_proc
+      where proname in ('promote_realtor_suggestion', 'dismiss_realtor_suggestion')`).map((row) => [row.proname, row]));
+    assert.deepEqual(bodies.promote_realtor_suggestion, { proname: 'promote_realtor_suggestion', raw: 'c04c09e1f8a0ae706e41df0605e4070c', lf: '59f366db6c2935f9b02a8e55034dd969' });
+    assert.deepEqual(bodies.dismiss_realtor_suggestion, { proname: 'dismiss_realtor_suggestion', raw: '80f081578e126b0a9c2adcbdab559110', lf: 'ec27e647a743885bba960e7e21d25927' });
+
+    const detail = (report, fn) => report.find((row) => row.item === `${fn}_realtor_suggestion body`).detail;
+    const before = preflight(crlf);
+    assert.deepEqual(before.filter((row) => row.check === 'required' && row.ok !== true), []);
+    for (const fn of ['promote', 'dismiss']) assert.equal(detail(before, fn), 'expected: 2026-09-16-realtor-suggestions.sql (stored with CRLF line endings)');
+    assert.equal(detail(before, 'create'), 'expected: 2026-09-19-account-name-capture-and-realtor-home.sql');
+
+    // Behaviour is the 2026-09-16 behaviour: a buyer accepts a pending suggestion.
+    const p = await household(crlf);
+    const pending = await suggest(crlf, p, '110 Line Ending Ln');
+    assert.deepEqual(await promoteSuggestion(as(p.owner, crlf), pending.suggestion_id), [pending.home_id]);
+
+    assert.equal(crlf.applyFile(MIGRATION).error, null);
+    const after = preflight(crlf);
+    for (const fn of ['create', 'promote', 'dismiss']) assert.equal(detail(after, fn), 'ALREADY APPLIED: 2026-10-12');
+  } finally {
+    crlf.drop();
+  }
+});
