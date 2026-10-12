@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { register } from 'node:module';
 import { createTestDatabase, DB_TESTS_ENABLED, DB_SKIP_REASON } from './support/supabaseDb.mjs';
-import { getItemlistCategories, isExperientialCriterion, normalizePriorities } from '../src/lib/constants.js';
+import { RENTAL_ESSENTIALS, getItemlistCategories, isDiscontinuedOffering, isExperientialCriterion, normalizePriorities } from '../src/lib/constants.js';
 import { computeMatch } from '../src/lib/matching.js';
 import { flatOnboardingSuggestions } from '../src/lib/onboarding.js';
 import { chooseSearchType } from '../src/lib/onboardingBasics.js';
@@ -80,7 +80,14 @@ test('every rental chip is an existing criterion Match already evaluates; nothin
   }
   // Earlier apartment options nothing can answer are not offered; future work is documented, not offered.
   const apartmentKeys = new Set(offeredChips(fresh('apartment_rent')).map(chipKey));
-  for (const option of UNANSWERABLE_RENTAL_OPTIONS) assert.ok(!apartmentKeys.has(option.key), option.key);
+  for (const option of UNANSWERABLE_RENTAL_OPTIONS) {
+    assert.ok(!apartmentKeys.has(option.key), option.key);
+    // One source of truth with My Search (constants.js).
+    const [categoryKey, label] = option.key.split(':');
+    assert.equal(isDiscontinuedOffering(categoryKey, { label }, 'rental'), true, option.key);
+  }
+  // Onboarding's Rental essentials are the same identities My Search offers.
+  assert.deepEqual(whatMattersSections(fresh('apartment_rent'))[0].chips.map(chipKey), RENTAL_ESSENTIALS.map((item) => `${item.categoryKey}:${item.label}`));
   assert.deepEqual(FUTURE_RENTAL_PRIORITIES, ['Move-in date', 'Lease length', 'Furnished', 'Deposits and fees']);
   for (const text of ['Move-in date', 'Lease length', 'Furnished']) assert.equal(chipByText(fresh('apartment_rent'), text), undefined);
   const doc = read('docs/onboarding-v2-rental.md');

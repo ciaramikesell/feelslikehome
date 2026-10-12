@@ -22,7 +22,7 @@
 // already offered), so Match evaluates each one exactly as before. Things a
 // person can only judge in person are marked "after tour".
 
-import { getItemlistCategories, isExperientialCriterion, normalizePriorities } from './constants.js';
+import { RENTAL_ESSENTIALS, getItemlistCategories, isDiscontinuedOffering, isExperientialCriterion, normalizePriorities } from './constants.js';
 import { flatOnboardingSuggestions, ONBOARDING_SUGGESTIONS } from './onboarding.js';
 import { chooseSearchType } from './onboardingBasics.js';
 import { addCriterion, isCriterionSelected, priorityLevels, searchExperienceKey, selectedPriorityCount } from './searchProfile.js';
@@ -95,26 +95,29 @@ export const UNSUPPORTED_FIGMA_OPTIONS = Object.freeze([
   { text: 'Open kitchen', reason: 'No canonical criterion exists (features:Updated Kitchen is retired and means something else).' },
 ]);
 
-// Rental essentials, shared by both rental searches. Pets, laundry and
-// utilities are shared facts about a property (homes.pets_allowed, etc.).
-const RENTAL_ESSENTIALS = Object.freeze({
+// Rental essentials, shared by both rental searches and by My Search: the
+// identities come from RENTAL_ESSENTIALS (constants.js); only the onboarding
+// chip wording and icons live here. Pets, laundry and utilities are shared
+// facts about a property (homes.pets_allowed, etc.).
+const ESSENTIAL_CHIP = Object.freeze({
+  'features:Pets Allowed': ['Pet-friendly', 'PawPrint'],
+  'features:In-Unit Laundry': ['In-unit laundry', 'WashingMachine'],
+  'features:Utilities Included': ['Utilities included', 'PlugZap'],
+  'exterior:Parking': ['Parking', 'SquareParking'],
+  'features:Central Air': ['Central air', 'AirVent'],
+  'features:Dishwasher': ['Dishwasher', 'Utensils'],
+});
+const RENTAL_ESSENTIALS_SECTION = Object.freeze({
   key: 'essentials',
   title: 'Rental essentials',
-  chips: [
-    criterion('features', 'Pets Allowed', 'Pet-friendly', 'PawPrint'),
-    criterion('features', 'In-Unit Laundry', 'In-unit laundry', 'WashingMachine'),
-    criterion('features', 'Utilities Included', 'Utilities included', 'PlugZap'),
-    criterion('exterior', 'Parking', 'Parking', 'SquareParking'),
-    criterion('features', 'Central Air', 'Central air', 'AirVent'),
-    criterion('features', 'Dishwasher', 'Dishwasher', 'Utensils'),
-  ],
+  chips: RENTAL_ESSENTIALS.map((item) => criterion(item.categoryKey, item.label, ...ESSENTIAL_CHIP[`${item.categoryKey}:${item.label}`])),
 });
 
 const AFTER_TOUR_NOTE = 'You’ll judge these in person—FLH asks about them after you tour.';
 
 const RENTAL_SECTIONS = Object.freeze({
   home_rent: [
-    RENTAL_ESSENTIALS,
+    RENTAL_ESSENTIALS_SECTION,
     {
       key: 'neighborhood',
       title: 'Neighborhood',
@@ -154,7 +157,7 @@ const RENTAL_SECTIONS = Object.freeze({
     },
   ],
   apartment_rent: [
-    RENTAL_ESSENTIALS,
+    RENTAL_ESSENTIALS_SECTION,
     {
       key: 'unit',
       title: 'The unit',
@@ -215,9 +218,10 @@ const RENTAL_MORE = Object.freeze({
 });
 
 // Earlier Apartment to Rent options that nothing in FLH can answer for a home
-// (no listing field, no Yes/No, no after-tour question), so in Match they would
-// stay "Not evaluated" forever. Not offered here until they can be answered;
-// anyone who already chose one keeps it (it stays visible under "Your own").
+// (no listing field, no Yes/No, no after-tour question). They are retired from
+// every rental catalog by isDiscontinuedOffering (constants.js), the same rule
+// My Search uses; anyone who already chose one keeps it (it stays visible
+// under "Your own").
 export const UNANSWERABLE_RENTAL_OPTIONS = Object.freeze([
   { key: 'homeFeel:Social Community', text: 'Social community' },
   { key: 'homeFeel:On-Site Management', text: 'On-site management' },
@@ -296,10 +300,9 @@ export function moreToConsider(raw) {
   // Case-insensitive, so a canonical "Central air" never sits beside the
   // rental "Central air" chip.
   const inSections = new Set(shown.map((chip) => keyOf(chip).toLowerCase()));
-  const unanswerable = new Set(UNANSWERABLE_RENTAL_OPTIONS.map((option) => option.key.toLowerCase()));
   const remaining = (items) => items.filter((item) => {
     const key = `${item.categoryKey}:${item.label}`.toLowerCase();
-    if (inSections.has(key) || unanswerable.has(key)) return false;
+    if (inSections.has(key) || isDiscontinuedOffering(item.categoryKey, item, priorities.searchType)) return false;
     inSections.add(key);
     return true;
   });
