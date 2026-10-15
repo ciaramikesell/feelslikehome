@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { previewInvitation } from '@/lib/supabase/collaboration';
+import { getAccessibleSearches, getRealtorConnectionTarget, previewInvitation } from '@/lib/supabase/collaboration';
 import { getProfile } from '@/lib/supabase/data';
 import AcceptInvitationClient from './AcceptInvitationClient';
 
@@ -36,5 +36,29 @@ export default async function InvitePage({ params }) {
   // hasn't (see remembersRealtorFromFailedInvitation).
   const profile = await getProfile(supabase, user.id).catch(() => null);
 
-  return <AcceptInvitationClient token={token} initialPreview={preview} onboardingComplete={Boolean(profile?.onboarding_complete)} />;
+  // A buyer approving a Realtor's connection request approves it for the
+  // search they are using, as resolved by the database. When that can't be
+  // established safely (a stale active search, for example) the screen says so
+  // and offers the searches they buy in, rather than picking one for them; the
+  // database re-checks the target when they approve.
+  const approvalTarget = preview.valid && preview.invitation_direction === 'realtor_to_buyer' && !preview.requires_confirmation
+    ? await approvalTargetFor(supabase, user.id).catch(() => ({ error: 'unknown', options: [] }))
+    : null;
+
+  return <AcceptInvitationClient token={token} initialPreview={preview} onboardingComplete={Boolean(profile?.onboarding_complete)} approvalTarget={approvalTarget} />;
+}
+
+async function approvalTargetFor(supabase, userId) {
+  const target = await getRealtorConnectionTarget(supabase);
+  if (!target.searchId) {
+    const options = (await getAccessibleSearches(supabase, userId).catch(() => []))
+      .filter((search) => search.relationshipType === 'owner' || search.relationshipType === 'co_buyer')
+      .map((search) => ({ id: search.id, label: search.label }));
+    return { error: target.reason, options };
+  }
+  return {
+    id: target.searchId,
+    label: target.partnerName ? `The search you share with ${target.partnerName}` : 'Your home search',
+    homeCount: target.homeCount,
+  };
 }

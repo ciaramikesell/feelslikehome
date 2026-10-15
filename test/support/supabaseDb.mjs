@@ -41,6 +41,7 @@ export const POST_SNAPSHOT_MIGRATIONS = [
   { file: 'supabase/migrations/2026-10-08-collaborator-context-return-type.sql' },
   { file: 'supabase/migrations/2026-10-12-realtor-access-and-home-ownership.sql' },
   { file: 'supabase/migrations/2026-10-15-cobuyer-compare-mudroom-parity.sql' },
+  { file: 'supabase/migrations/2026-10-15-buyer-realtor-management.sql' },
 ];
 
 const SUPABASE_SHIM = `

@@ -3,6 +3,11 @@
 import { useEffect, useId, useRef } from 'react';
 import { X } from 'lucide-react';
 
+// Sheets can open on top of sheets (a confirmation inside a workflow). Only
+// the topmost one handles Escape and the focus trap: otherwise Escape on the
+// confirmation also closed the sheet underneath and lost its context.
+const openSheets = [];
+
 const FOCUSABLE_SELECTOR = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
@@ -42,12 +47,16 @@ export default function Sheet({
 
   useEffect(() => {
     if (!open) return undefined;
+    const sheetId = {};
+    openSheets.push(sheetId);
+    const isTopmost = () => openSheets[openSheets.length - 1] === sheetId;
     const previouslyFocused = document.activeElement;
     const node = dialogRef.current;
     const focusables = () => node ? Array.from(node.querySelectorAll(FOCUSABLE_SELECTOR)) : [];
     (focusables()[0] || node)?.focus();
 
     const onKeyDown = (event) => {
+      if (!isTopmost()) return;
       if (event.key === 'Escape') {
         event.stopPropagation();
         onCloseRef.current?.();
@@ -75,6 +84,7 @@ export default function Sheet({
 
     return () => {
       document.removeEventListener('keydown', onKeyDown, true);
+      openSheets.splice(openSheets.indexOf(sheetId), 1);
       document.body.style.overflow = previousOverflow;
       previouslyFocused?.focus?.();
     };

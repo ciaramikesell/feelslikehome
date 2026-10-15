@@ -23,13 +23,15 @@ export function entersAsRealtor({ onboardingComplete, entryIntent, hasRealtorMem
 
 // Accepting an invitation:
 // - a buyer approving a Realtor (realtor_to_buyer) continues to onboarding,
-//   which sends an already-onboarded buyer straight on to their Homes;
+//   which sends an already-onboarded buyer straight on to their Homes, and
+//   keeps the search they were using;
 // - a Realtor joining a buyer's search goes to that client's workspace, and the
 //   buyer-side active search is left alone (a client search is not the
 //   Realtor's own buyer search);
 // - a co-buyer joins the shared search and continues in Homes, as before.
 export function invitationAcceptance({ relationshipType, invitationDirection, searchId }) {
-  if (invitationDirection === 'realtor_to_buyer') return { destination: '/onboarding', setActiveSearch: true };
+  // The buyer approved it for the search they are using: nothing to switch.
+  if (invitationDirection === 'realtor_to_buyer') return { destination: '/onboarding', setActiveSearch: false };
   if (relationshipType === 'realtor') {
     return { destination: searchId ? `${REALTOR_WORKSPACE_PATH}/${searchId}` : REALTOR_WORKSPACE_PATH, setActiveSearch: false };
   }

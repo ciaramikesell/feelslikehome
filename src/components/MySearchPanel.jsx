@@ -2,13 +2,12 @@
 
 import { useCallback, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, House, MapPin, Plus, Sparkles } from 'lucide-react';
+import { ArrowRight, House, MapPin, Sparkles } from 'lucide-react';
 import Sheet from '@/components/Sheet';
 import BasicsEditor from '@/components/BasicsEditor';
-import CoBuyerManagement from '@/components/CoBuyerManagement';
-import InviteCoBuyer from '@/components/InviteCoBuyer';
+import YourPeople from '@/components/YourPeople';
 import {
-  Avatar, Chevron, IconBadge, LevelDot, MobilePage, PageHeading, SaveStatus, SectionCard, SectionLabel,
+  Chevron, IconBadge, LevelDot, MobilePage, PageHeading, SaveStatus, SectionCard, SectionLabel,
 } from '@/components/MobileSystem';
 import { normalizePriorities, getItemlistCategories } from '@/lib/constants';
 import {
@@ -116,41 +115,6 @@ function CollaboratorSummary({ context }) {
   ) : <p className="hh-detail-context">{name} hasn&apos;t added priorities yet.</p>;
 }
 
-// "The house is ours. The opinion is mine. The conversation is shared." Each
-// participant keeps their own Match and priorities; nothing is combined.
-function SearchingTogether({ search, userId, isOwner, participantCount, memberUserId, collaboratorContext }) {
-  const [open, setOpen] = useState(false);
-  const collaborative = participantCount > 1;
-  const name = collaboratorContext?.displayName || 'your co-buyer';
-  if (!collaborative && !isOwner) return null;
-  return (
-    <>
-      <SectionCard tone="warm" onClick={() => setOpen(true)} className="flh-together-summary" ariaLabel={collaborative ? `Searching with ${name}. Manage` : 'Searching together. Invite a co-buyer or Realtor'}>
-        <div className="flh-card-row">
-          {collaborative
-            ? <span className="flh-avatar-stack"><Avatar name="You" /><Avatar name={collaboratorContext?.displayName} tone="sage" /></span>
-            : <IconBadge icon={Plus} />}
-          <div className="flh-card-heading">
-            <h2 className="flh-card-title">{collaborative ? `Searching with ${collaboratorContext?.displayName || 'a co-buyer'}` : 'Searching Together'}</h2>
-            <p className="flh-card-sub">{collaborative ? 'Both perspectives shape every Match.' : <>You’re searching alone. <span className="flh-link-text">Invite a co-buyer or Realtor →</span></>}</p>
-          </div>
-          <Chevron />
-        </div>
-      </SectionCard>
-      {open && collaborative && (
-        <Sheet open onClose={() => setOpen(false)} title="Searching together" size="default">
-          <p className="flh-sheet-lead">The house is ours. The opinion is mine. The conversation is shared. Each of you keeps your own priorities and your own Match.</p>
-          <CollaboratorSummary context={collaboratorContext} />
-          <div style={{ marginTop: 16 }}>
-            <CoBuyerManagement userId={userId} search={search} isOwner={isOwner} participantCount={participantCount} memberUserId={memberUserId} collaboratorName={collaboratorContext?.displayName} />
-          </div>
-        </Sheet>
-      )}
-      {open && !collaborative && <InviteCoBuyer searchId={search.id} userId={userId} embedded onClose={() => setOpen(false)} />}
-    </>
-  );
-}
-
 function SearchStatus({ count, firstRun }) {
   const copy = searchStatusCopy({ count, firstRun });
   return (
@@ -167,7 +131,7 @@ function SearchStatus({ count, firstRun }) {
   );
 }
 
-export default function MySearchPanel({ search, userId, isOwner, participantCount, memberUserId, initialPriorities, initialCommuteDestinations, collaboratorContext = null, firstRun = false }) {
+export default function MySearchPanel({ search, userId, isOwner, participantCount, memberUserId, initialPriorities, initialCommuteDestinations, collaboratorContext = null, people = null, realtorInvitations = [], firstRun = false }) {
   const persistPriorities = useCallback((next) => savePriorities(createClient(), search, userId, next), [search, userId]);
   const { state: priorities, patch, saveError, retry, isSaving } = useReliableOptimisticState(normalizePriorities(initialPriorities), persistPriorities);
   const [basicsOpen, setBasicsOpen] = useState(false);
@@ -187,7 +151,10 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
         <div className="flh-my-search-rail">
           <WhatImLookingFor priorities={priorities} onEdit={() => setBasicsOpen(true)} />
           <PlacesThatMatter destinations={destinations} />
-          <SearchingTogether search={search} userId={userId} isOwner={isOwner} participantCount={participantCount} memberUserId={memberUserId} collaboratorContext={collaboratorContext} />
+          {/* Your People: the buyers in this search and their Realtor, with
+              invitations and removal. "The house is ours. The opinion is mine.
+              The conversation is shared." Nothing is combined. */}
+          <YourPeople search={search} userId={userId} isOwner={isOwner} participantCount={participantCount} memberUserId={memberUserId} people={people} invitations={realtorInvitations} collaboratorSummary={<CollaboratorSummary context={collaboratorContext} />} />
           <SearchStatus count={matchShapingPriorityCount(priorities) + selectedGroupCount(priorities)} firstRun={firstRun} />
         </div>
       </div>

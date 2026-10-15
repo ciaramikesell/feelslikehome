@@ -758,6 +758,79 @@ export async function getSearchPeopleRows(supabase, search) {
   return { members: members || [], coBuyerName };
 }
 
+/* ------------------------ Your People (buyer side) ------------------------ */
+// Every function below is a SECURITY DEFINER RPC that checks, in the
+// database, that the caller is a current owner or co-buyer of the search (or
+// the addressee of a connection request). The app never decides who may
+// manage a Realtor (2026-10-15-buyer-realtor-management.sql).
+
+// A scalar RPC result: PostgREST returns the value itself.
+const scalarResult = (data) => {
+  const value = Array.isArray(data) ? data[0] : data;
+  return value && typeof value === 'object' ? Object.values(value)[0] : value;
+};
+
+const rpcRows = async (supabase, fn, args) => {
+  const { data, error } = await supabase.rpc(fn, args);
+  if (error) throw error;
+  return data || [];
+};
+
+// The people in this search (owner, co-buyers, Realtors) with display names.
+export async function getSearchPeople(supabase, searchId) {
+  return (await rpcRows(supabase, 'get_search_people', { p_search_id: searchId })).map((row) => ({
+    userId: row.user_id, role: row.role, displayName: row.display_name, isYou: Boolean(row.is_you), joinedAt: row.joined_at,
+  }));
+}
+
+export async function listRealtorInvitations(supabase, searchId) {
+  return (await rpcRows(supabase, 'list_search_realtor_invitations', { p_search_id: searchId })).map((row) => ({
+    id: row.invitation_id, direction: row.direction, email: row.invited_email, inviterName: row.inviter_name,
+    status: row.status, createdAt: row.created_at, expiresAt: row.expires_at, token: row.token || null,
+  }));
+}
+
+// Either buyer may invite a Realtor to the search they are using. Returns the
+// pending invitation for that email if one already exists.
+export async function createRealtorInvitation(supabase, searchId, invitedEmail) {
+  const [row] = await rpcRows(supabase, 'create_search_realtor_invitation', { p_search_id: searchId, p_invited_email: invitedEmail.trim().toLowerCase() });
+  return row ? { id: row.invitation_id, token: row.token, expiresAt: row.expires_at, reused: Boolean(row.reused) } : null;
+}
+
+// 'revoked' | 'already_revoked' | 'already_accepted'.
+export async function revokeInvitation(supabase, invitationId) {
+  const { data, error } = await supabase.rpc('revoke_search_invitation', { p_invitation_id: invitationId });
+  if (error) throw error;
+  return scalarResult(data);
+}
+
+// 'removed' | 'not_connected'. Pending suggestions are withdrawn by the
+// database (2026-10-12 trigger); accepted homes stay.
+export async function removeRealtor(supabase, searchId, realtorId) {
+  const { data, error } = await supabase.rpc('remove_search_realtor', { p_search_id: searchId, p_realtor_id: realtorId });
+  if (error) throw error;
+  return scalarResult(data);
+}
+
+// The search a Realtor's connection request would connect to for the caller,
+// resolved by the database: { searchId, role, partnerName, homeCount } or
+// { reason } ('active_search_unavailable' | 'no_search') when there is no safe
+// target. Never a fallback to some other search.
+export async function getRealtorConnectionTarget(supabase) {
+  const [row] = await rpcRows(supabase, 'get_realtor_connection_target', {});
+  if (!row) return { reason: 'unknown' };
+  if (!row.search_id) return { reason: row.reason || 'unknown' };
+  return { searchId: row.search_id, role: row.role, partnerName: row.partner_name || null, homeCount: row.home_count ?? 0 };
+}
+
+// A buyer approving a Realtor's connection request for the search they are
+// actually using (re-resolved and verified in the database), never "the search
+// they own".
+export async function approveRealtorConnection(supabase, token, searchId) {
+  const [row] = await rpcRows(supabase, 'approve_realtor_connection', { p_token: token, p_search_id: searchId });
+  return row || { success: false, reason: 'unknown', search_id: null };
+}
+
 export async function createBuyerInvitation(supabase, invitedEmail) {
   const { data, error } = await supabase.rpc('create_buyer_invitation', { p_invited_email: invitedEmail.trim().toLowerCase() });
   if (error) throw error;

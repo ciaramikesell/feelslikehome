@@ -17,7 +17,7 @@ import {
 
 register('./support/aliasHooks.mjs', import.meta.url);
 const {
-  acceptInvitation, createInvitation, createRealtorConnectionRequest, getRealtorRelationships, hasRealtorRelationship,
+  acceptInvitation, approveRealtorConnection, getRealtorConnectionTarget, createInvitation, createRealtorConnectionRequest, getRealtorRelationships, hasRealtorRelationship,
   previewInvitation, resolveActiveSearch, saveHomePersonalAndShared, savePriorities,
 } = await import('../src/lib/supabase/collaboration.js');
 
@@ -43,7 +43,7 @@ test('invitation acceptance destinations', () => {
   assert.deepEqual(invitationAcceptance({ relationshipType: 'realtor', invitationDirection: null, searchId: null }), { destination: '/people', setActiveSearch: false });
   assert.deepEqual(invitationAcceptance({ relationshipType: 'co_buyer', invitationDirection: 'buyer_to_collaborator', searchId: 's1' }), { destination: '/homes', setActiveSearch: true });
   // A buyer approving a Realtor continues as before (onboarding, which sends an onboarded buyer on to Homes).
-  assert.deepEqual(invitationAcceptance({ relationshipType: 'realtor', invitationDirection: 'realtor_to_buyer', searchId: 's1' }), { destination: '/onboarding', setActiveSearch: true });
+  assert.deepEqual(invitationAcceptance({ relationshipType: 'realtor', invitationDirection: 'realtor_to_buyer', searchId: 's1' }), { destination: '/onboarding', setActiveSearch: false });
 });
 
 test('root, layout, sign-up and invitation acceptance all use the shared rules', () => {
@@ -126,7 +126,11 @@ const metadata = (user) => db.admin(`select raw_user_meta_data as m from auth.us
 // The Realtor-side acceptance exactly as AcceptInvitationClient performs it.
 async function acceptAsInvitee(user, token) {
   const preview = await previewInvitation(as(user), token);
-  const result = await acceptInvitation(as(user), token);
+  // As AcceptInvitationClient does: a Realtor's connection request is approved
+  // for the search this buyer is using (the invite page's approvalTarget).
+  const result = preview.invitation_direction === 'realtor_to_buyer'
+    ? await approveRealtorConnection(as(user), token, (await getRealtorConnectionTarget(as(user))).searchId)
+    : await acceptInvitation(as(user), token);
   assert.equal(result.success, true, result.reason);
   const next = invitationAcceptance({ relationshipType: preview.relationship_type, invitationDirection: preview.invitation_direction, searchId: result.search_id });
   if (preview.relationship_type === 'realtor' && preview.invitation_direction !== 'realtor_to_buyer') await rememberRealtorWorkspace(authFor(user));
@@ -189,7 +193,7 @@ dbTest('a buyer with an existing search approving a Realtor connection request k
   const { result, next } = await acceptAsInvitee(buyer, request.token);
   assert.equal(result.search_id, before.mine, 'the Realtor joins the buyer\'s existing search');
   assert.equal(searchCount(), before.searches, 'no duplicate search');
-  assert.deepEqual(next, { destination: '/onboarding', setActiveSearch: true });
+  assert.deepEqual(next, { destination: '/onboarding', setActiveSearch: false });
   // /onboarding sends an onboarded buyer straight on to Homes; the buyer is not routed as a Realtor.
   assert.equal(await hasRealtorRelationship(as(buyer), buyer.id), false);
   assert.equal(await lands(buyer, undefined), '/homes');
