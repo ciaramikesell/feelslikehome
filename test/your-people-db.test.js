@@ -12,7 +12,7 @@ import { createTestDatabase, DB_TESTS_ENABLED, DB_SKIP_REASON } from './support/
 register('./support/aliasHooks.mjs', import.meta.url);
 const {
   acceptInvitation, approveRealtorConnection, createInvitation, createRealtorConnectionRequest, createRealtorInvitation,
-  createRealtorSuggestion, getHomesForUser, getRealtorRelationships, getSearchPeople, listRealtorInvitations,
+  createRealtorSuggestion, getHomesForUser, getRealtorConnectionTarget, getRealtorRelationships, getSearchPeople, listRealtorInvitations, setActiveSearch,
   previewInvitation, promoteSuggestion, removeRealtor, revokeInvitation, saveHomePersonalAndShared, savePriorities,
 } = await import('../src/lib/supabase/collaboration.js');
 
@@ -216,6 +216,85 @@ dbTest('approval is refused for a search the buyer is not a buyer of, a forged s
   assert.deepEqual([late.success, late.reason], [false, 'revoked']);
 });
 
+/* ------------------------- approval target resolution ------------------------- */
+
+const pointTo = (user, searchId) => db.exec(`update public.profiles set active_search_id = ${searchId ? `'${searchId}'` : 'null'} where id = '${user.id}'`);
+const membershipsOf = (user) => db.admin(`select search_id from public.search_members where user_id = '${user.id}' order by search_id`).map((row) => row.search_id);
+
+dbTest('the approval target is the search each buyer is using, named for the approval screen', async () => {
+  const p = await household();
+  // The co-buyer works in the owner's shared search (their active search).
+  assert.deepEqual(await getRealtorConnectionTarget(as(p.coBuyer)), { searchId: p.search, role: 'co_buyer', partnerName: 'Olive', homeCount: 1 });
+  // The owner has no other active search: their own (shared) search.
+  assert.deepEqual(await getRealtorConnectionTarget(as(p.owner)), { searchId: p.search, role: 'owner', partnerName: 'Casey', homeCount: 1 });
+  // A solo buyer: their own search, no partner.
+  const solo = newUser('sol');
+  assert.deepEqual(await getRealtorConnectionTarget(as(solo)), { searchId: ownedSearch(solo), role: 'owner', partnerName: null, homeCount: 0 });
+  // Not callable by anonymous visitors; the internal resolver is not callable at all.
+  const internal = await as(p.owner).rpc('realtor_connection_target_for', { p_user: p.coBuyer.id });
+  assert.ok(internal.error && denied(internal.error), 'internal resolver is not exposed');
+});
+
+dbTest('a buyer with more than one search: the active one is used, and a mismatched target is refused', async () => {
+  const p = await household();
+  const casyOwn = ownedSearch(p.coBuyer);
+  const request = await createRealtorConnectionRequest(as(p.realtor), p.coBuyer.email);
+  // Active = shared search: approving for their own (unused) search is refused, not silently redirected.
+  const wrong = await approveRealtorConnection(as(p.coBuyer), request.token, casyOwn);
+  assert.deepEqual([wrong.success, wrong.reason], [false, 'search_changed']);
+  // They switch to their own search in the app: now the shared search is the mismatch.
+  pointTo(p.coBuyer, casyOwn);
+  assert.equal((await getRealtorConnectionTarget(as(p.coBuyer))).searchId, casyOwn);
+  const stale = await approveRealtorConnection(as(p.coBuyer), request.token, p.search);
+  assert.deepEqual([stale.success, stale.reason], [false, 'search_changed']);
+  assert.deepEqual(membershipsOf(p.realtor), [], 'nothing connected by refused attempts');
+  // Approving the search actually in use works, and connects only that one.
+  const ok = await approveRealtorConnection(as(p.coBuyer), request.token, casyOwn);
+  assert.deepEqual([ok.success, ok.search_id], [true, casyOwn]);
+  assert.deepEqual(membershipsOf(p.realtor), [casyOwn]);
+});
+
+dbTest('a stale active search (removed from it) has no safe target: nothing is connected until the buyer chooses', async () => {
+  const p = await household();
+  const casyOwn = ownedSearch(p.coBuyer);
+  const before = searchCount();
+  const request = await createRealtorConnectionRequest(as(p.realtor), p.coBuyer.email);
+  // The owner removes the co-buyer; their active-search pointer still names the shared search.
+  db.exec(`delete from public.search_members where search_id = '${p.search}' and user_id = '${p.coBuyer.id}'`);
+  assert.equal(db.admin(`select active_search_id from public.profiles where id = '${p.coBuyer.id}'`)[0].active_search_id, p.search);
+  assert.deepEqual(await getRealtorConnectionTarget(as(p.coBuyer)), { reason: 'active_search_unavailable' });
+  // No fallback to the search they own, and no access to the one they left.
+  for (const target of [casyOwn, p.search]) {
+    const result = await approveRealtorConnection(as(p.coBuyer), request.token, target);
+    assert.equal(result.success, false);
+    assert.ok(['active_search_unavailable', 'search_not_authorized'].includes(result.reason), result.reason);
+  }
+  assert.deepEqual(membershipsOf(p.realtor), []);
+  assert.equal(invStatus(db.admin(`select id from public.search_invitations where token = '${request.token}'`)[0].id), 'pending');
+  // Recovery: they explicitly choose their own search in the app, then approve it.
+  await setActiveSearch(as(p.coBuyer), p.coBuyer.id, casyOwn);
+  assert.equal((await getRealtorConnectionTarget(as(p.coBuyer))).searchId, casyOwn);
+  assert.equal((await approveRealtorConnection(as(p.coBuyer), request.token, casyOwn)).success, true);
+  assert.deepEqual(membershipsOf(p.realtor), [casyOwn]);
+  assert.equal(searchCount(), before, 'no search created');
+});
+
+dbTest('an active search the buyer only helps with as a Realtor is not a target', async () => {
+  const p = await household();
+  const other = await household();
+  // Olive also works as a Realtor for another household, and that search is her active one.
+  await connectRealtor({ ...other, realtor: p.owner });
+  pointTo(p.owner, other.search);
+  assert.deepEqual(await getRealtorConnectionTarget(as(p.owner)), { reason: 'active_search_unavailable' });
+  const request = await createRealtorConnectionRequest(as(p.realtor), p.owner.email);
+  for (const target of [other.search, p.search]) {
+    const result = await approveRealtorConnection(as(p.owner), request.token, target);
+    assert.equal(result.success, false, target);
+  }
+  assert.deepEqual(membershipsOf(p.realtor), []);
+  assert.equal(roleIn(other.search, p.owner), 'realtor', 'her Realtor role elsewhere is untouched');
+});
+
 /* --------------------------------- removal --------------------------------- */
 
 dbTest('either buyer removes the Realtor: access ends at once, pending suggestions are withdrawn for good, accepted homes stay', async () => {
@@ -275,7 +354,9 @@ test('Your People asks the database for every decision and keeps no revocation l
   // No client-side suggestion withdrawal or membership writes: the database does it.
   assert.doesNotMatch(people, /realtor_suggestions|search_members|\.from\(/);
   // The confirmation states what removal does.
-  for (const line of ['will lose access to this search', 'Homes you already added from their suggestions stay in your Homes', 'Suggestions you haven’t answered yet will be withdrawn', 'won’t be able to see anyone’s priorities or reactions']) assert.ok(people.includes(line), line);
+  for (const line of ['loses access right away, including everyone’s priorities and reactions', 'Homes you added from their suggestions stay in your Homes', 'Suggestions you haven’t answered are withdrawn']) assert.ok(people.includes(line), line);
+  // Invitations are links the buyer sends; nothing is emailed.
+  for (const line of ['No email is sent.', 'Feels Like Home doesn’t send it for you', 'We haven’t emailed anyone. Copy this link and send it yourself.', 'Create private link']) assert.ok(people.includes(line), line);
   const page = read('src/app/(app)/search/page.js');
   assert.match(page, /getSearchPeople\(supabase, search\.id\)/);
   assert.match(page, /listRealtorInvitations\(supabase, search\.id\)/);
@@ -283,9 +364,72 @@ test('Your People asks the database for every decision and keeps no revocation l
 
 test('a connection request is approved for the search the buyer uses, verified by the database', () => {
   const page = read('src/app/invite/[token]/page.js');
-  assert.match(page, /const \{ search, role \} = await resolveOnboardingSearch\(supabase, userId\);/);
+  assert.match(page, /const target = await getRealtorConnectionTarget\(supabase\);/);
+  assert.doesNotMatch(page, /resolveOnboardingSearch|resolveActiveSearch/, 'no app-side fallback target');
+  // Without a safe target, the page offers only searches the buyer buys in.
+  assert.match(page, /search\.relationshipType === 'owner' \|\| search\.relationshipType === 'co_buyer'/);
   const client = read('src/app/invite/[token]/AcceptInvitationClient.jsx');
-  assert.match(client, /approveRealtorConnection\(supabase, token, approvalTarget\.id\)/);
-  assert.match(client, /: \{ success: false, reason: 'search_not_authorized' \}/);
+  assert.match(client, /approvalTarget\?\.id \? await approveRealtorConnection\(supabase, token, approvalTarget\.id\)/);
+  assert.match(client, /const needsTarget = isBuyerInvite && !requiresConfirmation && Boolean\(approvalTarget\?\.error\);/);
+  assert.match(client, /Which home search should \{inviterName\} help with\?/);
   assert.match(read('src/lib/realtorEntry.js'), /if \(invitationDirection === 'realtor_to_buyer'\) return \{ destination: '\/onboarding', setActiveSearch: false \};/);
+});
+
+/* --------------------------- production preflight --------------------------- */
+
+import { POST_SNAPSHOT_MIGRATIONS } from './support/supabaseDb.mjs';
+const MIGRATION = 'supabase/migrations/2026-10-15-buyer-realtor-management.sql';
+const PREFLIGHT = read('supabase/buyer-realtor-management-preflight.sql').replace(/^--.*$/gm, '').trim().replace(/;$/, '');
+const notOk = (rows, stage) => rows.filter((row) => row.stage === stage && row.ok !== true).map((row) => `${row.item} ${row.detail || ''}`);
+
+dbTest('the read-only preflight passes before the migration, confirms it after, and changes nothing', () => {
+  const pre = createTestDatabase({ steps: POST_SNAPSHOT_MIGRATIONS.filter((step) => step.file !== MIGRATION) });
+  try {
+    const fingerprint = () => pre.admin(`select
+      (select json_agg(p order by p.tablename, p.policyname) from pg_policies p where p.schemaname = 'public') as policies,
+      (select json_agg(f.proname order by f.proname) from pg_proc f where f.pronamespace = 'public'::regnamespace) as functions,
+      (select count(*) from public.search_invitations) as invitations`)[0];
+    const before = fingerprint();
+    const report = pre.admin(PREFLIGHT);
+    assert.deepEqual(notOk(report, 'required'), []);
+    assert.ok(report.filter((row) => row.stage === 'after').every((row) => row.ok === null), 'nothing to verify yet');
+    assert.ok(report.some((row) => row.section === 4 && row.detail === 'not present: will be created'));
+    assert.deepEqual(fingerprint(), before, 'the preflight writes nothing');
+
+    const policiesBefore = pre.admin(`select tablename, policyname, cmd, qual, with_check from pg_policies where schemaname = 'public' order by 1, 2`);
+    assert.equal(pre.applyFile(MIGRATION).error, null);
+    // The migration adds functions only: every policy is byte-for-byte unchanged.
+    assert.deepEqual(pre.admin(`select tablename, policyname, cmd, qual, with_check from pg_policies where schemaname = 'public' order by 1, 2`), policiesBefore);
+    const after = pre.admin(PREFLIGHT);
+    assert.deepEqual(notOk(after, 'required'), []);
+    assert.deepEqual(notOk(after, 'after'), [], 'definer, pinned search_path, EXECUTE only where intended');
+    assert.equal(pre.applyFile(MIGRATION).error, null, 're-runnable');
+    assert.deepEqual(notOk(pre.admin(PREFLIGHT), 'after'), []);
+  } finally {
+    pre.drop();
+  }
+});
+
+dbTest('the preflight flags a conflicting overload, a missing prerequisite and a widened grant', () => {
+  const pre = createTestDatabase({ steps: POST_SNAPSHOT_MIGRATIONS.filter((step) => step.file !== MIGRATION) });
+  try {
+    pre.exec(`create function public.get_search_people(p_search_id text) returns int language sql as $$ select 1 $$;`);
+    pre.exec(`drop trigger search_members_withdraw_realtor_suggestions on public.search_members;`);
+    pre.exec(`create policy "search_invitations_anyone_update" on public.search_invitations for update using (true);`);
+    const failing = notOk(pre.admin(PREFLIGHT), 'required');
+    assert.ok(failing.some((line) => line.startsWith('no other function named get_search_people') && line.includes('get_search_people(p_search_id text)')), failing.join('\n'));
+    assert.ok(failing.some((line) => line.includes('withdrawal trigger')), failing.join('\n'));
+    assert.ok(failing.some((line) => line.includes('search_invitations policies are exactly')), failing.join('\n'));
+  } finally {
+    pre.drop();
+  }
+  const post = createTestDatabase();
+  try {
+    post.exec('grant execute on function public.realtor_connection_target_for(uuid) to authenticated;');
+    post.exec('grant execute on function public.get_search_people(uuid) to anon;');
+    const failing = notOk(post.admin(PREFLIGHT), 'after');
+    assert.deepEqual(failing.map((line) => line.split(':')[0]).sort(), ['get_search_people', 'realtor_connection_target_for']);
+  } finally {
+    post.drop();
+  }
 });

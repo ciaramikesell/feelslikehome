@@ -17,6 +17,9 @@ const REASON_COPY = {
   wrong_account: "This invite was sent to a different email address than the one you're signed in with. Sign in with the invited email and try again.",
   not_authenticated: 'Please sign in first.',
   search_not_authorized: "We couldn't confirm which of your searches to connect. Open My Search, then try this link again.",
+  search_changed: 'The search you’re using changed since this page opened. Open this link again to see which search it will connect.',
+  active_search_unavailable: "We couldn't tell which home search you're using, so nothing was shared. Open this link again to choose.",
+  no_search: "You don't have a home search yet. Start one, then open this link again.",
   relationship_conflict: 'They’re already part of this search as a buyer.',
   accepted: 'This request has already been used.',
   unknown: 'Something went wrong. Please try again.',
@@ -39,6 +42,23 @@ export default function AcceptInvitationClient({ token, initialPreview, onboardi
   const requiresConfirmation = isBuyerInvite && Boolean(initialPreview.requires_confirmation);
   const inviterName = initialPreview.inviter_display_name || 'Your Realtor';
   const asRealtor = isRealtorInvite && !isBuyerInvite;
+  // No safe approval target (e.g. a stale active search): nothing is approved
+  // until the buyer picks the search they are using.
+  const needsTarget = isBuyerInvite && !requiresConfirmation && Boolean(approvalTarget?.error);
+  const [choosing, setChoosing] = useState('');
+
+  const useSearch = async (searchId) => {
+    setChoosing(searchId);
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) await setActiveSearch(supabase, user.id, searchId);
+      router.refresh();
+    } catch (err) {
+      console.error('Could not switch search', err?.message);
+      setChoosing('');
+    }
+  };
 
   // Someone who came to FLH through a Realtor invitation keeps the Realtor
   // workspace even when that invitation can't be used (expired, revoked,
@@ -65,7 +85,7 @@ export default function AcceptInvitationClient({ token, initialPreview, onboardi
       // screen (the one this buyer is using); the database verifies they are a
       // buyer of it. Every other invitation keeps its own target.
       const result = isBuyerInvite
-        ? (approvalTarget ? await approveRealtorConnection(supabase, token, approvalTarget.id) : { success: false, reason: 'search_not_authorized' })
+        ? (approvalTarget?.id ? await approveRealtorConnection(supabase, token, approvalTarget.id) : { success: false, reason: approvalTarget?.error || 'search_not_authorized' })
         : await acceptInvitation(supabase, token);
       if (!result.success) {
         // Safe to log: `reason` is either a known short code (e.g.
@@ -120,11 +140,21 @@ export default function AcceptInvitationClient({ token, initialPreview, onboardi
               ) : requiresConfirmation ? (
                 <>Keep the homes you&apos;re considering in one place, see how each one matches what matters to you, and make it easier for {inviterName} to understand what you&apos;re looking for. This remains your search.</>
               ) : (
-                <>{inviterName} will be able to see your search, priorities, and homes so they can help — nothing changes about your search itself, and you can remove them anytime from My Search → Your People.{approvalTarget && <span className="hh-invite-target"><strong>{approvalTarget.label}</strong>{approvalTarget.homeCount} saved {approvalTarget.homeCount === 1 ? 'home' : 'homes'}</span>}</>
+                <>{inviterName} will be able to see your search, priorities, and homes so they can help — nothing changes about your search itself, and you can remove them anytime from My Search → Your People.{approvalTarget?.id && <span className="hh-invite-target"><strong>{approvalTarget.label}</strong>{approvalTarget.homeCount} saved {approvalTarget.homeCount === 1 ? 'home' : 'homes'}</span>}</>
               )}
             </p>
             <p className="hh-collaboration-consent">{isBuyerInvite ? `${inviterName} will only see your search after you accept. You own the search and every decision in it.` : 'This includes priorities, Match, Favorites, Want to Tour choices, commute destinations, notes, Overall Feeling, and post-tour ratings. Only participants in this search can see its activity.'}</p>
-            {isBuyerInvite ? (
+            {needsTarget ? (
+              <div className="hh-invite-choose" role="group" aria-labelledby="invite-choose-title">
+                <p id="invite-choose-title" className="hh-invite-choose-title">Which home search should {inviterName} help with?</p>
+                <p className="hh-invite-choose-body">We couldn&apos;t tell which search you&apos;re using right now, so nothing has been shared. Choose the search you use; you&apos;ll see it named here before you approve.</p>
+                {approvalTarget.options?.length ? approvalTarget.options.map((option) => (
+                  <button key={option.id} type="button" className="hh-btn hh-btn-ghost" style={{ width: '100%', justifyContent: 'center' }} onClick={() => useSearch(option.id)} disabled={Boolean(choosing)}>
+                    {choosing === option.id ? 'Opening…' : `Use ${option.label === 'Your search' ? 'my own search' : option.label}`}
+                  </button>
+                )) : <a className="hh-btn" style={{ width: '100%', justifyContent: 'center' }} href="/search">Open My Search</a>}
+              </div>
+            ) : isBuyerInvite ? (
               <button type="button" className="hh-btn" style={{ width: '100%', justifyContent: 'center' }} onClick={accept}>{requiresConfirmation ? 'Review my search' : 'Approve access'}</button>
             ) : isRealtorInvite ? (
               <button type="button" className="hh-btn" style={{ width: '100%', justifyContent: 'center' }} onClick={accept}>Join as Realtor</button>
@@ -147,7 +177,9 @@ export default function AcceptInvitationClient({ token, initialPreview, onboardi
           <>
             <h1 className="hh-serif" style={{ fontSize: 20, fontWeight: 700, color: 'var(--ink)', margin: '0 0 8px' }}>We couldn't complete that</h1>
             <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', lineHeight: 1.55 }}>{REASON_COPY[reason] || REASON_COPY.unknown}</p>
-            {reason === 'wrong_account' ? (
+            {reason === 'search_changed' || reason === 'active_search_unavailable' ? (
+              <button type="button" className="hh-btn" onClick={() => window.location.reload()}>Review again</button>
+            ) : reason === 'wrong_account' ? (
               <button type="button" className="hh-btn" onClick={signOut}>Sign in with another account</button>
             ) : (
               <button type="button" className="hh-btn hh-btn-ghost" onClick={async () => {

@@ -812,8 +812,20 @@ export async function removeRealtor(supabase, searchId, realtorId) {
   return scalarResult(data);
 }
 
+// The search a Realtor's connection request would connect to for the caller,
+// resolved by the database: { searchId, role, partnerName, homeCount } or
+// { reason } ('active_search_unavailable' | 'no_search') when there is no safe
+// target. Never a fallback to some other search.
+export async function getRealtorConnectionTarget(supabase) {
+  const [row] = await rpcRows(supabase, 'get_realtor_connection_target', {});
+  if (!row) return { reason: 'unknown' };
+  if (!row.search_id) return { reason: row.reason || 'unknown' };
+  return { searchId: row.search_id, role: row.role, partnerName: row.partner_name || null, homeCount: row.home_count ?? 0 };
+}
+
 // A buyer approving a Realtor's connection request for the search they are
-// actually using (verified in the database), never "the search they own".
+// actually using (re-resolved and verified in the database), never "the search
+// they own".
 export async function approveRealtorConnection(supabase, token, searchId) {
   const [row] = await rpcRows(supabase, 'approve_realtor_connection', { p_token: token, p_search_id: searchId });
   return row || { success: false, reason: 'unknown', search_id: null };

@@ -105,10 +105,9 @@ function RemoveRealtor({ realtor, searchId, onRemoved }) {
       <button type="button" className="flh-people-action is-quiet" onClick={() => setOpen(true)}>Remove Realtor</button>
       <Sheet open={open} onClose={() => !working && setOpen(false)} size="compact" title={`Remove ${name}?`}>
         <ul className="flh-people-consequences">
-          <li>{name} will lose access to this search and won’t see future updates.</li>
-          <li>Homes you already added from their suggestions stay in your Homes.</li>
-          <li>Suggestions you haven’t answered yet will be withdrawn.</li>
-          <li>They won’t be able to see anyone’s priorities or reactions afterward.</li>
+          <li>{firstName(name)} loses access right away, including everyone’s priorities and reactions.</li>
+          <li>Homes you added from their suggestions stay in your Homes.</li>
+          <li>Suggestions you haven’t answered are withdrawn.</li>
         </ul>
         {error && <p className="flh-people-error" role="alert">{error}</p>}
         <div className="flh-sheet-actions flh-people-confirm-actions">
@@ -136,7 +135,7 @@ function InviteRealtor({ searchId, onInvited }) {
       setEmail('');
     } catch (err) {
       console.error('Realtor invitation failed', err?.message);
-      setError(errorCopy(err, 'We couldn’t create that invitation. Please try again.'));
+      setError(errorCopy(err, 'We couldn’t create that link. Please try again.'));
     } finally {
       setWorking(false);
     }
@@ -146,11 +145,11 @@ function InviteRealtor({ searchId, onInvited }) {
     <form className="flh-people-invite" onSubmit={submit}>
       <label htmlFor="realtor-invite-email" className="flh-people-label">Your Realtor’s email</label>
       <div className="flh-people-invite-row">
-        <input id="realtor-invite-email" className="hh-input" type="email" autoComplete="email" inputMode="email" placeholder="name@brokerage.com" value={email} onChange={(event) => setEmail(event.target.value)} />
-        <button type="submit" className="flh-button flh-button-primary" disabled={!email.trim() || working}><Link2 size={16} aria-hidden="true" /> {working ? 'Creating…' : 'Create invite link'}</button>
+        <input id="realtor-invite-email" className="hh-input" type="email" autoComplete="off" inputMode="email" placeholder="name@brokerage.com" aria-describedby="realtor-invite-hint" value={email} onChange={(event) => setEmail(event.target.value)} />
+        <button type="submit" className="flh-button flh-button-primary" disabled={!email.trim() || working}><Link2 size={16} aria-hidden="true" /> {working ? 'Creating…' : 'Create private link'}</button>
       </div>
       {error && <p className="flh-people-error" role="alert">{error}</p>}
-      <p className="flh-people-note">You’ll get a link to send them yourself. They see this search only after they sign in and accept.</p>
+      <p id="realtor-invite-hint" className="flh-people-note">No email is sent. The address only makes sure the link opens for the right person; they see this search after they sign in with it and accept.</p>
     </form>
   );
 }
@@ -163,13 +162,13 @@ function InvitationRow({ invitation, onRevoke, onReplace, busy }) {
     <li className="flh-people-invitation">
       <div className="flh-people-invitation-text">
         <p className="flh-people-name">{incoming ? `${invitation.inviterName || 'A Realtor'} wants to connect as your Realtor` : invitation.email}</p>
-        <p className={`flh-people-status is-${invitation.status}`}>{incoming ? 'Connection request · ' : 'Realtor invitation · '}{statusText}</p>
+        <p className={`flh-people-status is-${invitation.status}`}>{incoming ? 'Connection request · ' : 'Private link · '}{statusText}</p>
       </div>
       <div className="flh-people-invitation-actions">
         {incoming && pending && <a className="flh-people-action is-primary" href={`/invite/${invitation.token}`}>Review</a>}
         {!incoming && pending && invitation.token && <CopyButton text={inviteLink(invitation.token)} />}
         {pending && <button type="button" className="flh-people-action is-quiet" onClick={() => onRevoke(invitation)} disabled={busy}>{incoming ? 'Decline' : 'Revoke'}</button>}
-        {!incoming && !pending && <button type="button" className="flh-people-action" onClick={() => onReplace(invitation)} disabled={busy}>Send a new invite</button>}
+        {!incoming && !pending && <button type="button" className="flh-people-action" onClick={() => onReplace(invitation)} disabled={busy}>Create a new link</button>}
       </div>
     </li>
   );
@@ -231,11 +230,11 @@ export default function YourPeople({ search, userId, isOwner, participantCount, 
     try {
       const outcome = await revokeInvitation(createClient(), invitation.id);
       setList((items) => items.map((item) => (item.id === invitation.id ? { ...item, status: outcome === 'already_accepted' ? 'accepted' : 'revoked', token: null } : item)).filter((item) => item.status !== 'accepted'));
-      setNotice(invitation.direction === 'realtor_to_buyer' ? 'Request declined.' : outcome === 'already_accepted' ? 'That invitation was already accepted.' : 'Invitation revoked. The link no longer works.');
+      setNotice(invitation.direction === 'realtor_to_buyer' ? 'Request declined.' : outcome === 'already_accepted' ? 'That link was already accepted.' : 'Link revoked. It no longer works.');
       if (outcome === 'already_accepted') refresh();
     } catch (err) {
       console.error('Revoking invitation failed', err?.message);
-      setError('We couldn’t update that invitation. Please try again.');
+      setError('We couldn’t update that link. Please try again.');
     } finally {
       setBusy(false);
     }
@@ -250,7 +249,7 @@ export default function YourPeople({ search, userId, isOwner, participantCount, 
       onInvited({ ...created, email: invitation.email });
     } catch (err) {
       console.error('Replacement invitation failed', err?.message);
-      setError(errorCopy(err, 'We couldn’t create a new invitation. Please try again.'));
+      setError(errorCopy(err, 'We couldn’t create a new link. Please try again.'));
     } finally {
       setBusy(false);
     }
@@ -260,7 +259,7 @@ export default function YourPeople({ search, userId, isOwner, participantCount, 
     const row = { id: invitation.id, direction: 'buyer_to_realtor', email: invitation.email, status: 'pending', expiresAt: invitation.expiresAt, token: invitation.token };
     setList((items) => [row, ...items.filter((item) => item.id !== row.id)]);
     setFresh(row);
-    setNotice(invitation.reused ? 'There’s already an invitation waiting for them — here’s the link again.' : 'Invitation link ready. Send it to your Realtor.');
+    setNotice(invitation.reused ? 'You already have a link waiting for this email — here it is again.' : 'Private link ready. Copy it and send it to your Realtor yourself.');
   }
 
   const onRemoved = (message) => {
@@ -339,23 +338,23 @@ export default function YourPeople({ search, userId, isOwner, participantCount, 
           ) : (
             <div className="flh-people-empty">
               <p className="flh-people-empty-title">Working with a Realtor?</p>
-              <p className="flh-people-detail">Invite them to follow this search and suggest homes. They’ll see what matters to each of you, but they can’t change anyone’s priorities or ratings.</p>
+              <p className="flh-people-detail">Create a private link to share this search with them. Feels Like Home doesn’t send it for you: copy the link and send it yourself, however you usually reach them. They can suggest homes, but can’t change anyone’s priorities or ratings.</p>
               <InviteRealtor searchId={search.id} onInvited={onInvited} />
             </div>
           )}
           {fresh?.token && (
             <div className="flh-people-fresh">
-              <label className="flh-people-label" htmlFor="realtor-invite-link">Invite link for {fresh.email}</label>
+              <label className="flh-people-label" htmlFor="realtor-invite-link">Private link for {fresh.email}</label>
               <div className="flh-people-invite-row">
                 <input id="realtor-invite-link" className="hh-input" readOnly value={inviteLink(fresh.token)} onFocus={(event) => event.target.select()} />
                 <CopyButton text={inviteLink(fresh.token)} />
               </div>
-              <p className="flh-people-note">Expires in 7 days. Copy-link only for now — send it however you usually reach them.</p>
+              <p className="flh-people-note">We haven’t emailed anyone. Copy this link and send it yourself. It works for 7 days, only for {fresh.email}.</p>
             </div>
           )}
           {sent.length > 0 && (
             <>
-              <h4 className="flh-people-subheading">Invitations</h4>
+              <h4 className="flh-people-subheading">Private links</h4>
               <ul className="flh-people-list">{sent.map((item) => <InvitationRow key={item.id} invitation={item} onRevoke={revoke} onReplace={replace} busy={busy} />)}</ul>
             </>
           )}

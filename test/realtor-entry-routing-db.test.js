@@ -17,7 +17,7 @@ import {
 
 register('./support/aliasHooks.mjs', import.meta.url);
 const {
-  acceptInvitation, approveRealtorConnection, resolveOnboardingSearch, createInvitation, createRealtorConnectionRequest, getRealtorRelationships, hasRealtorRelationship,
+  acceptInvitation, approveRealtorConnection, getRealtorConnectionTarget, createInvitation, createRealtorConnectionRequest, getRealtorRelationships, hasRealtorRelationship,
   previewInvitation, resolveActiveSearch, saveHomePersonalAndShared, savePriorities,
 } = await import('../src/lib/supabase/collaboration.js');
 
@@ -129,7 +129,7 @@ async function acceptAsInvitee(user, token) {
   // As AcceptInvitationClient does: a Realtor's connection request is approved
   // for the search this buyer is using (the invite page's approvalTarget).
   const result = preview.invitation_direction === 'realtor_to_buyer'
-    ? await approveRealtorConnection(as(user), token, (await resolveOnboardingSearch(as(user), user.id)).search.id)
+    ? await approveRealtorConnection(as(user), token, (await getRealtorConnectionTarget(as(user))).searchId)
     : await acceptInvitation(as(user), token);
   assert.equal(result.success, true, result.reason);
   const next = invitationAcceptance({ relationshipType: preview.relationship_type, invitationDirection: preview.invitation_direction, searchId: result.search_id });

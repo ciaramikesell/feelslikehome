@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { getSearchPeople, previewInvitation, resolveOnboardingSearch } from '@/lib/supabase/collaboration';
+import { getAccessibleSearches, getRealtorConnectionTarget, previewInvitation } from '@/lib/supabase/collaboration';
 import { getProfile } from '@/lib/supabase/data';
 import AcceptInvitationClient from './AcceptInvitationClient';
 
@@ -37,29 +37,28 @@ export default async function InvitePage({ params }) {
   const profile = await getProfile(supabase, user.id).catch(() => null);
 
   // A buyer approving a Realtor's connection request approves it for the
-  // search they actually buy in — their active search when they are its owner
-  // or co-buyer, otherwise their own — never "whichever search they own". The
-  // database re-checks that they are a buyer of it (approve_realtor_connection).
+  // search they are using, as resolved by the database. When that can't be
+  // established safely (a stale active search, for example) the screen says so
+  // and offers the searches they buy in, rather than picking one for them; the
+  // database re-checks the target when they approve.
   const approvalTarget = preview.valid && preview.invitation_direction === 'realtor_to_buyer' && !preview.requires_confirmation
-    ? await approvalTargetFor(supabase, user.id).catch(() => null)
+    ? await approvalTargetFor(supabase, user.id).catch(() => ({ error: 'unknown', options: [] }))
     : null;
 
   return <AcceptInvitationClient token={token} initialPreview={preview} onboardingComplete={Boolean(profile?.onboarding_complete)} approvalTarget={approvalTarget} />;
 }
 
 async function approvalTargetFor(supabase, userId) {
-  const { search, role } = await resolveOnboardingSearch(supabase, userId);
-  if (!search) return null;
-  const [people, { data: homes }] = await Promise.all([
-    getSearchPeople(supabase, search.id).catch(() => []),
-    supabase.from('homes').select('id').eq('search_id', search.id).eq('suggestion_staged', false),
-  ]);
-  const owner = people.find((person) => person.role === 'owner' && !person.isYou);
-  const coBuyer = people.find((person) => person.role === 'co_buyer' && !person.isYou);
-  const partner = role === 'owner' ? coBuyer : owner;
+  const target = await getRealtorConnectionTarget(supabase);
+  if (!target.searchId) {
+    const options = (await getAccessibleSearches(supabase, userId).catch(() => []))
+      .filter((search) => search.relationshipType === 'owner' || search.relationshipType === 'co_buyer')
+      .map((search) => ({ id: search.id, label: search.label }));
+    return { error: target.reason, options };
+  }
   return {
-    id: search.id,
-    label: partner ? `The search you share with ${partner.displayName}` : 'Your home search',
-    homeCount: (homes || []).length,
+    id: target.searchId,
+    label: target.partnerName ? `The search you share with ${target.partnerName}` : 'Your home search',
+    homeCount: target.homeCount,
   };
 }
