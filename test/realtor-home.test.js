@@ -23,9 +23,11 @@ const fnIn = (source, name) => source.match(new RegExp(`create (?:or replace )?f
   || source.match(new RegExp(`create (?:or replace )?function public\\.${name}[\\s\\S]*?\\n\\$\\$;`, 'i'))?.[0] || '';
 const fn = (name) => fnIn(migration, name) || fnIn(startedSearchesMigration, name);
 
-test('a new Realtor with no explicit continuation lands on Realtor Home, not People/Homes/onboarding', () => {
-  assert.match(root, /account_entry_intent === 'realtor'\) redirect\('\/realtor'\)/);
-  assert.doesNotMatch(root, /account_entry_intent === 'realtor'\) redirect\('\/(homes|people|search)'\)/);
+test('a new Realtor with no explicit continuation lands in the People workspace, not Homes or buyer onboarding', () => {
+  assert.match(root, /redirect\(realtor \? REALTOR_WORKSPACE_PATH : '\/onboarding'\)/);
+  assert.doesNotMatch(root, /redirect\('\/realtor'\)/);
+  // Realtor Home stays reachable from the Realtor workspace navigation.
+  assert.match(read('src/components/AppShell.jsx'), /href="\/realtor"/);
 });
 
 test('Realtor Home and People workspace share the same non-buyer app shell and bypass buyer onboarding identically', () => {

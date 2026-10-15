@@ -2,7 +2,8 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { requireUser, withAuthRecovery, withRedirectParam, currentPathForRedirect } from '@/lib/supabase/auth';
 import { getProfile } from '@/lib/supabase/data';
-import { resolveActiveSearch, getAccessibleSearches, needsSharedSearchSetup, resolvePriorities, getSearchParticipantIds } from '@/lib/supabase/collaboration';
+import { resolveActiveSearch, getAccessibleSearches, needsSharedSearchSetup, resolvePriorities, getSearchParticipantIds, hasRealtorRelationship } from '@/lib/supabase/collaboration';
+import { entersAsRealtor } from '@/lib/realtorEntry';
 import { normalizeSearchIntent } from '@/lib/searchIntent';
 import AppShell from '@/components/AppShell';
 
@@ -12,11 +13,19 @@ export default async function AppGroupLayout({ children }) {
     const user = await requireUser(supabase);
 
     const storedProfile = await getProfile(supabase, user.id);
-    const isRealtorEntry = user.user_metadata?.account_entry_intent === 'realtor';
     // Preserve incomplete buyer onboarding so this person can start a personal
     // search later; only People/Realtor Home routes bypass that unrelated setup gate.
     const requestedPath = await currentPathForRedirect();
     const isRealtorWorkspace = requestedPath.startsWith('/people') || requestedPath.startsWith('/realtor');
+    // A Realtor by sign-up intent, or by membership (someone who first signed up
+    // from a buyer's invitation). The membership read happens only when it can
+    // change the outcome; it grants no access (People queries are RLS-scoped).
+    const isRealtorEntry = isRealtorWorkspace && entersAsRealtor({
+      onboardingComplete: Boolean(storedProfile?.onboarding_complete),
+      entryIntent: user.user_metadata?.account_entry_intent,
+      hasRealtorMembership: !storedProfile?.onboarding_complete && user.user_metadata?.account_entry_intent !== 'realtor'
+        && await hasRealtorRelationship(supabase, user.id).catch(() => false),
+    });
     // Account & Settings belongs to the person, not a search: it must open (to
     // sign out, fix a name) even with unfinished onboarding or no buyer search.
     const isAccountRoute = requestedPath === '/account' || requestedPath.startsWith('/account/') || requestedPath.startsWith('/account?');

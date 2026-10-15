@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { previewInvitation } from '@/lib/supabase/collaboration';
+import { getProfile } from '@/lib/supabase/data';
 import AcceptInvitationClient from './AcceptInvitationClient';
 
 export default async function InvitePage({ params }) {
@@ -30,5 +31,10 @@ export default async function InvitePage({ params }) {
     preview = { valid: false, reason: 'unknown' };
   }
 
-  return <AcceptInvitationClient token={token} initialPreview={preview} />;
+  // Whether this person already has a buyer experience: a failed Realtor
+  // invitation only records the Realtor workspace preference for someone who
+  // hasn't (see remembersRealtorFromFailedInvitation).
+  const profile = await getProfile(supabase, user.id).catch(() => null);
+
+  return <AcceptInvitationClient token={token} initialPreview={preview} onboardingComplete={Boolean(profile?.onboarding_complete)} />;
 }

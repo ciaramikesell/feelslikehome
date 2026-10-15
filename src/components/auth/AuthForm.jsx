@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { PasswordField, Banner, Spinner } from '@/components/auth/AuthHelpers';
 import { createClient } from '@/lib/supabase/client';
+import { REALTOR_WORKSPACE_PATH } from '@/lib/realtorEntry';
 
 export default function AuthForm({ initialMode = 'sign-in', redirectTo = '/', isRealtorEntry = false, inline = false, onModeChange }) {
   const router = useRouter();
@@ -16,7 +17,7 @@ export default function AuthForm({ initialMode = 'sign-in', redirectTo = '/', is
   const [confirm, setConfirm] = useState('');
   const [status, setStatus] = useState(null);
   const [error, setError] = useState('');
-  const entryDestination = redirectTo === '/' && isRealtorEntry ? '/realtor' : redirectTo;
+  const entryDestination = redirectTo === '/' && isRealtorEntry ? REALTOR_WORKSPACE_PATH : redirectTo;
 
   const switchMode = (nextMode) => {
     setMode(nextMode);
