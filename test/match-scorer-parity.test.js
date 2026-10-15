@@ -20,11 +20,16 @@ function sqlRetiredKeys(sql) {
 }
 
 test('the newest co-buyer Compare scorer skips exactly the JS retired purchase built-ins', () => {
-  assert.equal(latestDefinition.file, '2026-10-07-cobuyer-compare-garage-parity.sql');
+  assert.equal(latestDefinition.file, '2026-10-15-cobuyer-compare-mudroom-parity.sql');
   assert.deepEqual([...sqlRetiredKeys(latestDefinition.sql)].sort(), [...RETIRED_PURCHASE_BUILT_IN_KEYS].sort());
 });
 
 test('Garage stays a scored criterion on both sides, from the shared garage_spaces fact', () => {
   assert.ok(!RETIRED_PURCHASE_BUILT_IN_KEYS.includes('exterior:Garage'));
   assert.match(latestDefinition.sql, /v_category = 'exterior' and v_label = 'Garage' and coalesce\(v_home\.garage_spaces, ''\) <> ''/);
+});
+
+test('Mudroom is a scored purchase criterion on both sides again', () => {
+  assert.ok(!RETIRED_PURCHASE_BUILT_IN_KEYS.includes('features:Mudroom'));
+  assert.ok(!sqlRetiredKeys(latestDefinition.sql).includes('features:Mudroom'));
 });

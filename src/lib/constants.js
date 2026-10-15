@@ -259,7 +259,7 @@ const RETIRED_PURCHASE_BUILT_INS = new Set([
   'exterior:Yard', 'exterior:Privacy', 'exterior:Sidewalks',
   'exterior:Exterior Condition', 'exterior:Curb Appeal', 'exterior:Outdoor Space',
   'exterior:Noise Level', 'exterior:Driveway / Off-Street Parking', 'exterior:Fitness Center',
-  'exterior:Secure Entry', 'exterior:Elevator', 'features:Basement', 'features:Mudroom',
+  'exterior:Secure Entry', 'exterior:Elevator', 'features:Basement',
   'features:Pantry', 'features:Storage', 'features:Updated Kitchen', 'features:Updated Bathrooms',
   'features:Walk-In Closet', 'features:Additional Living Space', 'features:Hardwood Floors',
   'features:Dishwasher', 'features:In-Unit Laundry', 'features:Updated Interior',
