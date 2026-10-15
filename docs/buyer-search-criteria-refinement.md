@@ -86,37 +86,49 @@ Add/Edit Home. This document is the audit, what changed, and the work that is
 
 Unknown never disqualifies a home, including for Must-Haves.
 
-## 3. Deferred — needs approval (schema and/or Match + SQL parity)
+## 3. Deferred — separate proposals (not in #145)
 
-Any change to how a criterion is scored must be made in `computeMatch` **and**
+Each needs schema and/or a Match change made in both `computeMatch` and
 `resolve_cobuyer_compare_perspectives` (pinned by `test/match-scorer-parity.test.js`).
 
-### 3a. Garage type, size and "No Garage"
-- Migration: `homes.garage_type text check (garage_type in ('attached','detached','none'))`, nullable (NULL = Unknown). Keep `garage_spaces` as the capacity source.
-- Preference: `exterior.garagePreference` (existing) + `exterior.garageMinSpaces` (1/2/3) in the priorities JSON; "No Garage" as `garagePreference: 'none'`.
-- Match: Garage criterion met when (spaces ≥ min, or > 0 if no min) AND type matches when the preference isn't Any; type Unknown → evaluate on spaces only, never a miss on type alone. "No Garage" met when spaces = 0 or type = 'none'.
-- Import: RentCast `features.garageType` and explicit "attached/detached garage" text → `garage_type`; "no garage" → `'none'` only when explicit.
-- UI: Garage Size row appears only for Any/Attached/Detached; choosing No Garage clears size.
+| Proposal | Status |
+| --- | --- |
+| [Mudroom Match parity](proposals/mudroom-match-parity.md) | Built and validated against real Postgres; ready as its own PR. Completes the 34-option catalog once live. |
+| [Garage location, size and No Garage](proposals/garage-location-size.md) | Proposal (priority). |
+| [Basement finish and access](proposals/basement-finish-access.md) | Proposal (priority). |
+| [First-Floor Primary shared-home evidence](proposals/first-floor-primary-evidence.md) | Proposal; only after JS/SQL parity and Unknown behavior are verified. |
+| [Add / Edit Home property-fact controls](proposals/add-edit-home-property-facts.md) | Proposal; sequenced after garage and basement. |
+| Description-parsing rules for the new What Matters choices | Optional; explicit-phrase, yes-only, never for location choices. |
 
-### 3b. Basement finish and access
-- Migration: `homes.basement_finish text[]` (`finished`,`partially_finished`,`unfinished`, `none`) and `homes.basement_access text[]` (`walkout`,`daylight`,`traditional`), empty = Unknown.
-- Preferences: two groups (finish alternatives, access alternatives), each one importance — "Finished + Walkout" = finish ∈ {finished} AND access ∈ {walkout}; "Walkout or Daylight" expressible.
-- Existing `features:Finished basement` / `Walkout basement` answers keep counting; a one-time read fallback maps them until a home fact exists.
+## 4. Product decisions (approved)
 
-### 3c. Mudroom
-- `features:Mudroom` is a retired purchase built-in in both scorers. Offering it needs a migration that removes it from the SQL retired array (as done for Garage in `2026-10-07-cobuyer-compare-garage-parity.sql`) plus the JS list. Existing Mudroom selections would start counting again (restoring intent).
+1. **No default Home type.** A new purchase search never starts with Single Family / House selected (both flows).
+2. **Quiet Street and Low-Traffic Street** stay separate identities. Quiet Street is retired from new buyer selection; existing preferences are unchanged and keep counting.
+3. **Walkable to Town and Walkable Neighborhood** stay separate identities for now (same treatment).
+4. **Near Water** and **Privacy Fence** are display labels only; stored identities (`location:Near waterfront`, `exterior:Privacy Fencing`) are unchanged.
+5. **Unfenced** means a genuine preference for a yard without fencing. It can be cleared at any time and is never chosen together with Fenced or Privacy Fence (on The Basics and in My Search).
+6. **First-Floor Primary**: a reliable shared main-floor fact should eventually count as positive evidence — deferred until JS/SQL parity and Unknown behavior are verified ([proposal](proposals/first-floor-primary-evidence.md)).
+7. **Optional Home preferences** all start Important and stay re-rankable in Rank Priorities and My Search.
 
-### 3d. Yard fencing as a shared fact (optional)
-- Today Fenced / Privacy / Unfenced are personal Yes/No answers. A shared `homes.yard_fencing text` (`none`,`partial`,`full`,`privacy`) would allow one answer per home with logical consistency; recommended only if co-buyers report conflicting answers.
+## 5. QA for #145
 
-### 3e. Listing-description rules for the new What Matters choices
-- Explicit-phrase, yes-only rules (kitchen island, stainless appliances, walk-in pantry, double vanity, soaking tub, screened porch, fire pit, eat-in kitchen, formal dining room) would follow the existing `importReview` safety rules. Location choices should never be parsed.
-
-## 4. Product decisions to confirm
-
-1. **No preset property type in the live flow.** New Home to Buy searches no longer start with House assumed (it penalised condos). Existing saved values are untouched.
-2. **Quiet Street / Walkable to Town** were kept as separate retired identities rather than relabelled as Low-Traffic Street / Walkable Neighborhood. They could be folded later if you consider them the same concept.
-3. **"Near Water"** relabels the existing `Near waterfront` identity for everyone (same concept); **"Privacy Fence"** relabels `Privacy Fencing`.
-4. **Attached/Detached** stays an informational qualifier until 3a; the Basics say so.
-5. **First-Floor Primary** is answered per participant; the shared `primary_bedroom_location = 'Main Floor'` fact is not yet used as evidence for it.
-6. **Unfenced** as a buyer preference — confirm it means "I'd prefer no fence" rather than "fine without one" (the latter would simply be leaving Yard unset).
+- **Database-backed tests:** a disposable Postgres 16 cluster (`FLH_TEST_PGHOST`)
+  runs the 71 tests that skip by default. Full suite run serially:
+  **all pass, 0 skipped**. Running files in parallel against one cluster can
+  fail in `createTestDatabase` with `duplicate key … pg_authid_rolname_index`
+  (two files creating the cluster-wide `anon`/`authenticated` roles at once) —
+  a race in the shared test harness, independent of this PR, not a product failure; use
+  `--test-concurrency=1` or one cluster per file.
+- **New DB coverage** (`test/home-preferences-db.test.js`): owner and co-buyer
+  save their own Home preferences (never copied between them), they rank
+  Important, re-ranking from My Search persists; the co-buyer edits multi-value
+  layout/condition facts on the owner's home; clearing returns to Unknown;
+  personal Yes/No stays personal; the owner's own Match equals the co-buyer's
+  Compare projection (pct, selected, evaluated).
+- **Browser QA** (`scripts/visual/onboarding-basics-e2e.mjs`, dev preview, 390 and
+  1440px): brand-new user (nothing preselected, inline validation, focus moves,
+  live flow completes to "Your search is ready"), returning user (saved type kept,
+  re-choosing is a no-op, switching explains with Undo, budget label follows),
+  keyboard (arrow keys between types, Space toggles), tap targets, no overflow.
+- **Flows:** `CURRENT_ONBOARDING_VERSION` is 1; flow 1 is Basics → What Matters →
+  Rank; V2 stays inactive.

@@ -161,6 +161,11 @@ test('a basement can be Finished and Walkout, and a yard Fenced with a Privacy F
   assert.deepEqual(homePreferenceRows(priorities).find((row) => row.key === 'yard').options.filter((entry) => entry.selected).map((entry) => entry.text), ['Unfenced']);
   priorities = choose(priorities, ['yard', 'Privacy Fence']);
   assert.deepEqual(homePreferenceRows(priorities).find((row) => row.key === 'yard').options.filter((entry) => entry.selected).map((entry) => entry.text), ['Privacy Fence']);
+  // Unfenced (a genuine preference for no fence) can always be cleared back to unset.
+  priorities = choose(choose(priorities, ['yard', 'Unfenced']), ['yard', 'Unfenced']);
+  assert.ok(homePreferenceRows(priorities).find((row) => row.key === 'yard').options.every((entry) => !entry.selected));
+  assert.equal(isCriterionSelected(priorities, 'exterior', 'Unfenced Yard'), false);
+  assert.equal(isCriterionSelected(priorities, 'exterior', 'Privacy Fencing'), false);
 });
 
 test('alternatives stay one item: Move-in Ready or Renovation Potential, any of several layouts, any home type', () => {
