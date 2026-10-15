@@ -35,3 +35,39 @@ export function invitationAcceptance({ relationshipType, invitationDirection, se
   }
   return { destination: '/homes', setActiveSearch: true };
 }
+
+// The Realtor workspace preference is the same account_entry_intent the
+// Realtor sign-up already stores in the person's own account metadata
+// (auth user_metadata). It is a routing preference only: the person can edit
+// their own metadata, so nothing in the database reads it and it never grants
+// access to a search. It survives losing every client relationship, which a
+// membership cannot.
+export const REALTOR_PREFERENCE = Object.freeze({ account_entry_intent: 'realtor' });
+
+const NOT_THEIRS = new Set(['wrong_account', 'self_invite', 'not_found', 'not_authenticated']);
+
+// A buyer's invitation to join as their Realtor that can no longer be accepted
+// (expired, revoked, already used) still tells us how this person came to FLH.
+// Remember it only for an account that hasn't started a buyer experience, and
+// never for an invitation addressed to someone else.
+export function remembersRealtorFromFailedInvitation({ preview, onboardingComplete }) {
+  if (onboardingComplete || !preview || preview.valid) return false;
+  if (preview.relationship_type !== 'realtor' || preview.invitation_direction === 'realtor_to_buyer') return false;
+  return !NOT_THEIRS.has(preview.reason);
+}
+
+// Records the preference once; repeat calls (repeat sign-ins, re-visits) are
+// no-ops. Never throws: a failed write only means routing falls back to the
+// membership signal.
+export async function rememberRealtorWorkspace(supabase) {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || user.user_metadata?.account_entry_intent === 'realtor') return false;
+    const { error } = await supabase.auth.updateUser({ data: { ...REALTOR_PREFERENCE } });
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.warn('Realtor workspace preference not saved', err?.message);
+    return false;
+  }
+}

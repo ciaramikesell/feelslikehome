@@ -11,7 +11,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { register } from 'node:module';
 import { createTestDatabase, DB_TESTS_ENABLED, DB_SKIP_REASON } from './support/supabaseDb.mjs';
-import { REALTOR_WORKSPACE_PATH, entersAsRealtor, invitationAcceptance, isRealtorWorkspacePath } from '../src/lib/realtorEntry.js';
+import {
+  REALTOR_WORKSPACE_PATH, entersAsRealtor, invitationAcceptance, isRealtorWorkspacePath, rememberRealtorWorkspace, remembersRealtorFromFailedInvitation,
+} from '../src/lib/realtorEntry.js';
 
 register('./support/aliasHooks.mjs', import.meta.url);
 const {
@@ -60,6 +62,12 @@ test('root, layout, sign-up and invitation acceptance all use the shared rules',
   assert.match(accept, /if \(next\.setActiveSearch && user && result\.search_id\)/);
   assert.match(accept, /router\.push\(next\.destination\)/);
   assert.doesNotMatch(accept, /router\.push\(isBuyerInvite \? '\/onboarding' : '\/homes'\)/);
+  // The Realtor workspace preference: on a successful Realtor acceptance, and for a failed Realtor invitation on an unfinished account.
+  assert.match(accept, /if \(asRealtor\) await rememberRealtorWorkspace\(supabase\);/);
+  assert.match(accept, /if \(remembersRealtorFromFailedInvitation\(\{ preview: initialPreview, onboardingComplete \}\)\) rememberRealtorWorkspace\(createClient\(\)\)/);
+  assert.match(read('src/app/invite/[token]/page.js'), /onboardingComplete=\{Boolean\(profile\?\.onboarding_complete\)\}/);
+  // Preference is routing only: no database object reads it.
+  for (const file of ['supabase/schema.sql', 'supabase/migrations/2026-10-12-realtor-access-and-home-ownership.sql']) assert.doesNotMatch(read(file), /account_entry_intent/);
   // Onboarding (live and V2) is untouched by Realtor routing.
   assert.doesNotMatch(read('src/app/onboarding/page.js'), /account_entry_intent|entersAsRealtor|hasRealtorRelationship/);
 });
@@ -85,7 +93,8 @@ const activeSearch = (user) => db.admin(`select active_search_id from public.pro
 const onboarded = (user) => db.admin(`select onboarding_complete from public.profiles where id = '${user.id}'`)[0].onboarding_complete;
 const completeOnboarding = (user) => db.exec(`update public.profiles set onboarding_complete = true where id = '${user.id}'`);
 // What the root page and (app) layout decide for this account right now.
-const lands = async (user, intent) => entersAsRealtor({
+const storedIntent = (user) => db.admin(`select raw_user_meta_data->>'account_entry_intent' as intent from auth.users where id = '${user.id}'`)[0].intent || undefined;
+const lands = async (user, intent = storedIntent(user)) => entersAsRealtor({
   onboardingComplete: onboarded(user),
   entryIntent: intent,
   hasRealtorMembership: await hasRealtorRelationship(as(user), user.id),
@@ -98,12 +107,29 @@ async function buyerWithSearch(name) {
   await saveHomePersonalAndShared(as(buyer), { address: `1 ${name} St`, status: 'Saved', checks: {}, ratings: {} }, buyer.id, ownedSearch(buyer));
   return buyer;
 }
+// supabase.auth for this user, backed by auth.users in the test database, so
+// rememberRealtorWorkspace runs exactly as in the browser (getUser, then a
+// merging updateUser of the person's own metadata).
+const writes = [];
+const authFor = (user) => ({
+  auth: {
+    getUser: async () => ({ data: { user: { id: user.id, user_metadata: db.admin(`select raw_user_meta_data as m from auth.users where id = '${user.id}'`)[0].m } } }),
+    updateUser: async ({ data }) => {
+      writes.push(user.id);
+      db.exec(`update auth.users set raw_user_meta_data = raw_user_meta_data || '${JSON.stringify(data)}'::jsonb where id = '${user.id}'`);
+      return { data: {}, error: null };
+    },
+  },
+});
+const metadata = (user) => db.admin(`select raw_user_meta_data as m from auth.users where id = '${user.id}'`)[0].m;
+
 // The Realtor-side acceptance exactly as AcceptInvitationClient performs it.
 async function acceptAsInvitee(user, token) {
   const preview = await previewInvitation(as(user), token);
   const result = await acceptInvitation(as(user), token);
   assert.equal(result.success, true, result.reason);
   const next = invitationAcceptance({ relationshipType: preview.relationship_type, invitationDirection: preview.invitation_direction, searchId: result.search_id });
+  if (preview.relationship_type === 'realtor' && preview.invitation_direction !== 'realtor_to_buyer') await rememberRealtorWorkspace(authFor(user));
   if (next.setActiveSearch) db.exec(`update public.profiles set active_search_id = '${result.search_id}' where id = '${user.id}'`);
   return { result, next };
 }
@@ -202,14 +228,120 @@ dbTest('buyers and co-buyers keep today\'s routing: onboarding first, then their
   assert.equal(await lands(freshBuyer, undefined), '/onboarding');
 });
 
-dbTest('a removed Realtor without buyer onboarding is no longer routed as a Realtor by membership', async () => {
+dbTest('a Realtor keeps the Realtor workspace after losing their last client, and the preference grants no access', async () => {
   const buyer = await buyerWithSearch('removing.buyer');
   const realtor = newUser('removed.realtor');
   const invitation = await createInvitation(as(buyer), ownedSearch(buyer), buyer.id, realtor.email, 'realtor');
   await acceptAsInvitee(realtor, invitation.token);
-  assert.equal(await lands(realtor, undefined), '/people');
+  assert.equal(metadata(realtor).account_entry_intent, 'realtor', 'accepting records the Realtor workspace preference');
+  assert.equal(metadata(realtor).first_name, 'removed.realtor', 'and keeps the rest of their metadata');
   db.exec(`delete from public.search_members where search_id = '${ownedSearch(buyer)}' and user_id = '${realtor.id}'`);
   assert.equal(await hasRealtorRelationship(as(realtor), realtor.id), false);
-  assert.equal(await lands(realtor, undefined), '/onboarding');
+  assert.equal(await lands(realtor), '/people', 'zero clients, still the Realtor workspace');
+  // Never authorization: nothing of the former client is readable.
   assert.deepEqual(await getRealtorRelationships(as(realtor), realtor.id), []);
+  for (const table of ['homes', 'search_member_priorities', 'realtor_suggestions']) {
+    const { data } = await as(realtor).from(table).select('search_id').eq('search_id', ownedSearch(buyer));
+    assert.deepEqual(data, [], table);
+  }
+  const { data: searches } = await as(realtor).from('searches').select('id').eq('id', ownedSearch(buyer));
+  assert.deepEqual(searches, []);
+});
+
+dbTest('a zero-client Realtor (sign-up intent only) sees an empty workspace and can read no buyer search', async () => {
+  const realtor = newUser('zero.realtor', { account_entry_intent: 'realtor' });
+  const stranger = await buyerWithSearch('stranger.buyer');
+  assert.equal(await lands(realtor), '/people');
+  assert.deepEqual(await getRealtorRelationships(as(realtor), realtor.id), []);
+  for (const table of ['homes', 'search_member_priorities']) {
+    const { data } = await as(realtor).from(table).select('search_id').eq('search_id', ownedSearch(stranger));
+    assert.deepEqual(data, [], table);
+  }
+  await assert.rejects(as(realtor).rpc('create_realtor_suggestion', { p_search_id: ownedSearch(stranger), p_home: { address: '1 Nope' } }).then(({ error }) => { if (error) throw new Error(error.message); }), /access denied/i);
+});
+
+dbTest('expired, revoked or already-used Realtor invitations keep a new Realtor out of buyer onboarding; someone else\'s do not', async () => {
+  const buyer = await buyerWithSearch('expiring.buyer');
+  const cases = [];
+  for (const status of ['expired', 'revoked', 'accepted']) {
+    const realtor = newUser(`late.${status}.realtor`);
+    const invitation = await createInvitation(as(buyer), ownedSearch(buyer), buyer.id, realtor.email, 'realtor');
+    if (status === 'expired') db.exec(`update public.search_invitations set expires_at = now() - interval '1 day' where token = '${invitation.token}'`);
+    else db.exec(`update public.search_invitations set status = '${status}' where token = '${invitation.token}'`);
+    cases.push({ realtor, invitation });
+  }
+  for (const { realtor, invitation } of cases) {
+    const before = searchCount();
+    const preview = await previewInvitation(as(realtor), invitation.token);
+    assert.equal(preview.valid, false);
+    assert.equal(remembersRealtorFromFailedInvitation({ preview, onboardingComplete: onboarded(realtor) }), true, preview.reason);
+    await rememberRealtorWorkspace(authFor(realtor));
+    assert.equal(await lands(realtor), '/people', preview.reason);
+    // The failed invitation grants nothing and creates nothing.
+    assert.equal(await hasRealtorRelationship(as(realtor), realtor.id), false);
+    assert.equal(searchCount(), before);
+  }
+  // An invitation addressed to someone else marks nobody.
+  const other = newUser('bystander');
+  const forSomeoneElse = await createInvitation(as(buyer), ownedSearch(buyer), buyer.id, `nobody.${seq}@example.com`, 'realtor');
+  const preview = await previewInvitation(as(other), forSomeoneElse.token);
+  assert.equal(preview.reason, 'wrong_account');
+  assert.equal(remembersRealtorFromFailedInvitation({ preview, onboardingComplete: false }), false);
+  assert.equal(await lands(other), '/onboarding');
+  // A failed co-buyer invitation, or a buyer approving a Realtor, never marks a Realtor.
+  assert.equal(remembersRealtorFromFailedInvitation({ preview: { valid: false, reason: 'expired', relationship_type: 'co_buyer' }, onboardingComplete: false }), false);
+  assert.equal(remembersRealtorFromFailedInvitation({ preview: { valid: false, reason: 'expired', relationship_type: 'realtor', invitation_direction: 'realtor_to_buyer' }, onboardingComplete: false }), false);
+  // Nor someone who already has a buyer experience.
+  assert.equal(remembersRealtorFromFailedInvitation({ preview: { valid: false, reason: 'expired', relationship_type: 'realtor' }, onboardingComplete: true }), false);
+});
+
+dbTest('repeat sign-ins and visits write the preference once and route the same way every time', async () => {
+  const buyer = await buyerWithSearch('repeat.buyer');
+  const realtor = newUser('repeat.realtor');
+  const invitation = await createInvitation(as(buyer), ownedSearch(buyer), buyer.id, realtor.email, 'realtor');
+  await acceptAsInvitee(realtor, invitation.token);
+  const count = () => writes.filter((id) => id === realtor.id).length;
+  assert.equal(count(), 1);
+  for (let i = 0; i < 3; i += 1) {
+    assert.equal(await rememberRealtorWorkspace(authFor(realtor)), false, 'already remembered');
+    assert.equal(await lands(realtor), '/people');
+  }
+  assert.equal(count(), 1);
+  // A re-visit of the used invitation link changes nothing either.
+  const preview = await previewInvitation(as(realtor), invitation.token);
+  assert.equal(preview.valid, false);
+  await rememberRealtorWorkspace(authFor(realtor));
+  assert.equal(count(), 1);
+});
+
+dbTest('a buyer who also serves as a Realtor keeps their buyer experience; a Realtor can still become a buyer later', async () => {
+  const realtorBuyer = await buyerWithSearch('realtor.buyer');
+  const myPriorities = db.admin(`select priorities from public.search_member_priorities where user_id = '${realtorBuyer.id}'`)[0].priorities;
+  const client = await buyerWithSearch('their.client');
+  const invitation = await createInvitation(as(client), ownedSearch(client), client.id, realtorBuyer.email, 'realtor');
+  const { next } = await acceptAsInvitee(realtorBuyer, invitation.token);
+  assert.equal(next.destination, `/people/${ownedSearch(client)}`);
+  assert.equal(metadata(realtorBuyer).account_entry_intent, 'realtor');
+  // Their own buyer experience is untouched and remains their home base.
+  assert.equal(onboarded(realtorBuyer), true);
+  assert.equal(activeSearch(realtorBuyer), null);
+  assert.equal((await resolveActiveSearch(as(realtorBuyer), realtorBuyer.id)).search.id, ownedSearch(realtorBuyer));
+  assert.deepEqual(db.admin(`select priorities from public.search_member_priorities where user_id = '${realtorBuyer.id}'`)[0].priorities, myPriorities);
+  assert.equal(await lands(realtorBuyer), '/homes');
+
+  // A Realtor-only account that later starts its own home search becomes a buyer too.
+  const realtor = newUser('later.buyer', { account_entry_intent: 'realtor' });
+  assert.equal(await lands(realtor), '/people');
+  completeOnboarding(realtor);
+  await savePriorities(as(realtor), { id: ownedSearch(realtor) }, realtor.id, { searchType: 'rental', budget: { value: '2500', tier: 'must' } });
+  assert.equal(await lands(realtor), '/homes');
+  assert.equal((await resolveActiveSearch(as(realtor), realtor.id)).search.id, ownedSearch(realtor));
+  // The shell offers that way in from the Realtor workspace.
+  assert.match(read('src/components/AppShell.jsx'), /isRealtorWorkspace && <Link href="\/homes"[^>]*>.*My home search<\/Link>/);
+});
+
+dbTest('rememberRealtorWorkspace never throws and never touches an account it cannot read', async () => {
+  assert.equal(await rememberRealtorWorkspace({ auth: { getUser: async () => ({ data: { user: null } }) } }), false);
+  assert.equal(await rememberRealtorWorkspace({ auth: { getUser: async () => { throw new Error('offline'); } } }), false);
+  assert.equal(await rememberRealtorWorkspace({ auth: { getUser: async () => ({ data: { user: { id: 'x', user_metadata: {} } } }), updateUser: async () => ({ error: { message: 'nope' } }) } }), false);
 });

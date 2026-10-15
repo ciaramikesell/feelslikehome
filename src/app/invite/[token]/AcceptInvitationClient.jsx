@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { acceptInvitation, setActiveSearch } from '@/lib/supabase/collaboration';
 import { ANALYTICS_EVENTS, track } from '@/lib/analytics';
-import { REALTOR_WORKSPACE_PATH, invitationAcceptance } from '@/lib/realtorEntry';
+import { REALTOR_WORKSPACE_PATH, invitationAcceptance, rememberRealtorWorkspace, remembersRealtorFromFailedInvitation } from '@/lib/realtorEntry';
 import { BrandMark, Wordmark } from '@/components/ui';
 
 const REASON_COPY = {
@@ -23,7 +23,7 @@ const REASON_COPY = {
 // page.js) — no client-side fetch, no loading state needed for it, and no
 // exposure to the session-propagation race that caused this to fail right
 // after a fresh sign-up.
-export default function AcceptInvitationClient({ token, initialPreview }) {
+export default function AcceptInvitationClient({ token, initialPreview, onboardingComplete = false }) {
   const router = useRouter();
   const [state, setState] = useState(initialPreview.valid ? 'valid' : 'invalid'); // valid | invalid | accepting | done
   const [reason, setReason] = useState(initialPreview.reason || '');
@@ -35,6 +35,14 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
   // accepting it only grants access to the search the buyer already has.
   const requiresConfirmation = isBuyerInvite && Boolean(initialPreview.requires_confirmation);
   const inviterName = initialPreview.inviter_display_name || 'Your Realtor';
+  const asRealtor = isRealtorInvite && !isBuyerInvite;
+
+  // Someone who came to FLH through a Realtor invitation keeps the Realtor
+  // workspace even when that invitation can't be used (expired, revoked,
+  // already used), instead of being routed into buyer onboarding.
+  useEffect(() => {
+    if (remembersRealtorFromFailedInvitation({ preview: initialPreview, onboardingComplete })) rememberRealtorWorkspace(createClient());
+  }, [initialPreview, onboardingComplete]);
 
   const signOut = async () => {
     await createClient().auth.signOut();
@@ -66,7 +74,9 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
         invitationDirection: initialPreview.invitation_direction,
         searchId: result.search_id,
       });
-      // A Realtor's client search never becomes their own active buyer search.
+      // A Realtor's client search never becomes their own active buyer search;
+      // their Realtor workspace preference outlives this one relationship.
+      if (asRealtor) await rememberRealtorWorkspace(supabase);
       const { data: { user } } = await supabase.auth.getUser();
       if (next.setActiveSearch && user && result.search_id) {
         await setActiveSearch(supabase, user.id, result.search_id);
@@ -132,7 +142,10 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
             {reason === 'wrong_account' ? (
               <button type="button" className="hh-btn" onClick={signOut}>Sign in with another account</button>
             ) : (
-              <button type="button" className="hh-btn hh-btn-ghost" onClick={() => router.push(isRealtorInvite && !isBuyerInvite ? REALTOR_WORKSPACE_PATH : '/homes')}>{isRealtorInvite && !isBuyerInvite ? 'Go to People I’m Helping' : 'Return to Homes'}</button>
+              <button type="button" className="hh-btn hh-btn-ghost" onClick={async () => {
+                if (asRealtor && remembersRealtorFromFailedInvitation({ preview: { ...initialPreview, valid: false, reason }, onboardingComplete })) await rememberRealtorWorkspace(createClient());
+                router.push(asRealtor ? REALTOR_WORKSPACE_PATH : '/homes');
+              }}>{asRealtor ? 'Go to People I’m Helping' : 'Return to Homes'}</button>
             )}
           </>
         )}
