@@ -17,20 +17,23 @@ const source = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8'
  * test runner would.
  * ------------------------------------------------------------------------- */
 
-test('solo owner: Searching Together shows the solo state and the invite action, not a collaborator summary', async () => {
-  const panel = await source('src/components/MySearchPanel.jsx');
-  assert.match(panel, /const collaborative = participantCount > 1;/);
-  assert.match(panel, /if \(!collaborative && !isOwner\) return null;/);
-  assert.match(panel, /You’re searching alone\./);
-  assert.match(panel, /Invite a co-buyer or Realtor →/);
-  // The existing invitation flow (co-buyer or Realtor) — no new invite path.
-  assert.match(panel, /\{open && !collaborative && <InviteCoBuyer searchId=\{search\.id\} userId=\{userId\} embedded onClose=/);
+test('solo owner: Your People shows the solo state and both invitations, not a collaborator summary', async () => {
+  const people = await source('src/components/YourPeople.jsx');
+  assert.match(people, /const solo = others\.length === 0;/);
+  assert.match(people, /Just you so far\./);
+  assert.match(people, /Invite a co-buyer or your Realtor →/);
+  // Co-buyer invitations stay the existing owner flow; Realtor invitations are available to either buyer, solo or not.
+  assert.match(people, /\{isOwner && solo && \(/);
+  assert.match(people, /<InviteCoBuyer searchId=\{search\.id\} userId=\{userId\} embedded coBuyerOnly onClose=/);
+  assert.match(people, /Working with a Realtor\?/);
+  assert.doesNotMatch(people, /solo && <InviteRealtor|isOwner && <InviteRealtor/);
 });
 
 test('owner + co-buyer with completed criteria: a real display name and compact tier/place counts, not an itemized list', async () => {
   const panel = await source('src/components/MySearchPanel.jsx');
-  assert.match(panel, /`Searching with \$\{collaboratorContext\?\.displayName \|\| 'a co-buyer'\}`/);
-  assert.match(panel, /Both perspectives shape every Match\./);
+  const people = await source('src/components/YourPeople.jsx');
+  assert.match(people, /Choosing with you\. Their priorities and ratings are their own\./);
+  assert.match(people, /\{collaboratorSummary\}/);
   assert.match(panel, /\{name\}&apos;s priorities/);
   assert.match(panel, /\{name\}&apos;s places/);
   assert.match(panel, /countOf\('must'\)/);
@@ -39,7 +42,7 @@ test('owner + co-buyer with completed criteria: a real display name and compact 
   // Deliberately compact, not itemized.
   assert.doesNotMatch(panel, /hh-collaborator-priorities|hh-collaborator-places/);
   // Membership management stays the existing component, unchanged.
-  assert.match(panel, /<CoBuyerManagement userId=\{userId\} search=\{search\} isOwner=\{isOwner\} participantCount=\{participantCount\} memberUserId=\{memberUserId\}/);
+  assert.match(people, /<CoBuyerManagement userId=\{userId\} search=\{search\} isOwner=\{isOwner\} participantCount=\{participantCount\} memberUserId=\{memberUserId\}/);
 });
 
 test('owner + co-buyer with incomplete criteria: a simple truthful state using natural language, never the forbidden database-oriented phrasing', async () => {
@@ -69,11 +72,11 @@ test('collaborator summary is structurally read-only: it never receives patch an
 
 test('relationship removal uses the collaborator\'s real name and stays secondary/destructive administration', async () => {
   const management = await source('src/components/CoBuyerManagement.jsx');
-  const panel = await source('src/components/MySearchPanel.jsx');
+  const people = await source('src/components/YourPeople.jsx');
   assert.match(management, /collaboratorName = null/);
   assert.match(management, /Remove \$\{collaboratorName \|\| 'collaborator'\} from this search/);
   assert.match(management, /hh-btn-ghost/);
-  assert.match(panel, /collaboratorName=\{collaboratorContext\?\.displayName\}/);
+  assert.match(people, /collaboratorName=\{others\[0\]\?\.displayName\}/);
 });
 
 test('Realtor is never conflated with Searching Together: My Search exposes no Realtor priorities, places, or Match', async () => {

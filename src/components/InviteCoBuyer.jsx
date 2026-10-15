@@ -6,7 +6,9 @@ import Sheet from '@/components/Sheet';
 import { createClient } from '@/lib/supabase/client';
 import { createInvitation } from '@/lib/supabase/collaboration';
 
-export default function InviteCoBuyer({ searchId, userId, embedded = false, onClose }) {
+// coBuyerOnly: My Search → Your People invites Realtors through its own flow
+// (either buyer may), so there this sheet only invites a co-buyer.
+export default function InviteCoBuyer({ searchId, userId, embedded = false, onClose, coBuyerOnly = false }) {
   const [open, setOpen] = useState(embedded);
   const [email, setEmail] = useState('');
   const [relationshipType, setRelationshipType] = useState('co_buyer');
@@ -77,7 +79,7 @@ export default function InviteCoBuyer({ searchId, userId, embedded = false, onCl
             placeholder="their@email.com"
             style={{ width: '100%' }}
           />
-          <fieldset style={{ border: 0, padding: 0, margin: '14px 0 0' }}>
+          {!coBuyerOnly && <fieldset style={{ border: 0, padding: 0, margin: '14px 0 0' }}>
             <legend className="hh-label" style={{ marginBottom: 8 }}>Relationship</legend>
             <label style={{ display: 'block', marginBottom: 8 }}>
               <input type="radio" name="relationship" value="co_buyer" checked={relationshipType === 'co_buyer'} onChange={(e) => setRelationshipType(e.target.value)} />{' '}
@@ -87,7 +89,7 @@ export default function InviteCoBuyer({ searchId, userId, embedded = false, onCl
               <input type="radio" name="relationship" value="realtor" checked={relationshipType === 'realtor'} onChange={(e) => setRelationshipType(e.target.value)} />{' '}
               <strong>Realtor</strong> — They&apos;re helping with my home search professionally.
             </label>
-          </fieldset>
+          </fieldset>}
           {error && <p style={{ fontSize: 12, color: 'var(--brick)', margin: '8px 0 0' }}>{error}</p>}
           <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
             <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 12 }} onClick={close}>Cancel</button>

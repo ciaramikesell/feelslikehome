@@ -331,14 +331,17 @@ test('Places input focus regression: a Sheet no longer re-runs its focus effect 
 
 test('searching alone vs. together, without averaging, and with Realtor invites through the existing flow', () => {
   const panel = read('src/components/MySearchPanel.jsx');
+  const people = read('src/components/YourPeople.jsx');
   const invite = read('src/components/InviteCoBuyer.jsx');
-  assert.match(panel, /Searching Together/);
-  assert.match(panel, /You’re searching alone\./);
-  assert.match(panel, /Invite a co-buyer or Realtor →/);
-  assert.match(panel, /Both perspectives shape every Match\./);
-  assert.match(panel, /The house is ours\. The opinion is mine\. The conversation is shared\./);
-  assert.doesNotMatch(panel, /average|combined score|household/i);
+  assert.match(people, /<h2 className="flh-card-title">Your People<\/h2>/);
+  assert.match(people, /Just you so far\./);
+  assert.match(people, /Invite a co-buyer or your Realtor →/);
+  assert.match(people, /each buyer keeps their own priorities, ratings and reactions/);
+  assert.match(panel, /The house is ours\. The opinion is mine\.\s+The conversation is shared\./);
+  for (const source of [panel, people]) assert.doesNotMatch(source, /average|combined score|household/i);
+  // The co-buyer flow keeps its Realtor option elsewhere; Your People invites Realtors itself.
   assert.match(invite, /value="realtor"/);
+  assert.match(people, /<InviteCoBuyer searchId=\{search\.id\} userId=\{userId\} embedded coBuyerOnly/);
   assert.match(read('src/app/(app)/search/places/page.js'), /canInvite=\{isOwner && participantIds\.length < 2\}/);
 });
 

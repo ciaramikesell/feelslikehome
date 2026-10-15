@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { acceptInvitation, setActiveSearch } from '@/lib/supabase/collaboration';
+import { acceptInvitation, approveRealtorConnection, setActiveSearch } from '@/lib/supabase/collaboration';
 import { ANALYTICS_EVENTS, track } from '@/lib/analytics';
 import { REALTOR_WORKSPACE_PATH, invitationAcceptance, rememberRealtorWorkspace, remembersRealtorFromFailedInvitation } from '@/lib/realtorEntry';
 import { BrandMark, Wordmark } from '@/components/ui';
@@ -16,6 +16,9 @@ const REASON_COPY = {
   self_invite: "You can't accept an invite you sent yourself.",
   wrong_account: "This invite was sent to a different email address than the one you're signed in with. Sign in with the invited email and try again.",
   not_authenticated: 'Please sign in first.',
+  search_not_authorized: "We couldn't confirm which of your searches to connect. Open My Search, then try this link again.",
+  relationship_conflict: 'They’re already part of this search as a buyer.',
+  accepted: 'This request has already been used.',
   unknown: 'Something went wrong. Please try again.',
 };
 
@@ -23,7 +26,7 @@ const REASON_COPY = {
 // page.js) — no client-side fetch, no loading state needed for it, and no
 // exposure to the session-propagation race that caused this to fail right
 // after a fresh sign-up.
-export default function AcceptInvitationClient({ token, initialPreview, onboardingComplete = false }) {
+export default function AcceptInvitationClient({ token, initialPreview, onboardingComplete = false, approvalTarget = null }) {
   const router = useRouter();
   const [state, setState] = useState(initialPreview.valid ? 'valid' : 'invalid'); // valid | invalid | accepting | done
   const [reason, setReason] = useState(initialPreview.reason || '');
@@ -58,7 +61,12 @@ export default function AcceptInvitationClient({ token, initialPreview, onboardi
     setState('accepting');
     try {
       const supabase = createClient();
-      const result = await acceptInvitation(supabase, token);
+      // A Realtor's connection request is approved for the search shown on this
+      // screen (the one this buyer is using); the database verifies they are a
+      // buyer of it. Every other invitation keeps its own target.
+      const result = isBuyerInvite
+        ? (approvalTarget ? await approveRealtorConnection(supabase, token, approvalTarget.id) : { success: false, reason: 'search_not_authorized' })
+        : await acceptInvitation(supabase, token);
       if (!result.success) {
         // Safe to log: `reason` is either a known short code (e.g.
         // 'wrong_account') or, for an unexpected failure, a sanitized
@@ -112,7 +120,7 @@ export default function AcceptInvitationClient({ token, initialPreview, onboardi
               ) : requiresConfirmation ? (
                 <>Keep the homes you&apos;re considering in one place, see how each one matches what matters to you, and make it easier for {inviterName} to understand what you&apos;re looking for. This remains your search.</>
               ) : (
-                <>{inviterName} will be able to see your search, priorities, and homes so they can help — nothing changes about your search itself, and you can remove them anytime.</>
+                <>{inviterName} will be able to see your search, priorities, and homes so they can help — nothing changes about your search itself, and you can remove them anytime from My Search → Your People.{approvalTarget && <span className="hh-invite-target"><strong>{approvalTarget.label}</strong>{approvalTarget.homeCount} saved {approvalTarget.homeCount === 1 ? 'home' : 'homes'}</span>}</>
               )}
             </p>
             <p className="hh-collaboration-consent">{isBuyerInvite ? `${inviterName} will only see your search after you accept. You own the search and every decision in it.` : 'This includes priorities, Match, Favorites, Want to Tour choices, commute destinations, notes, Overall Feeling, and post-tour ratings. Only participants in this search can see its activity.'}</p>

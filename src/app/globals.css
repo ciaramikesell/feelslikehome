@@ -2211,6 +2211,69 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 /* Shared-search setup: a quiet way out to the person's own search, never a trap. */
 .flh-shared-setup-exit { margin: 4px 0 0; text-align: center; }
 
+/* ---------------------------------------------------------------- Your People */
+/* My Search → Your People: buyers and their Realtor in one quiet sheet. */
+.flh-people-badge { flex-shrink: 0; padding: 4px 9px; border-radius: 999px; background: rgba(185,83,50,.1); color: var(--brick); font: 700 11.5px/1.2 var(--font-sans); }
+.flh-people-sheet .flh-sheet-lead { margin-bottom: 4px; }
+.flh-people-section { padding: 18px 0 4px; border-top: 1px solid var(--line); margin-top: 16px; }
+.flh-people-section:first-of-type { margin-top: 12px; }
+.flh-people-heading { margin: 0 0 10px; color: var(--ink); font: 600 16px/1.3 var(--font-serif); }
+.flh-people-subheading { margin: 16px 0 8px; color: var(--ink-soft); font: 700 11.5px/1.2 var(--font-sans); letter-spacing: .06em; text-transform: uppercase; }
+.flh-people-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.flh-people-person { display: flex; align-items: flex-start; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper-raised); }
+.flh-people-person.is-realtor { border-color: rgba(104,121,95,.32); background: #F6F8F3; }
+.flh-people-person .flh-avatar { border-color: var(--paper-raised); }
+.flh-people-person-text { display: grid; gap: 6px; min-width: 0; flex: 1; }
+.flh-people-name { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0; color: var(--ink); font: 700 14.5px/1.35 var(--font-sans); overflow-wrap: anywhere; }
+.flh-people-role { padding: 2px 8px; border-radius: 999px; background: var(--peach); color: var(--brick-deep); font: 700 11px/1.5 var(--font-sans); }
+.flh-people-role.is-realtor { background: var(--sage); color: var(--positive); }
+.flh-people-detail { margin: 0; color: var(--ink-soft); font: 400 13px/1.5 var(--font-sans); }
+.flh-people-note { margin: 8px 0 0; color: var(--ink-soft); font: 400 12px/1.5 var(--font-sans); }
+.flh-people-label { display: block; margin: 0 0 6px; color: var(--ink); font: 700 12.5px/1.3 var(--font-sans); }
+.flh-people-access { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.7); }
+.flh-people-access-title { margin: 0 0 4px; color: var(--ink); font: 700 12px/1.3 var(--font-sans); }
+.flh-people-access ul { margin: 0; padding-left: 16px; color: var(--ink-soft); font: 400 12.5px/1.5 var(--font-sans); }
+.flh-people-empty { display: grid; gap: 8px; padding: 14px; border: 1px dashed rgba(104,121,95,.45); border-radius: 16px; background: #F8FAF5; }
+.flh-people-empty-title { margin: 0; color: var(--ink); font: 600 15px/1.3 var(--font-serif); }
+.flh-people-invite { margin-top: 4px; }
+.flh-people-invite-row { display: flex; gap: 8px; align-items: stretch; }
+.flh-people-invite-row .hh-input { flex: 1; min-width: 0; min-height: 48px; }
+.flh-people-invite-row .flh-button { flex-shrink: 0; min-height: 48px; padding: 0 16px; font-size: 14px; }
+.flh-people-fresh { margin-top: 12px; padding: 12px; border-radius: 14px; background: var(--peach); }
+.flh-people-fresh .hh-input { font-size: 12.5px; background: #fff; }
+.flh-people-invitation { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper-raised); }
+.flh-people-invitation-text { min-width: 0; }
+.flh-people-invitation-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.flh-people-status { margin: 2px 0 0; color: var(--ink-soft); font: 600 12px/1.4 var(--font-sans); }
+.flh-people-status.is-pending { color: var(--positive); }
+.flh-people-status.is-expired, .flh-people-status.is-revoked { color: var(--unknown); }
+.flh-people-action { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); font: 700 13px/1 var(--font-sans); text-decoration: none; cursor: pointer; }
+.flh-people-action:hover:not(:disabled) { border-color: rgba(185,83,50,.45); color: var(--brick); }
+.flh-people-action:focus-visible, .flh-people-add:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+.flh-people-action:disabled { opacity: .55; cursor: not-allowed; }
+.flh-people-action.is-primary { border-color: var(--brick); background: var(--brick); color: #fff; }
+.flh-people-action.is-quiet { border-color: transparent; background: transparent; color: var(--brick); padding: 0 8px; justify-self: start; }
+.flh-people-add { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 56px; margin-top: 10px; padding: 10px 14px; border: 1px dashed rgba(185,83,50,.4); border-radius: 14px; background: transparent; color: var(--brick); text-align: left; cursor: pointer; font: 400 13px/1.4 var(--font-sans); }
+.flh-people-add span { display: grid; color: var(--ink-soft); }
+.flh-people-add strong { color: var(--brick); font-size: 14px; }
+.flh-people-buyer-actions { margin-top: 10px; }
+.flh-people-consequences { display: grid; gap: 8px; margin: 0 0 16px; padding-left: 18px; color: var(--ink); font: 400 13.5px/1.5 var(--font-sans); }
+.flh-people-confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.flh-people-notice { margin: 12px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--sage); color: var(--positive); font: 600 13px/1.45 var(--font-sans); }
+.flh-people-error { margin: 8px 0 0; color: var(--negative); font: 600 12.5px/1.45 var(--font-sans); }
+@media (max-width: 560px) {
+  .flh-people-access { grid-template-columns: 1fr; }
+  .flh-people-invite-row { flex-direction: column; }
+  .flh-people-invite-row .flh-button { width: 100%; }
+  .flh-people-invitation { flex-direction: column; align-items: stretch; }
+  .flh-people-invitation-actions { justify-content: flex-start; }
+  .flh-people-confirm-actions { flex-direction: column-reverse; }
+  .flh-people-confirm-actions .flh-button { width: 100%; }
+}
+.hh-invite-target { display: grid; gap: 2px; margin-top: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); text-align: left; color: var(--ink-soft); font-size: 12.5px; }
+.hh-invite-target strong { color: var(--ink); font-size: 13.5px; }
+
+
 /* ── Onboarding V2 shell (Phase 1) ───────────────────────────────────────────
    Frame only: background, columns, top bar, progress, type scale, step rhythm
    and the forward action. Step content keeps its existing styles. Every rule is

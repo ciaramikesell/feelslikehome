@@ -138,14 +138,14 @@ test('the collaboration philosophy copy survives the Sheet migration verbatim', 
 
 /* ------------------------------ My Search: Searching Together ------------------------------ */
 
-test('Searching Together is one consolidated section (connected state, collaborator summary, and the one appropriate action), positioned after Places That Matter', () => {
-  assert.match(mySearchPanel, /function SearchingTogether\(/);
-  assert.match(mySearchPanel, /You’re searching alone\./);
+test('Your People is one consolidated section (buyers, Realtor, invitations), positioned after Places That Matter', () => {
+  assert.match(read('src/components/YourPeople.jsx'), /export default function YourPeople\(/);
   assert.match(mySearchPanel, /function CollaboratorSummary\(/);
+  assert.match(mySearchPanel, /collaboratorSummary=\{<CollaboratorSummary context=\{collaboratorContext\} \/>\}/);
   assert.doesNotMatch(mySearchPanel, /function CollaboratorContextCard/);
   const placesIdx = mySearchPanel.indexOf('<PlacesThatMatter');
-  const togetherIdx = mySearchPanel.indexOf('<SearchingTogether ');
-  assert.ok(placesIdx !== -1 && togetherIdx !== -1 && placesIdx < togetherIdx, 'Searching Together must render after Places That Matter');
+  const peopleIdx = mySearchPanel.indexOf('<YourPeople ');
+  assert.ok(placesIdx !== -1 && peopleIdx !== -1 && placesIdx < peopleIdx, 'Your People must render after Places That Matter');
 });
 
 test('regression guard: no Couple Match / merged-opinion language was introduced', () => {
@@ -153,8 +153,8 @@ test('regression guard: no Couple Match / merged-opinion language was introduced
   assert.doesNotMatch(mySearchPanel, /combined score|merge.*opinion|average.*match/i);
 });
 
-test('regression guard: My Search IA order is What Matters Most, then What I\'m Looking For, Places, Searching Together, status', () => {
-  const order = ['<WhatMattersMost', '<WhatImLookingFor', '<PlacesThatMatter', '<SearchingTogether ', '<SearchStatus']
+test('regression guard: My Search IA order is What Matters Most, then What I\'m Looking For, Places, Your People, status', () => {
+  const order = ['<WhatMattersMost', '<WhatImLookingFor', '<PlacesThatMatter', '<YourPeople ', '<SearchStatus']
     .map((needle) => mySearchPanel.indexOf(needle));
   assert.ok(order.every((i) => i !== -1), 'expected all five sections to be present');
   for (let i = 1; i < order.length; i++) assert.ok(order[i - 1] < order[i], `expected section ${i} to follow section ${i - 1} in source order`);

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
-import { previewInvitation } from '@/lib/supabase/collaboration';
+import { getSearchPeople, previewInvitation, resolveOnboardingSearch } from '@/lib/supabase/collaboration';
 import { getProfile } from '@/lib/supabase/data';
 import AcceptInvitationClient from './AcceptInvitationClient';
 
@@ -36,5 +36,30 @@ export default async function InvitePage({ params }) {
   // hasn't (see remembersRealtorFromFailedInvitation).
   const profile = await getProfile(supabase, user.id).catch(() => null);
 
-  return <AcceptInvitationClient token={token} initialPreview={preview} onboardingComplete={Boolean(profile?.onboarding_complete)} />;
+  // A buyer approving a Realtor's connection request approves it for the
+  // search they actually buy in — their active search when they are its owner
+  // or co-buyer, otherwise their own — never "whichever search they own". The
+  // database re-checks that they are a buyer of it (approve_realtor_connection).
+  const approvalTarget = preview.valid && preview.invitation_direction === 'realtor_to_buyer' && !preview.requires_confirmation
+    ? await approvalTargetFor(supabase, user.id).catch(() => null)
+    : null;
+
+  return <AcceptInvitationClient token={token} initialPreview={preview} onboardingComplete={Boolean(profile?.onboarding_complete)} approvalTarget={approvalTarget} />;
+}
+
+async function approvalTargetFor(supabase, userId) {
+  const { search, role } = await resolveOnboardingSearch(supabase, userId);
+  if (!search) return null;
+  const [people, { data: homes }] = await Promise.all([
+    getSearchPeople(supabase, search.id).catch(() => []),
+    supabase.from('homes').select('id').eq('search_id', search.id).eq('suggestion_staged', false),
+  ]);
+  const owner = people.find((person) => person.role === 'owner' && !person.isYou);
+  const coBuyer = people.find((person) => person.role === 'co_buyer' && !person.isYou);
+  const partner = role === 'owner' ? coBuyer : owner;
+  return {
+    id: search.id,
+    label: partner ? `The search you share with ${partner.displayName}` : 'Your home search',
+    homeCount: (homes || []).length,
+  };
 }
