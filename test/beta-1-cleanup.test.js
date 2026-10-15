@@ -60,17 +60,16 @@ test('signed-out auth makes account creation explicit without removing recovery 
 });
 
 test('new onboarding search choices set an explicit, accessible rental subtype', () => {
-  // Onboarding V2 Basics: a labelled native select ("I’m looking for …"),
-  // and choosing still goes through applySearchChoice (via chooseSearchType).
+  // Basics (both flows): three visible choices in a labelled radio group
+  // ("I’m looking for"), and choosing goes through switchSearchType, which
+  // calls applySearchChoice (via chooseSearchType) without presetting a type.
   const basics = read('src/components/onboarding/BasicsStep.jsx');
   const lib = read('src/lib/onboardingBasics.js');
   assert.match(basics, /NEW_SEARCH_CHOICES\.map/);
-  assert.match(basics, /<label className="flh-ob-searchtype-label" htmlFor=\{id\}>I’m looking for<\/label>/);
-  assert.match(basics, /<select id=\{id\} required value=\{choice\} onChange=\{\(event\) => onChoose\(event\.target\.value\)\}/);
-  // The live flow (presetPropertyType) still goes through chooseSearchType; the
-  // six-step flow uses switchSearchType, which calls chooseSearchType too.
-  assert.match(basics, /if \(presetPropertyType\) \{ patch\(\(next\) => chooseSearchType\(next, key, \{ presetPropertyType \}\)\); return; \}/);
-  assert.match(basics, /<SearchTypeControl choice=\{choice\} onChoose=\{chooseType\} \/>/);
+  assert.match(basics, /<legend className="flh-ob-searchtype-label">I’m looking for<\/legend>/);
+  assert.match(basics, /<input type="radio" className="flh-ob-pill-input" name=\{`\$\{id\}-type`\} value=\{option\.key\} checked=\{selected\} onChange=\{\(\) => onChoose\(option\.key\)\} \/>/);
+  assert.match(basics, /const \{ priorities: next, removed \} = switchSearchType\(priorities, key\);/);
+  assert.match(basics, /<SearchTypeControl choice=\{choice\} onChoose=\{chooseType\} invalid=\{invalid\} groupRef=\{typeRef\} \/>/);
   assert.match(read('src/lib/whatMattersCatalog.js'), /let next = chooseSearchType\(before, choiceKey, \{ presetPropertyType: false \}\);/);
   assert.match(lib, /let next = applySearchChoice\(priorities, choiceKey\);/);
 });

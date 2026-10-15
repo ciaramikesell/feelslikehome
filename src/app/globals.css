@@ -192,6 +192,10 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-edit-criterion span { margin-top: 2px; color: var(--ink-soft); font-size: 10.5px; }
 .hh-edit-tristate { display: flex; flex-shrink: 0; gap: 4px; }
 .hh-edit-tristate .hh-chip { padding: 4px 8px; font-size: 10.5px; }
+/* Edit Home: shared layout / condition facts as compact multi-select chips. */
+.hh-structured-fact { min-width: 0; }
+.hh-structured-fact-options { display: flex; flex-wrap: wrap; gap: 5px; }
+.hh-structured-fact-options .hh-chip { min-height: 32px; padding: 5px 10px; font-size: 11.5px; }
 .hh-edit-tristate .is-yes.on { border-color: var(--positive); background: var(--positive); }
 .hh-edit-tristate .is-no.on { border-color: var(--negative); background: var(--negative); }
 .hh-edit-tristate .is-unknown.on { border-color: var(--unknown); background: var(--unknown); }
@@ -2410,19 +2414,33 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-ob-stepper-value.is-unset { color: #A99D92; font-weight: 400; }
 .flh-ob-stepper-note { color: var(--ink-soft); font: 500 10px/1 var(--font-sans); }
 
-/* The required kind of search: one quiet sentence, "I’m looking for [choice ▾]".
-   The select reads as inline terracotta text; unset, it carries a dashed outline
-   so the one required answer is easy to spot without a separate card. */
-.flh-ob-searchtype { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; min-height: 40px; }
-.flh-onboarding-root .flh-ob-switch-note { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 10px 0 0; padding: 10px 12px 10px 14px; border-radius: 12px; background: var(--ob-warm-row); color: var(--ink-soft); font: 500 12.5px/1.45 var(--font-sans); }
+/* The required kind of search: three visible choices on the warm track (a
+   radio group). Unset, the track carries a dashed terracotta outline so the one
+   required answer is easy to spot; continuing without it shows an inline
+   message. Each choice is at least 56px tall, so phones keep full tap targets. */
+.flh-ob-searchtype { min-width: 0; margin: 0 0 16px; padding: 0; border: 0; }
+.flh-ob-searchtype-label { margin-bottom: 8px; padding: 0; color: var(--ink); font: 600 14px/1.3 var(--font-sans); }
+.flh-ob-searchtype-track { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; padding: 6px; border: 1px solid transparent; border-radius: 16px; background: var(--ob-warm); }
+.flh-ob-searchtype.is-unset .flh-ob-searchtype-track { border: 1px dashed var(--brick); }
+.flh-ob-searchtype.is-invalid .flh-ob-searchtype-track { border: 1.5px solid var(--negative); background: #FDF6F1; }
+.flh-ob-searchtype-option { position: relative; display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 56px; padding: 8px 12px; border: 1px solid transparent; border-radius: 12px; color: var(--ink-soft); cursor: pointer; }
+.flh-ob-searchtype-option:hover { background: rgba(255,255,255,.6); }
+.flh-ob-searchtype-option svg { flex-shrink: 0; }
+.flh-ob-searchtype-option.is-selected { border-color: var(--brick); background: #fff; color: var(--brick-deep); box-shadow: 0 1px 2px rgba(46,38,33,.08); }
+.flh-ob-searchtype-option:has(:focus-visible) { outline: 3px solid var(--focus-ring); outline-offset: 1px; }
+.flh-ob-searchtype-copy { display: grid; gap: 2px; min-width: 0; }
+.flh-ob-searchtype-title { color: var(--ink); font: 600 14px/1.25 var(--font-sans); }
+.flh-ob-searchtype-option.is-selected .flh-ob-searchtype-title { color: var(--brick-deep); }
+.flh-ob-searchtype-note { color: var(--ink-soft); font: 500 11px/1.2 var(--font-sans); }
+.flh-ob-searchtype-hint { margin: 6px 2px 0; color: var(--ink-soft); font: 500 11.5px/1.4 var(--font-sans); }
+.flh-ob-searchtype-error { margin: 6px 2px 0; color: var(--negative); font: 600 12.5px/1.4 var(--font-sans); }
+@media (max-width: 559px) {
+  .flh-ob-searchtype-track { grid-template-columns: minmax(0, 1fr); }
+  .flh-ob-searchtype-option { min-height: 52px; }
+}
+.flh-onboarding-root .flh-ob-switch-note { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -6px 0 16px; padding: 10px 12px 10px 14px; border-radius: 12px; background: var(--ob-warm-row); color: var(--ink-soft); font: 500 12.5px/1.45 var(--font-sans); }
 .flh-onboarding-root .flh-ob-switch-note p { margin: 0; }
 .flh-onboarding-root .flh-ob-switch-note .flh-text-action { flex-shrink: 0; min-height: 40px; }
-.flh-ob-searchtype-label { color: var(--ink); font: 600 14px/1.3 var(--font-sans); }
-.flh-ob-searchtype-select { position: relative; display: inline-flex; align-items: center; color: var(--brick-deep); }
-.flh-ob-searchtype-select select { appearance: none; -webkit-appearance: none; min-height: 40px; margin: 0; padding: 0 30px 0 12px; border: 1px solid var(--ob-line); border-radius: 12px; background: #fff; color: inherit; font: 600 15px/1.2 var(--font-sans); cursor: pointer; }
-.flh-ob-searchtype-select svg { position: absolute; right: 10px; pointer-events: none; }
-.flh-ob-searchtype.is-unset .flh-ob-searchtype-select select { border: 1px dashed var(--brick); background: #FDF6F1; }
-.flh-ob-searchtype-select select:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 1px; }
 
 /* The sticky Continue bar covers the bottom of the viewport on phones and
    tablets (its 56px button plus padding). Declaring that strip as scroll padding
@@ -2452,6 +2470,31 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-ob-pill-input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; border-radius: inherit; opacity: 0; cursor: pointer; }
 .flh-ob-pill.is-selected { border-color: var(--brick); background: #FDF1EA; color: var(--brick-deep); font-weight: 600; }
 .flh-ob-pill:has(:focus-visible) { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+
+/* Home preferences: one optional accordion with compact rows — the label on
+   the left and its options on the right on wider screens; on phones the label
+   sits above its options so every pill keeps a full tap target. Rows are
+   separated by hairlines rather than nested boxes. */
+.flh-ob-home-prefs .flh-ob-disclosure-title { display: flex; align-items: baseline; gap: 8px; }
+.flh-ob-home-prefs .flh-ob-disclosure-title .flh-ob-optional { margin: 0; }
+.flh-ob-home-prefs .flh-ob-disclosure-copy { flex: 1 1 auto; }
+.flh-ob-pref-count { display: grid; flex-shrink: 0; place-items: center; min-width: 24px; min-height: 24px; padding: 0 7px; border-radius: 999px; background: #FDF1EA; color: var(--brick-deep); font: 700 12px/1 var(--font-sans); }
+.flh-ob-pref-panel { gap: 0; padding-top: 0; }
+.flh-ob-pref-panel > .flh-ob-help { margin-bottom: 4px; }
+.flh-ob-pref-panel > .flh-ob-help:last-child { margin: 10px 0 0; }
+.flh-ob-pref-row { display: grid; grid-template-columns: 88px minmax(0, 1fr); align-items: center; gap: 6px 12px; min-width: 0; margin: 0; padding: 10px 0; border: 0; border-bottom: 1px solid var(--ob-line); }
+.flh-ob-pref-row:last-of-type { border-bottom: 0; }
+/* A legend can't be a grid item in every engine; float it into the first column. */
+.flh-ob-pref-label { float: left; width: 88px; padding: 0; color: var(--ink); font: 600 13px/1.3 var(--font-sans); }
+.flh-ob-pref-options { grid-column: 2; display: flex; flex-wrap: wrap; gap: 5px; }
+.flh-ob-pill-compact { min-height: 36px; padding: 0 11px; font-size: 12.5px; }
+.flh-ob-pref-panel { padding-left: 14px; padding-right: 12px; }
+@media (max-width: 559px) {
+  .flh-ob-pref-row { grid-template-columns: minmax(0, 1fr); }
+  .flh-ob-pref-label { float: none; width: auto; margin-bottom: 6px; }
+  .flh-ob-pref-options { grid-column: 1; }
+  .flh-ob-pill-compact { min-height: 44px; padding: 0 14px; }
+}
 
 @media (min-width: 960px) {
   /* Readable desktop type without changing the phone scale. */

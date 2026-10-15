@@ -5,10 +5,11 @@ import { criterionMetadata, getItemlistCategories, normalizePriorities } from '.
 import { computeMatch } from '../src/lib/matching.js';
 import { appendPostTourNote, applyPostTourVerdict } from '../src/lib/lifecycle.js';
 
+// Home to Buy refresh: the What Matters catalog plus the Home Preferences criteria.
 const expected = {
-  'Location & Surroundings': ['Reputable Schools','Walkable to Town','Parks nearby','Quiet street','Bustling Street','Near waterfront','Walkable schools','No HOA'],
-  'Home Features': ['Finished basement','Walkout basement','First-Floor Primary','Guest Bedroom','Primary ensuite','First-floor laundry','Home office','Central air','Fireplace'],
-  'Exterior & Property': ['Patio / deck','Fenced yard','Privacy Fencing','Garage','Large backyard','Front porch','Pool','Landscaping'],
+  'Location & Surroundings': ['Cul-de-Sac','Sidewalks','Low-Traffic Street','Walkable Neighborhood','Near waterfront','Wooded Setting','Mature Trees','Walkable schools','No HOA'],
+  'Home Features': ['Kitchen Island','Stainless Steel Appliances','Fireplace','Central air','Walk-in Pantry','High Ceilings','Double Vanity','Soaking Tub','First-Floor Bedroom','Home office','Second-Floor Laundry','First-floor laundry','Formal Dining Room','Eat-in Kitchen','Primary ensuite','Basement Storage','Finished basement','Walkout basement','First-Floor Primary'],
+  'Exterior & Property': ['Patio / deck','Front porch','Pool','Room for Entertaining','Fire Pit','Garden Space','Screened-in Porch','Workshop Space','Garage','Fenced yard','Privacy Fencing','Unfenced Yard'],
 };
 
 test('purchase catalog is the exact pre-tour My Search catalog', () => {

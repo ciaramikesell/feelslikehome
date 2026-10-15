@@ -7,6 +7,9 @@ import {
 } from './searchIntent.js';
 
 export const LAYOUT_OPTIONS = ['Ranch / Single Story', 'Two Story', 'Split Level', 'Other', 'No Preference'];
+// Shown words for stored layout values ('Two Story' stays the stored value).
+export const LAYOUT_DISPLAY_LABELS = Object.freeze({ 'Ranch / Single Story': 'Ranch', 'Two Story': 'Two-Story', 'Split Level': 'Split Level', 'Other': 'Other' });
+export const CONDITION_DISPLAY_LABELS = Object.freeze({ 'New Construction': 'New Construction', 'Move-In Ready': 'Move-in Ready', 'Renovation Potential': 'Renovation Potential' });
 export const HOME_CONDITION_OPTIONS = ['New Construction', 'Move-In Ready', 'Renovation Potential', 'No Preference'];
 
 // Schools is deliberately check-kind (Yes/No), not rating-kind — it answers
@@ -34,9 +37,18 @@ export const LOCATION_CORE = [];
 //
 // Authenticated-mobile redesign: 'Charming Neighborhood' is no longer offered —
 // see DISCONTINUED_PURCHASE_OFFERINGS below for how existing selections are kept.
+//
+// 2026 Home to Buy catalog refresh (beta feedback): the purchase catalog is the
+// four What Matters groups (BUY_WHAT_MATTERS_GROUPS below) plus the optional
+// Home Preferences criteria asked on The Basics (HOME_PREFERENCE_CRITERIA).
+// Concepts that already had an identity keep it ('Near waterfront' is shown as
+// "Near Water", 'Walkable schools', 'No HOA', …). Earlier buyer choices that are
+// no longer offered (BUY_CATALOG_RETIRED_OFFERINGS) keep counting for anyone who
+// already chose them. Home to Rent keeps its own earlier catalog
+// (HOME_RENT_CATALOG) so renters' choices are unchanged by this pass.
 export const LOCATION_SUGGESTED = [
-  'Reputable Schools', 'Walkable to Town', 'Parks nearby',
-  'Quiet street', 'Bustling Street', 'Near waterfront', 'Walkable schools', 'No HOA',
+  'Cul-de-Sac', 'Sidewalks', 'Low-Traffic Street', 'Walkable Neighborhood', 'Near waterfront',
+  'Wooded Setting', 'Mature Trees', 'Walkable schools', 'No HOA',
 ].map((label) => ({ label, kind: 'check' }));
 
 export const HOME_FEEL_CORE = [];
@@ -50,9 +62,12 @@ export const EXTERIOR_CORE = [];
 // 'Garage' is the one weighted garage criterion (scored from the home's existing
 // garageSpaces fact — see computeMatch); Attached/Detached is an optional,
 // informational qualifier (exterior.garagePreference), never a separate criterion.
+// 'Unfenced Yard' is the Home Preferences opposite of a fenced yard; The Basics
+// never lets it be chosen alongside 'Fenced yard' or 'Privacy Fencing'.
 export const EXTERIOR_SUGGESTED = [
-  'Patio / deck', 'Fenced yard', 'Privacy Fencing', 'Garage',
-  'Large backyard', 'Front porch', 'Pool', 'Landscaping',
+  'Patio / deck', 'Front porch', 'Pool', 'Room for Entertaining', 'Fire Pit',
+  'Garden Space', 'Screened-in Porch', 'Workshop Space',
+  'Garage', 'Fenced yard', 'Privacy Fencing', 'Unfenced Yard',
 ].map((label) => ({ label, kind: 'check' }));
 
 // Optional qualifier shown when Garage is selected. Stored on the participant's
@@ -77,9 +92,85 @@ export function garagePreferenceLabel(priorities) {
 // counting — see DISCONTINUED_PURCHASE_OFFERINGS.
 export const FEATURES_CORE = [];
 export const FEATURES_SUGGESTED = [
-  'Finished basement', 'Walkout basement', 'First-Floor Primary', 'Guest Bedroom',
-  'Primary ensuite', 'First-floor laundry', 'Home office', 'Central air', 'Fireplace',
+  'Kitchen Island', 'Stainless Steel Appliances', 'Fireplace', 'Central air', 'Walk-in Pantry',
+  'High Ceilings', 'Double Vanity', 'Soaking Tub',
+  'First-Floor Bedroom', 'Home office', 'Second-Floor Laundry', 'First-floor laundry',
+  'Formal Dining Room', 'Eat-in Kitchen', 'Primary ensuite', 'Basement Storage',
+  'Finished basement', 'Walkout basement', 'First-Floor Primary',
 ].map((label) => ({ label, kind: 'check' }));
+
+// The Home to Buy "What Matters" groups, in display order. Every entry is a
+// purchase catalog identity above; the Home Preferences criteria are asked on
+// The Basics instead, so they are deliberately absent here (asked once, counted
+// once). 'Mudroom' is not offered yet: 'features:Mudroom' is a retired purchase
+// built-in in both scorers (JS and SQL), so offering it needs the parity
+// migration described in docs/buyer-search-criteria-refinement.md.
+const buyGroup = (title, entries) => Object.freeze([title, Object.freeze(entries.map(([categoryKey, label]) => Object.freeze({ categoryKey, label, kind: 'check' })))]);
+export const BUY_WHAT_MATTERS_GROUPS = Object.freeze([
+  buyGroup('Location & Neighborhood', LOCATION_SUGGESTED.map(({ label }) => ['location', label])),
+  buyGroup('Home Features', [
+    ['features', 'Kitchen Island'], ['features', 'Stainless Steel Appliances'], ['features', 'Fireplace'],
+    ['features', 'Central air'], ['features', 'Walk-in Pantry'], ['features', 'High Ceilings'],
+    ['features', 'Double Vanity'], ['features', 'Soaking Tub'],
+  ]),
+  buyGroup('Layout & Living Spaces', [
+    ['features', 'First-Floor Bedroom'], ['features', 'Home office'], ['features', 'Second-Floor Laundry'],
+    ['features', 'First-floor laundry'], ['features', 'Formal Dining Room'], ['features', 'Eat-in Kitchen'],
+    ['features', 'Primary ensuite'], ['features', 'Basement Storage'],
+  ]),
+  buyGroup('Exterior & Property', [
+    ['exterior', 'Patio / deck'], ['exterior', 'Front porch'], ['exterior', 'Pool'],
+    ['exterior', 'Room for Entertaining'], ['exterior', 'Fire Pit'], ['exterior', 'Garden Space'],
+    ['exterior', 'Screened-in Porch'], ['exterior', 'Workshop Space'],
+  ]),
+]);
+
+// Home to Rent's suggestions as they were before the Home to Buy refresh (the
+// earlier purchase lists minus No HOA). Garage moved to Home Preferences.
+export const HOME_RENT_CATALOG = Object.freeze({
+  location: Object.freeze(['Reputable Schools', 'Walkable to Town', 'Parks nearby', 'Quiet street', 'Bustling Street', 'Near waterfront', 'Walkable schools']),
+  features: Object.freeze(['Finished basement', 'Walkout basement', 'First-Floor Primary', 'Guest Bedroom', 'Primary ensuite', 'First-floor laundry', 'Home office', 'Central air', 'Fireplace']),
+  exterior: Object.freeze(['Patio / deck', 'Fenced yard', 'Privacy Fencing', 'Large backyard', 'Front porch', 'Pool', 'Landscaping']),
+});
+
+// The optional Home Preferences on The Basics that are ordinary criteria (each
+// one its own priority, Important when chosen, re-rankable like any other).
+// Home type, layout and condition are the existing grouped preferences instead
+// (src/lib/whatMattersGroups.js). See src/lib/homePreferences.js.
+export const HOME_PREFERENCE_CRITERIA = Object.freeze({
+  garage: Object.freeze({ categoryKey: 'exterior', label: 'Garage', kind: 'check' }),
+  firstFloorPrimary: Object.freeze({ categoryKey: 'features', label: 'First-Floor Primary', kind: 'check' }),
+  finishedBasement: Object.freeze({ categoryKey: 'features', label: 'Finished basement', kind: 'check' }),
+  walkoutBasement: Object.freeze({ categoryKey: 'features', label: 'Walkout basement', kind: 'check' }),
+  fencedYard: Object.freeze({ categoryKey: 'exterior', label: 'Fenced yard', kind: 'check' }),
+  privacyFence: Object.freeze({ categoryKey: 'exterior', label: 'Privacy Fencing', kind: 'check' }),
+  unfencedYard: Object.freeze({ categoryKey: 'exterior', label: 'Unfenced Yard', kind: 'check' }),
+});
+
+// Which Home Preferences criteria each kind of search asks on The Basics. Home
+// to Rent keeps only what its Basics already asked (garage); the rest of its
+// home criteria stay in its What Matters catalog. Apartments have none.
+export function homePreferenceCriteriaFor(experienceKey) {
+  if (experienceKey === 'home_buy') return Object.values(HOME_PREFERENCE_CRITERIA);
+  if (experienceKey === 'home_rent') return [HOME_PREFERENCE_CRITERIA.garage];
+  return [];
+}
+
+// Buyer-facing words for home types on Home to Buy (stored values unchanged).
+export const BUY_HOME_TYPE_LABELS = Object.freeze({ house: 'Single Family', condo: 'Condominium', multifamily: 'Multi-Family' });
+
+// Earlier Home to Buy choices no longer offered to buyers after the refresh.
+// Like DISCONTINUED_PURCHASE_OFFERINGS: anyone who already chose one keeps it on
+// their board and it keeps counting in Match; it is only not offered again.
+export const BUY_CATALOG_RETIRED_OFFERINGS = Object.freeze([
+  'location:Reputable Schools', 'location:Walkable to Town', 'location:Parks nearby',
+  'location:Quiet street', 'location:Bustling Street',
+  'features:Guest Bedroom', 'exterior:Large backyard', 'exterior:Landscaping',
+]);
+const BUY_CATALOG_RETIRED = new Set(BUY_CATALOG_RETIRED_OFFERINGS);
+export function isBuyCatalogRetired(categoryKey, label) {
+  return BUY_CATALOG_RETIRED.has(`${categoryKey}:${label}`);
+}
 
 // Criteria that were offered as purchase built-ins before the authenticated-mobile
 // redesign and are no longer offered for NEW selection. Unlike
@@ -110,6 +201,7 @@ export function isDiscontinuedOffering(categoryKey, item, searchType = null) {
   if (item?.source === 'custom') return false;
   const key = `${categoryKey}:${item?.label}`;
   return DISCONTINUED_PURCHASE_OFFERINGS.has(key)
+    || (normalizeSearchIntent(searchType) === 'purchase' && BUY_CATALOG_RETIRED.has(key))
     || (normalizeSearchIntent(searchType) === 'rental' && DISCONTINUED_RENTAL_OFFERINGS.has(key));
 }
 
@@ -149,7 +241,9 @@ const CRITERION_DISPLAY_LABEL_OVERRIDES = {
   // exactly as it already is in production; only the displayed text changes.
   'location:Parks nearby': 'Parks Nearby',
   'location:Quiet street': 'Quiet Street',
-  'location:Near waterfront': 'Near Waterfront',
+  // Home to Buy catalog refresh: the same concept, in the approved wording.
+  'location:Near waterfront': 'Near Water',
+  'exterior:Privacy Fencing': 'Privacy Fence',
   'location:Walkable schools': 'Walkable Schools',
   'features:Finished basement': 'Finished Basement',
   'features:Walkout basement': 'Walkout Basement',
@@ -259,7 +353,7 @@ const RETIRED_PURCHASE_BUILT_INS = new Set([
   'exterior:Yard', 'exterior:Privacy', 'exterior:Sidewalks',
   'exterior:Exterior Condition', 'exterior:Curb Appeal', 'exterior:Outdoor Space',
   'exterior:Noise Level', 'exterior:Driveway / Off-Street Parking', 'exterior:Fitness Center',
-  'exterior:Secure Entry', 'exterior:Elevator', 'features:Basement', 'features:Mudroom',
+  'exterior:Secure Entry', 'exterior:Elevator', 'features:Basement',
   'features:Pantry', 'features:Storage', 'features:Updated Kitchen', 'features:Updated Bathrooms',
   'features:Walk-In Closet', 'features:Additional Living Space', 'features:Hardwood Floors',
   'features:Dishwasher', 'features:In-Unit Laundry', 'features:Updated Interior',

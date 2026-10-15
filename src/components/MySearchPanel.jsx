@@ -11,8 +11,9 @@ import {
 } from '@/components/MobileSystem';
 import { normalizePriorities, getItemlistCategories } from '@/lib/constants';
 import {
-  basicsSummary, matchShapingPriorityCount, placesSummary, priorityLevels, searchStatusCopy,
+  basicsSummary, matchShapingPriorityCount, placesSummary, searchStatusCopy,
 } from '@/lib/searchProfile';
+import { priorityLevelsWithGroups, selectedGroupCount } from '@/lib/whatMattersGroups';
 import { createClient } from '@/lib/supabase/client';
 import { useReliableOptimisticState } from '@/lib/useReliableOptimisticState';
 import { savePriorities } from '@/lib/supabase/collaboration';
@@ -134,7 +135,9 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
   const persistPriorities = useCallback((next) => savePriorities(createClient(), search, userId, next), [search, userId]);
   const { state: priorities, patch, saveError, retry, isSaving } = useReliableOptimisticState(normalizePriorities(initialPriorities), persistPriorities);
   const [basicsOpen, setBasicsOpen] = useState(false);
-  const levels = priorityLevels(priorities);
+  // Grouped Basics (home type, layout, condition) appear with their level, as
+  // they do on Rank Priorities.
+  const levels = priorityLevelsWithGroups(priorities);
   const destinations = initialCommuteDestinations || [];
 
   return (
@@ -152,7 +155,7 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
               invitations and removal. "The house is ours. The opinion is mine.
               The conversation is shared." Nothing is combined. */}
           <YourPeople search={search} userId={userId} isOwner={isOwner} participantCount={participantCount} memberUserId={memberUserId} people={people} invitations={realtorInvitations} collaboratorSummary={<CollaboratorSummary context={collaboratorContext} />} />
-          <SearchStatus count={matchShapingPriorityCount(priorities)} firstRun={firstRun} />
+          <SearchStatus count={matchShapingPriorityCount(priorities) + selectedGroupCount(priorities)} firstRun={firstRun} />
         </div>
       </div>
       <Sheet open={basicsOpen} onClose={() => setBasicsOpen(false)} title="What I’m looking for" size="large">

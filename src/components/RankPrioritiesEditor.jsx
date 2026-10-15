@@ -9,8 +9,9 @@ import { ChoiceChip, HelperRow, MobilePage, StickyActionBar, SubpageHeader } fro
 import { normalizePriorities } from '@/lib/constants';
 import {
   addCriterion, addCustomCriterion, availableCriteriaGroups, customCategoryOptions, moveCriterion,
-  offeredCriteriaGroups, priorityLevels, selectedPriorityCount, setGaragePreference,
+  offeredCriteriaGroups, setGaragePreference,
 } from '@/lib/searchProfile';
+import { moveGroup, priorityLevelsWithGroups } from '@/lib/whatMattersGroups';
 import { createClient } from '@/lib/supabase/client';
 import { savePriorities } from '@/lib/supabase/collaboration';
 
@@ -61,8 +62,13 @@ export default function RankPrioritiesEditor({ search, userId, initialPriorities
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const levels = priorityLevels(draft);
-  const count = selectedPriorityCount(draft);
+  // Home type, layout and condition rank as one item each, with the criteria.
+  const levels = priorityLevelsWithGroups(draft);
+  const count = levels.reduce((sum, level) => sum + level.items.length, 0);
+  const moveItem = (current, item, tier) => (item.group ? moveGroup(current, item.categoryKey, tier) : moveCriterion(current, item.categoryKey, item.label, tier));
+  // Removing a grouped preference clears its choices (its level is kept, as
+  // the Basics editor does); removing a criterion takes it off the board.
+  const removeItem = (current, item) => (item.group ? { ...current, [item.categoryKey]: { ...current[item.categoryKey], values: [] } } : moveCriterion(current, item.categoryKey, item.label, 'dontcare'));
   const leave = () => router.push('/search');
 
   const save = async () => {
@@ -85,8 +91,8 @@ export default function RankPrioritiesEditor({ search, userId, initialPriorities
       {error && <p className="hh-save-error" role="alert">{error}</p>}
       <RankBoard
         levels={levels}
-        onMove={(item, tier) => setDraft((current) => moveCriterion(current, item.categoryKey, item.label, tier))}
-        onRemove={(item) => setDraft((current) => moveCriterion(current, item.categoryKey, item.label, 'dontcare'))}
+        onMove={(item, tier) => setDraft((current) => moveItem(current, item, tier))}
+        onRemove={(item) => setDraft((current) => removeItem(current, item))}
         garagePreference={draft.exterior?.garagePreference || 'any'}
         onGaragePreferenceChange={(value) => setDraft((current) => setGaragePreference(current, value))}
         schoolsNote={draft.location?.notes?.Schools || ''}

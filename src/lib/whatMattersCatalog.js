@@ -22,70 +22,39 @@
 // already offered), so Match evaluates each one exactly as before. Things a
 // person can only judge in person are marked "after tour".
 
-import { RENTAL_ESSENTIALS, getItemlistCategories, isDiscontinuedOffering, isExperientialCriterion, normalizePriorities } from './constants.js';
+import { BUY_WHAT_MATTERS_GROUPS, RENTAL_ESSENTIALS, criterionDisplayLabel, getItemlistCategories, homePreferenceCriteriaFor, isBuyCatalogRetired, isDiscontinuedOffering, isExperientialCriterion, normalizePriorities } from './constants.js';
 import { flatOnboardingSuggestions, ONBOARDING_SUGGESTIONS } from './onboarding.js';
 import { chooseSearchType } from './onboardingBasics.js';
-import { addCriterion, isCriterionSelected, priorityLevels, searchExperienceKey, selectedPriorityCount } from './searchProfile.js';
+import { addCriterion, isCriterionSelected, moveCriterion, priorityLevels, searchExperienceKey } from './searchProfile.js';
 import { isGroupValueSelected, priorityLevelsWithGroups, whatMattersGroups } from './whatMattersGroups.js';
 
 const criterion = (categoryKey, label, text, icon) => ({ type: 'criterion', categoryKey, label, text, icon });
 const value = (group, valueKey, text, icon) => ({ type: 'value', group, value: valueKey, text, icon });
 
-const SECTIONS = Object.freeze([
-  {
-    key: 'neighborhood',
-    title: 'Neighborhood',
-    chips: [
-      criterion('location', 'Quiet street', 'Quiet street', 'Route'),
-      criterion('location', 'Walkable to Town', 'Walkable to town', 'Store'),
-      criterion('location', 'Reputable Schools', 'Great schools', 'School'),
-      criterion('location', 'Parks nearby', 'Parks nearby', 'Leaf'),
-      criterion('location', 'Near waterfront', 'Near the water', 'Waves'),
-    ],
-  },
-  {
-    key: 'home',
-    title: 'The home',
-    chips: [
-      criterion('exterior', 'Large backyard', 'Big backyard', 'Trees'),
-      criterion('features', 'Home office', 'Home office', 'Laptop'),
-      criterion('features', 'Primary ensuite', 'Primary suite', 'BedDouble'),
-      criterion('features', 'Guest Bedroom', 'Guest space', 'Sofa'),
-      criterion('features', 'Finished basement', 'Finished basement', 'Layers'),
-      value('homeCondition', 'Move-In Ready', 'Move-in ready', 'Sparkles'),
-      value('homeCondition', 'Renovation Potential', 'Room to renovate', 'Hammer'),
-    ],
-  },
-  {
-    key: 'type',
-    title: 'Property type',
-    note: 'Any of these can work—a home only needs to be one.',
-    chips: [
-      value('preferredPropertyTypes', 'house', 'House', 'House'),
-      value('preferredPropertyTypes', 'townhome', 'Townhome', 'Building'),
-      value('preferredPropertyTypes', 'condo', 'Condo', 'Building2'),
-      value('preferredPropertyTypes', 'multifamily', 'Multifamily', 'Hotel'),
-    ],
-  },
-  {
-    key: 'layout',
-    title: 'Layout',
-    note: 'Any of these can work—a home only needs to be one.',
-    chips: [
-      value('homeLayout', 'Ranch / Single Story', 'Ranch', 'Columns2'),
-      value('homeLayout', 'Two Story', 'Two story', 'Rows2'),
-      value('homeLayout', 'Other', 'Other', 'Shapes'),
-    ],
-  },
-  {
-    key: 'features',
-    title: 'Home features',
-    chips: [
-      criterion('exterior', 'Garage', 'Garage', 'Car'),
-      value('homeCondition', 'New Construction', 'New construction', 'HardHat'),
-    ],
-  },
-]);
+// Home to Buy: the four approved groups (BUY_WHAT_MATTERS_GROUPS, constants.js).
+// Home type, layout, condition, garage, basement and yard are asked once, in
+// The Basics' Home preferences (src/lib/homePreferences.js), so they are not
+// repeated here.
+const BUY_ICONS = Object.freeze({
+  'location:Cul-de-Sac': 'Milestone', 'location:Sidewalks': 'Footprints', 'location:Low-Traffic Street': 'Route',
+  'location:Walkable Neighborhood': 'Store', 'location:Near waterfront': 'Waves', 'location:Wooded Setting': 'Trees',
+  'location:Mature Trees': 'TreeDeciduous', 'location:Walkable schools': 'School', 'location:No HOA': 'Ban',
+  'features:Kitchen Island': 'ChefHat', 'features:Stainless Steel Appliances': 'Refrigerator', 'features:Fireplace': 'Flame',
+  'features:Central air': 'AirVent', 'features:Walk-in Pantry': 'Package', 'features:High Ceilings': 'ArrowUpToLine',
+  'features:Double Vanity': 'Droplets', 'features:Soaking Tub': 'Bath',
+  'features:First-Floor Bedroom': 'BedSingle', 'features:Home office': 'Laptop', 'features:Second-Floor Laundry': 'WashingMachine',
+  'features:First-floor laundry': 'WashingMachine', 'features:Formal Dining Room': 'UtensilsCrossed', 'features:Eat-in Kitchen': 'Utensils',
+  'features:Primary ensuite': 'BedDouble', 'features:Basement Storage': 'Archive',
+  'exterior:Patio / deck': 'Sun', 'exterior:Front porch': 'DoorOpen', 'exterior:Pool': 'Waves',
+  'exterior:Room for Entertaining': 'PartyPopper', 'exterior:Fire Pit': 'Flame', 'exterior:Garden Space': 'Sprout',
+  'exterior:Screened-in Porch': 'Armchair', 'exterior:Workshop Space': 'Wrench',
+});
+const SECTION_KEYS = Object.freeze({ 'Location & Neighborhood': 'neighborhood', 'Home Features': 'features', 'Layout & Living Spaces': 'living', 'Exterior & Property': 'exterior' });
+const SECTIONS = Object.freeze(BUY_WHAT_MATTERS_GROUPS.map(([title, entries]) => ({
+  key: SECTION_KEYS[title],
+  title,
+  chips: entries.map((entry) => criterion(entry.categoryKey, entry.label, criterionDisplayLabel(entry.categoryKey, entry.label), BUY_ICONS[`${entry.categoryKey}:${entry.label}`] || null)),
+})));
 
 // Approved in Figma, but no live canonical criterion exists for a purchase
 // search today (reviewed against getItemlistCategories and Match).
@@ -134,7 +103,6 @@ const RENTAL_SECTIONS = Object.freeze({
       chips: [
         criterion('features', 'Home office', 'Home office', 'Laptop'),
         criterion('features', 'Primary ensuite', 'Primary suite', 'BedDouble'),
-        criterion('exterior', 'Garage', 'Garage', 'Car'),
       ],
     },
     {
@@ -145,16 +113,7 @@ const RENTAL_SECTIONS = Object.freeze({
         criterion('exterior', 'Fenced yard', 'Fenced yard', 'Fence'),
       ],
     },
-    {
-      key: 'type',
-      title: 'Property type',
-      note: 'Any of these can work—a home only needs to be one.',
-      chips: [
-        value('preferredPropertyTypes', 'house', 'House', 'House'),
-        value('preferredPropertyTypes', 'townhome', 'Townhome', 'Building'),
-        value('preferredPropertyTypes', 'condo', 'Condo', 'Building2'),
-      ],
-    },
+    // Home type and garage are asked in The Basics' Home preferences.
   ],
   apartment_rent: [
     RENTAL_ESSENTIALS_SECTION,
@@ -357,33 +316,54 @@ export function chipKey(chip) {
   return keyOf(chip);
 }
 
-// "Picks": every selected criterion plus every chosen grouped option.
+// "Picks" on this step: every selected criterion plus every chosen grouped
+// option offered here. Home preferences chosen on The Basics are counted there
+// (homePreferencesSummary), not again here.
 export function picksCount(raw) {
   const priorities = normalizePriorities(raw);
-  const values = whatMattersGroups(priorities).reduce((sum, group) => sum + priorities[group.key].values.filter((entry) => entry !== 'No Preference').length, 0);
-  return selectedPriorityCount(priorities) + values;
+  const groupsHere = new Set(whatMattersSections(priorities).flatMap((section) => section.chips).filter((chip) => chip.type === 'value').map((chip) => chip.group));
+  const values = whatMattersGroups(priorities).filter((group) => groupsHere.has(group.key))
+    .reduce((sum, group) => sum + priorities[group.key].values.filter((entry) => entry !== 'No Preference').length, 0);
+  const basics = new Set(homePreferenceCriteriaFor(searchExperienceKey(priorities)).map((entry) => `${entry.categoryKey}:${entry.label}`));
+  const criteria = priorityLevels(priorities).flatMap((level) => level.items).filter((item) => !basics.has(item.key)).length;
+  return criteria + values;
 }
 
-// Six-step Step 1: changing the kind of search keeps every answer that still
-// applies — the Basics, every Step 4 pick the new kind of search also offers
-// (at its saved level), compatible property types, and the person's own typed
-// priorities. Only what no longer applies is removed, and it is returned so
-// Step 1 can say exactly what changed (and offer Undo) instead of discarding
-// it silently:
+// Step 1 (both flows): changing the kind of search keeps every answer that
+// still applies — the Basics, every pick the new kind of search also offers
+// (What Matters or Home preferences, at its saved level), compatible property
+// types, and the person's own typed priorities. Only what no longer applies is
+// removed, and it is returned so Step 1 can say exactly what changed (and offer
+// Undo) instead of discarding it silently:
 //   • picks the new kind of search doesn't offer (e.g. Garage for an apartment);
 //   • group alternatives it doesn't offer (e.g. Ranch when renting);
 //   • a lot size, which doesn't apply to an apartment.
+// Choosing the kind of search a person already has changes nothing. Nothing is
+// preset: no property type is assumed from the kind of search.
 export function switchSearchType(raw, choiceKey) {
   const before = normalizePriorities(raw);
+  if (before.onboardingSearchType === choiceKey) return { priorities: before, removed: [] };
   const beforeLabels = chipLabels(before);
   const beforeItems = priorityLevels(before).flatMap((level) => level.items);
   const beforeChips = offeredChips(before);
   let next = chooseSearchType(before, choiceKey, { presetPropertyType: false });
 
-  const offered = new Map(offeredChips(next).filter((chip) => chip.type === 'criterion').map((chip) => [keyOf(chip).toLowerCase(), chip]));
+  const offered = new Map([
+    ...offeredChips(next).filter((chip) => chip.type === 'criterion'),
+    ...homePreferenceCriteriaFor(choiceKey),
+  ].map((chip) => [keyOf({ type: 'criterion', ...chip }).toLowerCase(), chip]));
+  // Home preferences no other kind of search asks (e.g. a basement for an
+  // apartment) are cleared like any other pick that no longer applies.
+  for (const entry of homePreferenceCriteriaFor('home_buy')) {
+    if (!offered.has(`${entry.categoryKey}:${entry.label}`.toLowerCase())) next = moveCriterion(next, entry.categoryKey, entry.label, 'dontcare');
+  }
   for (const item of beforeItems) {
     const chip = offered.get(item.key.toLowerCase());
+    // An earlier Home to Buy choice that is no longer offered still counts for
+    // a buyer, so switching back to buying keeps it.
+    const stillCounts = !chip && choiceKey === 'home_buy' && isBuyCatalogRetired(item.categoryKey, item.label);
     if (chip && !isCriterionSelected(next, chip.categoryKey, chip.label)) next = addCriterion(next, chip, item.tier);
+    if (stillCounts && !isCriterionSelected(next, item.categoryKey, item.label)) next = addCriterion(next, item, item.tier);
   }
 
   const removed = [];

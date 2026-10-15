@@ -89,14 +89,20 @@ test('the Basics step uses the approved copy and keeps search type required', ()
   assert.match(onboarding, /title=\{<>The Basics of <em>Your Search<\/em><\/>\} lead="What does home look like to you\? You can adjust these anytime\."/);
   assert.match(onboarding, /`Step \$\{progress\.position\} · \$\{STEP_LABELS\[step\]\}`/);
   assert.match(onboarding, /basics: 'The Basics'/);
-  // Nothing is preselected (a disabled "choose one" placeholder) and Continue waits for a kind of search.
-  assert.match(basics, /<select id=\{id\} required value=\{choice\}/);
-  assert.match(basics, /\{!choice && <option value="" disabled>choose one<\/option>\}/);
-  assert.match(basics, /<OnboardingAction disabled=\{!choice\} onClick=\{onNext\}>Continue<\/OnboardingAction>/);
+  // Nothing is preselected: three visible choices, none checked until chosen.
+  // Continue explains (inline, and moves focus to the choices) instead of
+  // proceeding without a kind of search.
+  assert.match(basics, /checked=\{selected\}/);
+  assert.match(basics, /const selected = choice === option\.key;/);
+  assert.match(basics, /<OnboardingAction onClick=\{proceed\}>Continue<\/OnboardingAction>/);
+  assert.match(basics, /if \(choice\) \{ onNext\(\); return; \}\n\s+setInvalid\(true\);\n\s+typeRef\.current\?\.querySelector\('input'\)\?\.focus\(\);/);
+  assert.match(basics, /role="alert">Choose what you’re looking for to continue/);
   // No slider anywhere on the step.
   assert.doesNotMatch(basics, /type="range"/);
-  // Home types, layout and condition remain editable (collapsed) rather than dropped.
-  assert.match(basics, /title="More about the home"/);
+  // Home type, layout, condition, garage, basement and yard live in one
+  // optional Home preferences accordion (no separate garage importance question).
+  assert.match(basics, /Home preferences <OptionalTag \/>/);
+  assert.doesNotMatch(basics, /How much does a garage matter\?|More about the home|Garage preferences/);
   // Shared-search setup keeps its own heading and reassurance.
   assert.match(onboarding, /title=\{`Set up your preferences for \$\{sharedFor\}\.`\}/);
 });

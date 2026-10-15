@@ -7,6 +7,7 @@ import { StarInput } from '@/components/ui';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
   isArchivedStatus, isRentalType, TOUR_RATING_KEY, criterionDisplayLabel, TIER_ORDER, foldLegacyCheckAliases,
+  LAYOUT_DISPLAY_LABELS, CONDITION_DISPLAY_LABELS,
 } from '@/lib/constants';
 import { visibleOrderedItems, parseListingTextFindings, selectedSubjectiveCriteria, computeMatch, SHARED_BOOLEAN_FACT_FIELDS, sharedFactAnswer, sharedFactValue } from '@/lib/matching';
 import { extractAddressFromListingUrl, extractApartmentIdentityFromListingUrl, isLikelyListingUrl, findHomeByListingUrl } from '@/lib/listingUrl';
@@ -18,7 +19,6 @@ import { createClient } from '@/lib/supabase/client';
 import { hasToured } from '@/lib/lifecycle';
 import { HOME_PROPERTY_TYPE_OPTIONS, PROPERTY_TYPE_LABELS, searchIntentCapabilities } from '@/lib/searchIntent';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
-import { EXISTING_STRUCTURED_FACT_VALUE, structuredFactSelectValue, structuredFactValueFromSelect } from '@/lib/homeStructuredFacts';
 import { countListingDetails, groupListingFacts } from '@/lib/listingFacts';
 import { PROVENANCE_LABELS, fieldProvenance, hasImportSnapshot } from '@/lib/homeProvenance';
 import { isNativeApp } from '@/lib/platform';
@@ -86,18 +86,24 @@ function CompactField({ label, value, onChange, isCurrency, placeholder, must, c
   );
 }
 
-function StructuredFactSelect({ definition, value, onChange, must, coBuyerOnly }) {
-  const choices = definition.options.filter((option) => option !== 'No Preference');
+// Home layout and condition are shared facts stored as lists (homes.home_layout,
+// homes.home_condition), so a home can be more than one (e.g. Move-in Ready and
+// Renovation Potential). Nothing chosen is Unknown — never "No" — and Match
+// counts the preference met when any chosen value matches. A value saved
+// earlier that is no longer listed stays visible and removable.
+function StructuredFactChips({ definition, value, onChange, must, coBuyerOnly }) {
+  const listed = definition.options.filter((option) => option !== 'No Preference');
   const selected = Array.isArray(value) ? value : [];
-  const currentValue = structuredFactSelectValue(selected, choices);
+  const choices = [...listed, ...selected.filter((entry) => !listed.includes(entry))];
+  const labelOf = (choice) => (definition.key === 'homeLayout' ? LAYOUT_DISPLAY_LABELS[choice] : CONDITION_DISPLAY_LABELS[choice]) || choice;
+  const toggle = (choice) => onChange(selected.includes(choice) ? selected.filter((entry) => entry !== choice) : [...selected, choice]);
   return (
-    <div>
-      <label className="hh-label" htmlFor={`home-${definition.key}`}>{definition.title}{must && <span className="hh-must-badge">MUST</span>}{coBuyerOnly && <CoBuyerOnlyHelper />}</label>
-      <select id={`home-${definition.key}`} className="hh-input" value={currentValue} onChange={(event) => onChange(structuredFactValueFromSelect(event.target.value))}>
-        <option value="">Unknown / not specified</option>
-        {currentValue === EXISTING_STRUCTURED_FACT_VALUE && <option value={EXISTING_STRUCTURED_FACT_VALUE} disabled>{selected.join(', ')}</option>}
-        {choices.map((choice) => <option key={choice} value={choice}>{choice}</option>)}
-      </select>
+    <div className="hh-structured-fact">
+      <span className="hh-label" id={`home-${definition.key}-label`}>{definition.title}{must && <span className="hh-must-badge">MUST</span>}{coBuyerOnly && <CoBuyerOnlyHelper />}</span>
+      <div className="hh-structured-fact-options" role="group" aria-labelledby={`home-${definition.key}-label`}>
+        {choices.map((choice) => <button type="button" key={choice} className={`hh-chip ${selected.includes(choice) ? 'on' : ''}`} aria-pressed={selected.includes(choice)} onClick={() => toggle(choice)}>{labelOf(choice)}</button>)}
+        <button type="button" className={`hh-chip is-unknown ${selected.length ? '' : 'on'}`} aria-pressed={!selected.length} onClick={() => onChange([])}>Unknown</button>
+      </div>
     </div>
   );
 }
@@ -408,7 +414,7 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
               <CompactField label="Square footage" value={form.sqft} onChange={(value) => set('sqft', value)} placeholder="Unknown" provenance={provenanceOf('sqft')} />
               <CompactField label="Lot size" value={form.lotSize} onChange={(value) => set('lotSize', value)} placeholder="Unknown" provenance={provenanceOf('lotSize')} />
               <CompactField label="Year built" value={form.yearBuilt} onChange={(value) => set('yearBuilt', value)} placeholder="Unknown" provenance={provenanceOf('yearBuilt')} />
-              <CompactField label="Garage" value={form.garageSpaces} onChange={(value) => set('garageSpaces', value)} placeholder="Unknown" provenance={provenanceOf('garageSpaces')} />
+              <CompactField label="Garage spaces" value={form.garageSpaces} onChange={(value) => set('garageSpaces', value)} placeholder="Unknown · 0 = none" provenance={provenanceOf('garageSpaces')} />
             </div>
             <p className="flh-unknown-helper"><ShieldCheck size={14} aria-hidden="true" /> Unknown is neutral. Leave a field alone when the listing doesn’t support a reliable answer.</p>
           </section>
@@ -420,7 +426,7 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
             <div className="hh-edit-fields-grid">
               <CompactField label="Basement" value={form.basementNotes} onChange={(value) => set('basementNotes', value)} placeholder="Unknown" />
               <CompactField label="School details" value={form.schoolsNotes} onChange={(value) => set('schoolsNotes', value)} placeholder="Unknown" />
-              {MULTISELECT_CATEGORIES.filter((definition) => sharedFactAwareness[definition.key]?.eligibleForSharedFactCapture).map((definition) => <StructuredFactSelect key={definition.key} definition={definition} value={form[definition.key]} onChange={(value) => set(definition.key, value)} />)}
+              {MULTISELECT_CATEGORIES.filter((definition) => sharedFactAwareness[definition.key]?.eligibleForSharedFactCapture).map((definition) => <StructuredFactChips key={definition.key} definition={definition} value={form[definition.key]} onChange={(value) => set(definition.key, value)} coBuyerOnly={sharedFactAwareness[definition.key]?.coBuyerOnly} />)}
               {SINGLESELECT_CATEGORIES.filter((definition) => sharedFactAwareness[definition.key]?.eligibleForSharedFactCapture).map((definition) => <div key={definition.key}><label className="hh-label">{definition.title}</label><select className="hh-input" value={form[definition.key] || ''} onChange={(e) => set(definition.key, e.target.value)}><option value="">Unknown / not specified</option>{definition.options.filter((option) => option !== 'No Preference').map((option) => <option key={option}>{option}</option>)}</select></div>)}
             </div>
           </section>

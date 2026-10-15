@@ -10,6 +10,7 @@ import {
   isRetiredPurchaseBuiltIn, isDiscontinuedOffering, isCriterionApplicable,
   isApartmentRental, isRentalType, searchExperienceLabel, normalizePriorities, isExperientialCriterion,
   garagePreferenceLabel, GARAGE_PREFERENCE_OPTIONS, DEFAULT_SELECTED_TIER, RENTAL_ESSENTIALS,
+  homePreferenceCriteriaFor, HOME_PREFERENCE_CRITERIA, LAYOUT_DISPLAY_LABELS, BUY_HOME_TYPE_LABELS,
 } from './constants.js';
 import { normalizeSearchIntent, PROPERTY_TYPE_LABELS } from './searchIntent.js';
 import { splitCategoryItems, selectPriorityItem, parseNum } from './matching.js';
@@ -162,7 +163,12 @@ export function offeredCriteriaGroups(raw) {
     ? [{ title: 'Rental Essentials', items: RENTAL_ESSENTIALS.map((entry) => ({ ...entry, displayLabel: criterionDisplayLabel(entry.categoryKey, entry.label), key: criterionKey(entry.categoryKey, entry.label) })) }]
     : [];
   const essentialKeys = new Set(essentials.flatMap((group) => group.items.map((entry) => entry.key.toLowerCase())));
-  return [...essentials, ...groups.map((group) => ({ ...group, items: group.items.filter((entry) => !essentialKeys.has(entry.key.toLowerCase())) }))]
+  // The Home Preferences criteria from The Basics (garage, basement, yard, …)
+  // stay addable here, so My Search can add one later as well as re-rank it.
+  const homePreferences = curated
+    ? [{ title: 'Home Preferences', items: homePreferenceCriteriaFor(experience || 'home_buy').map((entry) => ({ ...entry, displayLabel: criterionDisplayLabel(entry.categoryKey, entry.label), key: criterionKey(entry.categoryKey, entry.label) })) }]
+    : [];
+  return [...essentials, ...groups.map((group) => ({ ...group, items: group.items.filter((entry) => !essentialKeys.has(entry.key.toLowerCase())) })), ...homePreferences]
     .map((group) => ({ ...group, items: group.items.filter((entry) => !isDiscontinuedOffering(entry.categoryKey, entry, priorities.searchType)) }))
     .filter((group) => group.items.length);
 }
@@ -174,6 +180,12 @@ export function availableCriteriaGroups(raw) {
   const priorities = normalizePriorities(raw);
   const selected = priorityLevels(priorities).flatMap((level) => level.items);
   const taken = new Set(selected.flatMap((item) => [item.key.toLowerCase(), `${item.categoryKey}:${item.displayLabel}`.toLowerCase()]));
+  // An unfenced yard and a fenced (or privacy-fenced) yard can't both be wanted:
+  // while one is on the board the other isn't offered, so nothing is silently replaced.
+  const { fencedYard, privacyFence, unfencedYard } = HOME_PREFERENCE_CRITERIA;
+  const keyOf = (entry) => criterionKey(entry.categoryKey, entry.label).toLowerCase();
+  if (taken.has(keyOf(unfencedYard))) { taken.add(keyOf(fencedYard)); taken.add(keyOf(privacyFence)); }
+  if (taken.has(keyOf(fencedYard)) || taken.has(keyOf(privacyFence))) taken.add(keyOf(unfencedYard));
   return offeredCriteriaGroups(priorities)
     .map((group) => ({ ...group, items: group.items.filter((entry) => !taken.has(entry.key.toLowerCase()) && !taken.has(`${entry.categoryKey}:${entry.displayLabel}`.toLowerCase())) }))
     .filter((group) => group.items.length);
@@ -188,11 +200,10 @@ export function customCategoryOptions(raw) {
 
 // Stored option values are unchanged (Home Edit and Match compare against them);
 // only the approved display labels differ.
-export const LAYOUT_CHOICES = Object.freeze([
-  Object.freeze({ value: 'Ranch / Single Story', label: 'Ranch' }),
-  Object.freeze({ value: 'Two Story', label: 'Two Story' }),
-  Object.freeze({ value: 'Other', label: 'Other' }),
-]);
+// 'Other' is no longer offered (an older saved 'Other' stays visible and
+// removable wherever layout is shown).
+export const LAYOUT_CHOICES = Object.freeze(['Ranch / Single Story', 'Two Story', 'Split Level']
+  .map((value) => Object.freeze({ value, label: LAYOUT_DISPLAY_LABELS[value] })));
 export const CONDITION_CHOICES = Object.freeze([
   Object.freeze({ value: 'New Construction', label: 'New Construction' }),
   Object.freeze({ value: 'Move-In Ready', label: 'Move-in Ready' }),
@@ -208,7 +219,12 @@ export function experienceLabel(raw) {
   return EXPERIENCE_LABELS[key] || (priorities.searchType ? searchExperienceLabel(priorities) : '');
 }
 
-const DISPLAY_VALUE = Object.fromEntries([...LAYOUT_CHOICES, ...CONDITION_CHOICES].map(({ value, label }) => [value, label]));
+// A home type in the words its kind of search uses ("Single Family" when buying).
+export function homeTypeLabel(value, experienceKey) {
+  return (experienceKey === 'home_buy' && BUY_HOME_TYPE_LABELS[value]) || PROPERTY_TYPE_LABELS[value] || value;
+}
+
+const DISPLAY_VALUE = { ...LAYOUT_DISPLAY_LABELS, ...Object.fromEntries(CONDITION_CHOICES.map(({ value, label }) => [value, label])) };
 
 export function searchExperienceKey(raw) {
   const priorities = normalizePriorities(raw);
@@ -281,7 +297,7 @@ export function basicsSummary(raw) {
   const details = [];
   const clean = (values) => (values || []).filter((value) => typeof value === 'string' && value.trim() && value !== 'No Preference');
   if (experience !== 'apartment_rent') {
-    const types = clean(priorities.preferredPropertyTypes?.values).map((value) => PROPERTY_TYPE_LABELS[value] || value);
+    const types = clean(priorities.preferredPropertyTypes?.values).map((value) => homeTypeLabel(value, experience));
     if (types.length) details.push({ key: 'types', label: 'Home types', values: types });
   }
   const investmentTypes = clean(priorities.investmentPropertyTypes);

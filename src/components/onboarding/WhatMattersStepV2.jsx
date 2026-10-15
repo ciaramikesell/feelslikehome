@@ -2,15 +2,17 @@
 
 import { useId, useState } from 'react';
 import {
-  AirVent, ArrowRight, ArrowUpDown, BedDouble, Building, Building2, Car, Check, ChevronDown, Columns2, Dumbbell, EyeOff, Fence,
-  Hammer, HardHat, Hotel, House, Laptop, Layers, Leaf, PaintRoller, PawPrint, Plus, PlugZap, Route, Rows2, School, Shapes,
-  ShieldCheck, Sofa, Sparkles, SquareParking, Store, Sun, Trees, Utensils, VolumeX, WashingMachine, Waves,
+  AirVent, Archive, Armchair, ArrowRight, ArrowUpDown, ArrowUpToLine, Ban, Bath, BedDouble, BedSingle, Building, Building2, Car, ChefHat, Check,
+  ChevronDown, Columns2, DoorOpen, Droplets, Dumbbell, EyeOff, Fence, Flame, Footprints, Hammer, HardHat, Hotel, House, Laptop, Layers, Leaf,
+  Milestone, Package, PaintRoller, PartyPopper, PawPrint, Plus, PlugZap, Refrigerator, Route, Rows2, School, Shapes, ShieldCheck, Sofa,
+  Sparkles, Sprout, SquareParking, Store, Sun, TreeDeciduous, Trees, Utensils, UtensilsCrossed, VolumeX, WashingMachine, Waves, Wrench,
 } from 'lucide-react';
 import { customCategoryOptions, moveCriterion, priorityLevels, toggleCriterion, addCustomCriterion } from '@/lib/searchProfile';
 import { flatOnboardingSuggestions } from '@/lib/onboarding';
 import { toggleGroupValue } from '@/lib/whatMattersGroups';
 import { chipKey, isChipSelected, moreToConsider, offeredChips, picksCount, whatMattersSections } from '@/lib/whatMattersCatalog';
 import { searchExperienceKey } from '@/lib/searchProfile';
+import { homePreferenceCriterionKeys } from '@/lib/homePreferences';
 
 // Step 4 of Onboarding V2: "What matters most?" (approved Figma design).
 //
@@ -20,9 +22,10 @@ import { searchExperienceKey } from '@/lib/searchProfile';
 // home. See src/lib/whatMattersCatalog.js for the chip → canonical ID mapping.
 
 const ICONS = {
-  AirVent, ArrowUpDown, BedDouble, Building, Building2, Car, Columns2, Dumbbell, EyeOff, Fence, Hammer, HardHat, Hotel, House,
-  Laptop, Layers, Leaf, PaintRoller, PawPrint, PlugZap, Route, Rows2, School, Shapes, ShieldCheck, Sofa, Sparkles, SquareParking,
-  Store, Sun, Trees, Utensils, VolumeX, WashingMachine, Waves,
+  AirVent, Archive, Armchair, ArrowUpDown, ArrowUpToLine, Ban, Bath, BedDouble, BedSingle, Building, Building2, Car, ChefHat, Columns2,
+  DoorOpen, Droplets, Dumbbell, EyeOff, Fence, Flame, Footprints, Hammer, HardHat, Hotel, House, Laptop, Layers, Leaf, Milestone, Package,
+  PaintRoller, PartyPopper, PawPrint, PlugZap, Refrigerator, Route, Rows2, School, Shapes, ShieldCheck, Sofa, Sparkles, Sprout,
+  SquareParking, Store, Sun, TreeDeciduous, Trees, Utensils, UtensilsCrossed, VolumeX, WashingMachine, Waves, Wrench,
 };
 
 function Chip({ chip, selected, onToggle }) {
@@ -67,7 +70,9 @@ export default function WhatMattersStepV2({ header, priorities, patch, onNext, i
   const shownKeys = new Set([...sections.flatMap((section) => section.chips), ...more].map(chipKey));
   // Anything already chosen that isn't a chip here — the person's own typed
   // priorities and earlier selections — stays visible and removable.
-  const ownItems = priorityLevels(priorities).flatMap((level) => level.items).filter((item) => !shownKeys.has(item.key));
+  // Home preferences from The Basics are shown (and counted) there instead.
+  const fromBasics = homePreferenceCriterionKeys(priorities);
+  const ownItems = priorityLevels(priorities).flatMap((level) => level.items).filter((item) => !shownKeys.has(item.key) && !fromBasics.has(item.key));
   const picks = picksCount(priorities);
 
   const categories = customCategoryOptions(priorities);

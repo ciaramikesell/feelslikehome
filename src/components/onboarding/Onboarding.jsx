@@ -6,13 +6,15 @@ import { ArrowRight, Plus, ShieldCheck, Sparkles } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
 import { ChoiceChip, HelperRow, SectionCard } from '@/components/MobileSystem';
 import RankBoard from '@/components/RankBoard';
-import { GARAGE_PREFERENCE_OPTIONS, normalizePriorities } from '@/lib/constants';
+import { normalizePriorities } from '@/lib/constants';
 import { ONBOARDING_SUGGESTIONS } from '@/lib/onboarding';
 import {
   addCustomCriterion, customCategoryOptions,
-  isCriterionSelected, moveCriterion, priorityLevels, selectedPriorityCount,
+  isCriterionSelected, moveCriterion, priorityLevels,
   setGaragePreference, toggleCriterion,
 } from '@/lib/searchProfile';
+import { homePreferenceCriterionKeys, homePreferencesSummary } from '@/lib/homePreferences';
+import { moveGroup, priorityLevelsWithGroups } from '@/lib/whatMattersGroups';
 import { createClient } from '@/lib/supabase/client';
 import { useReliableOptimisticState } from '@/lib/useReliableOptimisticState';
 import { completeOnboarding, saveOnboardingProgress } from '@/lib/supabase/data';
@@ -53,20 +55,6 @@ function StepHeader({ step, progress, title, lead, sharedFor = null }) {
   );
 }
 
-function GarageQualifier({ priorities, patch }) {
-  const value = priorities.exterior?.garagePreference || 'any';
-  return (
-    <div className="flh-garage-preference">
-      <span className="flh-field-label">Garage preference <em>(optional)</em></span>
-      <div className="flh-segmented" role="radiogroup" aria-label="Garage preference">
-        {GARAGE_PREFERENCE_OPTIONS.map((option) => (
-          <button type="button" role="radio" key={option.key} aria-checked={value === option.key} className={value === option.key ? 'is-selected' : ''} onClick={() => patch((next) => setGaragePreference(next, option.key))}>{option.label}</button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function WhatMattersStep({ priorities, patch, onNext, isSaving, progress, sharedFor = null }) {
   const groups = ONBOARDING_SUGGESTIONS[priorities.onboardingSearchType] || [];
   const offered = groups.flatMap(([, items]) => items);
@@ -75,11 +63,15 @@ function WhatMattersStep({ priorities, patch, onNext, isSaving, progress, shared
   const [customOpen, setCustomOpen] = useState(false);
   const [customLabel, setCustomLabel] = useState('');
   const [customCategory, setCustomCategory] = useState(categories[0]?.key || 'location');
-  const count = selectedPriorityCount(priorities);
+  // Home preferences chosen on The Basics are ranked with these, but are
+  // counted and shown there, not repeated here.
+  const fromBasics = homePreferenceCriterionKeys(priorities);
+  const basicsCount = homePreferencesSummary(priorities).count;
+  const selected = priorityLevels(priorities).flatMap((level) => level.items);
+  const count = selected.filter((item) => !fromBasics.has(item.key)).length;
   // Anything selected that isn't one of the offered chips — the buyer's own typed
   // priorities and any earlier selection — stays visible (and removable) here.
-  const ownItems = priorityLevels(priorities).flatMap((level) => level.items).filter((item) => !offeredKeys.has(item.key));
-  const garageSelected = isCriterionSelected(priorities, 'exterior', 'Garage');
+  const ownItems = selected.filter((item) => !offeredKeys.has(item.key) && !fromBasics.has(item.key));
 
   const addCustom = () => {
     if (!customLabel.trim()) return;
@@ -95,7 +87,7 @@ function WhatMattersStep({ priorities, patch, onNext, isSaving, progress, shared
         className="flh-count-row"
         tone="sage"
         title={count ? 'Your home profile is taking shape' : 'Choose what you’d weigh when comparing homes'}
-        body={count ? `${count} ${count === 1 ? 'priority' : 'priorities'} selected · all start as Important` : 'Pick as many or as few as you like.'}
+        body={`${count ? `${count} ${count === 1 ? 'priority' : 'priorities'} selected · all start as Important` : 'Pick as many or as few as you like.'}${basicsCount ? ` Plus ${basicsCount} home ${basicsCount === 1 ? 'preference' : 'preferences'} from The Basics.` : ''}`}
         trailing={<span className="flh-count-number" aria-hidden="true">{count}</span>}
       />
       {groups.map(([title, items]) => (
@@ -106,7 +98,6 @@ function WhatMattersStep({ priorities, patch, onNext, isSaving, progress, shared
               <ChoiceChip key={`${criterion.categoryKey}:${criterion.label}`} selected={isCriterionSelected(priorities, criterion.categoryKey, criterion.label)} onClick={() => patch((next) => toggleCriterion(next, criterion))}>{criterion.displayLabel}</ChoiceChip>
             ))}
           </div>
-          {garageSelected && items.some((criterion) => criterion.categoryKey === 'exterior' && criterion.label === 'Garage') && <GarageQualifier priorities={priorities} patch={patch} />}
         </SectionCard>
       ))}
       {ownItems.length > 0 && (
@@ -139,15 +130,17 @@ function WhatMattersStep({ priorities, patch, onNext, isSaving, progress, shared
   );
 }
 
+// Home type, layout and condition (chosen on The Basics) rank as one item each
+// ("Ranch or Two-Story"), so alternatives can never become separate Must Haves.
 function RankStep({ priorities, patch, onFinish, finishing, progress, sharedFor = null }) {
-  const levels = priorityLevels(priorities);
+  const levels = priorityLevelsWithGroups(priorities);
   return (
     <div className="flh-onboarding-step">
       <StepHeader step="rank" progress={progress} sharedFor={sharedFor} searchType={priorities.onboardingSearchType} title="Now rank what matters most." lead="Everything you chose began as Important. Drag a priority between levels, or tap it and choose where it belongs." />
       <RankBoard
         levels={levels}
         showDescriptions
-        onMove={(item, tier) => patch((next) => moveCriterion(next, item.categoryKey, item.label, tier))}
+        onMove={(item, tier) => patch((next) => (item.group ? moveGroup(next, item.categoryKey, tier) : moveCriterion(next, item.categoryKey, item.label, tier)))}
         garagePreference={priorities.exterior?.garagePreference || 'any'}
         onGaragePreferenceChange={(value) => patch((next) => setGaragePreference(next, value))}
       />
@@ -237,7 +230,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
   const [progressState, setProgressState] = useState(initialProgress.state);
   const progressRef = useRef(progressState);
   const step = progressState.step;
-  // The approved six-step flow (3, not live) moves home details from Basics to Step 4.
+  // The approved six-step flow (3, not live).
   const sixStep = version === 3;
   const progress = onboardingProgress(version, progressState, step);
   const [ready, setReady] = useState(false);
@@ -396,8 +389,6 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
               priorities={priorities}
               patch={patch}
               onNext={() => goTo('basics')}
-              homeDetails={!sixStep}
-              presetPropertyType={!sixStep}
               header={sharedFor ? (
                 <>
                   <StepHeader step="basics" progress={progress} sharedFor={sharedFor} title={`Set up your preferences for ${sharedFor}.`} lead="Tell us what you’re looking for. These are yours alone—you can change them anytime." />

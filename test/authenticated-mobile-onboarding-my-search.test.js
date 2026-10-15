@@ -32,10 +32,11 @@ test('Basics field applicability is audited per search type, not cloned from pur
   assert.deepEqual(basicsFieldsFor('home_buy'), { budgetLabel: 'Maximum budget', budgetPlaceholder: '450,000', lotSize: true, propertyTypes: ['house', 'condo', 'multifamily'], layout: true, condition: true });
   assert.deepEqual(basicsFieldsFor('home_rent'), { budgetLabel: 'Maximum monthly rent', budgetPlaceholder: '2,200', lotSize: true, propertyTypes: ['house', 'townhome', 'condo'], layout: false, condition: false });
   assert.deepEqual(basicsFieldsFor('apartment_rent'), { budgetLabel: 'Maximum monthly rent', budgetPlaceholder: '2,200', lotSize: false, propertyTypes: [], layout: false, condition: false });
-  assert.deepEqual(LAYOUT_CHOICES.map(({ label }) => label), ['Ranch', 'Two Story', 'Other']);
+  // Home to Buy refresh: Split Level is offered; an older saved 'Other' stays visible where it's shown.
+  assert.deepEqual(LAYOUT_CHOICES.map(({ label }) => label), ['Ranch', 'Two-Story', 'Split Level']);
   assert.deepEqual(CONDITION_CHOICES.map(({ label }) => label), ['New Construction', 'Move-in Ready', 'Renovation Potential']);
   // Stored values stay the ones Home Edit and Match already compare against.
-  assert.deepEqual(LAYOUT_CHOICES.map(({ value }) => value), ['Ranch / Single Story', 'Two Story', 'Other']);
+  assert.deepEqual(LAYOUT_CHOICES.map(({ value }) => value), ['Ranch / Single Story', 'Two Story', 'Split Level']);
   assert.equal(CONDITION_CHOICES[1].value, 'Move-In Ready');
 });
 
@@ -49,8 +50,9 @@ test('numeric Basics keep only what Match can read; lot size and baths accept fr
 test('optional Basics are genuinely optional: nothing entered renders nothing', () => {
   const summary = basicsSummary(buy());
   assert.deepEqual(summary.numbers, []);
-  // House is the existing Home to Buy default type (applySearchChoice); nothing else is set.
-  assert.deepEqual(summary.details, [{ key: 'types', label: 'Home types', values: ['House'] }]);
+  // House is applySearchChoice's default type (shown in buyer words); nothing else
+  // is set. Onboarding's Basics no longer presets it (see switchSearchType).
+  assert.deepEqual(summary.details, [{ key: 'types', label: 'Home types', values: ['Single Family'] }]);
 });
 
 test('Home Condition remains Basics (search definition), never a weighted criterion', () => {
@@ -70,20 +72,31 @@ test('Home Condition remains Basics (search definition), never a weighted criter
 
 test('canonical weighted Home criteria are exactly the approved taxonomy, grouped by category', () => {
   const groups = offeredCriteriaGroups(buy()).map((group) => [group.title, group.items.map((item) => item.displayLabel)]);
+  // Home to Buy refresh: the four approved groups, then the Home Preferences
+  // criteria from The Basics (addable later in My Search).
   assert.deepEqual(groups, [
-    ['Location', ['Reputable Schools', 'Walkable to Town', 'Parks Nearby', 'Quiet Street', 'Bustling Street', 'Near Waterfront', 'Walkable Schools', 'No HOA']],
-    ['Home Features', ['Finished Basement', 'Walkout Basement', 'First-Floor Primary', 'Guest Bedroom', 'Primary Ensuite', 'First-Floor Laundry', 'Home Office', 'Central Air', 'Fireplace']],
-    ['Exterior & Property', ['Deck / Patio', 'Fenced Yard', 'Privacy Fencing', 'Garage', 'Large Backyard', 'Front Porch', 'Pool', 'Landscaping']],
+    ['Location & Neighborhood', ['Cul-de-Sac', 'Sidewalks', 'Low-Traffic Street', 'Walkable Neighborhood', 'Near Water', 'Wooded Setting', 'Mature Trees', 'Walkable Schools', 'No HOA']],
+    ['Home Features', ['Kitchen Island', 'Stainless Steel Appliances', 'Fireplace', 'Central Air', 'Walk-in Pantry', 'High Ceilings', 'Double Vanity', 'Soaking Tub']],
+    ['Layout & Living Spaces', ['First-Floor Bedroom', 'Home Office', 'Second-Floor Laundry', 'First-Floor Laundry', 'Formal Dining Room', 'Eat-in Kitchen', 'Primary Ensuite', 'Basement Storage']],
+    ['Exterior & Property', ['Deck / Patio', 'Front Porch', 'Pool', 'Room for Entertaining', 'Fire Pit', 'Garden Space', 'Screened-in Porch', 'Workshop Space']],
+    ['Home Preferences', ['Garage', 'First-Floor Primary', 'Finished Basement', 'Walkout Basement', 'Fenced Yard', 'Privacy Fence', 'Unfenced Yard']],
   ]);
-  assert.ok(offeredLabels(buy()).includes('Guest Bedroom'));
-  for (const absent of ['Guest / In-Law Suite', 'Charming Neighborhood', 'Attached Garage', 'Detached Garage']) assert.ok(!offeredLabels(buy()).includes(absent));
+  for (const absent of ['Guest Bedroom', 'Guest / In-Law Suite', 'Charming Neighborhood', 'Attached Garage', 'Detached Garage', 'Reputable Schools', 'Large Backyard']) assert.ok(!offeredLabels(buy()).includes(absent));
 });
 
-test('Home to Rent uses the canonical Home criteria except No HOA; Apartment to Rent keeps its own taxonomy', () => {
+test('Home to Rent keeps its earlier canonical Home criteria (no HOA); Apartment to Rent keeps its own taxonomy', () => {
   const rent = applySearchChoice({}, 'home_rent');
   // Renters get the Rental Essentials first (Central Air from that group, not twice).
+  // The Home to Buy refresh leaves Home to Rent's catalog as it was; Garage is
+  // asked in its Home Preferences.
   const essentials = ['Pet-Friendly', 'In-Unit Laundry', 'Utilities Included', 'Parking', 'Central Air', 'Dishwasher'];
-  assert.deepEqual(offeredLabels(rent), [...essentials, ...offeredLabels(buy()).filter((label) => label !== 'No HOA' && label !== 'Central Air')]);
+  assert.deepEqual(offeredLabels(rent), [
+    ...essentials,
+    'Reputable Schools', 'Walkable to Town', 'Parks Nearby', 'Quiet Street', 'Bustling Street', 'Near Water', 'Walkable Schools',
+    'Finished Basement', 'Walkout Basement', 'First-Floor Primary', 'Guest Bedroom', 'Primary Ensuite', 'First-Floor Laundry', 'Home Office', 'Fireplace',
+    'Deck / Patio', 'Fenced Yard', 'Privacy Fence', 'Large Backyard', 'Front Porch', 'Pool', 'Landscaping',
+    'Garage',
+  ]);
   // Social Community, On-Site Management and Surrounding Neighborhood are retired.
   assert.deepEqual(ONBOARDING_SUGGESTIONS.apartment_rent.flatMap(([, items]) => items.map((item) => item.displayLabel)),
     ['In-Unit Laundry', 'Central Air', 'Dishwasher', 'Updated Interior', 'Balcony / Patio', 'Home Office Space', 'Parking', 'Fitness Center', 'Pool', 'Secure Entry', 'Outdoor Space', 'Elevator', 'Pet-Friendly', 'Quiet Community', 'Privacy']);
@@ -162,11 +175,12 @@ test('final persistence: onboarding saves through the participant’s own row be
   assert.match(onboarding, /completeOnboarding: \(userId, progress\) => completeOnboarding\(createClient\(\), userId, progress\)/);
   assert.match(onboarding, /services = SUPABASE_SERVICES \}\) \{/);
   assert.match(onboarding, /await flush\(\);\n(?:\s+\/\/.*\n)*\s+await persistPriorities\(priorities\);\n\s+await services\.completeOnboarding\(userId, \{ version, state: completeOnboardingState\(version, progressRef\.current\) \}\);/);
-  assert.match(onboarding, /onMove=\{\(item, tier\) => patch\(\(next\) => moveCriterion\(next, item\.categoryKey, item\.label, tier\)\)\}/);
+  // Grouped Basics move as one item; criteria move by their own level.
+  assert.match(onboarding, /onMove=\{\(item, tier\) => patch\(\(next\) => \(item\.group \? moveGroup\(next, item\.categoryKey, tier\) : moveCriterion\(next, item\.categoryKey, item\.label, tier\)\)\)\}/);
 });
 
 test('Unknown ≠ mismatch is unchanged for the new and legacy criteria', () => {
-  for (const label of ['Guest Bedroom', 'Garage', 'Privacy Fencing']) {
+  for (const label of ['Kitchen Island', 'Garage', 'Privacy Fence', 'Unfenced Yard', 'Cul-de-Sac']) {
     const priorities = toggleCriterion(buy(), criterion(buy(), label));
     const match = computeMatch({ checks: {} }, priorities);
     assert.ok(match.allSelected.every((item) => item.evaluated === false), `${label} must stay Unknown`);
@@ -197,21 +211,21 @@ test('a populated overview summarizes all three levels by name and the Basics as
     preferredPropertyTypes: { values: ['house', 'condo'], tier: 'important' },
     homeLayout: { values: ['Two Story'], tier: 'dontcare' }, homeCondition: { values: ['Move-In Ready', 'Renovation Potential'], tier: 'dontcare' },
   });
-  for (const [label, tier] of [['Home Office', 'must'], ['Fenced Yard', 'must'], ['Central Air', 'important'], ['First-Floor Primary', 'important'], ['Garage', 'important'], ['No HOA', 'nice'], ['Large Backyard', 'nice'], ['Fireplace', 'nice']]) {
+  for (const [label, tier] of [['Home Office', 'must'], ['Fenced Yard', 'must'], ['Central Air', 'important'], ['First-Floor Primary', 'important'], ['Garage', 'important'], ['No HOA', 'nice'], ['Front Porch', 'nice'], ['Fireplace', 'nice']]) {
     priorities = addCriterion(priorities, criterion(priorities, label), tier);
   }
   assert.deepEqual(levelNames(priorities), {
     must: ['Home Office', 'Fenced Yard'],
     important: ['Central Air', 'First-Floor Primary', 'Garage'],
-    nice: ['No HOA', 'Fireplace', 'Large Backyard'],
+    nice: ['No HOA', 'Fireplace', 'Front Porch'],
   });
   assert.equal(selectedPriorityCount(priorities), 8);
   assert.deepEqual(basicsSummary(priorities), {
     experienceLabel: 'Home to Buy',
     numbers: ['$650,000 maximum', '3+ bedrooms', '2+ bathrooms', '1,800+ sq ft', '.25+ acres'],
     details: [
-      { key: 'types', label: 'Home types', values: ['House', 'Condo'] },
-      { key: 'layout', label: 'Layout', values: ['Two Story'] },
+      { key: 'types', label: 'Home types', values: ['Single Family', 'Condominium'] },
+      { key: 'layout', label: 'Layout', values: ['Two-Story'] },
       { key: 'condition', label: 'Condition', values: ['Move-in Ready', 'Renovation Potential'] },
     ],
     setCount: 8,
@@ -240,7 +254,8 @@ test('empty, new, and mature searches use the right status language', () => {
   assert.deepEqual(basicsSummary({}).setCount, 0);
   const panel = read('src/components/MySearchPanel.jsx');
   assert.match(panel, /Nothing ranked yet\./);
-  assert.match(panel, /<SearchStatus count=\{matchShapingPriorityCount\(priorities\)\} firstRun=\{firstRun\} \/>/);
+  // Grouped Basics with a level (home type, layout, condition) shape Match too.
+  assert.match(panel, /<SearchStatus count=\{matchShapingPriorityCount\(priorities\) \+ selectedGroupCount\(priorities\)\} firstRun=\{firstRun\} \/>/);
 });
 
 test('the overview opens focused editors instead of being one enormous form', () => {

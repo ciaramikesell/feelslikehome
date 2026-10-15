@@ -37,7 +37,9 @@ test('selected rows expose contextual keyboard actions without resting-board clu
   assert.match(board, /PRIORITY_LEVELS\.map\(\(tier\) =>/);
   assert.match(board, />Remove priority<\/button>/);
   const editor = read('src/components/RankPrioritiesEditor.jsx');
-  assert.match(editor, /onRemove=\{\(item\) => setDraft\(\(current\) => moveCriterion\(current, item\.categoryKey, item\.label, 'dontcare'\)\)\}/);
+  assert.match(editor, /onRemove=\{\(item\) => setDraft\(\(current\) => removeItem\(current, item\)\)\}/);
+  // A criterion leaves the board; a grouped Basics preference clears its choices.
+  assert.match(editor, /item\.group \? \{ \.\.\.current, \[item\.categoryKey\]: \{ \.\.\.current\[item\.categoryKey\], values: \[\] \} \} : moveCriterion\(current, item\.categoryKey, item\.label, 'dontcare'\)/);
 });
 
 test('selected and available drags use existing tier semantics without manual ranking', async () => {
