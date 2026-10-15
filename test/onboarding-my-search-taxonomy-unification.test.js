@@ -20,14 +20,16 @@ const purchaseLabels = () => getItemlistCategories('purchase').flatMap((def) => 
 
 /* ------------------------------ Taxonomy ------------------------------ */
 
-test('one canonical Home Office, Fenced Yard, and Guest Bedroom — no casing-drift duplicates in the purchase catalog', () => {
+test('one canonical Home Office and Fenced Yard — no casing-drift duplicates in the purchase catalog', () => {
   const labels = purchaseLabels();
   assert.equal(labels.filter((key) => key.toLowerCase() === 'features:home office').length, 1);
   assert.equal(labels.filter((key) => key.toLowerCase() === 'exterior:fenced yard').length, 1);
-  assert.equal(labels.filter((key) => key.toLowerCase() === 'features:guest bedroom').length, 1);
+  assert.equal(new Set(labels.map((key) => key.toLowerCase())).size, labels.length, 'no casing-drift duplicates at all');
   assert.ok(labels.includes('features:Home office'));
   assert.ok(labels.includes('exterior:Fenced yard'));
-  assert.ok(labels.includes('features:Guest Bedroom'));
+  // Home to Buy refresh: Guest Bedroom is no longer offered to buyers (kept and
+  // counted for anyone who chose it; still offered to Home to Rent).
+  assert.ok(!labels.includes('features:Guest Bedroom'));
   // Guest / In-Law Suite is no longer offered (Guest Bedroom is the one guest-space criterion).
   assert.ok(!labels.includes('features:Guest / In-Law Suite'));
   assert.equal(criterionDisplayLabel('features', 'Home office'), 'Home Office');
@@ -41,27 +43,38 @@ test('Immediate Street / Surroundings and generic Walkability can never be newly
   // Authenticated-mobile redesign: Garage is the weighted criterion; Attached/Detached
   // is an optional qualifier, never a separate criterion.
   assert.equal(labels.filter((key) => /garage/i.test(key)).join(','), 'exterior:Garage');
-  // Onboarding derives from the exact same catalog, so it offers the same set.
+  // Onboarding derives from the exact same catalog. Garage is asked in The
+  // Basics' Home preferences, so What Matters doesn't offer it a second time.
   const onboardingBuyLabels = ONBOARDING_SUGGESTIONS.home_buy.flatMap(([, items]) => items.map((item) => `${item.categoryKey}:${item.label}`));
   assert.ok(!onboardingBuyLabels.includes('location:Immediate Street / Surroundings'));
   assert.ok(!onboardingBuyLabels.includes('location:Walkability'));
-  assert.ok(onboardingBuyLabels.includes('exterior:Garage'));
+  assert.ok(!onboardingBuyLabels.includes('exterior:Garage'));
   assert.ok(!onboardingBuyLabels.includes('exterior:Attached garage'));
   assert.ok(!onboardingBuyLabels.includes('exterior:Detached garage'));
 });
 
-test('No HOA exists under Location; Reputable Schools and Walkable Schools are distinct', () => {
+test('No HOA exists under Location; Walkable Schools keeps its identity; Reputable Schools is kept for existing buyers only', () => {
   const location = getItemlistCategories('purchase').find((def) => def.key === 'location');
   const labels = location.suggestedItems.map((item) => item.label);
   assert.ok(labels.includes('No HOA'));
-  assert.ok(labels.includes('Reputable Schools'));
   assert.ok(labels.includes('Walkable schools'));
+  assert.ok(!labels.includes('Reputable Schools'));
   assert.notEqual('Reputable Schools', criterionDisplayLabel('location', 'Walkable schools'));
+  // An existing buyer's Reputable Schools still renders and counts.
+  const existing = normalizePriorities({ searchType: 'purchase', location: { tiers: { 'Reputable Schools': 'must' }, customItems: [{ label: 'Reputable Schools', kind: 'check' }] } });
+  const match = computeMatch({ checks: { 'location:Reputable Schools': true } }, existing);
+  assert.deepEqual(match.allSelected.map((item) => [item.key, item.met]), [['location:Reputable Schools', true]]);
 });
 
-test('onboarding and My Search share one canonical taxonomy — Home to Buy is derived from getItemlistCategories, not a second hand-authored list', () => {
+test('onboarding and My Search share one canonical taxonomy — every Home to Buy suggestion is a getItemlistCategories identity', () => {
   const onboardingLabels = ONBOARDING_SUGGESTIONS.home_buy.flatMap(([, items]) => items.map((item) => `${item.categoryKey}:${item.label}`));
-  assert.deepEqual(onboardingLabels, purchaseLabels());
+  const catalog = purchaseLabels();
+  for (const key of onboardingLabels) assert.ok(catalog.includes(key), key);
+  // The rest of the purchase catalog is exactly The Basics' Home preferences.
+  assert.deepEqual(catalog.filter((key) => !onboardingLabels.includes(key)).sort(), [
+    'exterior:Fenced yard', 'exterior:Garage', 'exterior:Privacy Fencing', 'exterior:Unfenced Yard',
+    'features:First-Floor Primary', 'features:Finished basement', 'features:Walkout basement',
+  ].sort());
 });
 
 /* ------------------------------ Legacy aliasing ------------------------------ */

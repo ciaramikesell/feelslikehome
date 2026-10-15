@@ -21,16 +21,23 @@ import {
   switchSearchType, whatMattersSections,
 } from '../src/lib/whatMattersCatalog.js';
 import { moveGroup, toggleGroupValue } from '../src/lib/whatMattersGroups.js';
+import { homePreferenceRows, toggleHomePreference } from '../src/lib/homePreferences.js';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const fresh = (type) => chooseSearchType(normalizePriorities({}), type, { presetPropertyType: false });
 const rentalCatalog = new Map(getItemlistCategories('rental').flatMap((category) =>
   [...category.coreItems, ...category.suggestedItems, ...(category.specificItems || [])].map((item) => [`${category.key}:${item.label}`, item])));
 const chipByText = (priorities, text) => offeredChips(priorities).find((chip) => chip.text === text);
+// The Basics' Home preferences (home type, garage, …) by their option text.
+const preferenceByText = (priorities, text) => homePreferenceRows(priorities).flatMap((row) => row.options).find((option) => option.text === text);
 function pick(priorities, ...texts) {
   return texts.reduce((next, text) => {
     const chip = chipByText(next, text);
-    assert.ok(chip, `chip "${text}"`);
+    if (!chip) {
+      const option = preferenceByText(next, text);
+      assert.ok(option, `chip or home preference "${text}"`);
+      return toggleHomePreference(next, option);
+    }
     return chip.type === 'criterion' ? toggleCriterion(next, chip) : toggleGroupValue(next, chip.group, chip.value);
   }, priorities);
 }
@@ -47,10 +54,14 @@ test('both rental searches open with the same Rental essentials, then their own 
   assert.deepEqual(sections('home_rent'), [
     essentials,
     ['Neighborhood', ['Quiet street → location:Quiet street', 'Walkable to town → location:Walkable to Town', 'Great schools → location:Reputable Schools', 'Parks nearby → location:Parks nearby']],
-    ['The home', ['Home office → features:Home office', 'Primary suite → features:Primary ensuite', 'Garage → exterior:Garage']],
+    ['The home', ['Home office → features:Home office', 'Primary suite → features:Primary ensuite']],
     ['Outdoor space', ['Big backyard → exterior:Large backyard', 'Fenced yard → exterior:Fenced yard']],
-    ['Property type', ['House → preferredPropertyTypes=house', 'Townhome → preferredPropertyTypes=townhome', 'Condo → preferredPropertyTypes=condo']],
   ]);
+  // Home type and garage are asked once, in The Basics' Home preferences.
+  assert.deepEqual(homePreferenceRows(fresh('home_rent')).map((row) => [row.label, row.options.map((option) => option.text)]), [
+    ['Home type', ['House', 'Townhome', 'Condo']], ['Garage', ['Any Garage', 'Attached', 'Detached']],
+  ]);
+  assert.deepEqual(homePreferenceRows(fresh('apartment_rent')), []);
   assert.deepEqual(sections('apartment_rent'), [
     essentials,
     ['The unit', ['Balcony / patio → exterior:Patio / Deck / Outdoor Living', 'Updated interior → features:Updated Interior', 'Home office space → features:Home Office']],
@@ -130,13 +141,14 @@ test('Apartment to Rent never presets or hides a property type; Building type is
   // One Step 5 item, labelled as the building.
   assert.deepEqual(labelsByLevel(chosen).must, ['Building type (Apartment or Condo)']);
   assert.ok(prioritiesSummary(chosen).find((level) => level.tier === 'must').items.some((item) => item.label === 'Building type' && item.qualifier === 'Apartment or Condo'));
-  // The live flow is unchanged.
+  // chooseSearchType's default (still used by the Realtor-started setup) presets;
+  // onboarding's Basics never does (switchSearchType, both flows).
   assert.deepEqual(chooseSearchType(normalizePriorities({}), 'apartment_rent').preferredPropertyTypes.values, ['apartment']);
 });
 
 test('Home to Rent keeps House / Townhome / Condo as alternatives, not separate requirements', () => {
   const chosen = moveGroup(pick(fresh('home_rent'), 'House', 'Townhome'), 'preferredPropertyTypes', 'must');
-  assert.deepEqual(labelsByLevel(chosen).must, ['Property type (House or Townhome)']);
+  assert.deepEqual(labelsByLevel(chosen).must, ['Home type (House or Townhome)']);
   const match = (propertyType) => computeMatch({ propertyType, checks: {}, ratings: {} }, chosen);
   assert.equal(match('townhome').mustMet, 1);
   assert.equal(match('condo').missing.length, 1);
@@ -146,8 +158,8 @@ test('Home to Rent keeps House / Townhome / Condo as alternatives, not separate 
 /* --------------------------------- labels ---------------------------------- */
 
 test('Steps 5 and 6 use the Step 4 words, for buyers and renters alike', () => {
-  const buyer = pick(fresh('home_buy'), 'Great schools', 'Big backyard', 'Primary suite', 'House', 'Condo');
-  assert.deepEqual(labelsByLevel(buyer).important, ['Great schools', 'Primary suite', 'Big backyard', 'Property type (House or Condo)']);
+  const buyer = pick(fresh('home_buy'), 'Walkable Schools', 'Deck / Patio', 'Primary Ensuite', 'Single Family', 'Condominium');
+  assert.deepEqual(labelsByLevel(buyer).important, ['Walkable Schools', 'Primary Ensuite', 'Deck / Patio', 'Home type (Single Family or Condominium)']);
   const apartment = pick(fresh('apartment_rent'), 'Pet-friendly', 'Balcony / patio', 'Home office space');
   assert.deepEqual(labelsByLevel(apartment).important, ['Pet-friendly', 'Home office space', 'Balcony / patio']);
   assert.deepEqual(prioritiesSummary(apartment).find((level) => level.tier === 'important').items.map((item) => item.label), ['Pet-friendly', 'Home office space', 'Balcony / patio']);
@@ -162,7 +174,7 @@ test('Steps 5 and 6 use the Step 4 words, for buyers and renters alike', () => {
 
 test('switching search types keeps compatible answers at their levels and says what it removed', () => {
   let rent = { ...fresh('home_rent'), budget: { value: '2400', tier: 'important' }, bedsMin: { value: '2', tier: 'important' }, lotSizeTarget: { value: '0.25', tier: 'nice' } };
-  rent = pick(rent, 'Pet-friendly', 'In-unit laundry', 'Great schools', 'Garage', 'House', 'Condo');
+  rent = pick(rent, 'Pet-friendly', 'In-unit laundry', 'Great schools', 'Any Garage', 'House', 'Condo');
   rent = moveCriterion(rent, 'features', 'Pets Allowed', 'must');
   rent = addCustomCriterion(rent, 'features', 'Bike storage', []);
 
@@ -179,12 +191,12 @@ test('switching search types keeps compatible answers at their levels and says w
   // Back again: nothing compatible is lost.
   const back = switchSearchType(apartment, 'home_rent');
   assert.deepEqual(back.removed, []);
-  assert.deepEqual(labelsByLevel(back.priorities), { must: ['Pet-friendly'], important: ['In-unit laundry', 'Bike storage', 'Property type (Condo)'], nice: [] });
+  assert.deepEqual(labelsByLevel(back.priorities), { must: ['Pet-friendly'], important: ['In-unit laundry', 'Bike storage', 'Home type (Condo)'], nice: [] });
 
   // A buyer's layout and condition don't silently linger when renting.
-  const buyer = pick(fresh('home_buy'), 'Ranch', 'Move-in ready', 'Home office', 'Multifamily');
+  const buyer = pick(fresh('home_buy'), 'Ranch', 'Move-in Ready', 'Home Office', 'Multi-Family');
   const rented = switchSearchType(buyer, 'home_rent');
-  assert.deepEqual(rented.removed, ['Multifamily', 'Ranch', 'Move-in ready']);
+  assert.deepEqual(rented.removed, ['Multi-Family', 'Ranch', 'Move-in Ready']);
   assert.deepEqual(rented.priorities.homeLayout.values, []);
   assert.deepEqual(rented.priorities.homeCondition.values, []);
   assert.deepEqual(labelsByLevel(rented.priorities).important, ['Home office']);
@@ -199,7 +211,10 @@ test('Step 1 shows what a switch removed, with Undo; the live flow is unchanged'
   assert.match(basics, /const undoSwitch = \(\) => \{ patch\(\(\) => switched\.previous\); setSwitched\(null\); \};/);
   assert.match(basics, /Removed what no longer applies: \{switched\.removed\.join\(', '\)\}\. Everything else is kept\./);
   assert.match(basics, /<button type="button" className="flh-text-action" onClick=\{undoSwitch\}>Undo<\/button>/);
-  assert.match(basics, /if \(presetPropertyType\) \{ patch\(\(next\) => chooseSearchType\(next, key, \{ presetPropertyType \}\)\); return; \}/);
+  // Both flows now share this behavior (the live flow no longer resets silently
+  // or presets a property type), and choosing the current kind changes nothing.
+  assert.doesNotMatch(basics, /presetPropertyType|chooseSearchType/);
+  assert.match(basics, /if \(key === choice\) return;/);
 });
 
 /* ----------------------------------- copy ---------------------------------- */
@@ -298,10 +313,12 @@ test('Parking, Off-street parking and Garage are three distinct priorities, each
     const section = whatMattersSections(fresh(type)).find((entry) => entry.chips.some((chip) => chip.text === text));
     return [text, section ? section.title : chipByText(fresh(type), text) ? 'More to consider' : 'not offered'];
   }));
-  assert.deepEqual(where('home_rent'), { Parking: 'Rental essentials', 'Off-street parking': 'More to consider', Garage: 'The home' });
+  // Garage moved to The Basics' Home preferences for Home to Rent.
+  assert.deepEqual(where('home_rent'), { Parking: 'Rental essentials', 'Off-street parking': 'More to consider', Garage: 'not offered' });
+  assert.ok(preferenceByText(fresh('home_rent'), 'Any Garage'));
   assert.deepEqual(where('apartment_rent'), { Parking: 'Rental essentials', 'Off-street parking': 'More to consider', Garage: 'not offered' });
 
-  const all = pick(fresh('home_rent'), 'Parking', 'Off-street parking', 'Garage');
+  const all = pick(fresh('home_rent'), 'Parking', 'Off-street parking', 'Any Garage');
   const ranked = onboardingPriorityLevels(all).flatMap((level) => level.items);
   assert.deepEqual(ranked.map((item) => `${item.displayLabel} → ${item.key}`).sort(), [
     'Garage → exterior:Garage', 'Off-street parking → exterior:Driveway / Off-Street Parking', 'Parking → exterior:Parking',

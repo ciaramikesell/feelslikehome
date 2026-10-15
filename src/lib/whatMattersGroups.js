@@ -16,13 +16,13 @@
 // with the other Exterior & Property chips.
 
 import { normalizePriorities } from './constants.js';
-import { PROPERTY_TYPE_LABELS } from './searchIntent.js';
-import { CONDITION_CHOICES, LAYOUT_CHOICES, PRIORITY_LEVELS, basicsFieldsFor, priorityLevels, propertyTypeChoicesFor, searchExperienceKey } from './searchProfile.js';
+import { LAYOUT_DISPLAY_LABELS } from './constants.js';
+import { CONDITION_CHOICES, LAYOUT_CHOICES, PRIORITY_LEVELS, basicsFieldsFor, homeTypeLabel, priorityLevels, propertyTypeChoicesFor, searchExperienceKey } from './searchProfile.js';
 
 const NO_PREFERENCE = 'No Preference';
 
 const GROUP_DEFS = Object.freeze({
-  preferredPropertyTypes: { title: 'Property type', rankLabel: 'Property type', hint: 'Choose any that would work. A home only needs to be one of them.' },
+  preferredPropertyTypes: { title: 'Home type', rankLabel: 'Home type', hint: 'Choose any that would work. A home only needs to be one of them.' },
   homeLayout: { title: 'Layout', rankLabel: 'Layout', hint: 'Choose any that would work. A home only needs to be one of them.' },
   homeCondition: { title: 'Condition', rankLabel: 'Condition', hint: 'Choose any that would work. A home only needs to match one.' },
 });
@@ -30,10 +30,11 @@ const GROUP_DEFS = Object.freeze({
 // Apartment to Rent words the same group as the building.
 const BUILDING_TYPE = Object.freeze({ title: 'Building type', rankLabel: 'Building type' });
 
-const labelFor = (key, value) => {
-  if (key === 'preferredPropertyTypes') return PROPERTY_TYPE_LABELS[value] || value;
-  return [...LAYOUT_CHOICES, ...CONDITION_CHOICES].find((choice) => choice.value === value)?.label || value;
+export const groupValueLabel = (key, value, experience = null) => {
+  if (key === 'preferredPropertyTypes') return homeTypeLabel(value, experience);
+  return LAYOUT_DISPLAY_LABELS[value] || CONDITION_CHOICES.find((choice) => choice.value === value)?.label || value;
 };
+const labelFor = groupValueLabel;
 
 // The groups offered for this kind of search (same rules as the Basics had).
 // Values someone already saved that are no longer offered stay visible, so
@@ -55,7 +56,7 @@ export function whatMattersGroups(raw) {
         key,
         ...GROUP_DEFS[key],
         ...(key === 'preferredPropertyTypes' && experience === 'apartment_rent' ? BUILDING_TYPE : {}),
-        choices: [...values, ...saved].map((value) => ({ value, label: labelFor(key, value) })),
+        choices: [...values, ...saved].map((value) => ({ value, label: labelFor(key, value, experience) })),
       };
     });
 }
@@ -97,7 +98,7 @@ export function groupPriorityItems(raw) {
       kind: 'group',
       group: true,
       displayLabel: group.rankLabel,
-      qualifier: values.map((value) => labelFor(group.key, value)).join(' or '),
+      qualifier: values.map((value) => labelFor(group.key, value, searchExperienceKey(priorities))).join(' or '),
       legacy: false,
       experiential: false,
       tier,

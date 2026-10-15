@@ -8,6 +8,7 @@ import { beginOnboarding, onboardingStepsFor, CURRENT_ONBOARDING_VERSION } from 
 import { addSearchArea } from '@/lib/searchAreas';
 import { chooseSearchType } from '@/lib/onboardingBasics';
 import { toggleGroupValue } from '@/lib/whatMattersGroups';
+import { homePreferenceRows, toggleHomePreference } from '@/lib/homePreferences';
 import { addCriterion, isCriterionSelected, moveCriterion, setGaragePreference, toggleCriterion } from '@/lib/searchProfile';
 
 // Fixtures for the development-only preview (src/app/dev/onboarding). Fixed ids
@@ -36,6 +37,11 @@ function populatedPriorities() {
   const garage = { categoryKey: 'exterior', label: 'Garage', kind: 'check' };
   next = isCriterionSelected(next, 'exterior', 'Garage') ? moveCriterion(next, 'exterior', 'Garage', 'important') : addCriterion(next, garage, 'important');
   next = setGaragePreference(next, 'attached');
+  // A few Home preferences from The Basics (they rank with everything else).
+  for (const [rowKey, text] of [['layout', 'Ranch'], ['layout', 'First-Floor Primary'], ['condition', 'Move-in Ready'], ['basement', 'Finished'], ['basement', 'Walkout'], ['yard', 'Fenced']]) {
+    const option = homePreferenceRows(next).find((row) => row.key === rowKey)?.options.find((entry) => entry.text === text);
+    if (option && !option.selected) next = toggleHomePreference(next, option);
+  }
   return next;
 }
 

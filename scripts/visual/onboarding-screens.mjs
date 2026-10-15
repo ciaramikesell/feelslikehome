@@ -31,17 +31,22 @@ export const SCENARIOS = [
   { name: 'basics-empty', query: 'step=basics&state=empty' },
   { name: 'basics-populated', query: 'step=basics&state=populated' },
   { name: 'basics-save-error', query: 'step=basics&state=error', act: async (page) => {
-    await page.getByLabel('I’m looking for').selectOption('home_buy');
+    await page.getByRole('radio', { name: /Home to Buy/ }).click();
     await page.locator('.hh-save-error').waitFor();
   } },
-  { name: 'basics-garage-open', query: 'step=basics&state=populated', act: async (page) => {
-    await page.getByRole('button', { name: /Garage preferences/ }).click();
-    await page.getByRole('radiogroup', { name: 'How much does a garage matter?' }).or(page.getByText('How much does a garage matter?')).first().waitFor();
+  // Continue without a kind of search: inline validation, nothing proceeds.
+  { name: 'basics-type-required', query: 'step=basics&state=empty', act: async (page) => {
+    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.getByRole('alert').filter({ hasText: 'Choose what you’re looking for' }).waitFor();
   } },
-  { name: 'basics-all-open', query: 'step=basics&state=populated', act: async (page) => {
-    await page.getByRole('button', { name: /Garage preferences/ }).click();
-    await page.getByRole('button', { name: /More about the home/ }).click();
-    await page.getByText('Kinds of homes').waitFor();
+  { name: 'basics-home-prefs-open', query: 'step=basics&state=populated', act: async (page) => {
+    await page.getByRole('button', { name: /Home preferences/ }).click();
+    await page.getByRole('group', { name: 'Basement' }).waitFor();
+  } },
+  { name: 'basics-rent', query: 'step=basics&state=empty', act: async (page) => {
+    await page.getByRole('radio', { name: /Home to Rent/ }).check();
+    await page.getByRole('button', { name: /Home preferences/ }).click();
+    await page.getByRole('group', { name: 'Garage' }).waitFor();
   } },
   { name: 'what-matters', query: 'step=what_matters&state=populated' },
   { name: 'rank', query: 'step=rank&state=populated' },
@@ -91,19 +96,15 @@ export const SCENARIOS = [
     await page.getByText('can be sent later from My Search.').waitFor();
   } },
   { name: 'people-shared-setup', query: 'flow=v2&step=collaboration&state=populated&mode=shared' },
-  // Six-step flow: home details move from Step 1 to Step 4, and rank in Step 5.
+  // Six-step flow: home details are on Step 1 (Home preferences), ranked in Step 5.
   { name: 'v2-basics-empty', query: 'flow=v2&step=basics&state=empty' },
   { name: 'v2-basics-populated', query: 'flow=v2&step=basics&state=populated' },
   // A fresh buyer: nothing chosen, "Skip for now".
   { name: 'v2-what-matters-fresh', query: 'flow=v2&step=priorities&state=empty' },
   { name: 'v2-what-matters-several', query: 'flow=v2&step=priorities&state=empty', act: async (page) => {
-    for (const name of ['Quiet street', 'Great schools', 'Home office', 'Move-in ready', 'Room to renovate', 'Condo', 'Ranch', 'Two story', 'Garage']) await page.getByRole('button', { name, exact: true }).click();
+    for (const name of ['Cul-de-Sac', 'Walkable Schools', 'Home Office', 'Kitchen Island', 'Eat-in Kitchen', 'Deck / Patio', 'Fire Pit']) await page.getByRole('button', { name, exact: true }).click();
   } },
   { name: 'v2-what-matters-returning', query: 'flow=v2&step=priorities&state=populated' },
-  { name: 'v2-what-matters-more-open', query: 'flow=v2&step=priorities&state=empty', act: async (page) => {
-    await page.getByRole('button', { name: /More to consider/ }).click();
-    await page.getByRole('button', { name: 'Fireplace', exact: true }).waitFor();
-  } },
   { name: 'v2-what-matters-earlier-answer', query: 'flow=v2&step=priorities&state=legacy' },
   // Step 5: no priorities, all Important, distributed across levels (returning), and many.
   { name: 'v2-rank-none', query: 'flow=v2&step=rank&state=empty' },
