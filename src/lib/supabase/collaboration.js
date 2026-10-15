@@ -186,6 +186,15 @@ export async function setActiveSearch(supabase, userId, searchId) {
 // membership rows. The searches/homes/state queries remain ordinary RLS-bound
 // queries; no service client is involved and an id guessed in the URL produces
 // no membership row (and therefore no client data).
+// Whether this account is a Realtor on at least one search. Reads only the
+// caller's own membership rows (search_members_select); used for entry
+// routing, never for access.
+export async function hasRealtorRelationship(supabase, userId) {
+  const { data, error } = await supabase.from('search_members').select('search_id').eq('user_id', userId).eq('role', 'realtor');
+  if (error) throw error;
+  return (data || []).length > 0;
+}
+
 export async function getRealtorRelationships(supabase, userId) {
   const { data: memberships, error } = await supabase.from('search_members')
     .select('search_id').eq('user_id', userId).eq('role', 'realtor');

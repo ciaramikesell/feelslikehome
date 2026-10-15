@@ -41,7 +41,7 @@ test('Realtor panel switches in context and preserves Realtor copy, intent, and 
   assert.match(auth, /isRealtorEntry \? 'Create a Realtor account'/);
   assert.match(auth, /isRealtorEntry \? 'Sign in' : 'Back to sign in'/);
   assert.match(auth, /Help buyers organize what matters, understand their options, and make clearer decisions together/);
-  assert.match(auth, /entryDestination = redirectTo === '\/' && isRealtorEntry \? '\/realtor' : redirectTo/);
+  assert.match(auth, /entryDestination = redirectTo === '\/' && isRealtorEntry \? REALTOR_WORKSPACE_PATH : redirectTo/);
   assert.match(auth, /router\.push\(entryDestination\)/);
   assert.doesNotMatch(auth, /users\.role|profiles\.role|role:\s*'realtor'/);
 });

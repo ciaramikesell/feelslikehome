@@ -16,8 +16,9 @@ const collaboration = read('src/lib/supabase/collaboration.js');
 const fn = (name) => migration.match(new RegExp(`create (?:or replace )?function public\\.${name}[\\s\\S]*?end; \\$\\$;`, 'i'))?.[0] || '';
 
 test('Realtor signup intent changes routing, never relationship authorization', () => {
-  assert.match(authForm, /redirectTo === '\/' && isRealtorEntry \? '\/realtor' : redirectTo/);
-  assert.match(root, /account_entry_intent === 'realtor'\) redirect\('\/realtor'\)/);
+  assert.match(authForm, /redirectTo === '\/' && isRealtorEntry \? REALTOR_WORKSPACE_PATH : redirectTo/);
+  assert.match(root, /entryIntent: user\.user_metadata\?\.account_entry_intent/);
+  assert.match(root, /redirect\(realtor \? REALTOR_WORKSPACE_PATH : '\/onboarding'\)/);
   assert.doesNotMatch(onboardingPage, /account_entry_intent/);
   assert.match(layout, /isRealtorEntry && isRealtorWorkspace \? \{ \.\.\.storedProfile, onboarding_complete: true \}/);
   assert.doesNotMatch(migration, /account_entry_intent/);

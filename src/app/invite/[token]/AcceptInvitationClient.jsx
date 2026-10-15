@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { acceptInvitation, setActiveSearch } from '@/lib/supabase/collaboration';
 import { ANALYTICS_EVENTS, track } from '@/lib/analytics';
+import { REALTOR_WORKSPACE_PATH, invitationAcceptance } from '@/lib/realtorEntry';
 import { BrandMark, Wordmark } from '@/components/ui';
 
 const REASON_COPY = {
@@ -60,14 +61,20 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
         setReason(result.reason);
         return;
       }
+      const next = invitationAcceptance({
+        relationshipType: initialPreview.relationship_type,
+        invitationDirection: initialPreview.invitation_direction,
+        searchId: result.search_id,
+      });
+      // A Realtor's client search never becomes their own active buyer search.
       const { data: { user } } = await supabase.auth.getUser();
-      if (user && result.search_id) {
+      if (next.setActiveSearch && user && result.search_id) {
         await setActiveSearch(supabase, user.id, result.search_id);
       }
       // role = the collaborator who joined the search (a Realtor for both Realtor directions).
       track(ANALYTICS_EVENTS.COLLABORATOR_JOINED, { role: isBuyerInvite || isRealtorInvite ? 'realtor' : 'co_buyer', surface: 'invitation' });
       setState('done');
-      setTimeout(() => { router.push(isBuyerInvite ? '/onboarding' : '/homes'); router.refresh(); }, 1200);
+      setTimeout(() => { router.push(next.destination); router.refresh(); }, 1200);
     } catch (err) {
       console.error('Invitation acceptance failed', err);
       setState('invalid');
@@ -114,7 +121,7 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
         {state === 'done' && (
           <>
             <h1 className="hh-serif" style={{ fontSize: 20, fontWeight: 700, color: 'var(--moss)', margin: '0 0 8px' }}>You're in!</h1>
-            <p style={{ fontSize: 13.5, color: 'var(--ink-soft)' }}>{isBuyerInvite ? `Your search is ready. ${inviterName} will be helping.` : 'Taking you to your shared search...'}</p>
+            <p style={{ fontSize: 13.5, color: 'var(--ink-soft)' }}>{isBuyerInvite ? `Your search is ready. ${inviterName} will be helping.` : isRealtorInvite ? "Taking you to your client's search..." : 'Taking you to your shared search...'}</p>
           </>
         )}
 
@@ -125,7 +132,7 @@ export default function AcceptInvitationClient({ token, initialPreview }) {
             {reason === 'wrong_account' ? (
               <button type="button" className="hh-btn" onClick={signOut}>Sign in with another account</button>
             ) : (
-              <button type="button" className="hh-btn hh-btn-ghost" onClick={() => router.push('/homes')}>Return to Homes</button>
+              <button type="button" className="hh-btn hh-btn-ghost" onClick={() => router.push(isRealtorInvite && !isBuyerInvite ? REALTOR_WORKSPACE_PATH : '/homes')}>{isRealtorInvite && !isBuyerInvite ? 'Go to People I’m Helping' : 'Return to Homes'}</button>
             )}
           </>
         )}
