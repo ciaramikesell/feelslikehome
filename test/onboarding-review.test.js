@@ -69,7 +69,7 @@ test('priorities keep their levels; alternatives stay one line; an unset propert
   p = moveGroup(p, 'homeLayout', 'nice');
   const summary = prioritiesSummary(p);
   assert.deepEqual(summary.map((level) => [level.title, level.items.map((item) => [item.label, item.qualifier])]), [
-    ['Must-Have', [['Garage', null]]], ['Important', []], ['Nice-to-Have', [['Layout', 'Ranch or Two Story']]],
+    ['Must-Have', [['Garage', null]]], ['Important', []], ['Nice-to-Have', [['Layout', 'Ranch or Two-Story']]],
   ]);
   assert.ok(!summary.flatMap((level) => level.items).some((item) => item.label === 'Property type'));
 });

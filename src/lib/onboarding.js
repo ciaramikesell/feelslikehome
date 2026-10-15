@@ -1,4 +1,4 @@
-import { normalizePriorities, getItemlistCategories, criterionDisplayLabel } from './constants.js';
+import { normalizePriorities, getItemlistCategories, criterionDisplayLabel, BUY_WHAT_MATTERS_GROUPS, HOME_RENT_CATALOG, homePreferenceCriteriaFor } from './constants.js';
 import { selectPriorityItem } from './matching.js';
 
 export const NEW_SEARCH_CHOICES = Object.freeze([
@@ -19,32 +19,35 @@ const item = (categoryKey, label, kind = 'rating', displayLabel = label) => Obje
 // retired from purchase Match entirely, so picking them in onboarding silently did
 // nothing). Home Feel is intentionally absent: it is not part of the purchase pre-tour
 // catalog at all (Post-Tour owns those experiential dimensions instead).
-function purchaseOnboardingGroup(categoryKey, groupTitle, excluded = []) {
-  const def = getItemlistCategories('purchase').find((category) => category.key === categoryKey);
-  const items = [...def.coreItems, ...def.suggestedItems]
-    .filter((entry) => !excluded.includes(`${categoryKey}:${entry.label}`))
-    .map((entry) => item(categoryKey, entry.label, entry.kind, criterionDisplayLabel(categoryKey, entry.label)));
-  return [groupTitle, items];
+//
+// 2026 Home to Buy refresh: the four approved groups (BUY_WHAT_MATTERS_GROUPS).
+// Every entry is still a canonical purchase identity (checked below against
+// getItemlistCategories, so the two can never drift apart).
+function purchaseOnboardingGroup([groupTitle, entries]) {
+  const catalog = new Map(getItemlistCategories('purchase').flatMap((def) => [...def.coreItems, ...def.suggestedItems].map((entry) => [`${def.key}:${entry.label}`, entry])));
+  return [groupTitle, entries.map((entry) => {
+    const canonical = catalog.get(`${entry.categoryKey}:${entry.label}`);
+    if (!canonical) throw new Error(`Not a purchase catalog criterion: ${entry.categoryKey}:${entry.label}`);
+    return item(entry.categoryKey, entry.label, canonical.kind, criterionDisplayLabel(entry.categoryKey, entry.label));
+  })];
 }
 
-// Home to Rent uses the same canonical Home criteria as Home to Buy wherever they
-// apply — only No HOA is excluded (an HOA is the landlord's concern, not a renter's).
-// Selected items are promoted into the participant's own customItems exactly like a
-// purchase selection (selectPriorityItem), so the rental intent's Match reads them
-// without any catalog or schema change. Existing Home to Rent selections from the
-// earlier hand-authored list are untouched and keep counting.
-const HOME_RENT_EXCLUDED = ['location:No HOA'];
+// Home to Rent keeps the canonical Home criteria it offered before the Home to
+// Buy refresh (HOME_RENT_CATALOG: the earlier purchase lists minus No HOA, since
+// an HOA is the landlord's concern). Selected items are promoted into the
+// participant's own customItems exactly like a purchase selection
+// (selectPriorityItem), so the rental intent's Match reads them without any
+// catalog or schema change. Garage is asked with Home Preferences on The Basics.
+function homeRentGroup(categoryKey, groupTitle) {
+  return [groupTitle, HOME_RENT_CATALOG[categoryKey].map((label) => item(categoryKey, label, 'check', criterionDisplayLabel(categoryKey, label)))];
+}
 
 export const ONBOARDING_SUGGESTIONS = Object.freeze({
-  home_buy: Object.freeze([
-    purchaseOnboardingGroup('location', 'Location'),
-    purchaseOnboardingGroup('features', 'Home Features'),
-    purchaseOnboardingGroup('exterior', 'Exterior & Property'),
-  ]),
+  home_buy: Object.freeze(BUY_WHAT_MATTERS_GROUPS.map(purchaseOnboardingGroup)),
   home_rent: Object.freeze([
-    purchaseOnboardingGroup('location', 'Location', HOME_RENT_EXCLUDED),
-    purchaseOnboardingGroup('features', 'Home Features', HOME_RENT_EXCLUDED),
-    purchaseOnboardingGroup('exterior', 'Exterior & Property', HOME_RENT_EXCLUDED),
+    homeRentGroup('location', 'Location'),
+    homeRentGroup('features', 'Home Features'),
+    homeRentGroup('exterior', 'Exterior & Property'),
   ]),
   apartment_rent: Object.freeze([
     ['The Unit', [item('features', 'In-Unit Laundry', 'check'), item('features', 'Central Air', 'check'), item('features', 'Dishwasher', 'check'), item('features', 'Updated Interior', 'check'), item('exterior', 'Patio / Deck / Outdoor Living', 'check', 'Balcony / Patio'), item('features', 'Home Office', 'check', 'Home Office Space')]],
@@ -61,9 +64,10 @@ export function applySearchChoice(raw, choiceKey) {
   if (!choice) return normalizePriorities(raw);
   const next = normalizePriorities(raw);
   // If someone goes Back and changes the kind of search, do not carry curated
-  // suggestions from the abandoned path into the new one. User-authored items and
-  // unrelated legacy data remain untouched.
-  Object.values(ONBOARDING_SUGGESTIONS).flatMap((groups) => groups.flatMap(([, items]) => items)).forEach((criterion) => {
+  // suggestions (or Home Preferences) from the abandoned path into the new one.
+  // User-authored items and unrelated legacy data remain untouched; callers that
+  // keep what still applies re-add it (chooseSearchType, switchSearchType).
+  [...Object.values(ONBOARDING_SUGGESTIONS).flatMap((groups) => groups.flatMap(([, items]) => items)), ...homePreferenceCriteriaFor('home_buy')].forEach((criterion) => {
     if (next[criterion.categoryKey]?.tiers?.[criterion.label]) {
       next[criterion.categoryKey] = { ...next[criterion.categoryKey], tiers: { ...next[criterion.categoryKey].tiers, [criterion.label]: 'dontcare' } };
     }

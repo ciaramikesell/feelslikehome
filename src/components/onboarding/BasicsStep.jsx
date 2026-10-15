@@ -1,48 +1,57 @@
 'use client';
 
 import { useId, useLayoutEffect, useRef, useState } from 'react';
-import { ChevronDown, Minus, Plus } from 'lucide-react';
-import { GARAGE_PREFERENCE_OPTIONS, garagePreferenceLabel } from '@/lib/constants';
-import { PROPERTY_TYPE_LABELS } from '@/lib/searchIntent';
+import { Building2, ChevronDown, House, KeyRound, Minus, Plus } from 'lucide-react';
 import { NEW_SEARCH_CHOICES } from '@/lib/onboarding';
-import { CONDITION_CHOICES, LAYOUT_CHOICES, basicsFieldsFor, sanitizeNumericInput, setGaragePreference } from '@/lib/searchProfile';
-import {
-  GARAGE_LEVELS, STEPPERS, chooseSearchType, editFormattedNumber, formatThousands, garageLevel, isUnset,
-  setGarageLevel, stepDown, stepUp,
-} from '@/lib/onboardingBasics';
+import { basicsFieldsFor, sanitizeNumericInput } from '@/lib/searchProfile';
+import { STEPPERS, editFormattedNumber, formatThousands, isUnset, stepDown, stepUp } from '@/lib/onboardingBasics';
+import { homePreferenceRows, homePreferencesSummary, toggleHomePreference } from '@/lib/homePreferences';
 import { switchSearchType } from '@/lib/whatMattersCatalog';
 import { OnboardingAction } from '@/components/onboarding/OnboardingShell';
 
-// Step 1 of Onboarding V2: "The Basics of Your Search" (approved Figma design).
-// Every field reads and writes the same priorities document My Search uses; an
-// empty value is "not set" and never scores as 0 or as a confirmed miss.
+// Step 1: "The Basics of Your Search". Every field reads and writes the same
+// priorities document My Search uses; an empty value is "not set" and never
+// scores as 0 or as a confirmed miss.
 
-// How each kind of search reads in "I’m looking for …"; the stored keys and the
+// How each kind of search reads in the change note; the stored keys and the
 // full names (src/lib/onboarding.js) are unchanged.
 const SEARCH_TYPE_PHRASES = { home_buy: 'a home to buy', home_rent: 'a home to rent', apartment_rent: 'an apartment to rent' };
+const SEARCH_TYPE_OPTIONS = Object.freeze({
+  home_buy: { title: 'Home to Buy', note: 'Purchase budget', icon: House },
+  home_rent: { title: 'Home to Rent', note: 'Monthly rent', icon: KeyRound },
+  apartment_rent: { title: 'Apartment to Rent', note: 'Monthly rent', icon: Building2 },
+});
 
 function OptionalTag() {
   return <span className="flh-ob-optional">Optional</span>;
 }
 
-// The required kind of search, as one quiet sentence above the approved card:
-// "I’m looking for [choose one ▾]". A native select keeps it compact, accessible
-// and familiar on phones (the system picker), and nothing is preselected — it
-// starts on "choose one", so no one is assumed to be buying.
-function SearchTypeControl({ choice, onChoose }) {
+// The one required answer, shown as three visible choices (a radio group, so
+// arrow keys move between them). Nothing is preselected for a new search; a
+// saved choice is shown as chosen. Continuing without one explains why inline.
+function SearchTypeControl({ choice, onChoose, invalid, groupRef }) {
   const id = useId();
   return (
-    <div className={`flh-ob-searchtype ${choice ? '' : 'is-unset'}`}>
-      <label className="flh-ob-searchtype-label" htmlFor={id}>I’m looking for</label>
-      <span className="flh-ob-searchtype-select">
-        <select id={id} required value={choice} onChange={(event) => onChoose(event.target.value)} aria-describedby={choice ? undefined : `${id}-hint`}>
-          {!choice && <option value="" disabled>choose one</option>}
-          {NEW_SEARCH_CHOICES.map((option) => <option key={option.key} value={option.key}>{SEARCH_TYPE_PHRASES[option.key]}</option>)}
-        </select>
-        <ChevronDown size={16} strokeWidth={2.2} aria-hidden="true" />
-      </span>
-      {!choice && <span id={`${id}-hint`} className="sr-only">Required to continue. It decides which details apply.</span>}
-    </div>
+    <fieldset className={`flh-ob-searchtype${choice ? '' : ' is-unset'}${invalid ? ' is-invalid' : ''}`} aria-describedby={invalid ? `${id}-error` : `${id}-hint`} aria-invalid={invalid || undefined}>
+      <legend className="flh-ob-searchtype-label">I’m looking for</legend>
+      <div className="flh-ob-searchtype-track" ref={groupRef}>
+        {NEW_SEARCH_CHOICES.map((option) => {
+          const copy = SEARCH_TYPE_OPTIONS[option.key];
+          const Icon = copy.icon;
+          const selected = choice === option.key;
+          return (
+            <label key={option.key} className={`flh-ob-searchtype-option${selected ? ' is-selected' : ''}`}>
+              <input type="radio" className="flh-ob-pill-input" name={`${id}-type`} value={option.key} checked={selected} onChange={() => onChoose(option.key)} />
+              <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
+              <span className="flh-ob-searchtype-copy"><span className="flh-ob-searchtype-title">{copy.title}</span><span className="flh-ob-searchtype-note">{copy.note}</span></span>
+            </label>
+          );
+        })}
+      </div>
+      {invalid
+        ? <p id={`${id}-error`} className="flh-ob-searchtype-error" role="alert">Choose what you’re looking for to continue—it decides which details apply.</p>
+        : <p id={`${id}-hint`} className="flh-ob-searchtype-hint">{choice ? 'You can change this anytime.' : 'Required. It decides which details apply.'}</p>}
+    </fieldset>
   );
 }
 
@@ -131,136 +140,82 @@ function UnitField({ label, unit, value, onChange, decimal = false }) {
   );
 }
 
-// An expandable row (the approved "Garage preferences" treatment): title, a
-// summary of the current answer, and a chevron; the panel opens in place.
-function Disclosure({ title, summary, children }) {
+// One compact row per topic: the label on the left, the options on the right
+// (wrapping, then stacking, on narrow screens). Rows are checkboxes — a row
+// whose options can't combine (Garage) is a radio group, with a tap on the
+// chosen option clearing it so "not set" is always reachable.
+function PreferenceRow({ row, onToggle }) {
+  const name = useId();
+  const single = row.mode === 'one';
+  return (
+    <fieldset className="flh-ob-pref-row">
+      <legend className="flh-ob-pref-label">{row.label}</legend>
+      <div className="flh-ob-pref-options">
+        {row.options.map((option) => (
+          <label key={option.id} className={`flh-ob-pill flh-ob-pill-compact${option.selected ? ' is-selected' : ''}`}>
+            <input
+              type={single ? 'radio' : 'checkbox'}
+              className="flh-ob-pill-input"
+              name={single ? name : undefined}
+              checked={option.selected}
+              onChange={() => onToggle(option)}
+              onClick={single && option.selected ? () => onToggle(option) : undefined}
+            />
+            <span>{option.text}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+// Optional and collapsed by default: a quick person skips it entirely, a
+// meticulous one opens one section. Everything chosen here starts as Important
+// and is ranked with the rest on Rank Priorities; nothing chosen stays unset.
+function HomePreferences({ priorities, patch }) {
   const id = useId();
   const [open, setOpen] = useState(false);
+  const rows = homePreferenceRows(priorities);
+  const summary = homePreferencesSummary(priorities);
+  const garageChosen = rows.some((row) => row.key === 'garage' && row.options.some((option) => option.selected && option.value !== 'any'));
   return (
-    <div className={`flh-ob-disclosure ${open ? 'is-open' : ''}`}>
+    <div className={`flh-ob-disclosure flh-ob-home-prefs${open ? ' is-open' : ''}`}>
       <button type="button" className="flh-ob-disclosure-toggle" aria-expanded={open} aria-controls={`${id}-panel`} onClick={() => setOpen((value) => !value)}>
         <span className="flh-ob-disclosure-copy">
-          <span className="flh-ob-disclosure-title">{title}</span>
-          <span className="flh-ob-disclosure-summary">{summary}</span>
+          <span className="flh-ob-disclosure-title">Home preferences <OptionalTag /></span>
+          <span className="flh-ob-disclosure-summary">{summary.count ? summary.text : 'Home type, layout, garage and more—skip if you like'}</span>
         </span>
+        {summary.count > 0 && <span className="flh-ob-pref-count" aria-label={`${summary.count} chosen`}>{summary.count}</span>}
         <ChevronDown size={18} strokeWidth={2.2} aria-hidden="true" />
       </button>
-      <div id={`${id}-panel`} className="flh-ob-disclosure-panel" hidden={!open}>{children}</div>
+      <div id={`${id}-panel`} className="flh-ob-disclosure-panel flh-ob-pref-panel" hidden={!open}>
+        <p className="flh-ob-help">Choose only what you’d weigh. Each starts as Important—you’ll rank them with everything else.</p>
+        {rows.map((row) => <PreferenceRow key={row.key} row={row} onToggle={(option) => patch((next) => toggleHomePreference(next, option))} />)}
+        {garageChosen && <p className="flh-ob-help">Match checks whether a home has a garage; attached or detached is saved with your preference.</p>}
+      </div>
     </div>
   );
 }
 
-function RadioPills({ legend, options, value, onChange }) {
-  const name = useId();
-  return (
-    <fieldset className="flh-ob-pills">
-      <legend className="flh-ob-sublabel">{legend}</legend>
-      <div className="flh-chip-row">
-        {options.map((option) => (
-          <label key={option.key} className={`flh-ob-pill ${value === option.key ? 'is-selected' : ''}`}>
-            <input type="radio" className="flh-ob-pill-input" name={name} value={option.key} checked={value === option.key} onChange={() => onChange(option.key)} />
-            <span>{option.label}</span>
-          </label>
-        ))}
-      </div>
-    </fieldset>
-  );
-}
-
-function GaragePreferences({ priorities, patch, choice }) {
-  const level = garageLevel(priorities);
-  const qualifier = garagePreferenceLabel(priorities);
-  const levelLabel = GARAGE_LEVELS.find((option) => option.key === level)?.label;
-  const summary = level === 'unset' ? 'Not set yet' : [levelLabel, qualifier].filter(Boolean).join(' · ');
-  const setLevel = (key) => patch((next) => setGarageLevel(next, key, choice));
-  return (
-    <Disclosure title="Garage preferences" summary={summary}>
-      <RadioPills legend="How much does a garage matter?" options={GARAGE_LEVELS} value={level} onChange={setLevel} />
-      {level !== 'unset' && (
-        <RadioPills legend="Garage type" options={GARAGE_PREFERENCE_OPTIONS} value={priorities.exterior?.garagePreference || 'any'} onChange={(key) => patch((next) => setGaragePreference(next, key))} />
-      )}
-    </Disclosure>
-  );
-}
-
-// Multi-select Basics never carry "No Preference" forward once a real choice is made;
-// an option retained from older data (e.g. 'Split Level', 'Townhome') stays visible
-// and removable instead of silently disappearing.
-const toggleValue = (values, value) => {
-  const current = (values || []).filter((entry) => entry !== 'No Preference');
-  return current.includes(value) ? current.filter((entry) => entry !== value) : [...current, value];
-};
-const withRetained = (choices, values, labelFor = (value) => value) => [
-  ...choices,
-  ...(values || []).filter((value) => value !== 'No Preference' && !choices.some((choice) => choice.value === value)).map((value) => ({ value, label: labelFor(value) })),
-];
-const chosen = (values) => (values || []).filter((value) => value && value !== 'No Preference');
-
-// Multi-select pills (checkboxes) in the same treatment as the Garage pills.
-function OptionGroup({ legend, options, selected, onToggle }) {
-  return (
-    <fieldset className="flh-ob-pills">
-      <legend className="flh-ob-sublabel">{legend}</legend>
-      <div className="flh-chip-row">
-        {options.map((option) => (
-          <label key={option.value} className={`flh-ob-pill ${selected.includes(option.value) ? 'is-selected' : ''}`}>
-            <input type="checkbox" className="flh-ob-pill-input" checked={selected.includes(option.value)} onChange={() => onToggle(option.value)} />
-            <span>{option.label}</span>
-          </label>
-        ))}
-      </div>
-    </fieldset>
-  );
-}
-
-// Home types, layout and condition: still part of the Basics My Search keeps, so
-// they stay reachable here (collapsed) rather than disappearing from onboarding.
-function HomeDetails({ priorities, fields, setValues }) {
-  const typeLabel = (value) => PROPERTY_TYPE_LABELS[value] || value;
-  const layoutLabel = (value) => LAYOUT_CHOICES.find((option) => option.value === value)?.label || value;
-  const conditionLabel = (value) => CONDITION_CHOICES.find((option) => option.value === value)?.label || value;
-  const picked = [
-    ...(fields.propertyTypes.length ? chosen(priorities.preferredPropertyTypes.values).map(typeLabel) : []),
-    ...(fields.layout ? chosen(priorities.homeLayout.values).map(layoutLabel) : []),
-    ...(fields.condition ? chosen(priorities.homeCondition.values).map(conditionLabel) : []),
-  ];
-  return (
-    <Disclosure title="More about the home" summary={picked.length ? picked.join(', ') : 'Not set yet'}>
-      {fields.propertyTypes.length > 0 && (
-        <OptionGroup
-          legend="Kinds of homes"
-          options={withRetained(fields.propertyTypes.map((value) => ({ value, label: PROPERTY_TYPE_LABELS[value] })), priorities.preferredPropertyTypes.values, typeLabel)}
-          selected={priorities.preferredPropertyTypes.values}
-          onToggle={(value) => setValues('preferredPropertyTypes', value)}
-        />
-      )}
-      {fields.layout && <OptionGroup legend="Layout" options={withRetained(LAYOUT_CHOICES, priorities.homeLayout.values)} selected={priorities.homeLayout.values} onToggle={(value) => setValues('homeLayout', value)} />}
-      {fields.condition && <OptionGroup legend="Condition" options={withRetained(CONDITION_CHOICES, priorities.homeCondition.values)} selected={priorities.homeCondition.values} onToggle={(value) => setValues('homeCondition', value)} />}
-    </Disclosure>
-  );
-}
-
-// homeDetails: the live flow keeps Garage preferences and More about the home
-// here. The six-step flow (3) asks those in Step 4 (What Matters) instead; the
-// saved values are never cleared, only not shown on this step. presetPropertyType:
-// see chooseSearchType (the six-step flow leaves property type unset).
-export default function BasicsStep({ header, priorities, patch, onNext, homeDetails = true, presetPropertyType = true }) {
+// Both flows (the live three-step flow and the inactive six-step flow) use
+// the same Basics. Changing the kind of search keeps what still applies and
+// says what it removed, with Undo (switchSearchType); a saved kind of search is
+// never replaced without the person choosing another one.
+export default function BasicsStep({ header, priorities, patch, onNext }) {
   const choice = priorities.onboardingSearchType || '';
   const fields = basicsFieldsFor(choice);
   const rent = choice === 'home_rent' || choice === 'apartment_rent';
   // Before a kind of search is chosen, show the purchase-style card (the approved
   // design); lot size is hidden only once "Apartment" is actually chosen.
   const showLotSize = choice ? fields.lotSize : true;
-  const showGarage = homeDetails && choice !== 'apartment_rent';
-  const showDetails = homeDetails && choice && (fields.propertyTypes.length > 0 || fields.layout || fields.condition);
-  // Six-step flow: changing the kind of search keeps what still applies and
-  // says what it removed, with Undo (switchSearchType). The live flow keeps
-  // its existing behavior.
+  const [invalid, setInvalid] = useState(false);
+  const typeRef = useRef(null);
   // Several switches in a row add up: the note keeps everything removed since
   // the first switch, and Undo returns to how things were before it.
   const [switched, setSwitched] = useState(null);
   const chooseType = (key) => {
-    if (presetPropertyType) { patch((next) => chooseSearchType(next, key, { presetPropertyType })); return; }
+    setInvalid(false);
+    if (key === choice) return;
     const { priorities: next, removed } = switchSearchType(priorities, key);
     patch(() => next);
     setSwitched((earlier) => {
@@ -270,12 +225,16 @@ export default function BasicsStep({ header, priorities, patch, onNext, homeDeta
   };
   const undoSwitch = () => { patch(() => switched.previous); setSwitched(null); };
   const setValue = (key, value) => patch((next) => { next[key] = { ...next[key], value }; return next; });
-  const setValues = (key, value) => patch((next) => { next[key] = { ...next[key], values: toggleValue(next[key]?.values, value) }; return next; });
+  const proceed = () => {
+    if (choice) { onNext(); return; }
+    setInvalid(true);
+    typeRef.current?.querySelector('input')?.focus();
+  };
 
   return (
     <div className="flh-onboarding-step flh-ob-basics">
       {header}
-      <SearchTypeControl choice={choice} onChoose={chooseType} />
+      <SearchTypeControl choice={choice} onChoose={chooseType} invalid={invalid} groupRef={typeRef} />
       {switched && (
         <div className="flh-ob-switch-note" role="status">
           <p>Now looking for {SEARCH_TYPE_PHRASES[choice]}. Removed what no longer applies: {switched.removed.join(', ')}. Everything else is kept.</p>
@@ -294,15 +253,10 @@ export default function BasicsStep({ header, priorities, patch, onNext, homeDeta
           <UnitField label="Ideal square footage" unit="sq ft" value={priorities.sqftTarget.value} onChange={(value) => setValue('sqftTarget', value)} />
           {showLotSize && <UnitField label="Ideal lot size" unit="acres" decimal value={priorities.lotSizeTarget.value} onChange={(value) => setValue('lotSizeTarget', value)} />}
         </div>
-        {(showGarage || showDetails) && (
-          <div className="flh-ob-disclosures">
-            {showGarage && <GaragePreferences priorities={priorities} patch={patch} choice={choice} />}
-            {showDetails && <HomeDetails priorities={priorities} fields={fields} setValues={setValues} />}
-          </div>
-        )}
+        {choice && homePreferenceRows(priorities).length > 0 && <div className="flh-ob-disclosures"><HomePreferences priorities={priorities} patch={patch} /></div>}
       </section>
       <nav className="flh-onboarding-actions">
-        <OnboardingAction disabled={!choice} onClick={onNext}>Continue</OnboardingAction>
+        <OnboardingAction onClick={proceed}>Continue</OnboardingAction>
       </nav>
     </div>
   );

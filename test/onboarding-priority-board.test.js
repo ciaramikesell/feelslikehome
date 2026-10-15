@@ -24,26 +24,32 @@ test('new choices map to canonical intents and existing property-type preference
   assert.deepEqual([buy.preferredPropertyTypes.values, homeRent.preferredPropertyTypes.values, apartment.preferredPropertyTypes.values], [['house'], ['house'], ['apartment']]);
 });
 
-test('Home to Buy curated suggestions are exactly the canonical purchase taxonomy — one shared catalog with My Search, no Home Feel group', () => {
+test('Home to Buy curated suggestions are exactly the approved four groups — one shared catalog with My Search, no Home Feel group', () => {
   assert.deepEqual(displayed('home_buy'), [
-    'Reputable Schools', 'Walkable to Town', 'Parks Nearby', 'Quiet Street', 'Bustling Street', 'Near Waterfront', 'Walkable Schools', 'No HOA',
-    'Finished Basement', 'Walkout Basement', 'First-Floor Primary', 'Guest Bedroom', 'Primary Ensuite', 'First-Floor Laundry', 'Home Office', 'Central Air', 'Fireplace',
-    'Deck / Patio', 'Fenced Yard', 'Privacy Fencing', 'Garage', 'Large Backyard', 'Front Porch', 'Pool', 'Landscaping',
+    'Cul-de-Sac', 'Sidewalks', 'Low-Traffic Street', 'Walkable Neighborhood', 'Near Water', 'Wooded Setting', 'Mature Trees', 'Walkable Schools', 'No HOA',
+    'Kitchen Island', 'Stainless Steel Appliances', 'Fireplace', 'Central Air', 'Walk-in Pantry', 'High Ceilings', 'Double Vanity', 'Soaking Tub',
+    'First-Floor Bedroom', 'Home Office', 'Second-Floor Laundry', 'First-Floor Laundry', 'Formal Dining Room', 'Eat-in Kitchen', 'Primary Ensuite', 'Basement Storage',
+    'Deck / Patio', 'Front Porch', 'Pool', 'Room for Entertaining', 'Fire Pit', 'Garden Space', 'Screened-in Porch', 'Workshop Space',
   ]);
-  assert.deepEqual(ONBOARDING_SUGGESTIONS.home_buy.map(([title]) => title), ['Location', 'Home Features', 'Exterior & Property']);
-  for (const retired of ['Neighborhood', 'Walkability', 'Immediate Street / Surroundings', 'Basement', 'Yard', 'Overall Condition', 'Layout / Flow', 'Natural Light', 'Character / Charm']) {
+  assert.deepEqual(ONBOARDING_SUGGESTIONS.home_buy.map(([title]) => title), ['Location & Neighborhood', 'Home Features', 'Layout & Living Spaces', 'Exterior & Property']);
+  for (const retired of ['Neighborhood', 'Walkability', 'Immediate Street / Surroundings', 'Basement', 'Yard', 'Overall Condition', 'Layout / Flow', 'Natural Light', 'Character / Charm', 'Mudroom']) {
     assert.ok(!displayed('home_buy').includes(retired));
   }
-  // Not weighted criteria in the approved model: Home Condition lives in Basics,
-  // Guest Bedroom replaces Guest / In-Law Suite, Garage has an Attached/Detached qualifier.
-  for (const absent of ['Charming Neighborhood', 'Guest / In-Law Suite', 'Move-in Ready', 'Renovation Potential', 'New Construction', 'Attached Garage', 'Detached Garage']) {
-    assert.ok(!displayed('home_buy').includes(absent), `${absent} must not be offered`);
+  // Asked in The Basics' Home preferences, or not weighted criteria at all.
+  for (const absent of ['Charming Neighborhood', 'Guest / In-Law Suite', 'Move-in Ready', 'Renovation Potential', 'New Construction', 'Attached Garage', 'Detached Garage', 'Garage', 'Finished Basement', 'Fenced Yard']) {
+    assert.ok(!displayed('home_buy').includes(absent), `${absent} must not be offered here`);
   }
 });
 
-test('Home to Rent curated suggestions are exactly the canonical Home criteria without No HOA', () => {
-  assert.deepEqual(displayed('home_rent'), displayed('home_buy').filter((label) => label !== 'No HOA'));
+test('Home to Rent keeps its earlier canonical Home criteria (without No HOA); Garage moved to Home preferences', () => {
+  assert.deepEqual(displayed('home_rent'), [
+    'Reputable Schools', 'Walkable to Town', 'Parks Nearby', 'Quiet Street', 'Bustling Street', 'Near Water', 'Walkable Schools',
+    'Finished Basement', 'Walkout Basement', 'First-Floor Primary', 'Guest Bedroom', 'Primary Ensuite', 'First-Floor Laundry', 'Home Office', 'Central Air', 'Fireplace',
+    'Deck / Patio', 'Fenced Yard', 'Privacy Fence', 'Large Backyard', 'Front Porch', 'Pool', 'Landscaping',
+  ]);
   assert.ok(!displayed('home_rent').includes('No HOA'));
+  // Renters never inherit the buyer-only refresh.
+  for (const buyerOnly of ['Cul-de-Sac', 'Kitchen Island', 'Workshop Space']) assert.ok(!displayed('home_rent').includes(buyerOnly));
 });
 
 test('Apartment to Rent curated suggestions are exact', () => {

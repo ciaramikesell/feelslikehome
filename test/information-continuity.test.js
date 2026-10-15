@@ -3,25 +3,23 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { computeMatch, summarizeForCard } from '../src/lib/matching.js';
 import { defaultPriorities, emptyHome, HOME_CONDITION_OPTIONS, LAYOUT_OPTIONS, TIER_META } from '../src/lib/constants.js';
-import { EXISTING_STRUCTURED_FACT_VALUE, structuredFactSelectValue, structuredFactValueFromSelect } from '../src/lib/homeStructuredFacts.js';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('home layout and condition use compact selects with canonical array persistence', () => {
+test('home layout and condition use compact multi-select chips with canonical array persistence', () => {
   const modal = read('src/components/HomeModal.jsx');
-  assert.match(modal, /<StructuredFactSelect/);
+  // A home can be more than one layout or condition; nothing chosen is Unknown.
+  assert.match(modal, /<StructuredFactChips/);
   assert.match(modal, /definition\.options\.filter\(\(option\) => option !== 'No Preference'\)/);
-  assert.doesNotMatch(modal, /toggleMulti/);
+  assert.match(modal, /onChange\(selected\.includes\(choice\) \? selected\.filter\(\(entry\) => entry !== choice\) : \[\.\.\.selected, choice\]\)/);
+  assert.match(modal, /aria-pressed=\{!selected\.length\} onClick=\{\(\) => onChange\(\[\]\)\}>Unknown<\/button>/);
+  // A value saved earlier that is no longer listed stays visible and removable.
+  assert.match(modal, /const choices = \[\.\.\.listed, \.\.\.selected\.filter\(\(entry\) => !listed\.includes\(entry\)\)\];/);
+  assert.doesNotMatch(modal, /toggleMulti|StructuredFactSelect/);
   assert.deepEqual(emptyHome().homeLayout, []);
   assert.deepEqual(emptyHome().homeCondition, []);
   assert.deepEqual(LAYOUT_OPTIONS, ['Ranch / Single Story', 'Two Story', 'Split Level', 'Other', 'No Preference']);
   assert.deepEqual(HOME_CONDITION_OPTIONS, ['New Construction', 'Move-In Ready', 'Renovation Potential', 'No Preference']);
-  assert.deepEqual(structuredFactValueFromSelect('Two Story'), ['Two Story']);
-  assert.deepEqual(structuredFactValueFromSelect('Move-In Ready'), ['Move-In Ready']);
-  assert.deepEqual(structuredFactValueFromSelect(''), []);
-  assert.equal(structuredFactSelectValue(['Split Level'], ['Split Level']), 'Split Level');
-  assert.equal(structuredFactSelectValue([], ['Split Level']), '');
-  assert.equal(structuredFactSelectValue(['Ranch / Single Story', 'Other'], ['Ranch / Single Story', 'Other']), EXISTING_STRUCTURED_FACT_VALUE);
   const collaboration = read('src/lib/supabase/collaboration.js');
   assert.match(collaboration, /homeLayout: row\.home_layout \|\| \[\]/);
   assert.match(collaboration, /homeCondition: Array\.isArray\(row\.home_condition\)/);
