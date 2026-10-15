@@ -256,8 +256,9 @@ test('the refreshed catalog adds no scoring path: new choices are Yes / No / Unk
   // Still-supported import rules keep working for Home preferences.
   const prefs = choose(buyer, ['basement', 'Finished'], ['yard', 'Fenced']);
   assert.deepEqual(derivePriorityCheckPatch('Finished basement. Fully fenced backyard.', prefs, {}), { 'features:Finished basement': true, 'exterior:Fenced yard': true });
-  // Mudroom is retired in both scorers (JS and SQL); it is not offered until the parity migration lands.
-  assert.ok(RETIRED_PURCHASE_BUILT_IN_KEYS.includes('features:Mudroom'));
+  // Mudroom is scored again in both scorers (JS and SQL) since the parity migration;
+  // the chip itself is a later follow-up, so it is still not offered.
+  assert.ok(!RETIRED_PURCHASE_BUILT_IN_KEYS.includes('features:Mudroom'));
   assert.ok(!getItemlistCategories('purchase').some((def) => def.suggestedItems.some((item) => item.label === 'Mudroom')));
 });
 
