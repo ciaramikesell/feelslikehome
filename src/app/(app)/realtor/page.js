@@ -8,7 +8,7 @@ import InviteBuyer from '@/components/InviteBuyer';
 
 // The launchpad, not a CRM dashboard — three entry points into the existing
 // connect/invite/start-a-search workflows, plus a plain-language explanation
-// of what happens once a Realtor is connected to a buyer. People I'm Helping
+// of what happens once a Realtor is connected to a buyer. My Clients
 // (the client roster) stays a separate page; this never grows into it.
 export default async function RealtorHomePage() {
   return withAuthRecovery(async () => {
@@ -24,7 +24,7 @@ export default async function RealtorHomePage() {
         <header className="hh-realtor-home-hero">
           <span className="hh-realtor-home-eyebrow">Realtor workspace</span>
           <h1>Welcome to Feels Like Home{firstName ? `, ${firstName}` : ''}.</h1>
-          <p>Help your buyers find a home that truly fits by collaborating in a way that puts their priorities first. Choose a path below to get started, or visit <Link href="/people">People I&apos;m Helping</Link> to see your active clients.</p>
+          <p>Help your buyers find a home that truly fits by collaborating in a way that puts their priorities first. Choose a path below to get started, or visit <Link href="/people">My Clients</Link> to see everyone you’re helping.</p>
         </header>
 
         <section aria-labelledby="realtor-home-paths-title">
