@@ -103,11 +103,11 @@ test('full Match breakdown distinguishes missing, unknown, and neutral tour eval
 /* ------------------------------ Property facts: real fields only ------------------------------ */
 
 test('regression guard: Property Facts are still built only from real, existing fields — never fabricated', () => {
-  assert.match(detail, /\.filter\(\(\[, value\]\) => value\)/);
+  const homeFactsLib = read('src/lib/homeFacts.js');
+  assert.match(homeFactsLib, /\.filter\(Boolean\)/);
   assert.match(detail, /formatHomePrice\(home\.price, priorities\.searchType\)/);
-  assert.match(detail, /showsRentalFacts \? \[/);
-  assert.match(detail, /\.\.\.\(!showsRentalFacts \? \[/);
-  assert.doesNotMatch(detail, /school rating|walkability|crime|neighborhood rating/i);
+  assert.match(homeFactsLib, /showsRentalFacts \? \[/);
+  for (const source of [detail, homeFactsLib]) assert.doesNotMatch(source, /school rating|walkability|crime|neighborhood rating/i);
 });
 
 /* ------------------------------ gallery: single photoUrl only, no fabricated gallery ------------------------------ */

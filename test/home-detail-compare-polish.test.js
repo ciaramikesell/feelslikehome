@@ -6,9 +6,12 @@ const detail = fs.readFileSync('src/components/HomeDetail.jsx', 'utf8');
 const editor = fs.readFileSync('src/components/HomeModal.jsx', 'utf8');
 const compare = fs.readFileSync('src/components/CompareBoard.jsx', 'utf8');
 const css = fs.readFileSync('src/app/globals.css', 'utf8');
+const homeFacts = fs.readFileSync('src/components/HomeFacts.jsx', 'utf8');
+const homeFactsLib = fs.readFileSync('src/lib/homeFacts.js', 'utf8');
 
 test('Home Detail gives facts and personal relationship regions usable responsive width', () => {
-  assert.match(detail, /Section eyebrow="The home" title="Property Facts"[^>]*className="hh-detail-section-wide hh-detail-surface[^"]*"/);
+  assert.match(detail, /<HomeFacts home=\{home\}/);
+  assert.match(homeFacts, /className="flh-home-facts hh-detail-section hh-detail-section-wide"/);
   assert.match(detail, /className="hh-detail-relationship hh-detail-section-wide hh-detail-surface"/);
   assert.match(css, /\.hh-detail-section-wide \{ max-width: 960px; \}/);
   assert.match(css, /@media\(max-width:960px\)[\s\S]*\.hh-detail-section-wide \{ max-width: 100%; \}/);
@@ -33,10 +36,10 @@ test('Home Detail keeps participant relationship writes on the personal path', (
 
 test('Home Detail intent-specific facts remain canonical', () => {
   assert.match(detail, /formatHomePrice\(home\.price, priorities\.searchType\)/);
-  assert.match(detail, /showsRentalFacts \? \[/);
-  assert.match(detail, /\.\.\.\(!showsRentalFacts \? \[/);
-  assert.match(detail, /\['HOA'/);
-  assert.match(detail, /\['Available On'/);
+  // Home Facts (src/lib/homeFacts.js) now owns the intent-specific rows.
+  assert.match(homeFactsLib, /showsRentalFacts \? \[/);
+  assert.match(homeFactsLib, /showsRentalFacts \? null : row\('HOA fee'/);
+  assert.match(homeFactsLib, /row\('Available on', 'availableOn'/);
 });
 
 test('Compare photography scales distinctly for two, three, and four homes', () => {

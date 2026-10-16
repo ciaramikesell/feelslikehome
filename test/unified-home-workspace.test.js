@@ -8,7 +8,7 @@ const persistence = readFileSync(new URL('../src/lib/supabase/collaboration.js',
 test('Add and Edit converge on one mode-driven workspace after discovery', () => {
   assert.match(modal, /function EditHomeEditor\(\{ mode = 'edit'/);
   assert.match(modal, /mode=\{isNewHome \? 'add' : 'edit'\}/);
-  assert.match(modal, /workspaceReady = !isNewHome \|\| \['success', 'text-success', 'empty', 'error'\]/);
+  assert.match(modal, /workspaceReady = !isNewHome \|\| \(\['success', 'text-success', 'empty', 'error'\]\.includes\(importPhase\) && !quickAdd\)/);
   assert.match(modal, /mode === 'add' \? 'Save home' : 'Save changes'/);
 });
 

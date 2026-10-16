@@ -1,8 +1,8 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Check, ChevronRight, ExternalLink, Heart, Footprints, Home as HomeIcon, ListChecks, MapPin, Minus, NotebookText, Pencil, RotateCcw, Star, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronRight, ExternalLink, Heart, Footprints, Home as HomeIcon, ListChecks, MapPin, Minus, Pencil, RotateCcw, Star, X } from 'lucide-react';
 import DetailMatchPanel from '@/components/DetailMatchPanel';
 import MobileDisclosure from '@/components/MobileDisclosure';
 import { IconBadge } from '@/components/MobileSystem';
@@ -10,13 +10,13 @@ import HomeModal from '@/components/HomeModal';
 import PostTourModal from '@/components/PostTourModal';
 import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
 import RealtorContributions from '@/components/RealtorContributions';
+import HomeFacts from '@/components/HomeFacts';
 import HomeDetailLocation from '@/components/HomeDetailLocation';
 import { criterionDisplayLabel, isArchivedStatus, TOUR_RATING_KEY } from '@/lib/constants';
 import { computeMatch, matchFactualSummary, parseNum } from '@/lib/matching';
 import { evaluateCommute } from '@/lib/commute';
-import { formatDateOnly, formatHomePrice, formatLotSizeDisplay, formatPropertyType, formatTriState, parseCommaList } from '@/lib/homeDisplay';
+import { formatHomePrice, formatLotSizeDisplay, parseCommaList } from '@/lib/homeDisplay';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
-import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { useCommuteObserver } from '@/lib/useCommuteObserver';
 import { createClient } from '@/lib/supabase/client';
 import { hasSharedHomeChanges, saveHomePersonalAndShared, saveHomePersonalState } from '@/lib/supabase/collaboration';
@@ -50,7 +50,7 @@ function tierSummary(rows) {
   return [met ? `${met} met` : null, missed ? `${missed} missing` : null, neutral ? `${neutral} neutral` : null, unknown ? `${unknown} unknown` : null].filter(Boolean).join(' · ');
 }
 
-export default function HomeDetail({ home: initialHome, priorities, commuteDestinations = [], coBuyerPerspective, sharedFactAwareness = {}, userId, searchId, isCollaborative = false, readOnly = false, backHref = null, realtorContributions = { notes: [], tours: [] } }) {
+export default function HomeDetail({ home: initialHome, priorities, commuteDestinations = [], coBuyerPerspective, sharedFactAwareness = {}, userId, searchId, isCollaborative = false, readOnly = false, backHref = null, realtorContributions = { notes: [], tours: [] }, justAdded = null }) {
   const router = useRouter();
   const [home, setHome] = useState(initialHome);
   const [editing, setEditing] = useState(false);
@@ -79,24 +79,6 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
     coBuyerPerspective.overallFeeling > 0 ||
     (coBuyerPerspective.differentTakes?.length ?? 0) > 0
   ));
-  const { showsRentalFacts } = searchIntentCapabilities(priorities.searchType);
-  const facts = [
-    ['Property Type', home.propertyType && formatPropertyType(home.propertyType)],
-    ...(showsRentalFacts ? [
-      ['Available On', home.availableOn && formatDateOnly(home.availableOn)],
-      ['Pets Allowed', formatTriState(home.petsAllowed)],
-      ['Utilities Included', formatTriState(home.utilitiesIncluded)],
-      ['In-Unit Laundry', formatTriState(home.inUnitLaundry)],
-    ] : []),
-    ['Home layout', (home.homeLayout || []).join(', ')], ['Condition', (home.homeCondition || []).join(', ')],
-    ['Garage', home.garageSpaces], ['Basement', home.basementNotes], ['Year built', home.yearBuilt],
-    ['Lot', home.lotSize && formatLotSizeDisplay(home.lotSize)], ['Primary bedroom', home.primaryBedroomLocation],
-    ['Secondary bedrooms', home.secondaryBedroomLocation],
-    ...(!showsRentalFacts ? [
-      ['HOA', home.hoaFeeMonthly != null && `$${Number(home.hoaFeeMonthly).toLocaleString()}/mo`],
-      ['Property tax', home.propertyTaxAnnual != null && `$${Number(home.propertyTaxAnnual).toLocaleString()}/yr`],
-    ] : []),
-  ].filter(([, value]) => value);
   const identity = homeIdentity(home, priorities);
   const vocabulary = homeVocabulary(priorities);
 
@@ -150,6 +132,12 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
     setArchiveTarget(null);
     await (hasSharedHomeChanges(next, home) ? saveWhole(next) : savePersonal(next));
   };
+  // The ?added= marker only exists to show the welcome once; drop it from the
+  // address bar so a refresh or a shared link doesn't repeat it.
+  useEffect(() => {
+    if (justAdded && typeof window !== 'undefined') window.history.replaceState(window.history.state, '', window.location.pathname);
+  }, [justAdded]);
+  const scrollToMatch = () => { matchSection.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); matchSection.current?.focus({ preventScroll: true }); };
   const back = () => backHref ? router.push(backHref) : window.history.length > 1 ? router.back() : router.push('/homes');
 
   return <main className="hh-home-detail" ref={setRef}>
@@ -162,7 +150,7 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
         <div className="hh-detail-price-row"><div className="hh-detail-price">{formatHomePrice(home.price, priorities.searchType) || 'Price not added'}</div>{home.estMonthly && <span>${Number(home.estMonthly).toLocaleString()}/mo est.</span>}</div>
         <div className="hh-detail-core-facts">{[home.beds && `${home.beds} beds`, home.baths && `${home.baths} baths`, home.sqft && `${parseNum(home.sqft)?.toLocaleString()} sq ft`, home.lotSize && formatLotSizeDisplay(home.lotSize)].filter(Boolean).map((fact) => <span key={fact}>{fact}</span>)}</div>
         {home.suggestedBy && <span className="hh-provenance">Suggested by {home.suggestedBy}</span>}
-        {match?.pct != null && <button type="button" className="hh-detail-match-card" onClick={() => { matchSection.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); matchSection.current?.focus({ preventScroll: true }); }} aria-label={`View why this home is a ${match.pct}% Match`}><span className="hh-detail-match-ring">{match.pct}%</span><span><strong>Your Match</strong><small>{factualSummary?.mustClause || 'Based on your known priorities'}{factualSummary?.importantSentence ? ` · ${factualSummary.importantSentence}` : ''}</small></span><ChevronRight size={20} aria-hidden="true" /></button>}
+        {match?.pct != null && <button type="button" className="hh-detail-match-card" onClick={scrollToMatch} aria-label={`View why this home is a ${match.pct}% Match`}><span className="hh-detail-match-ring">{match.pct}%</span><span><strong>Your Match</strong><small>{factualSummary?.mustClause || 'Based on your known priorities'}{factualSummary?.importantSentence ? ` · ${factualSummary.importantSentence}` : ''}</small></span><ChevronRight size={20} aria-hidden="true" /></button>}
         {/* A concise, deterministic readout of the same aggregate counts computeMatch
             already produced — never a qualitative claim like "Great fit for your
             family," and a missing/unknown Must-Have is always named, never smoothed
@@ -177,14 +165,17 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
       </div>
     </header>
 
+    {/* Home Facts: what the property is. Shared facts save through the same
+        shared-home path as Edit Home (saveWhole); personal reactions, notes and
+        the Match questions stay in their own sections below. */}
+    <HomeFacts home={home} priorities={priorities} vocabulary={vocabulary} readOnly={readOnly} justAdded={justAdded} onSaveFacts={(patch) => saveWhole({ ...home, ...patch })} onEditAll={() => setEditing(true)} onSeeMatch={match ? scrollToMatch : null} />
+
     {/* Phone: the compact Match panel replaces the hero Match card; the full
         per-criterion breakdown stays available below ("Every criterion"). */}
     {match && <div className="flh-mobile-only">
       {/* Read-only (a Realtor viewing a buyer's home): it is the buyer's Match. */}
       <DetailMatchPanel match={match} heading={readOnly ? 'The buyer’s personalized Match' : 'Your personalized Match'} />
     </div>}
-
-    {facts.length > 0 && <Section eyebrow="The home" title="Property Facts" className="hh-detail-section-wide hh-detail-surface flh-detail-row-section"><DetailRow icon={NotebookText} title="More details" subtitle={`${facts.length} property ${facts.length === 1 ? 'fact' : 'facts'}${home.listingUrl ? ' · original listing' : ''}`}><dl className="hh-detail-facts">{facts.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>{home.conditionNotes && <p className="hh-detail-condition">{home.conditionNotes}</p>}{home.listingUrl && <a className="flh-mobile-only flh-detail-listing-link" href={home.listingUrl} target="_blank" rel="noreferrer">Original listing <ExternalLink size={14} aria-hidden="true" /></a>}</DetailRow></Section>}
 
     {commuteDestinations.length > 0 && (() => {
       return (
