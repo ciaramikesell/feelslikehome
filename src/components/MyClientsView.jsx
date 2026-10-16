@@ -52,16 +52,17 @@ export default function MyClientsView({ connected, prospective, disconnected }) 
   const empty = !connected.length && !prospective.length && !disconnected.length;
   return <main className="hh-people-page hh-clients-page">
     <header className="hh-people-header hh-clients-header">
-      <div><span>Realtor workspace</span><h1>My Clients</h1><p>Everyone you’re helping, in one place. Your buyers keep ownership of their search; your notes stay private to you.</p></div>
-      <div className="hh-people-actions"><AddClient /><Link className="hh-btn hh-btn-ghost" href="/people/start"><Search size={16} /> Start a client search</Link><InviteBuyer /></div>
+      <div><span>Realtor workspace</span><h1>My Clients</h1><p>Everyone you’re helping, in one place.{!empty && ' Your buyers keep ownership of their search; your notes stay private to you.'}</p></div>
+      {/* With no clients yet, the empty state below carries the one primary action. */}
+      {!empty && <div className="hh-people-actions"><AddClient /><Link className="hh-btn hh-btn-ghost" href="/people/start"><Search size={16} /> Start a client search</Link><InviteBuyer /></div>}
     </header>
 
     {empty ? <section className="hh-realtor-empty hh-people-empty" aria-labelledby="people-empty-heading">
       <div className="hh-people-empty-icon"><Users size={28} /></div>
       <h2 id="people-empty-heading">Your workspace is ready</h2>
-      <p>You don&apos;t have any clients here yet. Add someone you&apos;re already working with — just a name is enough — and keep your notes in one place until they join.</p>
+      <p>You don&apos;t have any clients here yet. Add someone you&apos;re working with — just a name is enough.</p>
       <AddClient label="Add your first client" />
-      <small>Your buyers keep ownership of their priorities, Match, and decisions.</small>
+      <div className="hh-clients-empty-alt"><span>Other ways to start</span><Link href="/people/start">Start a client search</Link><InviteBuyer buttonClassName="hh-clients-empty-link" /></div>
     </section> : <>
       <section className="hh-clients-section" aria-labelledby="connected-heading">
         <div className="hh-clients-section-title"><h2 id="connected-heading">Connected on Feels Like Home</h2><span>{connected.length}</span></div>

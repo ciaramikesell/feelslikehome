@@ -1310,6 +1310,16 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-clients-header .hh-people-actions a.hh-btn{text-decoration:none}
 .hh-clients-header .hh-invite-buyer-button{background:transparent;color:var(--ink);border:1px solid var(--flh-control-line,var(--line));box-shadow:none}
 .hh-clients-section{margin-top:30px}
+.hh-keep-points{list-style:none;margin:4px 0 6px;padding:0;display:grid;gap:10px}
+.hh-keep-points li{position:relative;padding-left:26px;font-size:15px;line-height:1.5;color:var(--ink)}
+.hh-keep-points li::before{content:"";position:absolute;left:4px;top:.5em;width:10px;height:6px;border-left:2px solid var(--moss);border-bottom:2px solid var(--moss);transform:rotate(-45deg)}
+.hh-people-empty .hh-btn.hh-btn{margin-bottom:14px;min-height:44px;align-items:center}
+.hh-keep-points~.hh-onboarding-actions .hh-btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+.hh-clients-empty-alt{display:flex;flex-direction:column;align-items:center;gap:0;font-size:12.5px;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:14px;margin-top:4px}
+.hh-clients-empty-alt>span{margin-bottom:2px}
+.hh-clients-empty-link svg{display:none}
+.hh-clients-empty-alt a,.hh-clients-empty-link{display:inline-flex;align-items:center;min-height:40px;padding:0 2px;background:none;border:0;color:var(--brick);font:600 13.5px var(--font-sans);text-decoration:none;cursor:pointer}
+.hh-clients-empty-alt .hh-invite-buyer{flex-basis:100%;text-align:left;margin-top:8px}
 .hh-clients-section-title{display:flex;align-items:baseline;gap:10px;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:16px}
 .hh-clients-section-title h2{font:600 21px/1.2 var(--font-serif);margin:0;color:var(--ink)}
 .hh-clients-section-title span{font:600 12px var(--font-mono);color:var(--ink-soft)}

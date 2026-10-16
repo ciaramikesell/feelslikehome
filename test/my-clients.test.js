@@ -107,3 +107,18 @@ test('claiming keeps a buyer’s existing priorities and names the search before
   const invitePage = read('src/app/invite/[token]/page.js');
   assert.match(invitePage, /preview\.valid && preview\.invitation_direction === 'realtor_to_buyer'\n/);
 });
+
+test('the empty state has one primary action; alternatives are quiet links and ownership is said once', () => {
+  const view = read('src/components/MyClientsView.jsx');
+  const emptyState = view.slice(view.indexOf('{empty ?'), view.indexOf(': <>'));
+  assert.equal((emptyState.match(/<AddClient/g) || []).length, 1);
+  assert.match(emptyState, /<InviteBuyer buttonClassName="hh-clients-empty-link" \/>/);
+  assert.doesNotMatch(emptyState, /keep ownership/);
+  assert.match(view, /\{!empty && <div className="hh-people-actions">/, 'header actions hide while the workspace is empty');
+});
+
+test('the keep-priorities confirmation is short and still keeps every safeguard', () => {
+  const keep = read('src/app/invite/[token]/confirm/KeepPrioritiesClaim.jsx');
+  for (const line of ['Your priorities stay exactly as they are.', 'can view your search and suggest homes.', 'You stay in control, and can remove them anytime in Your People.']) assert.ok(keep.includes(line), line);
+  assert.match(keep, /claimProspectiveSearch\(createClient\(\), token, null, searchId\)/);
+});
