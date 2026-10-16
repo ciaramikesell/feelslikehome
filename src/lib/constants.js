@@ -753,6 +753,11 @@ export function emptyHome() {
     // Rental V1 Pass B dormant shared facts. No current control populates these.
     propertyType: null, availableOn: null, petsAllowed: null,
     utilitiesIncluded: null, inUnitLaundry: null,
+    // Home Facts details — shared, descriptive, never Match inputs. null is
+    // Unknown; 'none' (garage/basement choices) is a real answer.
+    listingId: null, heating: null, cooling: null, exterior: null, roof: null,
+    garageType: null, basementStyle: null, basementCondition: null,
+    schoolDistrict: null, elementarySchool: null, middleSchool: null, highSchool: null,
   };
 }
 

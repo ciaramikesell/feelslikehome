@@ -34,7 +34,9 @@ test('regression guard: no new privileged/RLS path was introduced for this visua
 
 test('original listing renders only when a canonical URL exists, and the edit action is preserved', () => {
   assert.match(detail, /\{home\.listingUrl && <a href=\{home\.listingUrl\} target="_blank" rel="noreferrer">Original listing/);
-  assert.match(detail, /\{!readOnly && <button type="button" onClick=\{\(\) => setEditing\(true\)\}>/);
+  // Home Facts edits inline; the full editor stays for apartments and rentals.
+  assert.match(detail, /\{!readOnly && usesFullEditor && <button type="button" onClick=\{\(\) => setEditing\(true\)\}>/);
+  assert.match(read('src/components/HomeFacts.jsx'), /\{home\.listingUrl && <a className="flh-hf-link" href=\{home\.listingUrl\}/);
   assert.match(detail, /HomeModal presentation="detail-panel"/);
   assert.match(detail, /onSave=\{saveWhole\}/);
 });
@@ -94,10 +96,11 @@ test('the hero factual summary only renders when a real Match percentage exists'
 });
 
 test('full Match breakdown distinguishes missing, unknown, and neutral tour evaluations', () => {
-  assert.match(detail, /!item\.evaluated \? 'Some listing details couldn’t be determined reliably\.'/);
-  assert.match(detail, /const stateLabel = !item\.evaluated \? 'Unknown' : neutral \? 'Neutral' : item\.met \? 'Satisfied' : 'Missed';/);
-  assert.match(detail, /neutral \? 'neutral' : item\.met \? 'met' : 'missed'/);
-  assert.match(detail, /<span className="sr-only">\{stateLabel\}<\/span>/);
+  // Match Criteria (src/components/MatchCriteria.jsx) now renders every criterion.
+  const criteria = read('src/components/MatchCriteria.jsx');
+  assert.match(criteria, /if \(!item\.evaluated\) return \{ tone: 'unknown', text: 'Unknown'/);
+  assert.match(criteria, /if \(item\.met === null\) return \{ tone: 'neutral', text: 'Neutral'/);
+  assert.match(criteria, /item\.met \? \{ tone: 'met', text: 'Matches'[\s\S]*\{ tone: 'missed', text: 'Doesn’t match'/);
 });
 
 /* ------------------------------ Property facts: real fields only ------------------------------ */
@@ -105,7 +108,7 @@ test('full Match breakdown distinguishes missing, unknown, and neutral tour eval
 test('regression guard: Property Facts are still built only from real, existing fields — never fabricated', () => {
   const homeFactsLib = read('src/lib/homeFacts.js');
   assert.match(homeFactsLib, /\.filter\(Boolean\)/);
-  assert.match(detail, /formatHomePrice\(home\.price, priorities\.searchType\)/);
+  assert.match(homeFactsLib, /formatHomePrice\(home\?\.price, priorities\?\.searchType\)/);
   assert.match(homeFactsLib, /showsRentalFacts \? \[/);
   for (const source of [detail, homeFactsLib]) assert.doesNotMatch(source, /school rating|walkability|crime|neighborhood rating/i);
 });
@@ -173,8 +176,8 @@ test('regression guard: the existing mobile hero photo-first ordering is unchang
 });
 
 test('desktop refresh exposes the real payment, status chips, wide hero, and actionable Match summary', () => {
-  assert.match(detail, /home\.estMonthly/);
-  assert.match(detail, /hh-detail-status-chips/);
+  // The estimated payment is a Home Facts basic detail now.
+  assert.match(read('src/lib/homeFacts.js'), /row\('Est\. monthly payment', 'estMonthly'/);
   assert.match(detail, /hh-detail-match-card/);
   assert.match(detail, /matchSection\.current\?\.scrollIntoView/);
   assert.match(globalsCss, /\.hh-home-detail \{ max-width: 1320px;/);
@@ -182,9 +185,9 @@ test('desktop refresh exposes the real payment, status chips, wide hero, and act
 });
 
 test('category summaries count met, missing, and unknown independently', () => {
-  assert.match(detail, /const unknown = rows\.filter\(\(item\) => !item\.evaluated\)\.length/);
-  assert.match(detail, /`\$\{unknown\} unknown`/);
-  assert.match(detail, /hh-detail-question/);
+  const criteria = read('src/components/MatchCriteria.jsx');
+  assert.match(criteria, /const unknown = tierRows\.filter\(\(item\) => !item\.evaluated\)\.length/);
+  assert.match(criteria, /` · \$\{unknown\} unknown`/);
 });
 
 test('single canonical photo degrades gracefully without fake thumbnails or counts', () => {

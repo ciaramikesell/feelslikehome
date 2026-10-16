@@ -35,6 +35,8 @@ export const FULL_IMPORT = Object.freeze({
     address: '51613 Sass Rd, New Baltimore, MI 48047', price: '335000', beds: '5', baths: '2', sqft: '2080',
     lotSize: '0.29 acres', yearBuilt: '1993', propertyType: 'house', basementNotes: 'Unfinished', garageSpaces: '2',
     daysOnMarket: '23', latitude: 42.68, longitude: -82.73, propertyTaxAnnual: 4210, propertyTaxYear: 2025,
+    listingId: '20261076983', heating: 'Forced air', exterior: 'Vinyl siding', roof: 'Asphalt shingle',
+    garageType: 'attached', basementCondition: 'unfinished',
   },
   listingFacts: [
     { key: 'stories', label: 'Stories / levels', value: 2, group: 'structure' },
@@ -57,6 +59,14 @@ export const FULL_IMPORT = Object.freeze({
   ],
 });
 
+// A home imported before the structured Home Facts fields existed: its snapshot
+// has the facts only as read-only listing facts ("Listing says …").
+const LEGACY_IMPORT = Object.freeze({
+  fields: Object.fromEntries(Object.entries(FULL_IMPORT.fields).filter(([key]) => !['listingId', 'heating', 'exterior', 'roof', 'garageType', 'basementCondition'].includes(key))),
+  listingFacts: FULL_IMPORT.listingFacts,
+  descriptionFeatures: FULL_IMPORT.descriptionFeatures,
+});
+
 const PARTIAL_IMPORT = Object.freeze({
   fields: { address: '208 Linden Ave, Royal Oak, MI 48073', price: '289000', beds: '3', baths: '1.5' },
   listingFacts: [],
@@ -74,9 +84,10 @@ function homeFrom(snapshot, overrides = {}) {
 
 const HOME_STATES = {
   full: { home: homeFrom(FULL_IMPORT, { photoUrl: PHOTO, homeLayout: ['Two Story'] }), justAdded: 'import' },
-  saved: { home: homeFrom(FULL_IMPORT, { photoUrl: PHOTO, homeLayout: ['Two Story'], homeCondition: ['Move-In Ready'], primaryBedroomLocation: 'Upstairs', schoolsNotes: 'Anchor Bay School District', garageSpaces: '2', pros: 'Bright, open living area, Large backyard', cons: 'Kitchen feels a bit dated', notes: 'Quiet, well-kept street. Confirm HOA details and sewer.' }) },
+  saved: { home: homeFrom(FULL_IMPORT, { photoUrl: PHOTO, homeLayout: ['Two Story'], homeCondition: ['Move-In Ready'], primaryBedroomLocation: 'Main Floor', estMonthly: '2450', schoolDistrict: 'Anchor Bay School District', elementarySchool: 'Lighthouse Elementary', highSchool: 'Anchor Bay High', garageSpaces: '2', basementStyle: 'traditional', checks: { 'exterior:Garage': true, 'features:Finished basement': 'no' }, pros: 'Bright, open living area, Large backyard', cons: 'Kitchen feels a bit dated', notes: 'Quiet, well-kept street. Confirm HOA details and sewer.' }) },
   nophoto: { home: homeFrom(FULL_IMPORT), justAdded: 'import' },
   partial: { home: homeFrom(PARTIAL_IMPORT), justAdded: 'import' },
+  legacy: { home: homeFrom(LEGACY_IMPORT, { photoUrl: PHOTO, lotSize: '8712 sq ft', garageSpaces: '4', schoolsNotes: 'Anchor Bay Schools' }) },
   unknown: { home: homeFrom(PARTIAL_IMPORT, { photoUrl: PHOTO }) },
   manual: { home: { ...emptyHome(), id: HOME_ID, userId: USER_ID, address: '14 Orchard Ln, Grosse Pointe, MI 48236', price: '410000', beds: '4', baths: '2.5' }, justAdded: 'manual' },
   realtor: { home: homeFrom(FULL_IMPORT, { photoUrl: PHOTO, homeLayout: ['Two Story'] }), readOnly: true },

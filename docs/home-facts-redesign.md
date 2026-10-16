@@ -1,5 +1,9 @@
 # Home Facts redesign + post-import landing
 
+> Superseded for Add Home, Home Facts and Match by
+> [home-facts-flow-redesign.md](home-facts-flow-redesign.md). Kept for the
+> history of the workspace (#150).
+
 Goal: importing a home should feel like the start of exploring it, not the
 start of a questionnaire. FLH does the homework; the buyer reviews, corrects,
 or adds whenever they like; anything missing stays **Unknown** and never

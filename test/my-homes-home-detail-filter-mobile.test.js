@@ -187,15 +187,12 @@ test('multiple Places That Matter are never collapsed to one', () => {
 
 /* ------------------------------------ Home Detail ------------------------------------ */
 
-test('Home Detail’s compact Match panel reads only the canonical match and keeps Unknown distinct', () => {
-  const panel = read('src/components/DetailMatchPanel.jsx');
-  assert.match(panel, /const must = mustHaveStatus\(match\);/);
-  assert.match(panel, /const \{ criteriaSummary \} = selectHomeCardCriteria\(match\);/);
-  assert.match(panel, /\{summary\.evaluated\}\/\{summary\.total\} evaluated/);
-  assert.match(panel, /still unknown/);
-  assert.match(panel, /Not enough information yet/);
-  assert.match(panel, /Unknown details never count against a home\./);
-  assert.doesNotMatch(panel, /computeMatch\(|pct\s*=[^=]/);
+test('Home Detail’s Match reads only the canonical match and keeps Unknown distinct', () => {
+  // Match Criteria (one layout at every width) replaced the separate phone panel.
+  const criteria = read('src/components/MatchCriteria.jsx');
+  assert.match(criteria, /const rows = match\?\.allSelected \|\| \[\];/);
+  assert.match(criteria, /if \(!item\.evaluated\) return \{ tone: 'unknown', text: 'Unknown'/);
+  assert.doesNotMatch(criteria, /computeMatch\(|pct\s*=[^=]/);
   // Partial data: nothing known yields no percentage and every criterion Unknown.
   const match = evaluate(homes.find((home) => home.id === 'nothing-known'));
   assert.equal(match.pct, null);
@@ -209,7 +206,7 @@ test('Home Detail keeps its real actions, gated exactly as before, with a phone 
   assert.match(detail, /savePersonal\(toggleFavorite\(home\)\)/);
   assert.match(detail, /setArchiveTarget\(home\)/);
   assert.match(detail, /Original listing/);
-  assert.match(detail, /home\.suggestedBy && <span className="hh-provenance">Suggested by \{home\.suggestedBy\}<\/span>/);
+  assert.match(read('src/components/HomeFacts.jsx'), /home\.suggestedBy && <span className="hh-provenance">Suggested by \{home\.suggestedBy\}<\/span>/);
   assert.match(css, /\.flh-detail-action-bar \{[^}]*bottom: calc\(62px \+ env\(safe-area-inset-bottom\)\)/);
   assert.match(css, /\.hh-home-detail \{ position: relative; padding-bottom: calc\(96px \+ env\(safe-area-inset-bottom\)\); \}/);
   // Nothing invented: no neighborhood/amenity claims were added.

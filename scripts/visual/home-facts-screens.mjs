@@ -46,7 +46,10 @@ const IMPORT_RESPONSE = {
 const IGNORED_CONSOLE = /Download the React DevTools|favicon|bad HTTP response code \(500\) was received when fetching the script|Simulated save failure/;
 
 const SCENARIOS = [
-  { name: '01-add-home-found', query: 'view=add&state=found', act: async (page) => { await page.getByText('Listing found').waitFor(); } },
+  { name: '01-add-home-found', query: 'view=add&state=found', act: async (page) => {
+    await page.getByText('We found your home').waitFor();
+    if (await page.getByRole('button', { name: /Review details first/ }).count()) throw new Error('a competing Review action is still shown');
+  } },
   { name: '01b-add-home-saved', query: 'view=add&state=found', act: async (page) => {
     // Nothing is saved while the found card is showing.
     if (await page.getByTestId('preview-saved').count()) throw new Error('saved before Add to My Homes');
@@ -65,36 +68,34 @@ const SCENARIOS = [
     await page.getByRole('button', { name: 'Add to My Homes' }).click();
     await page.getByRole('alert').waitFor();
   } },
-  { name: '01d-add-home-review-first', query: 'view=add&state=found', act: async (page) => {
-    await page.getByRole('button', { name: /Review details first/ }).click();
-    await page.getByRole('heading', { name: 'Check what came through.' }).waitFor();
-  } },
   { name: '01e-add-home-duplicate', query: 'view=add&state=duplicate', act: async (page) => { await page.getByText('This home is already here').waitFor(); } },
   { name: '01f-add-home-manual', query: 'view=add&state=manual', act: async (page) => {
     await page.getByText(/Can.t find the home/).click();
     await page.getByRole('button', { name: 'Enter manually' }).click();
-    await page.getByRole('heading', { name: 'Check what came through.' }).waitFor();
+    await page.getByRole('heading', { name: 'Where is this home?' }).waitFor();
   } },
-  { name: '02-home-facts-landing', query: 'state=full', act: async (page) => { await page.getByText('Welcome home (at least for now).').waitFor(); } },
-  { name: '03-home-features-editing', query: 'state=full', act: async (page) => {
-    await page.getByRole('button', { name: 'Edit home features' }).click();
-    await page.getByRole('group', { name: 'Home condition' }).waitFor();
-    await page.locator('.flh-facts-features').scrollIntoViewIfNeeded();
+  { name: '02-home-facts-landing', query: 'state=full', act: async (page) => { await page.getByText('We found your home.').waitFor(); } },
+  { name: '03-home-details-editing', query: 'state=full', act: async (page) => {
+    await page.getByRole('button', { name: 'Edit home details' }).click();
+    await page.getByRole('group', { name: /Home condition/ }).waitFor();
+    await page.locator('.flh-hf-group.is-details').scrollIntoViewIfNeeded();
   } },
-  { name: '04-school-details', query: 'state=saved', act: async (page) => { await page.locator('.flh-facts-schools').scrollIntoViewIfNeeded(); } },
-  { name: '05-listing-details-collapsed', query: 'state=saved', act: async (page) => { await page.locator('.flh-facts-all').scrollIntoViewIfNeeded(); } },
-  { name: '05b-listing-details-open', query: 'state=saved', act: async (page) => {
-    await page.getByRole('button', { name: 'See imported details' }).click();
-    await page.locator('.flh-facts-all[open]').waitFor();
+  { name: '03b-property-editing', query: 'state=full', act: async (page) => {
+    await page.getByRole('button', { name: 'Edit property' }).click();
+    await page.getByLabel('Lot size (acres)').fill('10,890 sq ft');
+    await page.getByText('Saves as 0.25 acres').waitFor();
   } },
+  { name: '04-saved-home-facts', query: 'state=saved' },
+  { name: '05-legacy-home', query: 'state=legacy', act: async (page) => { await page.getByText('Listing says: Forced air').waitFor(); } },
   { name: '06-no-photo', query: 'state=nophoto' },
   { name: '07-partial-import', query: 'state=partial' },
-  { name: '08-unknown-features', query: 'state=unknown', act: async (page) => { await page.locator('.flh-facts-features').scrollIntoViewIfNeeded(); } },
-  { name: '09-manual-entry', query: 'state=manual' },
+  { name: '08-unknown-facts', query: 'state=unknown' },
+  { name: '09-manual-entry', query: 'state=manual', act: async (page) => { await page.getByText('Your home is saved.').waitFor(); } },
   { name: '10-realtor-read-only', query: 'state=realtor', act: async (page) => {
-    for (const name of [/Edit home features/, /school details/i, /Edit home information/, /Correct details/, /Want to tour/]) {
-      if (await page.getByRole('button', { name }).count()) throw new Error(`Realtor view shows ${name}`);
-    }
+    if (await page.getByRole('button', { name: /^Edit/ }).count()) throw new Error('Realtor view shows an Edit control');
+    await page.locator('.flh-workspace-nav').getByRole('button', { name: /Match Criteria/ }).click();
+    await page.getByRole('heading', { level: 1, name: 'Match Criteria' }).waitFor();
+    if (await page.getByRole('radio').count()) throw new Error('Realtor view shows answer controls');
     await page.locator('.flh-workspace-nav').getByRole('button', { name: /Tour Feedback/ }).click();
     await page.getByRole('heading', { level: 1, name: 'Tour Feedback' }).waitFor();
     for (const name of [/Want to tour/, /Record your take/, /Add pros, cons/, /Archive/]) {
@@ -102,28 +103,27 @@ const SCENARIOS = [
     }
   } },
   { name: '11-cobuyer', query: 'state=cobuyer' },
-  { name: '12-check-the-match', query: 'state=saved&section=match', act: async (page) => {
-    await page.getByRole('heading', { level: 1, name: 'Check the Match' }).waitFor();
+  { name: '12-match-criteria', query: 'state=saved&section=match', act: async (page) => {
+    await page.getByRole('heading', { level: 1, name: 'Match Criteria' }).waitFor();
+    for (const tier of ['Must-Haves', 'Important', 'Nice to Have']) await page.getByRole('heading', { level: 2, name: tier }).waitFor();
     const current = await page.locator('.flh-workspace-nav [aria-current="page"]').textContent();
-    if (!current.includes('Check the Match')) throw new Error('nav does not mark Check the Match current');
+    if (!current.includes('Match Criteria')) throw new Error('nav does not mark Match Criteria current');
   } },
   { name: '12b-unknown-section-falls-back', query: 'state=saved&section=bogus', act: async (page) => {
     await page.getByRole('heading', { level: 1, name: 'Home Facts' }).waitFor();
   } },
   { name: '13-tour-feedback', query: 'state=saved&section=tour' },
-  { name: '14-switch-sections', query: 'state=saved', act: async (page) => {
-    await page.locator('.flh-workspace-nav').getByRole('button', { name: /Check the Match/ }).click();
-    await page.getByRole('heading', { level: 1, name: 'Check the Match' }).waitFor();
+  { name: '14-next-and-switch-sections', query: 'state=saved', act: async (page) => {
+    await page.getByRole('button', { name: /Next: Match Criteria/ }).click();
+    await page.getByRole('heading', { level: 1, name: 'Match Criteria' }).waitFor();
+    if (!page.url().includes('section=match')) throw new Error('Next did not reach Match Criteria');
     await page.locator('.flh-workspace-nav').getByRole('button', { name: /Tour Feedback/ }).click();
     await page.getByRole('heading', { level: 1, name: 'Tour Feedback' }).waitFor();
-    if (!page.url().includes('section=tour')) throw new Error('section not reflected in URL');
     await page.locator('.flh-workspace-nav').getByRole('button', { name: /Home Facts/ }).click();
     await page.getByRole('heading', { level: 1, name: 'Home Facts' }).waitFor();
     if (page.url().includes('section=')) throw new Error('Home Facts should carry no section parameter');
     // Switching areas never stacks history entries.
     if (await page.evaluate(() => window.history.length) !== 2) throw new Error('section switches added history entries');
-    await page.goto(page.url().replace(/\?.*$/, '?state=saved&section=tour'));
-    await page.getByRole('heading', { level: 1, name: 'Tour Feedback' }).waitFor();
   } },
 ];
 
@@ -149,7 +149,7 @@ async function main() {
         await page.evaluate(() => document.fonts.ready);
         if (scenario.act) await scenario.act(page);
         await page.waitForTimeout(250);
-        await page.screenshot({ path: join(outDir, file), fullPage: !/^0[345]/.test(scenario.name) });
+        await page.screenshot({ path: join(outDir, file), fullPage: !/^0(1[a-f]?|3b?)-/.test(scenario.name) });
       } catch (err) { error = err.message; }
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth).catch(() => null);
       const entry = { file, width: viewport.width, overflow, error, consoleErrors: errors };

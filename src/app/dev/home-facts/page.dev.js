@@ -9,7 +9,7 @@ import HomeFactsPreview from '@/components/HomeFactsPreview';
 // and its fixtures out of production builds entirely; the NODE_ENV check and
 // the /dev/ middleware 404 remain as further guards.
 //
-//   /dev/home-facts?state=full|saved|nophoto|partial|unknown|manual|realtor|cobuyer[&section=facts|match|tour]
+//   /dev/home-facts?state=full|saved|legacy|nophoto|partial|unknown|manual|realtor|cobuyer[&section=facts|match|tour]
 //   /dev/home-facts?view=add&state=found|duplicate|error|manual
 export const dynamic = 'force-dynamic';
 export const metadata = { robots: { index: false, follow: false } };

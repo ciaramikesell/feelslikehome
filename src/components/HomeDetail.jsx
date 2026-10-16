@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Check, ChevronRight, ExternalLink, Heart, Footprints, Home as HomeIcon, ListChecks, MapPin, Minus, NotebookText, Pencil, RotateCcw, Star, X } from 'lucide-react';
-import DetailMatchPanel from '@/components/DetailMatchPanel';
+import { ArrowLeft, Check, ChevronRight, ExternalLink, Heart, Footprints, Home as HomeIcon, ListChecks, MapPin, NotebookText, Pencil, RotateCcw, Star } from 'lucide-react';
 import MobileDisclosure from '@/components/MobileDisclosure';
 import { IconBadge } from '@/components/MobileSystem';
 import HomeModal from '@/components/HomeModal';
@@ -11,11 +10,13 @@ import PostTourModal from '@/components/PostTourModal';
 import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
 import RealtorContributions from '@/components/RealtorContributions';
 import HomeFacts from '@/components/HomeFacts';
+import MatchCriteria from '@/components/MatchCriteria';
 import HomeDetailLocation from '@/components/HomeDetailLocation';
 import { criterionDisplayLabel, isArchivedStatus, TOUR_RATING_KEY } from '@/lib/constants';
-import { computeMatch, matchFactualSummary, parseNum } from '@/lib/matching';
+import { computeMatch, matchFactualSummary, SHARED_BOOLEAN_FACT_FIELDS, sharedFactValue } from '@/lib/matching';
+import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { evaluateCommute } from '@/lib/commute';
-import { formatHomePrice, formatLotSizeDisplay, parseCommaList } from '@/lib/homeDisplay';
+import { parseCommaList } from '@/lib/homeDisplay';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
 import { useCommuteObserver } from '@/lib/useCommuteObserver';
 import { createClient } from '@/lib/supabase/client';
@@ -26,12 +27,11 @@ import { applyPostTourVerdict, archiveHome, hasToured, restoreHome, toggleFavori
 // (Home Facts is the default and carries no parameter).
 export const WORKSPACE_SECTIONS = Object.freeze([
   { key: 'facts', label: 'Home Facts', icon: HomeIcon, eyebrow: 'The property', intro: 'What FLH knows about this home. Imported details are a starting point — correct or add anything, anytime.', readOnlyIntro: 'What’s known about this home, from the listing and the buyers.' },
-  { key: 'match', label: 'Check the Match', icon: ListChecks, eyebrow: 'Your search', intro: 'How this home lines up with the priorities in your search. Unknown never counts against it.', readOnlyIntro: 'How this home lines up with the buyer’s priorities. Unknown never counts against it.' },
+  { key: 'match', label: 'Match Criteria', icon: ListChecks, eyebrow: 'Your search', intro: 'Does it have what matters to you? Answer what you know — Unknown never counts against it.', readOnlyIntro: 'How this home lines up with the buyer’s priorities. Unknown never counts against it.' },
   { key: 'tour', label: 'Tour Feedback', icon: NotebookText, eyebrow: 'Your take', intro: 'How it felt in person, plus the notes you want to remember.', readOnlyIntro: 'The buyer’s take and notes, plus your professional context.' },
 ]);
 const SECTION_KEYS = new Set(WORKSPACE_SECTIONS.map((item) => item.key));
 
-const TIER_LABELS = { must: 'Must-haves', important: 'Important', nice: 'Nice to have' };
 
 function Stars({ value }) {
   return <span className="hh-detail-stars" aria-label={`${value} out of 5 stars`}>{[1, 2, 3, 4, 5].map((n) => <Star key={n} size={17} fill={n <= value ? '#C69245' : 'none'} color={n <= value ? '#C69245' : '#DED2C1'} />)}</span>;
@@ -51,14 +51,6 @@ function DetailRow({ icon, title, subtitle, tone = 'default', children }) {
   );
 }
 
-function tierSummary(rows) {
-  const met = rows.filter((item) => item.evaluated && item.met).length;
-  const missed = rows.filter((item) => item.evaluated && item.met === false).length;
-  const neutral = rows.filter((item) => item.evaluated && item.met === null).length;
-  const unknown = rows.filter((item) => !item.evaluated).length;
-  return [met ? `${met} met` : null, missed ? `${missed} missing` : null, neutral ? `${neutral} neutral` : null, unknown ? `${unknown} unknown` : null].filter(Boolean).join(' · ');
-}
-
 export default function HomeDetail({ home: initialHome, priorities, commuteDestinations = [], coBuyerPerspective, sharedFactAwareness = {}, userId, searchId, isCollaborative = false, readOnly = false, backHref = null, realtorContributions = { notes: [], tours: [] }, justAdded = null, initialSection = 'facts' }) {
   const router = useRouter();
   const [home, setHome] = useState(initialHome);
@@ -72,6 +64,9 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
   const personalQueue = useRef(Promise.resolve());
   const matchSection = useRef(null);
   const [section, setSection] = useState(SECTION_KEYS.has(initialSection) ? initialSection : 'facts');
+  // Captured once: a later router.refresh() re-renders this page without the
+  // ?added= marker, and the welcome must not vanish mid-read.
+  const [welcomeKind] = useState(justAdded);
   const mainRef = useRef(null);
   const titleRef = useRef(null);
   const confirmedHome = useRef(initialHome);
@@ -93,6 +88,9 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
   ));
   const identity = homeIdentity(home, priorities);
   const vocabulary = homeVocabulary(priorities);
+  // Apartments (property name, unit, floor plan) and rentals (availability)
+  // keep the full editor for the details Home Facts doesn't cover.
+  const usesFullEditor = vocabulary.apartment || searchIntentCapabilities(priorities.searchType).showsRentalFacts;
 
   const savePersonal = async (patch) => {
     const next = { ...home, ...patch };
@@ -135,6 +133,16 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
     setSaving(true);
     try { await saveWhole({ ...home, ...thoughts }); setNotesOpen(false); } catch {} finally { setSaving(false); }
   };
+  // Match Criteria answers go exactly where the editor always wrote them: the
+  // buyer's own checks, or (Pets / Utilities / In-Unit Laundry) the shared field.
+  const answerCriterion = (item, next) => {
+    const sharedField = SHARED_BOOLEAN_FACT_FIELDS[item.key];
+    if (sharedField) return saveWhole({ ...home, [sharedField]: sharedFactValue(next) });
+    const checks = { ...(home.checks || {}) };
+    if (next === undefined) delete checks[item.key];
+    else checks[item.key] = next;
+    return savePersonal({ checks });
+  };
   const handleVerdict = async (current, verdict, patch) => {
     const next = applyPostTourVerdict(current, verdict, patch);
     return hasSharedHomeChanges(next, home) ? saveWhole(next) : savePersonal(next);
@@ -147,10 +155,14 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
   // The ?added= marker only exists to show the welcome once; drop it from the
   // address bar so a refresh or a shared link doesn't repeat it.
   useEffect(() => {
-    if (justAdded && typeof window !== 'undefined') window.history.replaceState(window.history.state, '', window.location.pathname);
+    if (justAdded && typeof window !== 'undefined') window.history.replaceState(null, '', window.location.pathname);
   }, [justAdded]);
   // Switching areas never reloads data or adds history entries: the URL keeps
   // ?section= (so refresh and shared links return here) via replaceState.
+  // The state argument must be null: Next.js only syncs its router with a
+  // replaceState whose state isn't already its own (__NA). Passing
+  // window.history.state left the router on the old URL, so the next
+  // router.refresh() (after any save) silently dropped ?section=.
   const goTo = (next) => {
     if (!SECTION_KEYS.has(next)) return;
     setSection(next);
@@ -158,7 +170,7 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
       const url = new URL(window.location.href);
       url.searchParams.delete('added');
       if (next === 'facts') url.searchParams.delete('section'); else url.searchParams.set('section', next);
-      window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}`);
+      window.history.replaceState(null, '', `${url.pathname}${url.search}`);
     }
     requestAnimationFrame(() => {
       if (mainRef.current && mainRef.current.getBoundingClientRect().top < 0) mainRef.current.scrollIntoView({ block: 'start' });
@@ -166,6 +178,10 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
     });
   };
   const scrollToMatch = () => { matchSection.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); matchSection.current?.focus({ preventScroll: true }); };
+  const nextFromFacts = () => {
+    goTo('match');
+    requestAnimationFrame(() => window.scrollTo?.({ top: 0, behavior: 'smooth' }));
+  };
   const back = () => backHref ? router.push(backHref) : window.history.length > 1 ? router.back() : router.push('/homes');
 
   const sectionMeta = WORKSPACE_SECTIONS.find((item) => item.key === section) || WORKSPACE_SECTIONS[0];
@@ -197,24 +213,16 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
           <h1 className="hh-serif" tabIndex={-1} ref={titleRef}>{sectionMeta.label}</h1>
           <p>{readOnly ? sectionMeta.readOnlyIntro : sectionMeta.intro}</p>
         </div>
-        <div className="hh-detail-links">{home.listingUrl && <a href={home.listingUrl} target="_blank" rel="noreferrer">Original listing <ExternalLink size={15} /></a>}{!readOnly && <button type="button" onClick={() => setEditing(true)}><Pencil size={15} /> Edit {vocabulary.singularLower} information</button>}</div>
+        {/* Home Facts carries the listing link and its own Edit controls. */}
+        {section !== 'facts' && (home.listingUrl || (!readOnly && usesFullEditor)) && <div className="hh-detail-links">{home.listingUrl && <a href={home.listingUrl} target="_blank" rel="noreferrer">Original listing <ExternalLink size={15} /></a>}{!readOnly && usesFullEditor && <button type="button" onClick={() => setEditing(true)}><Pencil size={15} /> Edit {vocabulary.singularLower} information</button>}</div>}
       </header>
 
       {section === 'facts' && <>
         {/* Home Facts: what the property is. Shared facts save through the same
             shared-home path as Edit Home (saveWhole). */}
-        <HomeFacts home={home} priorities={priorities} vocabulary={vocabulary} readOnly={readOnly} justAdded={justAdded} onSaveFacts={(patch) => saveWhole({ ...home, ...patch })} onEditAll={() => setEditing(true)} onSeeMatch={match ? () => goTo('match') : null}
-          summary={<div className="flh-property-card">
-            <div className="flh-property-photo">{home.photoUrl ? <img src={home.photoUrl} alt={`${identity.accessible} ${vocabulary.singularLower} photo`} /> : <HomeIcon size={40} />}</div>
-            <div className="flh-property-identity">
-              <div className="hh-detail-status-chips"><span>{home.status}</span>{home.isFavorite && <span className="favorite"><Heart size={12} fill="currentColor" aria-hidden="true" /> Favorite</span>}</div>
-              <div className="hh-detail-price-row"><div className="hh-detail-price">{formatHomePrice(home.price, priorities.searchType) || 'Price not added'}</div>{home.estMonthly && <span>${Number(home.estMonthly).toLocaleString()}/mo est.</span>}</div>
-              <h2 className="hh-serif flh-property-address">{identity.primary}</h2>{identity.option && <p className="hh-detail-option">{identity.option}</p>}{identity.supporting && <p className="hh-detail-locality">{identity.supporting}</p>}
-              <div className="hh-detail-core-facts">{[home.beds && `${home.beds} beds`, home.baths && `${home.baths} baths`, home.sqft && `${parseNum(home.sqft)?.toLocaleString()} sq ft`, home.lotSize && formatLotSizeDisplay(home.lotSize)].filter(Boolean).map((fact) => <span key={fact}>{fact}</span>)}</div>
-              {home.suggestedBy && <span className="hh-provenance">Suggested by {home.suggestedBy}</span>}
-            </div>
-          </div>}
-        />
+        <HomeFacts home={home} priorities={priorities} vocabulary={vocabulary} readOnly={readOnly} justAdded={welcomeKind} userId={userId}
+          onSaveFacts={(patch) => saveWhole({ ...home, ...patch })} onNext={() => nextFromFacts()}
+          onEditAll={usesFullEditor ? () => setEditing(true) : null} />
       </>}
 
       {section === 'match' && <>
@@ -231,14 +239,11 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
           </p>
         )}
         </div> : <p className="hh-detail-context">No priorities are set for this search yet, so there’s nothing to match against.</p>}
-    {/* Phone: the compact Match panel replaces the hero Match card; the full
-        per-criterion breakdown stays available below ("Every criterion"). */}
-    {match && <div className="flh-mobile-only">
-      {/* Read-only (a Realtor viewing a buyer's home): it is the buyer's Match. */}
-      <DetailMatchPanel match={match} heading={readOnly ? 'The buyer’s personalized Match' : 'Your personalized Match'} />
+    {/* Must-Haves / Important / Nice to Have, answered Yes / No / Unknown.
+        Same allSelected rows the Match % is scored from (no second path). */}
+    {match && <div ref={matchSection} tabIndex={-1} className="hh-detail-match-anchor">
+      <MatchCriteria home={home} priorities={priorities} match={match} readOnly={readOnly} onAnswer={answerCriterion} onEditFacts={() => goTo('facts')} />
     </div>}
-
-    {match && <div ref={matchSection} tabIndex={-1} className="hh-detail-match-anchor"><Section eyebrow="How it fits your search" title={match.pct == null ? 'More will come into focus' : `Why this home is a ${match.pct}% Match${readOnly ? '' : ' for you'}`} className="hh-detail-section-wide hh-detail-surface flh-detail-row-section"><DetailRow icon={ListChecks} title="Every criterion" subtitle={`${match.allSelected.length} ${match.allSelected.length === 1 ? 'priority' : 'priorities'} · how each one reads for this ${vocabulary.singularLower}`}><div className="hh-detail-match-groups">{['must', 'important', 'nice'].map((tier) => { const rows = match.allSelected.filter((item) => item.tier === tier); return rows.length ? <div className={`hh-detail-match-tier ${tier}`} key={tier}><h3>{TIER_LABELS[tier]}<small>{tierSummary(rows)}</small></h3>{rows.map((item) => { const neutral = item.evaluated && item.met === null; const detail = !item.evaluated ? 'Some listing details couldn’t be determined reliably.' : item.detail || (item.objective ? 'Evaluated' : neutral ? 'Neutral' : item.met ? 'Matches' : 'Does not match'); const stateLabel = !item.evaluated ? 'Unknown' : neutral ? 'Neutral' : item.met ? 'Satisfied' : 'Missed'; return <div className={`hh-detail-criterion ${!item.evaluated ? 'unknown' : neutral ? 'neutral' : item.met ? 'met' : 'missed'}`} key={item.key}><b aria-hidden="true">{!item.evaluated ? <span className="hh-detail-question">?</span> : neutral ? <span>—</span> : item.met ? <Check size={14} /> : <X size={14} />}</b><span><strong>{item.key.includes(':') ? criterionDisplayLabel(item.key.split(':')[0], item.label) : item.label}</strong><small>{detail}</small></span><span className="sr-only">{stateLabel}</span></div>; })}</div> : null; })}</div></DetailRow></Section></div>}
 
     {commuteDestinations.length > 0 && (() => {
       return (
