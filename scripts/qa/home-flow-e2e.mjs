@@ -98,6 +98,11 @@ async function journey(browser, width) {
     const [saved] = q(`select price, beds, garage_spaces, heating, garage_type, basement_condition, listing_id, lot_size, listing_import is not null as snapshot from public.homes where id = '${homeId}'`);
     assert(saved.price === '335000' && saved.heating === 'Forced Air' && saved.garage_type === 'attached' && saved.listing_id === '20261076983' && saved.snapshot, `imported values not persisted: ${JSON.stringify(saved)}`);
     assert(q(`select 1 from public.home_member_state where home_id = '${homeId}' and user_id = '${info.users.owner.id}'`).length === 1, 'personal state row missing');
+    // Approved shape: the requested groups, no imported-facts panel, no school disclaimer.
+    for (const title of ['Basic details', 'Home details', 'School details', 'Garage', 'Basement']) await owner.getByRole('heading', { level: 3, name: title }).waitFor();
+    for (const gone of [/All listing details/, /See imported details/, /doesn.t pull school information/, /Confirm school assignment/]) {
+      assert(!(await owner.getByText(gone).count()), `Home Facts still shows ${gone}`);
+    }
     await shot(owner, tag('02-home-facts-landing'));
   });
 
@@ -121,6 +126,20 @@ async function journey(browser, width) {
     await shot(owner, tag('04-duplicate'), { full: false });
     assert(homesWithUrl(LISTING).length === 1, 'duplicate created');
     await owner.getByRole('button', { name: 'Close add home' }).click();
+  });
+
+  await step(`[${width}] iOS share intake (/homes?url=) of a new listing: auto-find → one Add → Home Facts → persists`, async () => {
+    const shared = `https://www.redfin.com/MI/New-Baltimore/42-Shared-Ct-${width}-48047/home/42`;
+    await owner.goto(`${base}/homes?url=${encodeURIComponent(shared)}`, { waitUntil: 'networkidle' });
+    await owner.getByRole('button', { name: 'Add to My Homes' }).waitFor({ timeout: 30000 });
+    assert(!(await owner.getByRole('button', { name: /Review details first/ }).count()), 'competing Review button');
+    assert(homesWithUrl(shared).length === 0, 'share intake saved before Add');
+    await owner.getByRole('button', { name: 'Add to My Homes' }).click();
+    await owner.waitForURL(/\/homes\/[0-9a-f-]{36}/, { timeout: 60000 });
+    await owner.getByRole('heading', { level: 1, name: 'Home Facts' }).waitFor();
+    assert(homesWithUrl(shared).length === 1, 'share intake did not save exactly once');
+    await owner.goBack({ waitUntil: 'networkidle' });
+    await owner.getByText(`42 Shared Ct ${width}`).first().waitFor({ timeout: 15000 });
   });
 
   await step(`[${width}] share intake (/homes?url=) of the same listing opens the existing home`, async () => {
@@ -193,6 +212,23 @@ async function journey(browser, width) {
     await owner.reload({ waitUntil: 'networkidle' });
     await owner.getByText('Anchor Bay School District').waitFor();
     await shot(owner, tag('08-home-facts-saved'));
+  });
+
+  await step(`[${width}] save an edit, then Next: Match Criteria right away (no reload)`, async () => {
+    await owner.goto(`${base}/homes/${homeId}`, { waitUntil: 'networkidle' });
+    await owner.getByRole('button', { name: 'Edit basic details' }).click();
+    await owner.getByLabel('Est. monthly payment').fill('2450');
+    await owner.getByRole('button', { name: 'Save basic details' }).click();
+    await owner.getByRole('button', { name: 'Edit basic details' }).waitFor();
+    await owner.getByText('$2,450/mo').waitFor();
+    await owner.getByRole('button', { name: /Next: Match Criteria/ }).click();
+    await owner.getByRole('heading', { level: 1, name: 'Match Criteria' }).waitFor();
+    assert(owner.url().includes('section=match'), 'Next did not set ?section=match');
+    await owner.waitForTimeout(1500);
+    assert(owner.url().includes('section=match'), 'the post-save refresh dropped ?section=match');
+    assert(q(`select est_monthly from public.homes where id = '${homeId}'`)[0].est_monthly === '2450', 'estimate not saved');
+    await owner.getByRole('button', { name: /Home Facts/ }).first().click();
+    await owner.getByRole('heading', { level: 1, name: 'Home Facts' }).waitFor();
   });
 
   await step(`[${width}] Next: Match Criteria → three tiers → Yes / No / Unknown saves the buyer's own answer`, async () => {

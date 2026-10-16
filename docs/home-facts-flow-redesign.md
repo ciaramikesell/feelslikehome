@@ -155,7 +155,9 @@ verification on a pre-migration database and asserts no row changes.
   share-intake duplicate; interrupted save + retry; manual entry; Home Facts
   edits (None, schools, lot size); Match Criteria Yes / No / Unknown; legacy
   home unchanged by viewing; co-buyer shared edit + personal answer;
-  Realtor read-only.
+  Realtor read-only; iOS share intake of a new listing; Next: Match Criteria
+  right after a saved edit (no reload); and that Home Facts shows the five
+  groups with no imported-facts panel and no school disclaimer.
 - Fixture screens: `scripts/visual/home-facts-screens.mjs` (`/dev/home-facts`).
 
 Screenshots: `docs/home-facts-screenshots/` (from the full-stack run; widths
