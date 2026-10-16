@@ -62,10 +62,13 @@ test('personal note on card uses the truthful, already-established shared-field 
   const detail = await source('src/components/HomeDetail.jsx');
   assert.match(board, /\{isCollaborative \? 'Shared notes' : 'What you want to remember'\}/);
   assert.doesNotMatch(board, /hh-compare-note-label">Your notes/);
-  // Same label pair Home Detail already established for this exact tension
-  // (notes/pros/cons are a SHARED home field, not participant-owned --
-  // see SHARED_FIELDS in collaboration.js) -- reused, not reinvented.
-  assert.match(detail, /isCollaborative \? "Shared notes" : "What you want to remember"/);
+  // Notes/pros/cons are a SHARED home field, not participant-owned (see
+  // SHARED_FIELDS in collaboration.js). Home Detail's Tour Feedback says so
+  // truthfully and never claims "Your notes".
+  const tour = await source('src/components/TourFeedback.jsx');
+  assert.match(detail, /<TourFeedback/);
+  assert.match(tour, /isCollaborative \? ' Shared with everyone in this search\.' : ''/);
+  assert.doesNotMatch(tour, />Your notes</);
 });
 
 test('note excerpt truncates gracefully (reuses the existing line-clamp utility) instead of stretching one card taller than its neighbors', async () => {
@@ -83,8 +86,9 @@ test('the old bottom Notes section is removed (deduplicated into the card) witho
   assert.match(board, /<summary>What Stood Out<\/summary>/);
   assert.match(board, /parseCommaList\(h\.pros\)/);
   assert.match(board, /parseCommaList\(h\.cons\)/);
-  // Editing still lives on Home Detail, untouched.
-  assert.match(detail, /Edit property notes|Add pros, cons, or a note/);
+  // Editing lives on Home Detail's Tour Feedback, through the shared-home save.
+  assert.match(detail, /onSaveNotes=\{\(draft\) => saveWhole\(\{ \.\.\.home, \.\.\.draft \}\)\}/);
+  assert.match(await source('src/components/TourFeedback.jsx'), /Save notes/);
 });
 
 test('Differences Only control: two-state toggle with the actual current count, not a hard-coded number, and unchanged difference-detection semantics', async () => {
