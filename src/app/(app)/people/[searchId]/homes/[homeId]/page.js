@@ -6,8 +6,9 @@ import { normalizePriorities, TOUR_RATING_KEY } from '@/lib/constants';
 import { computeMatch } from '@/lib/matching';
 import HomeDetail from '@/components/HomeDetail';
 
-export default async function RealtorHomePage({ params }) {
+export default async function RealtorHomePage({ params, searchParams }) {
   const { searchId, homeId } = await params;
+  const initialSection = (await searchParams)?.section;
   return withAuthRecovery(async () => {
     const supabase = await createClient();
     const user = await requireUser(supabase);
@@ -24,6 +25,6 @@ export default async function RealtorHomePage({ params }) {
     const coPriorities = normalizePriorities(context.priorities.find((row) => row.user_id === coBuyer?.user_id)?.priorities);
     const coBuyerPerspective = coBuyer ? { match: computeMatch({ ...home, checks: coState?.checks || {}, ratings: coState?.ratings || {} }, coPriorities), overallFeeling: coState?.ratings?.[TOUR_RATING_KEY] || 0, differentTakes: [] } : null;
     const participantHome = { ...home, status: state?.status || 'Saved', touredAt: state?.toured_at || null, isFavorite: Boolean(state?.is_favorite), reaction: state?.reaction || null, rejectionReason: state?.rejection_reason || '', ratings: state?.ratings || {}, checks: state?.checks || {} };
-    return <HomeDetail home={participantHome} priorities={priorities} userId={user.id} searchId={searchId} coBuyerPerspective={coBuyerPerspective} readOnly backHref={`/people/${searchId}`} isCollaborative={context.people.length > 1} realtorContributions={realtorContributions} />;
+    return <HomeDetail home={participantHome} priorities={priorities} userId={user.id} searchId={searchId} coBuyerPerspective={coBuyerPerspective} readOnly backHref={`/people/${searchId}`} isCollaborative={context.people.length > 1} realtorContributions={realtorContributions} initialSection={initialSection} />;
   });
 }

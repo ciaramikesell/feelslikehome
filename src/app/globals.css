@@ -2403,6 +2403,176 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .hh-invite-choose .hh-btn { min-height: 44px; }
 
 
+/* ------------------------------ Home workspace ------------------------------
+   One home, three areas (Home Facts / Check the Match / Tour Feedback). A slim,
+   restrained left navigation keeps the property in view on desktop; on phones
+   it becomes a compact sticky identity row plus a three-way section switcher. */
+.hh-home-detail.flh-workspace { max-width: 1360px; display: grid; grid-template-columns: 228px minmax(0,1fr); gap: clamp(28px,3.4vw,48px); align-items: start; }
+.flh-workspace-nav { position: sticky; top: 20px; display: grid; gap: 18px; min-width: 0; }
+.flh-workspace-back { display: inline-flex; align-items: center; gap: 7px; justify-self: start; min-height: 36px; padding: 4px 0; border: 0; background: none; color: var(--brick); font: 650 13px 'Plus Jakarta Sans', sans-serif; cursor: pointer; }
+.flh-workspace-back:hover { color: var(--brick-deep); }
+.flh-workspace-identity { display: grid; gap: 10px; min-width: 0; }
+.flh-workspace-photo { display: grid; place-items: center; aspect-ratio: 16 / 10; overflow: hidden; border-radius: 12px; background: #ece4d8; color: rgba(46,38,33,.3); }
+.flh-workspace-photo img { width: 100%; height: 100%; object-fit: cover; }
+.flh-workspace-identity strong { display: block; color: var(--ink); font-size: 17px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; }
+.flh-workspace-identity span { display: block; margin-top: 3px; color: var(--ink-soft); font-size: 12.5px; line-height: 1.4; }
+.flh-workspace-nav ul { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; }
+.flh-workspace-nav nav button { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 42px; padding: 9px 12px; border: 0; border-radius: 10px; background: transparent; color: var(--ink-soft); font: 600 14px 'Plus Jakarta Sans', sans-serif; text-align: left; cursor: pointer; }
+.flh-workspace-nav nav button:hover { background: rgba(46,38,33,.04); color: var(--ink); }
+.flh-workspace-nav nav button.is-active { background: rgba(185,83,50,.09); color: var(--brick); }
+.flh-workspace-nav nav button small { margin-left: auto; color: var(--ink-soft); font-size: 11px; font-weight: 700; }
+.flh-workspace-nav nav button.is-active small { color: var(--brick); }
+.flh-workspace-main { min-width: 0; }
+.flh-workspace-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px 28px; margin: 4px 0 22px; }
+.flh-workspace-head > div:first-child { min-width: 0; max-width: 660px; }
+.flh-workspace-head h1 { margin: 2px 0 6px; color: var(--ink); font-size: clamp(28px,3vw,38px); font-weight: 600; line-height: 1.1; outline: none; }
+.flh-workspace-head p:not(.flh-eyebrow) { margin: 0; color: var(--ink-soft); font-size: 14px; line-height: 1.55; }
+.flh-workspace-head .hh-detail-links { padding-top: 6px; }
+.flh-workspace-main .hh-detail-section, .flh-workspace-main .hh-detail-section-wide { max-width: none; }
+.flh-workspace-main > .hh-detail-section:first-of-type, .flh-workspace-main .hh-detail-match-anchor:first-child .hh-detail-section { border-top: 0; }
+.flh-match-summary { max-width: 640px; }
+.flh-match-summary .hh-detail-match-card { margin-top: 0; }
+@media (max-width: 900px) {
+  .hh-home-detail.flh-workspace { grid-template-columns: minmax(0,1fr); gap: 0; }
+  .flh-workspace-nav { top: var(--flh-safe-top, 0px); z-index: 20; gap: 8px; margin: 0 -2px 18px; padding: 6px 2px 0; background: var(--paper); border-bottom: 1px solid rgba(138,124,110,.22); }
+  .flh-workspace-back { min-height: 32px; padding: 0; font-size: 12.5px; }
+  .flh-workspace-head .hh-detail-links { display: flex; padding-top: 0; }
+  .flh-workspace-head .hh-detail-links a, .flh-workspace-head .hh-detail-links button { min-height: 40px; padding: 8px 12px; font-size: 12.5px; }
+  .flh-workspace-identity { grid-template-columns: 44px minmax(0,1fr); align-items: center; gap: 10px; }
+  .flh-workspace-photo { width: 44px; height: 44px; aspect-ratio: auto; border-radius: 10px; }
+  .flh-workspace-identity strong { font-size: 15px; }
+  .flh-workspace-identity span { margin-top: 1px; font-size: 12px; }
+  .flh-workspace-nav ul { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 0; }
+  .flh-workspace-nav nav button { justify-content: center; gap: 6px; min-height: 46px; padding: 8px 4px; border-radius: 0; font-size: 13px; }
+  .flh-workspace-nav nav button:hover { background: transparent; }
+  .flh-workspace-nav nav button.is-active { background: transparent; box-shadow: inset 0 -2px 0 var(--brick); }
+  .flh-workspace-nav nav button small { display: none; }
+}
+@media (max-width: 420px) {
+  .flh-workspace-nav nav button svg { display: none; }
+  .flh-workspace-head h1 { font-size: 26px; }
+}
+
+/* ------------------------------ Home Facts ------------------------------
+   What the property is, presented quietly: one prominent Home features panel,
+   an easy-to-find School details panel, and everything else folded into
+   "All listing details". Few borders, generous space, small readable rows. */
+.flh-home-facts { display: grid; gap: 22px; }
+.flh-facts-hero { display: grid; grid-template-columns: minmax(0,1.75fr) minmax(250px,1fr); gap: 18px; align-items: stretch; }
+.flh-facts-hero.is-solo { grid-template-columns: minmax(0,1fr); }
+.flh-property-card { display: grid; grid-template-columns: minmax(180px,.95fr) minmax(0,1.05fr); gap: 22px; align-items: center; min-width: 0; padding: 14px; border-radius: 18px; background: var(--paper-raised); box-shadow: 0 1px 2px rgba(46,38,33,.04), 0 16px 36px -30px rgba(46,38,33,.4); }
+.flh-property-photo { display: grid; place-items: center; min-width: 0; height: 196px; overflow: hidden; border-radius: 12px; background: #ece4d8; color: rgba(46,38,33,.25); }
+.flh-property-photo img { width: 100%; height: 100%; object-fit: cover; }
+.flh-property-identity { min-width: 0; }
+.flh-property-identity .hh-detail-status-chips { margin-bottom: 6px; }
+.flh-property-card .hh-detail-price { margin-top: 10px; font-size: 25px; }
+.flh-property-card .flh-property-address { margin: 4px 0 0; color: var(--ink); font-size: 22px; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; }
+.flh-property-card .hh-detail-locality { margin: 3px 0 8px; font-size: 14px; }
+.flh-facts-welcome, .flh-facts-ack { position: relative; display: grid; grid-template-columns: 36px minmax(0,1fr); gap: 12px; align-content: center; align-items: start; padding: 18px; border-radius: 18px; background: var(--sage); color: var(--ink); }
+.flh-facts-welcome { grid-template-columns: 36px minmax(0,1fr) 30px; }
+.flh-facts-welcome-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 999px; background: rgba(86,114,77,.16); color: var(--positive); }
+.flh-facts-welcome strong, .flh-facts-ack strong { display: block; font-size: 17px; font-weight: 600; line-height: 1.25; }
+.flh-facts-welcome p, .flh-facts-ack p { margin: 5px 0 9px; color: #45503f; font-size: 13px; line-height: 1.55; }
+.flh-facts-dismiss { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 999px; background: transparent; color: #4f5a48; cursor: pointer; }
+.flh-facts-dismiss:hover { background: rgba(86,114,77,.12); }
+.flh-facts-link { display: inline-flex; align-items: center; gap: 5px; padding: 2px 0; border: 0; background: none; color: var(--brick); font: 700 12.5px 'Plus Jakarta Sans', sans-serif; text-decoration: none; cursor: pointer; }
+.flh-facts-link:hover { color: var(--brick-deep); text-decoration: underline; text-underline-offset: 3px; }
+.flh-facts-grid { display: grid; grid-template-columns: minmax(0,1.65fr) minmax(250px,1fr); gap: 22px; align-items: start; }
+.flh-facts-grid.is-schools-only { grid-template-columns: minmax(0, 1fr); max-width: 560px; }
+.flh-facts-panel { min-width: 0; padding: 20px 22px 22px; border-radius: 18px; background: var(--paper-raised); box-shadow: 0 1px 2px rgba(46,38,33,.04), 0 16px 36px -30px rgba(46,38,33,.4); }
+.flh-facts-schools { background: rgba(255,255,255,.6); box-shadow: none; border: 1px solid rgba(138,124,110,.18); }
+.flh-facts-panel-head { display: flex; align-items: center; gap: 11px; margin-bottom: 14px; }
+.flh-facts-panel-head h3 { flex: 1; margin: 0; color: var(--ink); font-size: 20px; font-weight: 600; }
+.flh-facts-icon { display: grid; place-items: center; flex: 0 0 auto; width: 34px; height: 34px; border-radius: 999px; background: var(--peach); color: var(--brick); }
+.flh-facts-edit { display: inline-flex; align-items: center; gap: 5px; min-height: 34px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper-raised); color: var(--ink); font: 650 12.5px 'Plus Jakarta Sans', sans-serif; cursor: pointer; }
+.flh-facts-edit:hover { border-color: rgba(185,83,50,.45); color: var(--brick); }
+.flh-facts-features-list { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 0 28px; margin: 0; }
+.flh-facts-features-list > div { min-width: 0; padding: 13px 0; border-top: 1px solid rgba(138,124,110,.16); }
+.flh-facts-features-list dt { color: var(--ink-soft); font-size: 10.5px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.flh-facts-features-list dd { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 5px 0 0; color: var(--ink); font-family: 'Source Serif 4', serif; font-size: 17px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.flh-facts-features-list dd.flh-facts-detail { margin-top: 3px; color: var(--ink-soft); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 12px; font-weight: 500; }
+.flh-facts-features-list .is-unknown dd { color: var(--unknown); font-family: 'Plus Jakarta Sans', sans-serif; font-size: 14px; font-weight: 500; }
+.flh-facts-source { display: inline-flex; padding: 2px 7px; border-radius: 999px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: .01em; white-space: nowrap; }
+.flh-facts-source.is-listing { background: rgba(86,114,77,.11); color: var(--positive); }
+.flh-facts-source.is-you { background: rgba(185,83,50,.09); color: var(--brick-deep); }
+.flh-facts-unknown { margin: 0; color: var(--unknown); font-size: 14px; }
+.flh-facts-school-value { margin: 0; color: var(--ink); font-family: 'Source Serif 4', serif; font-size: 16px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
+.flh-facts-fine { margin: 12px 0 0; color: var(--ink-soft); font-size: 11.5px; line-height: 1.5; }
+.flh-facts-editor { display: grid; gap: 16px; }
+.flh-facts-choice { display: grid; gap: 7px; }
+.flh-facts-choice-label { color: var(--ink); font-size: 12.5px; font-weight: 700; }
+.flh-facts-choice-hint { margin-top: -5px; color: var(--ink-soft); font-size: 11.5px; }
+.flh-facts-choice-options { display: flex; flex-wrap: wrap; gap: 7px; }
+.flh-facts-choice-options .hh-chip { min-height: 36px; padding: 6px 13px; font-size: 12.5px; }
+.flh-facts-choice-options .hh-chip.is-unknown.on { background: #8b8178; border-color: #8b8178; }
+.flh-facts-editor-note { margin: 0; color: var(--ink-soft); font-size: 11.5px; line-height: 1.5; }
+.flh-facts-editor-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.flh-facts-editor textarea { min-height: 84px; }
+.flh-facts-all { border-top: 1px solid rgba(138,124,110,.22); border-bottom: 1px solid rgba(138,124,110,.22); }
+.flh-facts-all > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; padding: 12px 2px; list-style: none; cursor: pointer; }
+.flh-facts-all > summary::-webkit-details-marker { display: none; }
+.flh-facts-all > summary strong { display: block; color: var(--ink); font-size: 15.5px; }
+.flh-facts-all > summary small { display: block; margin-top: 2px; color: var(--ink-soft); font-size: 12px; }
+.flh-facts-chevron { flex: 0 0 auto; color: var(--ink-soft); transition: transform .15s ease; }
+.flh-facts-all[open] .flh-facts-chevron { transform: rotate(180deg); }
+.flh-facts-all-body { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 22px 40px; padding: 6px 2px 24px; }
+.flh-facts-group { min-width: 0; }
+.flh-facts-group h4 { margin: 0 0 6px; color: var(--moss); font-size: 10.5px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.flh-facts-group dl { margin: 0; }
+.flh-facts-group dl > div { display: grid; grid-template-columns: minmax(110px,.9fr) minmax(0,1.3fr); gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(138,124,110,.13); }
+.flh-facts-group dt { color: var(--ink-soft); font-size: 13px; }
+.flh-facts-group dd { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 0; color: var(--ink); font-size: 13.5px; font-weight: 600; overflow-wrap: anywhere; }
+.flh-facts-group .is-unknown dd { color: var(--unknown); font-weight: 500; }
+.flh-facts-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.flh-facts-tags span { padding: 5px 10px; border-radius: 999px; background: rgba(116,128,79,.1); color: #4f5a48; font-size: 12px; font-weight: 600; }
+.flh-facts-all-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+.flh-facts-all-actions .hh-btn { font-size: 13px; padding: 8px 14px; }
+.flh-facts-match-link { justify-self: start; display: inline-flex; align-items: center; gap: 7px; min-height: 44px; padding: 8px 2px; border: 0; background: none; color: var(--brick); font: 700 14px 'Plus Jakarta Sans', sans-serif; cursor: pointer; }
+.flh-facts-match-link:hover { color: var(--brick-deep); }
+@media (max-width: 1100px) {
+  .flh-facts-hero { grid-template-columns: minmax(0,1fr); }
+}
+@media (max-width: 860px) {
+  .flh-facts-grid { grid-template-columns: minmax(0,1fr); }
+  .flh-facts-all-body { grid-template-columns: minmax(0,1fr); }
+}
+@media (max-width: 560px) {
+  .flh-facts-panel { padding: 17px 16px 18px; border-radius: 16px; }
+  .flh-facts-features-list { grid-template-columns: minmax(0,1fr); }
+  .flh-property-card { grid-template-columns: minmax(0,1fr); gap: 14px; padding: 10px; }
+  .flh-property-photo { height: 190px; }
+  .flh-facts-group dl > div { grid-template-columns: minmax(0,1fr) minmax(0,1.2fr); }
+  .flh-facts-editor-actions .hh-btn { flex: 1; justify-content: center; min-height: 44px; }
+  .flh-facts-choice-options .hh-chip { min-height: 40px; }
+}
+
+/* Add Home: the listing was found. A calm card, a sage acknowledgement and two
+   clear choices — never a long form first. */
+.flh-found { display: grid; gap: 14px; margin-top: 16px; }
+.flh-found-card { display: grid; grid-template-columns: minmax(150px,.85fr) minmax(0,1.15fr); gap: 20px; align-items: center; padding: 16px; border: 1px solid rgba(138,124,110,.2); border-radius: 16px; background: var(--paper-raised); }
+.flh-found-photo { display: grid; place-items: center; height: 150px; overflow: hidden; border-radius: 12px; background: #ece4d8; color: rgba(46,38,33,.3); }
+.flh-found-photo img { width: 100%; height: 100%; object-fit: cover; }
+.flh-found-copy { min-width: 0; }
+.flh-found-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; background: var(--sage); color: var(--positive); font-size: 11.5px; font-weight: 700; }
+.flh-found-copy h2 { margin: 10px 0 2px; color: var(--ink); font-size: 21px; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere; }
+.flh-found-copy p { margin: 0; color: var(--ink-soft); font-size: 13.5px; }
+.flh-found-price { display: block; margin-top: 10px; color: var(--ink); font-family: 'Source Serif 4', serif; font-size: 19px; }
+.flh-found-facts { display: flex; flex-wrap: wrap; gap: 4px 0; margin: 8px 0 0; padding: 0; list-style: none; color: var(--ink-soft); font-size: 12.5px; }
+.flh-found-facts li + li::before { content: '·'; margin: 0 8px; color: rgba(138,124,110,.6); }
+.flh-found-note { display: grid; grid-template-columns: 34px minmax(0,1fr); gap: 12px; align-items: center; padding: 12px 14px; border-radius: 14px; background: var(--sage); }
+.flh-found-note > span { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 999px; background: rgba(86,114,77,.16); color: var(--positive); }
+.flh-found-note strong { color: #3f4b39; font-size: 13.5px; }
+.flh-found-note p { margin: 2px 0 0; color: #4f5a48; font-size: 12px; line-height: 1.45; }
+.flh-found-status { margin: 0; color: var(--ink-soft); font-size: 12px; }
+.flh-found-actions { display: grid; grid-template-columns: 1.3fr 1fr; gap: 10px; }
+.flh-found-actions .hh-btn { justify-content: center; min-height: 48px; }
+.flh-found-actions .hh-btn-ghost { color: var(--brick); border-color: rgba(185,83,50,.4); }
+@media (max-width: 560px) {
+  .flh-found-card { grid-template-columns: minmax(0,1fr); gap: 14px; padding: 12px; }
+  .flh-found-photo { height: 140px; }
+  .flh-found-actions { grid-template-columns: minmax(0,1fr); }
+}
+
 /* ── Onboarding V2 shell (Phase 1) ───────────────────────────────────────────
    Frame only: background, columns, top bar, progress, type scale, step rhythm
    and the forward action. Step content keeps its existing styles. Every rule is

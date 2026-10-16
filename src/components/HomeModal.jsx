@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { X, Upload, Link2, Footprints, Archive as ArchiveIcon, ExternalLink, Check, Users, Search, ClipboardPaste, Camera, MessageSquareText, House, ChevronDown, ChevronLeft, Sparkles, ShieldCheck, Share, ArrowRight } from 'lucide-react';
+import { X, Upload, Link2, Footprints, Archive as ArchiveIcon, ExternalLink, Check, Users, Search, ClipboardPaste, Camera, MessageSquareText, House, ChevronDown, ChevronLeft, Sparkles, ShieldCheck, Share, ArrowRight, Plus } from 'lucide-react';
 import { StarInput } from '@/components/ui';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
@@ -22,6 +22,7 @@ import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
 import { countListingDetails, groupListingFacts } from '@/lib/listingFacts';
 import { PROVENANCE_LABELS, fieldProvenance, hasImportSnapshot } from '@/lib/homeProvenance';
 import { isNativeApp } from '@/lib/platform';
+import { importedDetailCount } from '@/lib/homeFacts';
 
 const PHOTO_BUCKET = 'home-photos';
 const ALLOWED_PHOTO_TYPES = { 'image/jpeg': 'jpg', 'image/jpg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
@@ -475,7 +476,40 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
   </div>;
 }
 
-export default function HomeModal({ initial, priorities, sharedFactAwareness = {}, isCollaborative = false, onSave, onClose, userId, onWantToTour, onArchiveRequest, presentation = 'modal', autoFindOnMount = false, matchPerspectives = [], saveLabel = null, existingHomes = [] }) {
+// The quiet "we found it" moment after a successful listing import. Nothing is
+// saved yet: Add to My Homes runs the very same submit() as Save home (same
+// duplicate guard, same partial-write recovery), and closing saves nothing.
+// "Review details first" opens the full editor for anyone who wants it.
+function ImportFoundCard({ form, importResult, priorities, vocabulary, saving, saveErrorMsg, onAdd, onReview }) {
+  const { line1, line2 } = splitAddressLines(form.address);
+  const count = importedDetailCount(importResult);
+  const facts = [
+    form.beds && `${form.beds} bd`, form.baths && `${form.baths} ba`,
+    form.sqft && `${Number(String(form.sqft).replace(/[^0-9.]/g, '')).toLocaleString()} sq ft`,
+    form.lotSize && formatLotSizeDisplay(form.lotSize),
+  ].filter(Boolean);
+  return <section className="flh-found" aria-labelledby="found-home-title">
+    <div className="flh-found-card">
+      <div className="flh-found-photo">{form.photoUrl ? <img src={form.photoUrl} alt="" /> : <House size={30} aria-hidden="true" />}</div>
+      <div className="flh-found-copy">
+        <span className="flh-found-badge"><Check size={13} aria-hidden="true" /> Listing found</span>
+        <h2 id="found-home-title" className="hh-serif">{line1 || form.address}</h2>
+        {line2 && <p>{line2}</p>}
+        <strong className="flh-found-price">{formatHomePrice(form.price, priorities.searchType) || 'Price unknown'}</strong>
+        {facts.length > 0 && <ul className="flh-found-facts">{facts.map((fact) => <li key={fact}>{fact}</li>)}</ul>}
+      </div>
+    </div>
+    {count > 0 && <div className="flh-found-note"><span aria-hidden="true"><Sparkles size={16} /></span><div><strong>We found {count} listing detail{count === 1 ? '' : 's'} for you.</strong><p>FLH pulled this from the listing. Anything missing or incorrect can be reviewed and updated anytime.</p></div></div>}
+    <p className="flh-found-status">Not saved yet — this {vocabulary.singularLower} is added only when you choose Add to My Homes.</p>
+    {saveErrorMsg && <div className="hh-edit-save-error" role="alert">{saveErrorMsg}</div>}
+    <div className="flh-found-actions">
+      <button type="button" className="hh-btn" onClick={onAdd} disabled={saving}><Plus size={16} aria-hidden="true" /> {saving ? 'Adding…' : 'Add to My Homes'}</button>
+      <button type="button" className="hh-btn hh-btn-ghost" onClick={onReview} disabled={saving}>Review details first <ArrowRight size={15} aria-hidden="true" /></button>
+    </div>
+  </section>;
+}
+
+export default function HomeModal({ initial, priorities, sharedFactAwareness = {}, isCollaborative = false, onSave, onClose, userId, onWantToTour, onArchiveRequest, presentation = 'modal', autoFindOnMount = false, matchPerspectives = [], saveLabel = null, existingHomes = [], importLanding = false }) {
   const [form, setForm] = useState(initial);
   const vocabulary = homeVocabulary(priorities);
   const [pasteText, setPasteText] = useState('');
@@ -494,6 +528,9 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   const [apartmentIdentity, setApartmentIdentity] = useState(null);
   const [editDetailsOpen, setEditDetailsOpen] = useState(false);
   const [lastLookupAddress, setLastLookupAddress] = useState('');
+  // Import landing: after a successful lookup the buyer sees what FLH found and
+  // can add it straight away; the full editor is opt-in ("Review details first").
+  const [reviewing, setReviewing] = useState(false);
 
   // Secondary property details stay available without making the edit form feel
   // like homework. Stored answers remain untouched while this disclosure is closed.
@@ -798,7 +835,15 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
 
   const isNewHome = !initial.address;
   if (isNewHome && duplicateHome) return <DuplicateHomeView home={duplicateHome} priorities={priorities} userId={userId} isCollaborative={isCollaborative} vocabulary={vocabulary} dialogRef={dialogRef} titleRef={titleRef} onClose={onClose} onBack={() => setDuplicateHome(null)} />;
-  const workspaceReady = !isNewHome || ['success', 'text-success', 'empty', 'error'].includes(importPhase);
+  const quickAdd = importLanding && isNewHome && !vocabulary.apartment && importPhase === 'success' && !reviewing && !!importResult;
+  const workspaceReady = !isNewHome || (['success', 'text-success', 'empty', 'error'].includes(importPhase) && !quickAdd);
+  // Same exact-URL rule as Find and share intake, checked once more at the moment
+  // of saving: a listing this search already holds is opened, never added twice.
+  const addImportedHome = () => {
+    const existing = findHomeByListingUrl(existingHomes, form.listingUrl);
+    if (existing) { setDuplicateHome(existing); return; }
+    submit();
+  };
 
   if (workspaceReady) return <EditHomeEditor
     mode={isNewHome ? 'add' : 'edit'} form={form} set={set} priorities={priorities}
@@ -821,12 +866,13 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         <label className="hh-label" htmlFor="add-home-find">Listing link or address</label>
         <div className="hh-find-home-row">
           <input id="add-home-find" className="hh-input" inputMode="url" autoCapitalize="none" autoCorrect="off" value={findInput} onChange={(event) => setFindInput(event.target.value)} onKeyDown={(event) => event.key === 'Enter' && handleFind()} placeholder="https://www.zillow.com/homedetails/…" />
-          <button type="button" className="hh-btn" onClick={handleFind} disabled={!findInput.trim() || importPhase === 'loading'}>{importPhase === 'loading' ? 'Finding…' : `Review this ${vocabulary.singularLower}`}</button>
+          <button type="button" className="hh-btn" onClick={handleFind} disabled={!findInput.trim() || importPhase === 'loading'}>{importPhase === 'loading' ? 'Finding…' : `Find ${vocabulary.singularLower}`}</button>
         </div>
         <p className="flh-source-note">The original listing stays the source of truth. FLH keeps its link and never invents details it didn’t find.</p>
         {importPhase === 'identity' && apartmentIdentity && <div className="hh-manual-address"><p>We found {apartmentIdentity.propertyName}. Add its street address to continue.</p><AddressAutocomplete value={fallbackAddressInput} onChange={setFallbackAddressInput} onSelect={setFallbackAddressInput} /><button type="button" className="hh-btn" onClick={handleFallbackAddressLookup}>Use address</button></div>}
         {urlFallbackMsg && <p className="hh-edit-error">{urlFallbackMsg}</p>}
       </section>
+      {quickAdd && <ImportFoundCard form={form} importResult={importResult} priorities={priorities} vocabulary={vocabulary} saving={saving} saveErrorMsg={saveErrorMsg} onAdd={addImportedHome} onReview={() => setReviewing(true)} />}
       {isNativeApp() && <aside className="flh-share-callout" aria-label="Add from the Share Sheet"><Share size={18} aria-hidden="true" /><div><strong>Faster from your listing app</strong><p>Tap Share on any listing, then choose Feels Like Home. It opens right here, ready to review.</p></div></aside>}
       <details className="hh-details hh-manual-fallback">
         <summary><span className="hh-accordion-icon"><ClipboardPaste size={24} /></span><span>Can&apos;t find the home? Paste listing details instead<small>Enter the details manually when a link isn&apos;t available.</small></span><ChevronDown className="hh-accordion-chevron" size={20} /></summary>

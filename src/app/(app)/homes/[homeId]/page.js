@@ -11,8 +11,16 @@ import {
   getRealtorContributions,
 } from '@/lib/supabase/collaboration';
 
-export default async function HomeDetailPage({ params }) {
+// ?added=import|manual is set by Add Home after a successful save; it only
+// selects the one-time welcome copy on Home Facts and is never trusted for
+// anything else.
+const JUST_ADDED = new Set(['import', 'manual']);
+
+export default async function HomeDetailPage({ params, searchParams }) {
   const { homeId } = await params;
+  const added = (await searchParams)?.added;
+  const justAdded = JUST_ADDED.has(added) ? added : null;
+  const initialSection = (await searchParams)?.section;
   return withAuthRecovery(async () => {
     const supabase = await createClient();
     const user = await requireUser(supabase);
@@ -37,6 +45,6 @@ export default async function HomeDetailPage({ params }) {
     ]);
     const signal = participantStates.get(home.id);
     const lifecycleSignals = deriveWantToTourState(home, signal?.coBuyerWantsToTour ? [{ status: 'Want to Tour' }] : []);
-    return <HomeDetail home={{ ...home, ...lifecycleSignals }} priorities={normalizePriorities(priorities)} commuteDestinations={commuteDestinations} coBuyerPerspective={perspectives.get(home.id) || null} sharedFactAwareness={sharedFactAwareness} userId={user.id} searchId={search.id} isCollaborative={participantIds.length > 1} realtorContributions={realtorContributions} />;
+    return <HomeDetail home={{ ...home, ...lifecycleSignals }} priorities={normalizePriorities(priorities)} commuteDestinations={commuteDestinations} coBuyerPerspective={perspectives.get(home.id) || null} sharedFactAwareness={sharedFactAwareness} userId={user.id} searchId={search.id} isCollaborative={participantIds.length > 1} realtorContributions={realtorContributions} justAdded={justAdded} initialSection={initialSection} />;
   });
 }

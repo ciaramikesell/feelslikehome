@@ -535,12 +535,19 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     // it so a first favorite/archive (or the last one being undone) updates the nav
     // right away instead of only after a manual reload.
     router.refresh();
+    return saved;
   }, [userId, searchId, router, homes]);
 
-  const saveEditedHome = useCallback((home) => {
+  // A brand-new home lands on its Home Facts once it is actually saved — never
+  // before. "New" comes from the home the modal was opened with, so a retry
+  // that adopted a partially-saved row's id (partialHomeId) still lands there.
+  const saveEditedHome = useCallback(async (home) => {
+    const isNew = !modalHome?.id;
     const shared = !home.id || hasSharedHomeChanges(home, modalHome);
-    return saveHome(home, { shared });
-  }, [modalHome, saveHome]);
+    const saved = await saveHome(home, { shared });
+    if (isNew && saved?.id) router.push(`/homes/${encodeURIComponent(saved.id)}?added=${home.listingImport ? 'import' : 'manual'}`);
+    return saved;
+  }, [modalHome, saveHome, router]);
 
   const toggleFavorite = useCallback((home) => {
     const next = toggleFavoriteState(home);
@@ -788,7 +795,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         <HomeModal
           initial={modalHome} priorities={priorities} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} userId={userId}
           onSave={saveEditedHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget}
-          autoFindOnMount={modalAutoFind} existingHomes={homes}
+          autoFindOnMount={modalAutoFind} existingHomes={homes} importLanding
         />
       )}
 
