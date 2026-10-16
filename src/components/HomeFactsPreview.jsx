@@ -27,6 +27,11 @@ function previewPriorities() {
   next.homeCondition = { values: ['Move-In Ready'], tier: 'important' };
   next = addCriterion(next, { categoryKey: 'exterior', label: 'Garage', kind: 'check' }, 'must');
   next = addCriterion(next, { categoryKey: 'features', label: 'Finished basement', kind: 'check' }, 'nice');
+  // Personal Yes / No / Unknown priorities for the evaluation states.
+  for (const [categoryKey, label, tier] of [
+    ['features', 'Home office', 'must'], ['exterior', 'Fenced yard', 'important'], ['location', 'Walkable schools', 'important'],
+    ['features', 'Fireplace', 'nice'], ['exterior', 'Patio / deck', 'nice'], ['features', 'Central air', 'nice'],
+  ]) next = addCriterion(next, { categoryKey, label, kind: 'check' }, tier);
   return next;
 }
 
@@ -72,6 +77,15 @@ function homeFrom(snapshot, overrides = {}) {
   };
 }
 
+const TOURED = homeFrom(FULL_IMPORT, {
+  photoUrl: PHOTO, homeLayout: ['Two Story'], homeCondition: ['Move-In Ready'], status: 'Toured', touredAt: '2026-10-11T15:00:00.000Z', reaction: 'love',
+  checks: { 'features:Home office': true, 'exterior:Fenced yard': true, 'features:Fireplace': true },
+  ratings: { 'tour-v2:curb_appeal': 'positive', 'tour-v2:layout': 'positive', 'tour-v2:privacy': 'neutral', 'tour-v2:neighborhood': 'negative' },
+  pros: 'Bright, open living room, Huge backyard, Quiet street', cons: 'Kitchen feels dated, Busy road two blocks over',
+  notes: 'Loved the light in the living room. Ask about the roof age.\n\nSecond look: the backyard is even bigger than the photos.',
+});
+const CO_BUYER = Object.freeze({ match: { pct: 64, evaluatedCount: 5, selectedCount: 13 }, overallFeeling: 2, differentTakes: [{ key: 'homeFeel:Natural Light', label: 'Natural Light', youLiked: true, coBuyerLiked: false }] });
+
 const HOME_STATES = {
   full: { home: homeFrom(FULL_IMPORT, { photoUrl: PHOTO, homeLayout: ['Two Story'] }), justAdded: 'import' },
   saved: { home: homeFrom(FULL_IMPORT, { photoUrl: PHOTO, homeLayout: ['Two Story'], homeCondition: ['Move-In Ready'], primaryBedroomLocation: 'Upstairs', schoolsNotes: 'Anchor Bay School District', garageSpaces: '2', pros: 'Bright, open living area, Large backyard', cons: 'Kitchen feels a bit dated', notes: 'Quiet, well-kept street. Confirm HOA details and sewer.' }) },
@@ -81,7 +95,33 @@ const HOME_STATES = {
   manual: { home: { ...emptyHome(), id: HOME_ID, userId: USER_ID, address: '14 Orchard Ln, Grosse Pointe, MI 48236', price: '410000', beds: '4', baths: '2.5' }, justAdded: 'manual' },
   realtor: { home: homeFrom(FULL_IMPORT, { photoUrl: PHOTO, homeLayout: ['Two Story'] }), readOnly: true },
   cobuyer: { home: homeFrom(FULL_IMPORT, { photoUrl: PHOTO, homeLayout: ['Two Story'], userId: '00000000-0000-4000-8000-000000000099' }), isCollaborative: true },
+  // Evaluation states (Check the Match / Tour Feedback review).
+  'eval-new': { home: { ...emptyHome(), id: HOME_ID, userId: USER_ID, address: '9 Birch Ct, Royal Oak, MI 48073' } },
+  'eval-unknown': { home: homeFrom(FULL_IMPORT, { photoUrl: PHOTO, homeLayout: ['Two Story'] }) },
+  'eval-mismatch': { home: homeFrom(FULL_IMPORT, { photoUrl: PHOTO, homeLayout: ['Two Story'], checks: { 'features:Home office': 'no', 'exterior:Fenced yard': true, 'features:Fireplace': true } }) },
+  'eval-mostly': { home: homeFrom(FULL_IMPORT, { photoUrl: PHOTO, homeLayout: ['Two Story'], homeCondition: ['Move-In Ready'], checks: { 'features:Home office': true, 'exterior:Fenced yard': true, 'location:Walkable schools': true, 'features:Fireplace': true, 'exterior:Patio / deck': 'no' } }) },
+  'eval-legacy-notes': { home: homeFrom(FULL_IMPORT, { photoUrl: PHOTO, homeLayout: ['Two Story'], status: 'Want to Tour', pros: 'Big backyard, Quiet street', cons: 'Dated kitchen', notes: 'Saw it from the street on Sunday. Ask about the roof age and whether the basement ever takes on water.' }) },
+  'eval-toured': { home: TOURED },
+  'eval-two-buyers': { home: TOURED, isCollaborative: true, coBuyerPerspective: CO_BUYER },
+  'eval-realtor': { home: TOURED, isCollaborative: true, readOnly: true, coBuyerPerspective: CO_BUYER, perspectiveName: 'Jordan', coBuyerName: 'Sam' },
+  'eval-save-error': { home: homeFrom(FULL_IMPORT, { photoUrl: PHOTO, homeLayout: ['Two Story'] }), failSaves: true },
 };
+
+// In-memory stand-ins for the two real save paths (saveHomePersonalState /
+// saveHomePersonalAndShared). Each records what it was asked to write on
+// window.__flhPreviewWrites so browser QA can assert the exact path and payload.
+function previewPersistence(failSaves) {
+  const record = (path, next) => {
+    if (typeof window !== 'undefined') (window.__flhPreviewWrites ||= []).push({ path, checks: next.checks, ratings: next.ratings, status: next.status, pros: next.pros, cons: next.cons, notes: next.notes, petsAllowed: next.petsAllowed });
+  };
+  const write = (path) => async (next) => {
+    record(path, next);
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    if (failSaves) throw new Error('Simulated save failure');
+    return next;
+  };
+  return { personal: write('personal'), whole: write('whole') };
+}
 
 function AddHomePreview({ state, priorities }) {
   const [open, setOpen] = useState(true);
@@ -112,9 +152,10 @@ export default function HomeFactsPreview({ view = 'detail', state = 'full', sect
   const fixture = HOME_STATES[state] || HOME_STATES.full;
   return <div className="hh-root" style={{ paddingTop: 24 }}>
     <HomeDetail
-      home={fixture.home} priorities={priorities} commuteDestinations={[]} coBuyerPerspective={null}
+      home={fixture.home} priorities={priorities} commuteDestinations={[]} coBuyerPerspective={fixture.coBuyerPerspective || null}
+      perspectiveName={fixture.perspectiveName || null} coBuyerName={fixture.coBuyerName || null}
       userId={USER_ID} searchId={SEARCH_ID} isCollaborative={!!fixture.isCollaborative} readOnly={!!fixture.readOnly}
-      justAdded={fixture.justAdded || null} initialSection={section}
+      justAdded={fixture.justAdded || null} initialSection={section} persistence={previewPersistence(!!fixture.failSaves)}
     />
   </div>;
 }

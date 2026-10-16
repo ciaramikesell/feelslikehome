@@ -43,8 +43,10 @@ test('collaboration copy distinguishes visible search activity from participant 
     source('src/app/invite/[token]/AcceptInvitationClient.jsx'),
     source('src/components/PostTourModal.jsx'),
   ]);
-  assert.match(detail, /isCollaborative \? "Shared notes" : "What you want to remember"/);
-  assert.match(detail, /These choices are yours/);
+  const tour = await source('src/components/TourFeedback.jsx');
+  assert.match(tour, /isCollaborative \? ' Shared with everyone in this search\.' : ''/);
+  assert.match(tour, /Your reaction and in-person answers are yours/);
+  assert.match(detail, /<TourFeedback/);
   assert.match(modal, /isCollaborative \? 'Pros, cons, and notes are visible to everyone in this search.'/);
   assert.match(invite, /see each other&apos;s search preferences and opinions/);
   assert.match(postTour, /Your reaction and in-person evaluations belong to you/);

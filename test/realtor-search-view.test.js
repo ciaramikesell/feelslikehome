@@ -69,9 +69,15 @@ test('active, Want to Tour, Favorite, reaction, rating and archived signals are 
 });
 
 test('Realtor detail is read-only below controls and Compare has no Realtor Match', () => {
-  assert.match(detail, /!readOnly && <div className="hh-detail-actions[^"]*">/);
+  const tour = fs.readFileSync('src/components/TourFeedback.jsx', 'utf8');
+  const matchView = fs.readFileSync('src/components/CheckTheMatch.jsx', 'utf8');
+  assert.match(tour, /\{!readOnly && <div className="flh-tour-plans"/);
+  assert.match(tour, /\{!readOnly && <button type="button" className="hh-btn hh-btn-ghost" onClick=\{onRecordTake\}>/);
+  assert.match(tour, /\{!readOnly && !editing && <button/);
+  // Match answers are personal state too: never answerable read-only.
+  assert.match(matchView, /const answerable = !readOnly && \['personal', 'shared', 'tour'\]\.includes\(source\);/);
   // The phone action bar is personal state too, so it is gated the same way.
-  assert.match(detail, /\{!readOnly && !isArchivedStatus\(home\.status\) && section !== 'facts' && <div className="flh-mobile-only flh-detail-action-bar">/);
+  assert.match(detail, /\{!readOnly && !isArchivedStatus\(home\.status\) && section === 'match' && <div className="flh-mobile-only flh-detail-action-bar">/);
   assert.match(detail, /!readOnly && editing && <HomeModal/);
   assert.match(detail, /!readOnly && archiveTarget/);
   assert.match(detail, /!readOnly && reflecting/);

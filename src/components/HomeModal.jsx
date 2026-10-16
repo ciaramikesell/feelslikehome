@@ -311,7 +311,7 @@ function DuplicateHomeView({ home, priorities, userId, isCollaborative, vocabula
   </div>;
 }
 
-function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwareness, isCollaborative, vocabulary, photoFile, photoPreviewUrl, photoInputRef, handlePhotoFileChange, handleRemovePhoto, photoError, showPhotoUrlInput, setShowPhotoUrlInput, setCheckItem, saving, submit, saveErrorMsg, onClose, dialogRef, titleRef, importResult = null, presentation = 'modal', matchPerspectives = [] }) {
+function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwareness, isCollaborative, vocabulary, photoFile, photoPreviewUrl, photoInputRef, handlePhotoFileChange, handleRemovePhoto, photoError, showPhotoUrlInput, setShowPhotoUrlInput, setCheckItem, saving, submit, saveErrorMsg, onClose, dialogRef, titleRef, importResult = null, presentation = 'modal', matchPerspectives = [], evaluationElsewhere = false }) {
   const [allCriteriaOpen, setAllCriteriaOpen] = useState(false);
   // Add Home on a phone is two steps — review what came through, then how it fits
   // you. Presentation only (see .hh-edit-steps in globals.css): desktop keeps the
@@ -432,6 +432,12 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
             </div>
           </section>
 
+          {/* Opened from the home workspace, Match answers and pros / cons / notes
+              have their own places (Check the Match, Tour Feedback). The fields are
+              untouched here and still travel with the form, so nothing is reset. */}
+          {evaluationElsewhere && mode === 'edit' ? <section className="hh-edit-home-card flh-edit-elsewhere" data-step="match" aria-label="Match answers and notes">
+            <p><strong>Match answers</strong> now live in <em>Check the Match</em>, and <strong>pros, cons and notes</strong> in <em>Tour Feedback</em>. This editor keeps them exactly as they are.</p>
+          </section> : <>
           <section className="hh-edit-home-card" data-step="match" aria-labelledby="personalized-matches-heading">
             <div className="hh-edit-heading-row"><h2 id="personalized-matches-heading" className="hh-serif">Personalized Match</h2><span>{criteria.length} applicable</span></div>
             <p className="hh-edit-context">Confirm what’s true for this {vocabulary.singularLower}. Priority levels come from My Search. Unknown is never treated as No — it won’t count against this {vocabulary.singularLower}.</p>
@@ -459,6 +465,7 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
               <div><label className="hh-label" htmlFor="edit-home-notes">Notes</label><textarea id="edit-home-notes" className="hh-textarea" value={form.notes || ''} onChange={(e) => set('notes', e.target.value)} placeholder="HOA details, sewer/water, financing options, recent updates, listing terms, or anything else worth noting." /></div>
             </div>
           </section>
+          </>}
           {matchPerspectives.length > 0 && form.address.trim() && <section className="hh-edit-home-card hh-suggestion-match-preview" data-step="match" aria-label="Buyer Match preview"><h2 className="hh-serif">How this lines up</h2><p>Based only on currently known property facts. Unknown details are not counted as misses.</p>{matchPerspectives.map((perspective) => { const match = computeMatch(form, perspective.priorities); return <div key={perspective.userId}><b>{perspective.name}</b><span>{match?.pct == null ? 'Match needs more known facts' : `${match.pct}% Match`}</span><small>{match?.allSelected?.filter((item) => !item.evaluated).slice(0, 3).map((item) => `${item.label} — Unknown`).join(' · ')}</small></div>; })}</section>}
         </div>
       </div>
@@ -509,7 +516,7 @@ function ImportFoundCard({ form, importResult, priorities, vocabulary, saving, s
   </section>;
 }
 
-export default function HomeModal({ initial, priorities, sharedFactAwareness = {}, isCollaborative = false, onSave, onClose, userId, onWantToTour, onArchiveRequest, presentation = 'modal', autoFindOnMount = false, matchPerspectives = [], saveLabel = null, existingHomes = [], importLanding = false }) {
+export default function HomeModal({ initial, priorities, sharedFactAwareness = {}, isCollaborative = false, onSave, onClose, userId, onWantToTour, onArchiveRequest, presentation = 'modal', autoFindOnMount = false, matchPerspectives = [], saveLabel = null, existingHomes = [], importLanding = false, evaluationElsewhere = false }) {
   const [form, setForm] = useState(initial);
   const vocabulary = homeVocabulary(priorities);
   const [pasteText, setPasteText] = useState('');
@@ -852,7 +859,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     handlePhotoFileChange={handlePhotoFileChange} handleRemovePhoto={handleRemovePhoto} photoError={photoError}
     showPhotoUrlInput={showPhotoUrlInput} setShowPhotoUrlInput={setShowPhotoUrlInput} setCheckItem={setCheckItem}
     saving={saving} submit={submit} saveErrorMsg={saveErrorMsg} onClose={onClose} dialogRef={dialogRef}
-    titleRef={titleRef} importResult={importResult} presentation={presentation} matchPerspectives={matchPerspectives}
+    titleRef={titleRef} importResult={importResult} presentation={presentation} matchPerspectives={matchPerspectives} evaluationElsewhere={evaluationElsewhere}
   />;
 
   return <div className="hh-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>

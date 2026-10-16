@@ -33,7 +33,8 @@ test('saved actual property type resolves Preferred Property Type Match', () => 
 test('property Notes examples remain placeholders rather than saved values', () => {
   const example = 'HOA details, sewer/water, financing options, recent updates, listing terms, or anything else worth noting.';
   assert.match(modal, new RegExp(`placeholder="${example.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`));
-  assert.match(detail, new RegExp(`placeholder="${example.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`));
+  // Notes are edited in Tour Feedback now.
+  assert.match(fs.readFileSync('src/components/TourFeedback.jsx', 'utf8'), new RegExp(`placeholder="${example.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`));
   assert.doesNotMatch(persistence, new RegExp(example.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
 });
 

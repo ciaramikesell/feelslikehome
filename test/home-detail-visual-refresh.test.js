@@ -88,16 +88,18 @@ test('matchFactualSummary never fabricates a summary when Match itself is unavai
   assert.equal(matchFactualSummary({ pct: null, mustTotal: 0, mustEvaluated: 0, mustMet: 0, allSelected: [] }), null);
 });
 
-test('the hero factual summary only renders when a real Match percentage exists', () => {
-  assert.match(detail, /const factualSummary = matchFactualSummary\(match\);/);
-  assert.match(detail, /\{factualSummary && \(factualSummary\.mustClause \|\| factualSummary\.importantSentence\) && \(/);
+test('the Match overview only claims a percentage when a real Match percentage exists', () => {
+  const checkTheMatch = read('src/components/CheckTheMatch.jsx');
+  assert.match(checkTheMatch, /overview\.pct == null \? '—' : `\$\{overview\.pct\}%`/);
+  assert.match(checkTheMatch, /overview\.pct == null \? 'Not enough answers yet'/);
 });
 
 test('full Match breakdown distinguishes missing, unknown, and neutral tour evaluations', () => {
-  assert.match(detail, /!item\.evaluated \? 'Some listing details couldn’t be determined reliably\.'/);
-  assert.match(detail, /const stateLabel = !item\.evaluated \? 'Unknown' : neutral \? 'Neutral' : item\.met \? 'Satisfied' : 'Missed';/);
-  assert.match(detail, /neutral \? 'neutral' : item\.met \? 'met' : 'missed'/);
-  assert.match(detail, /<span className="sr-only">\{stateLabel\}<\/span>/);
+  const checkTheMatch = read('src/components/CheckTheMatch.jsx');
+  const review = read('src/lib/matchReview.js');
+  assert.match(review, /if \(!criterion\.evaluated\) return 'unknown';\s*if \(criterion\.met === null\) return 'neutral';\s*return criterion\.met \? 'match' : 'mismatch';/);
+  assert.match(checkTheMatch, /const STATE_TEXT = \{ match: 'Matches', mismatch: 'Doesn’t match', neutral: 'Neutral', unknown: 'Unknown' \};/);
+  assert.match(checkTheMatch, /<span className="sr-only">\{STATE_TEXT\[state\]\}\. <\/span>/);
 });
 
 /* ------------------------------ Property facts: real fields only ------------------------------ */
@@ -131,9 +133,12 @@ test('regression guard: Favorite/Want to Tour/Archive/post-tour mutations remain
 });
 
 test('regression guard: co-buyer perspective stays a distinct, separately-labeled section — never merged into the current participant\'s own state', () => {
-  assert.match(detail, /hasCoBuyerPerspective && <Section eyebrow="Co-buyer perspective" title="How your co-buyer sees this home">/);
-  assert.match(detail, /Different takes/);
-  assert.match(detail, /take\.youLiked \? 'You liked it' : "You didn't like it"/);
+  const tour = read('src/components/TourFeedback.jsx');
+  const checkTheMatch = read('src/components/CheckTheMatch.jsx');
+  assert.match(tour, /\{coBuyerPerspective && <section className="flh-tour-block flh-tour-cobuyer"/);
+  assert.match(tour, /coBuyerName \? `\$\{coBuyerName\}’s take` : 'Your co-buyer’s take'/);
+  assert.match(tour, /take\.youLiked \? \(readOnly \? 'They liked it' : 'You liked it'\)/);
+  assert.match(checkTheMatch, /coBuyerName \? `\$\{coBuyerName\}’s Match` : 'Your co-buyer’s Match'/);
 });
 
 /* ------------------------------ Realtor context: unchanged semantics, no Realtor Match ------------------------------ */
@@ -146,19 +151,18 @@ test('regression guard: Realtor context keeps its own ownership/semantics — no
 });
 
 test('regression guard: Property/Shared Notes ownership copy and the editor placeholder are unchanged', () => {
-  assert.match(detail, /isCollaborative \? "Shared notes" : "What you want to remember"/);
-  assert.match(detail, /placeholder="HOA details, sewer\/water, financing options, recent updates, listing terms, or anything else worth noting\."/);
+  const tour = read('src/components/TourFeedback.jsx');
+  assert.match(tour, /isCollaborative \? ' Shared with everyone in this search\.' : ''/);
+  assert.match(tour, /placeholder="HOA details, sewer\/water, financing options, recent updates, listing terms, or anything else worth noting\."/);
 });
 
 /* ------------------------------ Realtor + Notes: side by side on desktop, stacked on mobile ------------------------------ */
 
-test('From the Realtor and Shared/Property notes share one desktop row without merging their data models', () => {
-  assert.match(detail, /<div className="hh-detail-context-row">/);
-  // Both children keep their own component/props exactly as before — the row
-  // is a layout wrapper only.
-  const row = detail.match(/<div className="hh-detail-context-row">[\s\S]*?\n\s*<\/div>\n/)?.[0] || '';
-  assert.match(row, /<RealtorContributions searchId=\{searchId\} homeId=\{home\.id\} contributions=\{realtorContributions\}/);
-  assert.match(row, /<Section eyebrow="Property notes"/);
+test('From the Realtor and the shared notes stay separate sections in Tour Feedback, never one data model', () => {
+  // Realtor context keeps its own component and props; the notes are their own section.
+  const tourPanel = detail.match(/<TourFeedback[\s\S]*?<\/TourFeedback>/)?.[0] || '';
+  assert.match(tourPanel, /<RealtorContributions searchId=\{searchId\} homeId=\{home\.id\} contributions=\{realtorContributions\}/);
+  assert.match(read('src/components/TourFeedback.jsx'), /<NotesSection/);
   assert.match(globalsCss, /\.hh-detail-context-row \{ display: grid; grid-template-columns: 1fr 1fr;/);
   assert.match(globalsCss, /@media \(max-width: 880px\) \{\s*\n\s*\.hh-detail-context-row \{ grid-template-columns: 1fr;/);
 });
@@ -175,16 +179,17 @@ test('regression guard: the existing mobile hero photo-first ordering is unchang
 test('desktop refresh exposes the real payment, status chips, wide hero, and actionable Match summary', () => {
   assert.match(detail, /home\.estMonthly/);
   assert.match(detail, /hh-detail-status-chips/);
-  assert.match(detail, /hh-detail-match-card/);
-  assert.match(detail, /matchSection\.current\?\.scrollIntoView/);
+  assert.match(read('src/components/CheckTheMatch.jsx'), /flh-match-overview/);
+  assert.match(read('src/components/CheckTheMatch.jsx'), /Review what’s still unknown/);
   assert.match(globalsCss, /\.hh-home-detail \{ max-width: 1320px;/);
   assert.match(globalsCss, /grid-template-columns: minmax\(0, 1\.3fr\) minmax\(390px, 1fr\)/);
 });
 
 test('category summaries count met, missing, and unknown independently', () => {
-  assert.match(detail, /const unknown = rows\.filter\(\(item\) => !item\.evaluated\)\.length/);
-  assert.match(detail, /`\$\{unknown\} unknown`/);
-  assert.match(detail, /hh-detail-question/);
+  const checkTheMatch = read('src/components/CheckTheMatch.jsx');
+  assert.match(checkTheMatch, /\{tier\.items\.filter\(\(criterion\) => criterion\.evaluated\)\.length\} of \{tier\.items\.length\} answered/);
+  assert.match(checkTheMatch, /\{overview\.unknownCount\} still unknown/);
+  assert.match(checkTheMatch, /\{overview\.mismatches\.length\}/);
 });
 
 test('single canonical photo degrades gracefully without fake thumbnails or counts', () => {

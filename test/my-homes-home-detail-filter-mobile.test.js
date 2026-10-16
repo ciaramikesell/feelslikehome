@@ -221,7 +221,8 @@ test('Match stays participant-specific: pages evaluate the signed-in participant
     assert.match(read(path), /resolvePriorities\(supabase, search, user\.id\)/);
   }
   // The co-buyer's Match stays a separate, server-resolved perspective.
-  assert.match(read('src/components/HomeDetail.jsx'), /coBuyerPerspective\.match\.pct/);
+  assert.match(read('src/components/HomeDetail.jsx'), /coBuyerPerspective=\{coBuyerPerspective\}/);
+  assert.match(read('src/components/CheckTheMatch.jsx'), /const coMatch = coBuyerPerspective\?\.match;[\s\S]*coMatch\.pct/);
 });
 
 /* ------------------------------------ navigation & desktop ------------------------------------ */

@@ -183,10 +183,10 @@ test('Home Facts saves shared facts through the canonical shared-home path and k
   assert.match(detail, /saveHomePersonalAndShared\(createClient\(\), next, userId, searchId\)/);
   for (const personal of ['pros', 'cons', 'reaction', 'ratings', 'checks', 'PostTourModal']) assert.doesNotMatch(facts.replace(/\/\/[^\n]*/g, ''), new RegExp(`\\b${personal}\\b`));
   for (const personal of ['pros', 'cons', 'reaction', 'ratings']) assert.doesNotMatch(factsLib, new RegExp(`home\\??\\.${personal}\\b`));
-  // Notes, your take, and the Match breakdown all remain on the page.
+  // Notes, your take, and the Match breakdown all remain in the workspace.
   assert.match(detail, /<PostTourModal/);
-  assert.match(detail, /Add pros, cons, or a note/);
-  assert.match(detail, /ref=\{matchSection\}/);
+  assert.match(detail, /<TourFeedback/);
+  assert.match(detail, /matchRef=\{matchSection\}/);
   // Read-only viewers (Realtors) never get edit controls.
   assert.match(facts, /\{!readOnly && !editingFeatures && <button/);
   assert.match(facts, /\{!readOnly && !editing && <button/);
@@ -285,14 +285,16 @@ test('each area reuses its existing sections: no Match or Tour Feedback rebuild,
   const tour = panel('tour');
   assert.match(facts, /<HomeFacts /);
   assert.doesNotMatch(facts, /pros|cons|PostTour|hh-detail-match-groups|RealtorContributions/);
-  assert.match(match, /ref=\{matchSection\}/);
-  assert.match(match, /hh-detail-match-groups/);
+  assert.match(match, /<CheckTheMatch/);
+  assert.match(match, /matchRef=\{matchSection\}/);
   assert.match(match, /title="Location & Commute"/);
-  assert.match(tour, /Your relationship with this home/);
-  assert.match(tour, /Add pros, cons, or a note/);
+  assert.doesNotMatch(match, /pros|cons|RealtorContributions/);
+  assert.match(tour, /<TourFeedback/);
+  assert.match(tour, /onSaveNotes=/);
   assert.match(tour, /<RealtorContributions /);
-  // The phone action bar (Want to tour / Favorite) stays off Home Facts so it never covers fact editing.
-  assert.match(detail, /section !== 'facts' && <div className="flh-mobile-only flh-detail-action-bar">/);
+  // The phone action bar (Want to tour / Favorite) only sits on Check the Match:
+  // Home Facts editing stays clear, and Tour Feedback has the same actions inline.
+  assert.match(detail, /section === 'match' && <div className="flh-mobile-only flh-detail-action-bar">/);
 });
 
 test('desktop sidebar becomes a compact section switcher on phones', () => {
