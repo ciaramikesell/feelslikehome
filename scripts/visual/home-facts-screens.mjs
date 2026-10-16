@@ -48,8 +48,18 @@ const IGNORED_CONSOLE = /Download the React DevTools|favicon|bad HTTP response c
 const SCENARIOS = [
   { name: '01-add-home-found', query: 'view=add&state=found', act: async (page) => { await page.getByText('Listing found').waitFor(); } },
   { name: '01b-add-home-saved', query: 'view=add&state=found', act: async (page) => {
-    await page.getByRole('button', { name: 'Add to My Homes' }).click();
-    await page.getByTestId('preview-saved').waitFor();
+    // Nothing is saved while the found card is showing.
+    if (await page.getByTestId('preview-saved').count()) throw new Error('saved before Add to My Homes');
+    // A double click must still save exactly once, with the imported values and snapshot.
+    await page.getByRole('button', { name: 'Add to My Homes' }).dblclick();
+    const saved = page.getByTestId('preview-saved');
+    await saved.waitFor();
+    await page.waitForTimeout(400);
+    const attrs = await saved.evaluate((el) => ({ ...el.dataset, text: el.textContent }));
+    const expect = { saveCalls: '1', address: '51613 Sass Rd, New Baltimore, MI 48047', price: '335000', garage: '2', snapshotFacts: '7' };
+    for (const [key, value] of Object.entries(expect)) if (attrs[key] !== value) throw new Error(`saved ${key}=${attrs[key]}, expected ${value}`);
+    if (!attrs.listingUrl.startsWith('https://www.zillow.com/')) throw new Error('listing URL lost');
+    if (!attrs.text.includes('?added=import')) throw new Error('not routed to the import landing');
   } },
   { name: '01c-add-home-save-error', query: 'view=add&state=error', act: async (page) => {
     await page.getByRole('button', { name: 'Add to My Homes' }).click();
@@ -81,9 +91,25 @@ const SCENARIOS = [
   { name: '07-partial-import', query: 'state=partial' },
   { name: '08-unknown-features', query: 'state=unknown', act: async (page) => { await page.locator('.flh-facts-features').scrollIntoViewIfNeeded(); } },
   { name: '09-manual-entry', query: 'state=manual' },
-  { name: '10-realtor-read-only', query: 'state=realtor' },
+  { name: '10-realtor-read-only', query: 'state=realtor', act: async (page) => {
+    for (const name of [/Edit home features/, /school details/i, /Edit home information/, /Correct details/, /Want to tour/]) {
+      if (await page.getByRole('button', { name }).count()) throw new Error(`Realtor view shows ${name}`);
+    }
+    await page.locator('.flh-workspace-nav').getByRole('button', { name: /Tour Feedback/ }).click();
+    await page.getByRole('heading', { level: 1, name: 'Tour Feedback' }).waitFor();
+    for (const name of [/Want to tour/, /Record your take/, /Add pros, cons/, /Archive/]) {
+      if (await page.getByRole('button', { name }).count()) throw new Error(`Realtor Tour Feedback shows ${name}`);
+    }
+  } },
   { name: '11-cobuyer', query: 'state=cobuyer' },
-  { name: '12-check-the-match', query: 'state=saved&section=match' },
+  { name: '12-check-the-match', query: 'state=saved&section=match', act: async (page) => {
+    await page.getByRole('heading', { level: 1, name: 'Check the Match' }).waitFor();
+    const current = await page.locator('.flh-workspace-nav [aria-current="page"]').textContent();
+    if (!current.includes('Check the Match')) throw new Error('nav does not mark Check the Match current');
+  } },
+  { name: '12b-unknown-section-falls-back', query: 'state=saved&section=bogus', act: async (page) => {
+    await page.getByRole('heading', { level: 1, name: 'Home Facts' }).waitFor();
+  } },
   { name: '13-tour-feedback', query: 'state=saved&section=tour' },
   { name: '14-switch-sections', query: 'state=saved', act: async (page) => {
     await page.locator('.flh-workspace-nav').getByRole('button', { name: /Check the Match/ }).click();
@@ -91,6 +117,13 @@ const SCENARIOS = [
     await page.locator('.flh-workspace-nav').getByRole('button', { name: /Tour Feedback/ }).click();
     await page.getByRole('heading', { level: 1, name: 'Tour Feedback' }).waitFor();
     if (!page.url().includes('section=tour')) throw new Error('section not reflected in URL');
+    await page.locator('.flh-workspace-nav').getByRole('button', { name: /Home Facts/ }).click();
+    await page.getByRole('heading', { level: 1, name: 'Home Facts' }).waitFor();
+    if (page.url().includes('section=')) throw new Error('Home Facts should carry no section parameter');
+    // Switching areas never stacks history entries.
+    if (await page.evaluate(() => window.history.length) !== 2) throw new Error('section switches added history entries');
+    await page.goto(page.url().replace(/\?.*$/, '?state=saved&section=tour'));
+    await page.getByRole('heading', { level: 1, name: 'Tour Feedback' }).waitFor();
   } },
 ];
 

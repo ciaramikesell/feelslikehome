@@ -7,7 +7,7 @@ import { emptyHome, normalizePriorities } from '@/lib/constants';
 import { applySearchChoice } from '@/lib/onboarding';
 import { addCriterion } from '@/lib/searchProfile';
 
-// Fixtures for the development-only Home Facts preview (src/app/dev/home-facts).
+// Fixtures for the development-only Home Facts preview (src/app/dev/home-facts/page.dev.js, never part of a production build).
 // Renders the real <HomeDetail> and <HomeModal> with deterministic data; no
 // sign-in, and nothing is read from or written to Supabase. The Add Home view's
 // listing lookup is answered by the browser QA script (it intercepts
@@ -86,16 +86,18 @@ const HOME_STATES = {
 function AddHomePreview({ state, priorities }) {
   const [open, setOpen] = useState(true);
   const [saved, setSaved] = useState(null);
+  const [saveCalls, setSaveCalls] = useState(0);
   const existingHomes = state === 'duplicate' ? [homeFrom(FULL_IMPORT, { photoUrl: PHOTO })] : [];
   const onSave = async (home) => {
+    setSaveCalls((count) => count + 1);
     await new Promise((resolve) => setTimeout(resolve, 250));
     if (state === 'error') throw new Error('Simulated save failure');
-    setSaved(`/homes/${HOME_ID}?added=${home.listingImport ? 'import' : 'manual'}`);
+    setSaved({ href: `/homes/${HOME_ID}?added=${home.listingImport ? 'import' : 'manual'}`, home });
     setOpen(false);
   };
   return <main className="hh-root" style={{ padding: 24 }}>
     <h1 className="hh-serif">My Homes</h1>
-    {saved && <p role="status" data-testid="preview-saved">Saved. Opening Home Facts at {saved}</p>}
+    {saved && <p role="status" data-testid="preview-saved" data-save-calls={saveCalls} data-address={saved.home.address} data-price={saved.home.price} data-garage={saved.home.garageSpaces} data-snapshot-facts={saved.home.listingImport?.listingFacts?.length ?? 0} data-listing-url={saved.home.listingUrl}>Saved. Opening Home Facts at {saved.href}</p>}
     {!open && !saved && <p role="status">Closed without saving.</p>}
     {open && <HomeModal
       initial={{ ...emptyHome(), listingUrl: state === 'manual' ? '' : LISTING_URL }} priorities={priorities} userId={USER_ID}

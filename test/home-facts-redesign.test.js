@@ -301,3 +301,53 @@ test('desktop sidebar becomes a compact section switcher on phones', () => {
   assert.match(css, /\.flh-workspace-nav nav button\.is-active \{ background: rgba\(185,83,50,\.09\); color: var\(--brick\); \}/);
   assert.match(css, /@media \(max-width: 900px\) \{[\s\S]*\.flh-workspace-nav ul \{ grid-template-columns: repeat\(3,minmax\(0,1fr\)\);/);
 });
+
+test('the Home Facts QA preview is development-only and never part of a production build', async () => {
+  const { existsSync } = await import('node:fs');
+  assert.equal(existsSync(new URL('../src/app/dev/home-facts/page.js', import.meta.url)), false, 'no production-visible page.js');
+  assert.ok(existsSync(new URL('../src/app/dev/home-facts/page.dev.js', import.meta.url)));
+  const config = read('next.config.mjs');
+  assert.match(config, /const developmentOnly = process\.env\.NODE_ENV !== 'production';/);
+  assert.match(config, /pageExtensions: developmentOnly \? \['dev\.js', 'js', 'jsx', 'ts', 'tsx'\] : \['js', 'jsx', 'ts', 'tsx'\]/);
+  // Defence in depth: the page itself and the /dev/ middleware still answer 404 in production.
+  assert.match(read('src/app/dev/home-facts/page.dev.js'), /if \(process\.env\.NODE_ENV === 'production'\) notFound\(\);/);
+  assert.match(read('src/middleware.js'), /pathname\.startsWith\('\/dev\/'\)[\s\S]*process\.env\.NODE_ENV === 'production'[\s\S]*status: 404/);
+  // Only the dev page imports the fixtures.
+  for (const file of ['src/components/HomeDetail.jsx', 'src/components/HomesBoard.jsx', 'src/components/HomeModal.jsx', 'src/components/HomeFacts.jsx']) assert.doesNotMatch(read(file), /HomeFactsPreview/);
+});
+
+// The saved-home flow end to end at the persistence layer, with exactly the
+// payload Add to My Homes sends: the merged form plus the listing snapshot.
+dbTest('import → Add to My Homes: one home, nothing lost, even when the save is interrupted and retried', async () => {
+  const { mergeImportFields } = await import('../src/lib/importDomain.js');
+  const { findHomeByListingUrl } = await import('../src/lib/listingUrl.js');
+  const listingUrl = 'https://www.zillow.com/homedetails/51613-Sass-Rd/1_zpid/';
+  const form = { ...mergeImportFields({ ...emptyHome(), listingUrl, address: SNAPSHOT.fields.address }, SNAPSHOT.fields), listingImport: SNAPSHOT };
+
+  // 1. The personal-state write fails after the shared row was inserted.
+  let interrupted = false;
+  const owner = db.clientFor(ids.owner);
+  const flaky = { ...owner, from: (table) => {
+    if (table === 'home_member_state' && !interrupted) { interrupted = true; return { upsert: async () => ({ error: new Error('network interrupted') }) }; }
+    return owner.from(table);
+  } };
+  let partialHomeId = null;
+  await assert.rejects(saveHomePersonalAndShared(flaky, form, ids.owner, ids.search), (error) => { partialHomeId = error.partialHomeId; return !!partialHomeId; });
+
+  // 2. HomeModal adopts partialHomeId; the retry updates that row instead of inserting another.
+  const saved = await saveHomePersonalAndShared(owner, { ...form, id: partialHomeId }, ids.owner, ids.search);
+  assert.equal(saved.id, partialHomeId);
+  assert.equal(db.admin(`select count(*)::int as n from public.homes where listing_url = '${listingUrl}'`)[0].n, 1, 'exactly one home');
+  assert.equal(db.admin(`select count(*)::int as n from public.home_member_state where home_id = '${saved.id}' and user_id = '${ids.owner}'`)[0].n, 1);
+
+  // 3. What Home Facts loads for /homes/{id}: every imported value and the snapshot survive.
+  const loaded = await viewOf(ids.owner, saved.id);
+  for (const field of ['price', 'beds', 'garageSpaces', 'basementNotes']) assert.equal(String(loaded[field]), String(SNAPSHOT.fields[field]), field);
+  assert.deepEqual(loaded.listingImport, SNAPSHOT);
+  assert.equal(importedDetailCount(loaded.listingImport), 8);
+  assert.match(homeFactsWelcome(loaded, 'import').body, /We found 8 details/);
+  assert.equal(homeFeatureSummary(loaded, buy())[0].provenance, 'listing');
+
+  // 4. Pasting or sharing the same link again finds the saved home (no second import), for the co-buyer too.
+  assert.equal(findHomeByListingUrl(await getHomesForUser(db.clientFor(ids.coBuyer), ids.coBuyer, ids.search), listingUrl)?.id, saved.id);
+});
