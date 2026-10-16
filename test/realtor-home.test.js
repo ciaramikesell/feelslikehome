@@ -11,7 +11,7 @@ const appShell = read('src/components/AppShell.jsx');
 const connectBuyer = read('src/components/ConnectBuyer.jsx');
 const inviteBuyer = read('src/components/InviteBuyer.jsx');
 const collaboration = read('src/lib/supabase/collaboration.js');
-const people = read('src/app/(app)/people/page.js');
+const people = read('src/app/(app)/people/page.js') + read('src/components/MyClientsView.jsx');
 const invite = read('src/app/invite/[token]/AcceptInvitationClient.jsx');
 const css = read('src/app/globals.css');
 const startedSearchesMigration = read('supabase/migrations/2026-09-16-realtor-started-searches.sql');
@@ -97,8 +97,8 @@ test('Realtor Home never becomes a user directory or CRM pipeline', () => {
   assert.doesNotMatch(migration, /select .*from auth\.users.*where.*ilike|user directory|list_users/i);
 });
 
-test('People I’m Helping remains a separate client roster, unmerged with the launchpad', () => {
-  assert.match(people, /People I.m Helping/);
+test('My Clients remains a separate client roster, unmerged with the launchpad', () => {
+  assert.match(people, /<h1>My Clients<\/h1>/);
   assert.match(people, /InviteBuyer/);
   assert.doesNotMatch(people, /ConnectBuyer|hh-realtor-home-cards/);
 });

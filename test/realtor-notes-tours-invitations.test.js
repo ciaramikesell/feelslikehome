@@ -6,7 +6,7 @@ const migration = read('supabase/migrations/2026-09-16-realtor-notes-tours-buyer
 const schema = read('supabase/schema.sql');
 const detail = read('src/components/RealtorContributions.jsx');
 const invite = read('src/app/invite/[token]/AcceptInvitationClient.jsx');
-const people = read('src/app/(app)/people/page.js');
+const people = read('src/app/(app)/people/page.js') + read('src/components/MyClientsView.jsx');
 const collaboration = read('src/lib/supabase/collaboration.js');
 function fn(name) { return migration.match(new RegExp(`create (?:or replace )?function public\\.${name}[\\s\\S]*?end; \\$\\$;`, 'i'))?.[0] || ''; }
 

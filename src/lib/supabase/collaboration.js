@@ -11,6 +11,7 @@ import { defaultPriorities } from '@/lib/constants';
 import { deriveSharedFactPriorityAwareness } from '@/lib/sharedFactPriorityAwareness';
 import { hasOutstandingWantToTour } from '@/lib/lifecycle';
 import { prioritiesForExplicitSave } from '@/lib/searchIntent';
+import { RECORD_COLUMNS, recordFromRow } from '@/lib/clientRecords';
 
 // Application allowlists for the shared records. Personal legacy columns are
 // intentionally absent so a later column-privilege cutover cannot change the
@@ -872,9 +873,18 @@ export async function getProspectiveSearches(supabase) {
   return data || [];
 }
 
-export async function claimProspectiveSearch(supabase, token, confirmedPriorities) {
+// Claims a Realtor's invitation for the search the buyer is using (resolved
+// and re-checked by the database; searchId is the one the screen named).
+// confirmedPriorities is the buyer's explicitly confirmed document, or null
+// to keep the priorities they already have in that search — the database
+// never replaces existing priorities ('priorities_exist').
+export async function claimProspectiveSearch(supabase, token, confirmedPriorities, searchId = null) {
   const { data, error } = await supabase.rpc('claim_prospective_search', {
-    p_token: token, p_confirmed_priorities: prioritiesForExplicitSave(confirmedPriorities),
+    p_token: token,
+    p_confirmed_priorities: confirmedPriorities == null ? null : prioritiesForExplicitSave(confirmedPriorities),
+    // Sent only when the screen named a search, so the call shape stays valid
+    // against the two-argument function until the migration is applied.
+    ...(searchId ? { p_search_id: searchId } : {}),
   });
   if (error) throw error;
   return data?.[0] || { success: false, reason: 'unknown', search_id: null };
@@ -1039,4 +1049,80 @@ function homeToSharedRow(home, userId, searchId) {
     selected_unit_label: home.selectedUnitLabel || null,
     updated_at: new Date().toISOString(),
   };
+}
+
+/* ------------------------------ My Clients -------------------------------- */
+// The Realtor's private client records. Owner-only by RLS: nobody else — no
+// other Realtor, no buyer — can read, change or delete them.
+
+export async function getClientRecords(supabase) {
+  const { data, error } = await supabase.from('prospective_searches').select(RECORD_COLUMNS).order('updated_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map(recordFromRow);
+}
+
+export async function getClientRecord(supabase, id) {
+  const { data, error } = await supabase.from('prospective_searches').select(RECORD_COLUMNS).eq('id', id).maybeSingle();
+  if (error) throw error;
+  return data ? recordFromRow(data) : null;
+}
+
+// The Realtor's own record for a search they are connected to, if any.
+export async function getClientRecordForSearch(supabase, searchId) {
+  const { data, error } = await supabase.from('prospective_searches').select(RECORD_COLUMNS).eq('search_id', searchId).order('created_at');
+  if (error) throw error;
+  return data?.length ? recordFromRow(data[0]) : null;
+}
+
+const recordText = (value) => (value && String(value).trim()) || null;
+
+export async function createClientRecord(supabase, { name, draftPriorities = {}, contactEmail = '', contactPhone = '', preferredLocations = [], notes = '' }) {
+  const { data, error } = await supabase.rpc('create_client_record', {
+    p_client_name: name.trim(),
+    p_draft_priorities: prioritiesForExplicitSave(draftPriorities),
+    p_contact_email: recordText(contactEmail),
+    p_contact_phone: recordText(contactPhone),
+    p_preferred_locations: preferredLocations,
+    p_notes: recordText(notes),
+  });
+  if (error) throw error;
+  return scalarResult(data);
+}
+
+// Only the Realtor's own fields. draftPriorities is omitted for connected
+// records, whose proposed criteria were superseded by the buyer's own.
+export async function updateClientRecord(supabase, id, { name, contactEmail, contactPhone, preferredLocations, notes, draftPriorities }) {
+  const patch = {
+    client_name: recordText(name),
+    contact_email: recordText(contactEmail)?.toLowerCase() || null,
+    contact_phone: recordText(contactPhone),
+    preferred_locations: preferredLocations || [],
+    notes: recordText(notes),
+  };
+  if (draftPriorities !== undefined) patch.draft_priorities = prioritiesForExplicitSave(draftPriorities);
+  const { data, error } = await supabase.from('prospective_searches').update(patch).eq('id', id).select('id').single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteClientRecord(supabase, id) {
+  const { data, error } = await supabase.from('prospective_searches').delete().eq('id', id).select('id');
+  if (error) throw error;
+  if (!data?.length) throw new Error('Client record not found');
+}
+
+export async function openConnectedClientRecord(supabase, searchId) {
+  const { data, error } = await supabase.rpc('open_connected_client_record', { p_search_id: searchId });
+  if (error) throw error;
+  return scalarResult(data);
+}
+
+// The buyers' own preference documents for searches the Realtor is on right
+// now (RLS: participants and current Realtors only), reduced by the caller to
+// a short summary. Never stored anywhere.
+export async function getClientSearchPriorities(supabase, searchIds) {
+  if (!searchIds.length) return [];
+  const { data, error } = await supabase.from('search_member_priorities').select('search_id,user_id,priorities').in('search_id', searchIds);
+  if (error) throw error;
+  return data || [];
 }

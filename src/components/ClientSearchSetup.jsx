@@ -19,7 +19,7 @@ function NumericField({ label, value, onChange, prefix, suffix, placeholder }) {
   return <label className="hh-onboarding-field"><span className="hh-label">{label}</span><span className="hh-onboarding-input-wrap">{prefix}<input className="hh-input" inputMode="numeric" value={value} placeholder={placeholder} onChange={(event) => onChange(event.target.value)} />{suffix}</span></label>;
 }
 
-export default function ClientSearchSetup({ mode = 'realtor', token = null, inviterName = '', initialDraft = null }) {
+export default function ClientSearchSetup({ mode = 'realtor', token = null, targetSearchId = null, inviterName = '', initialDraft = null }) {
   const router = useRouter();
   const initial = normalizePriorities(initialDraft?.draft_priorities || initialDraft?.draftPriorities || defaultPriorities());
   const [priorities, setPriorities] = useState(initial);
@@ -41,8 +41,10 @@ export default function ClientSearchSetup({ mode = 'realtor', token = null, invi
     try {
       const supabase = createClient();
       if (mode === 'buyer') {
-        const result = await claimProspectiveSearch(supabase, token, finalPriorities());
-        if (!result.success) throw new Error(result.reason || 'claim_failed');
+        // Claimed into the search this page named (the one they use); the
+        // database re-checks it and never replaces existing priorities.
+        const result = await claimProspectiveSearch(supabase, token, finalPriorities(), targetSearchId);
+        if (!result.success) throw Object.assign(new Error(result.reason || 'claim_failed'), { reason: result.reason });
         router.push('/search?welcome=1'); router.refresh(); return;
       }
       let draft = initialDraft;
@@ -52,7 +54,13 @@ export default function ClientSearchSetup({ mode = 'realtor', token = null, invi
       } else draft = await createProspectiveSearch(supabase, finalPriorities(), clientName);
       if (email.trim()) await inviteProspectiveClient(supabase, draft.id, email);
       router.push('/people'); router.refresh();
-    } catch (caught) { setError(mode === 'buyer' ? "We couldn't claim this search. Check that you're signed in with the invited email and try again." : "We couldn't save this search. Please try again."); setBusy(false); }
+    } catch (caught) {
+      if (mode === 'buyer' && (caught?.reason === 'priorities_exist' || caught?.reason === 'search_changed' || caught?.reason === 'active_search_unavailable')) {
+        // Something changed since this page opened: start again from the invitation, which names the search.
+        router.push(`/invite/${token}`); router.refresh(); return;
+      }
+      setError(mode === 'buyer' ? "We couldn't claim this search. Check that you're signed in with the invited email and try again." : "We couldn't save this search. Please try again."); setBusy(false);
+    }
   };
   return <div className="hh-root"><div className="hh-onboarding-shell"><div className={`hh-corner hh-onboarding-card ${step > 1 ? 'is-wide' : ''}`}>
     <div className="hh-onboarding-brand"><BrandMark size={30} /><span className="hh-serif"><span>Feels Like </span><b>Home</b></span></div>

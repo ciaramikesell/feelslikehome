@@ -36,12 +36,13 @@ export default async function InvitePage({ params }) {
   // hasn't (see remembersRealtorFromFailedInvitation).
   const profile = await getProfile(supabase, user.id).catch(() => null);
 
-  // A buyer approving a Realtor's connection request approves it for the
-  // search they are using, as resolved by the database. When that can't be
-  // established safely (a stale active search, for example) the screen says so
-  // and offers the searches they buy in, rather than picking one for them; the
-  // database re-checks the target when they approve.
-  const approvalTarget = preview.valid && preview.invitation_direction === 'realtor_to_buyer' && !preview.requires_confirmation
+  // A buyer approving a Realtor's connection request — or claiming a search a
+  // Realtor started for them — does so for the search they are using, as
+  // resolved by the database. When that can't be established safely (a stale
+  // active search, for example) the screen says so and offers the searches
+  // they buy in, rather than picking one for them; the database re-checks the
+  // target when they approve or confirm.
+  const approvalTarget = preview.valid && preview.invitation_direction === 'realtor_to_buyer'
     ? await approvalTargetFor(supabase, user.id).catch(() => ({ error: 'unknown', options: [] }))
     : null;
 

@@ -21,6 +21,9 @@ const REASON_COPY = {
   active_search_unavailable: "We couldn't tell which home search you're using, so nothing was shared. Open this link again to choose.",
   no_search: "You don't have a home search yet. Start one, then open this link again.",
   relationship_conflict: 'They’re already part of this search as a buyer.',
+  priorities_exist: 'You already have priorities in this search. Open this link again to connect without changing them.',
+  confirmation_required: 'Review and confirm your priorities first. Open this link again to continue.',
+  draft_unavailable: 'Your Realtor withdrew this search. Ask them for a new link.',
   accepted: 'This request has already been used.',
   unknown: 'Something went wrong. Please try again.',
 };
@@ -44,7 +47,7 @@ export default function AcceptInvitationClient({ token, initialPreview, onboardi
   const asRealtor = isRealtorInvite && !isBuyerInvite;
   // No safe approval target (e.g. a stale active search): nothing is approved
   // until the buyer picks the search they are using.
-  const needsTarget = isBuyerInvite && !requiresConfirmation && Boolean(approvalTarget?.error);
+  const needsTarget = isBuyerInvite && Boolean(approvalTarget?.error);
   const [choosing, setChoosing] = useState('');
 
   const useSearch = async (searchId) => {
@@ -138,7 +141,7 @@ export default function AcceptInvitationClient({ token, initialPreview, onboardi
                   <>You&apos;ll share the same collection of homes and be able to see each other&apos;s search preferences and opinions. Your ratings and preferences stay under your control—no one else can change them for you.</>
                 )
               ) : requiresConfirmation ? (
-                <>Keep the homes you&apos;re considering in one place, see how each one matches what matters to you, and make it easier for {inviterName} to understand what you&apos;re looking for. This remains your search.</>
+                <>Keep the homes you&apos;re considering in one place, see how each one matches what matters to you, and make it easier for {inviterName} to understand what you&apos;re looking for. This remains your search.{approvalTarget?.id && <span className="hh-invite-target"><strong>{approvalTarget.label}</strong>{approvalTarget.homeCount} saved {approvalTarget.homeCount === 1 ? 'home' : 'homes'}</span>}</>
               ) : (
                 <>{inviterName} will be able to see your search, priorities, and homes so they can help — nothing changes about your search itself, and you can remove them anytime from My Search → Your People.{approvalTarget?.id && <span className="hh-invite-target"><strong>{approvalTarget.label}</strong>{approvalTarget.homeCount} saved {approvalTarget.homeCount === 1 ? 'home' : 'homes'}</span>}</>
               )}
@@ -185,7 +188,7 @@ export default function AcceptInvitationClient({ token, initialPreview, onboardi
               <button type="button" className="hh-btn hh-btn-ghost" onClick={async () => {
                 if (asRealtor && remembersRealtorFromFailedInvitation({ preview: { ...initialPreview, valid: false, reason }, onboardingComplete })) await rememberRealtorWorkspace(createClient());
                 router.push(asRealtor ? REALTOR_WORKSPACE_PATH : '/homes');
-              }}>{asRealtor ? 'Go to People I’m Helping' : 'Return to Homes'}</button>
+              }}>{asRealtor ? 'Go to My Clients' : 'Return to Homes'}</button>
             )}
           </>
         )}

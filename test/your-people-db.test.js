@@ -370,7 +370,7 @@ test('a connection request is approved for the search the buyer uses, verified b
   assert.match(page, /search\.relationshipType === 'owner' \|\| search\.relationshipType === 'co_buyer'/);
   const client = read('src/app/invite/[token]/AcceptInvitationClient.jsx');
   assert.match(client, /approvalTarget\?\.id \? await approveRealtorConnection\(supabase, token, approvalTarget\.id\)/);
-  assert.match(client, /const needsTarget = isBuyerInvite && !requiresConfirmation && Boolean\(approvalTarget\?\.error\);/);
+  assert.match(client, /const needsTarget = isBuyerInvite && Boolean\(approvalTarget\?\.error\);/);
   assert.match(client, /Which home search should \{inviterName\} help with\?/);
   assert.match(read('src/lib/realtorEntry.js'), /if \(invitationDirection === 'realtor_to_buyer'\) return \{ destination: '\/onboarding', setActiveSearch: false \};/);
 });

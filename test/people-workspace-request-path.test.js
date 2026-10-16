@@ -3,22 +3,26 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { loadPeopleWorkspace } = require('../src/lib/supabase/peopleWorkspace.cjs');
 
-const page = fs.readFileSync('src/app/(app)/people/page.js', 'utf8');
+const page = fs.readFileSync('src/app/(app)/people/page.js', 'utf8') + fs.readFileSync('src/components/MyClientsView.jsx', 'utf8');
 const layout = fs.readFileSync('src/app/(app)/layout.js', 'utf8');
 const detailPage = fs.readFileSync('src/app/(app)/people/[searchId]/page.js', 'utf8');
 const collaboration = fs.readFileSync('src/lib/supabase/collaboration.js', 'utf8');
 const migration = fs.readFileSync('supabase/migrations/2026-09-18-people-workspace-draft-select-privileges.sql', 'utf8');
 
-function routeLoad({ clients = [], drafts = [] } = {}) {
+function routeLoad({ clients = [], records = [], priorities = [] } = {}) {
   const calls = [];
   const loaders = {
     getRealtorRelationships: async (_supabase, userId) => {
       calls.push(['roster', userId]);
       return clients;
     },
-    getProspectiveSearches: async () => {
-      calls.push(['drafts']);
-      return drafts;
+    getClientRecords: async () => {
+      calls.push(['records']);
+      return records;
+    },
+    getClientSearchPriorities: async (_supabase, ids) => {
+      calls.push(['priorities', ids]);
+      return priorities;
     },
   };
   return loadPeopleWorkspace({ request: '/people' }, 'realtor-1', loaders)
@@ -27,25 +31,30 @@ function routeLoad({ clients = [], drafts = [] } = {}) {
 
 test('actual /people request loader accepts a first-run Realtor zero state', async () => {
   const { result, calls } = await routeLoad();
-  assert.deepEqual(result, { clients: [], drafts: [] });
-  assert.deepEqual(calls, [['roster', 'realtor-1'], ['drafts']]);
+  assert.deepEqual(result, { clients: [], records: [], priorities: [] });
+  // No connected search: buyer preferences are never even requested.
+  assert.deepEqual(calls, [['roster', 'realtor-1'], ['records']]);
   assert.match(page, /loadPeopleWorkspace\(supabase, user\.id/);
   assert.match(page, /Your workspace is ready/);
   assert.match(page, /Start a client search/);
+  assert.match(page, /<AddClient/);
   assert.doesNotMatch(page, /resolveActiveSearch|getRealtorSearchContext/);
   assert.doesNotMatch(layout.match(/if \(isRealtorWorkspace\) \{[\s\S]*?\n    \}/)[0], /resolveActiveSearch|getAccessibleSearches/);
 });
 
-test('actual /people request loader returns a Realtor-owned draft', async () => {
-  const draft = { id: 'draft-1', client_name: 'Casey', status: 'draft' };
-  const { result } = await routeLoad({ drafts: [draft] });
-  assert.deepEqual(result, { clients: [], drafts: [draft] });
+test('actual /people request loader returns a Realtor-owned record', async () => {
+  const record = { id: 'draft-1', name: 'Casey', status: 'draft' };
+  const { result } = await routeLoad({ records: [record] });
+  assert.deepEqual(result, { clients: [], records: [record], priorities: [] });
 });
 
 test('actual /people request loader returns an authorized client', async () => {
   const client = { id: 'search-1', people: [{ display_name: 'Casey' }], activeCount: 0, wantToTourCount: 0 };
-  const { result } = await routeLoad({ clients: [client] });
-  assert.deepEqual(result, { clients: [client], drafts: [] });
+  const priorities = [{ search_id: 'search-1', user_id: 'buyer-1', priorities: {} }];
+  const { result, calls } = await routeLoad({ clients: [client], priorities });
+  assert.deepEqual(result, { clients: [client], records: [], priorities });
+  // Preferences are requested only for searches the Realtor is on right now.
+  assert.deepEqual(calls.at(-1), ['priorities', ['search-1']]);
 });
 
 test('specific client routes still fail closed for absent or revoked membership', () => {

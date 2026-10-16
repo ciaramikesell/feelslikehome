@@ -1296,6 +1296,127 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 /* PR #79 — relationship-scoped Realtor workspace. */
 .hh-people-page,.hh-realtor-workspace{padding:32px 34px 80px;max-width:1120px;margin:0 auto}.hh-people-header,.hh-realtor-client-header{margin-bottom:28px}.hh-people-header>span,.hh-realtor-client-header div>span,.hh-realtor-section-title div>span{font:700 10px/1.2 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--brick)}.hh-people-header h1,.hh-realtor-client-header h1{font:600 clamp(28px,5vw,44px)/1.05 var(--font-serif);margin:7px 0}.hh-people-header p,.hh-realtor-client-header p{color:var(--ink-soft);max-width:620px;margin:0;line-height:1.55}.hh-realtor-client-header>a{display:inline-block;color:var(--ink-soft);font-size:13px;margin-bottom:22px}.hh-client-list{display:grid;gap:12px;max-width:760px}.hh-client-card{display:grid;grid-template-columns:46px 1fr auto;align-items:center;gap:14px;padding:18px;background:var(--paper-raised);border:1px solid var(--line);border-radius:16px;color:var(--ink);text-decoration:none;box-shadow:0 5px 20px rgba(71,51,35,.05)}.hh-client-card:hover{border-color:var(--brick)}.hh-client-avatar{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:rgba(93,112,82,.12);color:var(--moss)}.hh-client-card h2{font:600 20px var(--font-serif);margin:0 0 5px}.hh-client-card p{font-size:12.5px;color:var(--ink-soft);margin:0}.hh-client-card p strong{display:inline-flex;align-items:center;gap:4px;color:var(--brick)}.hh-realtor-section{background:var(--paper-raised);border:1px solid var(--line);border-radius:20px;padding:24px;margin-bottom:22px}.hh-realtor-section-title{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}.hh-realtor-section-title h2{font:600 24px var(--font-serif);margin:4px 0 0}.hh-realtor-section-title h2 svg{vertical-align:-2px}.hh-realtor-priority-people{display:grid;gap:20px}.hh-realtor-priorities+.hh-realtor-priorities{border-top:1px solid var(--line);padding-top:20px}.hh-realtor-person-label{font-weight:700;margin-bottom:10px}.hh-realtor-person-label span{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);margin-left:5px}.hh-realtor-priority-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.hh-realtor-tier{border-radius:13px;padding:13px;background:var(--paper)}.hh-realtor-tier h3{font-size:12px;margin:0 0 9px}.hh-realtor-tier.is-must h3{color:var(--brick)}.hh-realtor-tier.is-important h3{color:var(--moss)}.hh-realtor-tier ul{margin:0;padding:0;list-style:none;display:grid;gap:7px}.hh-realtor-tier li{font-size:12.5px}.hh-realtor-tier li small{display:block;color:var(--ink-soft);margin-top:2px}.hh-realtor-tier p{font-size:12px;color:var(--ink-soft);margin:0;font-style:italic}.hh-realtor-tour-strip{display:flex;gap:13px;align-items:center;background:rgba(193,89,47,.09);border:1px solid rgba(193,89,47,.25);color:var(--brick);padding:15px 18px;border-radius:15px;margin-bottom:22px}.hh-realtor-tour-strip div{display:grid;gap:3px}.hh-realtor-tour-strip span{font-size:12px;color:var(--ink)}.hh-realtor-home-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.hh-realtor-home-card{display:grid;grid-template-columns:130px minmax(0,1fr);min-width:0;border:1px solid var(--line);border-radius:15px;overflow:hidden;background:var(--paper)}.hh-realtor-home-photo{background:var(--sand);min-height:175px;display:grid;place-items:center;color:var(--ink-soft);font-size:12px}.hh-realtor-home-photo img{width:100%;height:100%;object-fit:cover}.hh-realtor-home-body{padding:13px;min-width:0}.hh-realtor-home-heading{display:flex;justify-content:space-between;gap:8px}.hh-realtor-home-heading>div{min-width:0}.hh-realtor-home-heading strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hh-realtor-home-heading small{display:block;color:var(--ink-soft);margin-top:2px}.hh-realtor-home-heading>b{font:700 12px var(--font-mono);white-space:nowrap}.hh-realtor-price{font-size:12px;color:var(--ink-soft);margin:5px 0 11px}.hh-realtor-perspectives{border-top:1px solid var(--line);padding-top:8px;display:grid;gap:7px}.hh-realtor-perspectives>div{display:grid;grid-template-columns:minmax(55px,.6fr) 1fr;gap:6px;font-size:11px}.hh-realtor-perspectives>div>strong{overflow:hidden;text-overflow:ellipsis}.hh-realtor-perspectives>div>span{display:flex;flex-wrap:wrap;gap:4px}.hh-realtor-perspectives em,.hh-realtor-stars{font-style:normal;display:inline-flex;align-items:center;gap:3px;color:var(--ink-soft)}.hh-realtor-perspectives em.tour{color:var(--brick);font-weight:700}.hh-realtor-stars{color:#a66e20}.hh-realtor-archive{background:transparent}.hh-realtor-empty{border:1px dashed var(--line);border-radius:16px;padding:32px;text-align:center;color:var(--ink-soft)}.hh-realtor-empty h1,.hh-realtor-empty h2{font:600 21px var(--font-serif);color:var(--ink)}.hh-people-empty{max-width:640px;padding:clamp(30px,6vw,52px);background:var(--paper-raised);border:1px solid rgba(93,112,82,.24);box-shadow:0 14px 34px rgba(71,51,35,.06)}.hh-people-empty-icon{width:58px;height:58px;margin:0 auto 18px;border-radius:50%;display:grid;place-items:center;background:rgba(93,112,82,.12);color:var(--moss)}.hh-people-empty h2{font-size:clamp(23px,4vw,30px);margin:0 0 12px}.hh-people-empty p{max-width:520px;margin:0 auto 24px;line-height:1.65}.hh-people-empty .hh-btn{display:inline-flex;margin-bottom:18px}.hh-people-empty small{display:block;color:var(--moss);font-weight:600;line-height:1.5}.hh-realtor-skeleton{height:120px;border-radius:16px;background:linear-gradient(90deg,var(--paper) 25%,var(--paper-raised) 50%,var(--paper) 75%);background-size:200% 100%;animation:hh-shimmer 1.5s infinite;margin:12px 0}.hh-realtor-skeleton.wide{height:70px}@keyframes hh-shimmer{to{background-position:-200% 0}}
 @media(max-width:760px){.hh-people-entry{max-width:150px}.hh-people-page,.hh-realtor-workspace{padding:20px 16px calc(94px + env(safe-area-inset-bottom))}.hh-realtor-priority-grid{grid-template-columns:1fr}.hh-realtor-section{padding:18px 14px;border-radius:16px}.hh-realtor-home-grid{grid-template-columns:1fr}.hh-realtor-home-card{grid-template-columns:104px minmax(0,1fr)}.hh-realtor-home-photo{min-height:168px}.hh-realtor-section-title{align-items:flex-start}.hh-realtor-section-title .hh-btn{font-size:11px;padding:7px 9px}.hh-shell-utilities{gap:5px}.hh-people-entry{font-size:0}.hh-people-entry svg{width:18px;height:18px}.hh-client-card{padding:15px 12px;grid-template-columns:40px 1fr auto}.hh-client-avatar{width:38px;height:38px}}
+/* ---------------------------------------------------------------------------
+   My Clients (/people) — the Realtor's client workspace and private records.
+   Calm cards in warm neutrals; one quiet status line per client, no tables.
+--------------------------------------------------------------------------- */
+.hh-clients-page{max-width:1180px}
+.hh-clients-header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:18px 28px}
+.hh-clients-header>div:first-child{max-width:620px}
+.hh-clients-header>div:first-child>span{font:700 10px/1.2 var(--font-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--brick)}
+.hh-clients-header .hh-people-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.hh-clients-header .hh-people-actions .hh-btn,.hh-clients-header .hh-invite-buyer-button{margin:0;padding:10px 16px;font-size:13px;gap:7px;display:inline-flex;align-items:center}
+.hh-clients-header .hh-invite-buyer{flex-basis:100%;max-width:460px}
+.hh-clients-header .hh-people-actions a.hh-btn{text-decoration:none}
+.hh-clients-header .hh-invite-buyer-button{background:transparent;color:var(--ink);border:1px solid var(--flh-control-line,var(--line));box-shadow:none}
+.hh-clients-section{margin-top:30px}
+.hh-keep-points{list-style:none;margin:4px 0 6px;padding:0;display:grid;gap:10px}
+.hh-keep-points li{position:relative;padding-left:26px;font-size:15px;line-height:1.5;color:var(--ink)}
+.hh-keep-points li::before{content:"";position:absolute;left:4px;top:.5em;width:10px;height:6px;border-left:2px solid var(--moss);border-bottom:2px solid var(--moss);transform:rotate(-45deg)}
+.hh-people-empty .hh-btn.hh-btn{margin-bottom:14px;min-height:44px;align-items:center}
+.hh-keep-points~.hh-onboarding-actions .hh-btn{min-height:44px;display:inline-flex;align-items:center;justify-content:center}
+.hh-clients-empty-alt{display:flex;flex-direction:column;align-items:center;gap:0;font-size:12.5px;color:var(--ink-soft);border-top:1px solid var(--line);padding-top:14px;margin-top:4px}
+.hh-clients-empty-alt>span{margin-bottom:2px}
+.hh-clients-empty-link svg{display:none}
+.hh-clients-empty-alt a,.hh-clients-empty-link{display:inline-flex;align-items:center;min-height:40px;padding:0 2px;background:none;border:0;color:var(--brick);font:600 13.5px var(--font-sans);text-decoration:none;cursor:pointer}
+.hh-clients-empty-alt .hh-invite-buyer{flex-basis:100%;text-align:left;margin-top:8px}
+.hh-clients-section-title{display:flex;align-items:baseline;gap:10px;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:16px}
+.hh-clients-section-title h2{font:600 21px/1.2 var(--font-serif);margin:0;color:var(--ink)}
+.hh-clients-section-title span{font:600 12px var(--font-mono);color:var(--ink-soft)}
+.hh-clients-empty-line{color:var(--ink-soft);font-size:13.5px;line-height:1.6;margin:0 0 14px;max-width:640px}
+.hh-client-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px}
+.hh-client-tile{position:relative;display:flex;flex-direction:column;gap:7px;min-width:0;padding:18px 18px 16px;background:var(--flh-card,#FFFDFA);border:1px solid var(--flh-card-line,var(--line));border-radius:18px;color:var(--ink);text-decoration:none;box-shadow:var(--flh-shadow-card);transition:border-color .15s ease,transform .15s ease}
+.hh-client-tile:hover{border-color:rgba(185,83,50,.45)}
+.hh-client-tile:focus-visible{outline:3px solid var(--focus-ring);outline-offset:2px}
+.hh-client-tile.is-muted{background:var(--paper);box-shadow:none}
+.hh-client-tile-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}
+.hh-client-tile h3{font:600 20px/1.2 var(--font-serif);margin:0;padding-right:20px;overflow-wrap:anywhere}
+.hh-client-tile p{margin:0}
+.hh-client-tile-criteria{font-size:13.5px;color:var(--ink)}
+.hh-client-tile-meta{display:flex;flex-wrap:wrap;align-items:center;gap:5px;font-size:12.5px;color:var(--ink-soft)}
+.hh-client-tile-meta strong{display:inline-flex;align-items:center;gap:4px;color:var(--brick)}
+.hh-client-tile-note{font-size:12.5px;color:var(--ink-soft);font-style:italic;border-top:1px dashed var(--line);padding-top:9px;margin-top:3px!important;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.hh-client-tile-flag{font-size:12px;color:#8a5a1c;background:var(--flh-level-important-bg,#FBF2E4);border-radius:10px;padding:7px 10px;margin-top:4px!important;line-height:1.45}
+.hh-client-tile-go{position:absolute;right:14px;bottom:16px;color:var(--ink-soft);opacity:.7}
+.hh-client-tile h3,.hh-client-tile>p:last-of-type{padding-right:22px}
+.hh-client-initials{width:40px;height:40px;flex:none;border-radius:50%;display:grid;place-items:center;background:var(--flh-sage-bg,#E3EADB);color:var(--flh-sage-ink,#455E3E);font:600 14px var(--font-serif);letter-spacing:.02em}
+.hh-client-status{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--ink-soft);white-space:nowrap}
+.hh-client-status::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.85}
+.hh-client-status.is-connected{color:var(--flh-sage-ink,#455E3E)}
+.hh-client-status.is-invited{color:#9a6420}
+.hh-client-status.is-draft{color:var(--ink-soft)}
+.hh-client-status.is-disconnected{color:var(--unknown)}
+.hh-client-status.is-disconnected::before{background:transparent;border:1.5px solid currentColor}
+
+/* A private record */
+.hh-client-page{max-width:880px}
+.hh-client-back{display:inline-flex;align-items:center;min-height:40px;color:var(--ink-soft);font-size:13px;margin-bottom:12px;text-decoration:none}
+.hh-client-hero{display:flex;gap:18px;align-items:flex-start;margin-bottom:20px}
+.hh-client-hero .hh-client-initials{width:58px;height:58px;font-size:19px}
+.hh-client-hero h1{font:600 clamp(28px,5vw,40px)/1.08 var(--font-serif);margin:6px 0 8px;overflow-wrap:anywhere}
+.hh-client-hero p{margin:0;color:var(--ink-soft);line-height:1.55;max-width:560px}
+.hh-client-actions{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:24px}
+.hh-client-actions .hh-btn{display:inline-flex;align-items:center;gap:7px;margin:0;padding:10px 16px;font-size:13px}
+.hh-client-sections{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.hh-client-panel{background:var(--flh-card,#FFFDFA);border:1px solid var(--flh-card-line,var(--line));border-radius:18px;padding:20px 20px 18px}
+.hh-client-panel h2{display:flex;align-items:center;gap:7px;font:600 19px/1.25 var(--font-serif);margin:0 0 6px}
+.hh-client-panel h3{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft);margin:18px 0 6px}
+.hh-client-panel-note{font-size:12.5px;color:var(--ink-soft);margin:0 0 12px;line-height:1.5}
+.hh-client-criteria{font-size:15px;margin:0 0 10px}
+.hh-client-tags{list-style:none;margin:0 0 14px;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.hh-client-tags li{font-size:12px;padding:5px 10px;border-radius:999px;background:var(--flh-quiet,#EDF0E6);color:var(--flh-sage-ink,#455E3E)}
+.hh-client-details{margin:8px 0 0;display:grid;gap:10px}
+.hh-client-details>div{display:grid;grid-template-columns:minmax(120px,.8fr) 1.4fr;gap:10px;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:9px}
+.hh-client-details dt{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft)}
+.hh-client-details dd{margin:0;font-size:14px;overflow-wrap:anywhere}
+.hh-client-notes{white-space:pre-wrap;line-height:1.6;margin:0;font-size:14px}
+.hh-client-inline-link{display:inline-flex;align-items:center;min-height:40px;margin-top:6px;font-size:13px;color:var(--brick);font-weight:600}
+.hh-client-delete{display:inline-flex;align-items:center;gap:6px;margin-top:26px;background:none;border:0;padding:8px 0;color:var(--negative);font:600 13px var(--font-sans);cursor:pointer}
+.hh-client-private-notes .hh-realtor-section-title .hh-btn{display:inline-flex;align-items:center;gap:6px;margin:0;padding:8px 14px;font-size:12.5px}
+
+/* The form, inside a Sheet */
+.hh-client-form{display:grid;gap:22px;margin-top:16px}
+.hh-client-form fieldset{border:0;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px}
+.hh-client-form legend{font:600 17px var(--font-serif);color:var(--ink);margin-bottom:10px;padding:0}
+.hh-client-form fieldset>:not(.hh-client-field):not(legend),.hh-client-field.is-wide{grid-column:1/-1}
+.hh-client-field{display:grid;gap:6px;min-width:0}
+.hh-client-field .hh-label{font-size:12.5px;font-weight:600;color:var(--ink)}
+.hh-client-field .hh-input{width:100%;min-height:44px;font-size:16px;box-sizing:border-box}
+.hh-client-field textarea.hh-input{min-height:120px;resize:vertical;line-height:1.5}
+.hh-client-field small{font-size:12px;color:var(--ink-soft)}
+.hh-client-field small.is-error{color:var(--negative)}
+.hh-client-affix{position:relative;display:block}
+.hh-client-affix>span{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--ink-soft);font-size:15px}
+.hh-client-affix .hh-input{padding-left:26px}
+.hh-client-form-note{font-size:13px;color:var(--ink-soft);line-height:1.55;margin:-4px 0 2px}
+.hh-client-form-numbers{display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:12px}
+.hh-client-choice,.hh-client-wishes>div{display:flex;flex-wrap:wrap;gap:8px}
+.hh-client-form .hh-chip{min-height:40px;padding:8px 13px;font-size:13px;display:inline-flex;align-items:center;gap:5px;border-radius:999px;border:1px solid var(--flh-control-line,var(--line));background:var(--paper-raised);color:var(--ink);cursor:pointer}
+.hh-client-form .hh-chip.on{background:var(--flh-sage-bg,#E3EADB);border-color:var(--flh-sage-line);color:var(--flh-sage-ink,#455E3E)}
+.hh-client-wishes{display:grid;gap:10px}
+.hh-client-wishes .hh-label{font-size:12.5px;font-weight:600}
+.hh-client-more{justify-self:start;background:none;border:0;padding:4px 0;color:var(--brick);font:600 13px var(--font-sans);cursor:pointer}
+.hh-client-private{display:flex;gap:7px;align-items:baseline;font-size:12.5px;color:var(--flh-sage-ink,#455E3E);margin:0;line-height:1.5}
+.hh-client-sheet .hh-sheet-body{padding-bottom:0}
+.hh-client-form-actions{position:sticky;bottom:0;z-index:1;background:var(--paper-raised);padding:12px 0 calc(18px + env(safe-area-inset-bottom));border-top:1px solid var(--line);margin-top:-6px}
+.hh-client-invite{display:grid;gap:12px}
+.hh-client-invite p{margin:0;color:var(--ink-soft);font-size:14px}
+.hh-client-invite small{color:var(--ink-soft)}
+
+@media(max-width:760px){
+  .hh-clients-header{align-items:stretch}
+  .hh-clients-header .hh-people-actions{width:100%}
+  .hh-clients-header .hh-people-actions>.hh-btn:first-child{flex:1 1 100%;justify-content:center;padding:12px 16px}
+  .hh-client-grid{grid-template-columns:1fr}
+  .hh-client-hero{gap:14px}
+  .hh-client-hero .hh-client-initials{width:48px;height:48px;font-size:16px}
+  .hh-client-actions .hh-btn{flex:1 1 auto;justify-content:center}
+  .hh-client-sections{grid-template-columns:1fr}
+  .hh-client-details>div{grid-template-columns:1fr;gap:3px}
+  .hh-client-form fieldset{grid-template-columns:1fr}
+  .hh-client-form-numbers{grid-template-columns:1fr 1fr}
+  .hh-client-form-numbers>:first-child{grid-column:1/-1}
+}
 @media(max-width:380px){.hh-realtor-home-card{grid-template-columns:1fr}.hh-realtor-home-photo{height:150px;min-height:0}.hh-realtor-perspectives>div{grid-template-columns:1fr}.hh-realtor-section-title{flex-direction:column}}
 
 .hh-realtor-suggest-action{display:flex;align-items:center;gap:12px;margin-top:16px;flex-wrap:wrap}.hh-realtor-suggest-action p{font-size:12px;color:var(--ink-soft);margin:0}.hh-suggestion-history{display:grid;gap:10px}.hh-suggestion-history article{display:grid;gap:3px;padding:12px;border:1px solid var(--line);border-radius:12px}.hh-suggestion-history article>span{color:var(--brick);font-size:12px;font-weight:700}.hh-suggestion-history small{color:var(--ink-soft)}

@@ -9,7 +9,7 @@ const authForm = read('src/components/auth/AuthForm.jsx');
 const root = read('src/app/page.js');
 const layout = read('src/app/(app)/layout.js');
 const onboardingPage = read('src/app/onboarding/page.js');
-const people = read('src/app/(app)/people/page.js');
+const people = read('src/app/(app)/people/page.js') + read('src/components/MyClientsView.jsx');
 const setup = read('src/components/ClientSearchSetup.jsx');
 const invite = read('src/app/invite/[token]/AcceptInvitationClient.jsx');
 const collaboration = read('src/lib/supabase/collaboration.js');
@@ -26,7 +26,7 @@ test('Realtor signup intent changes routing, never relationship authorization', 
 });
 
 test('People workspace has professional empty and pending states without CRM language', () => {
-  for (const phrase of ["People I’m Helping", 'Help a buyer get their search organized from the start', 'Start a client search', 'Invitation pending', 'Search started']) assert.ok(people.includes(phrase));
+  for (const phrase of ['My Clients', 'Your buyers keep ownership of their search', 'Start a client search', 'Not on Feels Like Home yet', 'Connected on Feels Like Home']) assert.ok(people.includes(phrase), phrase);
   assert.match(people, /InviteBuyer/);
   assert.doesNotMatch(people, /Leads|Prospects|Pipeline|Conversion|Client database/i);
 });
@@ -36,9 +36,8 @@ test('zero-client Realtor workspace does not require or invent an active buyer s
   assert.match(realtorBranch, /workspace="realtor"/);
   assert.match(realtorBranch, /activeSearchId=\{null\}/);
   assert.doesNotMatch(realtorBranch, /resolveActiveSearch|resolvePriorities|getSearchParticipantIds|search\.id/);
-  assert.match(people, /relationships\.length/);
-  assert.match(people, /prospective\.length === 0/);
-  assert.match(people, /You don&apos;t have any client searches yet/);
+  assert.match(people, /const empty = !connected\.length && !prospective\.length && !disconnected\.length/);
+  assert.match(people, /You don&apos;t have any clients here yet/);
   assert.match(people, /href="\/people\/start"/);
 });
 

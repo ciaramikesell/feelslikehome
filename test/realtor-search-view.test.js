@@ -6,7 +6,7 @@ const data = fs.readFileSync('src/lib/supabase/collaboration.js', 'utf8');
 const workspace = fs.readFileSync('src/components/RealtorWorkspace.jsx', 'utf8');
 const shell = fs.readFileSync('src/components/AppShell.jsx', 'utf8');
 const detail = fs.readFileSync('src/components/HomeDetail.jsx', 'utf8');
-const listPage = fs.readFileSync('src/app/(app)/people/page.js', 'utf8');
+const listPage = fs.readFileSync('src/app/(app)/people/page.js', 'utf8') + fs.readFileSync('src/components/MyClientsView.jsx', 'utf8');
 const contextPage = fs.readFileSync('src/app/(app)/people/[searchId]/page.js', 'utf8');
 const peopleError = fs.readFileSync('src/app/(app)/people/error.js', 'utf8');
 const clientError = fs.readFileSync('src/app/(app)/people/[searchId]/error.js', 'utf8');
@@ -14,11 +14,11 @@ const appLayout = fs.readFileSync('src/app/(app)/layout.js', 'utf8');
 const migration = fs.readFileSync('supabase/migrations/2026-09-16-realtor-search-view.sql', 'utf8');
 const css = fs.readFileSync('src/app/globals.css', 'utf8');
 
-test('People I’m Helping is relationship-scoped, batched, and coexists with My Search', () => {
+test('My Clients is relationship-scoped, batched, and coexists with My Search', () => {
   assert.match(data, /eq\('user_id', userId\)\.eq\('role', 'realtor'\)/);
   assert.match(data, /\.in\('search_id', ids\)/);
   assert.doesNotMatch(data, /service.role|service_role/i);
-  assert.match(shell, /People I’m Helping/);
+  assert.match(shell, /My Clients/);
   assert.match(shell, /My Search/);
   assert.match(listPage, /activeCount/);
   assert.match(listPage, /wantToTourCount/);
@@ -26,9 +26,9 @@ test('People I’m Helping is relationship-scoped, batched, and coexists with My
 
 test('one or many authorized clients render while empty relationships are intentional', () => {
   assert.match(listPage, /relationships\.map/);
-  assert.match(listPage, /People I’m Helping/);
-  assert.match(listPage, /You don&apos;t have any client searches yet/);
-  assert.match(listPage, /prospective\.length === 0/);
+  assert.match(listPage, /<h1>My Clients<\/h1>/);
+  assert.match(listPage, /You don&apos;t have any clients here yet/);
+  assert.match(listPage, /const empty = !connected\.length && !prospective\.length && !disconnected\.length/);
 });
 
 test('Realtor context hides buyer navigation without changing dual-role permissions', () => {
@@ -39,7 +39,7 @@ test('Realtor context hides buyer navigation without changing dual-role permissi
   assert.match(shell, /const hasBuyerSearch = workspace === 'buyer';/);
   assert.match(shell, /hasBuyerSearch && <nav className="hh-tabs"/);
   assert.match(shell, /hasBuyerSearch && <MobileNav/);
-  assert.match(shell, /\(isRealtorWorkspace \|\| hasRealtorRelationships\).*People I’m Helping/);
+  assert.match(shell, /\(isRealtorWorkspace \|\| hasRealtorRelationships\).*My Clients/);
   assert.match(shell, /hasBuyerSearch && <Link[\s\S]*?My Search/);
 });
 
@@ -49,10 +49,10 @@ test('URL access fails closed before any client context is returned', () => {
   assert.match(contextPage, /if \(!context\) notFound\(\)/);
   assert.match(migration, /is_search_realtor\(participants\.search_id, auth\.uid\(\)\)/);
   assert.match(migration, /revoke execute.*anon, service_role/);
-  assert.match(peopleError, /We couldn’t load People I’m Helping/);
+  assert.match(peopleError, /We couldn’t load My Clients/);
   assert.doesNotMatch(peopleError, /this client search/);
   assert.match(clientError, /We couldn’t load this client search/);
-  assert.match(clientError, /Back to People I’m Helping/);
+  assert.match(clientError, /Back to My Clients/);
 });
 
 test('priorities preserve tiers and participant attribution rather than consensus', () => {
