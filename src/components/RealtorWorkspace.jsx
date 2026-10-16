@@ -8,6 +8,7 @@ import { computeMatch, matchColor } from '@/lib/matching';
 import { homeIdentity } from '@/lib/homePresentation';
 import { formatHomePrice } from '@/lib/homeDisplay';
 import RealtorSuggestHome from '@/components/RealtorSuggestHome';
+import ClientPrivateNotes from '@/components/ClientPrivateNotes';
 
 const CORE = [
   ['preferredPropertyTypes', 'Property type'], ['budget', 'Budget'], ['bedsMin', 'Bedrooms'],
@@ -68,7 +69,7 @@ function HomeCard({ home, people, states, priorities, searchId }) {
   </article>;
 }
 
-export default function RealtorWorkspace({ context }) {
+export default function RealtorWorkspace({ context, record = null }) {
   const owner = context.people.find((person) => person.relationship === 'Owner') || context.people[0];
   const ownerPriorities = normalizePriorities(context.priorities.find((row) => row.user_id === owner?.user_id)?.priorities);
   const stateFor = (home) => context.states.filter((state) => state.home_id === home.id);
@@ -80,8 +81,9 @@ export default function RealtorWorkspace({ context }) {
   const tour = active.filter((home) => stateFor(home).some((state) => state.status === 'Want to Tour'));
   const names = context.people.map((person) => person.display_name).join(' & ');
   return <main className="hh-realtor-workspace">
-    <header className="hh-realtor-client-header"><Link href="/people">← People I’m Helping</Link><div><span>Client search</span><h1>{names || 'Buyer search'}</h1><p>Understand what matters, where the contenders stand, and where perspectives differ.</p></div><RealtorSuggestHome context={context} /></header>
+    <header className="hh-realtor-client-header"><Link href="/people">← My Clients</Link><div><span>Client search</span><h1>{names || 'Buyer search'}</h1><p>Understand what matters, where the contenders stand, and where perspectives differ.</p></div><RealtorSuggestHome context={context} /></header>
     <section className="hh-realtor-section"><div className="hh-realtor-section-title"><div><span>Start here</span><h2>What matters to them</h2></div><Users size={21} /></div><div className="hh-realtor-priority-people">{context.people.map((person) => <Priorities key={person.user_id} person={person} priorities={context.priorities.find((row) => row.user_id === person.user_id)?.priorities} />)}</div></section>
+    <ClientPrivateNotes searchId={context.search.id} record={record} />
     {tour.length > 0 && <section className="hh-realtor-tour-strip"><Footprints size={22} /><div><strong>{tour.length} {tour.length === 1 ? 'home' : 'homes'} marked Want to Tour</strong><span>{tour.map((home) => homeIdentity(home, ownerPriorities).primary).join(' · ')}</span></div></section>}
     <section className="hh-realtor-section"><div className="hh-realtor-section-title"><div><span>Decision context</span><h2>Homes they’re considering</h2></div>{active.length > 1 && <Link className="hh-btn" href={`/people/${context.search.id}/compare`}>Compare contenders</Link>}</div>
       {active.length ? <div className="hh-realtor-home-grid">{active.map((home) => <HomeCard key={home.id} home={home} people={context.people} states={stateFor(home)} priorities={ownerPriorities} searchId={context.search.id} />)}</div> : <div className="hh-realtor-empty">No homes have been added yet. Their priorities are still available above.</div>}

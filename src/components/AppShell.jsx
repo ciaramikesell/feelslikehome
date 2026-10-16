@@ -306,7 +306,7 @@ export default function AppShell({ children, userEmail, userId, firstName = null
               <SearchSwitcher userId={userId} searches={accessibleSearches} activeSearchId={activeSearchId} />
             )}
             {(isRealtorWorkspace || hasRealtorRelationships) && <Link href="/realtor" className={`hh-shell-action hh-people-entry ${pathname === '/realtor' ? 'active' : ''}`}><Compass size={14} /> Realtor Home</Link>}
-            {(isRealtorWorkspace || hasRealtorRelationships) && <Link href="/people" className={`hh-shell-action hh-people-entry ${pathname.startsWith('/people') ? 'active' : ''}`}><Users size={14} /> People I’m Helping</Link>}
+            {(isRealtorWorkspace || hasRealtorRelationships) && <Link href="/people" className={`hh-shell-action hh-people-entry ${pathname.startsWith('/people') ? 'active' : ''}`}><Users size={14} /> My Clients</Link>}
             {/* A Realtor can always start (or return to) their own home search: Homes, or onboarding if they haven't begun one. */}
             {isRealtorWorkspace && <Link href="/homes" className="hh-shell-action hh-people-entry"><HomeIcon size={14} /> My home search</Link>}
             {hasBuyerSearch && <Link

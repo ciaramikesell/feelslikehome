@@ -882,7 +882,9 @@ export async function claimProspectiveSearch(supabase, token, confirmedPrioritie
   const { data, error } = await supabase.rpc('claim_prospective_search', {
     p_token: token,
     p_confirmed_priorities: confirmedPriorities == null ? null : prioritiesForExplicitSave(confirmedPriorities),
-    p_search_id: searchId,
+    // Sent only when the screen named a search, so the call shape stays valid
+    // against the two-argument function until the migration is applied.
+    ...(searchId ? { p_search_id: searchId } : {}),
   });
   if (error) throw error;
   return data?.[0] || { success: false, reason: 'unknown', search_id: null };
