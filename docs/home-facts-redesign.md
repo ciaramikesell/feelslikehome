@@ -32,8 +32,30 @@ semantics, the SQL co-buyer Compare scorer, and the schema are all unchanged.
 
 Not changed: apartment searches keep the editor first (property name, unit and floor plan need it), and the Realtor **Suggest this home** flow never sees the quick add.
 
-### Home Facts (on `/homes/[homeId]`)
-- **Header**: the existing hero (photo, address, price, beds / baths / sq ft / lot, View original listing, Saved status). It is not repeated below.
+### Home workspace (on `/homes/[homeId]`)
+The home page is one workspace with a slim, persistent left navigation on
+desktop: the property's photo and address, **Back to My Homes**, and three
+areas: **Home Facts**, **Check the Match** (with the Match %), and **Tour Feedback**
+(marked Toured once toured). The selected area has a subtle terracotta highlight.
+
+On phones (≤ 900px) the same markup becomes a compact sticky identity row and a
+three-way section switcher (`aria-current="page"` buttons).
+
+`?section=match|tour` is kept in the URL with `replaceState`, so refresh and
+shared links return to the same area without reloading data or stacking
+history. The Realtor read-only view uses the same workspace.
+
+Architecture: `HomeDetail` owns only the shell and navigation. Each area renders
+its existing sections and save paths:
+- Home Facts → `HomeFacts`
+- Check the Match → the unchanged Match card, criteria breakdown, Location & Commute, and co-buyer perspective
+- Tour Feedback → the unchanged relationship / your take, Realtor context, and property notes (pros, cons, notes)
+
+Neither Match nor Tour Feedback is redesigned in this pass. Pros and cons now live
+only under Tour Feedback; migrating them into a redesigned post-tour flow is a later pass.
+
+### Home Facts
+- **Property header**: a compact card (photo, status, price, address, beds / baths / sq ft / lot) beside the import acknowledgement. View original listing and Edit home information sit in the workspace header.
 - **Acknowledgement**: "Welcome home (at least for now)." once after adding; otherwise a small sage line "FLH found N listing details. See imported details."
   N counts only what the importer supplied: structured fields (excluding address, coordinates and the tax year), listing facts, and features stated in the description. It never says "verified."
 - **Home features** (primary): Garage, Basement, Home layout, Home condition, with one **Edit** that opens chips in place. It saves through `saveWhole` → `saveHomePersonalAndShared`, the same shared-home path as Edit Home, so co-buyers see the change and Match re-evaluates where it already did.
@@ -42,7 +64,7 @@ Not changed: apartment searches keep the editor first (property name, unit and f
   Each row carries provenance: *From listing* or *Added by you*. Facts that exist only in the snapshot are read-only. **Correct details** opens the existing full editor.
 - **See how this home matches your search** scrolls to the unchanged Match section.
 
-Pros / cons, notes, your take, post-tour reflection, Realtor context, and the Match breakdown all remain on the page, below Home Facts and unchanged.
+Pros / cons, notes, your take, post-tour reflection, and Realtor context remain unchanged under Tour Feedback. The Match breakdown remains unchanged under Check the Match.
 
 ## 3. Home Features: what is real today
 
@@ -65,12 +87,12 @@ Unknown is always the empty value, exactly as the editor already wrote it.
 3. **First-Floor Primary parity**: either derive the criterion from `primary_bedroom_location = 'Main Floor'` or retire one of the two, in both scorers.
 4. **School district** as a structured, imported field (no current provider supplies it).
 5. Address-level duplicate detection (exact listing URL only, as before).
-6. Optionally, a dedicated tabbed Home / Match / Your take layout. This PR keeps one page and adds no navigation.
+6. Redesigning Check the Match and Tour Feedback (including moving pros/cons into the post-tour flow), inside the workspace this PR adds.
 
 ## 5. QA
 
 - `node scripts/visual/home-facts-screens.mjs <outDir> http://localhost:3000` (dev server; no `.env` needed) renders `/dev/home-facts` (production 404s) at 390 / 768 / 1024 / 1440.
-  It covers 17 scenarios: found, saved, save error, review first, duplicate, manual, landing, editing, schools, details collapsed/open, no photo, partial import, unknown features, manual entry, Realtor read-only, and co-buyer.
+  It covers 20 scenarios: found, saved, save error, review first, duplicate, manual, landing, editing, schools, details collapsed/open, no photo, partial import, unknown features, manual entry, Realtor read-only, co-buyer, Check the Match, Tour Feedback, and switching between areas (URL included).
   It fails on any horizontal overflow, console error, or interaction that doesn't reach its state.
 - `test/home-facts-redesign.test.js`: pure helper tests, the flow guarantees, and real-Postgres checks:
   - an imported home saves once with its snapshot

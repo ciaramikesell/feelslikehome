@@ -159,7 +159,7 @@ function SchoolDetails({ home, readOnly, onSave }) {
   );
 }
 
-export default function HomeFacts({ home, priorities, vocabulary, readOnly = false, justAdded = null, onSaveFacts, onEditAll, onSeeMatch }) {
+export default function HomeFacts({ home, priorities, vocabulary, readOnly = false, justAdded = null, summary = null, onSaveFacts, onEditAll, onSeeMatch }) {
   const [welcomeDismissed, setWelcomeDismissed] = useState(false);
   const [editingFeatures, setEditingFeatures] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -184,23 +184,27 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
   const saveFeatures = async (patch) => { await onSaveFacts(patch); setEditingFeatures(false); };
 
   return (
-    <section className="flh-home-facts hh-detail-section hh-detail-section-wide" aria-labelledby="home-facts-title">
-      {welcome && <div className="flh-facts-welcome" role="status">
-        <span className="flh-facts-welcome-icon" aria-hidden="true"><Sparkles size={18} /></span>
-        <div>
-          <strong className="hh-serif">{welcome.title}</strong>
-          <p>{welcome.body}</p>
-          {importedCount > 0 && <button type="button" className="flh-facts-link" onClick={seeImported}>See imported details <ArrowRight size={13} aria-hidden="true" /></button>}
-        </div>
-        <button type="button" className="flh-facts-dismiss" onClick={() => setWelcomeDismissed(true)} aria-label="Dismiss welcome message"><X size={16} aria-hidden="true" /></button>
-      </div>}
-
-      <div className="flh-facts-heading">
-        <div>
-          <div className="hh-detail-eyebrow">Home facts</div>
-          <h2 id="home-facts-title" className="hh-serif">What this {vocabulary.singularLower} is</h2>
-        </div>
-        {!welcome && importedCount > 0 && <p className="flh-facts-ack"><Check size={14} aria-hidden="true" /> FLH found {importedCount} listing detail{importedCount === 1 ? '' : 's'}. <button type="button" className="flh-facts-link" onClick={seeImported}>See imported details</button></p>}
+    <section className="flh-home-facts" aria-label="Home facts">
+      {/* Property header + imported-details acknowledgement: one calm row. The
+          welcome replaces the acknowledgement the first time, never both. */}
+      <div className={`flh-facts-hero ${welcome || importedCount > 0 ? '' : 'is-solo'}`}>
+        {summary}
+        {welcome ? <div className="flh-facts-welcome" role="status">
+          <span className="flh-facts-welcome-icon" aria-hidden="true"><Sparkles size={18} /></span>
+          <div>
+            <strong className="hh-serif">{welcome.title}</strong>
+            <p>{welcome.body}</p>
+            {importedCount > 0 && <button type="button" className="flh-facts-link" onClick={seeImported}>See imported details <ArrowRight size={13} aria-hidden="true" /></button>}
+          </div>
+          <button type="button" className="flh-facts-dismiss" onClick={() => setWelcomeDismissed(true)} aria-label="Dismiss welcome message"><X size={16} aria-hidden="true" /></button>
+        </div> : importedCount > 0 && <div className="flh-facts-ack">
+          <span className="flh-facts-welcome-icon" aria-hidden="true"><Check size={18} /></span>
+          <div>
+            <strong className="hh-serif">FLH found {importedCount} listing detail{importedCount === 1 ? '' : 's'}.</strong>
+            <p>Imported from the listing. Review them and add what you know.</p>
+            <button type="button" className="flh-facts-link" onClick={seeImported}>See imported details <ArrowRight size={13} aria-hidden="true" /></button>
+          </div>
+        </div>}
       </div>
 
       <div className={`flh-facts-grid ${hasFeatures ? '' : 'is-schools-only'}`}>

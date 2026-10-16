@@ -83,6 +83,15 @@ const SCENARIOS = [
   { name: '09-manual-entry', query: 'state=manual' },
   { name: '10-realtor-read-only', query: 'state=realtor' },
   { name: '11-cobuyer', query: 'state=cobuyer' },
+  { name: '12-check-the-match', query: 'state=saved&section=match' },
+  { name: '13-tour-feedback', query: 'state=saved&section=tour' },
+  { name: '14-switch-sections', query: 'state=saved', act: async (page) => {
+    await page.locator('.flh-workspace-nav').getByRole('button', { name: /Check the Match/ }).click();
+    await page.getByRole('heading', { level: 1, name: 'Check the Match' }).waitFor();
+    await page.locator('.flh-workspace-nav').getByRole('button', { name: /Tour Feedback/ }).click();
+    await page.getByRole('heading', { level: 1, name: 'Tour Feedback' }).waitFor();
+    if (!page.url().includes('section=tour')) throw new Error('section not reflected in URL');
+  } },
 ];
 
 async function main() {

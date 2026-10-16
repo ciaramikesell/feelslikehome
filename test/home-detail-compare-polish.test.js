@@ -11,7 +11,7 @@ const homeFactsLib = fs.readFileSync('src/lib/homeFacts.js', 'utf8');
 
 test('Home Detail gives facts and personal relationship regions usable responsive width', () => {
   assert.match(detail, /<HomeFacts home=\{home\}/);
-  assert.match(homeFacts, /className="flh-home-facts hh-detail-section hh-detail-section-wide"/);
+  assert.match(homeFacts, /className="flh-home-facts"/);
   assert.match(detail, /className="hh-detail-relationship hh-detail-section-wide hh-detail-surface"/);
   assert.match(css, /\.hh-detail-section-wide \{ max-width: 960px; \}/);
   assert.match(css, /@media\(max-width:960px\)[\s\S]*\.hh-detail-section-wide \{ max-width: 100%; \}/);

@@ -260,3 +260,44 @@ dbTest('a Realtor viewing the search cannot write Home Features', async () => {
   );
   assert.equal(db.admin(`select garage_spaces from public.homes where id = '${added.id}'`)[0].garage_spaces, '1');
 });
+
+/* ------------------------------- home workspace ------------------------------- */
+
+test('the home workspace has one shared navigation for Home Facts, Check the Match and Tour Feedback', () => {
+  assert.match(detail, /key: 'facts', label: 'Home Facts'/);
+  assert.match(detail, /key: 'match', label: 'Check the Match'/);
+  assert.match(detail, /key: 'tour', label: 'Tour Feedback'/);
+  // Property context (photo, address, back) stays with the navigation.
+  assert.match(detail, /<aside className="flh-workspace-nav">[\s\S]*Back to My Homes[\s\S]*flh-workspace-identity[\s\S]*<nav aria-label=/);
+  assert.match(detail, /aria-current=\{section === item\.key \? 'page' : undefined\}/);
+  // Switching never reloads or stacks history; ?section= survives refresh.
+  assert.match(detail, /window\.history\.replaceState\(window\.history\.state, '', `\$\{url\.pathname\}\$\{url\.search\}`\)/);
+  assert.match(detailPage, /initialSection=\{initialSection\}/);
+  assert.match(read('src/app/(app)/people/[searchId]/homes/[homeId]/page.js'), /initialSection=\{initialSection\}/);
+  // Unknown or missing sections fall back to Home Facts.
+  assert.match(detail, /useState\(SECTION_KEYS\.has\(initialSection\) \? initialSection : 'facts'\)/);
+});
+
+test('each area reuses its existing sections: no Match or Tour Feedback rebuild, and pros/cons stay out of Home Facts', () => {
+  const panel = (key) => detail.match(new RegExp(`\\{section === '${key}' && <>([\\s\\S]*?)\\n      </>\\}`))?.[1] || '';
+  const facts = panel('facts');
+  const match = panel('match');
+  const tour = panel('tour');
+  assert.match(facts, /<HomeFacts /);
+  assert.doesNotMatch(facts, /pros|cons|PostTour|hh-detail-match-groups|RealtorContributions/);
+  assert.match(match, /ref=\{matchSection\}/);
+  assert.match(match, /hh-detail-match-groups/);
+  assert.match(match, /title="Location & Commute"/);
+  assert.match(tour, /Your relationship with this home/);
+  assert.match(tour, /Add pros, cons, or a note/);
+  assert.match(tour, /<RealtorContributions /);
+  // The phone action bar (Want to tour / Favorite) stays off Home Facts so it never covers fact editing.
+  assert.match(detail, /section !== 'facts' && <div className="flh-mobile-only flh-detail-action-bar">/);
+});
+
+test('desktop sidebar becomes a compact section switcher on phones', () => {
+  const css = read('src/app/globals.css');
+  assert.match(css, /\.hh-home-detail\.flh-workspace \{[^}]*grid-template-columns: 228px minmax\(0,1fr\)/);
+  assert.match(css, /\.flh-workspace-nav nav button\.is-active \{ background: rgba\(185,83,50,\.09\); color: var\(--brick\); \}/);
+  assert.match(css, /@media \(max-width: 900px\) \{[\s\S]*\.flh-workspace-nav ul \{ grid-template-columns: repeat\(3,minmax\(0,1fr\)\);/);
+});

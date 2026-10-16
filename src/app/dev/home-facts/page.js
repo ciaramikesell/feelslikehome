@@ -7,7 +7,7 @@ import HomeFactsPreview from '@/components/HomeFactsPreview';
 // Add Home <HomeModal> with deterministic fixtures: no sign-in, no Supabase
 // reads or writes. Production builds always answer 404 (see also middleware).
 //
-//   /dev/home-facts?state=full|saved|nophoto|partial|unknown|manual|realtor|cobuyer
+//   /dev/home-facts?state=full|saved|nophoto|partial|unknown|manual|realtor|cobuyer[&section=facts|match|tour]
 //   /dev/home-facts?view=add&state=found|duplicate|error|manual
 export const dynamic = 'force-dynamic';
 export const metadata = { robots: { index: false, follow: false } };
@@ -17,7 +17,7 @@ export default async function HomeFactsPreviewPage({ searchParams }) {
   const params = await searchParams;
   return (
     <Suspense>
-      <HomeFactsPreview view={params.view} state={params.state} />
+      <HomeFactsPreview view={params.view} state={params.state} section={params.section} />
     </Suspense>
   );
 }

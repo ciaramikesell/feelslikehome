@@ -74,7 +74,7 @@ function homeFrom(snapshot, overrides = {}) {
 
 const HOME_STATES = {
   full: { home: homeFrom(FULL_IMPORT, { photoUrl: PHOTO, homeLayout: ['Two Story'] }), justAdded: 'import' },
-  saved: { home: homeFrom(FULL_IMPORT, { photoUrl: PHOTO, homeLayout: ['Two Story'], homeCondition: ['Move-In Ready'], primaryBedroomLocation: 'Upstairs', schoolsNotes: 'Anchor Bay School District', garageSpaces: '2' }) },
+  saved: { home: homeFrom(FULL_IMPORT, { photoUrl: PHOTO, homeLayout: ['Two Story'], homeCondition: ['Move-In Ready'], primaryBedroomLocation: 'Upstairs', schoolsNotes: 'Anchor Bay School District', garageSpaces: '2', pros: 'Bright, open living area, Large backyard', cons: 'Kitchen feels a bit dated', notes: 'Quiet, well-kept street. Confirm HOA details and sewer.' }) },
   nophoto: { home: homeFrom(FULL_IMPORT), justAdded: 'import' },
   partial: { home: homeFrom(PARTIAL_IMPORT), justAdded: 'import' },
   unknown: { home: homeFrom(PARTIAL_IMPORT, { photoUrl: PHOTO }) },
@@ -104,7 +104,7 @@ function AddHomePreview({ state, priorities }) {
   </main>;
 }
 
-export default function HomeFactsPreview({ view = 'detail', state = 'full' }) {
+export default function HomeFactsPreview({ view = 'detail', state = 'full', section = 'facts' }) {
   const priorities = previewPriorities();
   if (view === 'add') return <AddHomePreview state={state} priorities={priorities} />;
   const fixture = HOME_STATES[state] || HOME_STATES.full;
@@ -112,7 +112,7 @@ export default function HomeFactsPreview({ view = 'detail', state = 'full' }) {
     <HomeDetail
       home={fixture.home} priorities={priorities} commuteDestinations={[]} coBuyerPerspective={null}
       userId={USER_ID} searchId={SEARCH_ID} isCollaborative={!!fixture.isCollaborative} readOnly={!!fixture.readOnly}
-      justAdded={fixture.justAdded || null}
+      justAdded={fixture.justAdded || null} initialSection={section}
     />
   </div>;
 }
