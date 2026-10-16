@@ -32,11 +32,21 @@ const HOME_SHARED_COLUMNS_PRE_PASS_B = [
 // ordinary edit when PostgREST sees the stale key. Keep reads/writes on the
 // canonical, user-editable fields only; the historical nullable column may
 // remain in databases where its migration already ran.
-export const HOME_SHARED_COLUMNS = `${HOME_SHARED_COLUMNS_PRE_PASS_B},property_type,available_on,pets_allowed,utilities_included,in_unit_laundry,property_name,selected_floor_plan_name,selected_unit_label,suggestion_staged`;
+// Home Facts details (2026-10-17-home-facts-details.sql): structured shared facts
+// edited on Home Facts. Null is Unknown; 'none' is a real answer. Not Match inputs.
+export const HOME_FACT_DETAIL_COLUMNS = [
+  'listing_id', 'heating', 'cooling', 'exterior', 'roof', 'garage_type', 'basement_style', 'basement_condition',
+  'school_district_name', 'elementary_school', 'middle_school', 'high_school',
+];
+export const HOME_SHARED_COLUMNS = `${HOME_SHARED_COLUMNS_PRE_PASS_B},property_type,available_on,pets_allowed,utilities_included,in_unit_laundry,property_name,selected_floor_plan_name,selected_unit_label,suggestion_staged,${HOME_FACT_DETAIL_COLUMNS.join(',')}`;
 
 const PASS_B_DATABASE_COLUMNS = ['property_type', 'available_on', 'pets_allowed', 'utilities_included', 'in_unit_laundry'];
+// Only a missing *Pass B* column may fall back to the pre-Pass-B projection. Any
+// other missing column (e.g. the Home Facts details migration not yet applied)
+// must fail visibly: silently reading without property_type would quietly
+// change Match for every home.
 function isPrePassBSchemaError(error) {
-  return error?.code === '42703' || (error?.code === 'PGRST204' && PASS_B_DATABASE_COLUMNS.some((column) => error.message?.includes(column)));
+  return (error?.code === '42703' || error?.code === 'PGRST204') && PASS_B_DATABASE_COLUMNS.some((column) => error.message?.includes(column));
 }
 
 /* ------------------------------- active search ------------------------------- */
@@ -463,6 +473,8 @@ const SHARED_FIELDS = [
   'schoolsNotes', 'conditionNotes',
   'propertyType', 'availableOn', 'petsAllowed', 'utilitiesIncluded', 'inUnitLaundry',
   'propertyName', 'selectedFloorPlanName', 'selectedUnitLabel',
+  'listingId', 'heating', 'cooling', 'exterior', 'roof', 'garageType', 'basementStyle', 'basementCondition',
+  'schoolDistrict', 'elementarySchool', 'middleSchool', 'highSchool',
 ];
 
 function emptyPersonalState() {
@@ -999,8 +1011,24 @@ function rowToHomeWithOwner(row) {
     propertyName: row.property_name || '',
     selectedFloorPlanName: row.selected_floor_plan_name || '',
     selectedUnitLabel: row.selected_unit_label || '',
+    // Home Facts details: null stays null (Unknown); 'none' is a real answer.
+    listingId: row.listing_id ?? null,
+    heating: row.heating ?? null,
+    cooling: row.cooling ?? null,
+    exterior: row.exterior ?? null,
+    roof: row.roof ?? null,
+    garageType: row.garage_type ?? null,
+    basementStyle: row.basement_style ?? null,
+    basementCondition: row.basement_condition ?? null,
+    schoolDistrict: row.school_district_name ?? null,
+    elementarySchool: row.elementary_school ?? null,
+    middleSchool: row.middle_school ?? null,
+    highSchool: row.high_school ?? null,
   };
 }
+
+// Blank text is Unknown (null), never an empty-string "answer".
+const factOrNull = (value) => (value === null || value === undefined || String(value).trim() === '' ? null : String(value).trim());
 
 function homeToSharedRow(home, userId, searchId) {
   return {
@@ -1047,6 +1075,18 @@ function homeToSharedRow(home, userId, searchId) {
     property_name: home.propertyName || null,
     selected_floor_plan_name: home.selectedFloorPlanName || null,
     selected_unit_label: home.selectedUnitLabel || null,
+    listing_id: factOrNull(home.listingId),
+    heating: factOrNull(home.heating),
+    cooling: factOrNull(home.cooling),
+    exterior: factOrNull(home.exterior),
+    roof: factOrNull(home.roof),
+    garage_type: factOrNull(home.garageType),
+    basement_style: factOrNull(home.basementStyle),
+    basement_condition: factOrNull(home.basementCondition),
+    school_district_name: factOrNull(home.schoolDistrict),
+    elementary_school: factOrNull(home.elementarySchool),
+    middle_school: factOrNull(home.middleSchool),
+    high_school: factOrNull(home.highSchool),
     updated_at: new Date().toISOString(),
   };
 }

@@ -23,6 +23,8 @@ export const IMPORT_DESTINATIONS = Object.freeze([
   'primaryBedroomLocation', 'secondaryBedroomLocation', 'availableOn',
   'petsAllowed', 'utilitiesIncluded', 'inUnitLaundry', 'photoUrl',
   'hoaFeeMonthly', 'propertyTaxAnnual', 'propertyTaxYear', 'latitude', 'longitude',
+  // Home Facts details. Choice facts accept only their canonical tokens.
+  'listingId', 'heating', 'cooling', 'exterior', 'roof', 'garageType', 'basementStyle', 'basementCondition',
   // Option fields are legal destinations only for a future explicitly-scoped
   // floor-plan/unit adapter. Community RentCast normalization never emits them.
   'selectedFloorPlanName', 'selectedUnitLabel',
@@ -30,6 +32,12 @@ export const IMPORT_DESTINATIONS = Object.freeze([
 
 const DESTINATIONS = new Set(IMPORT_DESTINATIONS);
 const CANONICAL_PROPERTY_TYPES = new Set(['apartment', 'house', 'townhome', 'condo', 'multifamily', 'other']);
+// Kept in step with the homes_*_check constraints (2026-10-17-home-facts-details.sql).
+export const CANONICAL_CHOICE_FACTS = Object.freeze({
+  garageType: Object.freeze(['none', 'attached', 'detached']),
+  basementStyle: Object.freeze(['none', 'traditional', 'gardenview', 'walkout']),
+  basementCondition: Object.freeze(['none', 'unfinished', 'partially_finished', 'finished']),
+});
 
 export function isImportCandidate(value) {
   return value !== null && value !== undefined && value !== '';
@@ -47,6 +55,10 @@ export function normalizeImportValue(concept, value) {
   if (concept === 'propertyType') {
     const type = trimmed.toLowerCase();
     return CANONICAL_PROPERTY_TYPES.has(type) ? type : null;
+  }
+  if (CANONICAL_CHOICE_FACTS[concept]) {
+    const token = trimmed.toLowerCase();
+    return CANONICAL_CHOICE_FACTS[concept].includes(token) ? token : null;
   }
   if (['listingUrl', 'photoUrl'].includes(concept)) {
     try {

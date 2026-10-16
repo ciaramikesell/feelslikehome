@@ -11,7 +11,7 @@ const homeFactsLib = fs.readFileSync('src/lib/homeFacts.js', 'utf8');
 
 test('Home Detail gives facts and personal relationship regions usable responsive width', () => {
   assert.match(detail, /<HomeFacts home=\{home\}/);
-  assert.match(homeFacts, /className="flh-home-facts"/);
+  assert.match(homeFacts, /className="flh-home-facts flh-hf"/);
   assert.match(detail, /className="hh-detail-relationship hh-detail-section-wide hh-detail-surface"/);
   assert.match(css, /\.hh-detail-section-wide \{ max-width: 960px; \}/);
   assert.match(css, /@media\(max-width:960px\)[\s\S]*\.hh-detail-section-wide \{ max-width: 100%; \}/);
@@ -35,11 +35,11 @@ test('Home Detail keeps participant relationship writes on the personal path', (
 });
 
 test('Home Detail intent-specific facts remain canonical', () => {
-  assert.match(detail, /formatHomePrice\(home\.price, priorities\.searchType\)/);
-  // Home Facts (src/lib/homeFacts.js) now owns the intent-specific rows.
+  // Home Facts (src/lib/homeFacts.js) owns the property header and the intent-specific rows.
+  assert.match(homeFactsLib, /formatHomePrice\(home\?\.price, priorities\?\.searchType\)/);
   assert.match(homeFactsLib, /showsRentalFacts \? \[/);
-  assert.match(homeFactsLib, /showsRentalFacts \? null : row\('HOA fee'/);
-  assert.match(homeFactsLib, /row\('Available on', 'availableOn'/);
+  assert.match(homeFactsLib, /showsRentalFacts \? null : optional\('HOA fee'/);
+  assert.match(homeFactsLib, /optional\('Available on', 'availableOn'/);
 });
 
 test('Compare photography scales distinctly for two, three, and four homes', () => {

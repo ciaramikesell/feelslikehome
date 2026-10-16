@@ -263,6 +263,10 @@ for (const compareFile of COMPARE_CANDIDATES) {
     assert.equal(db.applyFile(`${M}2026-10-08-collaborator-context-return-type.sql`).ok, true);
     assert.ok(fingerprintsOf(db).resolve_collaborator_search_context.includes('2026-09-19-account-name-capture-and-realtor-home.sql'));
 
+    // The current app reads the Home Facts details columns, so production applies
+    // that additive migration before deploying this code (docs/home-facts-flow-redesign.md).
+    assert.equal(db.applyFile(`${M}2026-10-17-home-facts-details.sql`).ok, true);
+
     // 4. Everything works. (Pat joins a different household: V1 supports one co-buyer per search.)
     assert.equal((await acceptInvitation(db.clientFor(ids.pat), 'c0000000-0000-4000-8000-000000000001')).success, true);
     assert.equal((await previewInvitation(db.clientFor(ids.newbie), 'c0000000-0000-4000-8000-000000000002')).requires_confirmation, false);

@@ -34,6 +34,7 @@ import { deriveFlhMoment } from '@/lib/flhMoments';
 import { applyPostTourVerdict, archiveHome, hasToured, isFavoriteHome, restoreHome as restoreLifecycleHome, toggleFavorite as toggleFavoriteState } from '@/lib/lifecycle';
 import { createClient } from '@/lib/supabase/client';
 import { deleteHome as deleteHomeQuery } from '@/lib/supabase/data';
+import { refreshMyHomes } from '@/app/(app)/homes/actions';
 import {
   deriveWantToTourState, hasSharedHomeChanges, saveHomePersonalAndShared, saveHomePersonalState,
 } from '@/lib/supabase/collaboration';
@@ -487,7 +488,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     router.replace('/homes');
   }, [mode, searchParams, router, homes, openHomeModal]);
 
-  const saveHome = useCallback(async (home, { shared = true, optimistic = false } = {}) => {
+  const saveHome = useCallback(async (home, { shared = true, optimistic = false, keepModalOpen = false } = {}) => {
     const supabase = createClient();
     const previous = homes.find((candidate) => candidate.id === home.id);
     const version = (mutationVersions.current.get(home.id) || 0) + 1;
@@ -528,7 +529,8 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     if (mutationVersions.current.get(home.id) === version) {
       setHomes((prev) => (prev.some((h) => h.id === saved.id) ? prev.map((h) => (h.id === saved.id ? { ...h, ...saved } : h)) : [...prev, saved]));
     }
-    setModalHome(null);
+    // A new home keeps Add Home on "Adding…" until Home Facts opens.
+    if (!keepModalOpen) setModalHome(null);
     setSaveError('');
     setRetrySave(null);
     // Favorites/Archive nav visibility is computed server-side in the layout — refresh
@@ -544,8 +546,21 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   const saveEditedHome = useCallback(async (home) => {
     const isNew = !modalHome?.id;
     const shared = !home.id || hasSharedHomeChanges(home, modalHome);
-    const saved = await saveHome(home, { shared });
-    if (isNew && saved?.id) router.push(`/homes/${encodeURIComponent(saved.id)}?added=${home.listingImport ? 'import' : 'manual'}`);
+    const saved = await saveHome(home, { shared, keepModalOpen: isNew });
+    if (isNew && saved?.id) {
+      // The disappearing home. saveHome's router.refresh() is discarded by the
+      // navigation below, so the client Router Cache kept My Homes' pre-save
+      // payload — and Back (button or browser) restores that cache as is: the
+      // just-saved home was missing until a reload, unless a later edit on Home
+      // Facts happened to refresh. (A refresh dispatched after the push is no
+      // fix either: while the navigation is in flight it cancels it.) Awaiting
+      // a revalidating Server Action rebuilds the whole cache from the server
+      // first; the macrotask lets the router commit that state before the
+      // navigation starts, so nothing pending can be discarded.
+      await refreshMyHomes().catch(() => {});
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      router.push(`/homes/${encodeURIComponent(saved.id)}?added=${home.listingImport ? 'import' : 'manual'}`);
+    }
     return saved;
   }, [modalHome, saveHome, router]);
 

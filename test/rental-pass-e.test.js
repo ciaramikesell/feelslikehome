@@ -37,9 +37,9 @@ test('Rental surfaces use centralized prices and suppress purchase financial row
   ]);
   assert.match(cards, /formatHomePrice\(home\.price, priorities\.searchType\)/);
   assert.match(cards, /showsPurchaseFinancials && home\.estMonthly/);
-  assert.match(detail, /formatHomePrice\(home\.price, priorities\.searchType\)/);
   const homeFactsLib = await readFile(new URL('../src/lib/homeFacts.js', import.meta.url), 'utf8');
-  assert.match(homeFactsLib, /showsRentalFacts \? null : row\('Property taxes'/);
+  assert.match(homeFactsLib, /formatHomePrice\(home\?\.price, priorities\?\.searchType\)/);
+  assert.match(homeFactsLib, /showsRentalFacts \? null : optional\('Property taxes'/);
   const rentalRows = compare.match(/if \(showsRentalFacts\) return \[price[\s\S]*?\n  \];/)?.[0] || '';
   assert.ok(rentalRows);
   assert.doesNotMatch(rentalRows, /estMonthly|pps|hoa|tax/);

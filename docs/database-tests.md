@@ -71,3 +71,11 @@ before it. That is already needed for `resolve_collaborator_search_context`.
 The shim is not GoTrue: there are no sessions, refresh tokens, email
 confirmation, or Storage. The tests cover authorization and SQL behavior, not
 authentication flows or HTTP/PostgREST serialization.
+
+## Full-stack browser QA on the same database
+
+`scripts/qa/supabase-standin.mjs` serves the slice of the Supabase HTTP API
+the app uses (auth, PostgREST, RPC, Storage) on top of this harness, so the
+real Next.js app can run in a browser against real Postgres: RLS, column
+grants, triggers and constraints all apply. Development only. See
+`scripts/qa/home-flow-e2e.mjs` and `docs/home-facts-flow-redesign.md` §6.

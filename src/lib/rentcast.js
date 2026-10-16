@@ -98,6 +98,33 @@ export function canonicalBasementNotes(value) {
   return null;
 }
 
+// Structured basement wording -> the Home Facts basement condition / style. A
+// bare "yes" or "basement" says nothing about either, so it maps to nothing.
+export function canonicalBasementFacts(value) {
+  const notes = canonicalBasementNotes(value);
+  const raw = typeof value === 'string' ? value : '';
+  const condition = notes === 'Partially finished' ? 'partially_finished' : notes === 'Finished' ? 'finished' : notes === 'Unfinished' ? 'unfinished' : null;
+  const style = /\bwalk[ -]?out\b/i.test(raw) ? 'walkout' : null;
+  return { basementCondition: condition, basementStyle: style };
+}
+
+// Attached / Detached only when the listing says exactly one of them.
+export function canonicalGarageType(value) {
+  if (typeof value !== 'string') return null;
+  const attached = /\battached\b/i.test(value);
+  const detached = /\bdetached\b/i.test(value);
+  if (attached === detached) return null;
+  return attached ? 'attached' : 'detached';
+}
+
+// A descriptive system/material value ("Forced Air", "Vinyl Siding"). Booleans
+// ("has heating: true") say nothing about the kind, so they are not values.
+function descriptiveText(value) {
+  if (typeof value !== 'string') return null;
+  const text = value.trim().replace(/\s+/g, ' ');
+  return text && !/^(?:yes|no|true|false|none|unknown|n\/a)$/i.test(text) ? text.slice(0, 120) : null;
+}
+
 export function normalizeRentCastFields(property, listing, { apartmentCommunity = false } = {}) {
   const fields = {};
 
@@ -138,6 +165,27 @@ export function normalizeRentCastFields(property, listing, { apartmentCommunity 
 
   const garageSpaces = apartmentCommunity ? null : property?.features?.garageSpaces;
   if (garageSpaces !== undefined && garageSpaces !== null) fields.garageSpaces = formatInt(garageSpaces);
+
+  // Home Facts details: only explicit, unambiguous listing values (never guessed).
+  if (!apartmentCommunity) {
+    const features = property?.features || {};
+    const heating = descriptiveText(features.heatingType ?? features.heating);
+    if (heating) fields.heating = heating;
+    const cooling = descriptiveText(features.coolingType ?? features.cooling);
+    if (cooling) fields.cooling = cooling;
+    const exterior = descriptiveText(features.exteriorType);
+    if (exterior) fields.exterior = exterior;
+    const roof = descriptiveText(features.roofType);
+    if (roof) fields.roof = roof;
+    const garageType = canonicalGarageType(features.garageType ?? features.garage);
+    if (garageType) fields.garageType = garageType;
+    const basement = canonicalBasementFacts(features.basement);
+    if (basement.basementCondition) fields.basementCondition = basement.basementCondition;
+    if (basement.basementStyle) fields.basementStyle = basement.basementStyle;
+  }
+  // The MLS number is the listing's own ID; RentCast's internal record id is not.
+  const listingId = descriptiveText(optionListing?.mlsNumber == null ? null : String(optionListing.mlsNumber));
+  if (listingId) fields.listingId = listingId;
 
   const daysOnMarket = optionListing?.daysOnMarket;
   if (daysOnMarket !== undefined && daysOnMarket !== null) fields.daysOnMarket = formatInt(daysOnMarket);

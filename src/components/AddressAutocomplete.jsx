@@ -6,7 +6,7 @@ import { loadGoogleMaps } from '@/lib/googleMaps';
 // Places API (New) deliberately leaves the text box in our control. That keeps
 // free-form entry working when Google is unavailable and lets the same native
 // input remain accessible and usable on small screens.
-export default function AddressAutocomplete({ value, onChange, onSelect, searchHint = '', placeholder = 'Search for an address...' }) {
+export default function AddressAutocomplete({ id, value, onChange, onSelect, searchHint = '', placeholder = 'Search for an address...' }) {
   const rootRef = useRef(null);
   const onSelectRef = useRef(onSelect);
   const requestId = useRef(0);
@@ -112,6 +112,7 @@ export default function AddressAutocomplete({ value, onChange, onSelect, searchH
 
   return <div ref={rootRef} className="hh-address-autocomplete" style={{ flex: 1, position: 'relative', minWidth: 0 }}>
     <input
+      id={id}
       className="hh-input"
       style={{ width: '100%' }}
       value={value}

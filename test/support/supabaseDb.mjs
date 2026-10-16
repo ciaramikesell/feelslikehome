@@ -43,6 +43,7 @@ export const POST_SNAPSHOT_MIGRATIONS = [
   { file: 'supabase/migrations/2026-10-15-cobuyer-compare-mudroom-parity.sql' },
   { file: 'supabase/migrations/2026-10-15-buyer-realtor-management.sql' },
   { file: 'supabase/migrations/2026-10-16-realtor-my-clients.sql' },
+  { file: 'supabase/migrations/2026-10-17-home-facts-details.sql' },
 ];
 
 const SUPABASE_SHIM = `
