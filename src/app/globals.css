@@ -1307,6 +1307,8 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-clients-header .hh-people-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
 .hh-clients-header .hh-people-actions .hh-btn,.hh-clients-header .hh-invite-buyer-button{margin:0;padding:10px 16px;font-size:13px;gap:7px;display:inline-flex;align-items:center}
 .hh-clients-header .hh-invite-buyer{flex-basis:100%;max-width:460px}
+.hh-clients-header .hh-people-actions a.hh-btn{text-decoration:none}
+.hh-clients-header .hh-invite-buyer-button{background:transparent;color:var(--ink);border:1px solid var(--flh-control-line,var(--line));box-shadow:none}
 .hh-clients-section{margin-top:30px}
 .hh-clients-section-title{display:flex;align-items:baseline;gap:10px;border-bottom:1px solid var(--line);padding-bottom:10px;margin-bottom:16px}
 .hh-clients-section-title h2{font:600 21px/1.2 var(--font-serif);margin:0;color:var(--ink)}
@@ -1325,7 +1327,8 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-client-tile-meta strong{display:inline-flex;align-items:center;gap:4px;color:var(--brick)}
 .hh-client-tile-note{font-size:12.5px;color:var(--ink-soft);font-style:italic;border-top:1px dashed var(--line);padding-top:9px;margin-top:3px!important;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .hh-client-tile-flag{font-size:12px;color:#8a5a1c;background:var(--flh-level-important-bg,#FBF2E4);border-radius:10px;padding:7px 10px;margin-top:4px!important;line-height:1.45}
-.hh-client-tile-go{position:absolute;right:16px;top:58px;color:var(--ink-soft)}
+.hh-client-tile-go{position:absolute;right:14px;bottom:16px;color:var(--ink-soft);opacity:.7}
+.hh-client-tile h3,.hh-client-tile>p:last-of-type{padding-right:22px}
 .hh-client-initials{width:40px;height:40px;flex:none;border-radius:50%;display:grid;place-items:center;background:var(--flh-sage-bg,#E3EADB);color:var(--flh-sage-ink,#455E3E);font:600 14px var(--font-serif);letter-spacing:.02em}
 .hh-client-status{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--ink-soft);white-space:nowrap}
 .hh-client-status::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.85}
@@ -1337,7 +1340,7 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 
 /* A private record */
 .hh-client-page{max-width:880px}
-.hh-client-back{display:inline-block;color:var(--ink-soft);font-size:13px;margin-bottom:22px;text-decoration:none}
+.hh-client-back{display:inline-flex;align-items:center;min-height:40px;color:var(--ink-soft);font-size:13px;margin-bottom:12px;text-decoration:none}
 .hh-client-hero{display:flex;gap:18px;align-items:flex-start;margin-bottom:20px}
 .hh-client-hero .hh-client-initials{width:58px;height:58px;font-size:19px}
 .hh-client-hero h1{font:600 clamp(28px,5vw,40px)/1.08 var(--font-serif);margin:6px 0 8px;overflow-wrap:anywhere}
@@ -1357,12 +1360,12 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-client-details dt{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft)}
 .hh-client-details dd{margin:0;font-size:14px;overflow-wrap:anywhere}
 .hh-client-notes{white-space:pre-wrap;line-height:1.6;margin:0;font-size:14px}
-.hh-client-inline-link{display:inline-block;margin-top:12px;font-size:13px;color:var(--brick);font-weight:600}
+.hh-client-inline-link{display:inline-flex;align-items:center;min-height:40px;margin-top:6px;font-size:13px;color:var(--brick);font-weight:600}
 .hh-client-delete{display:inline-flex;align-items:center;gap:6px;margin-top:26px;background:none;border:0;padding:8px 0;color:var(--negative);font:600 13px var(--font-sans);cursor:pointer}
 .hh-client-private-notes .hh-realtor-section-title .hh-btn{display:inline-flex;align-items:center;gap:6px;margin:0;padding:8px 14px;font-size:12.5px}
 
 /* The form, inside a Sheet */
-.hh-client-form{display:grid;gap:18px}
+.hh-client-form{display:grid;gap:22px;margin-top:16px}
 .hh-client-form fieldset{border:0;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px}
 .hh-client-form legend{font:600 17px var(--font-serif);color:var(--ink);margin-bottom:10px;padding:0}
 .hh-client-form fieldset>:not(.hh-client-field):not(legend),.hh-client-field.is-wide{grid-column:1/-1}
@@ -1384,7 +1387,8 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-client-wishes .hh-label{font-size:12.5px;font-weight:600}
 .hh-client-more{justify-self:start;background:none;border:0;padding:4px 0;color:var(--brick);font:600 13px var(--font-sans);cursor:pointer}
 .hh-client-private{display:flex;gap:7px;align-items:baseline;font-size:12.5px;color:var(--flh-sage-ink,#455E3E);margin:0;line-height:1.5}
-.hh-client-form-actions{position:sticky;bottom:0;background:var(--paper-raised);padding-top:10px}
+.hh-client-sheet .hh-sheet-body{padding-bottom:0}
+.hh-client-form-actions{position:sticky;bottom:0;z-index:1;background:var(--paper-raised);padding:12px 0 calc(18px + env(safe-area-inset-bottom));border-top:1px solid var(--line);margin-top:-6px}
 .hh-client-invite{display:grid;gap:12px}
 .hh-client-invite p{margin:0;color:var(--ink-soft);font-size:14px}
 .hh-client-invite small{color:var(--ink-soft)}
