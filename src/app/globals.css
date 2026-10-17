@@ -2606,6 +2606,84 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
   .flh-found-actions { grid-template-columns: minmax(0,1fr); }
 }
 
+/* ------------------------------- Tour Feedback -------------------------------
+   Carried over from the #151 evaluation redesign (its Check the Match styles were
+   not: Match Criteria above is the approved design). Same type, spacing and
+   restraint as Home Facts: open sections divided by hairlines. */
+.flh-tour { display: grid; gap: 26px; min-width: 0; }
+.flh-tour-plans { display: flex; flex-wrap: wrap; align-items: center; gap: 9px; }
+.flh-tour-context { margin: 0; color: var(--ink-soft); font-size: 12.5px; line-height: 1.5; }
+.flh-tour-hero { display: grid; grid-template-columns: 52px minmax(0,1fr); gap: 18px; align-items: start; padding: 24px; border-radius: 20px; background: var(--paper-raised); box-shadow: 0 1px 2px rgba(46,38,33,.04), 0 16px 36px -30px rgba(46,38,33,.4); }
+.flh-tour-hero.is-love { background: linear-gradient(135deg, #fff 0%, #f8ebe4 100%); }
+.flh-tour-hero.is-not_for_me { background: #f4f1ec; }
+.flh-tour-hero.is-empty { background: linear-gradient(135deg, #fff 0%, #f3f0e6 100%); }
+.flh-tour-hero-icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 999px; background: var(--peach); color: var(--brick); }
+.flh-tour-hero.is-empty .flh-tour-hero-icon, .flh-tour-hero.is-considering .flh-tour-hero-icon { background: var(--sage); color: var(--positive); }
+.flh-tour-hero h2 { margin: 2px 0 6px; color: var(--ink); font-size: 27px; font-weight: 600; line-height: 1.15; }
+.flh-tour-hero p:not(.flh-eyebrow) { margin: 0 0 12px; color: var(--ink-soft); font-size: 14px; line-height: 1.6; max-width: 600px; }
+.flh-tour-hero .hh-btn { font-size: 13.5px; }
+.flh-tour-stars { display: inline-flex; gap: 1px; margin: 0 4px 0 6px; vertical-align: -2px; color: var(--gold); }
+.flh-tour-block { display: grid; gap: 12px; padding-top: 22px; border-top: 1px solid rgba(138,124,110,.22); }
+.flh-tour-block-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.flh-tour-block-head h3 { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--ink); font-size: 21px; font-weight: 600; }
+.flh-tour-block-head p { margin: 4px 0 0; color: var(--ink-soft); font-size: 13px; line-height: 1.5; max-width: 620px; }
+.flh-tour-feelings { display: grid; grid-template-columns: repeat(auto-fill,minmax(180px,1fr)); gap: 10px; margin: 0; }
+.flh-tour-feelings > div { padding: 12px 14px; border-radius: 14px; background: var(--paper-raised); }
+.flh-tour-feelings dt { color: var(--ink-soft); font-size: 11px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+.flh-tour-feelings dd { margin: 4px 0 0; color: var(--ink); font: 600 16px/1.3 'Source Serif 4', serif; }
+.flh-tour-feelings .is-positive dd { color: var(--positive); }
+.flh-tour-feelings .is-negative dd { color: var(--brick-deep); }
+.flh-tour-notes { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px 32px; }
+.flh-tour-notes .wide, .flh-tour-notes-form .wide { grid-column: 1 / -1; }
+.flh-tour-list h4 { margin: 0 0 6px; font-size: 11px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+.flh-tour-list.is-loved h4 { color: var(--positive); }
+.flh-tour-list.is-pause h4 { color: var(--brick); }
+.flh-tour-list.is-notes h4 { color: var(--ink-soft); }
+.flh-tour-list ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.flh-tour-list li { display: flex; gap: 8px; color: var(--ink); font: 500 15px/1.5 'Source Serif 4', serif; overflow-wrap: anywhere; }
+.flh-tour-list li > span { flex: 0 0 auto; font-family: var(--font-sans); font-weight: 800; }
+.flh-tour-list.is-loved li > span { color: var(--positive); }
+.flh-tour-list.is-pause li > span { color: var(--brick); }
+.flh-tour-list.is-notes p { margin: 0; color: var(--ink); font: 500 15px/1.7 'Source Serif 4', serif; white-space: pre-wrap; overflow-wrap: anywhere; }
+.flh-tour-empty-line { margin: 0; color: var(--unknown); font-size: 13.5px; }
+.hh-compare-freeform { white-space: pre-wrap; overflow-wrap: anywhere; }
+.flh-tour-list p:not(.flh-tour-empty-line) { margin: 0; color: var(--ink); font: 500 15px/1.6 'Source Serif 4', serif; white-space: pre-wrap; overflow-wrap: anywhere; }
+.flh-tour-notes-form textarea.flh-tour-short-text { min-height: 72px; }
+.flh-tour-checks { margin: 0; padding: 0; list-style: none; }
+.flh-tour-check { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px 18px; align-items: center; padding: 12px 0; border-top: 1px solid rgba(138,124,110,.14); }
+.flh-tour-check:first-child { border-top: 0; }
+.flh-tour-check-copy { display: grid; gap: 4px; min-width: 0; }
+.flh-tour-check-copy strong { color: var(--ink); font-size: 15px; font-weight: 650; overflow-wrap: anywhere; }
+.flh-tour-check-copy small { color: var(--ink-soft); font-size: 12.5px; line-height: 1.45; }
+.flh-tour-check-answer { grid-template-columns: repeat(4,minmax(64px,auto)); }
+.flh-tour-check-answer .flh-mc-option { text-align: center; line-height: 1.2; }
+.flh-tour-check-answer .flh-mc-option.is-checked.is-neutral { background: #8a7f73; color: #fff; }
+.flh-tier-tag { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 750; }
+.flh-tier-tag.is-must { background: rgba(185,83,50,.1); color: var(--brick); }
+.flh-tier-tag.is-important { background: rgba(198,146,69,.16); color: #7d5a22; }
+.flh-tier-tag.is-nice { background: rgba(116,128,79,.12); color: #556039; }
+.hh-realtor-visibility { margin: -4px 0 4px; font-size: 12.5px; }
+.flh-tour-notes-form { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px 18px; }
+.flh-tour-notes-form label { display: grid; gap: 6px; color: var(--ink); font-size: 12.5px; font-weight: 700; }
+.flh-tour-notes-form label span { color: var(--ink-soft); font-size: 11.5px; font-weight: 500; }
+.flh-tour-notes-form textarea { min-height: 120px; line-height: 1.55; }
+.flh-tour-form-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.flh-tour-co-overall { margin: 0; color: var(--ink-soft); font-size: 13px; }
+.flh-tour-differences h4 { margin: 4px 0 6px; color: var(--ink-soft); font-size: 11px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+.flh-tour-differences p { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,2fr); gap: 12px; margin: 6px 0; font-size: 13px; }
+.flh-tour-differences span { color: var(--ink-soft); }
+.flh-tour .hh-realtor-contributions { padding-top: 22px; border-top: 1px solid rgba(138,124,110,.22); }
+@media (max-width: 720px) {
+  .flh-tour-hero { grid-template-columns: minmax(0,1fr); gap: 12px; padding: 20px; }
+  .flh-tour-hero h2 { font-size: 23px; }
+  .flh-tour-notes, .flh-tour-notes-form { grid-template-columns: minmax(0,1fr); }
+  .flh-tour-plans .hh-btn, .flh-tour-plans .hh-detail-archive-action { min-height: 44px; }
+  .flh-tour-form-actions .hh-btn { flex: 1; justify-content: center; min-height: 44px; }
+  .flh-tour-differences p { grid-template-columns: minmax(0,1fr); gap: 2px; }
+  .flh-tour-check { grid-template-columns: minmax(0,1fr); }
+  .flh-tour-check-answer { display: grid; width: 100%; grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+
 /* ── Onboarding V2 shell (Phase 1) ───────────────────────────────────────────
    Frame only: background, columns, top bar, progress, type scale, step rhythm
    and the forward action. Step content keeps its existing styles. Every rule is

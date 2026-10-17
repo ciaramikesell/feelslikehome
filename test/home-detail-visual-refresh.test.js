@@ -134,9 +134,12 @@ test('regression guard: Favorite/Want to Tour/Archive/post-tour mutations remain
 });
 
 test('regression guard: co-buyer perspective stays a distinct, separately-labeled section — never merged into the current participant\'s own state', () => {
-  assert.match(detail, /hasCoBuyerPerspective && <Section eyebrow="Co-buyer perspective" title="How your co-buyer sees this home">/);
-  assert.match(detail, /Different takes/);
-  assert.match(detail, /take\.youLiked \? 'You liked it' : "You didn't like it"/);
+  // Their Match stays on Match Criteria; their take (overall feeling, different takes) in Tour Feedback.
+  const tour = read('src/components/TourFeedback.jsx');
+  assert.match(detail, /coBuyerPerspective\?\.match\?\.pct != null && <Section eyebrow="Co-buyer perspective" title=\{coBuyerName \? `\$\{coBuyerName\}’s Match` : 'How your co-buyer sees this home'\}>/);
+  assert.match(tour, /\{coBuyerPerspective && <section className="flh-tour-block flh-tour-cobuyer"/);
+  assert.match(tour, /coBuyerName \? `\$\{coBuyerName\}’s take` : 'Your co-buyer’s take'/);
+  assert.match(tour, /take\.youLiked \? \(readOnly \? 'They liked it' : 'You liked it'\)/);
 });
 
 /* ------------------------------ Realtor context: unchanged semantics, no Realtor Match ------------------------------ */
@@ -149,19 +152,18 @@ test('regression guard: Realtor context keeps its own ownership/semantics — no
 });
 
 test('regression guard: Property/Shared Notes ownership copy and the editor placeholder are unchanged', () => {
-  assert.match(detail, /isCollaborative \? "Shared notes" : "What you want to remember"/);
-  assert.match(detail, /placeholder="HOA details, sewer\/water, financing options, recent updates, listing terms, or anything else worth noting\."/);
+  const tour = read('src/components/TourFeedback.jsx');
+  assert.match(tour, /isCollaborative \? ' Shared with everyone in this search\.' : ''/);
+  assert.match(tour, /placeholder="HOA details, sewer\/water, financing options, recent updates, listing terms, or anything else worth noting\."/);
 });
 
 /* ------------------------------ Realtor + Notes: side by side on desktop, stacked on mobile ------------------------------ */
 
-test('From the Realtor and Shared/Property notes share one desktop row without merging their data models', () => {
-  assert.match(detail, /<div className="hh-detail-context-row">/);
-  // Both children keep their own component/props exactly as before — the row
-  // is a layout wrapper only.
-  const row = detail.match(/<div className="hh-detail-context-row">[\s\S]*?\n\s*<\/div>\n/)?.[0] || '';
-  assert.match(row, /<RealtorContributions searchId=\{searchId\} homeId=\{home\.id\} contributions=\{realtorContributions\}/);
-  assert.match(row, /<Section eyebrow="Property notes"/);
+test('From the Realtor and the shared notes stay separate sections in Tour Feedback, never one data model', () => {
+  // Realtor context keeps its own component and props; the notes are their own section.
+  const tourPanel = detail.match(/<TourFeedback[\s\S]*?<\/TourFeedback>/)?.[0] || '';
+  assert.match(tourPanel, /<RealtorContributions searchId=\{searchId\} homeId=\{home\.id\} contributions=\{realtorContributions\}/);
+  assert.match(read('src/components/TourFeedback.jsx'), /<NotesSection/);
   assert.match(globalsCss, /\.hh-detail-context-row \{ display: grid; grid-template-columns: 1fr 1fr;/);
   assert.match(globalsCss, /@media \(max-width: 880px\) \{\s*\n\s*\.hh-detail-context-row \{ grid-template-columns: 1fr;/);
 });

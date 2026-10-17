@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Check, ChevronRight, ExternalLink, Heart, Footprints, Home as HomeIcon, ListChecks, MapPin, NotebookText, Pencil, RotateCcw, Star } from 'lucide-react';
+import { ArrowLeft, ChevronRight, ExternalLink, Heart, Footprints, Home as HomeIcon, ListChecks, MapPin, NotebookText, Pencil } from 'lucide-react';
 import MobileDisclosure from '@/components/MobileDisclosure';
 import { IconBadge } from '@/components/MobileSystem';
 import HomeModal from '@/components/HomeModal';
@@ -11,12 +11,13 @@ import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
 import RealtorContributions from '@/components/RealtorContributions';
 import HomeFacts from '@/components/HomeFacts';
 import MatchCriteria from '@/components/MatchCriteria';
+import TourFeedback from '@/components/TourFeedback';
 import HomeDetailLocation from '@/components/HomeDetailLocation';
-import { criterionDisplayLabel, isArchivedStatus, TOUR_RATING_KEY } from '@/lib/constants';
-import { computeMatch, matchFactualSummary, SHARED_BOOLEAN_FACT_FIELDS, sharedFactValue } from '@/lib/matching';
+import { isArchivedStatus, TOUR_RATING_KEY } from '@/lib/constants';
+import { computeMatch, matchFactualSummary } from '@/lib/matching';
+import { criterionAnswerPatch, inPersonAnswerPatch } from '@/lib/matchCriteria';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { evaluateCommute } from '@/lib/commute';
-import { parseCommaList } from '@/lib/homeDisplay';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
 import { useCommuteObserver } from '@/lib/useCommuteObserver';
 import { createClient } from '@/lib/supabase/client';
@@ -32,11 +33,6 @@ export const WORKSPACE_SECTIONS = Object.freeze([
 ]);
 const SECTION_KEYS = new Set(WORKSPACE_SECTIONS.map((item) => item.key));
 
-
-function Stars({ value }) {
-  return <span className="hh-detail-stars" aria-label={`${value} out of 5 stars`}>{[1, 2, 3, 4, 5].map((n) => <Star key={n} size={17} fill={n <= value ? '#C69245' : 'none'} color={n <= value ? '#C69245' : '#DED2C1'} />)}</span>;
-}
-
 function Section({ eyebrow, title, children, className = '' }) {
   return <section className={`hh-detail-section ${className}`}><div className="hh-detail-eyebrow">{eyebrow}</div>{title && <h2 className="hh-serif">{title}</h2>}{children}</section>;
 }
@@ -51,15 +47,12 @@ function DetailRow({ icon, title, subtitle, tone = 'default', children }) {
   );
 }
 
-export default function HomeDetail({ home: initialHome, priorities, commuteDestinations = [], coBuyerPerspective, sharedFactAwareness = {}, userId, searchId, isCollaborative = false, readOnly = false, backHref = null, realtorContributions = { notes: [], tours: [] }, justAdded = null, initialSection = 'facts' }) {
+export default function HomeDetail({ home: initialHome, priorities, commuteDestinations = [], coBuyerPerspective, sharedFactAwareness = {}, userId, searchId, isCollaborative = false, readOnly = false, backHref = null, realtorContributions = { notes: [], tours: [] }, justAdded = null, initialSection = 'facts', perspectiveName = null, coBuyerName = null }) {
   const router = useRouter();
   const [home, setHome] = useState(initialHome);
   const [editing, setEditing] = useState(false);
   const [reflecting, setReflecting] = useState(false);
   const [archiveTarget, setArchiveTarget] = useState(null);
-  const [notesOpen, setNotesOpen] = useState(false);
-  const [thoughts, setThoughts] = useState({ pros: home.pros || '', cons: home.cons || '', notes: home.notes || '' });
-  const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const personalQueue = useRef(Promise.resolve());
   const matchSection = useRef(null);
@@ -76,16 +69,7 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
   const commuteEvaluation = evaluateCommute(commuteDestinations, getState);
   const match = computeMatch(home, priorities, commuteEvaluation);
   const factualSummary = matchFactualSummary(match);
-  const overall = home.ratings?.[TOUR_RATING_KEY] || 0;
-  const experiential = (match?.allSelected || []).filter((item) => !item.objective && item.evaluated);
-  const likedExperiences = experiential.filter((item) => item.met);
-  const dislikedExperiences = experiential.filter((item) => item.met === false);
-  const hasPostTourFeedback = Boolean(home.reaction || overall > 0 || experiential.length > 0);
-  const hasCoBuyerPerspective = Boolean(coBuyerPerspective && (
-    coBuyerPerspective.match ||
-    coBuyerPerspective.overallFeeling > 0 ||
-    (coBuyerPerspective.differentTakes?.length ?? 0) > 0
-  ));
+  const hasPostTourFeedback = Boolean(home.reaction || (home.ratings?.[TOUR_RATING_KEY] || 0) > 0 || (match?.allSelected || []).some((item) => !item.objective && item.evaluated));
   const identity = homeIdentity(home, priorities);
   const vocabulary = homeVocabulary(priorities);
   // Apartments (property name, unit, floor plan) and rentals (availability)
@@ -129,20 +113,17 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
       throw error;
     }
   };
-  const saveThoughts = async () => {
-    setSaving(true);
-    try { await saveWhole({ ...home, ...thoughts }); setNotesOpen(false); } catch {} finally { setSaving(false); }
-  };
   // Match Criteria answers go exactly where the editor always wrote them: the
   // buyer's own checks, or (Pets / Utilities / In-Unit Laundry) the shared field.
   const answerCriterion = (item, next) => {
-    const sharedField = SHARED_BOOLEAN_FACT_FIELDS[item.key];
-    if (sharedField) return saveWhole({ ...home, [sharedField]: sharedFactValue(next) });
-    const checks = { ...(home.checks || {}) };
-    if (next === undefined) delete checks[item.key];
-    else checks[item.key] = next;
-    return savePersonal({ checks });
+    const patch = criterionAnswerPatch(home, item.key, next, priorities.searchType);
+    return patch.shared ? saveWhole({ ...home, ...patch.shared }) : savePersonal(patch.personal);
   };
+  // "Things to check in person" (Tour Feedback): this buyer's own tour response
+  // for one selected in-person criterion — ratings[key], the value Match already
+  // scores. Personal path only; status, tour date, reaction, survey and notes are
+  // carried as they are, so answering never marks the home toured.
+  const answerInPerson = (item, next) => savePersonal(inPersonAnswerPatch(home, item.key, next));
   const handleVerdict = async (current, verdict, patch) => {
     const next = applyPostTourVerdict(current, verdict, patch);
     return hasSharedHomeChanges(next, home) ? saveWhole(next) : savePersonal(next);
@@ -185,11 +166,13 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
   const back = () => backHref ? router.push(backHref) : window.history.length > 1 ? router.back() : router.push('/homes');
 
   const sectionMeta = WORKSPACE_SECTIONS.find((item) => item.key === section) || WORKSPACE_SECTIONS[0];
+  // A Realtor reads the buyers' Tour Feedback, not "Your take": name whose it is.
+  const eyebrow = readOnly && section === 'tour' ? ([perspectiveName, coBuyerName].filter(Boolean).join(' & ') || 'The buyers') : sectionMeta.eyebrow;
 
   return <main className="hh-home-detail flh-workspace" ref={setRef}>
     {/* One home workspace: the property stays in view while the buyer moves
-        between what the home IS (Home Facts), how it fits their search (Check
-        the Match), and how it felt (Tour Feedback). Each area keeps its own
+        between what the home IS (Home Facts), how it fits their search (Match
+        Criteria), and how it felt (Tour Feedback). Each area keeps its own
         existing sections and save paths; only the navigation is shared. */}
     <aside className="flh-workspace-nav">
       <button type="button" className="flh-workspace-back" onClick={back}><ArrowLeft size={16} aria-hidden="true" /> {backHref ? 'Back' : 'Back to My Homes'}</button>
@@ -209,7 +192,7 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
     <div className="flh-workspace-main" ref={mainRef}>
       <header className="flh-workspace-head">
         <div>
-          <p className="flh-eyebrow">{sectionMeta.eyebrow}</p>
+          <p className="flh-eyebrow">{eyebrow}</p>
           <h1 className="hh-serif" tabIndex={-1} ref={titleRef}>{sectionMeta.label}</h1>
           <p>{readOnly ? sectionMeta.readOnlyIntro : sectionMeta.intro}</p>
         </div>
@@ -258,38 +241,36 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
       );
     })()}
 
-    {hasCoBuyerPerspective && <Section eyebrow="Co-buyer perspective" title="How your co-buyer sees this home"><div className="hh-detail-cobuyer">{coBuyerPerspective.match?.pct != null && <div><strong>{coBuyerPerspective.match.pct}% Match</strong><small>Based on their priorities.</small></div>}{coBuyerPerspective.overallFeeling > 0 && <span><Stars value={coBuyerPerspective.overallFeeling} /> Overall feeling</span>}</div>{coBuyerPerspective.differentTakes?.length > 0 && <div className="hh-detail-differences"><h3>Different takes</h3>{coBuyerPerspective.differentTakes.map((take) => { const category = take.key?.split(':')[0]; return <p key={take.key}><strong>{criterionDisplayLabel(category, take.label)}</strong><span>{take.youLiked ? 'You liked it' : "You didn't like it"} · {take.coBuyerLiked ? 'Co-buyer did' : "Co-buyer didn't"}</span></p>; })}</div>}</Section>}
+    {/* Their Match, from their own priorities and answers. Their take (overall
+        feeling, where you see it differently) lives in Tour Feedback. */}
+    {coBuyerPerspective?.match?.pct != null && <Section eyebrow="Co-buyer perspective" title={coBuyerName ? `${coBuyerName}’s Match` : 'How your co-buyer sees this home'}><div className="hh-detail-cobuyer"><div><strong>{coBuyerPerspective.match.pct}% Match</strong><small>Based on their priorities and their own answers.</small></div></div></Section>}
       </>}
 
       {section === 'tour' && <>
-        {/* Tour Feedback keeps today's sections unchanged. Pros, cons and notes
-            live here (not in Home Facts or Match); their redesign is a later pass. */}
-    <Section eyebrow={readOnly ? 'Buyer perspective' : 'Your take'} title={readOnly ? 'Their relationship with this home' : 'Your relationship with this home'} className="hh-detail-relationship hh-detail-section-wide hh-detail-surface">
-      {isCollaborative && <p className="hh-detail-context">{readOnly ? 'Each buyer’s perspective stays separate.' : 'These choices are yours. Your co-buyer can see them and keeps their own.'}</p>}
-      {!readOnly && <div className="hh-detail-actions flh-detail-inline-actions">
-        {hasToured(home) ? <span className="hh-detail-toured-state"><Check size={15} aria-hidden="true" /> Toured</span> : <button className="hh-btn" aria-pressed={home.status === 'Want to Tour'} onClick={() => savePersonal({ status: home.status === 'Want to Tour' ? 'Saved' : 'Want to Tour' }).catch(() => {})}><Footprints size={15} aria-hidden="true" />{home.status === 'Want to Tour' ? 'On your Want to Tour list' : 'Want to tour'}</button>}
-        <button className="hh-btn hh-btn-ghost" aria-pressed={home.isFavorite} onClick={() => savePersonal(toggleFavorite(home)).catch(() => {})}><Heart size={15} aria-hidden="true" fill={home.isFavorite ? 'currentColor' : 'none'} />{home.isFavorite ? 'Favorited' : 'Favorite'}</button>
-        <button className="hh-detail-archive-action" onClick={() => isArchivedStatus(home.status) ? savePersonal(restoreHome(home)).catch(() => {}) : setArchiveTarget(home)}>{isArchivedStatus(home.status) ? <><RotateCcw size={14} aria-hidden="true" /> Restore</> : 'Archive'}</button>
-      </div>}
-      {home.coBuyerWantsToTour && <p className="hh-detail-context">Your co-buyer still wants to tour this home.</p>}
-      {saveError && <p className="hh-save-error" role="alert">{saveError}{retryPersonal.current && <> <button type="button" onClick={() => savePersonal(retryPersonal.current).catch(() => {})}>Retry</button></>}</p>}
-      {hasToured(home) ? <div className="hh-detail-evaluation">{overall > 0 && <div className="hh-detail-overall"><h3>Overall feeling</h3><Stars value={overall} /></div>}{experiential.length > 0 && <div className="hh-detail-reactions">{likedExperiences.length > 0 && <div><h3 className="liked">Liked</h3>{likedExperiences.map((item) => <p key={item.key}>{criterionDisplayLabel(item.key.split(':')[0], item.label)}</p>)}</div>}{dislikedExperiences.length > 0 && <div><h3 className="disliked">Didn't like</h3>{dislikedExperiences.map((item) => <p key={item.key}>{criterionDisplayLabel(item.key.split(':')[0], item.label)}</p>)}</div>}</div>}<div className="hh-detail-after-tour"><strong>After your tour</strong><p>{hasPostTourFeedback ? 'Keep your take current as this home stays in consideration.' : 'Come back to record how the home actually felt.'}</p>{!readOnly && <button className="hh-btn hh-btn-ghost hh-detail-take-action" onClick={() => setReflecting(true)}>{hasPostTourFeedback ? 'Edit your take' : 'Record your take'}</button>}</div></div> : <div className="hh-detail-after-tour"><strong>After your tour</strong><p>Come back after seeing this home to record how it actually felt.</p>{!readOnly && <button className="hh-btn hh-btn-ghost hh-detail-take-action" onClick={() => setReflecting(true)}>Record your take</button>}</div>}
-    </Section>
-
-    {/* Professional context and buyer/search context are two different kinds of
-        human input — never merged into one data model or card — but on wide
-        desktop they read fine side by side rather than as one long stack. */}
-    <div className="hh-detail-context-row">
-    <RealtorContributions searchId={searchId} homeId={home.id} contributions={realtorContributions} viewerId={userId} realtorView={readOnly} archived={isArchivedStatus(home.status)} />
-
-    <Section eyebrow="Property notes" title={isCollaborative ? "Shared notes" : "What you want to remember"}>{isCollaborative && <p className="hh-detail-context">Pros, cons, and notes are visible to both of you.</p>}{!notesOpen ? <><div className="hh-detail-notes">{parseCommaList(home.pros).length > 0 && <div><h3>Pros</h3>{parseCommaList(home.pros).map((x) => <p key={x}><span aria-hidden="true">+</span>{x}</p>)}</div>}{parseCommaList(home.cons).length > 0 && <div><h3>Cons</h3>{parseCommaList(home.cons).map((x) => <p key={x}><span aria-hidden="true">−</span>{x}</p>)}</div>}{home.notes && <div className="wide"><h3>Notes</h3><p>{home.notes}</p></div>}</div>{!readOnly && <button className="hh-btn hh-btn-ghost hh-detail-notes-action" onClick={() => setNotesOpen(true)}>{home.pros || home.cons || home.notes ? 'Edit property notes' : 'Add pros, cons, or a note'}</button>}</> : <div className="hh-detail-notes-form"><label>Pros<input className="hh-input" value={thoughts.pros} onChange={(e) => setThoughts({ ...thoughts, pros: e.target.value })} placeholder="Great kitchen, quiet street" /></label><label>Cons<input className="hh-input" value={thoughts.cons} onChange={(e) => setThoughts({ ...thoughts, cons: e.target.value })} placeholder="Busy road" /></label><label className="wide">Anything else you want to remember?<textarea className="hh-textarea" value={thoughts.notes} onChange={(e) => setThoughts({ ...thoughts, notes: e.target.value })} placeholder="HOA details, sewer/water, financing options, recent updates, listing terms, or anything else worth noting." /></label><div className="wide hh-detail-form-actions"><button className="hh-btn hh-btn-ghost" onClick={() => setNotesOpen(false)}>Cancel</button><button className="hh-btn" disabled={saving} onClick={saveThoughts}>{saving ? 'Saving…' : 'Save notes'}</button></div></div>}</Section>
-    </div>
+        {/* Tour Feedback: the buyer's own reaction and in-person take (recorded
+            only through PostTourModal), the shared pros / cons / notes, and the
+            Realtor's professional context. Nothing here answers a Match criterion. */}
+        <TourFeedback
+          home={home} match={match} vocabulary={vocabulary} readOnly={readOnly} isCollaborative={isCollaborative}
+          perspectiveName={perspectiveName} coBuyerPerspective={coBuyerPerspective} coBuyerName={coBuyerName}
+          saveError={saveError} onRetry={retryPersonal.current ? () => savePersonal(retryPersonal.current).catch(() => {}) : null}
+          onRecordTake={() => setReflecting(true)}
+          onToggleWantToTour={() => savePersonal({ status: home.status === 'Want to Tour' ? 'Saved' : 'Want to Tour' }).catch(() => {})}
+          onToggleFavorite={() => savePersonal(toggleFavorite(home)).catch(() => {})}
+          onArchive={() => setArchiveTarget(home)}
+          onRestore={() => savePersonal(restoreHome(home)).catch(() => {})}
+          onSaveNotes={(draft) => saveWhole({ ...home, ...draft })}
+          onAnswerInPerson={answerInPerson}
+        >
+          <RealtorContributions searchId={searchId} homeId={home.id} contributions={realtorContributions} viewerId={userId} realtorView={readOnly} archived={isArchivedStatus(home.status)} />
+        </TourFeedback>
       </>}
     </div>
 
-    {/* Phone: the primary personal actions sit in a sticky bar above the bottom
-        navigation. Same handlers, same meaning as the inline buttons above. */}
-    {!readOnly && !isArchivedStatus(home.status) && section !== 'facts' && <div className="flh-mobile-only flh-detail-action-bar">
+    {/* Phone: on Match Criteria the primary personal actions sit in a sticky bar
+        above the bottom navigation. Tour Feedback carries the same actions inline
+        (plans row and take button), so the bar would only repeat them there. */}
+    {!readOnly && !isArchivedStatus(home.status) && section === 'match' && <div className="flh-mobile-only flh-detail-action-bar">
       <button type="button" className="flh-icon-button" aria-pressed={home.isFavorite} aria-label={home.isFavorite ? 'Remove from favorites' : 'Add to favorites'} onClick={() => savePersonal(toggleFavorite(home)).catch(() => {})}><Heart size={18} aria-hidden="true" fill={home.isFavorite ? 'var(--brick)' : 'none'} color={home.isFavorite ? 'var(--brick)' : 'currentColor'} /></button>
       {hasToured(home)
         ? <button type="button" className="flh-button flh-button-primary flh-button-block" onClick={() => setReflecting(true)}>{hasPostTourFeedback ? 'Edit your take' : 'Record your take'}</button>

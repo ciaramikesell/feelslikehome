@@ -45,7 +45,10 @@ test('auth stays contained and Home Detail actions retain clear hierarchy', () =
   assert.match(css, /\.afh-panel \{[^}]*max-width: 380px/);
   assert.match(css, /@media \(max-width: 880px\) \{[\s\S]*?\.afh-grid \{ grid-template-columns: 1fr; \}/);
   assert.match(css, /\.hh-detail-section \{[^}]*border-top:/);
-  assert.match(detail, /hh-detail-take-action/);
-  assert.match(detail, /hh-detail-notes-action/);
-  assert.match(detail, /hh-detail-toured-state/);
+  // Tour Feedback (src/components/TourFeedback.jsx) now owns these actions.
+  const tour = read('src/components/TourFeedback.jsx');
+  assert.match(detail, /<TourFeedback/);
+  assert.match(tour, /onClick=\{onRecordTake\}>\{verdict \? 'Edit your take' : 'Record your take'\}/);
+  assert.match(tour, /\{hasAny \? 'Edit' : 'Add'\}<span className="sr-only"> notes<\/span>/);
+  assert.match(tour, /hh-detail-toured-state/);
 });

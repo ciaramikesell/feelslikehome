@@ -27,7 +27,7 @@ import { isLikelyListingUrl, findHomeByListingUrl } from '@/lib/listingUrl';
 import { parseNum, fmtMoney, homeStyleSummary, computeMatch, matchColor, matchTint, selectHomeCardCriteria, mustHaveStatus, criterionLabel } from '@/lib/matching';
 import { homeCardSnapshot } from '@/lib/homeCardPresentation';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
-import { formatHomePrice, formatLotSizeDisplay, parseCommaList } from '@/lib/homeDisplay';
+import { formatHomePrice, formatLotSizeDisplay, freeformText, noteFieldCount } from '@/lib/homeDisplay';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { isNativeApp } from '@/lib/platform';
 import { deriveFlhMoment } from '@/lib/flhMoments';
@@ -119,9 +119,8 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   // each feature. Condition Notes remains with Pros/Cons/Notes below.
   const propertyFacts = homeCardSnapshot(home, styleSummary);
 
-  const pros = parseCommaList(home.pros);
-  const cons = parseCommaList(home.cons);
-  const noteCount = [home.notes, home.conditionNotes, ...pros, ...cons].filter(Boolean).length;
+  // Pros / cons are freeform text: counted once per field, never split on commas.
+  const noteCount = noteFieldCount(home);
   const { mustHaves, hiddenMustHaves, mustOverflow, criteriaSummary } = cardCriteria;
   const displayedMustHaves = showAllMustHaves ? [...mustHaves, ...hiddenMustHaves] : mustHaves;
   // Secondary, already-known context (facts/commute/notes) — kept out of the
@@ -129,7 +128,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   // price/address/Match/status first, not a full restack of every field.
   // Desktop keeps this always open (see .hh-card-context-details in
   // globals.css); nothing here is ever hidden from desktop.
-  const hasCardContext = propertyFacts.length > 0 || commuteDestinations.length > 0 || !!home.conditionNotes || pros.length > 0 || cons.length > 0 || !!home.notes;
+  const hasCardContext = propertyFacts.length > 0 || commuteDestinations.length > 0 || !!home.conditionNotes || !!freeformText(home.pros) || !!freeformText(home.cons) || !!home.notes;
   const coBuyerActivity = home.coBuyerWantsToTour ? 'Co-buyer wants to tour' : home.coBuyerFavorited ? 'Co-buyer favorited' : null;
 
   return (

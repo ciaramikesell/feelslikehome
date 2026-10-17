@@ -132,11 +132,17 @@ export function formatFoundCardFacts(fields, searchType) {
   return { priceLine, bedsBathsSqft, secondaryFacts, hoaTaxLine };
 }
 
-// Splits a comma-separated freeform string (how Pros/Cons/impression chips are
-// stored) into a clean list of trimmed, non-empty entries. Shared by any card/
-// view that needs to render Pros/Cons as individual chips instead of raw text.
-export function parseCommaList(text) {
-  return (text || '').split(',').map((s) => s.trim()).filter(Boolean);
+// Pros, cons and notes are freeform shared text. They are shown exactly as
+// written and never split on commas: "Bright, open living room" is one phrase,
+// and there is no reliable way to tell where one item ends.
+export function freeformText(text) {
+  return typeof text === 'string' ? text.trim() : '';
+}
+
+// How many note fields a home has written (notes, condition notes, pros, cons):
+// one per non-empty field, never one per comma.
+export function noteFieldCount(home) {
+  return [home?.notes, home?.conditionNotes, home?.pros, home?.cons].filter((text) => freeformText(text)).length;
 }
 
 // Count of "property details" found, for the "We found N property details" message.

@@ -224,8 +224,7 @@ test('Match Criteria: three tiers, real Yes / No / Unknown radios, rows straight
   // Read-only viewers see the answer, never a control.
   assert.match(criteria, /canAnswer && \(readOnly\s*\? <span className=\{`flh-mc-readonly/);
   // Answers go where the editor always wrote them: personal checks, or the three shared rental facts.
-  assert.match(detail, /const sharedField = SHARED_BOOLEAN_FACT_FIELDS\[item\.key\];\s*if \(sharedField\) return saveWhole\(\{ \.\.\.home, \[sharedField\]: sharedFactValue\(next\) \}\);/);
-  assert.match(detail, /if \(next === undefined\) delete checks\[item\.key\];\s*else checks\[item\.key\] = next;\s*return savePersonal\(\{ checks \}\);/);
+  assert.match(detail, /const patch = criterionAnswerPatch\(home, item\.key, next, priorities\.searchType\);\s*return patch\.shared \? saveWhole\(\{ \.\.\.home, \.\.\.patch\.shared \}\) : savePersonal\(patch\.personal\);/);
 });
 
 test('Garage, Commute and after-tour criteria are never answered in Match Criteria', async () => {
@@ -299,7 +298,7 @@ test('Home Facts: no standalone imported-facts panel, no school disclaimer, and 
   assert.match(detail, /onNext=\{\(\) => nextFromFacts\(\)\}/);
 });
 
-test('the workspace reads Home Facts / Match Criteria / Tour Feedback; Tour Feedback is unchanged', () => {
+test('the workspace reads Home Facts / Match Criteria / Tour Feedback', () => {
   assert.match(detail, /key: 'facts', label: 'Home Facts'/);
   assert.match(detail, /key: 'match', label: 'Match Criteria'/);
   assert.match(detail, /key: 'tour', label: 'Tour Feedback'/);
@@ -313,10 +312,13 @@ test('the workspace reads Home Facts / Match Criteria / Tour Feedback; Tour Feed
   assert.doesNotMatch(panel('facts'), /pros|cons|PostTour|RealtorContributions/);
   assert.match(panel('match'), /<MatchCriteria /);
   assert.match(panel('match'), /title="Location & Commute"/);
-  assert.match(panel('tour'), /Your relationship with this home/);
-  assert.match(panel('tour'), /Add pros, cons, or a note/);
+  // Tour Feedback is the redesigned panel carried over from #151; it never answers Match criteria.
+  assert.match(panel('tour'), /<TourFeedback/);
+  assert.match(panel('tour'), /onSaveNotes=\{\(draft\) => saveWhole\(\{ \.\.\.home, \.\.\.draft \}\)\}/);
   assert.match(panel('tour'), /<RealtorContributions /);
-  assert.match(detail, /section !== 'facts' && <div className="flh-mobile-only flh-detail-action-bar">/);
+  assert.doesNotMatch(panel('tour'), /answerCriterion|MatchCriteria/);
+  assert.doesNotMatch(read('src/components/TourFeedback.jsx'), /CheckTheMatch|matchReview|answerPatch/);
+  assert.match(detail, /section === 'match' && <div className="flh-mobile-only flh-detail-action-bar">/);
 });
 
 test('desktop sidebar becomes a compact section switcher on phones', () => {
