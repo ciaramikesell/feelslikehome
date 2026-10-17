@@ -64,7 +64,12 @@ There are no migrations, no RPC changes and no scoring changes.
 ### 3. Pros / cons: faithful display, no data change
 - Tour Feedback shows pros and cons **exactly as written** (`white-space: pre-wrap`). It no longer splits on commas, so "Bright, open living room, Huge backyard" stays intact. The editor uses text areas with no "separate with commas" hint.
 - Stored values are never rewritten.
-- Compare (`CompareBoard.jsx`) and the My Homes card (`HomesBoard.jsx`) still split on commas. That code predates this PR and sits outside Tour Feedback, so it's left for review.
+- **My Homes cards and Compare follow the same rule now (round 3).** Neither splits on commas any more, and `parseCommaList` is gone. Both use the shared helpers in `lib/homeDisplay.js`:
+  - `freeformText()`: the stored text, trimmed only.
+  - `noteFieldCount()`: one per written field (notes, condition notes, pros, cons).
+- **My Homes card.** The card never listed pros or cons individually; it used the split only for its "Notes (N)" count. That count is now one per written field. So "Bright, open living room, Huge backyard" plus a con and a note reads "Notes (3)", not "Notes (5)". The compact phone card still has no notes line, as before.
+- **Compare › What Stood Out.** It now shows "Liked:" and "Didn't like:" followed by the original text, with line breaks kept. Before, it split the text and joined it back together.
+- **No data or format changes.** Storage format, saved values and editing paths are unchanged. There's no migration, no parsing and no authorship model.
 
 ### Future improvement: individually authored pros / cons (not built; needs a schema change)
 Today `homes.pros`, `homes.cons` and `homes.notes` are single shared text fields with no author, and the last save wins. A future pass could add a `home_thoughts` table: `(id, home_id, search_id, author_id, kind: 'pro' | 'con' | 'note', body, created_at, updated_at)`, with RLS allowing everyone in the search to read and only the author to write.

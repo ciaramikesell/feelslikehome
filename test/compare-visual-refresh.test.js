@@ -84,8 +84,9 @@ test('the old bottom Notes section is removed (deduplicated into the card) witho
   assert.doesNotMatch(board, /<summary>Notes<\/summary>/);
   // What Stood Out (pros/cons) is a materially different section and stays.
   assert.match(board, /<summary>What Stood Out<\/summary>/);
-  assert.match(board, /parseCommaList\(h\.pros\)/);
-  assert.match(board, /parseCommaList\(h\.cons\)/);
+  // Pros / cons are shown exactly as written (never split on commas).
+  assert.match(board, /const liked = freeformText\(h\.pros\);/);
+  assert.match(board, /const disliked = freeformText\(h\.cons\);/);
   // Editing lives on Home Detail's Tour Feedback, through the shared-home save.
   assert.match(detail, /onSaveNotes=\{\(draft\) => saveWhole\(\{ \.\.\.home, \.\.\.draft \}\)\}/);
   assert.match(await source('src/components/TourFeedback.jsx'), /Save notes/);

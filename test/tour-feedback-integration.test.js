@@ -19,6 +19,7 @@ const { emptyHome, normalizePriorities, TIER_META, TOUR_RATING_KEY } = await imp
 const { applySearchChoice } = await import('../src/lib/onboarding.js');
 const { addCriterion } = await import('../src/lib/searchProfile.js');
 const { applyPostTourVerdict } = await import('../src/lib/lifecycle.js');
+const { freeformText, noteFieldCount } = await import('../src/lib/homeDisplay.js');
 const {
   acceptInvitation, createInvitation, getHomesForUser, saveHomePersonalAndShared, saveHomePersonalState,
 } = await import('../src/lib/supabase/collaboration.js');
@@ -168,6 +169,30 @@ test('pros and cons are shown exactly as written, never split on commas', () => 
   assert.doesNotMatch(tour, /parseCommaList/);
   assert.match(tour, /\{pros \? <p>\{pros\}<\/p>/);
   assert.match(tour, /\{cons \? <p>\{cons\}<\/p>/);
+});
+
+test('freeform pros / cons keep every phrase intact, and the My Homes notes count is one per field', () => {
+  // Shown verbatim (trimmed only), commas and line breaks included.
+  assert.equal(freeformText('  Bright, open living room, Huge backyard \n'), 'Bright, open living room, Huge backyard');
+  assert.equal(freeformText('Kitchen feels dated,\nBusy road'), 'Kitchen feels dated,\nBusy road');
+  assert.equal(freeformText(null), '');
+  assert.equal(freeformText(undefined), '');
+  // "Bright, open living room" is one written pro, not two notes.
+  assert.equal(noteFieldCount({ pros: 'Bright, open living room' }), 1);
+  assert.equal(noteFieldCount({ pros: 'Bright, open living room, Huge backyard', cons: 'Busy road', notes: 'Ask about the roof.', conditionNotes: '' }), 3);
+  assert.equal(noteFieldCount({ pros: '   ', cons: null }), 0);
+});
+
+test('My Homes cards and Compare show pros / cons as written: no comma splitting anywhere', () => {
+  const cards = read('src/components/HomesBoard.jsx');
+  const compare = read('src/components/CompareBoard.jsx');
+  const display = read('src/lib/homeDisplay.js');
+  for (const source of [cards, compare, tour, display]) assert.doesNotMatch(source, /parseCommaList|split\(','\)/);
+  assert.match(cards, /const noteCount = noteFieldCount\(home\);/);
+  assert.match(compare, /const liked = freeformText\(h\.pros\);/);
+  assert.match(compare, /<strong style=\{\{ color: 'var\(--moss\)' \}\}>Liked: <\/strong>\{liked\}<\/div>/);
+  assert.match(compare, /<strong style=\{\{ color: 'var\(--brick\)' \}\}>Didn't like: <\/strong>\{disliked\}<\/div>/);
+  assert.match(read('src/app/globals.css'), /\.hh-compare-freeform \{ white-space: pre-wrap; overflow-wrap: anywhere; \}/);
 });
 
 test('pre-tour notes are labeled as notes, and pros / cons / notes save through the shared-home path', () => {

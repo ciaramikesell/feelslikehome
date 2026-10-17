@@ -273,6 +273,34 @@ async function journey(browser, width) {
     await shot(owner, tag('t06-new-home'), { full: false });
   });
 
+  await step(`[${width}] My Homes card and Compare show pros / cons as written (no comma splitting)`, async () => {
+    const before = snapshot(legacyToured);
+    await owner.goto(`${base}/homes`, { waitUntil: 'networkidle' });
+    const card = owner.locator('article.hh-home-card', { hasText: '40 Elm St' });
+    // pros + cons + notes = 3 written fields (comma splitting used to count 5).
+    // The compact phone card has no notes line at all (unchanged); elsewhere it
+    // may sit inside the card's collapsed "More details".
+    const more = card.getByRole('button', { name: /More details/ }).first();
+    if (!(await card.getByText('Notes (3)').isVisible().catch(() => false)) && await more.isVisible().catch(() => false)) await more.click();
+    if (width >= 500 || await card.locator('.hh-notes-indicator').isVisible().catch(() => false)) await card.getByText('Notes (3)').waitFor();
+    assert(!(await card.getByText(/Notes \((4|5)\)/).count()), 'notes counted per comma');
+    if (await card.locator('.hh-notes-indicator').isVisible().catch(() => false)) await card.locator('.hh-notes-indicator').scrollIntoViewIfNeeded();
+    await shot(owner, tag('t14-my-homes-card'), { full: false });
+    await owner.goto(`${base}/compare`, { waitUntil: 'networkidle' });
+    await owner.getByText('What Stood Out').first().click();
+    const phrase = owner.locator('.hh-compare-freeform', { hasText: 'Liked: Bright, open living room, Huge backyard' });
+    if (!(await phrase.isVisible().catch(() => false))) {
+      await owner.locator('button', { hasText: '40 Elm St' }).first().click();
+      if (!(await owner.getByText('What Stood Out').first().evaluate((node) => node.closest('details')?.open))) await owner.getByText('What Stood Out').first().click();
+    }
+    await phrase.waitFor();
+    await owner.locator('.hh-compare-freeform', { hasText: 'Didn\'t like: Busy road two blocks over' }).waitFor();
+    assert((await phrase.innerText()).trim() === 'Liked: Bright, open living room, Huge backyard', 'Compare changed the written text');
+    await phrase.scrollIntoViewIfNeeded();
+    await shot(owner, tag('t15-compare-what-stood-out'), { full: false });
+    assert(snapshot(legacyToured) === before, 'viewing My Homes / Compare changed stored data');
+  });
+
   const coBuyer = await signedIn(browser, 'coBuyer', width);
   await step(`[${width}] co-buyer sees their own take and the owner’s as a separate perspective`, async () => {
     const before = snapshot(legacyToured);

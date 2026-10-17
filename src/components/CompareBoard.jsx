@@ -6,7 +6,7 @@ import { Columns, Star, Heart, Home as HomeIcon, Footprints } from 'lucide-react
 import { TOUR_RATING_KEY, criterionDisplayLabel, isApartmentRental } from '@/lib/constants';
 import { parseNum, computeMatch, matchColor } from '@/lib/matching';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
-import { formatDateOnly, formatHomePrice, formatLotSizeDisplay, formatPropertyType, formatTriState, parseCommaList } from '@/lib/homeDisplay';
+import { formatDateOnly, formatHomePrice, formatLotSizeDisplay, formatPropertyType, formatTriState, freeformText } from '@/lib/homeDisplay';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { useCommuteMatrix } from '@/lib/useCommuteObserver';
 import { commuteResultSignature, evaluateCommute, uniqueShortestIndex } from '@/lib/commute';
@@ -573,18 +573,19 @@ export default function CompareBoard({ homes, priorities, coBuyerPerspectives = 
             <summary>What Stood Out</summary>
             <div className="hh-compare-notes" style={{ marginTop: 10 }}>
               {selected.map((h) => {
-                const liked = parseCommaList(h.pros);
-                const disliked = parseCommaList(h.cons);
+                // Shown exactly as written — never split on commas ("Bright, open living room" is one phrase).
+                const liked = freeformText(h.pros);
+                const disliked = freeformText(h.cons);
                 return (
                   <div key={h.id} style={{ border: '1px solid var(--line)', borderRadius: 14, padding: 14, background: 'var(--paper-raised)' }}>
                     <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', marginBottom: 8 }}>{homeIdentity(h, priorities).primary}</div>
-                    {liked.length > 0 && (
-                      <div style={{ fontSize: 12, color: 'var(--ink)', marginBottom: 6 }}><strong style={{ color: 'var(--moss)' }}>Liked: </strong>{liked.join(', ')}</div>
+                    {liked && (
+                      <div className="hh-compare-freeform" style={{ fontSize: 12, color: 'var(--ink)', marginBottom: 6 }}><strong style={{ color: 'var(--moss)' }}>Liked: </strong>{liked}</div>
                     )}
-                    {disliked.length > 0 && (
-                      <div style={{ fontSize: 12, color: 'var(--ink)' }}><strong style={{ color: 'var(--brick)' }}>Didn't like: </strong>{disliked.join(', ')}</div>
+                    {disliked && (
+                      <div className="hh-compare-freeform" style={{ fontSize: 12, color: 'var(--ink)' }}><strong style={{ color: 'var(--brick)' }}>Didn't like: </strong>{disliked}</div>
                     )}
-                    {liked.length === 0 && disliked.length === 0 && <div style={{ fontSize: 12, color: 'var(--ink-soft)', fontStyle: 'italic' }}>Nothing noted yet.</div>}
+                    {!liked && !disliked && <div style={{ fontSize: 12, color: 'var(--ink-soft)', fontStyle: 'italic' }}>Nothing noted yet.</div>}
                   </div>
                 );
               })}

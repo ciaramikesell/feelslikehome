@@ -2646,6 +2646,7 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-tour-list.is-pause li > span { color: var(--brick); }
 .flh-tour-list.is-notes p { margin: 0; color: var(--ink); font: 500 15px/1.7 'Source Serif 4', serif; white-space: pre-wrap; overflow-wrap: anywhere; }
 .flh-tour-empty-line { margin: 0; color: var(--unknown); font-size: 13.5px; }
+.hh-compare-freeform { white-space: pre-wrap; overflow-wrap: anywhere; }
 .flh-tour-list p:not(.flh-tour-empty-line) { margin: 0; color: var(--ink); font: 500 15px/1.6 'Source Serif 4', serif; white-space: pre-wrap; overflow-wrap: anywhere; }
 .flh-tour-notes-form textarea.flh-tour-short-text { min-height: 72px; }
 .flh-tour-checks { margin: 0; padding: 0; list-style: none; }
