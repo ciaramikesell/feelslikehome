@@ -25,6 +25,54 @@ There are no migrations, no RPC changes and no scoring changes.
 | Alias-safe Unknown (#151's `answerPatch` rule, re-homed in #152's `lib/matchCriteria.js`). Choosing Unknown on a priority whose older alias still holds an answer (for example `features:Home Office`) now sets the canonical key to `false`, which Match already reads as Unknown. Before, the old Yes folded straight back in. A historical `false` now shows as Unknown in the radios instead of no option selected. | `criterionAnswerPatch`, `criterionAnswer` |
 | The phone sticky action bar shows on Match Criteria only, because Tour Feedback carries the same actions inline | `HomeDetail.jsx` |
 
+## Review decisions (round 2)
+
+### 1. In-person Match criteria: "Things to check in person" in Tour Feedback
+**How the scorer reads them (confirmed before building; unchanged).**
+- **Which criteria count.** A selected priority is in-person when `isExperientialCriterion` says so (the `TOUR_CRITERIA` set: Natural Light, Layout / Flow, Noise Level, Curb Appeal …).
+- **Where the answer lives.** Both scorers read it from the buyer's own `home_member_state.ratings[key]`: the JS `computeMatch` (`src/lib/matching.js`) and the SQL co-buyer / Compare scorer (`2026-10-15-cobuyer-compare-mudroom-parity.sql`).
+- **How each value scores:**
+  - `'positive'`: 1 (matches)
+  - `'negative'`: 0 (doesn't match)
+  - `'neutral'`: evaluated but unscored, so it's left out of the score
+  - absent: Unknown
+  - an older numeric 1–5 rating: scores rating/5, and counts as met at 3 or above
+- **Weights:** Must-Have 4, Important 2, Nice to Have 1.
+- **What doesn't count.** The post-tour survey (`tour-v2:*`) and the overall-feeling rating (`tour:overall`) are not Match criteria.
+
+**Who sees it.**
+- In **rental** searches, in-person criteria are active priorities.
+- In **purchase** searches, the in-person built-ins are retired (`RETIRED_PURCHASE_BUILT_INS`). Only priorities the buyer created as custom items appear, as in older searches.
+- When a buyer has no in-person criteria selected, the section is hidden.
+
+**What was built.** Nothing new is stored and nothing scores differently.
+- `inPersonCriteria(match)` (`lib/matchCriteria.js`) lists those rows of the same `computeMatch` result. No criteria are duplicated.
+- Each row offers that criterion's existing tour responses (`tourResponseOptions`, e.g. Too noisy / Noticeable / Comfortable) plus Unknown. It uses the same radio control as Match Criteria.
+- An answer goes through `answerInPerson` → `savePersonal(inPersonAnswerPatch(...))`: only this buyer's personal row, and only that one key of `ratings`.
+  - Status, tour date, reaction, the survey answers, overall feeling and the shared notes are carried as they are.
+  - Unknown removes the key.
+  - The co-buyer's row is never written.
+- Answering never marks a home toured. Tour Feedback's "take" state now depends only on a reaction, overall feeling or survey answers, never on an in-person answer.
+- **Match Criteria picks the answer up immediately** (same in-memory home, so no reload is needed). Its read-only label for these rows now reads "Checked in person · Tour Feedback" instead of "Answered after your tour". The rest of the Match Criteria design is unchanged.
+- **The post-tour reaction and survey stay separate,** in "How it felt in person" via `PostTourModal`. `PostTourModal` starts from `home.ratings`, so recording a take keeps in-person answers.
+- An older 1–5 rating shows as "Earlier rating N/5 still counts until you choose". Choosing an answer replaces only that key.
+
+### 2. Realtor wording
+- On the Realtor's Tour Feedback, the page eyebrow no longer says "Your take". It names the buyers ("Ciara M & Andrew M"), and the page heading reads **Tour Feedback**. The take itself is headed "Ciara M's take", and the co-buyer's is "Andrew M's take".
+- "From the Realtor" now tells the Realtor that those notes are visible to the buyers, and that their private client notes stay in My Clients. Nothing from `client_records` is loaded on this page.
+
+### 3. Pros / cons: faithful display, no data change
+- Tour Feedback shows pros and cons **exactly as written** (`white-space: pre-wrap`). It no longer splits on commas, so "Bright, open living room, Huge backyard" stays intact. The editor uses text areas with no "separate with commas" hint.
+- Stored values are never rewritten.
+- Compare (`CompareBoard.jsx`) and the My Homes card (`HomesBoard.jsx`) still split on commas. That code predates this PR and sits outside Tour Feedback, so it's left for review.
+
+### Future improvement: individually authored pros / cons (not built; needs a schema change)
+Today `homes.pros`, `homes.cons` and `homes.notes` are single shared text fields with no author, and the last save wins. A future pass could add a `home_thoughts` table: `(id, home_id, search_id, author_id, kind: 'pro' | 'con' | 'note', body, created_at, updated_at)`, with RLS allowing everyone in the search to read and only the author to write.
+- Each item would be shown with its author, and each co-buyer would edit only their own.
+- Realtors would stay read-only.
+- Existing shared text would be shown as a "Shared notes (before authorship)" item, preserved verbatim and never split.
+- That needs a migration, a backfill-free read path and RLS tests. None of it is in this PR.
+
 ## Not brought over (on purpose)
 - `CheckTheMatch.jsx` and `lib/matchReview.js`, #151's competing Match page: overview ring, "Still wondering about…", compact confirmed list, and in-person answering on Match. #152's Match Criteria is the approved screen.
 - `evaluationElsewhere` on `HomeModal`. In #152 the full editor only opens for apartments and rentals (`usesFullEditor`), and it still edits pros / cons / notes exactly as before. Nothing is hidden or reset there.
@@ -37,13 +85,16 @@ There are no migrations, no RPC changes and no scoring changes.
 - A co-buyer's reaction, checks and ratings are never touched by the owner's take, notes edit or Match answer.
 
 ## Known limitations (unchanged)
-- Pros, cons and notes are single shared fields with no author, labeled "Shared with everyone in this search". Pros and cons are comma-separated, so "Bright, open living room" shows as two items.
+- Pros, cons and notes are single shared fields with no author, labeled "Shared with everyone in this search" (see the future improvement above).
 - The co-buyer projection exposes their %, overall feeling and older "different takes", but not their reaction or survey.
-- In-person Match criteria (older and rental searches) still have no writer. Match Criteria shows them as "Answered after your tour", as #152 did. #151 answered them on Check the Match. Moving that into Tour Feedback is a design call left for review.
-- The section eyebrow reads "Your take" on the Realtor view too. This is #150's section metadata, not new here.
+- The survey's "Curb Appeal" (`tour-v2:curb_appeal`) and a selected "Curb Appeal" Match criterion are different stored answers. This was already the case: the survey isn't Match criteria. They're shown in separate sections.
 
 ## QA
 - `npm test` against real Postgres 16, including `test/tour-feedback-integration.test.js`.
-- `scripts/qa/tour-feedback-e2e.mjs` (new): owner, co-buyer and Realtor, full stack on real Postgres, at 1440 / 1024 / 768 / 390.
+- `scripts/qa/tour-feedback-e2e.mjs` (new): owner, co-buyer and Realtor, full stack on real Postgres, at 1440 / 1024 / 768 / 390. For the run it gives both buyers custom in-person priorities and restores them afterwards. It covers:
+  - legacy saved notes and tour data
+  - in-person answers before and after a tour: answer, change, clear, and Match Criteria reflecting each one
+  - co-buyer independence
+  - the Realtor's wording and read-only view
 - Regression: #152's `scripts/qa/home-flow-e2e.mjs` and `scripts/visual/home-facts-screens.mjs`.
 - Screenshots: `docs/tour-feedback-screenshots/`.

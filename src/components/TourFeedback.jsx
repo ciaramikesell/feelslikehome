@@ -3,25 +3,83 @@
 import { useState } from 'react';
 import { Check, Footprints, Heart, MessageSquareQuote, Pencil, RotateCcw, Star, Users } from 'lucide-react';
 import { POST_TOUR_EVALUATIONS, POST_TOUR_RESPONSES, POST_TOUR_VERDICTS } from '@/components/PostTourModal';
-import { criterionDisplayLabel, isArchivedStatus, TOUR_RATING_KEY } from '@/lib/constants';
-import { parseCommaList } from '@/lib/homeDisplay';
+import { criterionDisplayLabel, isArchivedStatus, TOUR_RATING_KEY, tourResponseLabel, tourResponseOptions } from '@/lib/constants';
+import { inPersonAnswer, inPersonCriteria } from '@/lib/matchCriteria';
 import { hasToured, postTourVerdict } from '@/lib/lifecycle';
 
 // Tour Feedback — "how did I actually feel about this home?"
 // Reuses the existing stores and workflows only:
-//  - reaction, tour date and in-person answers are this person's own
+//  - reaction, tour date and the post-tour survey are this person's own
 //    home_member_state, recorded through the existing PostTourModal
 //    (onRecordTake); nothing here marks a home toured by itself;
+//  - "Things to check in person" answers the buyer's own selected in-person
+//    Match criteria (Natural Light, Layout / Flow …) through onAnswerInPerson:
+//    the same ratings[key] tour response Match already scores, so the answer
+//    shows in Match Criteria at once. It is not a second survey;
 //  - pros, cons and notes are the shared home fields (no per-person author),
-//    edited through the caller's onSaveNotes (the shared-home save path);
+//    shown exactly as written and edited through onSaveNotes (shared save);
 //  - Realtor context is rendered by the caller (children).
-// Carried over from the #151 evaluation redesign onto the #152 workspace; Match
-// Criteria owns Match answers, so nothing here answers a priority.
+// Carried over from the #151 evaluation redesign onto the #152 workspace.
 
 const criterionName = (item) => (item.key.includes(':') ? criterionDisplayLabel(item.key.split(':')[0], item.label) : item.label);
 
 function Stars({ value }) {
   return <span className="flh-tour-stars" aria-label={`${value} out of 5 stars`}>{[1, 2, 3, 4, 5].map((n) => <Star key={n} size={15} fill={n <= value ? 'currentColor' : 'none'} aria-hidden="true" />)}</span>;
+}
+
+const TIER_TAG = { must: 'Must-Have', important: 'Important', nice: 'Nice to Have' };
+const splitKey = (key) => [key.slice(0, key.indexOf(':')), key.slice(key.indexOf(':') + 1)];
+
+// One in-person Match criterion: its own tour responses plus Unknown, written to
+// this buyer's ratings only. Same radio control as Match Criteria.
+function InPersonRow({ item, home, readOnly, onAnswer }) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState('');
+  const [categoryKey, label] = splitKey(item.key);
+  const value = inPersonAnswer(home, item.key);
+  const older = typeof home.ratings?.[item.key] === 'number' && home.ratings[item.key] > 0 ? home.ratings[item.key] : null;
+  const options = [...tourResponseOptions(categoryKey, label), { value: undefined, label: 'Unknown' }];
+  const tone = (option) => (option.value === 'positive' ? 'yes' : option.value === 'negative' ? 'no' : option.value === 'neutral' ? 'neutral' : 'unknown');
+  const answer = async (next) => {
+    setPending(true); setError('');
+    try { await onAnswer(item, next); } catch { setError('Couldn’t save that answer. Try again.'); } finally { setPending(false); }
+  };
+  return <li className="flh-tour-check">
+    <div className="flh-tour-check-copy">
+      <strong>{criterionName(item)}</strong>
+      <small><span className={`flh-tier-tag is-${item.tier}`}>{TIER_TAG[item.tier]}</span>{older && value === undefined ? ` · Earlier rating ${older}/5 still counts until you choose` : ''}</small>
+      {error && <span className="hh-save-error" role="alert">{error}</span>}
+    </div>
+    {readOnly
+      ? <span className={`flh-mc-readonly is-${value === 'positive' ? 'yes' : value === 'negative' ? 'no' : 'unknown'}`}>{value ? tourResponseLabel(categoryKey, label, value) : older ? `${older}/5` : 'Unknown'}</span>
+      : <fieldset className="flh-mc-answer flh-tour-check-answer" disabled={pending}>
+        <legend className="sr-only">{criterionName(item)}</legend>
+        {options.map((option) => {
+          const checked = option.value === undefined ? value === undefined && !older : value === option.value;
+          return <label key={option.label} className={`flh-mc-option is-${tone(option)} ${checked ? 'is-checked' : ''}`}>
+            <input type="radio" name={`in-person-${item.key}`} checked={checked} onChange={() => answer(option.value)} />
+            <span>{option.label}</span>
+          </label>;
+        })}
+      </fieldset>}
+  </li>;
+}
+
+function InPersonChecks({ match, home, readOnly, isCollaborative, perspectiveName, onAnswer }) {
+  const items = inPersonCriteria(match);
+  if (!items.length) return null;
+  const answered = items.filter((item) => inPersonAnswer(home, item.key)).length;
+  return (
+    <section className="flh-tour-block" aria-labelledby="tour-in-person-checks-title">
+      <div className="flh-tour-block-head"><div>
+        <h3 id="tour-in-person-checks-title" className="hh-serif">Things to check in person</h3>
+        <p>{readOnly
+          ? `From ${perspectiveName || 'the buyer'}’s Match Criteria. ${answered} of ${items.length} answered.`
+          : `From your Match Criteria — answer any time, before or after a visit, or skip. Unknown never counts against this home.${isCollaborative ? ' Your answers are yours; your co-buyer keeps their own.' : ''}`}</p>
+      </div></div>
+      <ul className="flh-tour-checks">{items.map((item) => <InPersonRow key={item.key} item={item} home={home} readOnly={readOnly} onAnswer={onAnswer} />)}</ul>
+    </section>
+  );
 }
 
 const RESPONSE_LABEL = Object.fromEntries(POST_TOUR_RESPONSES.map((item) => [item.value, item.label]));
@@ -41,8 +99,8 @@ function NotesEditor({ home, onSave, onCancel }) {
   };
   return (
     <div className="flh-tour-notes-form">
-      <label>What you loved<span>Separate items with commas.</span><input className="hh-input" value={draft.pros} onChange={(event) => setDraft({ ...draft, pros: event.target.value })} placeholder="Great kitchen, quiet street" /></label>
-      <label>What gave you pause<span>Separate items with commas.</span><input className="hh-input" value={draft.cons} onChange={(event) => setDraft({ ...draft, cons: event.target.value })} placeholder="Busy road" /></label>
+      <label>What you loved<textarea className="hh-textarea flh-tour-short-text" value={draft.pros} onChange={(event) => setDraft({ ...draft, pros: event.target.value })} placeholder="Great kitchen, quiet street" /></label>
+      <label>What gave you pause<textarea className="hh-textarea flh-tour-short-text" value={draft.cons} onChange={(event) => setDraft({ ...draft, cons: event.target.value })} placeholder="Busy road" /></label>
       <label className="wide">Notes<textarea className="hh-textarea" value={draft.notes} onChange={(event) => setDraft({ ...draft, notes: event.target.value })} placeholder="HOA details, sewer/water, financing options, recent updates, listing terms, or anything else worth noting." /></label>
       {error && <p className="hh-save-error wide" role="alert">{error}</p>}
       <div className="wide flh-tour-form-actions"><button type="button" className="hh-btn hh-btn-ghost" onClick={onCancel} disabled={saving}>Cancel</button><button type="button" className="hh-btn" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save notes'}</button></div>
@@ -52,9 +110,11 @@ function NotesEditor({ home, onSave, onCancel }) {
 
 function NotesSection({ home, title, intro, readOnly, isCollaborative, onSaveNotes }) {
   const [editing, setEditing] = useState(false);
-  const pros = parseCommaList(home.pros);
-  const cons = parseCommaList(home.cons);
-  const hasAny = pros.length || cons.length || home.notes;
+  // Shown exactly as written: splitting on commas would break phrases such as
+  // "Bright, open living room" (pros and cons are free text, not lists).
+  const pros = (home.pros || '').trim();
+  const cons = (home.cons || '').trim();
+  const hasAny = pros || cons || home.notes;
   return (
     <section className="flh-tour-block" aria-labelledby="tour-notes-title">
       <div className="flh-tour-block-head">
@@ -63,8 +123,8 @@ function NotesSection({ home, title, intro, readOnly, isCollaborative, onSaveNot
       </div>
       {editing ? <NotesEditor home={home} onCancel={() => setEditing(false)} onSave={async (draft) => { await onSaveNotes(draft); setEditing(false); }} />
         : hasAny ? <div className="flh-tour-notes">
-          <div className="flh-tour-list is-loved"><h4>What {readOnly ? 'they' : 'you'} loved</h4>{pros.length ? <ul>{pros.map((item) => <li key={item}><span aria-hidden="true">+</span>{item}</li>)}</ul> : <p className="flh-tour-empty-line">Nothing yet.</p>}</div>
-          <div className="flh-tour-list is-pause"><h4>What gave {readOnly ? 'them' : 'you'} pause</h4>{cons.length ? <ul>{cons.map((item) => <li key={item}><span aria-hidden="true">−</span>{item}</li>)}</ul> : <p className="flh-tour-empty-line">Nothing yet.</p>}</div>
+          <div className="flh-tour-list is-loved"><h4>What {readOnly ? 'they' : 'you'} loved</h4>{pros ? <p>{pros}</p> : <p className="flh-tour-empty-line">Nothing yet.</p>}</div>
+          <div className="flh-tour-list is-pause"><h4>What gave {readOnly ? 'them' : 'you'} pause</h4>{cons ? <p>{cons}</p> : <p className="flh-tour-empty-line">Nothing yet.</p>}</div>
           {home.notes && <div className="flh-tour-list is-notes wide"><h4>Notes</h4><p>{home.notes}</p></div>}
         </div>
           : <p className="flh-tour-empty-line">{readOnly ? 'No notes yet.' : 'Nothing written yet. Jot down anything — before or after a visit.'}</p>}
@@ -72,13 +132,17 @@ function NotesSection({ home, title, intro, readOnly, isCollaborative, onSaveNot
   );
 }
 
-export default function TourFeedback({ home, match, vocabulary, readOnly = false, isCollaborative = false, perspectiveName = null, coBuyerPerspective = null, coBuyerName = null, saveError = '', onRetry = null, onRecordTake, onToggleWantToTour, onToggleFavorite, onArchive, onRestore, onSaveNotes, children = null }) {
+export default function TourFeedback({ home, match, vocabulary, readOnly = false, isCollaborative = false, perspectiveName = null, coBuyerPerspective = null, coBuyerName = null, saveError = '', onRetry = null, onRecordTake, onToggleWantToTour, onToggleFavorite, onArchive, onRestore, onSaveNotes, onAnswerInPerson, children = null }) {
   const toured = hasToured(home);
   const verdict = POST_TOUR_VERDICTS.find((item) => item.key === postTourVerdict(home));
   const overall = home.ratings?.[TOUR_RATING_KEY] || 0;
   const survey = POST_TOUR_EVALUATIONS.filter((item) => home.ratings?.[item.key]).map((item) => ({ ...item, response: home.ratings[item.key] }));
-  const inPerson = (match?.allSelected || []).filter((criterion) => !criterion.objective && criterion.evaluated);
-  const hasTake = Boolean(verdict || overall > 0 || survey.length || inPerson.length);
+  // Older 1–5 rating priorities (not in-person Match criteria) stay visible as
+  // part of the take. In-person criteria live in "Things to check in person",
+  // and answering one never makes this read as a recorded take or a tour.
+  const inPersonKeys = new Set(inPersonCriteria(match).map((criterion) => criterion.key));
+  const olderRatings = (match?.allSelected || []).filter((criterion) => !criterion.objective && criterion.evaluated && !inPersonKeys.has(criterion.key));
+  const hasTake = Boolean(verdict || overall > 0 || survey.length);
   const who = readOnly ? (perspectiveName || 'The buyer') : 'You';
   const whose = readOnly ? `${perspectiveName || 'The buyer'}’s` : 'Your';
   const archived = isArchivedStatus(home.status);
@@ -119,11 +183,13 @@ export default function TourFeedback({ home, match, vocabulary, readOnly = false
           </div>
         </section>}
 
-      {(survey.length > 0 || inPerson.length > 0) && <section className="flh-tour-block" aria-labelledby="tour-in-person-title">
+      <InPersonChecks match={match} home={home} readOnly={readOnly} isCollaborative={isCollaborative} perspectiveName={perspectiveName} onAnswer={onAnswerInPerson} />
+
+      {(survey.length > 0 || olderRatings.length > 0) && <section className="flh-tour-block" aria-labelledby="tour-in-person-title">
         <div className="flh-tour-block-head"><div><h3 id="tour-in-person-title" className="hh-serif">How it felt in person</h3><p>From {readOnly ? 'their' : 'your'} take after the tour.</p></div></div>
         <dl className="flh-tour-feelings">
           {survey.map((item) => <div key={item.key} className={`is-${item.response}`}><dt>{item.label}</dt><dd>{RESPONSE_LABEL[item.response] || item.response}</dd></div>)}
-          {inPerson.map((criterion) => <div key={criterion.key} className={criterion.met === true ? 'is-positive' : criterion.met === false ? 'is-negative' : 'is-neutral'}><dt>{criterionName(criterion)}</dt><dd>{criterion.detail}</dd></div>)}
+          {olderRatings.map((criterion) => <div key={criterion.key} className={criterion.met === true ? 'is-positive' : criterion.met === false ? 'is-negative' : 'is-neutral'}><dt>{criterionName(criterion)}</dt><dd>{criterion.detail}</dd></div>)}
         </dl>
       </section>}
 

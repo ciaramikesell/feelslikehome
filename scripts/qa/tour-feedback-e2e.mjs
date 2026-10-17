@@ -95,6 +95,29 @@ const waitFor = async (check, message, timeout = 8000) => {
   throw new Error(message);
 };
 
+// In-person Match criteria are rental priorities, or custom priorities in an
+// older purchase search (the purchase built-ins are retired). Give both buyers
+// custom ones for this run; their originals are restored at the end.
+const IN_PERSON = { owner: { 'Noise Level': 'important', 'Curb Appeal': 'nice' }, coBuyer: { 'Noise Level': 'must' } };
+const originalPriorities = {};
+function withInPersonPriorities() {
+  for (const [who, tiers] of Object.entries(IN_PERSON)) {
+    const [row] = q(`select priorities from public.search_member_priorities where search_id = '${info.search}' and user_id = '${info.users[who].id}'`);
+    originalPriorities[who] = row.priorities;
+    const next = structuredClone(row.priorities);
+    next.exterior = next.exterior || {};
+    next.exterior.tiers = { ...(next.exterior.tiers || {}), ...tiers };
+    next.exterior.customItems = [...(next.exterior.customItems || []).filter((item) => !tiers[item.label]), ...Object.keys(tiers).map((label) => ({ label, kind: 'rating', source: 'custom' }))];
+    exec(`update public.search_member_priorities set priorities = ${lit(next)}::jsonb where search_id = '${info.search}' and user_id = '${info.users[who].id}'`);
+  }
+}
+function restorePriorities() {
+  for (const [who, priorities] of Object.entries(originalPriorities)) exec(`update public.search_member_priorities set priorities = ${lit(priorities)}::jsonb where search_id = '${info.search}' and user_id = '${info.users[who].id}'`);
+}
+const answerInPerson = async (page, name, option) => {
+  await page.locator('.flh-tour-checks').getByRole('group', { name }).getByRole('radio', { name: option, exact: true }).check();
+};
+
 async function journey(browser, width) {
   const tag = (name) => `${name}-${width}`;
   exec(`delete from public.homes where search_id = '${info.search}' and address like '${PREFIX}%'`);
@@ -144,6 +167,19 @@ async function journey(browser, width) {
     assert(JSON.stringify(personal(preTour, 'owner')) === personalBefore, 'notes edit touched personal state');
   });
 
+  await step(`[${width}] in person before a tour: answer Curb Appeal → saved to ratings only, still not toured, no take`, async () => {
+    const before = personal(preTour, 'owner');
+    const notesBefore = JSON.stringify(shared(preTour));
+    await owner.getByRole('heading', { name: 'Things to check in person' }).waitFor();
+    await answerInPerson(owner, 'Curb Appeal', 'Love it');
+    await waitFor(() => personal(preTour, 'owner').ratings['exterior:Curb Appeal'] === 'positive', 'in-person answer not saved');
+    const after = personal(preTour, 'owner');
+    assert(after.toured_at === null && after.status === before.status && after.reaction === before.reaction, `answering changed tour state: ${JSON.stringify(after)}`);
+    assert(JSON.stringify(shared(preTour)) === notesBefore, 'answering changed notes');
+    await owner.getByRole('heading', { name: 'Your impressions will live here' }).waitFor();
+    await shot(owner, tag('t10-in-person-before-tour'));
+  });
+
   await step(`[${width}] recording a take saves reaction, survey and an appended note; Tour Feedback shows it`, async () => {
     await owner.getByRole('button', { name: /I’ve toured it — record my take/ }).click();
     const dialog = owner.getByRole('dialog');
@@ -159,6 +195,7 @@ async function journey(browser, width) {
     const state = personal(preTour, 'owner');
     assert(state.toured_at && state.ratings['tour-v2:layout'] === 'positive' && state.ratings['tour-v2:privacy'] === 'neutral', `take not saved: ${JSON.stringify(state)}`);
     assert(shared(preTour).notes === `${LEGACY_NOTES.notes}\n\nThe light in the kitchen is lovely.`, 'note was not appended to the older notes');
+    assert(state.ratings['exterior:Curb Appeal'] === 'positive', 'recording a take overwrote the in-person answer');
     assert(personal(preTour, 'coBuyer') === null || personal(preTour, 'coBuyer').reaction === null, 'co-buyer state changed');
     await owner.getByRole('heading', { name: 'Love it' }).waitFor();
     await owner.getByRole('heading', { name: 'How it felt in person' }).waitFor();
@@ -173,8 +210,44 @@ async function journey(browser, width) {
     await owner.getByLabel('4 out of 5 stars').first().waitFor();
     for (const text of ['Curb Appeal', 'Neighborhood', 'Didn’t like it', 'Huge backyard', 'Busy road two blocks over', 'Second look']) await owner.getByText(text, { exact: false }).first().waitFor();
     await owner.getByRole('heading', { name: /co-buyer’s take/ }).waitFor();
+    // Pros and cons are shown exactly as written — "Bright, open living room" stays one phrase.
+    await owner.getByText('Bright, open living room, Huge backyard', { exact: true }).waitFor();
     await shot(owner, tag('t04-legacy-toured'));
     assert(snapshot(legacyToured) === before, 'viewing older tour data changed it');
+  });
+
+  await step(`[${width}] in person after a tour: answer, change, clear — take, survey and notes untouched; Match Criteria reflects it`, async () => {
+    const before = personal(legacyToured, 'owner');
+    const notesBefore = JSON.stringify(shared(legacyToured));
+    const coBefore = JSON.stringify(personal(legacyToured, 'coBuyer'));
+    const { 'exterior:Noise Level': _ignored, ...beforeRest } = before.ratings;
+    await answerInPerson(owner, 'Noise Level', 'Too noisy');
+    await waitFor(() => personal(legacyToured, 'owner').ratings['exterior:Noise Level'] === 'negative', 'answer not saved');
+    let after = personal(legacyToured, 'owner');
+    const { 'exterior:Noise Level': _answer, ...afterRest } = after.ratings;
+    assert(JSON.stringify(afterRest) === JSON.stringify(beforeRest), `survey/overall changed: ${JSON.stringify(after.ratings)}`);
+    assert(after.reaction === 'considering' && after.toured_at === before.toured_at && after.status === before.status, 'take or tour state changed');
+    assert(JSON.stringify(shared(legacyToured)) === notesBefore, 'notes changed');
+    assert(JSON.stringify(personal(legacyToured, 'coBuyer')) === coBefore, 'co-buyer state changed');
+    await shot(owner, tag('t11-in-person-answered'));
+    // Reflected at once in Match Criteria (same session state, no reload).
+    await owner.getByRole('button', { name: /^Match Criteria/ }).first().click();
+    await owner.getByRole('heading', { level: 1, name: 'Match Criteria' }).waitFor();
+    const row = owner.locator('.flh-mc-row', { hasText: 'Noise Level' });
+    await row.getByText('Doesn’t match', { exact: false }).waitFor();
+    await row.getByText('Checked in person · Tour Feedback', { exact: false }).waitFor();
+    await row.scrollIntoViewIfNeeded();
+    await shot(owner, tag('t12-match-reflects-in-person'), { full: false });
+    // Return and change, then clear to Unknown.
+    await owner.getByRole('button', { name: /^Tour Feedback/ }).first().click();
+    await answerInPerson(owner, 'Noise Level', 'Comfortable');
+    await waitFor(() => personal(legacyToured, 'owner').ratings['exterior:Noise Level'] === 'positive', 'change not saved');
+    await answerInPerson(owner, 'Noise Level', 'Unknown');
+    await waitFor(() => !('exterior:Noise Level' in personal(legacyToured, 'owner').ratings), 'Unknown did not clear the answer');
+    after = personal(legacyToured, 'owner');
+    assert(JSON.stringify(after.ratings) === JSON.stringify(beforeRest) && after.reaction === 'considering', 'clearing changed other answers');
+    await answerInPerson(owner, 'Noise Level', 'Noticeable');
+    await waitFor(() => personal(legacyToured, 'owner').ratings['exterior:Noise Level'] === 'neutral', 'neutral not saved');
   });
 
   await step(`[${width}] Match Criteria is unchanged around it: tiers and Yes / No / Unknown radios`, async () => {
@@ -211,6 +284,17 @@ async function journey(browser, width) {
     assert(snapshot(legacyToured) === before, 'co-buyer viewing changed data');
   });
 
+  await step(`[${width}] co-buyer’s in-person answer is their own; the owner’s answer is untouched`, async () => {
+    const ownerBefore = JSON.stringify(personal(legacyToured, 'owner'));
+    const group = coBuyer.locator('.flh-tour-checks').getByRole('group', { name: 'Noise Level' });
+    assert(await group.getByRole('radio', { name: 'Unknown', exact: true }).isChecked(), 'co-buyer sees the owner’s answer as theirs');
+    await answerInPerson(coBuyer, 'Noise Level', 'Comfortable');
+    await waitFor(() => personal(legacyToured, 'coBuyer').ratings['exterior:Noise Level'] === 'positive', 'co-buyer answer not saved');
+    assert(JSON.stringify(personal(legacyToured, 'owner')) === ownerBefore, 'co-buyer answer changed the owner');
+    assert(personal(legacyToured, 'coBuyer').reaction === 'love', 'co-buyer reaction changed');
+    await shot(coBuyer, tag('t13-cobuyer-in-person'), { full: false });
+  });
+
   const realtor = await signedIn(browser, 'realtor', width);
   await step(`[${width}] Realtor: read-only Tour Feedback, each buyer’s take attributed by name`, async () => {
     const before = snapshot(legacyToured);
@@ -218,6 +302,14 @@ async function journey(browser, width) {
     await realtor.getByText('Ciara M’s take', { exact: false }).first().waitFor();
     await realtor.getByRole('heading', { name: 'Andrew M’s take' }).waitFor();
     await realtor.getByRole('heading', { name: 'Still considering' }).waitFor();
+    // The page eyebrow names the buyers; "Your take" never appears for a Realtor.
+    await realtor.locator('.flh-workspace-head .flh-eyebrow', { hasText: 'Ciara M & Andrew M' }).waitFor();
+    assert(!(await realtor.getByText('Your take', { exact: true }).count()), 'Realtor sees “Your take”');
+    // Their in-person answers are shown as text, never as controls.
+    await realtor.getByRole('heading', { name: 'Things to check in person' }).waitFor();
+    await realtor.locator('.flh-tour-checks .flh-mc-readonly', { hasText: 'Noticeable' }).waitFor();
+    assert(!(await realtor.locator('.flh-tour-checks input').count()), 'Realtor sees in-person answer controls');
+    await realtor.getByText('Your private client notes stay in My Clients.').waitFor();
     for (const name of [/record my take/i, /Edit your take/, /Record your take/, /^Edit notes$/, /^Add notes$/, /Want to tour/, /^Favorite/, /^Archive$/]) {
       assert(!(await realtor.getByRole('button', { name }).count()), `Realtor sees ${name}`);
     }
@@ -240,7 +332,8 @@ async function journey(browser, width) {
 }
 
 const browser = await chromium.launch();
-for (const width of WIDTHS) await journey(browser, width);
+withInPersonPriorities();
+try { for (const width of WIDTHS) await journey(browser, width); } finally { restorePriorities(); }
 await browser.close();
 writeFileSync(join(outDir, 'tour-e2e-results.json'), JSON.stringify(log, null, 2));
 const failed = log.filter((entry) => !entry.ok);

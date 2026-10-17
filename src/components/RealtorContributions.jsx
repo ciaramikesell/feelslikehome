@@ -20,6 +20,8 @@ export default function RealtorContributions({ searchId, homeId, contributions, 
   };
   return <section className="hh-realtor-contributions" aria-label="Realtor contributions">
     <div className="hh-contribution-heading"><MessageSquare size={18} /><div><span>Professional context</span><h2>From the Realtor</h2></div></div>
+    {/* Shared with the buyers. Realtor-private client notes live only in My Clients. */}
+    {realtorView && <p className="hh-muted hh-realtor-visibility">Notes here are visible to the buyers in this search. Your private client notes stay in My Clients.</p>}
     {contributions.notes.map((note) => <article className="hh-realtor-note" key={note.id}>
       <strong>From {note.author_display_name}</strong><p>{note.content}</p>
       {note.updated_at !== note.created_at && <small>Edited</small>}

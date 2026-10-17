@@ -2646,6 +2646,22 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-tour-list.is-pause li > span { color: var(--brick); }
 .flh-tour-list.is-notes p { margin: 0; color: var(--ink); font: 500 15px/1.7 'Source Serif 4', serif; white-space: pre-wrap; overflow-wrap: anywhere; }
 .flh-tour-empty-line { margin: 0; color: var(--unknown); font-size: 13.5px; }
+.flh-tour-list p:not(.flh-tour-empty-line) { margin: 0; color: var(--ink); font: 500 15px/1.6 'Source Serif 4', serif; white-space: pre-wrap; overflow-wrap: anywhere; }
+.flh-tour-notes-form textarea.flh-tour-short-text { min-height: 72px; }
+.flh-tour-checks { margin: 0; padding: 0; list-style: none; }
+.flh-tour-check { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 8px 18px; align-items: center; padding: 12px 0; border-top: 1px solid rgba(138,124,110,.14); }
+.flh-tour-check:first-child { border-top: 0; }
+.flh-tour-check-copy { display: grid; gap: 4px; min-width: 0; }
+.flh-tour-check-copy strong { color: var(--ink); font-size: 15px; font-weight: 650; overflow-wrap: anywhere; }
+.flh-tour-check-copy small { color: var(--ink-soft); font-size: 12.5px; line-height: 1.45; }
+.flh-tour-check-answer { grid-template-columns: repeat(4,minmax(64px,auto)); }
+.flh-tour-check-answer .flh-mc-option { text-align: center; line-height: 1.2; }
+.flh-tour-check-answer .flh-mc-option.is-checked.is-neutral { background: #8a7f73; color: #fff; }
+.flh-tier-tag { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 750; }
+.flh-tier-tag.is-must { background: rgba(185,83,50,.1); color: var(--brick); }
+.flh-tier-tag.is-important { background: rgba(198,146,69,.16); color: #7d5a22; }
+.flh-tier-tag.is-nice { background: rgba(116,128,79,.12); color: #556039; }
+.hh-realtor-visibility { margin: -4px 0 4px; font-size: 12.5px; }
 .flh-tour-notes-form { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px 18px; }
 .flh-tour-notes-form label { display: grid; gap: 6px; color: var(--ink); font-size: 12.5px; font-weight: 700; }
 .flh-tour-notes-form label span { color: var(--ink-soft); font-size: 11.5px; font-weight: 500; }
@@ -2663,6 +2679,8 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
   .flh-tour-plans .hh-btn, .flh-tour-plans .hh-detail-archive-action { min-height: 44px; }
   .flh-tour-form-actions .hh-btn { flex: 1; justify-content: center; min-height: 44px; }
   .flh-tour-differences p { grid-template-columns: minmax(0,1fr); gap: 2px; }
+  .flh-tour-check { grid-template-columns: minmax(0,1fr); }
+  .flh-tour-check-answer { display: grid; width: 100%; grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
 
 /* ── Onboarding V2 shell (Phase 1) ───────────────────────────────────────────

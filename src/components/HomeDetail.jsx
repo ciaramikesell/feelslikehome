@@ -15,7 +15,7 @@ import TourFeedback from '@/components/TourFeedback';
 import HomeDetailLocation from '@/components/HomeDetailLocation';
 import { isArchivedStatus, TOUR_RATING_KEY } from '@/lib/constants';
 import { computeMatch, matchFactualSummary } from '@/lib/matching';
-import { criterionAnswerPatch } from '@/lib/matchCriteria';
+import { criterionAnswerPatch, inPersonAnswerPatch } from '@/lib/matchCriteria';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { evaluateCommute } from '@/lib/commute';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
@@ -119,6 +119,11 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
     const patch = criterionAnswerPatch(home, item.key, next, priorities.searchType);
     return patch.shared ? saveWhole({ ...home, ...patch.shared }) : savePersonal(patch.personal);
   };
+  // "Things to check in person" (Tour Feedback): this buyer's own tour response
+  // for one selected in-person criterion — ratings[key], the value Match already
+  // scores. Personal path only; status, tour date, reaction, survey and notes are
+  // carried as they are, so answering never marks the home toured.
+  const answerInPerson = (item, next) => savePersonal(inPersonAnswerPatch(home, item.key, next));
   const handleVerdict = async (current, verdict, patch) => {
     const next = applyPostTourVerdict(current, verdict, patch);
     return hasSharedHomeChanges(next, home) ? saveWhole(next) : savePersonal(next);
@@ -161,6 +166,8 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
   const back = () => backHref ? router.push(backHref) : window.history.length > 1 ? router.back() : router.push('/homes');
 
   const sectionMeta = WORKSPACE_SECTIONS.find((item) => item.key === section) || WORKSPACE_SECTIONS[0];
+  // A Realtor reads the buyers' Tour Feedback, not "Your take": name whose it is.
+  const eyebrow = readOnly && section === 'tour' ? ([perspectiveName, coBuyerName].filter(Boolean).join(' & ') || 'The buyers') : sectionMeta.eyebrow;
 
   return <main className="hh-home-detail flh-workspace" ref={setRef}>
     {/* One home workspace: the property stays in view while the buyer moves
@@ -185,7 +192,7 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
     <div className="flh-workspace-main" ref={mainRef}>
       <header className="flh-workspace-head">
         <div>
-          <p className="flh-eyebrow">{sectionMeta.eyebrow}</p>
+          <p className="flh-eyebrow">{eyebrow}</p>
           <h1 className="hh-serif" tabIndex={-1} ref={titleRef}>{sectionMeta.label}</h1>
           <p>{readOnly ? sectionMeta.readOnlyIntro : sectionMeta.intro}</p>
         </div>
@@ -253,6 +260,7 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
           onArchive={() => setArchiveTarget(home)}
           onRestore={() => savePersonal(restoreHome(home)).catch(() => {})}
           onSaveNotes={(draft) => saveWhole({ ...home, ...draft })}
+          onAnswerInPerson={answerInPerson}
         >
           <RealtorContributions searchId={searchId} homeId={home.id} contributions={realtorContributions} viewerId={userId} realtorView={readOnly} archived={isArchivedStatus(home.status)} />
         </TourFeedback>

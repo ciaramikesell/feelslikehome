@@ -43,7 +43,7 @@ function detailText(item) {
 function readOnlySource(item) {
   if (item.key === 'location:Commute') return 'From your places';
   const category = item.key.split(':')[0];
-  if (item.key.includes(':') && isExperientialCriterion(category, item.label)) return 'Answered after your tour';
+  if (item.key.includes(':') && isExperientialCriterion(category, item.label)) return 'Checked in person · Tour Feedback';
   return 'From Home Facts';
 }
 

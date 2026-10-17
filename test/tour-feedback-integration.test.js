@@ -13,9 +13,9 @@ import { register } from 'node:module';
 import { createTestDatabase, DB_TESTS_ENABLED, DB_SKIP_REASON } from './support/supabaseDb.mjs';
 
 register('./support/aliasHooks.mjs', import.meta.url);
-const { criterionAnswer, criterionAnswerPatch } = await import('../src/lib/matchCriteria.js');
+const { criterionAnswer, criterionAnswerPatch, inPersonAnswer, inPersonAnswerPatch, inPersonCriteria } = await import('../src/lib/matchCriteria.js');
 const { computeMatch } = await import('../src/lib/matching.js');
-const { emptyHome, normalizePriorities, TOUR_RATING_KEY } = await import('../src/lib/constants.js');
+const { emptyHome, normalizePriorities, TIER_META, TOUR_RATING_KEY } = await import('../src/lib/constants.js');
 const { applySearchChoice } = await import('../src/lib/onboarding.js');
 const { addCriterion } = await import('../src/lib/searchProfile.js');
 const { applyPostTourVerdict } = await import('../src/lib/lifecycle.js');
@@ -40,8 +40,8 @@ test('#152 Match Criteria stays the Match screen; #151’s Check the Match page 
   assert.match(detail, /key: 'match', label: 'Match Criteria'/);
   assert.match(detail, /<MatchCriteria home=\{home\}/);
   assert.doesNotMatch(detail + tour, /CheckTheMatch|Check the Match/);
-  // Tour Feedback shows the take; it never answers a Match criterion.
-  assert.doesNotMatch(tour, /onAnswer|criterionAnswerPatch|saveHomePersonal/);
+  // Tour Feedback answers only in-person criteria (onAnswerInPerson); Yes / No checks stay in Match Criteria.
+  assert.doesNotMatch(tour, /criterionAnswerPatch|criterionAnswer\b|saveHomePersonal|MatchCriteria/);
 });
 
 /* ------------------------------- Match Criteria: alias-safe Unknown ------------------------------- */
@@ -83,6 +83,68 @@ test('shared property facts (Pets / Utilities / In-Unit Laundry) still write the
   assert.match(detail, /return patch\.shared \? saveWhole\(\{ \.\.\.home, \.\.\.patch\.shared \}\) : savePersonal\(patch\.personal\);/);
 });
 
+/* ------------------------------- Things to check in person ------------------------------- */
+
+// In-person criteria are active in rental searches, and in purchase searches only
+// where the buyer created them as custom priorities (the purchase built-ins are
+// retired; see RETIRED_PURCHASE_BUILT_INS). A rental search with two of them:
+const inPersonSearch = () => normalizePriorities({
+  searchType: 'rental',
+  homeFeel: { tiers: { 'Natural Light': 'must' }, customItems: [{ label: 'Natural Light', kind: 'rating' }] },
+  exterior: { tiers: { 'Noise Level': 'nice' }, customItems: [{ label: 'Noise Level', kind: 'rating' }] },
+  features: { tiers: { Fireplace: 'important' }, customItems: [{ label: 'Fireplace', kind: 'check' }] },
+});
+
+test('the scorer reads in-person answers from this buyer’s ratings[key] with the existing weights (unchanged)', () => {
+  const priorities = inPersonSearch();
+  const score = (ratings, checks = {}) => computeMatch({ ...emptyHome(), ratings, checks }, priorities);
+  // Unknown: nothing evaluated → no score.
+  assert.equal(score({}).pct, null);
+  assert.equal(criterion(score({}), 'homeFeel:Natural Light').evaluated, false);
+  // positive → 1, negative → 0, weighted Must 4 / Nice 1.
+  assert.equal(TIER_META.must.weight, 4); assert.equal(TIER_META.nice.weight, 1);
+  assert.equal(score({ 'homeFeel:Natural Light': 'positive', 'exterior:Noise Level': 'negative' }).pct, 80);
+  assert.equal(score({ 'homeFeel:Natural Light': 'negative', 'exterior:Noise Level': 'positive' }).pct, 20);
+  // neutral is answered but not scored.
+  const neutral = score({ 'homeFeel:Natural Light': 'neutral', 'exterior:Noise Level': 'positive' });
+  assert.equal(criterion(neutral, 'homeFeel:Natural Light').evaluated, true);
+  assert.equal(criterion(neutral, 'homeFeel:Natural Light').met, null);
+  assert.equal(neutral.pct, 100);
+  // An older 1–5 rating keeps its established score.
+  assert.equal(score({ 'homeFeel:Natural Light': 4 }).pct, 80);
+  // The post-tour survey and overall feeling are not Match criteria.
+  assert.equal(score({ 'tour-v2:layout': 'negative', [TOUR_RATING_KEY]: 1 }).pct, null);
+});
+
+test('only selected in-person criteria are listed — no survey questions, no checks, no duplicates', () => {
+  const match = computeMatch({ ...emptyHome() }, inPersonSearch());
+  assert.deepEqual(inPersonCriteria(match).map((item) => item.key).sort(), ['exterior:Noise Level', 'homeFeel:Natural Light']);
+  assert.equal(new Set(match.allSelected.map((item) => item.key)).size, match.allSelected.length, 'no duplicate criteria');
+  assert.deepEqual(inPersonCriteria(null), []);
+  // An older purchase search keeps its custom in-person priorities; retired built-ins never appear.
+  const purchase = normalizePriorities({ searchType: 'purchase', exterior: { tiers: { 'Noise Level': 'important', 'Curb Appeal': 'nice' }, customItems: [{ label: 'Noise Level', kind: 'rating', source: 'custom' }, { label: 'Curb Appeal', kind: 'rating' }] } });
+  assert.deepEqual(inPersonCriteria(computeMatch({ ...emptyHome() }, purchase)).map((item) => item.key), ['exterior:Noise Level']);
+});
+
+test('an in-person answer changes only that one key of this buyer’s ratings; Unknown removes it', () => {
+  const home = { ...emptyHome(), reaction: 'love', touredAt: '2026-10-01T00:00:00Z', status: 'Toured', notes: 'n', pros: 'Bright, open living room', ratings: { 'tour-v2:layout': 'positive', [TOUR_RATING_KEY]: 4 }, checks: { 'features:Fireplace': true } };
+  const patch = inPersonAnswerPatch(home, 'homeFeel:Natural Light', 'neutral');
+  assert.deepEqual(Object.keys(patch), ['ratings'], 'nothing but ratings travels in the patch');
+  assert.deepEqual(patch.ratings, { 'tour-v2:layout': 'positive', [TOUR_RATING_KEY]: 4, 'homeFeel:Natural Light': 'neutral' });
+  assert.deepEqual(inPersonAnswerPatch({ ...home, ratings: patch.ratings }, 'homeFeel:Natural Light', undefined).ratings, { 'tour-v2:layout': 'positive', [TOUR_RATING_KEY]: 4 });
+  assert.equal(inPersonAnswer({ ratings: { 'homeFeel:Natural Light': 'positive' } }, 'homeFeel:Natural Light'), 'positive');
+  assert.equal(inPersonAnswer({ ratings: { 'homeFeel:Natural Light': 4 } }, 'homeFeel:Natural Light'), undefined, 'an older numeric rating is not a current answer');
+  assert.match(detail, /const answerInPerson = \(item, next\) => savePersonal\(inPersonAnswerPatch\(home, item\.key, next\)\);/);
+  assert.match(detail, /onAnswerInPerson=\{answerInPerson\}/);
+});
+
+test('answering in person never reads as a tour or a recorded take; the survey stays separate', () => {
+  assert.match(tour, /const hasTake = Boolean\(verdict \|\| overall > 0 \|\| survey\.length\);/);
+  assert.match(tour, /<h3 id="tour-in-person-checks-title" className="hh-serif">Things to check in person<\/h3>/);
+  assert.match(tour, /\{readOnly\s*\? <span className=\{`flh-mc-readonly/);
+  assert.match(read('src/components/MatchCriteria.jsx'), /return 'Checked in person · Tour Feedback';/);
+});
+
 /* ------------------------------- Tour Feedback: source guarantees ------------------------------- */
 
 test('Tour Feedback shows the saved reaction and survey from the existing PostTourModal definitions', () => {
@@ -102,6 +164,12 @@ test('Tour Feedback never marks a home toured or records a reaction by itself', 
   assert.match(detail, /!readOnly && reflecting && <PostTourModal/);
 });
 
+test('pros and cons are shown exactly as written, never split on commas', () => {
+  assert.doesNotMatch(tour, /parseCommaList/);
+  assert.match(tour, /\{pros \? <p>\{pros\}<\/p>/);
+  assert.match(tour, /\{cons \? <p>\{cons\}<\/p>/);
+});
+
 test('pre-tour notes are labeled as notes, and pros / cons / notes save through the shared-home path', () => {
   assert.match(tour, /title=\{toured \? 'What stood out' : 'Notes so far'\}/);
   assert.match(tour, /these are notes, not tour feedback/);
@@ -118,6 +186,11 @@ test('Realtor view: read-only, and each buyer’s take attributed by name', () =
   assert.match(tour, /const whose = readOnly \? `\$\{perspectiveName \|\| 'The buyer'\}’s` : 'Your';/);
   assert.match(tour, /coBuyerName \? `\$\{coBuyerName\}’s take` : 'Your co-buyer’s take'/);
   assert.match(detail, /coBuyerName \? `\$\{coBuyerName\}’s Match` : 'How your co-buyer sees this home'/);
+  // The Realtor never sees "Your take" as the page eyebrow; it names the buyers.
+  assert.match(detail, /const eyebrow = readOnly && section === 'tour' \? \(\[perspectiveName, coBuyerName\]\.filter\(Boolean\)\.join\(' & '\) \|\| 'The buyers'\) : sectionMeta\.eyebrow;/);
+  // Realtor notes are labeled as shared; private client notes are elsewhere.
+  assert.match(read('src/components/RealtorContributions.jsx'), /Your private client notes stay in My Clients\./);
+  assert.doesNotMatch(tour + detail, /ClientPrivateNotes|client_records/);
 });
 
 /* ------------------------------- real Postgres ------------------------------- */
@@ -231,4 +304,56 @@ dbTest('a Realtor can read the search but cannot answer, record a take, or edit 
   assert.equal(owner.pros, LEGACY.pros);
   assert.equal(owner.reaction, null);
   assert.deepEqual(owner.checks, {});
+});
+
+dbTest('in-person answers save to this buyer only, show in Match at once, and never touch the take, survey, notes or tour state', async () => {
+  const priorities = inPersonSearch();
+  const home = await saveHomePersonalAndShared(db.clientFor(ids.owner), { ...emptyHome(), address: '7 In Person Pl', ...LEGACY }, ids.owner, ids.search);
+  // A recorded take first (reaction, survey, overall, note), then the co-buyer's own answer.
+  const seeded = await viewOf(ids.owner, home.id);
+  await saveHomePersonalState(db.clientFor(ids.owner), { ...seeded, status: 'Toured', touredAt: '2026-10-05T12:00:00.000Z', reaction: 'love', ratings: { 'tour-v2:layout': 'positive', [TOUR_RATING_KEY]: 4 } }, ids.owner, ids.search);
+  const coSeed = await viewOf(ids.coBuyer, home.id);
+  await saveHomePersonalState(db.clientFor(ids.coBuyer), { ...coSeed, ...inPersonAnswerPatch(coSeed, 'homeFeel:Natural Light', 'negative') }, ids.coBuyer, ids.search);
+  const before = await viewOf(ids.owner, home.id);
+
+  // Exactly HomeDetail.answerInPerson → savePersonal (personal path).
+  await saveHomePersonalState(db.clientFor(ids.owner), { ...before, ...inPersonAnswerPatch(before, 'homeFeel:Natural Light', 'positive') }, ids.owner, ids.search);
+  let owner = await viewOf(ids.owner, home.id);
+  assert.deepEqual(owner.ratings, { 'tour-v2:layout': 'positive', [TOUR_RATING_KEY]: 4, 'homeFeel:Natural Light': 'positive' });
+  for (const field of ['reaction', 'touredAt', 'status']) assert.equal(owner[field], before[field], `${field} changed`);
+  for (const field of ['pros', 'cons', 'notes']) assert.equal(owner[field], LEGACY[field]);
+  assert.equal(criterion(computeMatch(owner, priorities), 'homeFeel:Natural Light').met, true, 'Match reads the answer');
+
+  // Change it, then clear it back to Unknown.
+  await saveHomePersonalState(db.clientFor(ids.owner), { ...owner, ...inPersonAnswerPatch(owner, 'homeFeel:Natural Light', 'neutral') }, ids.owner, ids.search);
+  owner = await viewOf(ids.owner, home.id);
+  assert.equal(owner.ratings['homeFeel:Natural Light'], 'neutral');
+  await saveHomePersonalState(db.clientFor(ids.owner), { ...owner, ...inPersonAnswerPatch(owner, 'homeFeel:Natural Light', undefined) }, ids.owner, ids.search);
+  owner = await viewOf(ids.owner, home.id);
+  assert.deepEqual(owner.ratings, { 'tour-v2:layout': 'positive', [TOUR_RATING_KEY]: 4 });
+  assert.equal(criterion(computeMatch(owner, priorities), 'homeFeel:Natural Light').evaluated, false);
+  assert.equal(owner.reaction, 'love');
+
+  // The co-buyer's own answer was never touched.
+  const co = await viewOf(ids.coBuyer, home.id);
+  assert.deepEqual(co.ratings, { 'homeFeel:Natural Light': 'negative' });
+  assert.equal(co.touredAt, null);
+});
+
+dbTest('answering in person before a tour does not mark the home toured or add a reaction', async () => {
+  const home = await saveHomePersonalAndShared(db.clientFor(ids.owner), { ...emptyHome(), address: '8 Not Yet Toured Rd', ...LEGACY, status: 'Want to Tour' }, ids.owner, ids.search);
+  const before = await viewOf(ids.owner, home.id);
+  await saveHomePersonalState(db.clientFor(ids.owner), { ...before, ...inPersonAnswerPatch(before, 'exterior:Noise Level', 'negative') }, ids.owner, ids.search);
+  const after = await viewOf(ids.owner, home.id);
+  assert.equal(after.touredAt, null);
+  assert.equal(after.status, 'Want to Tour');
+  assert.equal(after.reaction, null);
+  assert.deepEqual(after.ratings, { 'exterior:Noise Level': 'negative' });
+});
+
+dbTest('a Realtor cannot write a buyer’s in-person answer', async () => {
+  const home = await saveHomePersonalAndShared(db.clientFor(ids.owner), { ...emptyHome(), address: '9 Realtor Read Ln' }, ids.owner, ids.search);
+  const rejected = (error) => /row-level security|permission denied|violates/i.test(error?.message || String(error));
+  await assert.rejects(db.clientFor(ids.realtor).from('home_member_state').upsert({ home_id: home.id, user_id: ids.owner, status: 'Saved', ratings: { 'homeFeel:Natural Light': 'positive' }, checks: {} }, { onConflict: 'home_id,user_id' }).then(({ error }) => { if (error) throw error; }), rejected);
+  assert.deepEqual((await viewOf(ids.owner, home.id)).ratings, {});
 });
