@@ -203,9 +203,7 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
       {section === 'facts' && <>
         {/* Home Facts: what the property is. Shared facts save through the same
             shared-home path as Edit Home (saveWhole). */}
-        <HomeFacts home={home} priorities={priorities} vocabulary={vocabulary} readOnly={readOnly} justAdded={welcomeKind} userId={userId}
-          onSaveFacts={(patch) => saveWhole({ ...home, ...patch })} onNext={() => nextFromFacts()}
-          onEditAll={usesFullEditor ? () => setEditing(true) : null} />
+        <HomeFacts home={home} priorities={priorities} vocabulary={vocabulary} readOnly userId={userId} showHeading={false} />
       </>}
 
       {section === 'match' && <>
@@ -225,7 +223,7 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
     {/* Must-Haves / Important / Nice to Have, answered Yes / No / Unknown.
         Same allSelected rows the Match % is scored from (no second path). */}
     {match && <div ref={matchSection} tabIndex={-1} className="hh-detail-match-anchor">
-      <MatchCriteria home={home} priorities={priorities} match={match} readOnly={readOnly} onAnswer={answerCriterion} onEditFacts={() => goTo('facts')} />
+      <MatchCriteria home={home} priorities={priorities} match={match} readOnly={readOnly} onAnswer={answerCriterion} onOpenFact={(id) => { goTo('facts'); setTimeout(() => document.getElementById(id)?.scrollIntoView({ block: 'center' }), 50); }} />
     </div>}
 
     {commuteDestinations.length > 0 && (() => {

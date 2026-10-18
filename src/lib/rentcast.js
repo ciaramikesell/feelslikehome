@@ -117,6 +117,24 @@ export function canonicalGarageType(value) {
   return attached ? 'attached' : 'detached';
 }
 
+// Where the laundry is, only when the provider names exactly one location
+// ("Basement", "First Floor", "Second Floor" …). Several locations, a bare
+// yes/no, hookups, or anything else stays Unknown: a basement existing, or
+// "laundry hookups", says nothing about where the laundry is.
+const LAUNDRY_LOCATIONS = [
+  ['basement', /\b(?:basement|lower level)\b/i],
+  ['first_floor', /\b(?:first|1st|main|ground)[ -]?(?:floor|level)\b/i],
+  // "Upper level" / "upstairs" are not necessarily the second floor.
+  ['second_floor', /\b(?:second|2nd)[ -]?(?:floor|level)\b/i],
+];
+export function canonicalLaundryLocation(value) {
+  const text = Array.isArray(value) ? value.filter((item) => typeof item === 'string').join(', ') : typeof value === 'string' ? value : '';
+  // "Hookups in basement" is where a washer could go, not where the laundry is.
+  if (!text.trim() || /\bhook[ -]?ups?\b/i.test(text)) return null;
+  const named = LAUNDRY_LOCATIONS.filter(([, pattern]) => pattern.test(text)).map(([key]) => key);
+  return named.length === 1 ? named[0] : null;
+}
+
 // A descriptive system/material value ("Forced Air", "Vinyl Siding"). Booleans
 // ("has heating: true") say nothing about the kind, so they are not values.
 function descriptiveText(value) {
@@ -182,6 +200,8 @@ export function normalizeRentCastFields(property, listing, { apartmentCommunity 
     const basement = canonicalBasementFacts(features.basement);
     if (basement.basementCondition) fields.basementCondition = basement.basementCondition;
     if (basement.basementStyle) fields.basementStyle = basement.basementStyle;
+    const laundryLocation = canonicalLaundryLocation(features.laundryLocation ?? features.laundry);
+    if (laundryLocation) fields.laundryLocation = laundryLocation;
   }
   // The MLS number is the listing's own ID; RentCast's internal record id is not.
   const listingId = descriptiveText(optionListing?.mlsNumber == null ? null : String(optionListing.mlsNumber));

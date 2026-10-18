@@ -10,7 +10,7 @@ const collaboration = read('src/lib/supabase/collaboration.js');
 const buyer = read('src/components/SuggestionsBoard.jsx');
 const realtor = read('src/components/RealtorSuggestHome.jsx');
 const workspace = read('src/components/RealtorWorkspace.jsx');
-const homesPage = read('src/app/(app)/homes/page.js');
+const homesPage = read('src/app/(app)/homes/(board)/layout.js');
 const modal = read('src/components/HomeModal.jsx');
 const roster = read('supabase/migrations/2026-09-16-realtor-search-view.sql');
 

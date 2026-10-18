@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const page = fs.readFileSync('src/app/(app)/homes/page.js', 'utf8');
+const page = fs.readFileSync('src/app/(app)/homes/(board)/layout.js', 'utf8');
 const board = fs.readFileSync('src/components/HomesBoard.jsx', 'utf8');
 
 test('My Homes keeps an accessible page heading but no visible header or subtitle (approved refresh)', () => {

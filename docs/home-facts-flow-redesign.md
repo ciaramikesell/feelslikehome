@@ -1,5 +1,10 @@
 # Add Home → Home Facts → Match Criteria
 
+> **Superseded for buyers by the home overlay** (`docs/home-overlay-phase-2.md`).
+> Home Facts and Match Criteria now live in one continuous, autosaving overlay
+> over My Homes; `scripts/qa/home-flow-e2e.mjs` was replaced by
+> `scripts/qa/home-overlay-e2e.mjs`. The record below is kept as written.
+
 "We found your home. Here's what we know. Now let's see whether it matches
 what matters to you."
 

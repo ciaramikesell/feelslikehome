@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Full-stack QA for Tour Feedback on the Home Facts → Match Criteria → Tour
-// Feedback workspace. DEVELOPMENT ONLY. Same harness as home-flow-e2e.mjs:
+// Feedback workspace. DEVELOPMENT ONLY. Same harness as home-overlay-e2e.mjs:
 //
 //   1. FLH_TEST_PGHOST=… FLH_TEST_PGPORT=… node scripts/qa/supabase-standin.mjs 54321 > standin.json
 //   2. NEXT_PUBLIC_SUPABASE_URL=http://localhost:54321 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=qa npx next dev -p 3200
@@ -13,7 +13,7 @@
 // nothing, notes edits touch only the shared notes, a take is recorded only
 // through PostTourModal, and Realtors get no controls. Screenshots land in
 // <outDir>; a failed step, horizontal overflow or console error fails the run.
-// Run it after (not alongside) home-flow-e2e.mjs: each uses its own homes.
+// Run it after (not alongside) home-overlay-e2e.mjs: each uses its own homes.
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
@@ -87,7 +87,16 @@ async function step(name, fn) {
 
 const openTour = async (page, path) => {
   await page.goto(`${base}${path}?section=tour`, { waitUntil: 'networkidle' });
-  await page.getByRole('heading', { level: 1, name: 'Tour Feedback' }).waitFor();
+  // The buyer's home overlay titles it "Tour Feedback · <address>"; the Realtor's workspace "Tour Feedback".
+  await page.getByRole('heading', { level: 1, name: /^Tour Feedback/ }).waitFor();
+};
+// The buyer's overlay shows Important / Nice to Have collapsed on phones.
+const showAllTiers = async (page) => {
+  for (let i = 0; i < 4; i += 1) {
+    const toggle = page.locator('.flh-mc2-toggle[aria-expanded="false"]:visible').first();
+    if (!(await toggle.count())) return;
+    await toggle.click();
+  }
 };
 const waitFor = async (check, message, timeout = 8000) => {
   const until = Date.now() + timeout;
@@ -230,16 +239,18 @@ async function journey(browser, width) {
     assert(JSON.stringify(shared(legacyToured)) === notesBefore, 'notes changed');
     assert(JSON.stringify(personal(legacyToured, 'coBuyer')) === coBefore, 'co-buyer state changed');
     await shot(owner, tag('t11-in-person-answered'));
-    // Reflected at once in Match Criteria (same session state, no reload).
-    await owner.getByRole('button', { name: /^Match Criteria/ }).first().click();
-    await owner.getByRole('heading', { level: 1, name: 'Match Criteria' }).waitFor();
-    const row = owner.locator('.flh-mc-row', { hasText: 'Noise Level' });
-    await row.getByText('Doesn’t match', { exact: false }).waitFor();
-    await row.getByText('Checked in person · Tour Feedback', { exact: false }).waitFor();
+    // Reflected at once in Your Match on the same overlay (same session state, no reload).
+    await owner.getByRole('button', { name: 'Home details' }).click();
+    await owner.getByRole('heading', { level: 2, name: 'Your Match' }).waitFor();
+    await showAllTiers(owner);
+    const row = owner.locator('.flh-mc2-row', { hasText: 'Noise Level' });
+    await row.locator('.flh-mc2-state.is-missed').waitFor();
+    await row.getByText('After tour', { exact: false }).waitFor();
     await row.scrollIntoViewIfNeeded();
     await shot(owner, tag('t12-match-reflects-in-person'), { full: false });
     // Return and change, then clear to Unknown.
-    await owner.getByRole('button', { name: /^Tour Feedback/ }).first().click();
+    await owner.getByRole('button', { name: /Tour feedback & notes/ }).click();
+    await owner.getByRole('heading', { level: 1, name: /^Tour Feedback/ }).waitFor();
     await answerInPerson(owner, 'Noise Level', 'Comfortable');
     await waitFor(() => personal(legacyToured, 'owner').ratings['exterior:Noise Level'] === 'positive', 'change not saved');
     await answerInPerson(owner, 'Noise Level', 'Unknown');
@@ -252,8 +263,9 @@ async function journey(browser, width) {
 
   await step(`[${width}] Match Criteria is unchanged around it: tiers and Yes / No / Unknown radios`, async () => {
     await owner.goto(`${base}/homes/${legacyToured}?section=match`, { waitUntil: 'networkidle' });
-    await owner.getByRole('heading', { level: 1, name: 'Match Criteria' }).waitFor();
-    for (const tier of ['Must-Haves', 'Important', 'Nice to Have']) await owner.getByRole('heading', { level: 2, name: tier }).waitFor();
+    await owner.getByRole('heading', { level: 2, name: 'Your Match' }).waitFor();
+    await showAllTiers(owner);
+    for (const tier of ['Must-Haves', 'Important', 'Nice to Have']) await owner.getByRole('heading', { level: 3, name: new RegExp(`^${tier}`) }).waitFor();
     assert(!(await owner.getByText('Check the Match').count()), 'old Check the Match naming is back');
     const fireplace = owner.getByRole('group', { name: 'Fireplace' });
     assert(await fireplace.getByLabel('Yes', { exact: true }).isChecked(), 'saved Yes not shown');

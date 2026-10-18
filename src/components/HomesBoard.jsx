@@ -14,6 +14,7 @@ import HomeModal from '@/components/HomeModal';
 import PostTourModal from '@/components/PostTourModal';
 import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
 import Sheet from '@/components/Sheet';
+import { useHomesWorkspace } from '@/components/HomesWorkspace';
 import {
   EMPTY_FILTERS, SORT_MENU, activeFilterCount, activeFilterLabels, applyContenderFilters, currentUserWantsToTour,
   singleFilterCounts, sortContenders,
@@ -34,6 +35,11 @@ import { refreshMyHomes } from '@/app/(app)/homes/actions';
 import {
   deriveWantToTourState, hasSharedHomeChanges, saveHomePersonalAndShared, saveHomePersonalState,
 } from '@/lib/supabase/collaboration';
+
+const RETURN_MODES = new Set(['tour', 'favorites', 'archive']);
+export function overlayHref(homeId, mode) {
+  return `/homes/${encodeURIComponent(homeId)}${RETURN_MODES.has(mode) ? `?from=${mode}` : ''}`;
+}
 
 /* -------------------------------- confirm modal -------------------------------- */
 
@@ -74,14 +80,16 @@ function commuteRouteParts(destination, state) {
 // actions. Every value comes from the same helpers as before (computeMatch,
 // selectHomeCardCriteria, homeCardSnapshot, evaluateCommute); only the
 // presentation changed.
-function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchiveRequest, onWantToTour, onOpenPostTour, onRemoveFromTour, onRestore, onRequestDelete }) {
+function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onOpen, onArchiveRequest, onWantToTour, onOpenPostTour, onRemoveFromTour, onRestore, onRequestDelete }) {
   const [imgError, setImgError] = useState(false);
   const styleSummary = homeStyleSummary(home);
   const showPhoto = home.photoUrl && !imgError;
   const [showAllMustHaves, setShowAllMustHaves] = useState(false);
   const identity = homeIdentity(home, priorities);
   const vocabulary = homeVocabulary(priorities);
-  const homeHref = `/homes/${encodeURIComponent(home.id)}`;
+  // The home overlay over My Homes. From Want to Tour / Favorites / Archive,
+  // Close returns to that page.
+  const homeHref = overlayHref(home.id, mode);
   // Normalize lifecycle presentation without touching stored data: any status that
   // isn't 'Want to Tour' or 'Toured' is treated as pre-tour, whether it's the current
   // 'Saved' value or a legacy string like 'Considering' left over from before this
@@ -124,7 +132,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
     <article className={`hh-home-card ${mode === 'archive' ? 'is-archived' : ''} ${mode === 'homes' ? 'is-contender' : ''} ${mode === 'tour' ? 'is-tour' : ''}`} ref={commuteRef}>
       <div className="hh-home-card-surface">
         <header className="hh-card-identity">
-          <Link href={homeHref} className="hh-home-identity-link">
+          <Link href={homeHref} scroll={false} onClick={onOpen} className="hh-home-identity-link">
             <h2 className="hh-address">{identity.primary}</h2>
             {identity.option && <p className="hh-card-option">{identity.option}</p>}
             {identity.supporting && <p className="hh-card-locality">{identity.supporting}</p>}
@@ -132,7 +140,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
         </header>
 
         <div className={`hh-home-card-photo ${showPhoto ? '' : 'is-empty'}`}>
-          <Link href={homeHref} className="hh-home-card-photo-link" aria-label={`Open ${identity.accessible} details`} tabIndex={-1}>
+          <Link href={homeHref} scroll={false} onClick={onOpen} className="hh-home-card-photo-link" aria-label={`Open ${identity.accessible} details`} tabIndex={-1}>
             {showPhoto ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={home.photoUrl} alt={`${identity.accessible} ${vocabulary.singularLower} photo`} onError={() => setImgError(true)} />
@@ -240,7 +248,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
             </>
           )}
 
-          {noteCount > 0 && <Link className="hh-notes-indicator" href={homeHref}><StickyNote size={13} aria-hidden="true" /> Notes ({noteCount})</Link>}
+          {noteCount > 0 && <Link className="hh-notes-indicator" scroll={false} onClick={onOpen} href={`${homeHref}${homeHref.includes('?') ? '&' : '?'}section=tour`}><StickyNote size={13} aria-hidden="true" /> Notes ({noteCount})</Link>}
 
           {mode === 'tour' && wantToTourState?.wantToTourLabel && (
             <div className="hh-lifecycle-status">
@@ -298,12 +306,12 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   );
 }
 
-function CardGrid({ homes, priorities, commuteDestinations, mode, onEdit, onArchiveRequest, onWantToTour, onOpenPostTour, onRemoveFromTour, onRestore, onRequestDelete }) {
+function CardGrid({ homes, priorities, commuteDestinations, mode, onEdit, onOpen, onArchiveRequest, onWantToTour, onOpenPostTour, onRemoveFromTour, onRestore, onRequestDelete }) {
   return (
     <div className="hh-homes-grid">
       {homes.map((h) => (
         <HomeCard
-          key={h.id} home={h} priorities={priorities} commuteDestinations={commuteDestinations} mode={mode} onEdit={onEdit} onArchiveRequest={onArchiveRequest}
+          key={h.id} home={h} priorities={priorities} commuteDestinations={commuteDestinations} mode={mode} onEdit={onEdit} onOpen={onOpen} onArchiveRequest={onArchiveRequest}
           onWantToTour={onWantToTour} onOpenPostTour={onOpenPostTour} onRemoveFromTour={onRemoveFromTour}
           onRestore={onRestore} onRequestDelete={onRequestDelete}
         />
@@ -328,7 +336,13 @@ function EmptyLifecycleState({ icon: Icon, title, body, children }) {
 export default function HomesBoard({ mode, userId, searchId, initialHomes, initialPriorities, initialCommuteDestinations = [], sharedFactAwareness, isCollaborative = false, collaborationSlot = null }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [homes, setHomes] = useState(initialHomes);
+  // Under My Homes' layout the board shares one copy of the homes with the
+  // home overlay (HomesWorkspace); Want to Tour / Favorites / Archive keep
+  // their own.
+  const workspace = useHomesWorkspace();
+  const [localHomes, setLocalHomes] = useState(initialHomes);
+  const homes = workspace?.homes ?? localHomes;
+  const setHomes = workspace?.setHomes ?? setLocalHomes;
   // Always render from the latest server-authorized criteria. Keeping the first
   // prop in state made unknown counts and Match summaries survive router refreshes.
   const priorities = initialPriorities;
@@ -388,9 +402,9 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     const requestedHome = homes.find((home) => String(home.id) === requestedId);
     if (!requestedHome) return;
     autoOpenedRef.current = true;
-    openHomeModal(requestedHome);
-    router.replace('/homes');
-  }, [mode, searchParams, router, homes, openHomeModal]);
+    // Older links (/homes?home=<id>) open the home overlay.
+    router.replace(`/homes/${encodeURIComponent(requestedHome.id)}`, { scroll: false });
+  }, [mode, searchParams, router, homes]);
 
   // Share intake contract: /homes?url=<listing URL> opens Add Home pre-filled
   // and auto-looked-up, exactly as if the URL had been pasted into the
@@ -505,10 +519,25 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
       // navigation starts, so nothing pending can be discarded.
       await refreshMyHomes().catch(() => {});
       await new Promise((resolve) => setTimeout(resolve, 0));
-      router.push(`/homes/${encodeURIComponent(saved.id)}?added=${home.listingImport ? 'import' : 'manual'}`);
+      // The new home opens in the overlay over this board (which stays
+      // mounted), so Close steps back to exactly this view.
+      if (workspace) workspace.openedFromBoard.current = true;
+      router.push(`/homes/${encodeURIComponent(saved.id)}`, { scroll: false });
+      setModalHome(null);
     }
     return saved;
-  }, [modalHome, saveHome, router]);
+  }, [modalHome, saveHome, router, workspace]);
+
+  // Opening a home (card, Edit): the overlay route. On My Homes the board stays
+  // underneath, so Close can step Back to it.
+  const markOpenedFromBoard = useCallback(() => {
+    if (workspace && mode === 'homes') workspace.openedFromBoard.current = true;
+  }, [workspace, mode]);
+  const openHome = useCallback((home) => {
+    if (!home?.id) { openHomeModal(home); return; }
+    markOpenedFromBoard();
+    router.push(overlayHref(home.id, mode), { scroll: false });
+  }, [markOpenedFromBoard, router, mode, openHomeModal]);
 
   // "This one is worth seeing." One tap, no modal, no confirmation — reuses the
   // existing status field, just moving it to a value it already supports.
@@ -617,7 +646,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         {archivedHomes.length === 0 ? (
           <EmptyLifecycleState icon={ArchiveIcon} title="Nothing archived." body="Homes you set aside will stay here with your notes and history intact." />
         ) : (
-          <CardGrid homes={archivedHomes} priorities={priorities} commuteDestinations={initialCommuteDestinations} mode={mode} onEdit={openHomeModal} onRestore={restoreHome} onRequestDelete={setDeleteTarget} />
+          <CardGrid homes={archivedHomes} priorities={priorities} commuteDestinations={initialCommuteDestinations} mode={mode} onEdit={openHome} onOpen={markOpenedFromBoard} onRestore={restoreHome} onRequestDelete={setDeleteTarget} />
         )}
         {modalHome && <HomeModal initial={modalHome} priorities={priorities} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} userId={userId} onSave={saveEditedHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget} />}
         {deleteTarget && (
@@ -701,7 +730,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         )
       ) : (
         <CardGrid
-          homes={filtered} priorities={priorities} commuteDestinations={initialCommuteDestinations} mode={mode} onEdit={openHomeModal} onArchiveRequest={setArchiveTarget}
+          homes={filtered} priorities={priorities} commuteDestinations={initialCommuteDestinations} mode={mode} onEdit={openHome} onOpen={markOpenedFromBoard} onArchiveRequest={setArchiveTarget}
           onWantToTour={wantToTour} onOpenPostTour={setPostTourTarget} onRemoveFromTour={removeFromTour}
           onRestore={restoreHome} onRequestDelete={setDeleteTarget}
         />

@@ -156,7 +156,7 @@ test('My Homes filters, sorts, and counts with the same Match the cards render (
 /* ------------------------------------ My Homes presentation ------------------------------------ */
 
 test('My Homes has no visible page header (the selected Homes tab names the page) and keeps the Add action', () => {
-  const page = read('src/app/(app)/homes/page.js');
+  const page = read('src/app/(app)/homes/(board)/layout.js');
   assert.match(page, /<h1 className="sr-only">My \{homeVocabulary\(normalizedPriorities\)\.plural\}<\/h1>/);
   assert.doesNotMatch(page, /hh-homes-purpose|hh-homes-instructions|contenderCountLabel/);
   const board = read('src/components/HomesBoard.jsx');
@@ -173,9 +173,10 @@ test('phones get the same full card (approved 390 frame): no compact row, badge,
   assert.match(board, /mode === 'homes' \? 'is-contender' : ''/);
   assert.doesNotMatch(board, /MatchBadge|hh-contender-meta|hh-contender-match|HomesFilterSheet/);
   assert.doesNotMatch(css, /\.hh-home-card\.is-contender \.hh-home-card-surface \{[^}]*flex-direction: row/);
-  // Click-through to Home Detail is unchanged.
-  assert.match(board, /const homeHref = `\/homes\/\$\{encodeURIComponent\(home\.id\)\}`;/);
-  assert.match(board, /<Link href=\{homeHref\} className="hh-home-identity-link">/);
+  // Click-through opens the home overlay (/homes/[id]) over the board.
+  assert.match(board, /const homeHref = overlayHref\(home\.id, mode\);/);
+  assert.match(board, /return `\/homes\/\$\{encodeURIComponent\(homeId\)\}\$\{RETURN_MODES\.has\(mode\)/);
+  assert.match(board, /<Link href=\{homeHref\} scroll=\{false\} onClick=\{onOpen\} className="hh-home-identity-link">/);
 });
 
 test('multiple Places That Matter are never collapsed to one', () => {
@@ -218,9 +219,11 @@ test('Home Detail keeps its real actions, gated exactly as before, with a phone 
 });
 
 test('Match stays participant-specific: pages evaluate the signed-in participant’s own priorities', () => {
-  for (const path of ['src/app/(app)/homes/page.js', 'src/app/(app)/homes/[homeId]/page.js']) {
-    assert.match(read(path), /resolvePriorities\(supabase, search, user\.id\)/);
-  }
+  // My Homes' layout resolves them once; the home overlay reads the same ones
+  // from the shared workspace instead of resolving its own.
+  assert.match(read('src/app/(app)/homes/(board)/layout.js'), /resolvePriorities\(supabase, search, user\.id\)/);
+  assert.match(read('src/components/HomeOverlay.jsx'), /const \{ priorities, [^}]*\} = workspace;/);
+  assert.match(read('src/components/HomeOverlay.jsx'), /computeMatch\(home, priorities, evaluateCommute\(commuteDestinations, getState\)\)/);
   // The co-buyer's Match stays a separate, server-resolved perspective.
   assert.match(read('src/components/HomeDetail.jsx'), /coBuyerPerspective\.match\.pct/);
 });
