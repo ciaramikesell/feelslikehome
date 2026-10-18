@@ -709,11 +709,14 @@ export function terminology(searchType) {
 // Favorites/Archived as a progressive secondary nav — see DecisionNav.jsx), and
 // Compare is available regardless of tour status. My Search moved to the top utility
 // row since it's preferences, not a stage of the shopping workflow.
+// Archived follows Map as a muted (still fully accessible) destination: it
+// opens the existing Archive view (/archive) rather than a second archive.
 export const PRIMARY_TABS = [
   { key: 'homes', label: 'Homes', href: '/homes' },
   { key: 'tour', label: 'Want to Tour', href: '/tour' },
   { key: 'compare', label: 'Compare', href: '/compare' },
   { key: 'map', label: 'Map', href: '/map' },
+  { key: 'archive', label: 'Archived', href: '/archive', muted: true },
 ];
 
 // Mobile bottom navigation folds My Search back in as a primary destination

@@ -3,8 +3,7 @@
 import { useEffect, useState, Fragment } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LogOut, Home as HomeIcon, Columns, HelpCircle, Footprints, SlidersHorizontal, Map, Users, Search, Plus, Heart, DoorOpen, Sparkles, Scale, Compass, X, UserRound } from 'lucide-react';
-import { BrandMark, Wordmark } from '@/components/ui';
+import { Home as HomeIcon, Columns, Footprints, SlidersHorizontal, Map, Users, Search, Plus, Heart, DoorOpen, Sparkles, Scale, Compass, X } from 'lucide-react';
 import { PRIMARY_TABS, MOBILE_PRIMARY_TABS } from '@/lib/constants';
 import { homeVocabulary } from '@/lib/homePresentation';
 import { createClient } from '@/lib/supabase/client';
@@ -292,50 +291,58 @@ export default function AppShell({ children, userEmail, userId, firstName = null
   return (
     <div className={`hh-root ${native ? 'hh-native' : ''} ${FOCUSED_MOBILE_ROUTES.includes(pathname) ? 'hh-focused-route' : ''}`}>
       <div className={`hh-app-frame ${pathname === '/map' ? 'hh-map-frame' : ''}`}>
+        {/* Approved My Homes header (Phase 1): a quiet utility row, the centered
+            editorial wordmark (no house mark), then the centered primary
+            navigation. Realtor and Account workspaces keep the same shell
+            without the search-scoped pieces. */}
         <header className="hh-app-header">
-          <div className="hh-brand-lockup">
-            <BrandMark size={38} />
-            <div className="hh-brand-copy">
-              <Wordmark size={31} />
-              <p className="hh-brand-tagline">THE HOME MATCHMAKER</p>
+          <nav className="hh-utility-nav" aria-label="Account and search">
+            <div className="hh-utility-group">
+              {hasBuyerSearch && <Link
+                href="/search"
+                className={`hh-shell-action hh-shell-action-primary ${pathname === '/search' || pathname.startsWith('/search/') ? 'active' : ''}`}
+                aria-current={pathname === '/search' ? 'page' : undefined}
+              >
+                My Search
+              </Link>}
+              <Link href="/account" className={`hh-shell-action hh-account-entry ${pathname === '/account' ? 'active' : ''}`} aria-label="Account & Settings" aria-current={pathname === '/account' ? 'page' : undefined}>
+                <span className="hh-account-entry-label">Account</span>
+              </Link>
+              {hasBuyerSearch && accessibleSearches && accessibleSearches.length > 1 && (
+                <SearchSwitcher userId={userId} searches={accessibleSearches} activeSearchId={activeSearchId} />
+              )}
+              {hasBuyerSearch && isCollaborative && <span className="hh-collaboration-pill" title="Searching together"><Users size={13} aria-hidden="true" /> Searching together</span>}
             </div>
-          </div>
-          <div className="hh-shell-utilities">
-            {hasBuyerSearch && isCollaborative && <span className="hh-collaboration-pill" title="Searching together"><Users size={13} aria-hidden="true" /> Searching together</span>}
-            {hasBuyerSearch && accessibleSearches && accessibleSearches.length > 1 && (
-              <SearchSwitcher userId={userId} searches={accessibleSearches} activeSearchId={activeSearchId} />
-            )}
-            {(isRealtorWorkspace || hasRealtorRelationships) && <Link href="/realtor" className={`hh-shell-action hh-people-entry ${pathname === '/realtor' ? 'active' : ''}`}><Compass size={14} /> Realtor Home</Link>}
-            {(isRealtorWorkspace || hasRealtorRelationships) && <Link href="/people" className={`hh-shell-action hh-people-entry ${pathname.startsWith('/people') ? 'active' : ''}`}><Users size={14} /> My Clients</Link>}
-            {/* A Realtor can always start (or return to) their own home search: Homes, or onboarding if they haven't begun one. */}
-            {isRealtorWorkspace && <Link href="/homes" className="hh-shell-action hh-people-entry"><HomeIcon size={14} /> My home search</Link>}
-            {hasBuyerSearch && <Link
-              href="/search"
-              className={`hh-shell-action hh-shell-action-primary hh-desktop-only ${pathname === '/search' || pathname.startsWith('/search/') ? 'active' : ''}`}
-            >
-              <SlidersHorizontal size={14} /> My Search
-            </Link>}
-            <button className="hh-shell-action hh-shell-action-help" onClick={() => setHowToOpen(true)} title="How it works">
-              <HelpCircle size={14} /> How it works
-            </button>
-            <Link href="/account" className={`hh-shell-action hh-account-entry ${pathname === '/account' ? 'active' : ''}`} aria-label="Account & Settings">
-              <UserRound size={14} aria-hidden="true" /> <span className="hh-account-entry-label">Account</span>
+            <div className="hh-utility-group hh-utility-group-end">
+              {(isRealtorWorkspace || hasRealtorRelationships) && <Link href="/realtor" className={`hh-shell-action hh-people-entry ${pathname === '/realtor' ? 'active' : ''}`}><Compass size={14} aria-hidden="true" /> Realtor Home</Link>}
+              {(isRealtorWorkspace || hasRealtorRelationships) && <Link href="/people" className={`hh-shell-action hh-people-entry ${pathname.startsWith('/people') ? 'active' : ''}`}><Users size={14} aria-hidden="true" /> My Clients</Link>}
+              {/* A Realtor can always start (or return to) their own home search: Homes, or onboarding if they haven't begun one. */}
+              {isRealtorWorkspace && <Link href="/homes" className="hh-shell-action hh-people-entry"><HomeIcon size={14} aria-hidden="true" /> My home search</Link>}
+              <button type="button" className="hh-shell-action hh-shell-action-help" onClick={() => setHowToOpen(true)}>
+                How it works
+              </button>
+              <button type="button" className="hh-shell-action hh-shell-action-quiet hh-sign-out" onClick={signOut}>
+                Sign out
+              </button>
+            </div>
+          </nav>
+          <div className="hh-brand-lockup">
+            <Link href="/" className="hh-brand-link" aria-label="Feels Like Home">
+              <p className="hh-brand-wordmark" aria-hidden="true">Feels Like <span>Home</span></p>
             </Link>
-            <button className="hh-shell-action hh-shell-action-quiet hh-desktop-only" onClick={signOut}>
-              <LogOut size={14} /> Sign out
-            </button>
+            <p className="hh-brand-tagline">THE HOME MATCHMAKER</p>
           </div>
         </header>
 
         {!firstName && <NameCompletionPrompt userId={userId} onSaved={() => router.refresh()} />}
 
         {hasBuyerSearch && <nav className="hh-tabs" aria-label="Primary navigation">
-          {PRIMARY_TABS.map(({ key, label, href }) => {
-            const Icon = TAB_ICONS[key];
+          {PRIMARY_TABS.map(({ key, label, href, muted }) => {
             const presentationLabel = key === 'homes' ? vocabulary.plural : label;
+            const active = pathname === href;
             return (
-              <Link key={key} href={href} className={`hh-tab ${pathname === href ? 'active' : ''}`}>
-                <Icon size={14} /> {presentationLabel}
+              <Link key={key} href={href} className={`hh-tab ${active ? 'active' : ''} ${muted ? 'is-muted' : ''}`} aria-current={active ? 'page' : undefined}>
+                {presentationLabel}
               </Link>
             );
           })}

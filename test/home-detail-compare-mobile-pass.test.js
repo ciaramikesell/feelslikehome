@@ -22,10 +22,9 @@ test('MobileDisclosure generalizes the card disclosure pattern with the same def
   assert.match(mobileDisclosure, /hh-card-context-summary/);
 });
 
-test('HomesBoard reuses the shared MobileDisclosure instead of a local CardContextDisclosure', () => {
+test('My Homes cards show facts and commute open at every width (approved 390 frame) — no local or shared card disclosure', () => {
   assert.doesNotMatch(homesBoard, /function CardContextDisclosure/);
-  assert.match(homesBoard, /import MobileDisclosure from '@\/components\/MobileDisclosure'/);
-  assert.match(homesBoard, /<MobileDisclosure>/);
+  assert.doesNotMatch(homesBoard, /MobileDisclosure/);
 });
 
 test('Home Detail delegates commute selection and truthful map fallback to its location workspace', () => {

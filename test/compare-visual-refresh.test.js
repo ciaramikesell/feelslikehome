@@ -231,7 +231,7 @@ test('mobile: the existing vertical criterion-grouping pattern (desktop grid / m
   assert.match(block, /\.hh-compare-rows-desktop \{ display: none; \}/);
   assert.match(block, /\.hh-compare-rows-mobile \{ display: flex;/);
   // Contender-card horizontal scroll-snap on mobile is also untouched.
-  assert.match(css, /\.hh-compare-identity-scroll \{ margin-right: -14px; padding-right: 14px; scroll-snap-type: x proximity; \}/);
+  assert.match(css, /\.hh-compare-identity-scroll \{ margin-right: -16px; padding-right: 16px; scroll-snap-type: x proximity; \}/);
 });
 
 test('accessibility: picker chips and the new diff toggle are keyboard-operable buttons with aria-pressed, not color-only cues', async () => {

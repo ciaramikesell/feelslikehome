@@ -63,7 +63,7 @@ test('card unknown summary uses canonical unknown criteria without stale after-t
   assert.equal(summary.notConfirmed.length, 1);
   const ui = read('src/components/ui.jsx');
   const board = read('src/components/HomesBoard.jsx');
-  assert.match(board, /'criterion' : 'criteria'\} still unknown/);
+  assert.match(board, /label=\{`\$\{criteriaSummary\.unknown\.length\} unknown`\}/);
   assert.doesNotMatch(board, /answer after touring|to review after touring/i);
   assert.doesNotMatch(ui, /to review after touring/);
   assert.doesNotMatch(ui, /need more information/);

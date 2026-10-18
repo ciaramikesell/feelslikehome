@@ -22,15 +22,14 @@ test('FLH Moment priority produces exactly one strongest applicable observation'
   assert.equal(deriveFlhMoment(home({ ...shared, isFavorite: true, coBuyerFavorited: true, touredAt: 'already-toured' })).kind, 'mutual-favorite');
 });
 
-test('card placement and Favorite animation remain restrained and accessible', () => {
+test('card placement stays restrained (the card heart and its animation left with the My Homes refresh)', () => {
   const board = read('src/components/HomesBoard.jsx');
   const css = read('src/app/globals.css');
   assert.match(board, /className="hh-flh-moment"/);
-  assert.match(board, /className=\{favoritePop \? 'hh-favorite-pop' : undefined\}/);
-  assert.match(board, /if \(!isFavorite\)/);
+  assert.doesNotMatch(board, /favoritePop|hh-favorite-pop/);
   assert.match(css, /\.hh-flh-moment \{ position: absolute; right: 10px; bottom: 10px;/);
-  assert.match(css, /animation: hh-favorite-pop 200ms ease-out/);
-  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{ \.hh-favorite-pop \{ animation: none; \} \}/);
+  // Global reduced-motion guard still covers every transition on the card.
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\) \{\n  \*, \*::before, \*::after \{/);
 });
 
 test('decision empty states use PR #90\'s truthful collections copy and a My Homes path — never a discovery CTA', () => {
@@ -42,7 +41,7 @@ test('decision empty states use PR #90\'s truthful collections copy and a My Hom
   const board = read('src/components/HomesBoard.jsx');
   const compare = read('src/components/CompareBoard.jsx');
   for (const copy of [
-    'No favorites yet.', 'Tap the heart on any home you want to keep close.',
+    'No favorites yet.', 'from its details page to keep it close.',
     'Nothing on the tour list yet.', 'When a home feels worth seeing in person, mark it Want to Tour.',
     'Nothing archived.', 'Homes you set aside will stay here with your notes and history intact.',
   ]) assert.match(board, new RegExp(copy.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));

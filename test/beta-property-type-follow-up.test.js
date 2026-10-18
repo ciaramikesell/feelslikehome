@@ -42,9 +42,10 @@ test('Home Card commute inset is conditional, compact, lists every saved place, 
   assert.match(board, /commuteDestinations\.length > 0/);
   // Every saved place, in stored order — never only the first (commutes[0]).
   assert.doesNotMatch(board, /commuteDestinations\.slice\(0, 1\)/);
-  assert.match(board, /const shown = commuteDestinations;/);
+  assert.match(board, /\{commuteDestinations\.map\(\(d\) => \{/);
   assert.match(board, /className="hh-card-commute"/);
   assert.doesNotMatch(board, /\+\{overflow\} more/);
-  assert.match(css, /\.hh-card-commute \{[^}]*padding: 9px 11px/);
+  // My Homes Visual Refresh: a compact, neutral inset.
+  assert.match(css, /\.hh-card-commute \{[^}]*padding: 10px 12px/);
   assert.match(css, /\.hh-card-commute-route \{[^}]*overflow-wrap: anywhere/);
 });

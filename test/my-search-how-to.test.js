@@ -111,7 +111,8 @@ test('My Search omits redundant guidance while retaining contextual tour languag
 test('How it works tells the six-step decision journey in accessible DOM order', () => {
   const shell = read('src/components/AppShell.jsx');
   assert.equal(shell.match(/\{ title:/g)?.length, 6);
-  assert.match(shell, /HelpCircle size=\{14\} \/> How it works/);
+  // Approved header: a text-only "How it works" utility.
+  assert.match(shell, /onClick=\{\(\) => setHowToOpen\(true\)\}>\s*How it works\s*<\/button>/);
   assert.match(shell, /title="How Feels Like Home works"/);
   assert.match(shell, /You found the homes\. We&apos;ll help you choose\./);
   const headings = [

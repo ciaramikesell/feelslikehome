@@ -8,7 +8,7 @@
 // are not My Search (which defines what the participant wants).
 
 import { parseNum, trueCheckLabels, hasNoMustHaveMisses } from './matching.js';
-import { hasOutstandingWantToTour, isFavoriteHome } from './lifecycle.js';
+import { hasOutstandingWantToTour } from './lifecycle.js';
 
 // The existing sort modes, unchanged; `short` is the compact control label.
 export const SORT_OPTIONS = Object.freeze([
@@ -20,6 +20,17 @@ export const SORT_OPTIONS = Object.freeze([
   Object.freeze({ key: 'matchAsc', label: 'Lowest match', short: 'Lowest match' }),
 ]);
 
+// The My Homes "Sort By:" menu: the same sort modes, in the toolbar's order,
+// with labels that read after the visible "Sort By:" prefix.
+export const SORT_MENU = Object.freeze([
+  Object.freeze({ key: 'newest', label: 'Newest' }),
+  Object.freeze({ key: 'oldest', label: 'Oldest' }),
+  Object.freeze({ key: 'matchDesc', label: 'Best match' }),
+  Object.freeze({ key: 'matchAsc', label: 'Lowest match' }),
+  Object.freeze({ key: 'priceAsc', label: 'Price: low to high' }),
+  Object.freeze({ key: 'priceDesc', label: 'Price: high to low' }),
+]);
+
 export function sortLabel(sortBy, { short = false } = {}) {
   const option = SORT_OPTIONS.find((candidate) => candidate.key === sortBy);
   return option ? (short ? option.short : option.label) : '';
@@ -29,10 +40,14 @@ export function sortLabel(sortBy, { short = false } = {}) {
 // Matches" quick filter). No new thresholds are invented here.
 export const MATCH_THRESHOLDS = Object.freeze([90]);
 
-export const EMPTY_FILTERS = Object.freeze({ minMatch: null, noMustMissing: false, favorites: false, wantToTour: false });
+// Favorites is no longer a My Homes filter (stored favorites are untouched and
+// still shown on Home Detail and Compare). normalizeFilters only ever keeps the
+// supported keys, so a stale `favorites` value can never narrow the list again.
+export const EMPTY_FILTERS = Object.freeze({ minMatch: null, noMustMissing: false, wantToTour: false });
 
 export function normalizeFilters(filters) {
-  return { ...EMPTY_FILTERS, ...(filters || {}) };
+  const source = filters || {};
+  return Object.fromEntries(Object.keys(EMPTY_FILTERS).map((key) => [key, source[key] ?? EMPTY_FILTERS[key]]));
 }
 
 export function activeFilterLabels(filters) {
@@ -40,7 +55,6 @@ export function activeFilterLabels(filters) {
   return [
     f.minMatch != null && `${f.minMatch}%+ Match`,
     f.noMustMissing && 'No Must-Haves missing',
-    f.favorites && 'Favorites',
     f.wantToTour && 'Want to Tour',
   ].filter(Boolean);
 }
@@ -72,7 +86,6 @@ const PREDICATES = {
   // Only a CONFIRMED Must Have miss removes a home (see mustHaveStatus). Unknown is
   // never converted to a miss.
   noMustMissing: (home, value, evaluate) => hasNoMustHaveMisses(evaluate(home)),
-  favorites: (home) => isFavoriteHome(home),
   wantToTour: (home) => currentUserWantsToTour(home),
 };
 
@@ -81,7 +94,6 @@ export function applyContenderFilters(homes, filters, evaluate, query = '') {
   return homes.filter((home) => matchesQuery(home, query)
     && (f.minMatch == null || PREDICATES.minMatch(home, f.minMatch, evaluate))
     && (!f.noMustMissing || PREDICATES.noMustMissing(home, true, evaluate))
-    && (!f.favorites || PREDICATES.favorites(home))
     && (!f.wantToTour || PREDICATES.wantToTour(home)));
 }
 
@@ -93,7 +105,6 @@ export function singleFilterCounts(homes, evaluate) {
     match90: homes.filter((home) => PREDICATES.minMatch(home, 90, evaluate)).length,
     noMustMissing: homes.filter((home) => PREDICATES.noMustMissing(home, true, evaluate)).length,
     wantToTour: homes.filter((home) => PREDICATES.wantToTour(home)).length,
-    favorites: homes.filter((home) => PREDICATES.favorites(home)).length,
   };
 }
 

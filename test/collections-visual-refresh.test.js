@@ -5,7 +5,8 @@ import fs from 'node:fs';
 const read = (p) => fs.readFileSync(p, 'utf8');
 
 const homesBoard = read('src/components/HomesBoard.jsx');
-const decisionNav = read('src/components/DecisionNav.jsx');
+const appShell = read('src/components/AppShell.jsx');
+const constants = read('src/lib/constants.js');
 const globalsCss = read('src/app/globals.css');
 const collaboration = read('src/lib/supabase/collaboration.js');
 const tourPage = read('src/app/(app)/tour/page.js');
@@ -30,18 +31,20 @@ test('no grid/list toggle was reintroduced', () => {
 
 /* ------------------------------ shared collection navigation ------------------------------ */
 
-test('DecisionNav is the single shared secondary nav for Want to Tour / Favorites / Archive, with the terracotta active treatment', () => {
-  assert.match(decisionNav, /label: 'Want to Tour', href: '\/tour'/);
-  assert.match(decisionNav, /label: 'Favorites', href: '\/favorites'/);
-  assert.match(decisionNav, /label: 'Archive', href: '\/archive'/);
-  assert.match(globalsCss, /\.hh-decision-item\.active \{ color: var\(--brick\);/);
-  // Not promoted into primary AppShell navigation — it's its own secondary rail.
-  assert.match(decisionNav, /className="hh-decision-rail"/);
+test('My Homes Visual Refresh: Want to Tour and Archived are primary tabs (Archived last, muted); the secondary rail and Favorites nav are gone', () => {
+  assert.match(constants, /\{ key: 'tour', label: 'Want to Tour', href: '\/tour' \}/);
+  assert.match(constants, /\{ key: 'map', label: 'Map', href: '\/map' \},\n  \{ key: 'archive', label: 'Archived', href: '\/archive', muted: true \},\n\];/);
+  assert.doesNotMatch(constants, /label: 'Favorites'/);
+  assert.ok(!fs.existsSync('src/components/DecisionNav.jsx'), 'the DecisionNav rail was retired');
+  for (const page of [tourPage, favoritesPage, archivePage]) assert.doesNotMatch(page, /DecisionNav/);
+  assert.match(appShell, /className=\{`hh-tab \$\{active \? 'active' : ''\} \$\{muted \? 'is-muted' : ''\}`\} aria-current=\{active \? 'page' : undefined\}/);
+  assert.match(globalsCss, /\.hh-tab\.active, \.hh-tab\.active:hover \{ color: var\(--brick\);/);
 });
 
-test('Favorites/Archive only appear in the rail once something lives there — Want to Tour always shows', () => {
-  assert.match(decisionNav, /if \(i\.key === 'favorites'\) return hasFavorites;/);
-  assert.match(decisionNav, /if \(i\.key === 'archive'\) return hasArchived;/);
+test('the /favorites route keeps working for stored favorites (compatibility), with no navigation entry pointing at it', () => {
+  assert.match(favoritesPage, /<HomesBoard mode="favorites"/);
+  assert.doesNotMatch(appShell, /href="\/favorites"/);
+  assert.doesNotMatch(constants, /href: '\/favorites'/);
 });
 
 /* ------------------------------ page identity (already matched the spec) ------------------------------ */
@@ -49,16 +52,16 @@ test('Favorites/Archive only appear in the rail once something lives there — W
 test('regression guard: Want to Tour / Favorites / Archive page identity copy matches the product model', () => {
   assert.match(tourPage, /title="Want to Tour" subtitle="Homes that you or your collaborator are thinking about seeing in person\."/);
   assert.match(favoritesPage, /title="Favorites" subtitle="The homes that stand out to you, kept close at hand\."/);
-  assert.match(archivePage, /title="Archive" subtitle="Homes you've set aside, with your thoughts saved in case you change your mind\."/);
+  assert.match(archivePage, /title="Archived" subtitle="Homes you've set aside, with your thoughts saved in case you change your mind\. Restore one anytime\."/);
 });
 
 /* ------------------------------ responsive grid (already established by #84) ------------------------------ */
 
-test('regression guard: the #84 responsive Home-card grid philosophy (4/3/2/1) is unchanged', () => {
-  assert.match(globalsCss, /\.hh-homes-grid \{ display: grid; grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
-  assert.match(globalsCss, /\.hh-homes-grid \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \}/);
-  assert.match(globalsCss, /\.hh-homes-grid \{ grid-template-columns: repeat\(4, minmax\(300px, 1fr\)\); \}/);
-  assert.match(globalsCss, /\.hh-homes-grid \{ grid-template-columns: minmax\(0, 1fr\); gap: 20px; \}/);
+test('the approved responsive Home-card grid: four at 1440, two at 1024, one at 390 (three only in the 1100–1239 band)', () => {
+  assert.match(globalsCss, /\.hh-homes-grid \{ display: grid; grid-template-columns: repeat\(4, minmax\(0, 1fr\)\);/);
+  assert.match(globalsCss, /@media \(max-width: 1239px\) \{ \.hh-homes-grid \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\); \} \}/);
+  assert.match(globalsCss, /@media \(max-width: 1099px\) \{ \.hh-root \{ padding-inline: 32px; \} \.hh-homes-grid \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\); \} \}/);
+  assert.match(globalsCss, /\.hh-homes-grid \{ grid-template-columns: minmax\(0, 1fr\); gap: 16px; \}/);
 });
 
 /* ------------------------------ empty states: truthful, no discovery language ------------------------------ */
@@ -89,6 +92,7 @@ test('on an archived card, the archive reason renders before the Match panel and
 test('Match remains real historical context on archived cards — just visually secondary, never lower-contrast/disabled', () => {
   assert.match(homesBoard, /className=\{`hh-match-panel\$\{mode === 'archive' \? ' is-secondary' : ''\}`\}/);
   assert.match(globalsCss, /\.hh-match-panel\.is-secondary \{ padding: 8px 11px; filter: saturate\(\.7\); \}/);
+  assert.match(globalsCss, /\.hh-home-card \.hh-match-panel\.is-secondary \{ padding: 9px 12px; border-left-width: 2px; \}/);
   // No change to Match computation/semantics — this is a purely visual delta.
   assert.doesNotMatch(homesBoard, /computeMatch\(home, priorities, commuteEvaluation, mode/);
 });
@@ -96,22 +100,20 @@ test('Match remains real historical context on archived cards — just visually 
 /* ------------------------------ Archive: Restore is dominant, Delete stays restrained ------------------------------ */
 
 test('regression guard: Restore stays the dominant archive action; permanent delete stays a small, separately-confirmed text action', () => {
-  assert.match(homesBoard, /className="hh-btn hh-card-primary-action"[^>]*onClick=\{\(\) => onRestore\(home\)\}>\s*<Undo2 size=\{13\} \/> Restore/);
-  assert.match(homesBoard, /className="hh-card-text-action" onClick=\{\(\) => onRequestDelete\(home\)\}>Delete permanently/);
+  assert.match(homesBoard, /className="hh-btn hh-card-primary-action"[^>]*onClick=\{\(\) => onRestore\(home\)\}>\s*<Undo2 size=\{13\} aria-hidden="true" \/> Restore/);
+  assert.match(homesBoard, /className="hh-card-text-action is-danger" onClick=\{\(\) => onRequestDelete\(home\)\}>Delete permanently/);
   assert.match(homesBoard, /title="Delete this home permanently\?"/);
   assert.match(homesBoard, /confirmLabel="Delete permanently"/);
-  assert.match(globalsCss, /\.hh-card-primary-action \{/);
-  assert.match(globalsCss, /\.hh-card-text-action \{ border: 0; background: none;/);
+  assert.match(globalsCss, /\.hh-card-primary-action\.hh-btn \{/);
+  assert.match(globalsCss, /\.hh-card-text-action \{ display: inline-flex; align-items: center; gap: 3px; min-height: 40px; padding: 0; border: 0; background: none;/);
 });
 
 /* ------------------------------ Favorites: no redundant banner, ownership stays participant-scoped ------------------------------ */
 
-test('the Favorites card lets the heart speak for itself — no redundant "Your favorite" banner duplicating an already-accessible control', () => {
-  assert.doesNotMatch(homesBoard, /Your favorite/);
+test('My Homes Visual Refresh: cards carry no favorite heart or "Your favorite" banner; favoriting stays on Home Detail', () => {
+  assert.doesNotMatch(homesBoard, /Your favorite|hh-card-favorite|onToggleFavorite|toggleFavorite/);
   assert.doesNotMatch(globalsCss, /\.hh-lifecycle-status\.is-favorite/);
-  // The heart button's own aria-label already announces current state to
-  // assistive tech — this is what the banner would have duplicated.
-  assert.match(homesBoard, /aria-label=\{isFavorite \? 'Remove from favorites' : 'Add to favorites'\}/);
+  assert.match(read('src/components/HomeDetail.jsx'), /aria-label=\{home\.isFavorite \? 'Remove from favorites' : 'Add to favorites'\}/);
 });
 
 test('regression guard: Favorites/Want to Tour/Archive ownership stays scoped to the current participant\'s own home_member_state row, never merged', () => {
@@ -132,7 +134,7 @@ test('regression guard: a Realtor is never counted as a co-buyer participant', (
 /* ------------------------------ Want to Tour: primary action + no Realtor conflation ------------------------------ */
 
 test('regression guard: "I toured this home" remains the dominant Want to Tour action, and post-tour semantics are untouched', () => {
-  assert.match(homesBoard, /mode !== 'homes' && \(\s*<button type="button" className="hh-btn"[^>]*onClick=\{\(\) => onOpenPostTour\(home\)\}>\s*<MessageCircle size=\{13\} \/> I toured this home/);
+  assert.match(homesBoard, /mode !== 'homes' && \(\s*<button type="button" className="hh-btn hh-card-tour-action"[^>]*onClick=\{\(\) => onOpenPostTour\(home\)\}>\s*<MessageCircle size=\{13\} aria-hidden="true" \/> I toured this home/);
   assert.match(homesBoard, /applyPostTourVerdict/);
 });
 

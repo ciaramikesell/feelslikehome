@@ -116,7 +116,10 @@ test('card renders compact unboxed facts and preserves adjacent component contra
   const factListRule = css.match(/\.hh-property-facts\s*\{([^}]*)\}/)?.[1] || '';
   assert.doesNotMatch(factListRule, /border|grid-template-columns|padding|background/);
   assert.match(board, /className="hh-property-facts"/);
-  assert.match(board, /criteriaSummary\.evaluated.*criteriaSummary\.total.*evaluated/);
+  // My Homes Visual Refresh: the "Personalized Criteria — n/n evaluated" heading is
+  // gone; one compact summary line (matches · misses · unknown) replaces it.
+  assert.doesNotMatch(board, /Personalized Criteria|Personalized Match|<strong>Must Haves<\/strong>/);
+  assert.match(board, /className="hh-match-summary-line"/);
   assert.match(board, /<CriteriaDisclosure symbol="\?"/);
   assert.match(board, /className="hh-card-commute"/);
   assert.match(board, /className="hh-home-card-actions"/);
