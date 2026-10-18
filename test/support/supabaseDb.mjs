@@ -47,9 +47,9 @@ export const POST_SNAPSHOT_MIGRATIONS = [
 ];
 
 const SUPABASE_SHIM = `
-do $$ begin create role anon nologin; exception when duplicate_object then null; end $$;
-do $$ begin create role authenticated nologin; exception when duplicate_object then null; end $$;
-do $$ begin create role service_role nologin bypassrls; exception when duplicate_object then null; end $$;
+do $$ begin create role anon nologin; exception when duplicate_object or unique_violation then null; end $$;
+do $$ begin create role authenticated nologin; exception when duplicate_object or unique_violation then null; end $$;
+do $$ begin create role service_role nologin bypassrls; exception when duplicate_object or unique_violation then null; end $$;
 create schema auth;
 grant usage on schema auth to anon, authenticated, service_role;
 create table auth.users (

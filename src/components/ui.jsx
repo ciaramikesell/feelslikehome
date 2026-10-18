@@ -104,12 +104,30 @@ export function TierPicker({ value, onChange, quiet = false, ariaLabel }) {
 
 // Small, consistent "what is this page for" supporting copy, used near the top of
 // each main logged-in page — not a redesign of page headers, just one subtle line.
+// It is the page's h1: the shell's wordmark is branding, not a heading.
 export function PageIntro({ title, subtitle }) {
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: 12, rowGap: 3, marginBottom: 20 }}>
-      <h2 className="hh-serif" style={{ fontSize: 24, fontWeight: 700, color: 'var(--brick)', margin: 0, letterSpacing: '-0.01em' }}>{title}</h2>
+      <h1 className="hh-serif" style={{ fontSize: 24, fontWeight: 700, color: 'var(--brick)', margin: 0, letterSpacing: '-0.01em' }}>{title}</h1>
       {subtitle && <p style={{ fontSize: 14, fontWeight: 400, color: 'var(--ink-soft)', margin: 0, lineHeight: 1.5 }}>{subtitle}</p>}
     </div>
+  );
+}
+
+// The FLH house/heart/check, redrawn as one SVG for the small Match line on My
+// Homes cards. BrandMark (above) stays the brand asset everywhere else; at
+// 20–24px its overlaid heart sat high and left of the house body and the check
+// badge crowded it. Here the heart is centered in the body's open area and the
+// badge sits clear at the lower right — same shapes, same tokens.
+export function MatchMark({ size = 24 }) {
+  return (
+    <svg className="hh-match-mark" viewBox="0 0 64 64" width={size} height={size} aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6 32 L32 9 L58 32 Z" fill="var(--brick)" />
+      <rect x="13" y="27" width="38" height="30" rx="7" fill="var(--brick)" />
+      <path d="M31 49 C22 43 22.4 35 27 35 C29.2 35 30.4 36.4 31 37.8 C31.6 36.4 32.8 35 35 35 C39.6 35 40 43 31 49 Z" fill="var(--paper-raised)" />
+      <circle cx="50" cy="50" r="11.5" fill="var(--moss)" stroke="var(--paper-raised)" strokeWidth="3" />
+      <path d="M44.6 50.2 L48.4 54 L55.4 46.6" fill="none" stroke="var(--paper-raised)" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
@@ -120,17 +138,17 @@ export function MatchSummary({ match }) {
   // since that would falsely imply a poor fit rather than an absence of information.
   if (match.pct === null) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-        <BrandMark size={20} />
-        <span style={{ fontSize: 13.5, color: 'var(--ink-soft)', fontStyle: 'italic' }}>Not enough information yet</span>
+      <div className="hh-match-score is-unknown">
+        <MatchMark size={22} />
+        <span className="hh-match-score-empty">Not enough information yet</span>
       </div>
     );
   }
 
   return (
     <div className="hh-match-score">
-      <BrandMark size={22} />
-      <span className="hh-mono" style={{ color: matchColor(match.pct) }}>{match.pct}% Match</span>
+      <MatchMark size={24} />
+      <span className="hh-match-score-value" style={{ color: matchColor(match.pct) }}><strong>{match.pct}%</strong> Match</span>
     </div>
   );
 }

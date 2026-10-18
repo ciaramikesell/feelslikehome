@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { normalizePriorities, getItemlistCategories, MOBILE_PRIMARY_TABS } from '../src/lib/constants.js';
+import { normalizePriorities, getItemlistCategories, MOBILE_PRIMARY_TABS, PRIMARY_TABS } from '../src/lib/constants.js';
 import { computeMatch, selectPriorityItem, mustHaveStatus, hasNoMustHaveMisses, matchFactualSummary, selectHomeCardCriteria, criterionLabel } from '../src/lib/matching.js';
 import { evaluateCommute } from '../src/lib/commute.js';
 import {
-  EMPTY_FILTERS, SORT_OPTIONS, MATCH_THRESHOLDS, activeFilterLabels, activeFilterCount, applyContenderFilters,
+  EMPTY_FILTERS, SORT_OPTIONS, SORT_MENU, MATCH_THRESHOLDS, normalizeFilters, activeFilterLabels, activeFilterCount, applyContenderFilters,
   contenderCountLabel, showMatchingLabel, singleFilterCounts, sortContenders, sortLabel,
 } from '../src/lib/homesCollection.js';
 
@@ -94,9 +94,14 @@ test('personalized criteria keep evaluated = match + don’t match, with unknown
 /* ------------------------------------ filters and sorting ------------------------------------ */
 
 test('filters combine, count correctly, and clearing restores the whole collection', () => {
-  assert.deepEqual(ids(applyContenderFilters(homes, { favorites: true }, evaluate)), ['all-met', 'legacy-false']);
+  // Favorites is no longer a My Homes filter: a stale `favorites` key never narrows
+  // the list (stored favorites themselves are untouched).
+  assert.deepEqual(ids(applyContenderFilters(homes, { favorites: true }, evaluate)), ids(homes));
+  assert.deepEqual(normalizeFilters({ favorites: true }), EMPTY_FILTERS);
+  assert.deepEqual(Object.keys(EMPTY_FILTERS), ['minMatch', 'noMustMissing', 'wantToTour']);
   assert.deepEqual(ids(applyContenderFilters(homes, { wantToTour: true }, evaluate)), ['must-missed']);
-  assert.deepEqual(ids(applyContenderFilters(homes, { favorites: true, noMustMissing: true }, evaluate)), ['all-met', 'legacy-false']);
+  assert.deepEqual(ids(applyContenderFilters(homes, { wantToTour: true, noMustMissing: true }, evaluate)), []);
+  assert.deepEqual(ids(applyContenderFilters(homes, { minMatch: 90, noMustMissing: true }, evaluate)), ['all-met', 'must-unknown', 'legacy-false']);
   // Match is computed from known criteria only: an unknown Must Have neither lowers
   // nor raises it (must-unknown's known criteria nearly all match).
   assert.deepEqual(ids(applyContenderFilters(homes, { minMatch: 90 }, evaluate)), ['all-met', 'must-unknown', 'legacy-false']);
@@ -104,13 +109,14 @@ test('filters combine, count correctly, and clearing restores the whole collecti
   assert.ok(!ids(applyContenderFilters(homes, { minMatch: 90 }, evaluate)).includes('nothing-known'));
   assert.deepEqual(ids(applyContenderFilters(homes, EMPTY_FILTERS, evaluate)), ids(homes));
   assert.deepEqual(ids(applyContenderFilters(homes, EMPTY_FILTERS, evaluate, 'novi')), ['must-unknown', 'nothing-known']);
-  assert.deepEqual(singleFilterCounts(homes, evaluate), { all: 5, match90: 3, noMustMissing: 4, wantToTour: 1, favorites: 2 });
+  assert.deepEqual(singleFilterCounts(homes, evaluate), { all: 5, match90: 3, noMustMissing: 4, wantToTour: 1 });
 });
 
 test('the active-filter summary and apply button are derived from the actual filter state and count', () => {
   assert.deepEqual(activeFilterLabels(EMPTY_FILTERS), []);
   assert.deepEqual(activeFilterLabels({ minMatch: 90, noMustMissing: true }), ['90%+ Match', 'No Must-Haves missing']);
-  assert.equal(activeFilterCount({ favorites: true, wantToTour: true }), 2);
+  assert.equal(activeFilterCount({ favorites: true, wantToTour: true }), 1);
+  assert.deepEqual(activeFilterLabels({ favorites: true }), []);
   const count = applyContenderFilters(homes, { noMustMissing: true }, evaluate).length;
   assert.equal(showMatchingLabel(count, homesVocabulary), 'Show 4 matching homes');
   assert.equal(showMatchingLabel(1, homesVocabulary), 'Show 1 matching home');
@@ -122,6 +128,9 @@ test('the active-filter summary and apply button are derived from the actual fil
 test('only the existing sort modes and Match threshold are offered', () => {
   assert.deepEqual(SORT_OPTIONS.map(({ key }) => key), ['matchDesc', 'newest', 'oldest', 'priceAsc', 'priceDesc', 'matchAsc']);
   assert.equal(sortLabel('matchDesc', { short: true }), 'Best match');
+  // The toolbar's "Sort By:" menu offers exactly the same modes.
+  assert.deepEqual(SORT_MENU.map(({ key }) => key).sort(), SORT_OPTIONS.map(({ key }) => key).sort());
+  assert.deepEqual(SORT_MENU.map(({ label }) => label), ['Newest', 'Oldest', 'Best match', 'Lowest match', 'Price: low to high', 'Price: high to low']);
   assert.deepEqual([...MATCH_THRESHOLDS], [90]);
   const byMatch = ids(sortContenders(homes, 'matchDesc', evaluate));
   assert.equal(byMatch.at(-1), 'nothing-known'); // unknown Match sorts last, never as 0%
@@ -146,32 +155,27 @@ test('My Homes filters, sorts, and counts with the same Match the cards render (
 
 /* ------------------------------------ My Homes presentation ------------------------------------ */
 
-test('My Homes header counts the actual active homes and keeps the Add action', () => {
+test('My Homes has no visible page header (the selected Homes tab names the page) and keeps the Add action', () => {
   const page = read('src/app/(app)/homes/page.js');
-  assert.match(page, /const activeCount = homes\.filter\(\(home\) => !isArchivedStatus\(home\.status\)\)\.length;/);
-  assert.match(page, /contenderCountLabel\(activeCount, homeVocabulary\(normalizedPriorities\)\)/);
+  assert.match(page, /<h1 className="sr-only">My \{homeVocabulary\(normalizedPriorities\)\.plural\}<\/h1>/);
+  assert.doesNotMatch(page, /hh-homes-purpose|hh-homes-instructions|contenderCountLabel/);
   const board = read('src/components/HomesBoard.jsx');
-  assert.match(board, /aria-label=\{`Add \$\{vocabulary\.singularLower\}`\}/);
-  assert.match(board, /placeholder="Search address or neighborhood"/);
-  assert.match(board, /<Link href="\/map" className="flh-control-pill">/);
+  assert.match(board, /<span aria-hidden="true">\+<\/span> Add a \{vocabulary\.singular\}/);
+  assert.match(board, /placeholder="Search address, city, or feature\.\.\."/);
+  assert.match(board, /<span className="sr-only">Search your \{vocabulary\.pluralLower\}<\/span>/);
+  // Map is a primary tab now, not a toolbar pill.
+  assert.doesNotMatch(board, /flh-control-pill/);
 });
 
-test('compact contender cards use real home data and the canonical Match, and keep existing states', () => {
+test('phones get the same full card (approved 390 frame): no compact row, badge, or state tags', () => {
   const board = read('src/components/HomesBoard.jsx');
+  const css = read('src/app/globals.css');
   assert.match(board, /mode === 'homes' \? 'is-contender' : ''/);
-  // The shared MatchBadge renders only a computable percentage — Unknown is never a number.
-  assert.match(board, /\{mode === 'homes' && match\?\.pct != null && <MatchBadge pct=\{match\.pct\} className="hh-contender-match" \/>\}/);
-  const system = read('src/components/MobileSystem.jsx');
-  assert.match(system, /export function MatchBadge\(\{ pct, size = 'sm', className = '' \}\) \{\n  if \(pct === null \|\| pct === undefined\) return null;/);
-  assert.match(board, /const must = mustHaveStatus\(match\);/);
-  assert.match(board, /must\.missed > 0 && \{ key: 'must-missed'/);
-  assert.match(board, /must\.missed === 0 && must\.unknown > 0 && \{ key: 'must-unknown'/);
-  for (const state of ["label: 'Want to tour'", "label: 'Toured'", 'label: coBuyerActivity', 'label: `Suggested by ${home.suggestedBy}`', "label: 'Match not known yet'"]) {
-    assert.ok(board.includes(state), state);
-  }
-  // Favorite stays a one-tap control; click-through to Home Detail is unchanged.
-  assert.match(board, /className="hh-card-favorite hh-tooltip" onClick=\{handleFavorite\}/);
-  assert.match(board, /href=\{`\/homes\/\$\{encodeURIComponent\(home\.id\)\}`\} className="hh-home-identity-link"/);
+  assert.doesNotMatch(board, /MatchBadge|hh-contender-meta|hh-contender-match|HomesFilterSheet/);
+  assert.doesNotMatch(css, /\.hh-home-card\.is-contender \.hh-home-card-surface \{[^}]*flex-direction: row/);
+  // Click-through to Home Detail is unchanged.
+  assert.match(board, /const homeHref = `\/homes\/\$\{encodeURIComponent\(home\.id\)\}`;/);
+  assert.match(board, /<Link href=\{homeHref\} className="hh-home-identity-link">/);
 });
 
 test('multiple Places That Matter are never collapsed to one', () => {
@@ -223,16 +227,19 @@ test('Match stays participant-specific: pages evaluate the signed-in participant
 
 /* ------------------------------------ navigation & desktop ------------------------------------ */
 
-test('mobile navigation is unchanged and desktop keeps its toolbar, chips, and full cards', () => {
+test('the phone bottom bar is unchanged; one toolbar, chips, and full cards serve every width', () => {
   assert.deepEqual(MOBILE_PRIMARY_TABS.map(({ key }) => key), ['homes', 'tour', 'compare', 'map', 'search']);
+  assert.deepEqual(PRIMARY_TABS.map(({ label }) => label), ['Homes', 'Want to Tour', 'Compare', 'Map', 'Archived']);
   const board = read('src/components/HomesBoard.jsx');
   assert.match(board, /className="hh-homes-toolbar"/);
-  assert.match(board, /<option value="matchDesc">Match score — highest<\/option>/);
+  assert.match(board, /\{SORT_MENU\.map\(\(option\) => <option key=\{option\.key\} value=\{option\.key\}>\{option\.label\}<\/option>\)\}/);
   assert.match(board, /\{ key: 'noMustMissing', label: 'No Must-Haves Missing' \}/);
   assert.match(board, /className=\{`hh-match-panel/);
   assert.match(board, /className="hh-home-card-actions"/);
   const css = read('src/app/globals.css');
-  assert.match(css, /\.flh-mobile-only, \.flh-homes-controls, \.hh-homes-count, \.hh-contender-match, \.hh-contender-meta, \.flh-active-filters \{ display: none; \}/);
+  assert.match(css, /\.flh-mobile-only \{ display: none; \}/);
+  // Filter chips scroll sideways on phones instead of wrapping into several rows.
+  assert.match(css, /\.hh-filter-chips \{ overflow-x: auto; margin-inline: -16px;/);
 });
 
 /* ------------------------- Must Have presentation consistency ------------------------- */
@@ -295,7 +302,7 @@ test('card preview, Home Detail, and the No Must-Haves missing filter agree on e
 
 test('the desktop card renders every previewed Must Have with the shared label and an explicit overflow', () => {
   const board = read('src/components/HomesBoard.jsx');
-  assert.match(board, /\{!item\.evaluated \? '\?' : neutral \? '—' : item\.met \? '✓' : '✕'\} \{criterionLabel\(item\)\}/);
+  assert.match(board, /\{!item\.evaluated \? '\?' : neutral \? '—' : item\.met \? '✓' : '✕'\}<\/span>\s*\{criterionLabel\(item\)\}/);
   assert.match(board, /`\+ \$\{mustOverflow\} more Must Have\$\{mustOverflow === 1 \? '' : 's'\}`/);
   const matching = read('src/lib/matching.js');
   assert.match(matching, /const isVisibleMustHave = \(criterion\) => criterion\.tier === 'must';/);

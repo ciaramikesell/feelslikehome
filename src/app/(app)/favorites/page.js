@@ -1,9 +1,8 @@
 import { createClient } from '@/lib/supabase/server';
 import { requireUser, withAuthRecovery } from '@/lib/supabase/auth';
 import HomesBoard from '@/components/HomesBoard';
-import DecisionNav from '@/components/DecisionNav';
 import { PageIntro } from '@/components/ui';
-import { isArchivedStatus, normalizePriorities } from '@/lib/constants';
+import { normalizePriorities } from '@/lib/constants';
 import { resolveActiveSearch, resolvePriorities, resolveSharedFactPriorityAwareness, getHomesForUser, getParticipantStatusesForHomes, addCoBuyerPersonalSignals, getSearchParticipantIds, getCommuteDestinations } from '@/lib/supabase/collaboration';
 
 export default async function FavoritesPage() {
@@ -22,14 +21,11 @@ export default async function FavoritesPage() {
     const statusesByHome = await getParticipantStatusesForHomes(supabase, search, homes);
     const homesWithSignal = addCoBuyerPersonalSignals(homes, statusesByHome, user.id);
 
-    const hasFavorites = homes.some((h) => h.isFavorite && !isArchivedStatus(h.status));
-    const hasArchived = homes.some((h) => isArchivedStatus(h.status));
-
     return (
-      <DecisionNav active="favorites" hasFavorites={hasFavorites} hasArchived={hasArchived}>
+      <main className="hh-collection-page">
         <PageIntro title="Favorites" subtitle="The homes that stand out to you, kept close at hand." />
         <HomesBoard mode="favorites" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizePriorities(priorities)} initialCommuteDestinations={commuteDestinations} sharedFactAwareness={sharedFactAwareness} isCollaborative={participantIds.length > 1} />
-      </DecisionNav>
+      </main>
     );
   });
 }

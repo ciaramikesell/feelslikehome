@@ -4,34 +4,30 @@ import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Plus, Search, Archive as ArchiveIcon, ExternalLink,
-  Heart, Home as HomeIcon, Undo2, Footprints, MessageCircle, Check,
-  StickyNote, Pencil, SlidersHorizontal, ArrowUpDown, Map as MapIcon,
+  Plus, Search, Archive as ArchiveIcon, ArrowUpRight, Car, ChevronDown,
+  Heart, Home as HomeIcon, Undo2, Footprints, MessageCircle, Check, StickyNote,
 } from 'lucide-react';
 import { CriteriaDisclosure, MatchSummary } from '@/components/ui';
-import { Chevron, IconBadge, MatchBadge, ParticipantStack } from '@/components/MobileSystem';
 import { useCommuteObserver, readCommuteResult, useCommuteCacheVersion } from '@/lib/useCommuteObserver';
 import { evaluateCommute } from '@/lib/commute';
 import HomeModal from '@/components/HomeModal';
 import PostTourModal from '@/components/PostTourModal';
 import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
 import Sheet from '@/components/Sheet';
-import MobileDisclosure from '@/components/MobileDisclosure';
-import HomesFilterSheet from '@/components/HomesFilterSheet';
 import {
-  EMPTY_FILTERS, activeFilterCount, activeFilterLabels, applyContenderFilters, currentUserWantsToTour,
-  normalizeFilters, singleFilterCounts, sortContenders, sortLabel,
+  EMPTY_FILTERS, SORT_MENU, activeFilterCount, activeFilterLabels, applyContenderFilters, currentUserWantsToTour,
+  singleFilterCounts, sortContenders,
 } from '@/lib/homesCollection';
 import { emptyHome, isArchivedStatus } from '@/lib/constants';
 import { isLikelyListingUrl, findHomeByListingUrl } from '@/lib/listingUrl';
-import { parseNum, fmtMoney, homeStyleSummary, computeMatch, matchColor, matchTint, selectHomeCardCriteria, mustHaveStatus, criterionLabel } from '@/lib/matching';
+import { parseNum, fmtMoney, homeStyleSummary, computeMatch, matchColor, matchTint, selectHomeCardCriteria, criterionLabel } from '@/lib/matching';
 import { homeCardSnapshot } from '@/lib/homeCardPresentation';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
-import { formatHomePrice, formatLotSizeDisplay, freeformText, noteFieldCount } from '@/lib/homeDisplay';
+import { formatHomePrice, formatLotSizeDisplay, noteFieldCount } from '@/lib/homeDisplay';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { isNativeApp } from '@/lib/platform';
 import { deriveFlhMoment } from '@/lib/flhMoments';
-import { applyPostTourVerdict, archiveHome, hasToured, isFavoriteHome, restoreHome as restoreLifecycleHome, toggleFavorite as toggleFavoriteState } from '@/lib/lifecycle';
+import { applyPostTourVerdict, archiveHome, hasToured, isFavoriteHome, restoreHome as restoreLifecycleHome } from '@/lib/lifecycle';
 import { createClient } from '@/lib/supabase/client';
 import { deleteHome as deleteHomeQuery } from '@/lib/supabase/data';
 import { refreshMyHomes } from '@/app/(app)/homes/actions';
@@ -61,41 +57,42 @@ function ConfirmModal({ title, body, cancelLabel = 'Cancel', confirmLabel, confi
 
 /* --------------------------------- card view --------------------------------- */
 
-function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour, onRemoveFromTour, onRestore, onRequestDelete }) {
+// Long commute-route labels and pending/failed routes keep an honest status;
+// a resolved route reads "Mom 14 min" (label, then the time).
+function commuteRouteParts(destination, state) {
+  const name = destination.label;
+  if (state.status === 'ok') return { name, value: `${state.minutes} min` };
+  if (state.status === 'loading') return { name, value: 'Calculating…', quiet: true };
+  if (state.status === 'destination_invalid') return { name, value: 'Check the address', quiet: true };
+  if (state.status === 'destination_ambiguous') return { name, value: 'Add a city or ZIP', quiet: true };
+  if (['unavailable', 'no_route', 'home_unavailable', 'destination_unavailable'].includes(state.status)) return { name, value: 'Not available', quiet: true };
+  return { name, value: null };
+}
+
+// My Homes card (approved Phase 1 design), shared by Homes, Want to Tour and
+// Archive: identity → photo → price/specs → Match → property facts → commute →
+// actions. Every value comes from the same helpers as before (computeMatch,
+// selectHomeCardCriteria, homeCardSnapshot, evaluateCommute); only the
+// presentation changed.
+function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchiveRequest, onWantToTour, onOpenPostTour, onRemoveFromTour, onRestore, onRequestDelete }) {
   const [imgError, setImgError] = useState(false);
   const styleSummary = homeStyleSummary(home);
   const showPhoto = home.photoUrl && !imgError;
-  const isFavorite = home.isFavorite;
-  const [favoritePop, setFavoritePop] = useState(false);
   const [showAllMustHaves, setShowAllMustHaves] = useState(false);
-  const favoritePopTimer = useRef(null);
   const identity = homeIdentity(home, priorities);
+  const vocabulary = homeVocabulary(priorities);
+  const homeHref = `/homes/${encodeURIComponent(home.id)}`;
   // Normalize lifecycle presentation without touching stored data: any status that
   // isn't 'Want to Tour' or 'Toured' is treated as pre-tour, whether it's the current
   // 'Saved' value or a legacy string like 'Considering' left over from before this
   // lifecycle existed (see rowToHome's 'Considering' fallback in supabase/data.js).
   const toured = hasToured(home);
   const isPreTour = !toured && home.status !== 'Want to Tour';
-  // Heart/Archive as quick one-tap controls only make sense once favoriting is
-  // itself the primary job of the view. In Want to Tour, "Love it" is reached only
-  // through the Post-Tour reflection ("Edit my thoughts") — never a shortcut that
-  // bypasses recording ratings/notes for a toured home.
-  const showQuickFavorite = mode !== 'archive';
+  const onTourList = !toured && home.status === 'Want to Tour';
   const wantToTourState = home.isCollaborative
     ? deriveWantToTourState(home, home.coBuyerWantsToTour ? [{ status: 'Want to Tour' }] : [])
     : null;
   const moment = deriveFlhMoment(home);
-
-  useEffect(() => () => clearTimeout(favoritePopTimer.current), []);
-
-  const handleFavorite = () => {
-    if (!isFavorite) {
-      clearTimeout(favoritePopTimer.current);
-      setFavoritePop(true);
-      favoritePopTimer.current = setTimeout(() => setFavoritePop(false), 220);
-    }
-    onToggleFavorite(home);
-  };
 
   const { setRef: commuteRef, getState: getCommuteState } = useCommuteObserver(home, commuteDestinations);
   const commuteEvaluation = evaluateCommute(commuteDestinations, getCommuteState);
@@ -103,10 +100,8 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   const cardCriteria = selectHomeCardCriteria(match);
   const { showsPurchaseFinancials } = searchIntentCapabilities(priorities.searchType);
 
-  // Core property facts — beds/baths/sqft/lot only. Garage is deliberately not
-  // repeated here: when it's actually a priority the user selected, it already
-  // surfaces through the Match box's fulfilled-criteria line below, rather than
-  // being shown twice regardless of whether the user cares about it.
+  // Core property specifications — beds/baths/sqft/lot only, on the line under
+  // the price. Garage lives in the property facts below.
   const factLine = [
     home.beds && `${home.beds} bd`,
     home.baths && `${home.baths} ba`,
@@ -114,101 +109,61 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
     home.lotSize && formatLotSizeDisplay(home.lotSize),
   ].filter(Boolean);
 
-  // Compact descriptive property fact sheet — purely descriptive shared facts
-  // ("what this home has"), separate from whether the participant cares about
-  // each feature. Condition Notes remains with Pros/Cons/Notes below.
+  // Descriptive shared facts ("what this home has"). homeCardSnapshot drops a
+  // fact with no saved value (or an Unknown one) rather than inventing it.
   const propertyFacts = homeCardSnapshot(home, styleSummary);
-
   // Pros / cons are freeform text: counted once per field, never split on commas.
   const noteCount = noteFieldCount(home);
   const { mustHaves, hiddenMustHaves, mustOverflow, criteriaSummary } = cardCriteria;
   const displayedMustHaves = showAllMustHaves ? [...mustHaves, ...hiddenMustHaves] : mustHaves;
-  // Secondary, already-known context (facts/commute/notes) — kept out of the
-  // way behind "More details" on narrow viewports so a mobile card reads as
-  // price/address/Match/status first, not a full restack of every field.
-  // Desktop keeps this always open (see .hh-card-context-details in
-  // globals.css); nothing here is ever hidden from desktop.
-  const hasCardContext = propertyFacts.length > 0 || commuteDestinations.length > 0 || !!home.conditionNotes || !!freeformText(home.pros) || !!freeformText(home.cons) || !!home.notes;
   const coBuyerActivity = home.coBuyerWantsToTour ? 'Co-buyer wants to tour' : home.coBuyerFavorited ? 'Co-buyer favorited' : null;
+  const price = formatHomePrice(home.price, priorities.searchType);
+  const monthly = showsPurchaseFinancials && home.estMonthly ? `${fmtMoney(home.estMonthly)}/mo est.` : null;
 
   return (
-    <article className={`hh-home-card hh-corner ${mode === 'archive' ? 'is-archived' : ''} ${mode === 'homes' ? 'is-contender' : ''} ${mode === 'tour' ? 'is-tour' : ''}`} ref={commuteRef}>
+    <article className={`hh-home-card ${mode === 'archive' ? 'is-archived' : ''} ${mode === 'homes' ? 'is-contender' : ''} ${mode === 'tour' ? 'is-tour' : ''}`} ref={commuteRef}>
       <div className="hh-home-card-surface">
+        <header className="hh-card-identity">
+          <Link href={homeHref} className="hh-home-identity-link">
+            <h2 className="hh-address">{identity.primary}</h2>
+            {identity.option && <p className="hh-card-option">{identity.option}</p>}
+            {identity.supporting && <p className="hh-card-locality">{identity.supporting}</p>}
+          </Link>
+        </header>
+
         <div className={`hh-home-card-photo ${showPhoto ? '' : 'is-empty'}`}>
-        <Link href={`/homes/${encodeURIComponent(home.id)}`} className="hh-home-card-photo-link" aria-label={`Open ${identity.accessible} details`}>
-          {showPhoto ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={home.photoUrl} alt={`${identity.accessible} ${homeVocabulary(priorities).singularLower} photo`} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} onError={() => setImgError(true)} />
-          ) : (
-            <div className="hh-home-card-photo-fallback">
-              <HomeIcon size={34} color="rgba(46,38,33,0.22)" strokeWidth={1.5} />
-            </div>
-          )}
-          {!toured && home.status === 'Want to Tour' && (
-            <span className="hh-card-status hh-mono">WANT TO TOUR</span>
-          )}
-          {moment && !coBuyerActivity && (
-            <span className="hh-flh-moment" aria-label={moment.hasEyes ? `${moment.label}. Shared home signal.` : `${moment.label}.`}>
-              {moment.hasEyes && <span aria-hidden="true">👀 </span>}{moment.label}
-            </span>
-          )}
-          {home.suggestedBy && <span className="hh-image-provenance">Suggested by {home.suggestedBy}</span>}
-          {/* My Homes on a phone: the card's Match is summarized as one badge (the
-              detailed explanation lives on Home Detail). Same canonical `match`
-              object as the full panel below — only its presentation differs. */}
-          {mode === 'homes' && match?.pct != null && <MatchBadge pct={match.pct} className="hh-contender-match" />}
-          {coBuyerActivity && <span className="hh-cobuyer-activity">{coBuyerActivity}</span>}
-        </Link>
-          {showQuickFavorite && (
-            <button type="button" className="hh-card-favorite hh-tooltip" onClick={handleFavorite} aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'} data-tooltip={isFavorite ? 'Remove from favorites' : 'Add to favorites'}>
-              <Heart className={favoritePop ? 'hh-favorite-pop' : undefined} size={18} color={isFavorite ? 'var(--brick)' : 'var(--ink)'} fill={isFavorite ? 'var(--brick)' : 'none'} />
-            </button>
-          )}
+          <Link href={homeHref} className="hh-home-card-photo-link" aria-label={`Open ${identity.accessible} details`} tabIndex={-1}>
+            {showPhoto ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={home.photoUrl} alt={`${identity.accessible} ${vocabulary.singularLower} photo`} onError={() => setImgError(true)} />
+            ) : (
+              <div className="hh-home-card-photo-fallback">
+                <HomeIcon size={34} color="rgba(46,38,33,0.22)" strokeWidth={1.5} aria-hidden="true" />
+                <span>No photo yet</span>
+              </div>
+            )}
+            {/* On Homes the Want to Tour button carries this state; the other views keep the tag. */}
+            {onTourList && mode !== 'homes' && <span className="hh-card-status">WANT TO TOUR</span>}
+            {moment && !coBuyerActivity && (
+              <span className="hh-flh-moment" aria-label={moment.hasEyes ? `${moment.label}. Shared home signal.` : `${moment.label}.`}>
+                {moment.hasEyes && <span aria-hidden="true">👀 </span>}{moment.label}
+              </span>
+            )}
+            {home.suggestedBy && <span className="hh-image-provenance">Suggested by {home.suggestedBy}</span>}
+            {coBuyerActivity && <span className="hh-cobuyer-activity">{coBuyerActivity}</span>}
+          </Link>
         </div>
 
-        <div className="hh-home-card-body" style={{ padding: '18px 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div className="hh-card-price-row">
-            <span className="hh-mono" style={{ fontSize: 22, fontWeight: 700, color: 'var(--brick)' }}>{formatHomePrice(home.price, priorities.searchType) || 'Price not added'}</span>
-            {showsPurchaseFinancials && home.estMonthly && <span className="hh-mono" style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>{fmtMoney(home.estMonthly)}/mo est.</span>}
+        <div className="hh-home-card-body">
+          <hr className="hh-card-divider" />
+
+          <div className="hh-card-pricing">
+            <p className="hh-card-price-row">
+              <span className={`hh-card-price${price ? '' : ' is-missing'}`}>{price || 'Price not added'}</span>
+              {monthly && <span className="hh-card-monthly">{monthly}</span>}
+            </p>
+            {factLine.length > 0 && <p className="hh-card-factline">{factLine.join(' · ')}</p>}
           </div>
-
-          <div className="hh-card-identity">
-            <Link href={`/homes/${encodeURIComponent(home.id)}`} className="hh-home-identity-link">
-              <div className="hh-address" style={{ fontSize: 19, fontWeight: 600, lineHeight: 1.28, color: 'var(--ink)' }}>{identity.primary}</div>
-              {identity.option && <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', marginTop: 2 }}>{identity.option}</div>}
-              {identity.supporting && <div style={{ fontSize: 13.5, color: 'var(--ink-soft)', marginTop: 1 }}>{identity.supporting}</div>}
-            </Link>
-          </div>
-
-          {factLine.length > 0 && (
-            <div className="hh-mono hh-card-factline" style={{ fontSize: 12.5, color: 'var(--ink-soft)', display: 'flex', flexWrap: 'wrap', alignItems: 'center' }}>
-              {factLine.map((item, i) => (
-                <span key={i} style={{ display: 'flex', alignItems: 'center' }}>
-                  {i > 0 && <span style={{ color: 'var(--line)', margin: '0 7px' }}>•</span>}
-                  {item}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {mode === 'homes' && (() => {
-            // Compact state line for the phone contender card — every item is an
-            // existing state already shown on the full card or its photo overlays.
-            // Must Haves stay visible even on the compact card: a confirmed miss (or
-            // an unknown) is a different kind of fact than the percentage. Same
-            // mustHaveStatus the filter and Home Detail read.
-            const must = mustHaveStatus(match);
-            const states = [
-              must.missed > 0 && { key: 'must-missed', label: `${must.missed} Must Have${must.missed === 1 ? '' : 's'} missing`, tone: 'negative' },
-              must.missed === 0 && must.unknown > 0 && { key: 'must-unknown', label: `${must.unknown} Must Have${must.unknown === 1 ? '' : 's'} unknown`, tone: 'quiet' },
-              !toured && home.status === 'Want to Tour' && { key: 'tour', label: 'Want to tour', tone: 'positive' },
-              toured && { key: 'toured', label: 'Toured', tone: 'positive' },
-              coBuyerActivity && { key: 'cobuyer', label: coBuyerActivity, tone: 'positive' },
-              home.suggestedBy && { key: 'realtor', label: `Suggested by ${home.suggestedBy}`, tone: 'quiet' },
-              match && match.pct == null && { key: 'match', label: 'Match not known yet', tone: 'quiet' },
-            ].filter(Boolean);
-            return states.length ? <div className="hh-contender-meta">{states.map((state) => <span key={state.key} className={`flh-tag is-${state.tone}`}>{state.label}</span>)}</div> : null;
-          })()}
 
           {/* On an archived Home, why it was set aside is more decision-relevant than
               whether it had an 89% Match — so this leads, and the Match panel right
@@ -221,127 +176,120 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
           )}
 
           {match ? (
-            <div className={`hh-match-panel${mode === 'archive' ? ' is-secondary' : ''}`} style={{ background: matchTint(match.pct), borderLeft: `${mode === 'archive' ? 2 : 3}px solid ${matchColor(match.pct)}` }}>
-              <div className="hh-match-eyebrow">Personalized Match</div>
+            <section className={`hh-match-panel${mode === 'archive' ? ' is-secondary' : ''}`} style={{ background: matchTint(match.pct), borderLeftColor: matchColor(match.pct) }} aria-label="Match">
               <MatchSummary match={match} />
-              {mustHaves.length > 0 && <div className="hh-must-summary"><strong>Must Haves</strong>{displayedMustHaves.map((item) => { const neutral = item.evaluated && item.met === null; return <span className={!item.evaluated ? 'is-unknown' : neutral ? 'is-neutral' : item.met ? 'is-positive' : 'is-negative'} key={item.key}>{!item.evaluated ? '?' : neutral ? '—' : item.met ? '✓' : '✕'} {criterionLabel(item)}<span className="sr-only">{!item.evaluated ? ' (unknown)' : neutral ? ' (neutral)' : item.met ? ' (met)' : ' (missing)'}</span></span>; })}{mustOverflow > 0 && <button type="button" className="hh-criteria-overflow" aria-expanded={showAllMustHaves} onClick={() => setShowAllMustHaves((value) => !value)}>{showAllMustHaves ? 'Show fewer' : `+ ${mustOverflow} more Must Have${mustOverflow === 1 ? '' : 's'}`}</button>}</div>}
-              {criteriaSummary?.total > 0 && <div className="hh-personalized-criteria"><strong>Personalized Criteria — {criteriaSummary.evaluated}/{criteriaSummary.total} evaluated</strong><CriteriaDisclosure symbol="✓" tone="positive" heading="Matches" items={criteriaSummary.matches} label={`${criteriaSummary.matches.length} match`} /><CriteriaDisclosure symbol="✕" tone="negative" heading="Doesn’t match" items={criteriaSummary.mismatches} label={`${criteriaSummary.mismatches.length} don’t match`} /><CriteriaDisclosure symbol="?" tone="unknown" heading="Still unknown" items={criteriaSummary.unknown} label={`${criteriaSummary.unknown.length} ${criteriaSummary.unknown.length === 1 ? 'criterion' : 'criteria'} still unknown`} /></div>}
-            </div>
+              {mustHaves.length > 0 && (
+                <ul className="hh-must-summary" aria-label="Must Haves">
+                  {displayedMustHaves.map((item) => {
+                    const neutral = item.evaluated && item.met === null;
+                    const tone = !item.evaluated ? 'is-unknown' : neutral ? 'is-neutral' : item.met ? 'is-positive' : 'is-negative';
+                    return (
+                      <li className={tone} key={item.key}>
+                        <span className="hh-must-symbol" aria-hidden="true">{!item.evaluated ? '?' : neutral ? '—' : item.met ? '✓' : '✕'}</span>
+                        {criterionLabel(item)}
+                        <span className="sr-only">{!item.evaluated ? ' (unknown)' : neutral ? ' (neutral)' : item.met ? ' (met)' : ' (missing)'}</span>
+                      </li>
+                    );
+                  })}
+                  {mustOverflow > 0 && <li className="hh-must-overflow"><button type="button" className="hh-criteria-overflow" aria-expanded={showAllMustHaves} onClick={() => setShowAllMustHaves((value) => !value)}>{showAllMustHaves ? 'Show fewer' : `+ ${mustOverflow} more Must Have${mustOverflow === 1 ? '' : 's'}`}</button></li>}
+                </ul>
+              )}
+              {criteriaSummary?.total > 0 && (
+                <div className="hh-match-summary-line">
+                  <CriteriaDisclosure symbol="✓" tone="positive" heading="Matches" items={criteriaSummary.matches} label={`${criteriaSummary.matches.length} match`} />
+                  <span className="hh-match-summary-sep" aria-hidden="true">·</span>
+                  <CriteriaDisclosure symbol="✕" tone="negative" heading="Doesn’t match" items={criteriaSummary.mismatches} label={`${criteriaSummary.mismatches.length} don’t match`} />
+                  <span className="hh-match-summary-sep" aria-hidden="true">·</span>
+                  <CriteriaDisclosure symbol="?" tone="unknown" heading="Still unknown" items={criteriaSummary.unknown} label={`${criteriaSummary.unknown.length} unknown`} />
+                </div>
+              )}
+            </section>
           ) : (
-            <div style={{ fontSize: 11.5, color: 'var(--ink-soft)' }}>Set your priorities in <em>My Search</em> to see a match score.</div>
+            <p className="hh-match-empty">Set your priorities in <em>My Search</em> to see a match score.</p>
           )}
 
-          {hasCardContext && (
-          <MobileDisclosure>
           {propertyFacts.length > 0 && (
-            <div className="hh-property-facts">
+            <dl className="hh-property-facts">
               {propertyFacts.map(({ label, value }) => (
                 <div className="hh-property-fact" key={label}>
-                  <strong>{label}</strong>
-                  <span>{value}</span>
+                  <dt>{label}</dt>
+                  <dd>{value}</dd>
                 </div>
               ))}
-            </div>
+            </dl>
           )}
 
-          {commuteDestinations.length > 0 && (() => {
-            // Every saved place, in the participant's stored order — never only the
-            // first. A pending or failed route keeps its row with an honest status.
-            const shown = commuteDestinations;
-            return (
+          {commuteDestinations.length > 0 && (
+            <>
+              <hr className="hh-card-divider" />
+              {/* Every saved place, in the participant's stored order — never only the
+                  first. A pending or failed route keeps its row with an honest status. */}
               <div className="hh-card-commute">
-                <div className="hh-card-commute-label">Commute</div>
-                {shown.map((d) => {
-                  const state = getCommuteState(d);
-                  const name = d.label;
-                  const text = state.status === 'ok' ? `${name}: ${state.minutes} min`
-                    : state.status === 'loading' ? `${name} · Calculating…`
-                    : state.status === 'destination_invalid' ? `${name} · Check the address`
-                    : state.status === 'destination_ambiguous' ? `${name} · Add a city or ZIP`
-                    : ['unavailable', 'no_route', 'home_unavailable', 'destination_unavailable'].includes(state.status) ? `${name} · Not available`
-                    : name;
-                  return <div className="hh-card-commute-route" key={d.id}>{text}</div>;
-                })}
+                <div className="hh-card-commute-label"><Car size={13} aria-hidden="true" /> Commute</div>
+                <ul className="hh-card-commute-routes">
+                  {commuteDestinations.map((d) => {
+                    const { name, value, quiet } = commuteRouteParts(d, getCommuteState(d));
+                    return (
+                      <li className="hh-card-commute-route" key={d.id}>
+                        <span>{name}</span>{value && <> <strong className={quiet ? 'is-quiet' : undefined}>{value}</strong></>}
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
-            );
-          })()}
-
-          {noteCount > 0 && <Link className="hh-notes-indicator" href={`/homes/${encodeURIComponent(home.id)}`}><StickyNote size={13} /> Notes ({noteCount})</Link>}
-          </MobileDisclosure>
+            </>
           )}
+
+          {noteCount > 0 && <Link className="hh-notes-indicator" href={homeHref}><StickyNote size={13} aria-hidden="true" /> Notes ({noteCount})</Link>}
+
           {mode === 'tour' && wantToTourState?.wantToTourLabel && (
             <div className="hh-lifecycle-status">
-              <Footprints size={12} color="var(--moss)" /> {wantToTourState.wantToTourLabel}
+              <Footprints size={12} color="var(--moss)" aria-hidden="true" /> {wantToTourState.wantToTourLabel}
             </div>
           )}
 
-          {!toured && home.status === 'Want to Tour' && mode === 'homes' && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, color: 'var(--ink-soft)' }}>
-              <Check size={14} color="var(--moss)" /> Want to tour
-            </div>
-          )}
-          {!toured && home.status === 'Want to Tour' && mode !== 'homes' && (
-            <button type="button" className="hh-btn" style={{ fontSize: 12.5, padding: '7px 12px', justifyContent: 'center' }} onClick={() => onOpenPostTour(home)}>
-              <MessageCircle size={13} /> I toured this home
+          {onTourList && mode !== 'homes' && (
+            <button type="button" className="hh-btn hh-card-tour-action" onClick={() => onOpenPostTour(home)}>
+              <MessageCircle size={13} aria-hidden="true" /> I toured this home
             </button>
           )}
           {toured && (
-            <button
-              type="button"
-              className="hh-btn hh-btn-ghost"
-              style={{ fontSize: 12.5, padding: '7px 12px', justifyContent: 'center', borderColor: 'rgba(193,89,47,0.4)', color: 'var(--brick)' }}
-              onClick={() => onOpenPostTour(home)}
-            >
-              <MessageCircle size={13} /> Edit my thoughts
+            <button type="button" className="hh-btn hh-btn-ghost hh-card-tour-action is-quiet" onClick={() => onOpenPostTour(home)}>
+              <MessageCircle size={13} aria-hidden="true" /> Edit my thoughts
             </button>
           )}
 
-          <div className="hh-home-card-actions" style={{ display: 'flex', flexWrap: 'nowrap', alignItems: 'center', gap: 6, marginTop: 4, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
-            {home.listingUrl && (
-              <a href={home.listingUrl} target="_blank" rel="noreferrer" className="hh-btn hh-btn-ghost hh-tooltip" data-tooltip="View original listing" aria-label="View original listing">
-                <ExternalLink size={13} />
-              </a>
-            )}
-            {mode !== 'archive' && (
-              <button className="hh-btn hh-btn-ghost hh-tooltip" onClick={() => onArchiveRequest(home)} data-tooltip="Archive home" aria-label="Archive home">
-                <ArchiveIcon size={13} />
-              </button>
-            )}
-            {mode === 'tour' && !toured && home.status === 'Want to Tour' && (
-              <button
-                type="button"
-                className="hh-btn hh-btn-quiet-action"
-                onClick={() => onRemoveFromTour(home)}
-                title="Remove from Want to Tour"
-                aria-label="Remove from Want to Tour"
-              >
-                <Undo2 size={13} /> Remove mine
-              </button>
-            )}
-            <div style={{ flex: 1 }} />
+          <div className="hh-home-card-actions">
+            <div className="hh-card-secondary-actions">
+              {home.listingUrl && (
+                <a href={home.listingUrl} target="_blank" rel="noreferrer" className="hh-card-text-action" aria-label="Listing (opens the original listing in a new tab)">
+                  Listing <ArrowUpRight size={12} aria-hidden="true" />
+                </a>
+              )}
+              {mode !== 'archive' && (
+                <button type="button" className="hh-card-text-action" onClick={() => onArchiveRequest(home)}>Archive</button>
+              )}
+              <button type="button" className="hh-card-text-action" onClick={() => onEdit(home)}>Edit</button>
+              {mode === 'tour' && onTourList && (
+                <button type="button" className="hh-card-text-action" onClick={() => onRemoveFromTour(home)} aria-label="Remove from Want to Tour">Remove mine</button>
+              )}
+              {mode === 'archive' && (
+                <button type="button" className="hh-card-text-action is-danger" onClick={() => onRequestDelete(home)}>Delete permanently</button>
+              )}
+            </div>
 
             {isPreTour && mode !== 'archive' && (
-              <button
-                type="button"
-                className="hh-btn"
-                style={{ fontSize: 11.5, padding: '6px 10px', flexShrink: 0 }}
-                onClick={() => onWantToTour(home)}
-              >
-                <Footprints size={12} /> Want to tour
+              <button type="button" className="hh-btn hh-card-primary-action" aria-pressed="false" onClick={() => onWantToTour(home)}>
+                Want to Tour
               </button>
             )}
-            {!toured && home.status === 'Want to Tour' && mode === 'homes' && (
-              <button type="button" className="hh-btn hh-card-primary-action is-selected" aria-pressed="true" onClick={() => onRemoveFromTour(home)}>
-                <Check size={13} /> Want to Tour
+            {onTourList && mode === 'homes' && (
+              <button type="button" className="hh-btn hh-card-primary-action is-selected" aria-pressed="true" aria-label="Want to Tour, on your tour list. Remove from Want to Tour" onClick={() => onRemoveFromTour(home)}>
+                <Check size={13} strokeWidth={2.6} aria-hidden="true" /> Want to Tour
               </button>
             )}
-
             {mode === 'archive' && (
-              <button className="hh-btn hh-card-primary-action" onClick={() => onRestore(home)}><Undo2 size={13} /> Restore</button>
-            )}
-            <button className="hh-btn hh-card-secondary-action hh-tooltip" data-tooltip="Edit home" aria-label="Edit home" onClick={() => onEdit(home)}><Pencil size={13} /></button>
-            {mode === 'archive' && (
-              <button type="button" className="hh-card-text-action" onClick={() => onRequestDelete(home)}>Delete permanently</button>
+              <button type="button" className="hh-btn hh-card-primary-action" onClick={() => onRestore(home)}><Undo2 size={13} aria-hidden="true" /> Restore</button>
             )}
           </div>
         </div>
@@ -350,13 +298,13 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onArchi
   );
 }
 
-function CardGrid({ homes, priorities, commuteDestinations, mode, onEdit, onArchiveRequest, onToggleFavorite, onWantToTour, onOpenPostTour, onRemoveFromTour, onRestore, onRequestDelete }) {
+function CardGrid({ homes, priorities, commuteDestinations, mode, onEdit, onArchiveRequest, onWantToTour, onOpenPostTour, onRemoveFromTour, onRestore, onRequestDelete }) {
   return (
     <div className="hh-homes-grid">
       {homes.map((h) => (
         <HomeCard
           key={h.id} home={h} priorities={priorities} commuteDestinations={commuteDestinations} mode={mode} onEdit={onEdit} onArchiveRequest={onArchiveRequest}
-          onToggleFavorite={onToggleFavorite} onWantToTour={onWantToTour} onOpenPostTour={onOpenPostTour} onRemoveFromTour={onRemoveFromTour}
+          onWantToTour={onWantToTour} onOpenPostTour={onOpenPostTour} onRemoveFromTour={onRemoveFromTour}
           onRestore={onRestore} onRequestDelete={onRequestDelete}
         />
       ))}
@@ -377,7 +325,7 @@ function EmptyLifecycleState({ icon: Icon, title, body, children }) {
 
 /* ---------------------------------- board ---------------------------------- */
 
-export default function HomesBoard({ mode, userId, searchId, initialHomes, initialPriorities, initialCommuteDestinations = [], sharedFactAwareness, isCollaborative = false, collaboratorName = null }) {
+export default function HomesBoard({ mode, userId, searchId, initialHomes, initialPriorities, initialCommuteDestinations = [], sharedFactAwareness, isCollaborative = false, collaborationSlot = null }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [homes, setHomes] = useState(initialHomes);
@@ -388,7 +336,6 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   const [query, setQuery] = useState('');
   // Filters combine (AND). Each one keeps its existing meaning; see homesCollection.
   const [filters, setFilters] = useState(EMPTY_FILTERS);
-  const [filterSheetOpen, setFilterSheetOpen] = useState(false);
   const [sortBy, setSortBy] = useState('newest');
   const [modalHome, setModalHome] = useState(null);
   // Carries the "this particular modal open should auto-run Find" intent
@@ -563,11 +510,6 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     return saved;
   }, [modalHome, saveHome, router]);
 
-  const toggleFavorite = useCallback((home) => {
-    const next = toggleFavoriteState(home);
-    saveHome(next, { shared: false, optimistic: true }).catch(() => {});
-  }, [saveHome]);
-
   // "This one is worth seeing." One tap, no modal, no confirmation — reuses the
   // existing status field, just moving it to a value it already supports.
   const wantToTour = useCallback((home) => {
@@ -660,7 +602,6 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   }, [baseList, query, mode, filters, sortBy, evaluate]);
 
   const filterCounts = useMemo(() => singleFilterCounts(activeHomes, evaluate), [activeHomes, evaluate]);
-  const countFor = useCallback((draft) => applyContenderFilters(activeHomes, draft, evaluate, query).length, [activeHomes, evaluate, query]);
   const activeLabels = activeFilterLabels(filters);
   const toggleChip = (key) => setFilters((current) => {
     if (key === 'all') return { ...EMPTY_FILTERS };
@@ -692,73 +633,58 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     );
   }
 
+  const chips = [
+    { key: 'all', label: 'All' },
+    { key: 'match90', label: '90%+ Matches' },
+    { key: 'noMustMissing', label: 'No Must-Haves Missing' },
+    { key: 'wantToTour', label: 'Want to Tour' },
+  ];
+
   return (
     <>
       {mode === 'homes' && (
-        <div className="hh-homes-primary-action">
-          {isCollaborative && <span className="flh-mobile-only-inline"><ParticipantStack collaboratorName={collaboratorName} /></span>}
-          <button className="hh-btn" onClick={() => openHomeModal(emptyHome())} aria-label={`Add ${vocabulary.singularLower}`}><Plus size={15} aria-hidden="true" /> <span className="hh-add-home-label">Add Home Listing</span></button>
-        </div>
+        <section className="hh-homes-toolbar" aria-label={`Search, sort and filter ${vocabulary.pluralLower}`}>
+          <div className="hh-homes-toolbar-row">
+            <label className="hh-homes-search">
+              <Search size={16} aria-hidden="true" />
+              <span className="sr-only">Search your {vocabulary.pluralLower}</span>
+              <input type="search" placeholder="Search address, city, or feature..." value={query} onChange={(e) => setQuery(e.target.value)} />
+            </label>
+            <label className="hh-homes-sort">
+              <span className="hh-homes-sort-prefix">Sort By:</span>
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label={`Sort ${vocabulary.pluralLower}`}>
+                {SORT_MENU.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
+              </select>
+              <ChevronDown size={15} aria-hidden="true" />
+            </label>
+            <button type="button" className="hh-btn hh-homes-add" onClick={() => openHomeModal(emptyHome())}>
+              <span aria-hidden="true">+</span> Add a {vocabulary.singular}
+            </button>
+          </div>
+          <div className="hh-homes-toolbar-row is-secondary">
+            <div className="hh-filter-chips" role="group" aria-label={`Filter ${vocabulary.pluralLower}`}>
+              {chips.map((f) => (
+                <button
+                  key={f.key}
+                  type="button"
+                  className={`hh-chip ${chipOn(f.key) ? 'on' : ''}`}
+                  aria-pressed={chipOn(f.key)}
+                  onClick={() => toggleChip(f.key)}
+                >
+                  {f.label} ({filterCounts[f.key]})
+                </button>
+              ))}
+            </div>
+            {collaborationSlot && <div className="hh-homes-collaboration">{collaborationSlot}</div>}
+          </div>
+        </section>
       )}
 
       {saveError && <div className="hh-save-error" role="alert">{saveError}{retrySave && <> <button type="button" onClick={() => retrySave().catch(() => {})}>Retry</button></>}</div>}
 
-      {mode === 'homes' && (
-        <section className="flh-homes-controls" aria-label={`Search and filter ${vocabulary.pluralLower}`}>
-          <label className="flh-search-field">
-            <Search size={16} aria-hidden="true" />
-            <span className="sr-only">Search your {vocabulary.pluralLower}</span>
-            <input type="search" placeholder="Search address or neighborhood" value={query} onChange={(e) => setQuery(e.target.value)} />
-          </label>
-          <div className="flh-control-row">
-            <button type="button" className="flh-control-pill is-strong" onClick={() => setFilterSheetOpen(true)} aria-label={`Sort: ${sortLabel(sortBy)}. Change sort`}><ArrowUpDown size={14} aria-hidden="true" /> {sortLabel(sortBy, { short: true })}</button>
-            <button type="button" className={`flh-control-pill ${activeLabels.length ? 'is-active' : ''}`} onClick={() => setFilterSheetOpen(true)} aria-label={activeLabels.length ? `Filters, ${activeLabels.length} active` : 'Filters'}><SlidersHorizontal size={14} aria-hidden="true" /> Filters{activeLabels.length > 0 && <span className="flh-control-badge">{activeLabels.length}</span>}</button>
-            <Link href="/map" className="flh-control-pill"><MapIcon size={14} aria-hidden="true" /> Map</Link>
-          </div>
-        </section>
-      )}
-
-      {mode === 'homes' && (
-        <section className="hh-homes-toolbar" aria-label={`Search and filter ${vocabulary.pluralLower}`}>
-        <div className="hh-homes-toolbar-row">
-          <div className="hh-homes-search">
-            <Search size={14} style={{ position: 'absolute', left: 10, top: 10, color: 'var(--ink-soft)' }} />
-            <input className="hh-input" style={{ paddingLeft: 30 }} placeholder="Search address, city, or feature..." value={query} onChange={(e) => setQuery(e.target.value)} />
-          </div>
-          <select className="hh-input hh-homes-sort" value={sortBy} onChange={(e) => setSortBy(e.target.value)} aria-label={`Sort ${vocabulary.pluralLower}`}>
-            <option value="newest">Date added — newest</option>
-            <option value="oldest">Date added — oldest</option>
-            <option value="matchDesc">Match score — highest</option>
-            <option value="matchAsc">Match score — lowest</option>
-            <option value="priceAsc">Price — low to high</option>
-            <option value="priceDesc">Price — high to low</option>
-          </select>
-        </div>
-        <div className="hh-filter-chips" aria-label="Filter homes">
-          {[
-            { key: 'all', label: 'All' },
-            { key: 'match90', label: '90%+ Matches' },
-            { key: 'noMustMissing', label: 'No Must-Haves Missing' },
-            { key: 'wantToTour', label: 'Want to Tour' },
-            { key: 'favorites', label: 'Favorites' },
-          ].map((f) => (
-            <button
-              key={f.key}
-              type="button"
-              className={`hh-chip ${chipOn(f.key) ? 'on' : ''}`}
-              aria-pressed={chipOn(f.key)}
-              onClick={() => toggleChip(f.key)}
-            >
-              {f.label} ({filterCounts[f.key]})
-            </button>
-          ))}
-        </div>
-        </section>
-      )}
-
       {filtered.length === 0 ? (
         mode === 'favorites' ? (
-          <EmptyLifecycleState icon={Heart} title="No favorites yet." body="Tap the heart on any home you want to keep close.">
+          <EmptyLifecycleState icon={Heart} title="No favorites yet." body={`Favorite a ${vocabulary.singularLower} from its details page to keep it close.`}>
             <Link href="/homes" className="hh-btn hh-btn-ghost">Go to My Homes</Link>
           </EmptyLifecycleState>
         ) : mode === 'tour' ? (
@@ -766,42 +692,18 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
             <Link href="/homes" className="hh-btn hh-btn-ghost">Go to My Homes</Link>
           </EmptyLifecycleState>
         ) : (
-          <div className="hh-corner" style={{ border: '1px dashed var(--line)', borderRadius: 16, padding: '48px 24px', textAlign: 'center', color: 'var(--ink-soft)' }}>
-            <p className="hh-serif" style={{ fontSize: 17, color: 'var(--ink)', marginBottom: 6 }}>{activeHomes.length === 0 ? vocabulary.apartment ? "No properties yet" : "You found the homes. We'll help you choose." : 'Nothing matches that search'}</p>
-            <p style={{ fontSize: 13, marginBottom: 18 }}>{activeHomes.length === 0 ? 'Paste a listing link from anywhere to get started.' : 'Try a different search or filter.'}</p>
+          <div className="hh-homes-empty">
+            <p className="hh-homes-empty-title">{activeHomes.length === 0 ? vocabulary.apartment ? "No properties yet" : "You found the homes. We'll help you choose." : 'Nothing matches that search'}</p>
+            <p>{activeHomes.length === 0 ? 'Paste a listing link from anywhere to get started.' : 'Try a different search or filter.'}</p>
             {activeHomes.length > 0 && activeLabels.length > 0 && <button type="button" className="hh-btn hh-btn-ghost" onClick={() => setFilters({ ...EMPTY_FILTERS })}>Clear filters</button>}
-            {activeHomes.length === 0 && <button className="hh-btn" onClick={() => openHomeModal(emptyHome())}><Plus size={15} /> Add {vocabulary.singularLower}</button>}
+            {activeHomes.length === 0 && <button type="button" className="hh-btn" onClick={() => openHomeModal(emptyHome())}><Plus size={15} aria-hidden="true" /> Add a {vocabulary.singular}</button>}
           </div>
         )
       ) : (
         <CardGrid
           homes={filtered} priorities={priorities} commuteDestinations={initialCommuteDestinations} mode={mode} onEdit={openHomeModal} onArchiveRequest={setArchiveTarget}
-          onToggleFavorite={toggleFavorite} onWantToTour={wantToTour} onOpenPostTour={setPostTourTarget} onRemoveFromTour={removeFromTour}
+          onWantToTour={wantToTour} onOpenPostTour={setPostTourTarget} onRemoveFromTour={removeFromTour}
           onRestore={restoreHome} onRequestDelete={setDeleteTarget}
-        />
-      )}
-
-      {mode === 'homes' && activeLabels.length > 0 && (
-        <button type="button" className="flh-card flh-card-warm is-interactive flh-active-filters" onClick={() => setFilterSheetOpen(true)}>
-          <IconBadge icon={SlidersHorizontal} />
-          <span className="flh-card-heading">
-            <span className="flh-card-title flh-card-title-small">Active filters · {filtered.length} of {activeHomes.length}</span>
-            <span className="flh-card-sub">{activeLabels.join(' · ')}</span>
-          </span>
-          <Chevron />
-        </button>
-      )}
-
-      {mode === 'homes' && (
-        <HomesFilterSheet
-          open={filterSheetOpen}
-          onClose={() => setFilterSheetOpen(false)}
-          filters={filters}
-          sortBy={sortBy}
-          onApply={({ filters: next, sortBy: nextSort }) => { setFilters(normalizeFilters(next)); setSortBy(nextSort); setFilterSheetOpen(false); }}
-          countFor={countFor}
-          counts={filterCounts}
-          vocabulary={vocabulary}
         />
       )}
 
