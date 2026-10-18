@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { register } from 'node:module';
 import { createTestDatabase, DB_TESTS_ENABLED, DB_SKIP_REASON, POST_SNAPSHOT_MIGRATIONS } from './support/supabaseDb.mjs';
-import { lotSizeAcres, withAcresUnit } from '../src/lib/lotSize.js';
+import { isUnitlessLotSize, lotSizeAcres, typedLotSizeAcres, withAcresUnit } from '../src/lib/lotSize.js';
 import { computeMatch, mustHaveStatus } from '../src/lib/matching.js';
 import { normalizePriorities } from '../src/lib/constants.js';
 import { normalizeLotSizeInput } from '../src/lib/homeFacts.js';
@@ -50,8 +50,16 @@ test('lotSizeAcres reads every stored shape with its unit', () => {
   assert.equal(lotSizeAcres('  3 ACRES '), 3);
   close(lotSizeAcres('2 ha'), 4.9421076294);
   close(lotSizeAcres('2023.4 sq m'), 2023.4 / 4046.8564224);
-  // A bare number is acres, the field's labeled unit (unchanged).
-  assert.equal(lotSizeAcres('0.25'), 0.25);
+  // A SAVED bare number has no recorded unit: Unknown, never guessed at.
+  // A bare number a person types into a field labeled in acres is acres.
+  for (const bare of ['0.25', '8712', '1,250']) {
+    assert.equal(lotSizeAcres(bare), null, bare);
+    assert.equal(isUnitlessLotSize(bare), true, bare);
+  }
+  assert.equal(typedLotSizeAcres('0.25'), 0.25);
+  assert.equal(typedLotSizeAcres('1,250'), 1250);
+  assert.equal(isUnitlessLotSize('0'), false, 'zero is not a measurement');
+  assert.equal(isUnitlessLotSize('0.25 acres'), false);
   // Unknown: blank, zero, fractions, decimal commas, malformed or unit-less words.
   for (const raw of ['', '   ', null, undefined, '0', '0 sq ft', '0.0 acres', '1/4 acre', '0,25 acres', '1.25.', 'irregular', 'Unknown', '-1 acre', '2 lots', '0.25 acres approx']) {
     assert.equal(lotSizeAcres(raw), null, JSON.stringify(raw));
@@ -70,23 +78,32 @@ test('Home Facts normalization reads the same grammar Match does', () => {
   }
 });
 
-test('bare numbers are acres on every surface: typed values are saved with the unit, saved values are never rewritten', () => {
-  // Typed into a field labeled in acres (Add Home / Edit home / Realtor suggestion).
+test('bare numbers: typed into a field labeled in acres they are acres; saved without a unit they are Unknown and shown as such', () => {
+  // Typed (Add Home / Edit home / Realtor suggestion, Home Facts): saved with the unit.
   assert.equal(withAcresUnit('0.25'), '0.25 acres');
   assert.equal(withAcresUnit('1'), '1 acre');
   assert.equal(withAcresUnit('1,250'), '1,250 acres');
   for (const kept of ['8850 sq ft', '0.25 acres', '2 ha', '0', '1/4 acre', 'irregular', '', null]) assert.equal(withAcresUnit(kept), kept);
+  assert.equal(normalizeLotSizeInput('8712'), '8712 acres', 'retyping a saved bare number confirms it as acres');
   const modal = readFileSync(new URL('../src/components/HomeModal.jsx', import.meta.url), 'utf8');
   assert.match(modal, /form\.lotSize === \(initial\?\.lotSize \?\? ''\) \? form\.lotSize : withAcresUnit\(form\.lotSize\)/, 'an unchanged saved value is passed through untouched');
   assert.equal((modal.match(/label="Lot size \(acres\)"/g) || []).length, 2);
-  // Display reads a saved bare number the way Match does (it used to show sq ft:
-  // a saved '0.5' read as '0 sq ft' while Match scored 0.5 acres).
-  assert.equal(formatLotSizeDisplay('0.5'), '0.50 acres');
-  assert.equal(formatLotSizeDisplay('0.5'), `${lotSizeAcres('0.5').toFixed(2)} acres`);
-  assert.equal(formatLotSizeDisplay('8712'), '8712.00 acres', 'an implausible saved bare value is shown as scored, not silently converted');
-  // Unknown to Match is shown exactly as saved, never guessed at.
+  const facts = readFileSync(new URL('../src/components/HomeFacts.jsx', import.meta.url), 'utf8');
+  assert.match(facts, /edit=\{\(value\) => \(isUnitlessLotSize\(value\) \? String\(value\)\.trim\(\) : formatLotSizeDisplay\(value\)\)\}/, 'editing opens on the saved number, not the note');
+  // Saved: display and Match agree — no unit is invented on either side. Before,
+  // a saved '0.5' was scored as 0.5 acres but shown as "0 sq ft" / "1 sq ft",
+  // and '8712' was scored as 8,712 acres but shown as "0.20 acres".
+  for (const bare of ['0.5', '8712', '1,250']) {
+    assert.equal(formatLotSizeDisplay(bare), `${bare} (unit not recorded)`);
+    const match = computeMatch({ price: '450000', lotSize: bare }, lotBuyer('0.5', 'must'));
+    assert.equal(lotOf(match).evaluated, false);
+    assert.deepEqual([mustHaveStatus(match).missed, mustHaveStatus(match).unknown], [0, 1]);
+  }
+  // Other values Match treats as Unknown are shown exactly as saved.
   for (const verbatim of ['0', '1/4 acre', 'irregular', '0,25 acres', '300 sq ft']) assert.equal(formatLotSizeDisplay(verbatim), verbatim);
   assert.equal(formatLotSizeDisplay('2 ha'), '4.94 acres');
+  // Every display shows what Match scores.
+  for (const lot of ['8850 sq ft', '0.20 acres', '1 acre', '43560 sq ft', '2 ha']) assert.equal(formatLotSizeDisplay(lot), `${lotSizeAcres(lot).toFixed(2)} acres`);
 });
 
 test('the RentCast import shape scores as acres: 8,850 sq ft misses a 0.5 acre Must-Have', () => {
@@ -294,7 +311,56 @@ dbTest('preflight robustness: every stored shape, owner and co-buyer documents, 
     assert.match(info('Compare state transitions'), /must: Compare error -> missed ×1/);
     assert.match(info('Compare state transitions'), /must: met -> missed ×/);
     assert.equal(info('bare numbers'), '1 / 1');
+    // Saved bare numbers stop being read as acres: '0.5' (met 0.5) and '8712' (met) become Unknown.
+    assert.match(info('Compare state transitions'), /must: met -> unknown ×4/);
+    assert.match(info('changes by stored shape'), /bare number: 2/);
   } finally {
     legacy.drop();
+  }
+});
+
+const migrationSql = readFileSync(new URL(`../${MIGRATION}`, import.meta.url), 'utf8');
+const preflightSql = readFileSync(new URL('../supabase/lot-size-match-preflight.sql', import.meta.url), 'utf8');
+const unitCase = (sql) => sql.match(/nullif\(case\n([\s\S]*?)\n\s*end, 0\)/)[1].split('\n').map((line) => line.trim()).join('\n');
+
+test('the preflight reads lot size with exactly the migration’s expression', () => {
+  assert.equal(unitCase(preflightSql), unitCase(migrationSql));
+  const pattern = (sql) => sql.match(/'(\^\(\[0-9\]\{1,3\}[^']+)'\)/)[1];
+  assert.equal(pattern(preflightSql), pattern(migrationSql));
+  assert.doesNotMatch(unitCase(migrationSql), /unit = ''/, 'a bare number has no recorded unit in SQL either');
+});
+
+dbTest('the SQL lot-size expression returns what lotSizeAcres returns for every stored shape', () => {
+  const shapes = [...STORED_SHAPES, '8712', '1,250', '0 irregular', '10,890 Square Feet', '  3 ACRES ', '2023.4 sq m', '.75 ac', '43,560 sqft', '1.25.', '1,234.5 acres'];
+  const expression = migrationSql.match(/\('lotSizeTarget', \(([\s\S]*?)\n {6}\)\),/)[1].replace(/v_home\.lot_size/g, 'v.raw');
+  const values = shapes.map((shape) => `(${shape === null ? 'null' : `'${shape.replace(/'/g, "''")}'`})`).join(', ');
+  const rows = db.admin(`select v.raw, (${expression})::float8 as acres from (values ${values}) v(raw)`);
+  for (const { raw, acres } of rows) {
+    const js = lotSizeAcres(raw);
+    if (js === null) assert.equal(acres, null, JSON.stringify(raw));
+    else assert.ok(Math.abs(acres - js) < 1e-12, `${JSON.stringify(raw)}: SQL ${acres} vs JS ${js}`);
+  }
+});
+
+dbTest('the bare-value review query is read-only and returns no identifiers', () => {
+  const review = readFileSync(new URL('../supabase/lot-size-bare-values-review.sql', import.meta.url), 'utf8').replace(/;\s*$/, '');
+  const fresh = createTestDatabase();
+  try {
+    const owner = fresh.createUser({ email: 'owner.lot.review@example.com', firstName: 'Ciara', lastName: 'M' });
+    const search = fresh.admin(`select id from public.searches where user_id = '${owner}'`)[0].id;
+    fresh.exec(`update public.searches set priorities = priorities || '{"lotSizeTarget": {"value": "0.5", "tier": "nice"}}'::jsonb where id = '${search}'`);
+    for (const [lot, sqft] of [['0.3', '1600'], ['8712', '1800'], ['1800', '1800'], ['8850 sq ft', '1700']]) {
+      fresh.exec(`insert into public.homes (user_id, search_id, address, sqft, lot_size) values ('${owner}', '${search}', '1 Private Rd, Detroit, MI', '${sqft}', '${lot}')`);
+    }
+    const before = fresh.admin('select json_agg(h order by h.id) as homes from public.homes h')[0];
+    const rows = fresh.admin(review);
+    assert.deepEqual(fresh.admin('select json_agg(h order by h.id) as homes from public.homes h')[0], before, 'writes nothing');
+    assert.deepEqual(rows.map((row) => row.saved_value), ['0.3', '1800', '8712'], 'only bare numbers, ordered by value');
+    assert.deepEqual(Object.keys(rows[0]).sort(), ['as_acres', 'as_sq_ft_in_acres', 'equals_home_sqft', 'home_sqft', 'listing_says', 'lot_targets', 'property_type', 'saved_month', 'saved_value']);
+    assert.ok(!JSON.stringify(rows).includes('Private Rd') && !JSON.stringify(rows).includes(owner) && !JSON.stringify(rows).includes(search));
+    assert.equal(rows[1].equals_home_sqft, true);
+    assert.equal(rows[2].lot_targets, 'nice: met as acres, missed as sq ft');
+  } finally {
+    fresh.drop();
   }
 });

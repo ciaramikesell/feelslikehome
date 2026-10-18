@@ -6,15 +6,16 @@
 -- Must-Have as if it were 8,850 acres. computeMatch now reads the stored unit
 -- (src/lib/lotSize.js lotSizeAcres); this applies the same grammar here so a
 -- co-buyer's Match in Compare agrees with the Match they see themselves:
---   acres / ac / bare number -> acres; sq ft -> / 43,560; sq m; hectares;
+--   acres / ac -> acres; sq ft -> / 43,560; sq m; hectares;
 --   thousands commas ('8,850 sq ft') are allowed;
+--   a bare number has no recorded unit (acres or square feet?) -> NULL;
 --   anything else (a fraction, a decimal comma, other words, zero) -> NULL,
 --   i.e. Unknown, which is never counted. Previously a value such as
 --   '0.25 ac.' failed the numeric cast and errored the whole projection.
 --
 -- Effect on existing data: no home, preference or answer row is rewritten.
 -- Only the lot-size criterion's reading changes, and only for values that
--- carry a non-acre unit or do not parse (supabase/lot-size-match-preflight.sql
+-- carry a non-acre unit, have no unit, or do not parse (supabase/lot-size-match-preflight.sql
 -- counts them). Weights (4 / 2 / 1), partial credit and every other criterion
 -- are unchanged.
 --
@@ -114,11 +115,12 @@ begin
       ('budget', nullif(regexp_replace(v_home.price, '[^0-9.]', '', 'g'), '')::numeric),
       ('sqftTarget', nullif(regexp_replace(v_home.sqft, '[^0-9.]', '', 'g'), '')::numeric),
       -- Lot size is read with its stored unit (src/lib/lotSize.js lotSizeAcres):
-      -- '8850 sq ft' is 0.203 acres, not 8,850. Unrecognized text, a fraction,
-      -- a decimal comma or zero is NULL (Unknown), never a numeric-cast error.
+      -- '8850 sq ft' is 0.203 acres, not 8,850. A bare number (no recorded
+      -- unit), unrecognized text, a fraction, a decimal comma or zero is NULL
+      -- (Unknown), never a guess and never a numeric-cast error.
       ('lotSizeTarget', (
         select nullif(case
-            when lot.unit = '' or lot.unit ~* '^(acres?|ac)\.?$' then lot.amount
+            when lot.unit ~* '^(acres?|ac)\.?$' then lot.amount
             when lot.unit ~* '^(sq\.?\s*ft\.?|sqft|sf|ft2|ft²|square\s*f(ee|oo)t)$' then lot.amount / 43560
             when lot.unit ~* '^(sq\.?\s*m\.?|sqm|m2|m²|square\s*met(er|re)s?)$' then lot.amount / 4046.8564224
             when lot.unit ~* '^(hectares?|ha)$' then lot.amount * 2.4710538147

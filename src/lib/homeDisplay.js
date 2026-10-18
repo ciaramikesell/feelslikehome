@@ -5,7 +5,7 @@
 // src/lib/rentcast.js, which is untouched by this file).
 
 import { normalizeSearchIntent, PROPERTY_TYPE_LABELS } from './searchIntent.js';
-import { lotSizeAcres } from './lotSize.js';
+import { isUnitlessLotSize, lotSizeAcres } from './lotSize.js';
 
 function withCommas(numStr) {
   const n = Number(numStr);
@@ -74,14 +74,15 @@ export function digitsOnly(v) {
 // Normalizes a stored lot-size string for DISPLAY ONLY — never rewrites the
 // underlying value. It reads the value exactly as Match does (lotSizeAcres):
 //   - a recognized unit (acres, sq ft, sq m, hectares) -> acres, 2 decimals
-//   - a bare number -> acres, the unit the field is labeled in (Match reads it
-//     the same way; it used to be shown as square feet here)
-//   - anything Match treats as Unknown (a fraction, words, zero) -> returned
-//     verbatim rather than guessed at
+//   - a saved bare number has no recorded unit; Match treats it as Unknown,
+//     so it is shown as saved with "(unit not recorded)", never converted
+//   - anything else Match treats as Unknown (a fraction, words, zero) ->
+//     returned verbatim rather than guessed at
 // Under 0.01 acres ("0.00 acres" isn't meaningful) the saved value is shown.
 export function formatLotSizeDisplay(raw) {
   const str = String(raw ?? '').trim();
   if (!str) return '';
+  if (isUnitlessLotSize(str)) return `${str} (unit not recorded)`;
   const acres = lotSizeAcres(str);
   if (acres === null || acres < 0.01) return str;
   return `${acres.toFixed(2)} acres`;

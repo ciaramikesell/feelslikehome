@@ -15,7 +15,7 @@
 
 import { LAYOUT_DISPLAY_LABELS, CONDITION_DISPLAY_LABELS, showsMultiselectCategory, showsHomeLayout } from './constants.js';
 import { parseNum } from './matching.js';
-import { lotSizeAcres } from './lotSize.js';
+import { typedLotSizeAcres } from './lotSize.js';
 import { searchIntentCapabilities, PROPERTY_TYPE_LABELS } from './searchIntent.js';
 import { formatCurrencyDisplay, formatHomePrice, formatLotSizeDisplay, formatTriState, formatDateOnly, digitsOnly } from './homeDisplay.js';
 import { fieldProvenance, hasImportSnapshot } from './homeProvenance.js';
@@ -64,14 +64,14 @@ export function listingFactValue(snapshot, key) {
 
 // Normalizes a lot size a person typed to acres, the unit Match's lot-size
 // target uses. A bare number means acres (the field is labeled in acres);
-// "sq ft", "sq m" and "hectares" are converted (lotSizeAcres, the same reading
-// Match uses). Anything else is kept exactly as typed rather than guessed at.
+// "sq ft", "sq m" and "hectares" are converted (typedLotSizeAcres, the same
+// units Match reads). Anything else is kept exactly as typed rather than guessed at.
 // Only a person's edit is normalized: stored values are never rewritten
 // (formatLotSizeDisplay only changes how they read).
 export function normalizeLotSizeInput(raw) {
   const text = String(raw ?? '').trim();
   if (!text) return '';
-  const acres = lotSizeAcres(text);
+  const acres = typedLotSizeAcres(text);
   if (acres === null) return text;
   const rounded = acres >= 0.01 ? Number(acres.toFixed(2)) : Number(acres.toFixed(4));
   return `${rounded} ${rounded === 1 ? 'acre' : 'acres'}`;

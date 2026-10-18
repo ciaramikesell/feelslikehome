@@ -10,8 +10,10 @@
 -- check = 'info' describe the stored lot-size shapes and how the lot-size
 -- criterion's reading changes for saved homes, per participant (owner and
 -- co-buyer) whose preferences select a lot-size target. Rows with
--- check = 'review' are the ambiguous values this change deliberately does NOT
--- reinterpret. test/lot-size-match-db.test.js runs this file before and after
+-- check = 'review' counts the ambiguous saved values (bare numbers with no
+-- recorded unit) that this change stops guessing at: they become Unknown and
+-- are never converted. supabase/lot-size-bare-values-review.sql lists them
+-- without identifiers. test/lot-size-match-db.test.js runs this file before and after
 -- the migration and asserts it changes nothing.
 with
 fn as (
@@ -22,7 +24,7 @@ fn as (
 ),
 versions(body_md5, label) as (values
   ('7e70b54fa45614c9c0e219d7d8df9a4f', 'expected: 2026-10-15-cobuyer-compare-mudroom-parity.sql'),
-  ('ac2ed056e7b25f39ae533e578214a145', 'ALREADY APPLIED: 2026-10-18-lot-size-units-match-parity.sql'),
+  ('507da3d7681a30eec49a8311d30bb180', 'ALREADY APPLIED: 2026-10-18-lot-size-units-match-parity.sql'),
   ('960d7123231eb983709350e11602b6f9', 'OLDER: 2026-10-07-cobuyer-compare-garage-parity.sql (stop: apply 2026-10-15-cobuyer-compare-mudroom-parity.sql first)')
 ),
 needed(table_name, column_name) as (values
@@ -53,7 +55,7 @@ lots as (
               when stripped ~ '^[0-9]*\.?[0-9]+$|^[0-9]+\.$' then stripped::numeric end as old_js_acres,
          -- The new reading: exactly the migration's expression (src/lib/lotSize.js).
          nullif(case
-           when lot.unit = '' or lot.unit ~* '^(acres?|ac)\.?$' then lot.amount
+           when lot.unit ~* '^(acres?|ac)\.?$' then lot.amount
            when lot.unit ~* '^(sq\.?\s*ft\.?|sqft|sf|ft2|ft²|square\s*f(ee|oo)t)$' then lot.amount / 43560
            when lot.unit ~* '^(sq\.?\s*m\.?|sqm|m2|m²|square\s*met(er|re)s?)$' then lot.amount / 4046.8564224
            when lot.unit ~* '^(hectares?|ha)$' then lot.amount * 2.4710538147
@@ -117,7 +119,7 @@ select section, "check", item, ok, detail from (
          exists (select 1 from fn) as ok, null::text as detail
   union all
   select 1, 'required', 'current body is the 2026-10-15 mudroom-parity version (or this one)',
-         exists (select 1 from fn f where f.body_md5_lf in ('7e70b54fa45614c9c0e219d7d8df9a4f', 'ac2ed056e7b25f39ae533e578214a145')),
+         exists (select 1 from fn f where f.body_md5_lf in ('7e70b54fa45614c9c0e219d7d8df9a4f', '507da3d7681a30eec49a8311d30bb180')),
          coalesce((select v.label from fn f join versions v on v.body_md5 = f.body_md5_lf),
                   'NO REPOSITORY MATCH: ' || coalesce((select body_md5_lf from fn), 'function absent') || ' — stop and review')
   union all
@@ -177,7 +179,7 @@ select section, "check", item, ok, detail from (
          (select count(*)::text from targets where tier <> 'dontcare' and target_text is not null and target_text !~ '^[0-9]*\.?[0-9]+$|^[0-9]+\.$')
   -- 4. Deliberately unchanged ambiguous values ------------------------------
   union all
-  select 4, 'review', 'bare numbers (still read as acres, the field''s labeled unit): ≤ 50 / > 50', null,
+  select 4, 'review', 'bare numbers (no recorded unit: Unknown after this change, shown "unit not recorded"): ≤ 50 / > 50', null,
          (select count(*) filter (where amount <= 50) || ' / ' || count(*) filter (where amount > 50) from lots where shape = 'bare number')
   union all
   select 4, 'info', 'migration rewrites preferences or home rows', null, 'no — it replaces one function body only'

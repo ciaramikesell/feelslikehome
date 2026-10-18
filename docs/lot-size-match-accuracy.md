@@ -37,8 +37,9 @@ Side defects of the same reading:
 `src/lib/lotSize.js` `lotSizeAcres(raw)` is the one reading, used by
 `computeMatch` and by Home Facts' `normalizeLotSizeInput`:
 - a number (thousands commas allowed) plus `acres`/`ac`, `sq ft` (÷ 43,560),
-  `sq m`, `hectares`; a **bare number is acres** (unchanged; the field is
-  labeled in acres);
+  `sq m`, `hectares`;
+- a saved **bare number** has no recorded unit and is **Unknown** (see below);
+  a bare number *typed* into a field labeled in acres is acres;
 - anything else — a fraction, a decimal comma, other words, zero — is
   **Unknown** (never a miss, never in the percentage).
 
@@ -58,39 +59,40 @@ maximum-lot criterion; only a minimum exists.
    Must-Have miss.
 
 ### Bare numbers: the discrepancy and the fix
-Before, a saved bare number was read three ways:
+Before, a saved bare number was read inconsistently:
 
 | Surface | Read `'0.5'` as | Read `'8712'` as |
 | --- | --- | --- |
 | Match (both scorers) | 0.5 acres | 8,712 acres |
-| Home Facts input (`normalizeLotSizeInput`) | 0.5 acres | 8,712 acres |
-| Display (`formatLotSizeDisplay`: Compare, My Homes, Home Facts, cards) | **"0 sq ft"** | **"0.20 acres"** |
-
-So a buyer who typed `0.5` in Add Home saw "0 sq ft" while Match scored
-0.5 acres, and focusing that Home Facts field started the edit from
-"0 sq ft".
+| Display (`formatLotSizeDisplay`: Compare, My Homes, cards, Home Facts) | **"0 sq ft"** / card "1 sq ft" | **"0.20 acres"** |
 
 Bare values can only come from the Add Home / Edit home / Realtor-suggestion
-form (`HomeModal`): imports and listing text always carry a unit, and Home
-Facts saves `'0.5 acres'`. The smallest consistent fix:
-- **One reading everywhere.** `formatLotSizeDisplay` now uses `lotSizeAcres`,
-  so every display shows what Match scores. A bare number shows as acres;
-  anything Match treats as Unknown (`'1/4 acre'`, `'0'`, words) is shown
-  exactly as saved instead of being guessed at (`'1/4 acre'` used to show as
-  "4.00 acres").
-- **No new bare values.** HomeModal's field is labeled "Lot size (acres)",
-  and a bare number a person types there is saved with its unit
-  (`'0.25'` → `'0.25 acres'`, `withAcresUnit`).
-- **Saved data is never rewritten.** An unchanged lot size is passed through
-  as saved (HomeModal compares with the opened value; Home Facts saves only a
-  field the person edited). No backfill.
+form (`HomeModal`), which stored text as typed under a field labeled
+"Lot size". Imports and pasted listing text always carry a unit, and Home
+Facts saves `'0.5 acres'`. A saved bare number therefore has **no recorded
+unit**: `8712` is far more likely square feet, `0.3` acres, but neither is
+known.
 
-The only visible change for ambiguous saved data: a bare number that was
-really square feet (e.g. `'8712'`) is now shown as "8712.00 acres", which is
-how Match has always scored it. Before, the display hid the error behind a
-plausible "0.20 acres". The preflight's `review` row counts bare numbers
-over 50 acres. If it is not zero, those homes need a reviewed correction
-(a separate, approved data step); this PR does not guess.
+Smallest consistent fix — no unit is ever invented, on either side:
+- **Saved bare number = unit not recorded.** Both scorers treat it as
+  Unknown (neutral, never a miss or a match). Every display shows it as saved
+  with "(unit not recorded)", e.g. "8712 (unit not recorded)". Display and
+  Match agree, and nothing is converted.
+- **Typed bare number = acres** (approved decision 1). Home Facts' field is
+  labeled "Lot size in acres" and saves `'0.3'` as `'0.3 acres'`. HomeModal's
+  field is now labeled "Lot size (acres)" and adds the unit the same way. No
+  new value can be ambiguous.
+- **No saved value is rewritten.** HomeModal passes an unchanged lot size
+  through as saved, and Home Facts saves only a field the person edited. No
+  backfill.
+- **Confirming one is one edit.** Home Facts opens a unit-less value on the
+  bare number. Saving it confirms acres (`'0.3'` → `'0.3 acres'`); typing
+  `8712 sq ft` records square feet.
+
+`supabase/lot-size-bare-values-review.sql` (read-only) lists the saved bare
+numbers without identifiers. For each it shows: the number in each unit, the
+home's own square footage, what the listing snapshot says, and how each
+selected target scores under each reading.
 
 ## Preflight and impact (read-only)
 Run `supabase/lot-size-match-preflight.sql` in the production SQL Editor. One
@@ -129,16 +131,26 @@ shape, malformed targets, and both owner and co-buyer documents).
 the change is always downward.
 
 ## Order
-1. Run the preflight; stop on any `required` failure and review the `review` row.
-2. Apply the migration (SQL Editor, one transaction). Re-run the preflight:
-   the body row reads `ALREADY APPLIED`.
-3. Merge the PR (Vercel deploys the JS change). Between 2 and 3 a co-buyer's
-   lot size is corrected in the other person's Compare view but not yet in
-   their own Match; keep the window to minutes.
+1. **Preflight (read-only).** Run `supabase/lot-size-match-preflight.sql` and
+   `supabase/lot-size-bare-values-review.sql` against the final PR head. Stop
+   on any `required` failure. The body row must read `expected:
+   2026-10-15-cobuyer-compare-mudroom-parity.sql`.
+2. **Release decision** on the reported counts.
+3. **Apply the migration.** Run
+   `supabase/migrations/2026-10-18-lot-size-units-match-parity.sql` in the SQL
+   Editor; it is one transaction.
+4. **Verify.** Re-run the preflight. The body row reads `ALREADY APPLIED`
+   (fingerprint `507da3d7681a30eec49a8311d30bb180`), every `required` row is
+   true, and the counts are unchanged (the migration rewrites no rows).
+5. **Merge the PR** (Vercel deploys the JS change) straight after step 4. In
+   between, a co-buyer's lot size is corrected in the other person's Compare
+   view but not yet in their own Match. Keep that window to minutes.
 
 ## Rollback
 Re-apply `supabase/migrations/2026-10-15-cobuyer-compare-mudroom-parity.sql`
-(restores the previous body) and revert the PR. No data to restore.
+(restores the previous body; the preflight then reads `expected: …`) and
+revert the PR. No data to restore: no row is written by the migration or the
+release.
 
 ## Tests
 - `test/lot-size-match-db.test.js`: every shape; minimum targets at and around
