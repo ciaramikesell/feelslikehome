@@ -11,7 +11,8 @@
 // fraction, a European decimal comma, zero — is null: Unknown, which Match
 // never counts as a miss or a match. resolve_cobuyer_compare_perspectives
 // (2026-10-18-lot-size-units-match-parity.sql) applies the same grammar, so a
-// co-buyer's Match reads the same lot size on both sides.
+// co-buyer's Match reads the same lot size on both sides, and
+// formatLotSizeDisplay shows exactly what Match scores.
 
 export const SQFT_PER_ACRE = 43560;
 
@@ -25,7 +26,9 @@ const LOT_SIZE_UNITS_TO_ACRES = [
 ];
 
 // A number with optional thousands commas ("8,850", "1,234.5"), then the unit.
-const LOT_SIZE_PATTERN = /^(\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d*\.?\d+)\s*(.*)$/;
+const LOT_SIZE_NUMBER = '\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d*\\.?\\d+';
+const LOT_SIZE_PATTERN = new RegExp(`^(${LOT_SIZE_NUMBER})\\s*(.*)$`);
+const BARE_NUMBER = new RegExp(`^(?:${LOT_SIZE_NUMBER})$`);
 
 export function lotSizeAcres(raw) {
   const match = String(raw ?? '').trim().match(LOT_SIZE_PATTERN);
@@ -35,4 +38,13 @@ export function lotSizeAcres(raw) {
   const toAcres = unit === '' ? (n) => n : LOT_SIZE_UNITS_TO_ACRES.find(([pattern]) => pattern.test(unit))?.[1];
   if (!toAcres || !Number.isFinite(amount) || amount <= 0) return null;
   return toAcres(amount);
+}
+
+// A bare number typed into a lot-size field labeled in acres is saved with its
+// unit ("0.25" -> "0.25 acres"), so a new value is never ambiguous later.
+// Anything else (a unit, text, zero) is saved exactly as typed.
+export function withAcresUnit(raw) {
+  const text = String(raw ?? '').trim();
+  if (!BARE_NUMBER.test(text) || lotSizeAcres(text) === null) return raw;
+  return `${text} ${lotSizeAcres(text) === 1 ? 'acre' : 'acres'}`;
 }

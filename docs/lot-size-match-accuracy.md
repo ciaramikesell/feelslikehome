@@ -48,26 +48,83 @@ signature, `SECURITY DEFINER`, empty `search_path`, access check, projection
 and grants; `create or replace`, re-runnable.
 
 Unchanged: Must-Have 4× / Important 2× / Nice to Have 1×, partial credit
-(`actual / target`), Unknown neutral, every other criterion, all displays
-(`formatLotSizeDisplay` already converted sq ft for Compare / My Homes / Home
-Facts). There is no maximum-lot criterion; only a minimum exists.
+(`actual / target`), Unknown neutral, every other criterion. There is no
+maximum-lot criterion; only a minimum exists.
 
-## Deliberately not changed (needs a product decision)
-- **Bare numbers.** Match and Home Facts read `'8850'` as acres;
-  `formatLotSizeDisplay` shows a bare number as square feet. The preflight
-  counts bare numbers ≤ 50 / > 50 so the call can be made from real data.
-- **Zero.** Now Unknown (it was a 0-score miss): `'0'` / `'0 sq ft'` is not a
-  measured lot, and Home Facts never stores it. Easy to revert if a 0 should
-  stay a confirmed miss.
+## Product decisions (approved)
+1. **Bare numbers are acres** when interpreting input to a field labeled in
+   acres, without silently reinterpreting ambiguous saved data.
+2. **Zero or unparseable measurements are Unknown**, never a confirmed
+   Must-Have miss.
+
+### Bare numbers: the discrepancy and the fix
+Before, a saved bare number was read three ways:
+
+| Surface | Read `'0.5'` as | Read `'8712'` as |
+| --- | --- | --- |
+| Match (both scorers) | 0.5 acres | 8,712 acres |
+| Home Facts input (`normalizeLotSizeInput`) | 0.5 acres | 8,712 acres |
+| Display (`formatLotSizeDisplay`: Compare, My Homes, Home Facts, cards) | **"0 sq ft"** | **"0.20 acres"** |
+
+So a buyer who typed `0.5` in Add Home saw "0 sq ft" while Match scored
+0.5 acres, and focusing that Home Facts field started the edit from
+"0 sq ft".
+
+Bare values can only come from the Add Home / Edit home / Realtor-suggestion
+form (`HomeModal`): imports and listing text always carry a unit, and Home
+Facts saves `'0.5 acres'`. The smallest consistent fix:
+- **One reading everywhere.** `formatLotSizeDisplay` now uses `lotSizeAcres`,
+  so every display shows what Match scores. A bare number shows as acres;
+  anything Match treats as Unknown (`'1/4 acre'`, `'0'`, words) is shown
+  exactly as saved instead of being guessed at (`'1/4 acre'` used to show as
+  "4.00 acres").
+- **No new bare values.** HomeModal's field is labeled "Lot size (acres)",
+  and a bare number a person types there is saved with its unit
+  (`'0.25'` → `'0.25 acres'`, `withAcresUnit`).
+- **Saved data is never rewritten.** An unchanged lot size is passed through
+  as saved (HomeModal compares with the opened value; Home Facts saves only a
+  field the person edited). No backfill.
+
+The only visible change for ambiguous saved data: a bare number that was
+really square feet (e.g. `'8712'`) is now shown as "8712.00 acres", which is
+how Match has always scored it. Before, the display hid the error behind a
+plausible "0.20 acres". The preflight's `review` row counts bare numbers
+over 50 acres. If it is not zero, those homes need a reviewed correction
+(a separate, approved data step); this PR does not guess.
 
 ## Preflight and impact (read-only)
 Run `supabase/lot-size-match-preflight.sql` in the production SQL Editor. One
-SELECT; counts only — no ids, addresses, lot sizes or preferences. Proceed only
+SELECT; counts only — no ids, addresses, lot sizes or preferences. For extra
+safety, run it as `begin read only;` … `rollback;`. Proceed only
 if every `required` row has `ok = true`. The `info` rows report: homes by
 stored shape; how many readings change; homes that currently error Compare;
 lot-size targets by level; home × participant (owner and co-buyer)
 evaluations that change, by shape and old → new state; Must-Have status
-changes; and the lot criterion's score change. A home's Match changes by
+changes; and the lot criterion's score change. Transitions are reported for
+both readings that existed before: Compare (old SQL: digit-less text was
+Unknown, a leftover like `'0.25.'` errored) and each person's own Match (old
+JS: digit-less text was a 0-score miss). It also counts saved lot-size
+*targets* the scorer cannot parse (e.g. `'0.5.'`): those error Compare before
+and after this change and are not touched by it.
+
+Robustness: every cast is guarded by the regular expression it follows, so
+no saved value can make the preflight itself fail (tested with every stored
+shape, malformed targets, and both owner and co-buyer documents).
+
+## Migration review
+- The function body differs from `2026-10-15-cobuyer-compare-mudroom-parity.sql`
+  **only** in the `lotSizeTarget` expression. `test/match-scorer-parity.test.js`
+  pins this.
+- Verified on Postgres 16 before and after applying: SECURITY DEFINER, empty
+  `search_path`, STABLE, owner, signature, return type, ACL, and execute
+  rights (`anon` no, `authenticated` yes, `service_role` no) are identical.
+  The access check (`can_access_search`) and participant selection are
+  untouched.
+- The new expression reads only `v_home.lot_size`, a row the function already
+  loaded. It calls only `pg_catalog` built-ins (`regexp_match`, `btrim`,
+  `replace`, `coalesce`, `nullif`), which resolve with the empty
+  `search_path`. It adds no table access and no output; only the sanitized
+  score changes. A home's Match changes by
 `weight × Δscore / (sum of evaluated weights)`; for the RentCast sq ft shape
 the change is always downward.
 

@@ -5,6 +5,7 @@
 // src/lib/rentcast.js, which is untouched by this file).
 
 import { normalizeSearchIntent, PROPERTY_TYPE_LABELS } from './searchIntent.js';
+import { lotSizeAcres } from './lotSize.js';
 
 function withCommas(numStr) {
   const n = Number(numStr);
@@ -71,35 +72,19 @@ export function digitsOnly(v) {
 }
 
 // Normalizes a stored lot-size string for DISPLAY ONLY — never rewrites the
-// underlying value. Handles three cases without double-converting:
-//   - already says "acres" -> re-render with 2 decimals, don't touch the unit
-//   - says "sq ft"/"sqft"/"square feet" (or is a bare number, our default
-//     convention for unlabeled values) -> convert using 1 acre = 43,560 sq ft
-//   - anything unparsable -> returned verbatim rather than guessed at
-// Sub-436 sq ft (rounds to under 0.01 acres) stays in sq ft, since "0.00 acres"
-// isn't meaningful.
+// underlying value. It reads the value exactly as Match does (lotSizeAcres):
+//   - a recognized unit (acres, sq ft, sq m, hectares) -> acres, 2 decimals
+//   - a bare number -> acres, the unit the field is labeled in (Match reads it
+//     the same way; it used to be shown as square feet here)
+//   - anything Match treats as Unknown (a fraction, words, zero) -> returned
+//     verbatim rather than guessed at
+// Under 0.01 acres ("0.00 acres" isn't meaningful) the saved value is shown.
 export function formatLotSizeDisplay(raw) {
-  if (!raw) return '';
-  const str = String(raw).trim();
+  const str = String(raw ?? '').trim();
   if (!str) return '';
-
-  const acreMatch = str.match(/([\d,.]+)\s*acres?/i);
-  if (acreMatch) {
-    const n = Number(acreMatch[1].replace(/,/g, ''));
-    return Number.isFinite(n) ? `${n.toFixed(2)} acres` : str;
-  }
-
-  const sqftMatch = str.match(/([\d,.]+)/);
-  if (sqftMatch) {
-    const n = Number(sqftMatch[1].replace(/,/g, ''));
-    if (Number.isFinite(n) && n > 0) {
-      const acres = n / 43560;
-      if (acres < 0.01) return `${Math.round(n)} sq ft`;
-      return `${acres.toFixed(2)} acres`;
-    }
-  }
-
-  return str;
+  const acres = lotSizeAcres(str);
+  if (acres === null || acres < 0.01) return str;
+  return `${acres.toFixed(2)} acres`;
 }
 
 // Builds the fact lines for the compact confirmation card from whichever fields

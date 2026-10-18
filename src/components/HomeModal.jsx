@@ -15,6 +15,7 @@ import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { mergeImportFields, resolveImport } from '@/lib/importDomain';
 import { appendAllSuggestions, appendSuggestionToNotes, derivePriorityCheckPatch, extractEnrichmentSuggestions } from '@/lib/importReview';
 import { splitAddressLines, formatFoundCardFacts, formatCurrencyDisplay, digitsOnly, formatLotSizeDisplay, formatHomePrice } from '@/lib/homeDisplay';
+import { withAcresUnit } from '@/lib/lotSize';
 import { createClient } from '@/lib/supabase/client';
 import { hasToured } from '@/lib/lifecycle';
 import { HOME_PROPERTY_TYPE_OPTIONS, PROPERTY_TYPE_LABELS, searchIntentCapabilities } from '@/lib/searchIntent';
@@ -189,7 +190,7 @@ function PropertyFacts({ form, set, priorities, sharedFactAwareness }) {
               <CompactField label="Sq ft" value={form.sqft} onChange={(v) => set('sqft', v)} placeholder="Add sq ft" must={priorities.sqftTarget?.tier === 'must'} coBuyerOnly={sharedFactAwareness.sqft.coBuyerOnly} />
             )}
             {sharedFactAwareness.lotSize?.eligibleForSharedFactCapture && (
-              <CompactField label="Lot size" value={form.lotSize} onChange={(v) => set('lotSize', v)} placeholder="0.25 acres" must={priorities.lotSizeTarget?.tier === 'must'} coBuyerOnly={sharedFactAwareness.lotSize.coBuyerOnly} />
+              <CompactField label="Lot size (acres)" value={form.lotSize} onChange={(v) => set('lotSize', v)} placeholder="0.25 acres" must={priorities.lotSizeTarget?.tier === 'must'} coBuyerOnly={sharedFactAwareness.lotSize.coBuyerOnly} />
             )}
             {!apartment && <CompactField label="Garage" value={form.garageSpaces} onChange={(v) => set('garageSpaces', v)} placeholder="Add garage" coBuyerOnly={sharedFactAwareness.garageSpaces?.coBuyerOnly} />}
             <CompactField label="Year built" value={form.yearBuilt} onChange={(v) => set('yearBuilt', v)} placeholder="Add year" />
@@ -398,7 +399,7 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
               <CompactField label="Beds" value={form.beds} onChange={(value) => set('beds', value)} placeholder="Unknown" provenance={provenanceOf('beds')} />
               <CompactField label="Baths" value={form.baths} onChange={(value) => set('baths', value)} placeholder="Unknown" provenance={provenanceOf('baths')} />
               <CompactField label="Square footage" value={form.sqft} onChange={(value) => set('sqft', value)} placeholder="Unknown" provenance={provenanceOf('sqft')} />
-              <CompactField label="Lot size" value={form.lotSize} onChange={(value) => set('lotSize', value)} placeholder="Unknown" provenance={provenanceOf('lotSize')} />
+              <CompactField label="Lot size (acres)" value={form.lotSize} onChange={(value) => set('lotSize', value)} placeholder="Unknown" provenance={provenanceOf('lotSize')} />
               <CompactField label="Year built" value={form.yearBuilt} onChange={(value) => set('yearBuilt', value)} placeholder="Unknown" provenance={provenanceOf('yearBuilt')} />
               <CompactField label="Garage spaces" value={form.garageSpaces} onChange={(value) => set('garageSpaces', value)} placeholder="Unknown · 0 = none" provenance={provenanceOf('garageSpaces')} />
             </div>
@@ -648,7 +649,10 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
       }
 
       try {
-        await onSave({ ...form, photoUrl: finalPhotoUrl, ...(importResult ? { listingImport: { fields: importResult.fields || {}, listingFacts: importResult.listingFacts || [], descriptionFeatures: importResult.descriptionFeatures || [] } } : {}) });
+        // Only a lot size the person typed here gets its unit; an unchanged
+        // saved value (even a bare number) is never rewritten.
+        const lotSize = form.lotSize === (initial?.lotSize ?? '') ? form.lotSize : withAcresUnit(form.lotSize);
+        await onSave({ ...form, lotSize, photoUrl: finalPhotoUrl, ...(importResult ? { listingImport: { fields: importResult.fields || {}, listingFacts: importResult.listingFacts || [], descriptionFeatures: importResult.descriptionFeatures || [] } } : {}) });
       } catch (saveErr) {
         console.error('Save home failed', saveErr);
         // If the shared home row was already persisted before this failure

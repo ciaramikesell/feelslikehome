@@ -10,7 +10,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { register } from 'node:module';
 import { createTestDatabase, DB_TESTS_ENABLED, DB_SKIP_REASON, POST_SNAPSHOT_MIGRATIONS } from './support/supabaseDb.mjs';
-import { lotSizeAcres } from '../src/lib/lotSize.js';
+import { lotSizeAcres, withAcresUnit } from '../src/lib/lotSize.js';
 import { computeMatch, mustHaveStatus } from '../src/lib/matching.js';
 import { normalizePriorities } from '../src/lib/constants.js';
 import { normalizeLotSizeInput } from '../src/lib/homeFacts.js';
@@ -68,6 +68,25 @@ test('Home Facts normalization reads the same grammar Match does', () => {
   for (const raw of ['8850 sq ft', '10,890 sq ft', '2 ha', '1 acre']) {
     close(lotSizeAcres(normalizeLotSizeInput(raw)), Number(lotSizeAcres(raw).toFixed(2)));
   }
+});
+
+test('bare numbers are acres on every surface: typed values are saved with the unit, saved values are never rewritten', () => {
+  // Typed into a field labeled in acres (Add Home / Edit home / Realtor suggestion).
+  assert.equal(withAcresUnit('0.25'), '0.25 acres');
+  assert.equal(withAcresUnit('1'), '1 acre');
+  assert.equal(withAcresUnit('1,250'), '1,250 acres');
+  for (const kept of ['8850 sq ft', '0.25 acres', '2 ha', '0', '1/4 acre', 'irregular', '', null]) assert.equal(withAcresUnit(kept), kept);
+  const modal = readFileSync(new URL('../src/components/HomeModal.jsx', import.meta.url), 'utf8');
+  assert.match(modal, /form\.lotSize === \(initial\?\.lotSize \?\? ''\) \? form\.lotSize : withAcresUnit\(form\.lotSize\)/, 'an unchanged saved value is passed through untouched');
+  assert.equal((modal.match(/label="Lot size \(acres\)"/g) || []).length, 2);
+  // Display reads a saved bare number the way Match does (it used to show sq ft:
+  // a saved '0.5' read as '0 sq ft' while Match scored 0.5 acres).
+  assert.equal(formatLotSizeDisplay('0.5'), '0.50 acres');
+  assert.equal(formatLotSizeDisplay('0.5'), `${lotSizeAcres('0.5').toFixed(2)} acres`);
+  assert.equal(formatLotSizeDisplay('8712'), '8712.00 acres', 'an implausible saved bare value is shown as scored, not silently converted');
+  // Unknown to Match is shown exactly as saved, never guessed at.
+  for (const verbatim of ['0', '1/4 acre', 'irregular', '0,25 acres', '300 sq ft']) assert.equal(formatLotSizeDisplay(verbatim), verbatim);
+  assert.equal(formatLotSizeDisplay('2 ha'), '4.94 acres');
 });
 
 test('the RentCast import shape scores as acres: 8,850 sq ft misses a 0.5 acre Must-Have', () => {
@@ -211,7 +230,7 @@ dbTest('production path: preflight reports the impact on pre-migration data; the
     assert.equal(info('home × participant lot-size evaluations that change'), '1');
     assert.equal(info('distinct homes / searches affected'), '1 homes, 1 searches');
     assert.equal(info('changes by stored shape'), 'sq ft: 1');
-    assert.equal(info('state transitions'), 'must: met -> missed ×1');
+    assert.equal(info('Compare state transitions'), 'must: met -> missed ×1');
     assert.equal(info('Must-Have status changes'), '1 / 0');
     assert.equal(info('lot-size criterion score change'), '-0.594 / -0.594');
     assert.equal(info('bare numbers'), '0 / 0');
@@ -250,6 +269,31 @@ dbTest('a lot size the old Compare scorer could not cast no longer errors the wh
     const compare = await resolveCoBuyerComparePerspectives(ownerClient, { id: search }, [good, odd]);
     assert.equal(compare.get(good).match.pct, 100);
     assert.equal(compare.get(odd).match.pct, Math.round(((2 + 0.5 * 2) / 4) * 100), '0.25 acres of 0.5 at Important');
+  } finally {
+    legacy.drop();
+  }
+});
+
+dbTest('preflight robustness: every stored shape, owner and co-buyer documents, and malformed targets never error it', async () => {
+  const legacy = createTestDatabase({ steps: POST_SNAPSHOT_MIGRATIONS.filter((step) => step.file !== MIGRATION) });
+  try {
+    const { owner, coBuyer, search, ownerClient, coBuyerClient } = await cobuyerSearch(legacy, 'robust');
+    await savePriorities(coBuyerClient, { id: search }, coBuyer, lotBuyer('0.5', 'must'));
+    await savePriorities(ownerClient, { id: search }, owner, lotBuyer('0.5.', 'important')); // a target the scorer itself cannot cast
+    for (const lotSize of [...STORED_SHAPES, '8712', '0 irregular']) await addHome(ownerClient, owner, search, lotSize);
+    const report = legacy.admin(PREFLIGHT);
+    assert.deepEqual(report.filter((row) => row.check === 'required' && row.ok !== true), []);
+    const info = (prefix) => report.find((row) => row.item.startsWith(prefix))?.detail;
+    assert.equal(info('saved homes by lot-size shape'),
+      'acres: 4, bare number: 2, blank: 1, hectares: 1, sq ft: 4, unparsed (fraction, decimal comma, words …): 4, zero: 1');
+    assert.equal(info('homes whose lot size makes co-buyer Compare error'), '1');
+    assert.equal(info('participant preference documents with a lot-size target'), 'must: 1');
+    assert.equal(info('selected lot-size targets the scorer cannot read'), '1');
+    // Old JS read digit-less text as a 0 miss; old SQL as Unknown. Both are reported.
+    assert.match(info('own Match (computeMatch) state transitions'), /must: missed -> unknown ×\d/);
+    assert.match(info('Compare state transitions'), /must: Compare error -> missed ×1/);
+    assert.match(info('Compare state transitions'), /must: met -> missed ×/);
+    assert.equal(info('bare numbers'), '1 / 1');
   } finally {
     legacy.drop();
   }

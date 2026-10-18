@@ -47,6 +47,10 @@ lots as (
          -- made the cast — and so the whole Compare projection — fail.
          case when stripped = '' then null when stripped ~ '^[0-9]*\.?[0-9]+$|^[0-9]+\.$' then stripped::numeric end as old_acres,
          stripped <> '' and stripped !~ '^[0-9]*\.?[0-9]+$|^[0-9]+\.$' as old_error,
+         -- The old JS reading (parseNum): text with no digits read as 0 (a miss),
+         -- an uncastable leftover as Unknown.
+         case when raw = '' then null when stripped = '' then 0
+              when stripped ~ '^[0-9]*\.?[0-9]+$|^[0-9]+\.$' then stripped::numeric end as old_js_acres,
          -- The new reading: exactly the migration's expression (src/lib/lotSize.js).
          nullif(case
            when lot.unit = '' or lot.unit ~* '^(acres?|ac)\.?$' then lot.amount
@@ -56,20 +60,20 @@ lots as (
          end, 0) as new_acres,
          case
            when raw = '' then 'blank'
-           when lot.unit is null then 'unparsed (fraction, decimal comma, words …)'
+           when lot.unit is null or not lot.known_unit then 'unparsed (fraction, decimal comma, words …)'
            when lot.amount = 0 then 'zero'
            when lot.unit = '' then 'bare number'
            when lot.unit ~* '^(acres?|ac)\.?$' then 'acres'
            when lot.unit ~* '^(sq\.?\s*ft\.?|sqft|sf|ft2|ft²|square\s*f(ee|oo)t)$' then 'sq ft'
            when lot.unit ~* '^(sq\.?\s*m\.?|sqm|m2|m²|square\s*met(er|re)s?)$' then 'sq m'
-           when lot.unit ~* '^(hectares?|ha)$' then 'hectares'
-           else 'unparsed (fraction, decimal comma, words …)'
+           else 'hectares'
          end as shape
   from public.homes h
   cross join lateral (select btrim(coalesce(h.lot_size, '')) as raw) r
   cross join lateral (select regexp_replace(r.raw, '[^0-9.]', '', 'g') as stripped) s
   left join lateral (
-    select replace(m[1], ',', '')::numeric as amount, btrim(m[2]) as unit
+    select replace(m[1], ',', '')::numeric as amount, btrim(m[2]) as unit,
+           btrim(m[2]) ~* '^$|^(acres?|ac)\.?$|^(sq\.?\s*ft\.?|sqft|sf|ft2|ft²|square\s*f(ee|oo)t)$|^(sq\.?\s*m\.?|sqm|m2|m²|square\s*met(er|re)s?)$|^(hectares?|ha)$' as known_unit
     from regexp_match(r.raw, '^([0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]+)?|[0-9]*\.?[0-9]+)\s*(.*)$') m
   ) lot on true
 ),
@@ -99,6 +103,7 @@ pairs as (
          case when l.old_error then 'Compare error' when l.old_acres is null then 'unknown'
               when l.old_acres >= sel.target then 'met' else 'missed' end as old_state,
          case when l.new_acres is null then 'unknown' when l.new_acres >= sel.target then 'met' else 'missed' end as new_state,
+         case when l.old_js_acres is null then 'unknown' when l.old_js_acres >= sel.target then 'met' else 'missed' end as old_js_state,
          case when l.old_acres is null then null else least(1, l.old_acres / sel.target) end as old_score,
          case when l.new_acres is null then null else least(1, l.new_acres / sel.target) end as new_score
   from lots l join selected sel on sel.search_id = l.search_id
@@ -151,9 +156,13 @@ select section, "check", item, ok, detail from (
   select 3, 'info', 'changes by stored shape', null,
          coalesce((select string_agg(shape || ': ' || n, ', ' order by shape) from (select shape, count(*) as n from changed group by shape) t), 'none')
   union all
-  select 3, 'info', 'state transitions (tier: old -> new)', null,
+  select 3, 'info', 'Compare state transitions (tier: old -> new)', null,
          coalesce((select string_agg(tier || ': ' || old_state || ' -> ' || new_state || ' ×' || n, ', ' order by tier, old_state, new_state)
                    from (select tier, old_state, new_state, count(*) as n from changed group by 1, 2, 3) t), 'none')
+  union all
+  select 3, 'info', 'own Match (computeMatch) state transitions (tier: old -> new)', null,
+         coalesce((select string_agg(tier || ': ' || old_js_state || ' -> ' || new_state || ' ×' || n, ', ' order by tier, old_js_state, new_state)
+                   from (select tier, old_js_state, new_state, count(*) as n from pairs where old_js_state <> new_state group by 1, 2, 3) t), 'none')
   union all
   select 3, 'info', 'Must-Have status changes (no-miss -> missed / missed -> no-miss)', null,
          (select count(*) filter (where old_state <> 'missed' and new_state = 'missed') || ' / '
@@ -163,6 +172,9 @@ select section, "check", item, ok, detail from (
   select 3, 'info', 'lot-size criterion score change (mean / largest drop, 0–1)', null,
          coalesce((select round(avg(new_score - old_score), 3) || ' / ' || round(min(new_score - old_score), 3)
                    from changed where old_score is not null and new_score is not null), 'n/a')
+  union all
+  select 3, 'info', 'selected lot-size targets the scorer cannot read (Compare errors before and after; not changed here)', null,
+         (select count(*)::text from targets where tier <> 'dontcare' and target_text is not null and target_text !~ '^[0-9]*\.?[0-9]+$|^[0-9]+\.$')
   -- 4. Deliberately unchanged ambiguous values ------------------------------
   union all
   select 4, 'review', 'bare numbers (still read as acres, the field''s labeled unit): ≤ 50 / > 50', null,
