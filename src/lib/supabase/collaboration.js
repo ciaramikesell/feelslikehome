@@ -56,6 +56,17 @@ function missingOptionalColumn(error) {
   return OPTIONAL_HOME_COLUMNS.find((column) => message.includes(column)) || null;
 }
 
+// Every read of the full shared home projection, direct (`.select(columns)`)
+// or embedded (`homes(${columns})`), goes through here: `read(columns)` runs
+// the query, and only a response naming a missing optional column is retried,
+// once, without the optional columns. Any other error is returned as-is for
+// the caller to throw. (The full-row write retries on its own; see
+// saveHomePersonalAndShared.)
+async function withOptionalHomeColumns(read) {
+  const result = await read(HOME_SHARED_COLUMNS);
+  return missingOptionalColumn(result.error) ? read(HOME_SHARED_COLUMNS_REQUIRED) : result;
+}
+
 const PASS_B_DATABASE_COLUMNS = ['property_type', 'available_on', 'pets_allowed', 'utilities_included', 'in_unit_laundry'];
 // Only a missing *Pass B* column may fall back to the pre-Pass-B projection. Any
 // other missing column (e.g. the Home Facts details migration not yet applied)
@@ -284,9 +295,12 @@ export async function getRealtorSearchContext(supabase, userId, searchId) {
 }
 
 export async function getSuggestions(supabase, searchId) {
-  const { data: rows, error } = await supabase.from('realtor_suggestions')
-    .select(`id,search_id,home_id,suggested_by,suggested_by_display_name,status,promoted_by,promoted_at,created_at,homes(${HOME_SHARED_COLUMNS})`)
-    .eq('search_id', searchId).order('created_at', { ascending: false });
+  // My Homes loads this on every visit: an embedded optional column missing
+  // from the database must not take the page down (PostgREST reports it as
+  // 42703 "column homes_1.laundry_location does not exist").
+  const { data: rows, error } = await withOptionalHomeColumns((columns) => supabase.from('realtor_suggestions')
+    .select(`id,search_id,home_id,suggested_by,suggested_by_display_name,status,promoted_by,promoted_at,created_at,homes(${columns})`)
+    .eq('search_id', searchId).order('created_at', { ascending: false }));
   if (error) throw error;
   const ids = (rows || []).map((row) => row.id);
   let dispositions = [];
@@ -522,11 +536,9 @@ export function resolvePersonalState(home, memberStateRow, userId) {
 // search constraint and RLS still apply, so a guessed id returns nothing.
 export async function getHomesForUser(supabase, userId, searchId, { homeId = null } = {}) {
   const one = (query) => (homeId ? query.eq('id', homeId) : query);
-  let { data: rows, error } = await one(supabase
-    .from('homes').select(HOME_SHARED_COLUMNS).eq('search_id', searchId).eq('suggestion_staged', false)).order('created_at', { ascending: true });
   // An optional (non-Match) column whose migration isn't applied yet: read without it.
-  if (missingOptionalColumn(error)) ({ data: rows, error } = await one(supabase
-    .from('homes').select(HOME_SHARED_COLUMNS_REQUIRED).eq('search_id', searchId).eq('suggestion_staged', false)).order('created_at', { ascending: true }));
+  let { data: rows, error } = await withOptionalHomeColumns((columns) => one(supabase
+    .from('homes').select(columns).eq('search_id', searchId).eq('suggestion_staged', false)).order('created_at', { ascending: true }));
   // Repository merge precedes the manual production migration. Retry only the
   // recognizable missing-column response so the dormant release works on both schemas.
   if (isPrePassBSchemaError(error)) ({ data: rows, error } = await one(supabase

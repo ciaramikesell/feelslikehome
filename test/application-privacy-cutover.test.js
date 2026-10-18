@@ -6,7 +6,9 @@ const source = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8'
 
 test('home reads combine shared allowlisted facts with caller-owned state and sanitized lifecycle signals', async () => {
   const collaboration = await source('src/lib/supabase/collaboration.js');
-  assert.match(collaboration, /from\('homes'\)\.select\(HOME_SHARED_COLUMNS\)/);
+  // Allowlisted columns only (withOptionalHomeColumns supplies HOME_SHARED_COLUMNS
+  // or, on a missing optional column, HOME_SHARED_COLUMNS_REQUIRED).
+  assert.match(collaboration, /withOptionalHomeColumns\(\(columns\) => one\(supabase\s*\.from\('homes'\)\.select\(columns\)/);
   assert.match(collaboration, /from\('home_member_state'\)[\s\S]*\.eq\('user_id', userId\)\.in\('home_id', homeIds\)/);
   assert.match(collaboration, /rpc\('resolve_cobuyer_lifecycle_signals'/);
   assert.match(collaboration, /co_buyer_wants_to_tour/);

@@ -74,7 +74,10 @@ function selectList(table, select, alias = 't0') {
     // One-level many-to-one embed through <singular>_id (e.g. homes via home_id).
     const target = ident(embed[1]);
     const fk = `${target.replace(/s$/, '')}_id`;
-    return `(select row_to_json(e) from (select ${selectList(target, embed[2], 'e1')} from public.${target} e1 where e1.id = ${alias}.${ident(fk)}) e) as ${target}`;
+    // Aliased like PostgREST (homes_1), so a missing column fails with the
+    // production message: 42703 column homes_1.<column> does not exist.
+    const embedAlias = `${target}_1`;
+    return `(select row_to_json(e) from (select ${selectList(target, embed[2], embedAlias)} from public.${target} ${embedAlias} where ${embedAlias}.id = ${alias}.${ident(fk)}) e) as ${target}`;
   }).join(', ');
 }
 
