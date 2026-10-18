@@ -20,7 +20,7 @@ function sqlRetiredKeys(sql) {
 }
 
 test('the newest co-buyer Compare scorer skips exactly the JS retired purchase built-ins', () => {
-  assert.equal(latestDefinition.file, '2026-10-15-cobuyer-compare-mudroom-parity.sql');
+  assert.equal(latestDefinition.file, '2026-10-18-lot-size-units-match-parity.sql');
   assert.deepEqual([...sqlRetiredKeys(latestDefinition.sql)].sort(), [...RETIRED_PURCHASE_BUILT_IN_KEYS].sort());
 });
 
@@ -32,4 +32,10 @@ test('Garage stays a scored criterion on both sides, from the shared garage_spac
 test('Mudroom is a scored purchase criterion on both sides again', () => {
   assert.ok(!RETIRED_PURCHASE_BUILT_IN_KEYS.includes('features:Mudroom'));
   assert.ok(!sqlRetiredKeys(latestDefinition.sql).includes('features:Mudroom'));
+});
+
+test('lot size is read with its unit on both sides (src/lib/lotSize.js), never by stripping non-digits', () => {
+  assert.doesNotMatch(latestDefinition.sql, /regexp_replace\(v_home\.lot_size/);
+  assert.match(latestDefinition.sql, /then lot\.amount \/ 43560\b/);
+  assert.match(readFileSync(new URL('../src/lib/matching.js', import.meta.url), 'utf8'), /const actual = lotSizeAcres\(home\.lotSize\);/);
 });

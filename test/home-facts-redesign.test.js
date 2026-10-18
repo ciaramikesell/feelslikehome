@@ -173,9 +173,9 @@ test('Match scoring is unchanged: the new Home Facts details never move a Match'
   assert.deepEqual(computeMatch(withDetails, priorities), computeMatch(home, priorities));
   // The new "3+" spaces choice still reads as 3 for Garage, in JS and in the SQL Compare scorer.
   assert.equal(computeMatch({ ...home, garageSpaces: '3+' }, priorities).allSelected.find((item) => item.key === 'exterior:Garage').met, true);
-  assert.match(read('supabase/migrations/2026-10-15-cobuyer-compare-mudroom-parity.sql'), /regexp_replace\(v_home\.garage_spaces, '\[\^0-9\.\]', '', 'g'\)/);
+  assert.match(read('supabase/migrations/2026-10-18-lot-size-units-match-parity.sql'), /regexp_replace\(v_home\.garage_spaces, '\[\^0-9\.\]', '', 'g'\)/);
   // And no scorer (JS or the SQL Compare function) reads the new columns.
-  const sqlScorer = read('supabase/migrations/2026-10-15-cobuyer-compare-mudroom-parity.sql');
+  const sqlScorer = read('supabase/migrations/2026-10-18-lot-size-units-match-parity.sql');
   for (const column of ['garage_type', 'basement_style', 'basement_condition', 'heating', 'school_district_name']) assert.doesNotMatch(sqlScorer + read('src/lib/matching.js'), new RegExp(`\\b${column}\\b`));
 });
 
