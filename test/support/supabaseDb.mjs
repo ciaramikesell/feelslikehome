@@ -45,6 +45,8 @@ export const POST_SNAPSHOT_MIGRATIONS = [
   { file: 'supabase/migrations/2026-10-16-realtor-my-clients.sql' },
   { file: 'supabase/migrations/2026-10-17-home-facts-details.sql' },
   { file: 'supabase/migrations/2026-10-18-laundry-location.sql' },
+  { file: 'supabase/migrations/2026-10-18-home-floor-plans.sql' },
+  { file: 'supabase/migrations/2026-10-18-home-floor-plans-storage.sql' },
 ];
 
 const SUPABASE_SHIM = `
@@ -65,6 +67,29 @@ grant usage on schema public to anon, authenticated, service_role;
 alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
 alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
 alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
+-- Supabase Storage, as far as its RLS is concerned: the Storage API runs each
+-- upload / remove / signed-URL request as the caller against storage.objects
+-- (bucket limits are checked by the API itself; StorageBucket below mirrors
+-- that from storage.buckets).
+create schema storage;
+grant usage on schema storage to anon, authenticated, service_role;
+create table storage.buckets (
+  id text primary key, name text not null, owner uuid, public boolean not null default false,
+  file_size_limit bigint, allowed_mime_types text[],
+  created_at timestamptz not null default now(), updated_at timestamptz not null default now()
+);
+create table storage.objects (
+  id uuid primary key default gen_random_uuid(),
+  bucket_id text references storage.buckets(id), name text not null,
+  owner uuid, owner_id text, metadata jsonb,
+  created_at timestamptz not null default now(), updated_at timestamptz not null default now(),
+  unique (bucket_id, name)
+);
+alter table storage.buckets enable row level security;
+alter table storage.objects enable row level security;
+grant all on storage.buckets, storage.objects to anon, authenticated, service_role;
+create function storage.foldername(name text) returns text[] language sql immutable as
+  $f$ select (string_to_array(name, '/'))[1:array_length(string_to_array(name, '/'), 1) - 1] $f$;
 `;
 
 function psql(database, script, { checkFunctionBodies = false } = {}) {
@@ -135,6 +160,43 @@ function embedSql(base, entry) {
 }
 
 /* ------------------------- Supabase-shaped client ------------------------- */
+
+// storage.from(bucket): upload / remove / createSignedUrls with Supabase
+// Storage's observable behaviour — RLS-blocked uploads error, RLS-filtered
+// removes silently skip, and a signed URL is issued only for an object the
+// caller may SELECT (otherwise that entry carries an error).
+class StorageBucket {
+  constructor(db, userId, bucket) { Object.assign(this, { db, userId, bucket }); }
+  async upload(path, file, { contentType, upsert = false } = {}) {
+    if (upsert) throw new Error('test storage supports upsert: false only');
+    const [config] = this.db.admin(`select file_size_limit, allowed_mime_types from storage.buckets where id = ${text(this.bucket)}`);
+    if (!config) return { data: null, error: { statusCode: '404', message: 'Bucket not found' } };
+    const type = contentType || file.type;
+    if (config.allowed_mime_types && !config.allowed_mime_types.includes(type)) return { data: null, error: { statusCode: '415', message: `mime type ${type} is not supported` } };
+    if (config.file_size_limit && file.size > config.file_size_limit) return { data: null, error: { statusCode: '413', message: 'The object exceeded the maximum allowed size' } };
+    const metadata = { mimetype: type, size: file.size };
+    const { error } = this.db.runAs(this.userId, `insert into storage.objects (bucket_id, name, owner, owner_id, metadata) values (${text(this.bucket)}, ${text(path)}, ${text(this.userId)}, ${text(this.userId)}, ${literal(metadata)})`);
+    if (error?.code === '23505') return { data: null, error: { statusCode: '409', message: 'The resource already exists' } };
+    if (error) return { data: null, error: { statusCode: '403', message: error.message } };
+    return { data: { path }, error: null };
+  }
+  async remove(paths) {
+    if (!paths.length) return { data: [], error: null };
+    const query = `with r as (delete from storage.objects where bucket_id = ${text(this.bucket)} and name in (${paths.map(text).join(', ')}) returning name) select coalesce(json_agg(r), '[]'::json) from r`;
+    return this.db.runAs(this.userId, query);
+  }
+  async createSignedUrls(paths, expiresIn) {
+    const query = `select coalesce(json_agg(name), '[]'::json) from storage.objects where bucket_id = ${text(this.bucket)} and name in (${paths.map(text).join(', ') || 'null'})`;
+    const { data, error } = this.db.runAs(this.userId, query);
+    if (error) return { data: null, error };
+    return {
+      data: paths.map((path) => (data.includes(path)
+        ? { path, signedUrl: `https://storage.test/object/sign/${this.bucket}/${path}?expires=${expiresIn}`, error: null }
+        : { path, signedUrl: null, error: 'Either the object does not exist or you do not have access to it' })),
+      error: null,
+    };
+  }
+}
 
 class Query {
   constructor(db, userId, table) {
@@ -245,6 +307,7 @@ export function createTestDatabase({ schemaSql = null, steps = POST_SNAPSHOT_MIG
     clientFor(userId) {
       return {
         from: (table) => new Query(db, userId, table),
+        storage: { from: (bucket) => new StorageBucket(db, userId, bucket) },
         rpc: (fn, args = {}) => {
           const named = Object.entries(args).map(([key, value]) => `${ident(key)} => ${literal(value)}`).join(', ');
           const query = `select coalesce(json_agg(t), '[]'::json) from public.${ident(fn)}(${named}) t`;
