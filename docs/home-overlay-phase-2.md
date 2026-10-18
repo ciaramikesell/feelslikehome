@@ -164,3 +164,31 @@ no purchase-only fields), the Realtor's read-only workspace.
   text; forcing a list would overwrite imported wording).
 - The co-buyer's Match shown in the overlay is computed when it opens; a shared
   fact edited meanwhile updates it on the next open.
+
+## 9. Verification
+
+- `npm test` against real Postgres 16 (`docs/database-tests.md`): **1,015
+  tests, 1,015 pass, 0 skipped.** New: `test/home-overlay-db.test.js`
+  (migration/preflight/verification, schema tolerance, partial autosave,
+  co-buyer / Realtor / outsider permissions, the autosave queue against real
+  Postgres, scorer untouched) and `test/home-overlay.test.js`.
+- `next build`: passes.
+- Full stack, real browser, real Postgres (`scripts/qa/supabase-standin.mjs` +
+  `scripts/qa/rentcast-fixture.mjs`):
+  - `scripts/qa/home-overlay-e2e.mjs`: **27/27 steps** — import → one Add
+    (double-click) → one row → overlay; close without edits (Back / Forward /
+    reload); edit → close → reopen (filters and scroll kept); personal answers
+    move the Match % live; Laundry Location and None vs Unknown; rapid edits,
+    a network failure → Retry, close held while unsaved, close straight after
+    typing; direct links / reload / `?section=` / `?home=`; duplicate URL,
+    manual entry with an interrupted save, iOS share intake (new and existing);
+    an older home (legacy values never rewritten by viewing) and its Tour
+    Feedback data byte-for-byte unchanged; photo upload and Photo URL; co-buyer
+    shared edit + own answer (owner's untouched); Realtor read-only; keyboard
+    (focus in, Tab trapped, Escape, focus back to the card, scroll lock);
+    rentals and apartments; visual matrix at 1440 / 1024 / 768 / 390 / 375 with
+    5 Must-Haves, 7 Important, 15 Nice to Have and a long address. Every step
+    also fails on horizontal overflow or a console error.
+  - `scripts/qa/tour-feedback-e2e.mjs` (#153, adapted to the overlay):
+    **52/52 steps** at 1440 / 1024 / 768 / 390.
+- Screenshots: `docs/home-overlay-screenshots/` (widths in the file names).

@@ -156,8 +156,10 @@ async function journey(browser, width) {
   await step(`[${width}] opening and closing the take writes nothing; the home is not marked toured`, async () => {
     const before = snapshot(preTour);
     await owner.getByRole('button', { name: /I’ve toured it — record my take/ }).click();
-    await owner.getByRole('dialog').waitFor();
-    await owner.getByRole('dialog').getByRole('button', { name: 'Close' }).first().click();
+    // The take is its own dialog (on the buyer's side, above the home overlay's).
+    const take = owner.locator('.hh-post-tour-modal[role="dialog"]');
+    await take.waitFor();
+    await take.getByRole('button', { name: 'Close' }).first().click();
     await owner.waitForTimeout(500);
     assert(snapshot(preTour) === before, 'closing the take wrote data');
     assert(personal(preTour, 'owner').toured_at === null, 'home was marked toured without a take');
@@ -191,7 +193,7 @@ async function journey(browser, width) {
 
   await step(`[${width}] recording a take saves reaction, survey and an appended note; Tour Feedback shows it`, async () => {
     await owner.getByRole('button', { name: /I’ve toured it — record my take/ }).click();
-    const dialog = owner.getByRole('dialog');
+    const dialog = owner.locator('.hh-post-tour-modal[role="dialog"]');
     await dialog.getByRole('button', { name: /Love it/ }).click();
     await dialog.getByRole('radiogroup', { name: 'Layout in-person evaluation' }).getByRole('radio', { name: 'Loved it' }).check();
     await dialog.getByRole('radiogroup', { name: 'Privacy in-person evaluation' }).getByRole('radio', { name: 'Neutral' }).check();
