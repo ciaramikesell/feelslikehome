@@ -35,7 +35,7 @@ const detail = read('src/components/HomeDetail.jsx');
 const facts = read('src/components/HomeFacts.jsx');
 const criteria = read('src/components/MatchCriteria.jsx');
 const factsLib = read('src/lib/homeFacts.js');
-const detailPage = read('src/app/(app)/homes/[homeId]/page.js');
+const detailPage = read('src/app/(app)/homes/(board)/[homeId]/page.js');
 const persistence = read('src/lib/supabase/collaboration.js');
 const MIGRATION = 'supabase/migrations/2026-10-17-home-facts-details.sql';
 
@@ -222,9 +222,10 @@ test('Match Criteria: three tiers, real Yes / No / Unknown radios, rows straight
   assert.match(criteria, /<input type="radio" name=\{name\}/);
   assert.match(criteria, /<legend className="sr-only">/);
   // Read-only viewers see the answer, never a control.
-  assert.match(criteria, /canAnswer && \(readOnly\s*\? <span className=\{`flh-mc-readonly/);
+  assert.match(criteria, /: readOnly \? <span className=\{`flh-mc2-state is-\$\{tone\}`\}>/);
   // Answers go where the editor always wrote them: personal checks, or the three shared rental facts.
   assert.match(detail, /const patch = criterionAnswerPatch\(home, item\.key, next, priorities\.searchType\);\s*return patch\.shared \? saveWhole\(\{ \.\.\.home, \.\.\.patch\.shared \}\) : savePersonal\(patch\.personal\);/);
+  assert.match(read('src/components/HomeOverlay.jsx'), /const patch = criterionAnswerPatch\(homeRef\.current, item\.key, next, priorities\.searchType\);\s*if \(patch\.shared\) autosave\.saveShared\(patch\.shared\); else autosave\.savePersonal\(patch\.personal\);/);
 });
 
 test('Garage, Commute and after-tour criteria are never answered in Match Criteria', async () => {
@@ -256,46 +257,30 @@ test('Add Home has exactly one action: Add to My Homes (no competing Review deta
   assert.match(board, /router\.replace\(`\/homes\/\$\{encodeURIComponent\(existing\.id\)\}`\)/);
 });
 
-test('the disappearing home is fixed at the source: the Router Cache is rebuilt before navigating to Home Facts', () => {
-  const fn = board.match(/const saveEditedHome = useCallback\(async \(home\) => \{[\s\S]*?\n  \}, \[modalHome, saveHome, router\]\);/)?.[0] || '';
+// Superseded by the home overlay (docs/home-overlay-phase-2.md): the welcome
+// banner, per-group Edit / Save and Next: Match Criteria are gone. The same
+// guarantees for the overlay live in test/home-overlay.test.js.
+test('the disappearing home is fixed at the source: the Router Cache is rebuilt before the new home opens', () => {
+  const fn = board.match(/const saveEditedHome = useCallback\(async \(home\) => \{[\s\S]*?\n  \}, \[modalHome, saveHome, router, workspace\]\);/)?.[0] || '';
   assert.match(fn, /const isNew = !modalHome\?\.id;/);
-  // Navigation only after a real save, and only after an awaited, revalidating
-  // Server Action has rebuilt the client cache (a router.refresh() is discarded
-  // by the navigation, and one dispatched mid-navigation cancels it).
-  assert.match(fn, /const saved = await saveHome\(home, \{ shared, keepModalOpen: isNew \}\);\s*if \(isNew && saved\?\.id\) \{[\s\S]*?await refreshMyHomes\(\)\.catch\(\(\) => \{\}\);\s*await new Promise\(\(resolve\) => setTimeout\(resolve, 0\)\);\s*router\.push\(`\/homes\/\$\{encodeURIComponent\(saved\.id\)\}\?added=\$\{home\.listingImport \? 'import' : 'manual'\}`\);/);
+  assert.match(fn, /const saved = await saveHome\(home, \{ shared, keepModalOpen: isNew \}\);\s*if \(isNew && saved\?\.id\) \{[\s\S]*?await refreshMyHomes\(\)\.catch\(\(\) => \{\}\);\s*await new Promise\(\(resolve\) => setTimeout\(resolve, 0\)\);[\s\S]*?router\.push\(`\/homes\/\$\{encodeURIComponent\(saved\.id\)\}`, \{ scroll: false \}\);/);
   assert.doesNotMatch(fn.replace(/\/\/[^\n]*/g, ''), /router\.refresh\(\)/);
   const action = read('src/app/(app)/homes/actions.js');
   assert.match(action, /^'use server';/);
   assert.match(action, /export async function refreshMyHomes\(\) \{\s*revalidatePath\('\/homes'\);\s*\}/);
-  // The welcome survives any later re-render without ?added=.
-  assert.match(detail, /const \[welcomeKind\] = useState\(justAdded\);/);
-  assert.match(detail, /justAdded=\{welcomeKind\}/);
 });
 
-test('the detail route only accepts the two welcome markers and HomeDetail clears it from the address bar', () => {
-  assert.match(detailPage, /const JUST_ADDED = new Set\(\['import', 'manual'\]\);/);
-  assert.match(detailPage, /justAdded=\{justAdded\}/);
-  assert.match(detail, /window\.history\.replaceState\(null, '', window\.location\.pathname\)/);
-});
-
-test('Home Facts saves shared facts through the canonical shared-home path and keeps opinions out', () => {
-  assert.match(detail, /onSaveFacts=\{\(patch\) => saveWhole\(\{ \.\.\.home, \.\.\.patch \}\)\}/);
-  assert.match(detail, /saveHomePersonalAndShared\(createClient\(\), next, userId, searchId\)/);
+test('Home Facts keeps opinions out and never offers edit controls to read-only viewers', () => {
   for (const personal of ['pros', 'cons', 'reaction', 'ratings', 'checks', 'PostTourModal']) assert.doesNotMatch(facts.replace(/\/\/[^\n]*/g, ''), new RegExp(`\\b${personal}\\b`));
   for (const personal of ['pros', 'cons', 'reaction', 'ratings']) assert.doesNotMatch(factsLib, new RegExp(`home\\??\\.${personal}\\b`));
-  // Read-only viewers (Realtors) never get edit controls.
-  assert.match(facts, /\{!readOnly && editing !== 'header' && <button/);
-  assert.match(facts, /\{!readOnly && !editing && <button type="button" className="flh-hf-edit"/);
-  // One save at a time per group, with the error kept beside the form.
-  assert.match(facts, /if \(savingRef\.current\) return;\s*savingRef\.current = true;/);
+  assert.match(facts, /const isReadOnly = readOnly \|\| !editor;/);
+  assert.match(detail, /<HomeFacts home=\{home\} priorities=\{priorities\} vocabulary=\{vocabulary\} readOnly userId=\{userId\} showHeading=\{false\} \/>/);
 });
 
-test('Home Facts: no standalone imported-facts panel, no school disclaimer, and an orange Next: Match Criteria', () => {
+test('Home Facts: no imported-facts panel, no school disclaimer, no Edit or Save buttons', () => {
   assert.doesNotMatch(facts, /All listing details|See imported details|<details/);
   assert.doesNotMatch(facts + factsLib, /FLH doesn’t pull school information|school rating|GreatSchools|assigned to/i);
-  assert.match(facts, /nextLabel = 'Next: Match Criteria'/);
-  assert.match(facts, /className="hh-btn flh-hf-next-button"/);
-  assert.match(detail, /onNext=\{\(\) => nextFromFacts\(\)\}/);
+  assert.doesNotMatch(facts, /flh-hf-edit|EditorShell|>Save |Next: Match Criteria|From listing/);
 });
 
 test('the workspace reads Home Facts / Match Criteria / Tour Feedback', () => {

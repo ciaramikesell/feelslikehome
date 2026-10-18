@@ -190,12 +190,32 @@ async function handle(req, res) {
   }
   if (path.startsWith('/auth/v1/logout')) return send(res, 204);
 
+  // supabase-js uploads a File/Blob as multipart form data (field "" or
+  // "file"), the way Supabase Storage expects: keep only the file part.
+  const storedObject = (body, type) => {
+    const boundary = type.match(/^multipart\/form-data;\s*boundary=(.+)$/)?.[1];
+    if (!boundary) return { body, type };
+    const delimiter = Buffer.from(`--${boundary}`);
+    let start = body.indexOf(delimiter);
+    while (start !== -1) {
+      const next = body.indexOf(delimiter, start + delimiter.length);
+      if (next === -1) break;
+      const part = body.subarray(start + delimiter.length + 2, next - 2);
+      const split = part.indexOf('\r\n\r\n');
+      const headers = part.subarray(0, split).toString();
+      if (/filename=/.test(headers) || /content-type:/i.test(headers)) {
+        return { body: part.subarray(split + 4), type: headers.match(/content-type:\s*([^\r\n]+)/i)?.[1] || 'application/octet-stream' };
+      }
+      start = next;
+    }
+    return { body, type };
+  };
   const storage = path.match(/^\/storage\/v1\/object\/(public\/)?([^/]+)\/(.+)$/);
   if (storage) {
     const key = `${storage[2]}/${decodeURIComponent(storage[3])}`;
     if (req.method === 'GET') { const object = objects.get(key); return object ? send(res, 200, object.body, { 'content-type': object.type }) : send(res, 404, { message: 'not found' }); }
     if (!caller) return send(res, 401, { message: 'unauthorized' });
-    objects.set(key, { body: raw, type: req.headers['content-type'] || 'application/octet-stream' });
+    objects.set(key, storedObject(raw, req.headers['content-type'] || 'application/octet-stream'));
     return send(res, 200, { Key: key });
   }
 

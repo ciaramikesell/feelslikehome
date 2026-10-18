@@ -75,7 +75,7 @@ test('Realtor detail is read-only below controls and Compare has no Realtor Matc
   assert.match(tour, /\{!readOnly && <button type="button" className="hh-btn hh-btn-ghost" onClick=\{onRecordTake\}>/);
   assert.match(tour, /\{!readOnly && !editing && <button/);
   // Match answers are personal state too: read-only shows text, never controls.
-  assert.match(matchCriteria, /\{canAnswer && \(readOnly\s*\? <span className=\{`flh-mc-readonly/);
+  assert.match(matchCriteria, /: readOnly \? <span className=\{`flh-mc2-state is-\$\{tone\}`\}>/);
   // The phone action bar is personal state too, so it is gated the same way.
   assert.match(detail, /\{!readOnly && !isArchivedStatus\(home\.status\) && section === 'match' && <div className="flh-mobile-only flh-detail-action-bar">/);
   assert.match(detail, /!readOnly && editing && <HomeModal/);

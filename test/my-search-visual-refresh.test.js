@@ -147,7 +147,7 @@ test('mobile: My Search is one stacked column below the desktop breakpoint', asy
 
 test('the permanent How Match Scores Work section no longer lives on My Search; the Homes link to My Search remains', async () => {
   const panel = await source('src/components/MySearchPanel.jsx');
-  const homes = await source('src/app/(app)/homes/page.js');
+  const homes = await source('src/app/(app)/homes/(board)/layout.js');
   const shell = await source('src/components/AppShell.jsx');
   assert.doesNotMatch(panel, /How Match Scores Work/);
   assert.doesNotMatch(panel, /hh-match-editorial/);

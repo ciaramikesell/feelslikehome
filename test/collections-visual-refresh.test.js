@@ -117,7 +117,7 @@ test('My Homes Visual Refresh: cards carry no favorite heart or "Your favorite" 
 });
 
 test('regression guard: Favorites/Want to Tour/Archive ownership stays scoped to the current participant\'s own home_member_state row, never merged', () => {
-  assert.match(collaboration, /export async function getHomesForUser\(supabase, userId, searchId\)/);
+  assert.match(collaboration, /export async function getHomesForUser\(supabase, userId, searchId, \{ homeId = null \} = \{\}\)/);
   assert.match(collaboration, /\.eq\('user_id', userId\)\.in\('home_id', homeIds\)/);
   // Co-buyer signals only ever cross into application code as sanitized
   // booleans from resolve_cobuyer_lifecycle_signals — never raw identity,

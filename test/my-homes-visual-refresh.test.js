@@ -24,7 +24,7 @@ const card = board.match(/function HomeCard\([\s\S]*?\n\}\n\nfunction CardGrid/)
 const ui = read('src/components/ui.jsx');
 const css = read('src/app/globals.css');
 const refreshCss = css.slice(css.indexOf('My Homes Visual Refresh (Phase 1)'), css.indexOf('/* ── Onboarding V2 shell (Phase 1)'));
-const homesPage = read('src/app/(app)/homes/page.js');
+const homesPage = read('src/app/(app)/homes/(board)/layout.js');
 const archivePage = read('src/app/(app)/archive/page.js');
 
 /* --------------------------------- header --------------------------------- */

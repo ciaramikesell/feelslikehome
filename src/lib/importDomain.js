@@ -25,6 +25,8 @@ export const IMPORT_DESTINATIONS = Object.freeze([
   'hoaFeeMonthly', 'propertyTaxAnnual', 'propertyTaxYear', 'latitude', 'longitude',
   // Home Facts details. Choice facts accept only their canonical tokens.
   'listingId', 'heating', 'cooling', 'exterior', 'roof', 'garageType', 'basementStyle', 'basementCondition',
+  // Laundry Location (2026-10-18-laundry-location.sql): only an explicit, single location.
+  'laundryLocation',
   // Option fields are legal destinations only for a future explicitly-scoped
   // floor-plan/unit adapter. Community RentCast normalization never emits them.
   'selectedFloorPlanName', 'selectedUnitLabel',
@@ -32,11 +34,13 @@ export const IMPORT_DESTINATIONS = Object.freeze([
 
 const DESTINATIONS = new Set(IMPORT_DESTINATIONS);
 const CANONICAL_PROPERTY_TYPES = new Set(['apartment', 'house', 'townhome', 'condo', 'multifamily', 'other']);
-// Kept in step with the homes_*_check constraints (2026-10-17-home-facts-details.sql).
+// Kept in step with the homes_*_check constraints (2026-10-17-home-facts-details.sql,
+// 2026-10-18-laundry-location.sql).
 export const CANONICAL_CHOICE_FACTS = Object.freeze({
   garageType: Object.freeze(['none', 'attached', 'detached']),
   basementStyle: Object.freeze(['none', 'traditional', 'gardenview', 'walkout']),
   basementCondition: Object.freeze(['none', 'unfinished', 'partially_finished', 'finished']),
+  laundryLocation: Object.freeze(['basement', 'first_floor', 'second_floor']),
 });
 
 export function isImportCandidate(value) {

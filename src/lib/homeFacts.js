@@ -331,3 +331,71 @@ export function homeFactsWelcome(home, justAdded) {
     body: 'It’s in My Homes. Add what you know whenever you’re ready — anything left blank stays Unknown and never counts against it.',
   };
 }
+
+/* ------------------------- Home overlay (directly editable) ------------------------- */
+
+// Laundry Location (homes.laundry_location, 2026-10-18-laundry-location.sql).
+// Null is Unknown. Separate from the rental In-Unit Laundry fact and from any
+// personal laundry answer; never a Match input.
+export const LAUNDRY_LOCATION_CHOICES = Object.freeze([
+  ['basement', 'Basement'], ['first_floor', 'First Floor'], ['second_floor', 'Second Floor'],
+]);
+
+// Suggestions only (a datalist): heating and cooling stay free text so an
+// imported "Forced Air, Gas" is kept exactly as the listing said it.
+export const HEATING_SUGGESTIONS = Object.freeze(['Forced Air', 'Radiant', 'Boiler', 'Heat Pump', 'Baseboard', 'Geothermal']);
+export const COOLING_SUGGESTIONS = Object.freeze(['Central Air', 'Ductless Mini-Split', 'Window Units', 'Heat Pump', 'None']);
+
+// Home layout shows the shared homes.home_layout list and First-Floor Primary
+// (homes.primary_bedroom_location = 'Main Floor') as one choose-any control.
+export function layoutValues(home) {
+  return [...(home?.homeLayout || []), ...(home?.primaryBedroomLocation === 'Main Floor' ? [FIRST_FLOOR_PRIMARY] : [])];
+}
+
+// The patch for a new layout selection: only the fields that changed. Turning
+// First-Floor Primary off clears 'Main Floor' but never touches another stored
+// location (e.g. 'Upstairs'); turning it on is the only way to set 'Main Floor'.
+export function layoutPatch(home, nextValues) {
+  const patch = {};
+  const layouts = nextValues.filter((value) => value !== FIRST_FLOOR_PRIMARY);
+  if (JSON.stringify(layouts) !== JSON.stringify(home?.homeLayout || [])) patch.homeLayout = layouts;
+  const wantsPrimary = nextValues.includes(FIRST_FLOOR_PRIMARY);
+  const hasPrimary = home?.primaryBedroomLocation === 'Main Floor';
+  if (wantsPrimary && !hasPrimary) patch.primaryBedroomLocation = 'Main Floor';
+  if (!wantsPrimary && hasPrimary) patch.primaryBedroomLocation = '';
+  return patch;
+}
+
+// Garage: "None" means no garage either way, so the other field follows it.
+// Choosing a real type or a count after "None" returns the other to Unknown.
+export function garagePatch(home, field, value) {
+  const next = value || null;
+  if (field === 'garageType') {
+    const patch = { garageType: next };
+    if (next === 'none') patch.garageSpaces = '0';
+    else if (next && String(home?.garageSpaces ?? '') === '0') patch.garageSpaces = '';
+    return patch;
+  }
+  const patch = { garageSpaces: next || '' };
+  if (next === '0') patch.garageType = 'none';
+  else if (next && home?.garageType === 'none') patch.garageType = null;
+  return patch;
+}
+
+export function basementPatch(home, field, value) {
+  const next = value || null;
+  const other = field === 'basementStyle' ? 'basementCondition' : 'basementStyle';
+  const patch = { [field]: next };
+  if (next === 'none') patch[other] = 'none';
+  else if (next && home?.[other] === 'none') patch[other] = null;
+  return patch;
+}
+
+// The garage-spaces select value for a stored value ('4' shows as 3+ without
+// being rewritten); free text that isn't a count stays its own option.
+export function garageSpacesSelectValue(value) {
+  return garageSpacesChoice(value) || (isBlank(value) ? '' : String(value).trim());
+}
+
+// Annual taxes label, with the tax year when known.
+export const annualTaxesLabel = (home) => `Annual taxes${home?.propertyTaxYear ? ` · ${home.propertyTaxYear}` : ''}`;

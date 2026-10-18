@@ -38,7 +38,23 @@ export const HOME_FACT_DETAIL_COLUMNS = [
   'listing_id', 'heating', 'cooling', 'exterior', 'roof', 'garage_type', 'basement_style', 'basement_condition',
   'school_district_name', 'elementary_school', 'middle_school', 'high_school',
 ];
-export const HOME_SHARED_COLUMNS = `${HOME_SHARED_COLUMNS_PRE_PASS_B},property_type,available_on,pets_allowed,utilities_included,in_unit_laundry,property_name,selected_floor_plan_name,selected_unit_label,suggestion_staged,${HOME_FACT_DETAIL_COLUMNS.join(',')}`;
+const HOME_SHARED_COLUMNS_REQUIRED = `${HOME_SHARED_COLUMNS_PRE_PASS_B},property_type,available_on,pets_allowed,utilities_included,in_unit_laundry,property_name,selected_floor_plan_name,selected_unit_label,suggestion_staged,${HOME_FACT_DETAIL_COLUMNS.join(',')}`;
+// Optional shared columns: descriptive facts that are never Match inputs, so a
+// database that hasn't applied their (separately approved) migration yet can
+// safely read and write homes without them. The UI hides a fact whose column
+// is missing (its value reads as undefined, never as Unknown/null).
+//   laundry_location — 2026-10-18-laundry-location.sql
+export const OPTIONAL_HOME_COLUMNS = Object.freeze(['laundry_location']);
+export const HOME_SHARED_COLUMNS = `${HOME_SHARED_COLUMNS_REQUIRED},${OPTIONAL_HOME_COLUMNS.join(',')}`;
+
+// The optional column a missing-column response names, or null for any other
+// error (which must still fail visibly).
+function missingOptionalColumn(error) {
+  const message = error?.message || '';
+  const missingColumnError = ['42703', 'PGRST204'].includes(error?.code) || /does not exist|Could not find the '/.test(message);
+  if (!missingColumnError) return null;
+  return OPTIONAL_HOME_COLUMNS.find((column) => message.includes(column)) || null;
+}
 
 const PASS_B_DATABASE_COLUMNS = ['property_type', 'available_on', 'pets_allowed', 'utilities_included', 'in_unit_laundry'];
 // Only a missing *Pass B* column may fall back to the pre-Pass-B projection. Any
@@ -474,7 +490,7 @@ const SHARED_FIELDS = [
   'propertyType', 'availableOn', 'petsAllowed', 'utilitiesIncluded', 'inUnitLaundry',
   'propertyName', 'selectedFloorPlanName', 'selectedUnitLabel',
   'listingId', 'heating', 'cooling', 'exterior', 'roof', 'garageType', 'basementStyle', 'basementCondition',
-  'schoolDistrict', 'elementarySchool', 'middleSchool', 'highSchool',
+  'schoolDistrict', 'elementarySchool', 'middleSchool', 'highSchool', 'laundryLocation',
 ];
 
 function emptyPersonalState() {
@@ -502,13 +518,19 @@ export function resolvePersonalState(home, memberStateRow, userId) {
 // resolved for the current user — so every existing component (HomesBoard,
 // HomeCard, matching.js, etc.) keeps reading home.status/reaction/ratings/
 // checks exactly as it always has, with zero changes needed for reading.
-export async function getHomesForUser(supabase, userId, searchId) {
-  let { data: rows, error } = await supabase
-    .from('homes').select(HOME_SHARED_COLUMNS).eq('search_id', searchId).eq('suggestion_staged', false).order('created_at', { ascending: true });
+// `homeId` narrows the read to one home of the search (the home overlay); the
+// search constraint and RLS still apply, so a guessed id returns nothing.
+export async function getHomesForUser(supabase, userId, searchId, { homeId = null } = {}) {
+  const one = (query) => (homeId ? query.eq('id', homeId) : query);
+  let { data: rows, error } = await one(supabase
+    .from('homes').select(HOME_SHARED_COLUMNS).eq('search_id', searchId).eq('suggestion_staged', false)).order('created_at', { ascending: true });
+  // An optional (non-Match) column whose migration isn't applied yet: read without it.
+  if (missingOptionalColumn(error)) ({ data: rows, error } = await one(supabase
+    .from('homes').select(HOME_SHARED_COLUMNS_REQUIRED).eq('search_id', searchId).eq('suggestion_staged', false)).order('created_at', { ascending: true }));
   // Repository merge precedes the manual production migration. Retry only the
   // recognizable missing-column response so the dormant release works on both schemas.
-  if (isPrePassBSchemaError(error)) ({ data: rows, error } = await supabase
-    .from('homes').select(HOME_SHARED_COLUMNS_PRE_PASS_B).eq('search_id', searchId).order('created_at', { ascending: true }));
+  if (isPrePassBSchemaError(error)) ({ data: rows, error } = await one(supabase
+    .from('homes').select(HOME_SHARED_COLUMNS_PRE_PASS_B).eq('search_id', searchId)).order('created_at', { ascending: true }));
   if (error) throw error;
 
   const homes = (rows || []).map((row) => ({ ...rowToHomeWithOwner(row) }));
@@ -570,6 +592,13 @@ export function hasSharedHomeChanges(home, previousHome) {
   return SHARED_FIELDS.some((field) => JSON.stringify(home[field] ?? null) !== JSON.stringify(previousHome[field] ?? null));
 }
 
+// The shared fields an edit changes, as a patch (for partial autosave).
+export function sharedFieldChanges(home, previousHome) {
+  return Object.fromEntries(SHARED_FIELDS
+    .filter((field) => field in (home || {}) && JSON.stringify(home[field] ?? null) !== JSON.stringify(previousHome?.[field] ?? null))
+    .map((field) => [field, home[field]]));
+}
+
 export async function saveHomePersonalAndShared(supabase, home, userId, searchId) {
   const sharedRow = homeToSharedRow(home, userId, searchId);
   // An existing home is an UPDATE of its shared facts, never an upsert. An
@@ -580,9 +609,20 @@ export async function saveHomePersonalAndShared(supabase, home, userId, searchId
   // co-buyers) and nobody else; the identity trigger keeps id, adder and search
   // unchangeable; personal state stays in the caller's own home_member_state row.
   const { id: homeId, user_id: _adder, search_id: _search, ...sharedFacts } = sharedRow;
-  const { data: savedShared, error: sharedError } = homeId
+  let { data: savedShared, error: sharedError } = homeId
     ? await supabase.from('homes').update(sharedFacts).eq('id', homeId).select(HOME_SHARED_COLUMNS).single()
     : await supabase.from('homes').insert(sharedRow).select(HOME_SHARED_COLUMNS).single();
+  // Only an optional (non-Match) column may be dropped, and only when the
+  // database says it doesn't exist yet. The write failed as a whole, so
+  // nothing was half-saved before this retry.
+  const missing = missingOptionalColumn(sharedError);
+  if (missing) {
+    const { [missing]: _factsOmitted, ...requiredFacts } = sharedFacts;
+    const { [missing]: _rowOmitted, ...requiredRow } = sharedRow;
+    ({ data: savedShared, error: sharedError } = homeId
+      ? await supabase.from('homes').update(requiredFacts).eq('id', homeId).select(HOME_SHARED_COLUMNS_REQUIRED).single()
+      : await supabase.from('homes').insert(requiredRow).select(HOME_SHARED_COLUMNS_REQUIRED).single());
+  }
   // Never retry a write without the canonical shared-fact columns. That legacy
   // compatibility path reported success after silently dropping propertyType
   // (and the other Pass B facts), so the selection disappeared on reload. A
@@ -605,6 +645,28 @@ export async function saveHomePersonalAndShared(supabase, home, userId, searchId
   }
 
   return { ...savedHome, ...personal };
+}
+
+// Autosave for shared facts (the home overlay): an UPDATE of exactly the
+// columns this patch names, so a co-buyer's concurrent edit of a different
+// fact is never overwritten by a stale copy of the whole row. Same UPDATE
+// policy and column grants as saveHomePersonalAndShared; never an insert, never
+// personal state. Returns the saved shared home (personal fields untouched).
+export async function saveHomeSharedFields(supabase, homeId, patch) {
+  if (!homeId) throw new Error('Cannot autosave a home without an id.');
+  const unknown = Object.keys(patch).filter((field) => !SHARED_FIELDS.includes(field));
+  if (unknown.length) throw new Error(`Not shared home fields: ${unknown.join(', ')}`);
+  const full = homeToSharedRow({ ...patch, id: homeId }, null, null);
+  const row = Object.fromEntries(Object.keys(patch).map((field) => [sharedColumnFor(field), full[sharedColumnFor(field)]]));
+  row.updated_at = full.updated_at;
+  const { data, error } = await supabase.from('homes').update(row).eq('id', homeId).select('id,updated_at').single();
+  if (error) throw error;
+  return data;
+}
+
+const SHARED_COLUMN_EXCEPTIONS = Object.freeze({ schoolDistrict: 'school_district_name' });
+export function sharedColumnFor(field) {
+  return SHARED_COLUMN_EXCEPTIONS[field] || field.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
 }
 
 // Personal lifecycle/evaluation actions always touch only the authenticated
@@ -1024,6 +1086,9 @@ function rowToHomeWithOwner(row) {
     elementarySchool: row.elementary_school ?? null,
     middleSchool: row.middle_school ?? null,
     highSchool: row.high_school ?? null,
+    // Optional column: undefined (not null) when the database predates it, so
+    // the UI can hide the fact instead of offering an edit that can't save.
+    laundryLocation: 'laundry_location' in row ? row.laundry_location ?? null : undefined,
   };
 }
 
@@ -1087,6 +1152,8 @@ function homeToSharedRow(home, userId, searchId) {
     elementary_school: factOrNull(home.elementarySchool),
     middle_school: factOrNull(home.middleSchool),
     high_school: factOrNull(home.highSchool),
+    // Written only when the home was read with the column (see rowToHome).
+    ...(home.laundryLocation !== undefined ? { laundry_location: factOrNull(home.laundryLocation) } : {}),
     updated_at: new Date().toISOString(),
   };
 }

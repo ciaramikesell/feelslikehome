@@ -78,4 +78,4 @@ authentication flows or HTTP/PostgREST serialization.
 the app uses (auth, PostgREST, RPC, Storage) on top of this harness, so the
 real Next.js app can run in a browser against real Postgres: RLS, column
 grants, triggers and constraints all apply. Development only. See
-`scripts/qa/home-flow-e2e.mjs` and `docs/home-facts-flow-redesign.md` §6.
+`scripts/qa/home-overlay-e2e.mjs` and `docs/home-overlay-phase-2.md`.

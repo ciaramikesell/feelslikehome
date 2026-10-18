@@ -4,7 +4,7 @@ import fs from 'node:fs';
 
 const board = fs.readFileSync('src/components/HomesBoard.jsx', 'utf8');
 const css = fs.readFileSync('src/app/globals.css', 'utf8');
-const page = fs.readFileSync('src/app/(app)/homes/page.js', 'utf8');
+const page = fs.readFileSync('src/app/(app)/homes/(board)/layout.js', 'utf8');
 
 test('My Homes filters have real derived counts and explicit bidirectional sorts', async () => {
   assert.match(board, /filterCounts = useMemo/);

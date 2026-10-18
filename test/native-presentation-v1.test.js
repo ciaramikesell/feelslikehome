@@ -168,8 +168,11 @@ test('regression: clearing the ?url= query param cannot disable a shared-URL mod
   for (const call of otherOpens) assert.doesNotMatch(call, /autoFind:\s*(true|validUrl)/);
   // The archive/homes Edit buttons pass openHomeModal by reference — no
   // wrapper could sneak autoFind:true onto them even if someone tried.
-  const onEditSites = homesBoard.match(/onEdit=\{openHomeModal\}/g) || [];
-  assert.equal(onEditSites.length, 2, 'expected both Edit-home call sites (archive mode + homes mode) to pass openHomeModal directly');
+  // Edit now opens the home overlay (openHome); only an id-less home ever
+  // reaches the modal from there, and never with autoFind.
+  const onEditSites = homesBoard.match(/onEdit=\{openHome\}/g) || [];
+  assert.equal(onEditSites.length, 2, 'expected both Edit-home call sites (archive mode + homes mode) to pass openHome directly');
+  assert.match(homesBoard, /const openHome = useCallback\(\(home\) => \{\s*if \(!home\?\.id\) \{ openHomeModal\(home\); return; \}/);
 
   // 4. openHomeModal itself defaults autoFind to false and is the only
   //    thing allowed to set modalAutoFind — no other code path can leave a

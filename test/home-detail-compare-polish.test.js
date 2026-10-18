@@ -11,7 +11,7 @@ const homeFactsLib = fs.readFileSync('src/lib/homeFacts.js', 'utf8');
 
 test('Home Detail gives facts and personal relationship regions usable responsive width', () => {
   assert.match(detail, /<HomeFacts home=\{home\}/);
-  assert.match(homeFacts, /className="flh-home-facts flh-hf"/);
+  assert.match(homeFacts, /className="flh-hf2"/);
   assert.match(detail, /<MatchCriteria home=\{home\}/);
   assert.match(detail, /<TourFeedback/);
   assert.match(css, /\.flh-tour \{ display: grid; gap: 26px; min-width: 0; \}/);

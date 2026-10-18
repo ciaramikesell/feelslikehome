@@ -143,7 +143,8 @@ test('answering in person never reads as a tour or a recorded take; the survey s
   assert.match(tour, /const hasTake = Boolean\(verdict \|\| overall > 0 \|\| survey\.length\);/);
   assert.match(tour, /<h3 id="tour-in-person-checks-title" className="hh-serif">Things to check in person<\/h3>/);
   assert.match(tour, /\{readOnly\s*\? <span className=\{`flh-mc-readonly/);
-  assert.match(read('src/components/MatchCriteria.jsx'), /return 'Checked in person · Tour Feedback';/);
+  // On the home overlay an after-tour criterion only points to Tour Feedback.
+  assert.match(read('src/components/MatchCriteria.jsx'), /else if \(isAfterTour\(item\) && tourHref\) source = <a className="flh-mc2-source" href=\{tourHref\}>After tour/);
 });
 
 /* ------------------------------- Tour Feedback: source guarantees ------------------------------- */

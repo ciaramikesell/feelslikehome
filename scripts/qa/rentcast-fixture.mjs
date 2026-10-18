@@ -5,7 +5,7 @@
 const PROPERTY = {
   formattedAddress: '51613 Sass Rd, New Baltimore, MI 48047', bedrooms: 5, bathrooms: 2, squareFootage: 2080, lotSize: 12632,
   yearBuilt: 1993, propertyType: 'Single Family', latitude: 42.68, longitude: -82.73,
-  features: { heatingType: 'Forced Air', cooling: true, exteriorType: 'Vinyl Siding', roofType: 'Asphalt Shingle', garageType: 'Attached Garage', garageSpaces: 2, basement: 'Unfinished', fireplaceCount: 1 },
+  features: { heatingType: 'Forced Air', cooling: true, exteriorType: 'Vinyl Siding', roofType: 'Asphalt Shingle', garageType: 'Attached Garage', garageSpaces: 2, basement: 'Unfinished', fireplaceCount: 1, laundry: 'First Floor Laundry Room' },
   propertyTaxes: { 2025: { year: 2025, total: 4210 } },
 };
 const LISTING = { formattedAddress: PROPERTY.formattedAddress, price: 335000, bedrooms: 5, bathrooms: 2, squareFootage: 2080, daysOnMarket: 23, mlsNumber: '20261076983', status: 'Active', description: 'Bright two-story with first-floor laundry and a deck.' };

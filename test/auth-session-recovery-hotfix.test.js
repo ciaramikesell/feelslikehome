@@ -30,12 +30,21 @@ test('at least the known authenticated routes were found under (app)', () => {
   assert.ok(appPages.length >= 13, `expected at least 13 (app) pages, found ${appPages.length}`);
   const relPaths = appPages.map((p) => path.relative(rootDir, p));
   for (const expected of [
-    'homes/page.js', 'compare/page.js', 'tour/page.js', 'map/page.js', 'search/page.js',
-    'favorites/page.js', 'archive/page.js', 'homes/suggestions/page.js', 'homes/[homeId]/page.js',
+    'homes/(board)/page.js', 'compare/page.js', 'tour/page.js', 'map/page.js', 'search/page.js',
+    'favorites/page.js', 'archive/page.js', 'homes/suggestions/page.js', 'homes/(board)/[homeId]/page.js',
     'people/page.js', 'people/[searchId]/page.js', 'people/[searchId]/compare/page.js', 'people/[searchId]/homes/[homeId]/page.js',
   ]) {
     assert.ok(relPaths.some((p) => p.endsWith(expected.replace(/\//g, path.sep))), `missing ${expected}`);
   }
+});
+
+// My Homes loads its data in a layout (it stays mounted under the home
+// overlay), so that layout is held to the same guards as a page.
+test('the My Homes layout resolves its user through requireUser() inside withAuthRecovery', () => {
+  const content = source('src/app/(app)/homes/(board)/layout.js');
+  assert.match(content, /withAuthRecovery\(async \(\) => \{/);
+  assert.match(content, /const user = await requireUser\(supabase\)/);
+  assert.ok(content.indexOf('await requireUser(supabase)') < content.indexOf('resolveActiveSearch('), 'requireUser runs before any data read');
 });
 
 test('no (app) page dereferences an unchecked auth.getUser() result', () => {
@@ -74,10 +83,17 @@ test('requireUser() runs, and its user is resolved, before any Supabase data que
   // requireUser() either returns a real user or throws (redirects) before
   // returning, anything textually after it in the same async function only
   // ever runs with a validated user.
+  // My Homes' /homes page renders nothing (its layout loads the board), so it
+  // has no data call of its own — and must keep it that way.
+  const NO_DATA_PAGES = new Set([path.join('src', 'app', '(app)', 'homes', '(board)', 'page.js')]);
   for (const file of appPages) {
     const content = fs.readFileSync(file, 'utf8');
     const guardIndex = content.indexOf('await requireUser(supabase)');
     assert.ok(guardIndex !== -1, `${path.relative(rootDir, file)} never calls requireUser`);
+    if (NO_DATA_PAGES.has(path.relative(rootDir, file))) {
+      assert.doesNotMatch(content, /@\/lib\/supabase\/(collaboration|data)/, 'a no-data page reads no data');
+      continue;
+    }
     const afterGuard = content.slice(guardIndex);
     // The first call into the data layer after the guard -- resolveActiveSearch,
     // getRealtorSearchContext, getRealtorRelationships are this app's entry points
@@ -152,7 +168,7 @@ test('getUser() itself is memoized per request, not just the client -- the actua
 });
 
 test('Homes specifically: the reported null `.id` crash site now goes through requireUser and withAuthRecovery', async () => {
-  const homes = await source('src/app/(app)/homes/page.js');
+  const homes = await source('src/app/(app)/homes/(board)/layout.js');
   assert.doesNotMatch(homes, /const \{ data: \{ user \} \} = await supabase\.auth\.getUser\(\)/);
   assert.match(homes, /const user = await requireUser\(supabase\)/);
   assert.match(homes, /return withAuthRecovery\(async \(\) => \{/);

@@ -5,7 +5,7 @@ import fs from 'node:fs';
 const read = (p) => fs.readFileSync(p, 'utf8');
 
 const detail = read('src/components/HomeDetail.jsx');
-const detailPage = read('src/app/(app)/homes/[homeId]/page.js');
+const detailPage = read('src/app/(app)/homes/(board)/[homeId]/page.js');
 const matching = read('src/lib/matching.js');
 const globalsCss = read('src/app/globals.css');
 const realtorContributions = read('src/components/RealtorContributions.jsx');
@@ -18,9 +18,9 @@ test('regression guard: Home Detail still loads exclusively through requireUser(
   assert.match(detailPage, /const user = await requireUser\(supabase\);/);
   assert.doesNotMatch(detailPage, /supabase\.auth\.getUser\(\)/);
   // A guessed id from another search still has no detail route — the home is
-  // located inside the current user's own getHomesForUser() result, not
-  // fetched independently by id.
-  assert.match(detailPage, /const home = homes\.find\(\(candidate\) => String\(candidate\.id\) === homeId\);/);
+  // read through the current user's own getHomesForUser(), constrained to the
+  // active search (and RLS), narrowed to this id.
+  assert.match(detailPage, /const \[home\] = await getHomesForUser\(supabase, user\.id, search\.id, \{ homeId \}\);/);
   assert.match(detailPage, /if \(!home\) notFound\(\);/);
 });
 
@@ -36,7 +36,7 @@ test('original listing renders only when a canonical URL exists, and the edit ac
   assert.match(detail, /\{home\.listingUrl && <a href=\{home\.listingUrl\} target="_blank" rel="noreferrer">Original listing/);
   // Home Facts edits inline; the full editor stays for apartments and rentals.
   assert.match(detail, /\{!readOnly && usesFullEditor && <button type="button" onClick=\{\(\) => setEditing\(true\)\}>/);
-  assert.match(read('src/components/HomeFacts.jsx'), /\{home\.listingUrl && <a className="flh-hf-link" href=\{home\.listingUrl\}/);
+  assert.match(read('src/components/HomeFacts.jsx'), /home\.listingUrl \? <a className="flh-hf-listing" href=\{home\.listingUrl\}/);
   assert.match(detail, /HomeModal presentation="detail-panel"/);
   assert.match(detail, /onSave=\{saveWhole\}/);
 });
@@ -100,7 +100,7 @@ test('full Match breakdown distinguishes missing, unknown, and neutral tour eval
   const criteria = read('src/components/MatchCriteria.jsx');
   assert.match(criteria, /if \(!item\.evaluated\) return \{ tone: 'unknown', text: 'Unknown'/);
   assert.match(criteria, /if \(item\.met === null\) return \{ tone: 'neutral', text: 'Neutral'/);
-  assert.match(criteria, /item\.met \? \{ tone: 'met', text: 'Matches'[\s\S]*\{ tone: 'missed', text: 'Doesn’t match'/);
+  assert.match(criteria, /item\.met \? \{ tone: 'met', text: 'Yes'[\s\S]*\{ tone: 'missed', text: 'No'/);
 });
 
 /* ------------------------------ Property facts: real fields only ------------------------------ */
@@ -188,8 +188,9 @@ test('desktop refresh exposes the real payment, status chips, wide hero, and act
 
 test('category summaries count met, missing, and unknown independently', () => {
   const criteria = read('src/components/MatchCriteria.jsx');
-  assert.match(criteria, /const unknown = tierRows\.filter\(\(item\) => !item\.evaluated\)\.length/);
-  assert.match(criteria, /` · \$\{unknown\} unknown`/);
+  // Each row carries its own state (met / missed / unknown), never a merged count.
+  assert.match(criteria, /const tone = canAnswer \? \(value === true \? 'met' : value === 'no' \? 'missed' : 'unknown'\) : criterionState\(item\)\.tone;/);
+  assert.match(criteria, /rows=\{rows\.filter\(\(item\) => item\.tier === tier\.key\)\}/);
 });
 
 test('single canonical photo degrades gracefully without fake thumbnails or counts', () => {
