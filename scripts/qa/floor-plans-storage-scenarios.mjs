@@ -22,6 +22,9 @@ const sleep = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 export async function runFloorPlanStorageScenarios({ clients, homeId, fetchSigned = null }) {
   const results = [];
   const check = (name, ok, detail = '') => { results.push({ name, ok: Boolean(ok), detail }); };
+  // Recorded, never failing: behaviour accepted as best-effort for v1.
+  const note = (name, detail) => { results.push({ name, ok: true, info: true, detail }); };
+  const folderCount = async () => ((await bucket('owner').list(homeId, { limit: 100 })).data || []).length;
   const bucket = (who) => clients[who].storage.from(FLOOR_PLAN_BUCKET);
   const created = new Set();
   const newPath = () => `${homeId}/${crypto.randomUUID()}.png`;
@@ -100,15 +103,35 @@ export async function runFloorPlanStorageScenarios({ clients, homeId, fetchSigne
     created.delete(plan.storagePath);
     check('the Realtor can view the replacement', Boolean(await signed('realtor', replaced.storagePath)));
 
-    // Eight objects per home folder, then refused.
+    // Four plans per home is strict, even when two buyers add at once; the
+    // refused add deletes the image it had uploaded.
+    for (let i = 0; i < 2; i += 1) created.add((await addFloorPlan(clients.owner, homeId, png())).storagePath);
+    const race = await Promise.allSettled([addFloorPlan(clients.owner, homeId, png()), addFloorPlan(clients.coBuyer, homeId, png())]);
+    race.filter((r) => r.status === 'fulfilled').forEach((r) => created.add(r.value.storagePath));
+    check('two buyers adding the 4th and 5th plan at once: exactly one is saved',
+      race.filter((r) => r.status === 'fulfilled').length === 1 && race.some((r) => r.status === 'rejected' && r.reason?.reason === 'limit'),
+      race.map((r) => r.status === 'fulfilled' ? 'saved' : r.reason?.reason).join(', '));
+    check('the home has exactly 4 plans', (await getFloorPlans(clients.owner, homeId))?.length === 4);
+    check("the refused add left no image behind", (await folderCount()) === 4, String(await folderCount()));
+    for (const extra of (await getFloorPlans(clients.owner, homeId)).filter((p) => p.id !== replaced.id)) {
+      await removeFloorPlan(clients.owner, extra);
+      created.delete(extra.storagePath);
+    }
+
+    // Eight objects per home folder: exact one at a time, best-effort when
+    // simultaneous (Storage pre-checks the policy, then inserts as its admin).
     const filler = [];
-    while (created.size < 8) {
+    while (created.size < 7) {
       const path = newPath();
       if (await upload('owner', path)) break;
       filler.push(path);
     }
-    check('the folder fills to eight objects', created.size === 8, String(created.size));
-    check('the ninth upload is refused', Boolean(await upload('coBuyer', newPath())));
+    check('the folder fills to seven objects', (await folderCount()) === 7, String(await folderCount()));
+    const burst = [newPath(), newPath()];
+    const burstErrors = await Promise.all([upload('owner', burst[0], png()), upload('coBuyer', burst[1], png())]);
+    filler.push(...burst.filter((_, i) => !burstErrors[i]));
+    note('simultaneous 8th and 9th upload (best-effort cap)', `${burstErrors.filter((e) => !e).length} of 2 accepted; folder holds ${await folderCount()}`);
+    check('a further upload is refused', Boolean(await upload('coBuyer', newPath())));
     await bucket('owner').remove(filler);
     filler.forEach((path) => created.delete(path));
 

@@ -58,11 +58,16 @@ Each test file creates its own `flh_test_<pid>_<time>` database and drops it.
    the embedded table is aliased `homes_1` (so a missing column fails as
    `42703 column homes_1.<column> does not exist`), it is read under the
    caller's RLS, and the foreign key is assumed to be `<table minus s>_id`.
-   Storage calls behave as the Storage API does for RLS: an upload is an
-   `insert` into `storage.objects` as the caller (refused if a policy says
-   no), a remove silently skips objects the caller may not see or delete, and
-   a signed URL is issued only for an object the caller may `select`. Bucket
-   size and MIME limits are applied from `storage.buckets`.
+   Storage calls behave as Supabase Storage (storage-api v1.25.7) does
+   against Postgres, as observed in the floor-plans Stage A run: an upload is
+   a pre-check `insert` into `storage.objects` as the caller that is rolled
+   back (refused if a policy says no, 403), then — after the file is written —
+   the real `insert` as Storage's admin role, which RLS does not apply to.
+   `preauthorizeUpload` / `completeUpload` expose the two stages so tests can
+   interleave them. A remove silently skips objects the caller may not see or
+   delete, and a signed URL is issued only for an object the caller may
+   `select`. Bucket size (413) and MIME (400) limits come from
+   `storage.buckets`.
 4. Provides `admin(sql)` for fixtures and for checking ground truth
    independently of what RLS shows a caller.
 

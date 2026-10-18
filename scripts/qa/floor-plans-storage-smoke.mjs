@@ -77,7 +77,8 @@ try {
   await deleteHome(people.owner.supabase, home.id);
 }
 
-for (const { name, ok, detail } of results) console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `  (${detail})` : ''}`);
-const failed = results.filter((result) => !result.ok).length;
-console.log(`\n${results.length - failed} passed, ${failed} failed on project ${ref}.`);
+for (const { name, ok, info, detail } of results) console.log(`${info ? 'INFO' : ok ? 'PASS' : 'FAIL'}  ${name}${detail ? `  (${detail})` : ''}`);
+const checks = results.filter((result) => !result.info);
+const failed = checks.filter((result) => !result.ok).length;
+console.log(`\n${checks.length - failed} passed, ${failed} failed on project ${ref}.`);
 process.exit(failed ? 1 : 0);

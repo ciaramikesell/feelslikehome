@@ -16,7 +16,8 @@
 --       migration aborts on it — review and scope it to its bucket first)
 --  10   no policy other than the migration's own mentions home-floor-plans
 --  11   the role running this (it will own the helper functions) sees every
---       storage.objects row, so the 8-objects-per-home upload cap can count;
+--       storage.objects row, so the (best-effort) 8-objects-per-home upload
+--       cap can count;
 --       if not, the storage migration aborts (fail-closed) — do not apply
 --  12   info: legacy homes.floor_plan_image_url (left untouched either way)
 --  13   info: home-photos bucket visibility (left untouched)
@@ -62,7 +63,7 @@ select * from (
          not exists (select 1 from object_policies where rule ilike '%home-floor-plans%' and policyname not in (select policyname from ours)),
          (select string_agg(policyname || ' [' || cmd || ']', ', ') from object_policies where rule ilike '%home-floor-plans%' and policyname not in (select policyname from ours))
   union all
-  select 11, 'the migrating role sees every storage.objects row (upload cap can count)',
+  select 11, 'the migrating role sees every storage.objects row (best-effort upload cap can count)',
          coalesce((select (r.rolsuper or r.rolbypassrls or (c.relowner = r.oid and not c.relforcerowsecurity))
                           and has_table_privilege(r.oid, c.oid, 'select')
                    from pg_roles r, pg_class c where r.rolname = current_user and c.oid = to_regclass('storage.objects')), false),

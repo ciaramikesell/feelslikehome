@@ -114,7 +114,7 @@ select * from (
          (select count(*)::text from public.home_floor_plans f
             where not exists (select 1 from storage.objects o where o.bucket_id = 'home-floor-plans' and o.name = f.storage_path))
   union all
-  select 16, 'upload cap can count: the owner of can_upload_home_floor_plan_object sees every storage.objects row',
+  select 16, 'best-effort upload cap can count: the owner of can_upload_home_floor_plan_object sees every storage.objects row',
          coalesce((select public.home_floor_plan_role_sees_all_objects(p.proowner) from pg_proc p
                    where p.oid = to_regprocedure('public.can_upload_home_floor_plan_object(text)')), false),
          (select p.proowner::regrole::text || ', volatility=' || p.provolatile::text || case when p.prosecdef then ', definer' else '' end

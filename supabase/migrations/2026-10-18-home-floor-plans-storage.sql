@@ -16,14 +16,20 @@
 -- * INSERT: the caller can edit the home's floor plans (owner / co-buyer, not a
 --   pending suggestion) and the home's folder holds fewer than 8 objects
 --   (4 plans plus room for in-flight replacements), so an upload that never
---   gets a row cannot be repeated without bound. The cap is fail-closed:
---     - it counts storage.objects as the helper's owner, which is only
---       meaningful if that role sees every row (superuser, BYPASSRLS, or the
---       table's owner without FORCE RLS). If it does not, every upload is
---       refused rather than the cap silently counting nothing, and this
---       migration aborts before installing anything;
---     - concurrent uploads to the same home take a per-home advisory lock,
---       so a burst cannot overshoot 8.
+--   gets a row cannot be repeated without bound.
+--     - Fail-closed: it counts storage.objects as the helper's owner, which
+--       is only meaningful if that role sees every row (superuser, BYPASSRLS,
+--       or the table's owner without FORCE RLS). If it does not, every upload
+--       is refused rather than the cap silently counting nothing, and this
+--       migration aborts before installing anything.
+--     - Best-effort under simultaneous uploads (accepted for v1): Supabase
+--       Storage evaluates this policy in a pre-check transaction it rolls
+--       back, writes the file, then inserts the row as its own admin role,
+--       which RLS does not apply to. Uploads whose pre-checks all run before
+--       any of them finishes can together exceed 8. Sequential uploads are
+--       capped exactly. The 4-plans-per-home row limit (part 1) is strict.
+--       Extra objects never get a row, so Realtors cannot read them and the
+--       operator sweep finds them (docs/floor-plans-foundation.md).
 -- * SELECT (also what createSignedUrl(s) and remove() need):
 --     - decision-makers: every object in their homes' folders, so they can
 --       finish or clean up a replacement and delete an object whose row is
@@ -74,8 +80,10 @@ returns boolean language sql stable set search_path = '' as $$
 $$;
 
 -- Runs as its owner (security definer), so current_user is that owner.
+-- Storage calls it from its pre-check only; see the header for why the count
+-- is best-effort under simultaneous uploads.
 create or replace function public.can_upload_home_floor_plan_object(p_name text)
-returns boolean language plpgsql volatile security definer set search_path = '' as $$
+returns boolean language plpgsql stable security definer set search_path = '' as $$
 declare
   home uuid := public.home_floor_plan_object_home_id(p_name);
 begin
@@ -86,8 +94,6 @@ begin
   if not public.home_floor_plan_role_sees_all_objects((select r.oid from pg_catalog.pg_roles r where r.rolname = current_user)) then
     return false;
   end if;
-  -- Held until the upload commits, so the next upload to this home counts it.
-  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('home_floor_plan_objects:' || home::text, 0));
   return (
     select count(*) from storage.objects o
     where o.bucket_id = 'home-floor-plans' and o.name like home::text || '/%'

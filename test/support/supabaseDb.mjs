@@ -161,28 +161,58 @@ function embedSql(base, entry) {
 
 /* ------------------------- Supabase-shaped client ------------------------- */
 
-// storage.from(bucket): upload / remove / createSignedUrls with Supabase
-// Storage's observable behaviour — RLS-blocked uploads error, RLS-filtered
-// removes silently skip, and a signed URL is issued only for an object the
-// caller may SELECT (otherwise that entry carries an error).
+// storage.from(bucket): upload / remove / createSignedUrls as Supabase Storage
+// (storage-api v1.25.7) runs them against Postgres. An upload has two stages:
+//   1. pre-check: the INSERT runs as the caller, so storage.objects policies
+//      decide, and is then rolled back (Uploader.canUpload → testPermission);
+//   2. after the file is written: the real INSERT runs as Storage's admin
+//      role, which RLS does not apply to (Uploader.completeUpload →
+//      asSuperUser). Here that is the superuser.
+// So an INSERT policy only ever sees rows committed before its pre-check —
+// two uploads whose pre-checks both run before either completes both pass.
+// preauthorizeUpload / completeUpload expose the stages so tests can
+// interleave them; upload() runs both back to back. A refused pre-check is
+// 403, a bad MIME type 400, an oversized file 413, an existing name 409; a
+// remove silently skips objects the caller may not see or delete; a signed
+// URL is issued only for an object the caller may SELECT.
 class StorageBucket {
   constructor(db, userId, bucket) { Object.assign(this, { db, userId, bucket }); }
-  async upload(path, file, { contentType, upsert = false } = {}) {
+  async preauthorizeUpload(path, file, { contentType, upsert = false } = {}) {
     if (upsert) throw new Error('test storage supports upsert: false only');
     const [config] = this.db.admin(`select file_size_limit, allowed_mime_types from storage.buckets where id = ${text(this.bucket)}`);
-    if (!config) return { data: null, error: { statusCode: '404', message: 'Bucket not found' } };
+    if (!config) return { error: { statusCode: '404', message: 'Bucket not found' } };
     const type = contentType || file.type;
-    if (config.allowed_mime_types && !config.allowed_mime_types.includes(type)) return { data: null, error: { statusCode: '415', message: `mime type ${type} is not supported` } };
-    if (config.file_size_limit && file.size > config.file_size_limit) return { data: null, error: { statusCode: '413', message: 'The object exceeded the maximum allowed size' } };
-    const metadata = { mimetype: type, size: file.size };
-    const { error } = this.db.runAs(this.userId, `insert into storage.objects (bucket_id, name, owner, owner_id, metadata) values (${text(this.bucket)}, ${text(path)}, ${text(this.userId)}, ${text(this.userId)}, ${literal(metadata)})`);
-    if (error?.code === '23505') return { data: null, error: { statusCode: '409', message: 'The resource already exists' } };
-    if (error) return { data: null, error: { statusCode: '403', message: error.message } };
+    if (config.allowed_mime_types && !config.allowed_mime_types.includes(type)) return { error: { statusCode: '400', message: `mime type ${type} is not supported` } };
+    if (config.file_size_limit && file.size > config.file_size_limit) return { error: { statusCode: '413', message: 'The object exceeded the maximum allowed size' } };
+    const { error } = this.db.runAs(this.userId, this.insertSql(path, file, type), { rollback: true });
+    if (error?.code === '23505') return { error: { statusCode: '409', message: 'The resource already exists' } };
+    if (error) return { error: { statusCode: '403', message: 'new row violates row-level security policy' } };
+    return { error: null };
+  }
+  async completeUpload(path, file, { contentType } = {}) {
+    try {
+      this.db.exec(`${this.insertSql(path, file, contentType || file.type)};`);
+    } catch (err) {
+      return { data: null, error: { statusCode: '500', message: err.message } };
+    }
     return { data: { path }, error: null };
+  }
+  async upload(path, file, options = {}) {
+    const pre = await this.preauthorizeUpload(path, file, options);
+    if (pre.error) return { data: null, error: pre.error };
+    return this.completeUpload(path, file, options);
+  }
+  insertSql(path, file, type) {
+    return `insert into storage.objects (bucket_id, name, owner, owner_id, metadata) values (${text(this.bucket)}, ${text(path)}, ${text(this.userId)}, ${text(this.userId)}, ${literal({ mimetype: type, size: file.size })})`;
   }
   async remove(paths) {
     if (!paths.length) return { data: [], error: null };
     const query = `with r as (delete from storage.objects where bucket_id = ${text(this.bucket)} and name in (${paths.map(text).join(', ')}) returning name) select coalesce(json_agg(r), '[]'::json) from r`;
+    return this.db.runAs(this.userId, query);
+  }
+  // Objects directly in `folder` the caller may SELECT, as { name } like list().
+  async list(folder) {
+    const query = `select coalesce(json_agg(json_build_object('name', split_part(name, '/', 2))), '[]'::json) from storage.objects where bucket_id = ${text(this.bucket)} and name like ${text(`${folder}/%`)}`;
     return this.db.runAs(this.userId, query);
   }
   async createSignedUrls(paths, expiresIn) {
@@ -292,8 +322,9 @@ export function createTestDatabase({ schemaSql = null, steps = POST_SNAPSHOT_MIG
     // Supabase SQL Editor (function bodies validated, as Postgres does by
     // default); returns { ok, error } instead of throwing.
     applyFile(file) { const result = psql(name, read(file), { checkFunctionBodies: true }); return { ok: result.ok, error: result.error }; },
-    runAs(userId, query) {
-      const script = `begin;\nset local role authenticated;\nset local request.jwt.claim.sub = ${text(userId)};\n${query};\ncommit;\n`;
+    // rollback: run the statement and roll it back (a permission pre-check).
+    runAs(userId, query, { rollback = false } = {}) {
+      const script = `begin;\nset local role authenticated;\nset local request.jwt.claim.sub = ${text(userId)};\n${query};\n${rollback ? 'rollback' : 'commit'};\n`;
       const result = psql(name, script);
       if (!result.ok) return { data: null, error: { code: result.code, message: result.error } };
       return { data: JSON.parse(result.stdout || '[]'), error: null };

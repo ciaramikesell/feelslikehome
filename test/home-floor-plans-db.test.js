@@ -174,7 +174,7 @@ dbTest('an uploaded image with no row is invisible to the Realtor and outsiders,
   assert.ok(!objectExists(path), "the owner can delete the co-buyer's unattached upload");
 });
 
-dbTest('a home folder accepts at most eight objects, so unattached uploads cannot pile up', async () => {
+dbTest('one-at-a-time uploads stop at eight objects per home folder (best-effort cap; see the known limitation below)', async () => {
   const p = await household();
   const home = await addHome(p.owner, p.search, '6 Spam St');
   for (let i = 0; i < 8; i += 1) assert.equal((await rawUpload(p.coBuyer, objectPath(home))).error, null);
@@ -312,7 +312,6 @@ commit;
   });
 }
 const concurrentInsert = (userId, homeId) => concurrentlyAs(userId, `insert into public.home_floor_plans (home_id, storage_path) values ('${homeId}', '${objectPath(homeId)}')`);
-const concurrentUpload = (userId, homeId) => concurrentlyAs(userId, `insert into storage.objects (bucket_id, name, owner, owner_id) values ('home-floor-plans', '${objectPath(homeId)}', '${userId}', '${userId}')`);
 
 dbTest('two buyers adding the fourth and fifth plan at the same moment: exactly one succeeds', async () => {
   const p = await household();
@@ -350,14 +349,50 @@ dbTest('two buyers replacing the same plan from the same view: the second is tol
   assert.equal(db.admin(`select count(*)::int as n from storage.objects where bucket_id = 'home-floor-plans' and name like '${home}/%'`)[0].n, 0, 'replacing a plan someone removed leaves nothing');
 });
 
-dbTest('two buyers uploading the eighth and ninth image at the same moment: exactly one succeeds', async () => {
+// Known limitation, accepted for v1: Supabase Storage checks the INSERT policy
+// in a pre-check it rolls back, then inserts the row as its admin role, so the
+// 8-object cap only counts uploads that completed before a pre-check ran. These
+// pin that behaviour (seen against real storage-api v1.25.7 in Stage A) so a
+// change in either direction is noticed.
+dbTest('known limitation: uploads whose pre-checks run before either completes can exceed the 8-object cap', async () => {
   const p = await household();
   const home = await addHome(p.owner, p.search, '13b Upload Race');
   for (let i = 0; i < 7; i += 1) assert.equal((await rawUpload(p.owner, objectPath(home))).error, null);
-  const results = await Promise.all([concurrentUpload(p.owner, home), concurrentUpload(p.coBuyer, home)]);
-  assert.equal(results.filter((r) => r.ok).length, 1, results.map((r) => r.stderr).join('\n'));
-  assert.match(results.find((r) => !r.ok).stderr, /row-level security/);
-  assert.equal(db.admin(`select count(*)::int as n from storage.objects where bucket_id = 'home-floor-plans' and name like '${home}/%'`)[0].n, 8);
+  const [first, second] = [objectPath(home), objectPath(home)];
+  assert.equal((await bucket(p.owner).preauthorizeUpload(first, image())).error, null, 'pre-check sees 7');
+  assert.equal((await bucket(p.coBuyer).preauthorizeUpload(second, image())).error, null, 'pre-check still sees 7: the first upload has not completed');
+  assert.equal((await bucket(p.owner).completeUpload(first, image())).error, null);
+  assert.equal((await bucket(p.coBuyer).completeUpload(second, image())).error, null, 'the final insert is not policy-checked');
+  const count = () => db.admin(`select count(*)::int as n from storage.objects where bucket_id = 'home-floor-plans' and name like '${home}/%'`)[0].n;
+  assert.equal(count(), 9, 'best-effort: the folder now holds 9');
+
+  assert.ok(denied((await rawUpload(p.coBuyer, objectPath(home))).error), 'any later upload is refused');
+  assert.equal(count(), 9);
+  assert.equal(await canSign(p.realtor, second), false, 'the extra object has no row: the Realtor cannot read it');
+  const objects = db.admin(`select name, created_at from storage.objects where name like '${home}/%'`);
+  const orphans = selectOrphanedFloorPlanObjects({ objects, referencedPaths: [], now: Date.now() + 25 * 60 * 60 * 1000 });
+  assert.equal(orphans.length, 9, 'and the operator sweep finds it once it is a day old');
+
+  const usage = Object.fromEntries(db.admin(sqlFile('supabase/home-floor-plans-usage.sql')).map((row) => [row.section, row.value]));
+  assert.ok(Number(usage[3]) >= 1, 'the usage report flags homes over the best-effort cap');
+  assert.match(usage[5], /^9 \/ \d+$/, 'and shows the largest folder');
+  assert.equal(usage[6], '0', 'the strict 4-plan limit is never exceeded');
+});
+
+dbTest('the 4-plan row limit stays strict while uploads interleave', async () => {
+  const p = await household();
+  const home = await addHome(p.owner, p.search, '13d Interleave Ave');
+  for (let i = 0; i < 3; i += 1) await addFloorPlan(as(p.owner), home, image());
+  // Both images pass the pre-check and complete; only one row can follow.
+  const [a, b] = [objectPath(home), objectPath(home)];
+  for (const [who, path] of [[p.owner, a], [p.coBuyer, b]]) {
+    assert.equal((await bucket(who).preauthorizeUpload(path, image())).error, null);
+  }
+  for (const [who, path] of [[p.owner, a], [p.coBuyer, b]]) assert.equal((await bucket(who).completeUpload(path, image())).error, null);
+  const rows = await Promise.all([concurrentlyAs(p.owner, `insert into public.home_floor_plans (home_id, storage_path) values ('${home}', '${a}')`),
+    concurrentlyAs(p.coBuyer, `insert into public.home_floor_plans (home_id, storage_path) values ('${home}', '${b}')`)]);
+  assert.equal(rows.filter((r) => r.ok).length, 1, rows.map((r) => r.stderr).join('\n'));
+  assert.equal(rowCount(home), 4);
 });
 
 /* ------------------------- upload cap is fail-closed ------------------------- */
@@ -454,8 +489,8 @@ dbTest('deleting a home removes its floor-plan rows; its images become unreadabl
 dbTest('the bucket refuses SVG, PDF and oversized files even if the app check is bypassed', async () => {
   const p = await household();
   const home = await addHome(p.owner, p.search, '16 Limits Loop');
-  assert.equal((await bucket(p.owner).upload(objectPath(home), image('image/svg+xml'), { contentType: 'image/svg+xml' })).error?.statusCode, '415');
-  assert.equal((await bucket(p.owner).upload(objectPath(home), image('application/pdf'), { contentType: 'application/pdf' })).error?.statusCode, '415');
+  assert.equal((await bucket(p.owner).upload(objectPath(home), image('image/svg+xml'), { contentType: 'image/svg+xml' })).error?.statusCode, '400');
+  assert.equal((await bucket(p.owner).upload(objectPath(home), image('application/pdf'), { contentType: 'application/pdf' })).error?.statusCode, '400');
   assert.equal((await bucket(p.owner).upload(objectPath(home), image('image/png', MAX_FLOOR_PLAN_BYTES + 1), { contentType: 'image/png' })).error?.statusCode, '413');
   assert.equal((await bucket(p.owner).upload(objectPath(home), image('image/png', MAX_FLOOR_PLAN_BYTES), { contentType: 'image/png' })).error, null, 'exactly 10 MB is allowed');
   await rejects(addFloorPlan(as(p.owner), home, image('image/svg+xml')), 'invalid-file');
@@ -509,6 +544,8 @@ dbTest('the real-Supabase smoke scenarios all pass against the local policies', 
   });
   assert.deepEqual(results.filter((result) => !result.ok), []);
   assert.ok(results.length >= 30, `${results.length} checks ran`);
+  // The stand-in reproduces what real Storage did in Stage A (2 of 2, 9).
+  assert.equal(results.find((result) => result.info)?.detail, '2 of 2 accepted; folder holds 9');
   assert.equal(db.admin(`select count(*)::int as n from storage.objects where name like '${home}/%'`)[0].n, 0, 'the run cleans up after itself');
 });
 
