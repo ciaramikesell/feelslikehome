@@ -24,6 +24,7 @@ const {
   FLOOR_PLAN_BUCKET, MAX_FLOOR_PLAN_BYTES, addFloorPlan, getFloorPlanCounts, getFloorPlans, removeFloorPlan, replaceFloorPlan,
   selectOrphanedFloorPlanObjects, signFloorPlanUrls,
 } = await import('../src/lib/homeFloorPlans.js');
+const { runFloorPlanStorageScenarios } = await import('../scripts/qa/floor-plans-storage-scenarios.mjs');
 
 const TABLE_MIGRATION = 'supabase/migrations/2026-10-18-home-floor-plans.sql';
 const STORAGE_MIGRATION = 'supabase/migrations/2026-10-18-home-floor-plans-storage.sql';
@@ -290,11 +291,13 @@ dbTest('a pending Realtor suggestion takes no floor plans until a buyer accepts 
 
 /* ------------------------------- concurrency -------------------------------- */
 
-function concurrentInsert(userId, homeId) {
+// Runs `statement` as the user in its own psql session and holds the
+// transaction open briefly, so two calls genuinely overlap.
+function concurrentlyAs(userId, statement) {
   const sql = `begin;
 set local role authenticated;
 set local request.jwt.claim.sub = '${userId}';
-insert into public.home_floor_plans (home_id, storage_path) values ('${homeId}', '${objectPath(homeId)}');
+${statement};
 select pg_sleep(0.6);
 commit;
 `;
@@ -308,6 +311,8 @@ commit;
     child.stdin.end(sql);
   });
 }
+const concurrentInsert = (userId, homeId) => concurrentlyAs(userId, `insert into public.home_floor_plans (home_id, storage_path) values ('${homeId}', '${objectPath(homeId)}')`);
+const concurrentUpload = (userId, homeId) => concurrentlyAs(userId, `insert into storage.objects (bucket_id, name, owner, owner_id) values ('home-floor-plans', '${objectPath(homeId)}', '${userId}', '${userId}')`);
 
 dbTest('two buyers adding the fourth and fifth plan at the same moment: exactly one succeeds', async () => {
   const p = await household();
@@ -343,6 +348,68 @@ dbTest('two buyers replacing the same plan from the same view: the second is tol
   await removeFloorPlan(as(p.owner), first);
   await rejects(replaceFloorPlan(as(p.coBuyer), first, image()), 'changed');
   assert.equal(db.admin(`select count(*)::int as n from storage.objects where bucket_id = 'home-floor-plans' and name like '${home}/%'`)[0].n, 0, 'replacing a plan someone removed leaves nothing');
+});
+
+dbTest('two buyers uploading the eighth and ninth image at the same moment: exactly one succeeds', async () => {
+  const p = await household();
+  const home = await addHome(p.owner, p.search, '13b Upload Race');
+  for (let i = 0; i < 7; i += 1) assert.equal((await rawUpload(p.owner, objectPath(home))).error, null);
+  const results = await Promise.all([concurrentUpload(p.owner, home), concurrentUpload(p.coBuyer, home)]);
+  assert.equal(results.filter((r) => r.ok).length, 1, results.map((r) => r.stderr).join('\n'));
+  assert.match(results.find((r) => !r.ok).stderr, /row-level security/);
+  assert.equal(db.admin(`select count(*)::int as n from storage.objects where bucket_id = 'home-floor-plans' and name like '${home}/%'`)[0].n, 8);
+});
+
+/* ------------------------- upload cap is fail-closed ------------------------- */
+
+dbTest('the upload cap fails closed when the role it counts as cannot see every object', async () => {
+  const target = createTestDatabase();
+  // Roles are cluster-wide: unique per run, dropped afterwards.
+  const counter = `flh_fp_counter_${process.pid}`;
+  const tableOwner = `flh_fp_table_owner_${process.pid}`;
+  try {
+    const sees = (role) => target.admin(`select public.home_floor_plan_role_sees_all_objects('${role}'::regrole) as ok`)[0].ok;
+    const capRow = () => target.admin(sqlFile('supabase/home-floor-plans-verification.sql')).find((row) => row.section === 16);
+    assert.equal(sees('postgres'), true);
+    assert.equal(capRow().ok, true);
+
+    // A role subject to RLS on storage.objects would count zero rows forever.
+    target.exec(`create role ${counter} nologin nobypassrls;
+      grant usage on schema public, storage to ${counter};
+      grant select on storage.objects to ${counter};
+      grant execute on all functions in schema public to ${counter};`);
+    assert.equal(sees(counter), false);
+    target.exec(`alter function public.can_upload_home_floor_plan_object(text) owner to ${counter};`);
+    assert.equal(capRow().ok, false, 'verification flags it');
+
+    const p = await household(target);
+    const home = await addHome(p.owner, p.search, '17 Fail Closed Ct', target);
+    const upload = await target.clientFor(p.owner).storage.from(FLOOR_PLAN_BUCKET).upload(objectPath(home), image(), { contentType: 'image/png' });
+    assert.ok(denied(upload.error), 'an empty folder still refuses uploads: the cap fails closed, never open');
+
+    const rerun = target.applyFile(STORAGE_MIGRATION);
+    assert.equal(rerun.ok, false, 'the migration refuses to install an uncountable cap');
+    assert.match(rerun.error, new RegExp(`upload cap cannot be enforced: role ${counter}`));
+
+    target.exec('alter function public.can_upload_home_floor_plan_object(text) owner to postgres;');
+    const retry = await target.clientFor(p.owner).storage.from(FLOOR_PLAN_BUCKET).upload(objectPath(home), image(), { contentType: 'image/png' });
+    assert.equal(retry.error, null, 'with a role that sees every row, uploads work again');
+
+    // Table ownership counts only without FORCE ROW LEVEL SECURITY.
+    target.exec(`create role ${tableOwner} nologin nobypassrls; alter table storage.objects owner to ${tableOwner};`);
+    assert.equal(sees(tableOwner), true);
+    target.exec('alter table storage.objects force row level security;');
+    assert.equal(sees(tableOwner), false);
+  } finally {
+    target.drop();
+    db.exec(`drop role if exists ${counter}; drop role if exists ${tableOwner};`);
+  }
+});
+
+dbTest('preflight reports whether the migrating role can enforce the upload cap', () => {
+  const row = db.admin(sqlFile('supabase/home-floor-plans-preflight.sql')).find((r) => r.section === 11);
+  assert.equal(row.ok, true);
+  assert.match(row.detail, /^postgres: superuser=true, bypassrls=true/);
 });
 
 /* ------------------------------ deletion cleanup ---------------------------- */
@@ -431,6 +498,18 @@ dbTest('the storage migration aborts when an unscoped storage policy would also 
     assert.match(result.error, /could grant access to home-floor-plans: any_authenticated_read/);
     assert.equal(target.admin(`select count(*)::int as n from storage.buckets where id = 'home-floor-plans'`)[0].n, 0, 'nothing applied');
   } finally { target.drop(); }
+});
+
+dbTest('the real-Supabase smoke scenarios all pass against the local policies', async () => {
+  const p = await household();
+  const home = await addHome(p.owner, p.search, '18 Smoke Scenario St');
+  const results = await runFloorPlanStorageScenarios({
+    clients: { owner: as(p.owner), coBuyer: as(p.coBuyer), realtor: as(p.realtor), outsider: as(p.outsider) },
+    homeId: home,
+  });
+  assert.deepEqual(results.filter((result) => !result.ok), []);
+  assert.ok(results.length >= 30, `${results.length} checks ran`);
+  assert.equal(db.admin(`select count(*)::int as n from storage.objects where name like '${home}/%'`)[0].n, 0, 'the run cleans up after itself');
 });
 
 /* ----------------------------- scope boundaries ----------------------------- */

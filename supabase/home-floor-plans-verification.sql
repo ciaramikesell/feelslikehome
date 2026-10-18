@@ -20,7 +20,8 @@ select * from (
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.proname in (
       'home_floor_plan_object_home_id', 'can_view_home_floor_plans', 'can_edit_home_floor_plans',
-      'enforce_home_floor_plan_limit', 'can_read_home_floor_plan_object', 'can_upload_home_floor_plan_object')
+      'enforce_home_floor_plan_limit', 'can_read_home_floor_plan_object', 'can_upload_home_floor_plan_object',
+      'home_floor_plan_role_sees_all_objects')
   ),
   bucket as (select b.public, b.file_size_limit, b.allowed_mime_types from storage.buckets b where b.id = 'home-floor-plans')
   select 1 as section, 'home_floor_plans exists with row level security on' as item,
@@ -67,10 +68,10 @@ select * from (
            and exists (select 1 from pg_trigger where tgrelid = (select oid from tbl) and tgname = 'home_floor_plans_set_updated_at' and not tgisinternal and tgenabled = 'O'),
          null
   union all
-  select 7, 'all six helpers exist with a pinned search_path; access helpers are security definer',
-         (select count(*) from helpers) = 6
+  select 7, 'all seven helpers exist with a pinned search_path; access helpers are security definer',
+         (select count(*) from helpers) = 7
            and not exists (select 1 from helpers where not coalesce(proconfig @> array['search_path=""'], false))
-           and not exists (select 1 from helpers where proname <> 'home_floor_plan_object_home_id' and not prosecdef),
+           and not exists (select 1 from helpers where proname not in ('home_floor_plan_object_home_id', 'home_floor_plan_role_sees_all_objects') and not prosecdef),
          (select string_agg(proname || case when prosecdef then ' (definer)' else '' end, ', ' order by proname) from helpers)
   union all
   select 8, 'helpers are not executable by anon',
@@ -113,10 +114,11 @@ select * from (
          (select count(*)::text from public.home_floor_plans f
             where not exists (select 1 from storage.objects o where o.bucket_id = 'home-floor-plans' and o.name = f.storage_path))
   union all
-  select 16, 'info: 8-objects-per-home upload cap is effective (helper owner bypasses RLS on storage.objects)', true,
-         coalesce((select r.rolname || case when r.rolsuper or r.rolbypassrls then ': yes' else ': NO - cap counts nothing; rows are still limited to 4' end
-                   from pg_proc p join pg_roles r on r.oid = p.proowner
-                   where p.oid = to_regprocedure('public.can_upload_home_floor_plan_object(text)')), 'helper missing')
+  select 16, 'upload cap can count: the owner of can_upload_home_floor_plan_object sees every storage.objects row',
+         coalesce((select public.home_floor_plan_role_sees_all_objects(p.proowner) from pg_proc p
+                   where p.oid = to_regprocedure('public.can_upload_home_floor_plan_object(text)')), false),
+         (select p.proowner::regrole::text || ', volatility=' || p.provolatile::text || case when p.prosecdef then ', definer' else '' end
+          from pg_proc p where p.oid = to_regprocedure('public.can_upload_home_floor_plan_object(text)'))
   union all
   select 17, 'info: legacy homes.floor_plan_image_url (not touched)', true,
          case when exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'homes' and column_name = 'floor_plan_image_url') then 'present' else 'absent' end

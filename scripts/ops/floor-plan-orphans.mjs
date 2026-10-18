@@ -5,9 +5,11 @@
 // Postgres cannot delete Storage objects itself, so this is the cleanup path.
 //
 //   SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node scripts/ops/floor-plan-orphans.mjs           # dry run: counts only
-//   SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node scripts/ops/floor-plan-orphans.mjs --apply   # delete them
+//   SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… node scripts/ops/floor-plan-orphans.mjs --apply --project=<ref>   # delete them
 //
-// Dry run by default. Only objects older than 24 hours are touched, so an
+// Dry run by default; --apply also requires --project=<ref> repeating the
+// project ref from SUPABASE_URL. Running --apply on Production needs explicit
+// approval (docs/floor-plans-foundation.md). Only objects older than 24 hours are touched, so an
 // upload whose row is still being written is never removed. Prints counts,
 // never image contents. The service-role key bypasses RLS: run it from a
 // trusted machine and never commit or paste the key.
@@ -19,6 +21,11 @@ const apply = process.argv.includes('--apply');
 const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY } = process.env;
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   console.error('Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.');
+  process.exit(1);
+}
+const ref = new URL(SUPABASE_URL).hostname.split('.')[0];
+if (apply && process.argv.find((arg) => arg.startsWith('--project='))?.slice('--project='.length) !== ref) {
+  console.error(`Refusing to delete: pass --project=${ref} with --apply to confirm the target project.`);
   process.exit(1);
 }
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { persistSession: false } });
