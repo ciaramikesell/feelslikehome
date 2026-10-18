@@ -68,7 +68,9 @@ alter default privileges in schema public grant all on sequences to anon, authen
 `;
 
 function psql(database, script, { checkFunctionBodies = false } = {}) {
-  const args = ['-X', '-q', '-A', '-t', '-v', 'ON_ERROR_STOP=1', '-h', process.env.FLH_TEST_PGHOST, '-U', process.env.FLH_TEST_PGUSER || 'postgres', '-d', database, '-f', '-'];
+  // VERBOSITY=verbose prefixes each ERROR with its SQLSTATE, which becomes the
+  // error's `code` (as supabase-js reports PostgREST errors).
+  const args = ['-X', '-q', '-A', '-t', '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=verbose', '-h', process.env.FLH_TEST_PGHOST, '-U', process.env.FLH_TEST_PGUSER || 'postgres', '-d', database, '-f', '-'];
   if (process.env.FLH_TEST_PGPORT) args.push('-p', process.env.FLH_TEST_PGPORT);
   // Repository SQL forward-references functions/tables the way pg_dump output
   // does; Supabase's editor tolerates that, so validate bodies at call time.
@@ -76,7 +78,8 @@ function psql(database, script, { checkFunctionBodies = false } = {}) {
   const result = spawnSync('psql', args, { input: script, encoding: 'utf8', env, maxBuffer: 64 * 1024 * 1024 });
   if (result.error) throw result.error;
   const errorLine = (result.stderr || '').split('\n').find((line) => /ERROR:/.test(line));
-  return { ok: result.status === 0, stdout: result.stdout.trim(), error: errorLine ? errorLine.replace(/^.*ERROR:\s*/, '') : (result.status === 0 ? null : result.stderr.trim()) };
+  const [, code = null, message = null] = errorLine?.match(/ERROR:\s*(?:([0-9A-Z]{5}):\s*)?(.*)$/) || [];
+  return { ok: result.status === 0, stdout: result.stdout.trim(), code, error: errorLine ? message : (result.status === 0 ? null : result.stderr.trim()) };
 }
 
 function must(result, context) {
@@ -99,6 +102,37 @@ function literal(value) {
   return text(value);
 }
 const columnList = (columns) => columns.split(',').map((c) => c.trim()).filter(Boolean).map((c) => (c === '*' ? '*' : ident(c))).join(', ');
+
+// Splits a select list at top-level commas, so `id,homes(id,address)` is two
+// entries: a column and an embedded relation.
+function selectEntries(columns) {
+  const entries = [];
+  let depth = 0; let current = '';
+  for (const char of columns) {
+    if (char === ',' && depth === 0) { entries.push(current.trim()); current = ''; continue; }
+    if (char === '(') depth += 1;
+    if (char === ')') depth -= 1;
+    current += char;
+  }
+  entries.push(current.trim());
+  return entries.filter(Boolean);
+}
+
+// A to-one embed the way PostgREST runs it: the embedded table is aliased
+// `<table>_1`, so a missing column fails exactly as in production
+// ("column homes_1.laundry_location does not exist", 42703), and the embedded
+// row is read under the caller's RLS (an invisible row embeds as null).
+// Supported shape only: `<table>(<columns>)` on a row whose foreign key is
+// `<table minus trailing s>_id` (realtor_suggestions.home_id -> homes.id).
+function embedSql(base, entry) {
+  const match = entry.match(/^([a-z_][a-z0-9_]*)\((.*)\)$/);
+  if (!match) return null;
+  const [, relation, inner] = match;
+  const alias = `${ident(relation)}_1`;
+  const foreignKey = ident(`${relation.replace(/s$/, '')}_id`);
+  const columns = inner.split(',').map((c) => c.trim()).filter(Boolean).map((c) => `${alias}.${ident(c)}`).join(', ');
+  return `(select to_json(e) from (select ${columns} from public.${ident(relation)} ${alias} where ${alias}.id = ${base}.${foreignKey}) e) as ${ident(relation)}`;
+}
 
 /* ------------------------- Supabase-shaped client ------------------------- */
 
@@ -126,6 +160,11 @@ class Query {
     const table = `public.${this.table}`;
     if (this.mode === 'select') {
       const order = this.orderBy.length ? ` order by ${this.orderBy.join(', ')}` : '';
+      const entries = selectEntries(this.columns);
+      if (entries.some((entry) => entry.includes('('))) {
+        const list = entries.map((entry) => embedSql(this.table, entry) || (entry === '*' ? `${this.table}.*` : `${this.table}.${ident(entry)}`)).join(', ');
+        return `select coalesce(json_agg(t), '[]'::json) from (select ${list} from ${table} ${this.table}${where}${order}) t`;
+      }
       return `select coalesce(json_agg(t), '[]'::json) from (select ${columnList(this.columns)} from ${table}${where}${order}) t`;
     }
     const returning = columnList(this.returning || 'id');
@@ -194,7 +233,7 @@ export function createTestDatabase({ schemaSql = null, steps = POST_SNAPSHOT_MIG
     runAs(userId, query) {
       const script = `begin;\nset local role authenticated;\nset local request.jwt.claim.sub = ${text(userId)};\n${query};\ncommit;\n`;
       const result = psql(name, script);
-      if (!result.ok) return { data: null, error: { message: result.error } };
+      if (!result.ok) return { data: null, error: { code: result.code, message: result.error } };
       return { data: JSON.parse(result.stdout || '[]'), error: null };
     },
     createUser({ email, firstName = null, lastName = null }) {

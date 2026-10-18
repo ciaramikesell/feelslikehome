@@ -50,7 +50,12 @@ Each test file creates its own `flh_test_<pid>_<time>` database and drops it.
    `rpc()`). It executes each call through `psql` inside
    `set local role authenticated` with that user's id as the JWT subject.
    RLS, column grants, triggers and SECURITY DEFINER functions all apply as
-   they do in production.
+   they do in production. Errors carry the Postgres SQLSTATE as `code`, as
+   supabase-js reports them. A to-one embed such as
+   `realtor_suggestions … homes(id,address)` runs the way PostgREST runs it:
+   the embedded table is aliased `homes_1` (so a missing column fails as
+   `42703 column homes_1.<column> does not exist`), it is read under the
+   caller's RLS, and the foreign key is assumed to be `<table minus s>_id`.
 4. Provides `admin(sql)` for fixtures and for checking ground truth
    independently of what RLS shows a caller.
 

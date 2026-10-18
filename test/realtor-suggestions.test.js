@@ -41,7 +41,10 @@ test('deployed homes column ACL permits the new runtime read without widening ta
 
 test('suggestion embedding respects the homes column allowlist instead of SELECT star', () => {
   assert.doesNotMatch(collaboration, /homes\(\*\)/);
-  assert.match(collaboration, /homes\(\$\{HOME_SHARED_COLUMNS\}\)/);
+  // The embed's columns come only from the allowlist (with the optional-column
+  // fallback): HOME_SHARED_COLUMNS, or HOME_SHARED_COLUMNS_REQUIRED on retry.
+  assert.match(collaboration, /withOptionalHomeColumns\(\(columns\) => supabase\.from\('realtor_suggestions'\)\s*\.select\(`[^`]*homes\(\$\{columns\}\)`\)/);
+  assert.match(collaboration, /async function withOptionalHomeColumns\(read\) \{\s*const result = await read\(HOME_SHARED_COLUMNS\);\s*return missingOptionalColumn\(result\.error\) \? read\(HOME_SHARED_COLUMNS_REQUIRED\) : result;/);
 });
 
 test('Realtor creation is relationship-scoped, revoked access fails, and duplicates are idempotent', () => {

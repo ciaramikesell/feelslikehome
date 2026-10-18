@@ -80,8 +80,18 @@ Storage/API response.
 
 ## 3. Laundry Location migration (separate approval)
 
-Release order (the app works before and after; the field appears once the
-column exists):
+Release order: **migration first, then code.** The field appears once the
+column exists.
+
+This section previously said the code "tolerates the missing column", so
+deploying before migrating was "safe". That was never verified for every read
+path: `getSuggestions` embeds `homes(${HOME_SHARED_COLUMNS})` and had no
+fallback, so on a database without `homes.laundry_location` PostgREST
+answered `42703 column homes_1.laundry_location does not exist` and My Homes
+failed — the production outage. It is fixed (every full-projection read now
+goes through `withOptionalHomeColumns`, guarded by
+`test/optional-home-columns-db.test.js`), but the fallback is a safety net
+for a mistake, not a release plan.
 
 1. Review `supabase/migrations/2026-10-18-laundry-location.sql`.
 2. Run `supabase/laundry-location-preflight.sql` (read-only) in production —
@@ -90,8 +100,18 @@ column exists):
 4. Apply the migration only after explicit approval.
 5. Run `supabase/laundry-location-verification.sql` — every row `ok = true`,
    section 7 = `0`.
-6. Then merge / deploy the code (or, since the code tolerates the missing
-   column, deploy first and apply later — both orders are safe).
+6. Only then merge / deploy the code. Smoke-test My Homes,
+   `/homes/suggestions`, the Realtor client workspace and the home overlay.
+
+### Rule for every migration-dependent release
+
+Code that references a new column is released **after** its migration has
+been applied and verified in production — never on the assumption that all
+read paths handle a missing column. The optional-column fallback
+(`OPTIONAL_HOME_COLUMNS`) exists so a mistaken order degrades instead of
+failing; it is not a reason to change the order. Before relying on it for a
+new column, it must be proven for direct reads, embedded reads (`homes(…)`)
+and writes against a real database without the column.
 
 ## 4. Already verified locally (real Postgres, real browser)
 
