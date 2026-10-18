@@ -2703,7 +2703,7 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 /* My Homes — HomeOverlay, HomeFacts, MatchCriteria, FactFields.              */
 /* ------------------------------------------------------------------------- */
 .flh-overlay-backdrop { position: fixed; inset: 0; z-index: 48; display: flex; align-items: center; justify-content: center; padding: 24px 32px; background: rgba(46,38,33,.42); }
-.flh-overlay { --ov-pad: 40px; --warm-unknown: #FBF0E7; --warm-unknown-line: #EED6C4; position: relative; width: min(1180px, 100%); max-height: calc(100dvh - 48px); display: flex; flex-direction: column; overflow: hidden; border-radius: 18px; background: #FFFDF9; color: var(--ink); font-family: var(--font-ui); box-shadow: 0 30px 80px -30px rgba(46,38,33,.55); }
+.flh-overlay { --ov-pad: 32px; --warm-unknown: #FBF0E7; --warm-unknown-line: #EED6C4; position: relative; width: min(1260px, 100%); max-height: calc(100dvh - 48px); display: flex; flex-direction: column; overflow: hidden; border-radius: 18px; background: #FFFDF9; color: var(--ink); font-family: var(--font-ui); box-shadow: 0 30px 80px -30px rgba(46,38,33,.55); }
 .flh-overlay-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px 14px var(--ov-pad); border-bottom: 1px solid var(--line); background: #FFFDF9; flex-shrink: 0; }
 .flh-overlay-bar-title { min-width: 0; }
 .flh-overlay-bar-title h1 { margin: 0; font: 700 15px/1.3 var(--font-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; outline: none; }
@@ -2729,7 +2729,7 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 @keyframes flh-shimmer { to { background-position: -200% 0; } }
 
 /* Property header */
-.flh-hf2-header { display: grid; grid-template-columns: minmax(220px, 300px) minmax(0, 1fr) minmax(220px, 260px); gap: 28px; align-items: start; padding-bottom: 28px; border-bottom: 1px solid var(--line); }
+.flh-hf2-header { display: grid; grid-template-columns: minmax(220px, 340px) minmax(0, 1fr) minmax(220px, 260px); gap: 28px; align-items: start; padding-bottom: 28px; border-bottom: 1px solid var(--line); }
 .flh-hf2-photo-wrap { min-width: 0; }
 .flh-hf2-photo { aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: #F3ECE2; display: grid; place-items: center; }
 .flh-hf2-photo img { width: 100%; height: 100%; object-fit: cover; display: block; }

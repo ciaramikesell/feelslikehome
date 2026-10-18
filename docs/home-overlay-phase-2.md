@@ -167,8 +167,8 @@ no purchase-only fields), the Realtor's read-only workspace.
 
 ## 9. Verification
 
-- `npm test` against real Postgres 16 (`docs/database-tests.md`): **1,015
-  tests, 1,015 pass, 0 skipped.** New: `test/home-overlay-db.test.js`
+- `npm test` against real Postgres 16 (`docs/database-tests.md`): **1,018
+  tests, 1,018 pass, 0 skipped.** New: `test/home-overlay-db.test.js`
   (migration/preflight/verification, schema tolerance, partial autosave,
   co-buyer / Realtor / outsider permissions, the autosave queue against real
   Postgres, scorer untouched) and `test/home-overlay.test.js`.
@@ -191,4 +191,14 @@ no purchase-only fields), the Realtor's read-only workspace.
     also fails on horizontal overflow or a console error.
   - `scripts/qa/tour-feedback-e2e.mjs` (#153, adapted to the overlay):
     **52/52 steps** at 1440 / 1024 / 768 / 390.
+- `scripts/qa/long-address-qa.mjs`: four hard addresses (long street, long
+  city, no comma, one unbroken word) at 1440 / 1280 / 1024 / 768 / 390 / 375 /
+  320 and on the My Homes cards — measured for sideways scroll, clipped text
+  and overlapping blocks: none.
+- `test/home-overlay-unknown-db.test.js`: Unknown fact ≠ None and Unknown
+  answer ≠ No, with exact percentages and JS/SQL scorer parity.
+- At 100% zoom the sheet measures 1260 px wide at 1440 with a 340 px photo
+  column, matching the approved frame (≈1260 / ≈341 px).
 - Screenshots: `docs/home-overlay-screenshots/` (widths in the file names).
+- Release checklist (Preview, production Storage photo test, migration order):
+  `docs/home-overlay-release-checklist.md`.
