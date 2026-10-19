@@ -53,7 +53,8 @@ overlay are untouched.
 **Viewer** (`src/components/FloorPlans.jsx`): full-screen on phones and in
 short landscape, a large dialog on iPad / desktop.
 
-* One plan or several: counter (`2 of 3`), previous / next buttons, thumbnails,
+* One plan or several: counter (`2 of 3`), previous / next buttons, numbered
+  plan buttons (`1 2 3 4`),
   swipe left / right, arrow keys. No wrap-around.
 * Zoom: pinch, double-tap / double-click, trackpad / wheel, `+` `-` `0` keys
   and Zoom out / Fit / Zoom in buttons (1×–4×). Drag pans while zoomed; the
@@ -61,7 +62,7 @@ short landscape, a large dialog on iPad / desktop.
 * Close: ✕, Escape, pull down. Focus is trapped while open and returns to the
   card action afterwards. Every control is labelled and ≥ 44 px; notices are
   announced (`status` / `alert`); reduced motion respected.
-* Landscape iPhone: the thumbnails and actions move to a side rail so the plan
+* Landscape iPhone: the plan numbers and actions move to a side rail so the plan
   gets the full height. Safe areas (notch, home indicator) respected.
 * Owner / co-buyer: `Add floor plan` (JPEG, PNG or WebP, ≤ 10 MB, several at
   once), `Remove` (asks first: "for everyone on this search"), `n of 4 added`.
@@ -97,6 +98,40 @@ bucket objects after every add / remove: no leftover file.
 viewer is open, on return from the background past that point, and once when
 an image fails to load; a second failure shows the unavailable state.
 
+## Image memory (iPhone / iPad WKWebView)
+
+A floor plan decodes at its **natural** pixel size, whatever size CSS draws
+it: a 48 MP phone photo or scan is about 190 MB of bitmap. Drawing it smaller
+(`width` / `height`, `object-fit`) saves nothing and is not counted as an
+optimisation here. What the viewer does instead:
+
+* **One full-resolution image at a time.** The viewer renders exactly one
+  `<img>`, the selected plan, inside a stage keyed by plan. Nothing else is
+  mounted, preloaded, prefetched or decoded off screen (no `new Image()`,
+  `<link rel=preload>`, canvas or blob URLs).
+* **Numbered plan buttons instead of thumbnails.** A thumbnail would have to be
+  the original file. Signed, resized variants need Supabase Storage *Image
+  Transformations*: Pro plan and above, billed per origin image, switchable per
+  project, and reachable only through one signing request per image
+  (`createSignedUrl(…, { transform })`; the batch `createSignedUrls` the app uses
+  has no transform option). It is not used anywhere in the app and not
+  verifiable from here, so it is not used.
+* **Released on switch / close.** When the stage unmounts it removes the image's
+  `src` (via a callback ref; object refs are already cleared when unmount
+  cleanups run). WebKit then cancels a download still in flight and can drop the
+  decoded bitmap straight away. Load / error events after that are ignored, so
+  a cancelled download never shows as "isn't available".
+* **No permanent compositing layer.** `will-change: transform` is set only while
+  a finger is down. A permanent layer keeps a bitmap of the *zoomed* image (many
+  screens' worth at 4× on a 3× display) and renders the plan soft when zoomed.
+* `decoding="async"`, so decoding a large plan does not block touch handling.
+
+Browser QA checks: opening four plans downloads one image; choosing another
+downloads only that one; never more than one `<img>`; rapid switching with
+slowed downloads cancels the in-flight ones (`net::ERR_ABORTED`), shows the last
+choice and no false error; closing leaves no plan image in the page; an
+8000 × 6000 plan loads, zooms and is released.
+
 Not built (by design): names, labels, ordering, replace, PDFs, external URLs,
 a gallery, anything inside Add/Edit Home.
 
@@ -111,11 +146,12 @@ a gallery, anything inside Add/Edit Home.
   outsider and removed members.
 * `scripts/qa/floor-plans-ui-qa.mjs` — browser QA against the local Supabase
   stand-in (real policies, bucket limits, signed-URL expiry), on iPhone- and
-  iPad-sized touch viewports with real touch input (CDP). 24 steps: flag off;
+  iPad-sized touch viewports with real touch input (CDP). 29 steps: flag off;
   owner zero → one → four (PNG, JPEG, WebP); invalid / oversized files; failed
   upload; over-limit batch; stale viewer at the limit; navigation; swipe,
   pinch, pan, double-tap, Fit; remove; signing failure; expired URL re-signed;
-  persistently failing image; iPhone landscape; co-buyer on iPad (portrait and
+  persistently failing image; image memory (one download per selected plan,
+  rapid switching, release on close, a 48 MP plan); iPhone landscape; co-buyer on iPad (portrait and
   landscape); Realtor view-only (UI and API); co-buyer and Realtor revoked
   mid-session; anon; cover photos unchanged. Screenshots:
   `docs/floor-plans-ui-screenshots/`.
@@ -139,10 +175,16 @@ events. Not yet proven on devices:
 3. **iPad** — Split View / Slide Over widths, Stage Manager resizing,
    rotation while zoomed (the view re-clamps; check it feels right), trackpad
    pinch.
-4. **Large real plans** — 8–10 MB scans on cellular: thumbnails load the same
-   full-size signed images (at most four), so first open can be slow.
+4. **Large real plans** — Chromium cannot measure WebKit's image memory, so
+   the per-image ceiling is unproven on hardware: open the largest real scans
+   (e.g. a 48 MP iPhone photo of a plan, ~190 MB decoded) on the oldest
+   supported iPhone and an iPad, zoom to 4×, switch plans quickly, and watch
+   for blank images or the native app's web view reloading (WKWebView ends the
+   web process under memory pressure). One such image is the worst case now;
+   before this change every plan's original was also decoded for its thumbnail. If it fails, the next step is limiting
+   pixel size at upload (a client-side resize), not a new service.
 5. **Background > 15 min** — return to an open viewer after the URLs lapsed.
-6. **VoiceOver** — dialog announcement, thumbnail labels, live notices.
+6. **VoiceOver** — dialog announcement, numbered plan labels, live notices.
 7. **Hosted Storage** — the stand-in mirrors storage-api v1.25.7; Production's
    Storage version / CDN have not been exercised by this UI (the foundation's
    hosted smoke test is still pending your approval).

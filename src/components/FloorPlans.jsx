@@ -41,9 +41,33 @@ export function FloorPlansAction({ count, canEdit, address, onOpen }) {
 // One plan, fitted to the stage. Pinch or double-tap / double-click to zoom,
 // drag to pan while zoomed; at fit, a horizontal swipe moves between plans
 // and a pull down closes. Wheel / trackpad zoom on desktop.
+//
+// Memory: this is the only full-resolution image the viewer ever mounts (the
+// plan picker is numbered buttons, not thumbnails, and nothing is preloaded).
+// A floor plan decodes at its natural size whatever CSS draws it at — a 48 MP
+// scan is ~190 MB of bitmap — so the stage is keyed by plan and, when it
+// unmounts (another plan chosen, viewer closed), drops the image's src: WebKit
+// cancels a download still in flight and can free the decoded bitmap at once
+// instead of keeping it until the node is collected.
 function ZoomStage({ plan, alt, controlsRef, onScaleChange, onSwipe, onDismiss, onImageError, onImageLoad }) {
   const stageRef = useRef(null);
   const canvasRef = useRef(null);
+  const image = useRef(null);
+  const released = useRef(false);
+  // A callback ref, not an effect cleanup: React has already cleared object
+  // refs by the time unmount cleanups run, so the node would be gone.
+  const imageRef = useCallback((node) => {
+    if (node) {
+      image.current = node;
+      released.current = false;
+      return;
+    }
+    // Late load / error events from a released image are not this plan's
+    // failure (a cancelled download fires none, but no engine is relied on).
+    released.current = true;
+    image.current?.removeAttribute('src');
+    image.current = null;
+  }, []);
   const [view, setView] = useState({ scale: MIN_SCALE, x: 0, y: 0 });
   const [stage, setStage] = useState({ width: 0, height: 0 });
   const [natural, setNatural] = useState(null);
@@ -211,9 +235,11 @@ function ZoomStage({ plan, alt, controlsRef, onScaleChange, onSwipe, onDismiss, 
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
+            ref={imageRef}
             src={plan.url}
             alt={alt}
             draggable={false}
+            decoding="async"
             className={`hh-fp-image${loaded ? ' is-loaded' : ''}${gesturing ? ' is-gesturing' : ''}`}
             style={{
               width: fitted.width || undefined,
@@ -222,11 +248,12 @@ function ZoomStage({ plan, alt, controlsRef, onScaleChange, onSwipe, onDismiss, 
               opacity: loaded ? (follow?.y ? Math.max(0.35, 1 - follow.y / 400) : 1) : 0,
             }}
             onLoad={(event) => {
+              if (released.current) return;
               setNatural({ width: event.currentTarget.naturalWidth, height: event.currentTarget.naturalHeight });
               setLoaded(true);
               onImageLoad?.(plan);
             }}
-            onError={() => onImageError?.(plan)}
+            onError={() => { if (!released.current) onImageError?.(plan); }}
           />
           {!loaded && <div className="hh-fp-image-loading" role="status"><LoaderCircle size={22} className="hh-fp-spin" aria-hidden="true" /><span className="sr-only">Loading floor plan</span></div>}
         </div>
@@ -553,17 +580,19 @@ export function FloorPlansViewer({ homeId, address, onClose, onCountChange }) {
 
         {phase === 'ready' && plans.length > 0 && (plans.length > 1 || canEdit) && (
           <footer className="hh-fp-footer">
+            {/* Numbered, not thumbnails: a thumbnail would have to be the full
+                original (no resized variants without paid Storage image
+                transformations), downloading and decoding every plan at once. */}
             {plans.length > 1 && (
-              <ul className="hh-fp-thumbs" aria-label="Choose a floor plan">
+              <ol className="hh-fp-pages" aria-label="Choose a floor plan">
                 {plans.map((plan, i) => (
                   <li key={plan.id}>
-                    <button type="button" className={`hh-fp-thumb${i === index ? ' is-current' : ''}`} onClick={() => { setConfirming(false); setIndex(i); }} aria-label={`Floor plan ${i + 1} of ${plans.length}`} aria-current={i === index ? 'true' : undefined}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      {plan.url && !broken[plan.id] ? <img src={plan.url} alt="" draggable={false} /> : <DraftingCompass size={16} aria-hidden="true" />}
+                    <button type="button" className={`hh-fp-page${i === index ? ' is-current' : ''}`} onClick={() => { setConfirming(false); setIndex(i); }} aria-label={`Floor plan ${i + 1} of ${plans.length}`} aria-current={i === index ? 'true' : undefined}>
+                      {i + 1}
                     </button>
                   </li>
                 ))}
-              </ul>
+              </ol>
             )}
             {canEdit && (
               confirming ? (

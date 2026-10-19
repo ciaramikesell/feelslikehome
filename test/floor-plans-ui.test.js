@@ -192,6 +192,49 @@ test('signed URLs are refreshed before they lapse, on return from the background
   assert.match(viewer, /\{canEdit && \(/);
 });
 
+/* --------------------------- image memory (WKWebView) --------------------------- */
+
+test('memory: the viewer mounts exactly one full-resolution image — the selected plan — and preloads nothing', () => {
+  // One <img> in the whole component, inside ZoomStage, which is keyed by plan.
+  assert.equal((viewer.match(/<img\b/g) || []).length, 1);
+  const stage = viewer.slice(viewer.indexOf('function ZoomStage('), viewer.indexOf('function FloorPlansViewer('));
+  assert.match(stage, /<img\s+ref=\{imageRef\}\s+src=\{plan\.url\}/);
+  assert.match(viewer, /<ZoomStage\s+key=\{current\.id\}/);
+  assert.equal((viewer.match(/<ZoomStage\b/g) || []).length, 1);
+  // No preloading or off-screen decoding of other plans.
+  assert.doesNotMatch(viewer, /new Image\(|rel="preload"|rel=.prefetch|\.decode\(\)|createImageBitmap|<canvas|URL\.createObjectURL|fetch\(/);
+  assert.match(stage, /decoding="async"/);
+});
+
+test('memory: the plan picker is numbered buttons, not thumbnails of the originals', () => {
+  const picker = viewer.slice(viewer.indexOf('<ol className="hh-fp-pages"'), viewer.indexOf('</ol>'));
+  assert.ok(picker.length > 0, 'numbered picker missing');
+  assert.doesNotMatch(picker, /<img|plan\.url|background-?[Ii]mage/);
+  assert.match(picker, /aria-label=\{`Floor plan \$\{i \+ 1\} of \$\{plans\.length\}`\}/);
+  assert.match(picker, /aria-current=\{i === index \? 'true' : undefined\}/);
+  assert.match(picker, /\{i \+ 1\}/);
+  assert.doesNotMatch(viewer + fpCss, /hh-fp-thumb/);
+  assert.match(fpCss, /\.hh-fp-page \{[^}]*width: 44px; height: 44px;/);
+  // Signing is unchanged: one batch of plain signed URLs, no (paid) transforms.
+  assert.doesNotMatch(viewer, /transform:\s*\{|render\/image|createSignedUrl\(/);
+});
+
+test('memory: a stage that unmounts drops its image src (cancels the download, frees the bitmap) and ignores late events', () => {
+  const stage = viewer.slice(viewer.indexOf('function ZoomStage('), viewer.indexOf('function FloorPlansViewer('));
+  // A callback ref: object refs are already null when unmount cleanups run.
+  assert.match(stage, /const imageRef = useCallback\(\(node\) => \{[\s\S]*?released\.current = true;\s*image\.current\?\.removeAttribute\('src'\);\s*image\.current = null;/);
+  assert.doesNotMatch(stage, /imageRef\.current/);
+  assert.match(stage, /onLoad=\{\(event\) => \{\s*if \(released\.current\) return;/);
+  assert.match(stage, /onError=\{\(\) => \{ if \(!released\.current\) onImageError\?\.\(plan\); \}\}/);
+});
+
+test('memory: CSS sizing is not the optimisation — no permanent compositing layer for the zoomed image', () => {
+  // The fitted width/height only change how the bitmap is drawn, not its size.
+  assert.match(fpCss, /\.hh-fp-image \{[^}]*transform-origin: center;/);
+  assert.doesNotMatch(fpCss.match(/\.hh-fp-image \{[^}]*\}/)[0], /will-change/);
+  assert.match(fpCss, /\.hh-fp-image\.is-gesturing \{ transition: opacity \.2s ease; will-change: transform; \}/);
+});
+
 /* ---------------------------- accessibility / devices ---------------------------- */
 
 test('viewer: modal dialog, focus trap, Escape, labelled 44px controls, keyboard zoom and pan', () => {

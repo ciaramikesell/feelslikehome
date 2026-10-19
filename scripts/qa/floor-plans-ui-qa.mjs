@@ -331,16 +331,78 @@ async function main() {
     await shot(page, '06-iphone-viewer-four-plans');
   });
 
-  await step('[owner iPhone] buttons, thumbnails and arrow keys move between plans; counter follows', async () => {
+  await step('[owner iPhone] buttons, numbered picker and arrow keys move between plans; counter follows', async () => {
     const counter = page.locator('.hh-fp-counter');
     assert((await counter.textContent()) === '4 of 4', `expected the newest plan selected, got ${await counter.textContent()}`);
     await page.getByRole('button', { name: 'Previous floor plan' }).click();
     assert((await counter.textContent()) === '3 of 4', 'previous');
     await page.getByRole('button', { name: 'Floor plan 1 of 4' }).click();
-    assert((await counter.textContent()) === '1 of 4', 'thumbnail');
+    assert((await counter.textContent()) === '1 of 4', 'numbered picker');
     assert(await page.getByRole('button', { name: 'Previous floor plan' }).isDisabled(), 'previous enabled at first plan');
     await page.keyboard.press('ArrowRight');
     assert((await counter.textContent()) === '2 of 4', 'arrow key');
+  });
+
+  // Memory: only the selected plan is ever downloaded / decoded at full size.
+  const SIGNED = /\/storage\/v1\/object\/sign\/home-floor-plans\/([^?]+)\?/;
+  const imageGets = () => page.requests.filter((r) => r.startsWith('GET ') && SIGNED.test(r)).map((r) => decodeURIComponent(r.match(SIGNED)[1]));
+  const viewerImages = () => page.locator('.hh-fp-viewer img').count();
+
+  await step('[memory] opening four plans downloads one image; choosing another downloads only that one; never more than one <img>', async () => {
+    await page.getByRole('button', { name: 'Close floor plans' }).click();
+    page.requests.length = 0;
+    await openViewer(page, '412 Linden Ave', 'Floor plans');
+    await imageReady(page);
+    const plans = rows('linden');
+    let gets = imageGets();
+    assert(gets.length === 1 && gets[0] === plans[0].storage_path, `on open: ${gets.join(', ')}`);
+    assert(await viewerImages() === 1, `on open: ${await viewerImages()} <img> in the viewer`);
+    assert(await page.locator('.hh-fp-pages img, .hh-fp-footer img').count() === 0, 'picker renders images');
+    await page.getByRole('button', { name: 'Floor plan 3 of 4' }).click();
+    await imageReady(page);
+    gets = imageGets();
+    assert(gets.length === 2 && gets[1] === plans[2].storage_path, `after choosing 3: ${gets.join(', ')}`);
+    assert(!gets.includes(plans[1].storage_path) && !gets.includes(plans[3].storage_path), 'unselected plans were downloaded');
+    assert(await viewerImages() === 1, 'more than one <img> after switching');
+    await shot(page, '06b-iphone-viewer-numbered-picker');
+  });
+
+  await step('[memory] rapid switching with slow downloads: in-flight images are dropped, the last choice wins, no false "unavailable"', async () => {
+    const plans = rows('linden');
+    const failed = [];
+    const onFailed = (request) => { if (SIGNED.test(request.url())) failed.push(request.failure()?.errorText || 'failed'); };
+    page.on('requestfailed', onFailed);
+    await page.route('**/storage/v1/object/sign/home-floor-plans/**', async (route) => {
+      await new Promise((r) => setTimeout(r, 900));
+      try { await route.continue(); } catch { /* the page already dropped this request */ }
+    });
+    page.requests.length = 0;
+    for (const n of [4, 1, 2]) {
+      await page.getByRole('button', { name: `Floor plan ${n} of 4` }).click();
+      await page.waitForTimeout(60);
+      assert(await viewerImages() <= 1, `${await viewerImages()} <img> mounted while switching`);
+    }
+    await imageReady(page);
+    await page.unroute('**/storage/v1/object/sign/home-floor-plans/**');
+    page.off('requestfailed', onFailed);
+    assert((await page.locator('.hh-fp-counter').textContent()) === '2 of 4', 'last choice did not win');
+    const src = await page.locator('.hh-fp-viewer img').getAttribute('src');
+    assert(src.includes(plans[1].storage_path), 'the stage shows a different plan than the one chosen');
+    assert(await page.getByText('This floor plan isn’t available right now.').count() === 0, 'a dropped download showed as unavailable');
+    log.push({ step: '[memory] info: dropped in-flight image requests', ok: true, info: `${failed.length} (${[...new Set(failed)].join(', ') || 'none reported'})` });
+    console.log(`info  dropped in-flight image requests: ${failed.length} ${[...new Set(failed)].join(', ')}`);
+    assert(!page.errors.length, page.errors.join(' | '));
+  });
+
+  await step('[memory] closing the viewer leaves no floor-plan image in the page', async () => {
+    await page.getByRole('button', { name: 'Close floor plans' }).click();
+    await viewer(page).waitFor({ state: 'detached' });
+    const left = await page.evaluate(() => [...document.images].filter((img) => img.src.includes('home-floor-plans')).length);
+    assert(left === 0, `${left} floor-plan <img> left after closing`);
+    // Back where the touch step expects to start: plan 2 of 4.
+    await openViewer(page, '412 Linden Ave', 'Floor plans');
+    await page.getByRole('button', { name: 'Floor plan 2 of 4' }).click();
+    await imageReady(page);
   });
 
   await step('[owner iPhone] touch: swipe left/right changes plan; pinch zooms; drag pans; double-tap toggles; Fit resets', async () => {
@@ -470,6 +532,40 @@ async function main() {
     await page.setViewportSize(DEVICES.iphone.viewport);
     await page.getByRole('button', { name: 'Close floor plans' }).click();
   });
+  await step('[memory] a 48 MP plan (8000×6000): loads alone, zooms, and is released when closed', async () => {
+    const maker = await browser.newPage();
+    const png = await maker.evaluate(async () => {
+      const canvas = Object.assign(document.createElement('canvas'), { width: 8000, height: 6000 });
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, 8000, 6000);
+      ctx.strokeStyle = '#2e2621'; ctx.lineWidth = 24;
+      for (let x = 200; x < 8000; x += 1300) ctx.strokeRect(x, 200, 1200, 2700);
+      for (let x = 200; x < 8000; x += 1900) ctx.strokeRect(x, 3100, 1800, 2700);
+      ctx.fillStyle = '#5b4f46'; ctx.font = '160px Georgia';
+      ctx.fillText('Large scan · 8000 × 6000', 400, 5600);
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+      return [...new Uint8Array(await blob.arrayBuffer())];
+    });
+    await maker.close();
+    const buffer = Buffer.from(png);
+    assert(buffer.length < 10 * 1024 * 1024, `test image is ${buffer.length} bytes`);
+    await page.goto(`${base}/homes`, { waitUntil: 'networkidle' });
+    await openViewer(page, '77 Harbor Point Ct', 'Add floor plan');
+    await upload(page, [{ name: 'large-scan.png', mimeType: 'image/png', buffer }]);
+    await page.getByText('Floor plan added.').waitFor({ timeout: 30000 });
+    await imageReady(page);
+    const natural = await page.evaluate(() => { const img = document.querySelector('.hh-fp-image'); return [img.naturalWidth, img.naturalHeight]; });
+    assert(natural[0] === 8000 && natural[1] === 6000, `natural size ${natural}`);
+    assert(await viewerImages() === 1, 'more than one <img> for the large plan');
+    await pinch(page, 40, 140);
+    assert(await currentScale(page) > 2, 'large plan did not zoom');
+    await shot(page, '10b-iphone-viewer-large-plan-zoomed');
+    await page.getByRole('button', { name: 'Close floor plans' }).click();
+    await viewer(page).waitFor({ state: 'detached' });
+    assert(await page.evaluate(() => [...document.images].filter((img) => img.src.includes('home-floor-plans')).length) === 0, 'large plan <img> kept after closing');
+    assertConsistent('harbor', 1);
+  });
+
   assert(!page.errors.length, `owner page errors: ${page.errors.join(' | ')}`);
   await page.context().close();
 
