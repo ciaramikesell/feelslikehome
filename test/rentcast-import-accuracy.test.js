@@ -359,3 +359,88 @@ test('listing bookkeeping is shown but not counted as a home detail', () => {
   // The inactive import loses price and days on market and gains only bookkeeping.
   assert.equal(importedDetailCount(inactive), importedDetailCount(active) - 2);
 });
+
+/* --------------------------- final review (PR #161) --------------------------- */
+
+test('address variants of the same home match: St/Street, directions, units, ZIP+4, punctuation', () => {
+  const R = '100 N Main St, Apt 4, Springfield, MI 48000';
+  for (const variant of [
+    '100 North Main Street Apt 4, Springfield, MI',
+    '100 N. Main St. #4, Springfield, MI 48000-1234',
+    '100 N Main St Apt #4, Springfield, MI',
+    '100 N Main St, Apt. 4, Springfield, MI',
+    '100 N Main St Unit 4, Springfield, MI 48000',
+    '100 Main St N, Apt 4, Springfield, MI',
+    '100 N Main St, Apt 4, Springfield, MI, USA',
+    '100 N Main St Springfield MI 48000',
+  ]) assert.equal(rentCastAddressMatch(variant, R), 'match', variant);
+  assert.equal(rentCastAddressMatch('100 Saint Clair Ave, Detroit, MI', '100 St Clair Ave, Detroit, MI 48214'), 'match');
+  assert.equal(rentCastAddressMatch('100 First St, Detroit, MI', '100 1st St, Detroit, MI 48214'), 'match');
+  assert.equal(rentCastAddressMatch('100 Main St, Grosse Pointe Woods, MI 48236', '100 Main St, Grosse Pointe, MI 48236'), 'match', 'same ZIP: postal city names vary');
+});
+
+test('a different property never matches: direction, suffix, city, unit, number, ZIP, state', () => {
+  const R = '100 N Main St, Apt 4, Springfield, MI 48000';
+  for (const other of [
+    '100 S Main St, Apt 4, Springfield, MI',
+    '100 N Main Ave, Apt 4, Springfield, MI',
+    '100 N Main St, Apt 4, Lansing, MI',
+    '100 N Main St Lansing MI',
+    '100 N Main St, Apt 5, Springfield, MI',
+    '102 N Main St, Apt 4, Springfield, MI',
+    '100 N Maine St, Apt 4, Springfield, MI',
+    '100 N Main St, Apt 4, Springfield, MI 48001',
+    '100 N Main St, Apt 4, Springfield, OH',
+  ]) assert.equal(rentCastAddressMatch(other, R), 'mismatch', other);
+});
+
+test('garage type: only an unambiguous Attached / Detached garage; carports and parking are not garages', () => {
+  const type = (garageType) => normalizeRentCastFields(documentedProperty({ features: { garageType } }), null, { requestedAddress: ASKED }).fields.garageType;
+  assert.equal(type('Attached'), 'attached');
+  assert.equal(type('Detached Garage'), 'detached');
+  assert.equal(type('Attached/Carport'), 'attached', 'an attached garage plus a carport');
+  for (const value of ['Garage', 'Carport', 'Parking Structure', 'Attached/Detached', 'Detached Carport', 'Attached Carport', 'Attached and Detached', '']) {
+    assert.equal(type(value), undefined, value);
+  }
+});
+
+test('heating / cooling with several types separated by slashes are kept as written', () => {
+  const { fields } = normalizeRentCastFields(documentedProperty({ features: { heatingType: 'Forced Air/Heat Pump', coolingType: 'Central/Window' } }), null, { requestedAddress: ASKED });
+  assert.equal(fields.heating, 'Forced Air/Heat Pump');
+  assert.equal(fields.cooling, 'Central/Window');
+});
+
+test('propertyTaxes keyed by YYYY: the latest year wins regardless of key order', () => {
+  const { fields } = normalizeRentCastFields(documentedProperty({ propertyTaxes: { 2024: { year: 2024, total: 4125 }, 2022: { year: 2022, total: 3700 }, 2023: { year: 2023, total: 3900 } } }), null, { requestedAddress: ASKED });
+  assert.deepEqual([fields.propertyTaxAnnual, fields.propertyTaxYear], [4125, 2024]);
+});
+
+test('Inactive is "no longer listed", never "Sold"', () => {
+  const result = normalizeRentCastFields(documentedProperty(), documentedSaleListing({ status: 'Inactive' }), { requestedAddress: ASKED });
+  const text = JSON.stringify(result.listingFacts);
+  assert.match(text, /Inactive \(no longer listed\)/);
+  assert.doesNotMatch(text, /sold/i);
+  for (const file of ['src/lib/rentcast.js', 'src/lib/rentcastLookup.js', 'src/components/HomeModal.jsx']) {
+    const source = readFileSync(new URL(`../${file}`, import.meta.url), 'utf8');
+    assert.doesNotMatch(source, /['"`][^'"`\n]*\bsold\b[^'"`\n]*['"`]/i, file);
+  }
+});
+
+test('owner, agent, office, sale history and assessments never reach the client response or the snapshot', async () => {
+  const property = documentedProperty({
+    owner: { names: ['Pat Example'], mailingAddress: { formattedAddress: '9 Private Rd' } }, ownerOccupied: true,
+    lastSaleDate: '2019-05-01T00:00:00.000Z', lastSalePrice: 201000, history: { '2019-05-01': { price: 201000 } },
+    taxAssessments: { 2024: { year: 2024, value: 150000 } }, legalDescription: 'LOT 12 EXAMPLE SUB', assessorID: '12-34-567',
+  });
+  const listing = documentedSaleListing({
+    listingAgent: { name: 'Agent Example', phone: '5550100', email: 'agent@example.test' },
+    listingOffice: { name: 'Office Example', phone: '5550101' }, history: { '2026-09-20': { price: 289000 } },
+  });
+  const { body } = await withFetch(answer({ property: () => json([property]), listing: () => json([listing]) }), () => lookupRentCast(ASKED, 'sale', KEY));
+  const snapshot = listingImportSnapshot({ ...body, searchedAddress: ASKED });
+  for (const text of [JSON.stringify(body), JSON.stringify(snapshot)]) {
+    for (const secret of ['Pat Example', '9 Private Rd', '201000', 'Agent Example', 'agent@example.test', '5550100', 'Office Example', 'LOT 12', '12-34-567', '150000', 'owner', 'listingAgent', 'listingOffice']) {
+      assert.ok(!text.includes(secret), secret);
+    }
+  }
+});

@@ -107,11 +107,18 @@ export function canonicalBasementFacts(value) {
   return { basementCondition: condition, basementStyle: style };
 }
 
-// Attached / Detached only when the listing says exactly one of them.
+// Attached / Detached only when the garage is unambiguously one of them.
+// RentCast's garageType can list several kinds separated by slashes ("Attached/
+// Carport"). A carport or parking structure is not a garage, so those parts are
+// set aside ("Detached Carport" says nothing about a garage); of what remains,
+// exactly one of Attached / Detached must be named. A bare "Garage" stays Unknown.
+const NOT_A_GARAGE = /\b(?:carport|parking|structure|driveway|street|covered|none)\b/i;
 export function canonicalGarageType(value) {
   if (typeof value !== 'string') return null;
-  const attached = /\battached\b/i.test(value);
-  const detached = /\bdetached\b/i.test(value);
+  const parts = value.split(/[\/,;]|\band\b|&/i).map((part) => part.trim()).filter((part) => part && !NOT_A_GARAGE.test(part));
+  const text = parts.join(' ');
+  const attached = /\battached\b/i.test(text);
+  const detached = /\bdetached\b/i.test(text);
   if (attached === detached) return null;
   return attached ? 'attached' : 'detached';
 }
@@ -146,34 +153,72 @@ function descriptiveText(value) {
 /* ----------------------------- Address matching ----------------------------- */
 // RentCast answers an address query with its closest record, and we read only
 // the first result. A record for a different house must never fill this home's
-// facts, so each result is checked against the address we asked for. Only a
-// definite difference (house number, street name, unit, ZIP or state) is a
-// mismatch; spelling variants ("Drive" / "Dr") and a missing part are not.
+// facts, so each result is checked against the address we asked for.
+//
+// Formatting variants are normalized: "Street" / "St", "North" / "N" (before or
+// after the name), "Apt 4" / "Apt #4" / "#4" / "Unit 4", ZIP+4, punctuation,
+// "Saint" / "St", "First" / "1st", a trailing "USA". After that, any definite
+// difference is a mismatch: house number, street name, street suffix (St vs Ave),
+// direction (N vs S), unit, ZIP, state, or — when either side has no ZIP — city.
+// A part missing on one side (no unit, no ZIP, no direction) is not a conflict.
 
-const STREET_WORDS = {
-  street: 'st', avenue: 'ave', av: 'ave', road: 'rd', drive: 'dr', lane: 'ln', court: 'ct', boulevard: 'blvd',
-  place: 'pl', terrace: 'ter', circle: 'cir', parkway: 'pkwy', highway: 'hwy', trail: 'trl', square: 'sq',
-  north: 'n', south: 's', east: 'e', west: 'w', northeast: 'ne', northwest: 'nw', southeast: 'se', southwest: 'sw',
+const DIRECTIONS = { n: 'n', north: 'n', s: 's', south: 's', e: 'e', east: 'e', w: 'w', west: 'w', ne: 'ne', northeast: 'ne', nw: 'nw', northwest: 'nw', se: 'se', southeast: 'se', sw: 'sw', southwest: 'sw' };
+const STREET_SUFFIXES = {
+  st: 'st', street: 'st', ave: 'ave', av: 'ave', avenue: 'ave', rd: 'rd', road: 'rd', dr: 'dr', drive: 'dr', ln: 'ln', lane: 'ln',
+  ct: 'ct', court: 'ct', blvd: 'blvd', boulevard: 'blvd', pl: 'pl', place: 'pl', ter: 'ter', terrace: 'ter', cir: 'cir', circle: 'cir',
+  pkwy: 'pkwy', parkway: 'pkwy', hwy: 'hwy', highway: 'hwy', trl: 'trl', trail: 'trl', sq: 'sq', square: 'sq', way: 'way', wy: 'way',
 };
-const STREET_SUFFIXES = new Set(['st', 'ave', 'rd', 'dr', 'ln', 'ct', 'blvd', 'pl', 'ter', 'cir', 'pkwy', 'hwy', 'trl', 'sq', 'way', 'n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']);
-const UNIT_WORDS = /^(?:apt|apartment|unit|ste|suite|#)$/;
+const NAME_WORDS = {
+  saint: 'st', mount: 'mt', fort: 'ft', township: 'twp',
+  first: '1st', second: '2nd', third: '3rd', fourth: '4th', fifth: '5th', sixth: '6th', seventh: '7th', eighth: '8th', ninth: '9th', tenth: '10th',
+};
+const UNIT_WORD = /^(?:apt|apartment|unit|ste|suite|#)$/;
+const COUNTRY = /^(?:usa|us|united states(?: of america)?)$/;
+const word = (token) => NAME_WORDS[token] || STREET_SUFFIXES[token] || DIRECTIONS[token] || token;
 
 function parseAddress(value) {
   if (typeof value !== 'string' || !value.trim()) return null;
-  const parts = value.toLowerCase().replace(/#\s*/g, ' # ').split(',').map((part) => part.trim()).filter(Boolean);
-  const tokens = (parts[0] || '').replace(/[.]/g, '').split(/\s+/).filter(Boolean).map((token) => STREET_WORDS[token] || token);
-  const rest = parts.slice(1);
-  const unitIndex = tokens.findIndex((token) => UNIT_WORDS.test(token));
-  let unit = unitIndex >= 0 ? tokens[unitIndex + 1] || null : null;
-  const street = unitIndex >= 0 ? tokens.slice(0, unitIndex) : tokens;
-  // "Apt 4B" can also be its own comma part.
-  rest.forEach((part) => { const m = part.match(/^(?:apt|apartment|unit|ste|suite|#)\s*(\S+)$/); if (m) unit = m[1]; });
-  const tail = rest.join(' ');
-  const zip = tail.match(/\b(\d{5})(?:-\d{4})?\b/)?.[1] || null;
-  const state = tail.match(/\b([a-z]{2})\b(?=\s*(?:\d{5}|$))/)?.[1] || null;
+  const parts = value.toLowerCase().split(',')
+    .map((part) => part.replace(/#/g, ' # ').replace(/[^a-z0-9\s#-]/g, ' ').replace(/\s+/g, ' ').trim())
+    .filter((part) => part && !COUNTRY.test(part));
+  if (!parts.length) return null;
+  // Typed without commas ("100 Main St Springfield MI 48000"): the street ends
+  // at its suffix (and a direction right after it); the rest is the region.
+  if (parts.length === 1) {
+    const words = parts[0].split(' ');
+    const end = words.findIndex((token, i) => i >= 2 && STREET_SUFFIXES[token]);
+    const cut = end < 0 ? -1 : end + (DIRECTIONS[words[end + 1]] && words.length > end + 2 ? 2 : 1);
+    if (cut > 0 && cut < words.length && !UNIT_WORD.test(words[cut])) parts.splice(0, 1, words.slice(0, cut).join(' '), words.slice(cut).join(' '));
+  }
+  const unitOf = (tokens) => tokens.find((token) => !UNIT_WORD.test(token))?.replace(/-/g, '') || null;
+
+  const tokens = parts[0].split(' ');
+  const unitAt = tokens.findIndex((token) => UNIT_WORD.test(token));
+  let unit = unitAt >= 0 ? unitOf(tokens.slice(unitAt)) : null;
+  const street = unitAt >= 0 ? tokens.slice(0, unitAt) : tokens;
+  const region = [];
+  parts.slice(1).forEach((part) => {
+    const words = part.split(' ');
+    if (UNIT_WORD.test(words[0])) unit = unitOf(words); else region.push(part);
+  });
+
   const number = /^\d+[a-z]?$/.test(street[0] || '') ? street[0] : null;
-  const name = street.slice(number ? 1 : 0).filter((token) => !STREET_SUFFIXES.has(token)).join(' ');
-  return { number, name, unit, zip, state };
+  const rest = street.slice(number ? 1 : 0);
+  const directions = [];
+  if (rest.length > 1 && DIRECTIONS[rest[0]]) directions.push(DIRECTIONS[rest.shift()]);
+  if (rest.length > 1 && DIRECTIONS[rest[rest.length - 1]]) directions.push(DIRECTIONS[rest.pop()]);
+  const suffix = rest.length > 1 && STREET_SUFFIXES[rest[rest.length - 1]] ? STREET_SUFFIXES[rest.pop()] : null;
+
+  let zip = null; let state = null; let city = null;
+  if (region.length) {
+    const last = region[region.length - 1].split(' ');
+    const zipAt = last.findIndex((token) => /^\d{5}(?:-\d{4})?$/.test(token));
+    if (zipAt >= 0) zip = last.splice(zipAt, 1)[0].slice(0, 5);
+    if (last.length && /^[a-z]{2}$/.test(last[last.length - 1])) state = last.pop();
+    const cityText = last.length ? last.join(' ') : region.length > 1 ? region[region.length - 2] : '';
+    city = cityText ? cityText.split(' ').map(word).join(' ') : null;
+  }
+  return { number, name: rest.map(word).join(' '), suffix, directions: directions.sort().join(' '), unit, zip, state, city };
 }
 
 /** @returns {'match'|'mismatch'|'unknown'} */
@@ -181,8 +226,10 @@ export function rentCastAddressMatch(requested, returned) {
   const a = parseAddress(requested);
   const b = parseAddress(returned);
   if (!a || !b || !a.number || !b.number) return 'unknown';
-  const differs = (x, y) => !!x && !!y && x !== y;
-  if (a.number !== b.number || differs(a.name, b.name) || differs(a.unit, b.unit) || differs(a.zip, b.zip) || differs(a.state, b.state)) return 'mismatch';
+  const differs = (key) => !!a[key] && !!b[key] && a[key] !== b[key];
+  if (a.number !== b.number || ['name', 'suffix', 'directions', 'unit', 'zip', 'state'].some(differs)) return 'mismatch';
+  // With both ZIPs present the ZIP decides; postal city names vary within one.
+  if (!(a.zip && b.zip) && differs('city')) return 'mismatch';
   return 'match';
 }
 

@@ -21,6 +21,21 @@ rests on:
 3. **Used, not re-confirmed**: long-standing fields the importer already read
    and still reads, unchanged in meaning. They need a re-read of the full schema.
 
+**Final review update:** the product owner then confirmed from the official
+schemas that `propertyTaxes` is keyed by year (YYYY), with each entry giving a
+numeric `year` and an annual `total`. They also confirmed:
+- `heatingType` / `coolingType` are descriptive strings that may join several
+  values with slashes.
+- `garageType` values include Attached, Detached, Garage, Carport and Parking
+  Structure.
+- `status` is Active or Inactive. Inactive means no longer actively listed, not
+  necessarily sold, and its price is the last known price.
+- `formattedAddress`, `bedrooms`, `bathrooms`, `squareFootage`, `lotSize`,
+  `yearBuilt`, `propertyType`, `latitude` and `longitude` are documented.
+- `hoa.fee` is the monthly assessment on both schemas.
+
+The tables below reflect that.
+
 No live response was requested, captured or committed. The test fixtures
 (`test/support/rentcastDocumentedShapes.js`) and the QA fixture
 (`scripts/qa/rentcast-fixture.mjs`) are **documentation-derived shapes with
@@ -32,26 +47,26 @@ invented values**, labelled as such. They are not live responses.
 
 | Field | Type / unit | Status | Used for |
 |---|---|---|---|
-| `features.heatingType` | text | Confirmed | Heating |
-| `features.coolingType` | text | Confirmed | Cooling |
+| `features.heatingType` | text, may hold several values joined by `/` (e.g. "Forced Air/Heat Pump") | Confirmed | Heating, kept as written |
+| `features.coolingType` | text, may hold several values joined by `/` | Confirmed | Cooling, kept as written |
 | `features.heating`, `features.cooling` | boolean presence flags | Confirmed | Found panel "Yes" only; never a type, `false` not shown |
 | `features.garage` | boolean | Confirmed | Found panel "Yes" when no garage type |
 | `features.garageSpaces` | number | Confirmed | Garage spaces (0 kept; negative dropped) |
-| `features.garageType` | text | Confirmed | Garage type, only when exactly "attached" or "detached" |
+| `features.garageType` | text: Attached, Detached, Garage, Carport, Parking Structure, … (may be joined by `/`) | Confirmed | Garage type, only when an unambiguous Attached or Detached garage is named. Carport and parking parts are set aside: "Attached/Carport" maps to attached; "Garage", "Detached Carport" and "Attached/Detached" stay Unknown |
 | `features.exteriorType`, `features.roofType` | text | Confirmed | Exterior, Roof |
 | `features.floorCount`, `features.foundationType`, `features.architectureType` | number / text | Confirmed | Found panel only (Stories, Foundation, Style) |
 | `hoa.fee` | number, **monthly** | Confirmed | HOA fee /mo (0 = confirmed $0/mo) |
 | `lotSize` | number, **square feet** | Confirmed | Lot size with its unit ("8712 sq ft", "1.00 acres") |
 | `latitude`, `longitude` | numbers | Confirmed | Map point (see Coordinates) |
-| `propertyTaxes` | object keyed by year, `{ year, total }` | Confirmed (tax history). Entry shape is used, not re-confirmed | Most recent plausible year's annual total, with that year |
-| `formattedAddress`, `propertyType`, `bedrooms`, `bathrooms`, `squareFootage`, `yearBuilt` | text / numbers | Used, not re-confirmed | Address check, basics |
+| `propertyTaxes` | object keyed by YYYY, entries `{ year: number, total: number }` (annual) | Confirmed | Most recent plausible year's annual total, with that year (key order ignored) |
+| `formattedAddress`, `propertyType`, `bedrooms`, `bathrooms`, `squareFootage`, `yearBuilt` | text / numbers | Confirmed | Address check, basics |
 | `taxAssessments`, `lastSalePrice`, `lastSaleDate`, `owner`, `history` | — | Not used | Owner and sale history are personal or not needed; deliberately not imported or stored |
 
 ### Listings (`/v1/listings/sale`, `/v1/listings/rental/long-term`)
 
 | Field | Type | Status | Used for |
 |---|---|---|---|
-| `status` | `Active` / `Inactive` | Confirmed | Only Active fills price and days on market |
+| `status` | `Active` / `Inactive` (Inactive = no longer actively listed, not necessarily sold) | Confirmed | Only Active fills price and days on market |
 | `price` | number | Confirmed. Inactive keeps the **last known** price | Asking price or rent (Active); "Last listed price (not a current asking price)" otherwise |
 | `listedDate`, `removedDate`, `lastSeenDate` | ISO date-time | Confirmed | Snapshot and found panel (date only) |
 | `daysOnMarket` | number | Confirmed | Days on market (Active only) |
@@ -59,7 +74,7 @@ invented values**, labelled as such. They are not live responses.
 | `hoa.fee` | number, monthly | Confirmed | HOA fallback when the property record has none |
 | `latitude`, `longitude` | numbers | Confirmed | Map-point cross-check |
 | `listingType` | Standard / New Construction / Foreclosure / Short Sale | Search-confirmed | Not used yet (see follow-ups) |
-| `formattedAddress`, `bedrooms`, `bathrooms`, `squareFootage`, `propertyType`, `lotSize` | — | Used, not re-confirmed | Address check, size |
+| `formattedAddress`, `bedrooms`, `bathrooms`, `squareFootage`, `propertyType`, `lotSize` | — | Confirmed | Address check, size |
 
 ### Not found in the confirmed schema: no longer mapped
 
@@ -108,11 +123,20 @@ listed price — $X (not a current asking price)." Nothing refreshes an existing
 home or overwrites anything a buyer entered.
 
 **Address matching.** Each result's `formattedAddress` is compared with the
-address looked up. A mismatch means a different house number, street name,
-unit, ZIP or state, after abbreviations are normalized ("Lane" / "Ln",
-"#4" / "Apt 4"). That result is dropped. A missing part is never a mismatch, so
-a ZIP or unit on only one side still matches. When nothing matches, the buyer
-sees "We couldn't match property records to that exact address."
+address looked up.
+- **Normalized first:**
+  - "Street" / "St", "North" / "N" (before or after the street name)
+  - "Apt 4" / "Apt #4" / "#4" / "Unit 4"
+  - ZIP+4, periods and other punctuation, a trailing "USA"
+  - "Saint" / "St", "First" / "1st"
+  - an address typed without commas
+- **Then a mismatch is** any definite difference: house number, street name,
+  street suffix (St vs Ave), direction (N vs S), unit, ZIP, state, or city
+  (city only when either side lacks a ZIP).
+- **A mismatched result is dropped.**
+- **A part missing on one side** (no unit, ZIP or direction) is not a conflict.
+- **When nothing matches,** the buyer sees "We couldn't match property records
+  to that exact address."
 
 **Coordinates.** Before this PR, imported coordinates were stored with
 `coordinate_status = 'unresolved'` and no address fingerprint. The map ignored
@@ -168,17 +192,22 @@ iPad 820, iPhone 390; Chromium emulation, QA fixture data).
 
 ## Test and QA results
 
-- `npm test` with real PostgreSQL 16: **1115 / 1115 pass, 0 skipped**. That
-  includes 26 new tests in `test/rentcast-import-accuracy.test.js` and updates
-  to tests that had locked in the undocumented mappings. `main`, run the same
-  way, passes 1089 / 1089. No regressions.
+- `npm test` with real PostgreSQL 16: **1125 / 1125 pass, 0 skipped**. That
+  includes 33 tests in `test/rentcast-import-accuracy.test.js` and 3
+  real-Postgres tests in `test/rentcast-import-db.test.js`:
+  - save and reload of an import (including $0/mo HOA);
+  - the address-change trigger clearing an imported point;
+  - an inactive listing saving no price.
+
+  It also includes updates to tests that had locked in the undocumented
+  mappings. `main`, run the same way, passes 1089 / 1089. No regressions.
 - `next build`: passes.
 - Browser QA `scripts/qa/rentcast-import-e2e.mjs`: **12 / 12**, covering
   complete, partial, inactive and rate-limited lookups on desktop, iPad and
   iPhone against the Supabase stand-in on real Postgres.
-- Regression QA: `home-facts-completeness-e2e.mjs` 21 / 21. `home-overlay-e2e.mjs`
-  gave 27 / 27 on two runs and 26 / 27 on one. The failure was "[1440] 11.
-  Duplicate URL…", the dev-server flake already reported as open in #160.
+- Regression QA after the final review: `home-facts-completeness-e2e.mjs`
+  21 / 21, `home-overlay-e2e.mjs` 27 / 27. Earlier rounds saw one 26 / 27 run:
+  the "[1440] 11. Duplicate URL…" dev-server flake already open from #160.
   `home-overlay-e2e` now expects Laundry Location to stay Unknown after import.
 
 ## Concerns
@@ -197,20 +226,41 @@ iPad 820, iPhone 390; Chromium emulation, QA fixture data).
   unlisted unit) is not.
 - **Migration:** none. The snapshot keys are additive in existing jsonb.
 
-## Remaining uncertainties (need the full schema or one approved live sample)
+## Final review (after schema confirmation)
 
-1. The entry shape inside `propertyTaxes` (`{ year, total }`) and whether keys
-   are always years.
-2. Exact vocabulary of `garageType` (is "Attached Garage" / "Detached" used?) and
-   of `heatingType` / `coolingType`.
-3. What RentCast returns for an unparseable address. We map HTTP 400 to
-   "Check the address" and 404 / empty to "No property data."
-4. Whether `status` ever takes values other than Active / Inactive. Anything
-   else is treated as "Not reported."
-5. Whether `bedrooms`, `bathrooms`, `squareFootage`, `yearBuilt`,
-   `propertyType` (and its values such as "Single Family", "Townhouse",
-   "Condo", "Multi-Family", "Apartment") and `formattedAddress` are unchanged in
-   the current schema.
+Fixed in this review:
+1. **Address matching was too loose.** "100 N Main St" matched "100 S Main St",
+   "Main St" matched "Main Ave", and a different city matched when there was no
+   ZIP. Direction, suffix and city (when ZIP is missing) are now compared.
+2. **Address matching rejected real variants.** "Apt #4", "Saint" / "St",
+   "First" / "1st" and addresses typed without commas were treated as different
+   homes. All are now normalized.
+3. **Carports were read as garages.** "Detached Carport" mapped to a detached
+   garage. Carport and parking parts of `garageType` are now set aside.
+
+Checked and unchanged:
+- `propertyTaxes` parsing picks the latest year regardless of key order.
+- Slash-joined heating and cooling strings are kept as written.
+- No wording equates Inactive with Sold.
+- An inactive or unreported listing's price never becomes the asking price.
+- A $0/mo HOA stays distinct from Unknown through save and reload (real
+  Postgres).
+- Trusted coordinates are cleared by the existing trigger when the address
+  changes (real Postgres). They are never applied when the saved address or
+  point differs from the lookup.
+- Owner, agent, office, sale-history, assessment and legal fields never reach
+  the response or the snapshot.
+
+Remaining uncertainty, without a live sample: what RentCast returns for an
+unparseable address. We map HTTP 400 to "Check the address" and 404 or an empty
+result to "No property data." The full `propertyType` vocabulary is also
+unconfirmed; unrecognized values stay Unknown.
+
+Found, not fixed here (it predates this PR and isn't import mapping): looking up
+a second address in the same Add Home session keeps facts filled by the first
+lookup, because imports only fill empty fields. Coordinates are protected
+(the point must still match the lookup). Other facts are not. Worth a small
+follow-up that clears fields filled by a previous lookup but never edited.
 
 ## Left for #162 and later
 
@@ -221,3 +271,5 @@ iPad 820, iPhone 390; Chromium emulation, QA fixture data).
   context, once its display is designed.
 - Pool / fireplace / other features, if the full schema documents them.
 - Choosing among several RentCast results instead of the first.
+- Clearing a previous lookup's untouched imported values when a second address
+  is looked up in the same Add Home session.
