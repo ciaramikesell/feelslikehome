@@ -11,6 +11,7 @@ import {
 import { photoFileError, PHOTO_BUCKET, storagePathFromPublicUrl, uploadHomePhoto } from '@/lib/homePhoto';
 import { digitsOnly, formatCurrencyDisplay, formatDateOnly, formatLotSizeDisplay, formatTriState, splitAddressLines } from '@/lib/homeDisplay';
 import { homeIdentity } from '@/lib/homePresentation';
+import { isUnitlessLotSize } from '@/lib/lotSize';
 import { parseNum } from '@/lib/matching';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { createClient } from '@/lib/supabase/client';
@@ -151,8 +152,9 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
             <span aria-hidden="true"> · </span>
             <QuietInput id="hf-sqft" label="Square footage" value={home.sqft} readOnly={isReadOnly} failed={failed('sqft')} registerDraft={editor?.registerDraft} format={(value) => (value ? parseNum(value)?.toLocaleString() ?? value : '')} parse={(value) => value.replace(/,/g, '').trim()} inputMode="numeric" size={5} placeholder="—" suffix=" sqft" onCommit={(sqft) => save({ sqft })} />
             <span aria-hidden="true"> · </span>
-            {/* Acres; sq ft, sq m and hectares are converted (normalizeLotSizeInput). */}
-            <QuietInput id="hf-lotSize" label="Lot size in acres" value={home.lotSize} readOnly={isReadOnly} failed={failed('lotSize')} registerDraft={editor?.registerDraft} format={formatLotSizeDisplay} parse={normalizeLotSizeInput} size={9} placeholder="— acres" onCommit={(lotSize) => save({ lotSize })} />
+            {/* Acres; sq ft, sq m and hectares are converted (normalizeLotSizeInput). A saved
+                number with no unit opens as the bare number; saving it confirms acres. */}
+            <QuietInput id="hf-lotSize" label="Lot size in acres" value={home.lotSize} readOnly={isReadOnly} failed={failed('lotSize')} registerDraft={editor?.registerDraft} format={formatLotSizeDisplay} edit={(value) => (isUnitlessLotSize(value) ? String(value).trim() : formatLotSizeDisplay(value))} parse={normalizeLotSizeInput} size={9} placeholder="— acres" onCommit={(lotSize) => save({ lotSize })} />
           </p>}
           <ListingLink home={home} readOnly={isReadOnly} editor={editor} />
           {home.suggestedBy && <span className="hh-provenance">Suggested by {home.suggestedBy}</span>}

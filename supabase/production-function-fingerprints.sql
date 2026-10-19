@@ -74,7 +74,8 @@ with repository(name, source_file, body_md5) as (
     ('create_realtor_suggestion', 'migrations/2026-10-12-realtor-access-and-home-ownership.sql', '37cd42b7818b8aee64b6ff23be0d678d'),
     ('resolve_cobuyer_compare_perspectives', 'migrations/2026-10-15-cobuyer-compare-mudroom-parity.sql', '7e70b54fa45614c9c0e219d7d8df9a4f'),
     ('invite_prospective_client', 'migrations/2026-10-16-realtor-my-clients.sql', '07919c8144d21d0f747953c26fe4ea8c'),
-    ('claim_prospective_search', 'migrations/2026-10-16-realtor-my-clients.sql', '083c55fe6a5338d3e2d9ebe2505a6839')
+    ('claim_prospective_search', 'migrations/2026-10-16-realtor-my-clients.sql', '083c55fe6a5338d3e2d9ebe2505a6839'),
+    ('resolve_cobuyer_compare_perspectives', 'migrations/2026-10-18-lot-size-units-match-parity.sql', '507da3d7681a30eec49a8311d30bb180')
 ),
 wanted(name) as (values ('accept_invitation'), ('claim_prospective_search'), ('create_buyer_invitation'), ('create_prospective_search'), ('create_realtor_connection_request'), ('create_realtor_suggestion'), ('get_realtor_client_roster'), ('handle_new_user'), ('invite_prospective_client'), ('preview_invitation'), ('resolve_cobuyer_compare_perspectives'), ('resolve_collaborator_search_context'), ('resolve_display_name'), ('save_realtor_note'), ('suggest_home_tour')),
 production as (
