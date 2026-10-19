@@ -43,10 +43,10 @@ test('fetchWithTimeout passes through a fast, successful response untouched and 
 /* ------------------------- external calls are bounded ------------------------- */
 
 test('RentCast and Google Geocoding/Routes calls all go through fetchWithTimeout, not a bare fetch', () => {
-  const importListing = read('src/app/api/import-listing/route.js');
+  const importListing = read('src/lib/rentcastLookup.js');
   const commute = read('src/app/api/commute/route.js');
 
-  assert.match(importListing, /import \{ fetchWithTimeout \} from '@\/lib\/fetchWithTimeout'/);
+  assert.match(importListing, /import \{ fetchWithTimeout \} from '\.\/fetchWithTimeout\.js'/);
   assert.match(importListing, /const res = await fetchWithTimeout\(url,/);
   assert.doesNotMatch(importListing, /await fetch\(url,/);
 

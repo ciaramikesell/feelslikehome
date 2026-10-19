@@ -194,8 +194,9 @@ test('import: only explicit, unambiguous listing values become Home Facts fields
   assert.equal(fields.heating, 'Forced Air');
   assert.equal(fields.cooling, undefined, 'a bare "has cooling" says nothing about the kind');
   assert.equal(fields.garageType, 'detached');
-  assert.equal(fields.basementCondition, 'finished');
-  assert.equal(fields.basementStyle, 'walkout');
+  // RentCast documents no basement field: an undocumented key is never mapped.
+  assert.equal(fields.basementCondition, undefined);
+  assert.equal(fields.basementStyle, undefined);
   assert.equal(fields.listingId, 'MLS-9');
   assert.equal(normalizeRentCastFields({}, { id: 'rentcast-internal-id' }).fields.listingId, undefined, 'RentCast’s own record id is not a listing ID');
   assert.equal(canonicalGarageType('Attached and detached'), null);

@@ -46,8 +46,9 @@ test('Laundry Location imports only an explicit, single location', () => {
   // A basement existing says nothing about the laundry.
   const { fields } = normalizeRentCastFields({ features: { basement: 'Finished' } }, null);
   assert.equal(fields.laundryLocation, undefined);
-  assert.equal(normalizeRentCastFields({ features: { laundry: 'Basement' } }, null).fields.laundryLocation, 'basement');
-  // Apartment communities never import it; import only fills an empty field.
+  // RentCast documents no laundry field, so the RentCast import never fills it,
+  // even when a response happens to carry an undocumented key.
+  assert.equal(normalizeRentCastFields({ features: { laundry: 'Basement', laundryLocation: 'Basement' } }, null).fields.laundryLocation, undefined);
   assert.equal(normalizeRentCastFields({ features: { laundry: 'Basement' } }, null, { apartmentCommunity: true }).fields.laundryLocation, undefined);
   assert.equal(mergeImportFields({ laundryLocation: 'second_floor' }, { laundryLocation: 'basement' }).laundryLocation, 'second_floor');
   assert.deepEqual(LAUNDRY_LOCATION_CHOICES.map(([key]) => key), ['basement', 'first_floor', 'second_floor']);

@@ -37,12 +37,16 @@ const FACT_COVERED_BY_FIELDS = Object.freeze({
   garageType: ['garageType'], basement: ['basementNotes', 'basementCondition', 'basementStyle'],
 });
 
+// Listing bookkeeping (status, dates, which MLS, a last known price) describes
+// the listing, not the home, so it is shown but never counted as a detail.
+const UNCOUNTED_LISTING_FACTS = new Set(['status', 'listedDate', 'removedDate', 'lastSeenDate', 'mlsName', 'lastKnownPrice']);
+
 export function importedDetailCount(snapshot) {
   if (!snapshot || typeof snapshot !== 'object') return 0;
   const fields = snapshot.fields && typeof snapshot.fields === 'object' ? snapshot.fields : {};
   const fieldCount = Object.entries(fields).filter(([key, value]) => !UNCOUNTED_IMPORT_FIELDS.has(key) && !isBlank(value)).length;
   const covered = (fact) => (FACT_COVERED_BY_FIELDS[fact?.key] || []).some((field) => !isBlank(fields[field]));
-  const facts = Array.isArray(snapshot.listingFacts) ? snapshot.listingFacts.filter((fact) => fact && !covered(fact)).length : 0;
+  const facts = Array.isArray(snapshot.listingFacts) ? snapshot.listingFacts.filter((fact) => fact && !covered(fact) && !UNCOUNTED_LISTING_FACTS.has(fact.key)).length : 0;
   const features = Array.isArray(snapshot.descriptionFeatures) ? snapshot.descriptionFeatures.length : 0;
   return fieldCount + facts + features;
 }
