@@ -20,12 +20,18 @@ const same = (a, b) => (Array.isArray(a) || Array.isArray(b) ? JSON.stringify(a 
 //   format(value)  -> what shows when not focused
 //   edit(value)    -> what the input holds when focus arrives (default: format)
 //   parse(text)    -> the value to store; undefined means "not valid, revert"
+//   invalidMessage -> optional. With it, text that doesn't parse is kept on
+//                     screen with this message (on Enter or leaving the field,
+//                     never mid-typing) instead of quietly reverting; nothing
+//                     is saved until it is corrected or cleared.
 export function QuietInput({
   id, label, value, onCommit, readOnly = false, failed = false, format = (v) => (v ?? ''), edit = null, parse = (t) => t.trim(),
   placeholder = 'Unknown', inputMode, className = '', size, registerDraft, labelHidden = true, suffix = null, autoComplete = 'off', list,
-  multiline = false,
+  multiline = false, invalidMessage = null,
 }) {
   const [draft, setDraft] = useState(null);
+  const [invalid, setInvalid] = useState(false);
+  const invalidRef = useRef(false);
   const touched = useRef(false);
   const timer = useRef(null);
   const latest = useRef({ value, onCommit, parse, draft: null });
@@ -33,13 +39,21 @@ export function QuietInput({
   const shown = draft ?? format(value);
   const unknown = value === null || value === undefined || String(value).trim() === '';
 
-  const commit = () => {
+  // explicit: Enter, leaving the field, or Close — not the typing pause.
+  const commit = ({ explicit = true } = {}) => {
     clearTimeout(timer.current);
-    registerDraft?.(id, null);
     const { draft: text, value: stored, parse: toValue, onCommit: save } = latest.current;
-    if (!touched.current || text === null) return;
-    touched.current = false;
+    if (!touched.current || text === null) { registerDraft?.(id, null); return; }
     const next = toValue(text);
+    if (next === undefined && invalidMessage) {
+      // Keep the text (and the pending draft) so it can be fixed; save nothing.
+      if (explicit) { invalidRef.current = true; setInvalid(true); }
+      return;
+    }
+    touched.current = false;
+    registerDraft?.(id, null);
+    invalidRef.current = false;
+    setInvalid(false);
     if (next === undefined) { setDraft(null); return; }
     if (!same(next, stored)) save(next);
   };
@@ -51,25 +65,28 @@ export function QuietInput({
   if (readOnly) {
     return <span className={`flh-fact-text ${unknown ? 'is-unknown' : ''} ${className}`}>{unknown ? 'Unknown' : format(value)}{!unknown && suffix}</span>;
   }
-  return <span className={`flh-quiet ${unknown ? 'is-unknown' : ''} ${failed ? 'is-failed' : ''} ${className}`}>
+  const errorId = invalid ? `${id}-invalid` : undefined;
+  return <><span className={`flh-quiet ${unknown ? 'is-unknown' : ''} ${failed || invalid ? 'is-failed' : ''} ${className}`}>
     {label && <label htmlFor={id} className={labelHidden ? 'sr-only' : 'flh-quiet-label'}>{label}</label>}
     {/* multiline: a one-row textarea that wraps (a long street address), still one value. */}
     <Field
       id={id} className="flh-quiet-input" value={shown} rows={multiline ? 1 : undefined} placeholder={placeholder} inputMode={inputMode} size={size} autoComplete={autoComplete} list={list}
-      aria-invalid={failed || undefined}
+      aria-invalid={failed || invalid || undefined} aria-describedby={errorId}
       onFocus={() => { if (draft === null) setDraft(edit ? edit(value) : format(value)); }}
       onChange={(event) => {
         touched.current = true;
+        invalidRef.current = false;
+        setInvalid(false);
         setDraft(event.target.value);
         registerDraft?.(id, () => commitRef.current());
         clearTimeout(timer.current);
-        timer.current = setTimeout(() => commitRef.current(), DEBOUNCE_MS);
+        timer.current = setTimeout(() => commitRef.current({ explicit: false }), DEBOUNCE_MS);
       }}
-      onBlur={() => { commitRef.current(); setDraft(null); }}
+      onBlur={() => { commitRef.current(); if (!invalidRef.current) setDraft(null); }}
       onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); commitRef.current(); } }}
     />
     {suffix && <span className="flh-quiet-suffix" aria-hidden="true">{suffix}</span>}
-  </span>;
+  </span>{invalid && <small id={errorId} className="flh-quiet-error" role="alert">{invalidMessage}</small>}</>;
 }
 
 // A native select. `choices` is [[value, label], …]; '' is Unknown and is
