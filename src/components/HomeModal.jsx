@@ -24,6 +24,7 @@ import { countListingDetails, groupListingFacts } from '@/lib/listingFacts';
 import { PROVENANCE_LABELS, fieldProvenance, hasImportSnapshot } from '@/lib/homeProvenance';
 import { isNativeApp } from '@/lib/platform';
 import { importedDetailCount } from '@/lib/homeFacts';
+import { importedCoordinatePatch, listingImportSnapshot } from '@/lib/importSnapshot';
 import { ALLOWED_PHOTO_TYPES, MAX_PHOTO_BYTES, PHOTO_BUCKET, storagePathFromPublicUrl } from '@/lib/homePhoto';
 
 function LikeDislikeInput({ value, onChange }) {
@@ -475,7 +476,20 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
 // Home Facts. Closing first saves nothing. When the lookup found nothing (or
 // the buyer chose to enter it manually) the same card asks only for the
 // address; everything else is filled in on Home Facts.
-function ImportFoundCard({ form, set, importResult, importPhase, parseMsg, priorities, vocabulary, saving, saveErrorMsg, onAdd }) {
+// Why a lookup came back empty-handed, in the buyer's terms. Never a status code.
+const LOOKUP_FAILURE_NOTES = {
+  rate_limited: 'Property lookups are busy right now. Add the address and fill in the rest on Home Facts, or try again in a few minutes.',
+  timeout: 'The property lookup took too long. Add the address and fill in the rest on Home Facts, or try again in a moment.',
+  invalid_address: 'We couldn’t look up that address. Check it, or add it here and fill in the rest on Home Facts.',
+  unavailable: 'We couldn’t reach the listing details right now. Add the address and fill in the rest on Home Facts.',
+};
+// One half of the lookup failed; the other half is shown as found.
+const PARTIAL_NOTES = {
+  listing_unavailable: 'Current listing details weren’t available right now, so price and listing status are left for you to add.',
+  property_unavailable: 'Property records weren’t available right now, so some details may be missing.',
+};
+
+function ImportFoundCard({ form, set, importResult, importPhase, importErrorMsg, parseMsg, priorities, vocabulary, saving, saveErrorMsg, onAdd }) {
   const found = importPhase === 'success' && !!importResult;
   const { line1, line2 } = splitAddressLines(form.address);
   const count = found ? importedDetailCount(importResult) : 0;
@@ -485,7 +499,7 @@ function ImportFoundCard({ form, set, importResult, importPhase, parseMsg, prior
     form.lotSize && formatLotSizeDisplay(form.lotSize),
   ].filter(Boolean);
   const note = importPhase === 'text-success' ? parseMsg
-    : importPhase === 'error' ? 'We couldn’t reach the listing details right now. Add the address and fill in the rest on Home Facts.'
+    : importPhase === 'error' ? importErrorMsg || LOOKUP_FAILURE_NOTES.unavailable
       : importPhase === 'empty' && form.listingUrl ? 'We couldn’t find listing details for that link. Add the address and fill in the rest on Home Facts.'
         : 'Add the address. You can fill in everything else on Home Facts.';
   return <section className="flh-found" aria-labelledby="found-home-title">
@@ -496,10 +510,11 @@ function ImportFoundCard({ form, set, importResult, importPhase, parseMsg, prior
           <span className="flh-found-badge"><Check size={13} aria-hidden="true" /> We found your {vocabulary.singularLower}</span>
           <h2 id="found-home-title" className="hh-serif">{line1 || form.address}</h2>
           {line2 && <p>{line2}</p>}
-          <strong className="flh-found-price">{formatHomePrice(form.price, priorities.searchType) || 'Price unknown'}</strong>
+          <strong className="flh-found-price">{formatHomePrice(form.price, priorities.searchType) || (importResult.listing?.status === 'inactive' ? 'No current asking price' : 'Price unknown')}</strong>
           {facts.length > 0 && <ul className="flh-found-facts">{facts.map((fact) => <li key={fact}>{fact}</li>)}</ul>}
         </div>
       </div>
+      {PARTIAL_NOTES[importResult.partial] && <p className="flh-found-status" role="status">{PARTIAL_NOTES[importResult.partial]}</p>}
       {count > 0 && <div className="flh-found-note"><span aria-hidden="true"><Sparkles size={16} /></span><div><strong>{count} listing detail{count === 1 ? '' : 's'} came with it.</strong><p>You’ll see them on Home Facts, marked From listing, and can correct anything.</p></div></div>}
     </> : <div className="flh-found-address">
       <h2 id="found-home-title" className="hh-serif">Where is this {vocabulary.singularLower}?</h2>
@@ -658,7 +673,8 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         // Only a lot size the person typed here gets its unit; an unchanged
         // saved value (even a bare number) is never rewritten.
         const lotSize = form.lotSize === (initial?.lotSize ?? '') ? form.lotSize : withAcresUnit(form.lotSize);
-        await onSave({ ...form, lotSize, photoUrl: finalPhotoUrl, ...(importResult ? { listingImport: { fields: importResult.fields || {}, listingFacts: importResult.listingFacts || [], descriptionFeatures: importResult.descriptionFeatures || [] } } : {}) });
+        const coordinates = importResult ? await importedCoordinatePatch(form, importResult) : {};
+        await onSave({ ...form, ...coordinates, lotSize, photoUrl: finalPhotoUrl, ...(importResult ? { listingImport: listingImportSnapshot(importResult) } : {}) });
       } catch (saveErr) {
         console.error('Save home failed', saveErr);
         // If the shared home row was already persisted before this failure
@@ -756,7 +772,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         // to prevent redundant *successful* lookups.
         setImportPhase('error');
         setImportResult(null);
-        setImportErrorMsg("We couldn't look up that address right now — you can enter details manually below.");
+        setImportErrorMsg(LOOKUP_FAILURE_NOTES[data.reason] || LOOKUP_FAILURE_NOTES.unavailable);
         return;
       }
 
@@ -768,14 +784,14 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         return;
       }
 
-      setImportResult({ fields: data.fields || {}, findings: data.findings || [], resolutions: data.resolutions || [], listingFacts: data.listingFacts || [], descriptionFeatures: data.descriptionFeatures || [], searchedAddress: address });
+      setImportResult({ fields: data.fields || {}, findings: data.findings || [], resolutions: data.resolutions || [], listingFacts: data.listingFacts || [], descriptionFeatures: data.descriptionFeatures || [], listing: data.listing || null, sources: data.sources || null, partial: data.partial || null, searchedAddress: address });
       setEditDetailsOpen(false);
       setImportPhase('success');
       setForm((f) => mergeImportFields(f, data.fields || {}));
     } catch {
       setImportPhase('error');
       setImportResult(null);
-      setImportErrorMsg("We couldn't reach the property data provider — you can enter details manually below.");
+      setImportErrorMsg(LOOKUP_FAILURE_NOTES.unavailable);
     }
   };
 
@@ -881,7 +897,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         {importPhase === 'identity' && apartmentIdentity && <div className="hh-manual-address"><p>We found {apartmentIdentity.propertyName}. Add its street address to continue.</p><AddressAutocomplete value={fallbackAddressInput} onChange={setFallbackAddressInput} onSelect={setFallbackAddressInput} /><button type="button" className="hh-btn" onClick={handleFallbackAddressLookup}>Use address</button></div>}
         {urlFallbackMsg && <p className="hh-edit-error">{urlFallbackMsg}</p>}
       </section>
-      {quickAdd && <ImportFoundCard form={form} set={set} importResult={importResult} importPhase={importPhase} parseMsg={parseMsg} priorities={priorities} vocabulary={vocabulary} saving={saving} saveErrorMsg={saveErrorMsg} onAdd={addImportedHome} />}
+      {quickAdd && <ImportFoundCard form={form} set={set} importResult={importResult} importPhase={importPhase} importErrorMsg={importErrorMsg} parseMsg={parseMsg} priorities={priorities} vocabulary={vocabulary} saving={saving} saveErrorMsg={saveErrorMsg} onAdd={addImportedHome} />}
       {isNativeApp() && <aside className="flh-share-callout" aria-label="Add from the Share Sheet"><Share size={18} aria-hidden="true" /><div><strong>Faster from your listing app</strong><p>Tap Share on any listing, then choose Feels Like Home. It opens right here, ready to review.</p></div></aside>}
       <details className="hh-details hh-manual-fallback">
         <summary><span className="hh-accordion-icon"><ClipboardPaste size={24} /></span><span>Can&apos;t find the home? Paste listing details instead<small>Enter the details manually when a link isn&apos;t available.</small></span><ChevronDown className="hh-accordion-chevron" size={20} /></summary>

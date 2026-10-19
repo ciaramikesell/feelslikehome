@@ -139,12 +139,13 @@ async function run() {
       assert(rows.length === 1 && rows[0].id === homeId, `expected one saved home, found ${rows.length}`);
       assert(q(`select 1 from public.home_member_state where home_id = '${homeId}' and user_id = '${OWNER}'`).length === 1, 'personal state row missing');
       const row = home(homeId, 'price, heating, garage_type, laundry_location, listing_id');
-      assert(row.price === '335000' && row.heating === 'Forced Air' && row.garage_type === 'attached' && row.laundry_location === 'first_floor', `imported values: ${JSON.stringify(row)}`);
+      // RentCast documents no laundry field: Laundry Location stays Unknown.
+      assert(row.price === '335000' && row.heating === 'Forced Air' && row.garage_type === 'attached' && row.laundry_location === null, `imported values: ${JSON.stringify(row)}`);
       // My Homes stays mounted underneath (filters and scroll survive).
       assert(await owner.locator('.hh-homes-grid').count() === 1, 'My Homes is not under the overlay');
       assert(await owner.getByText('Home Facts', { exact: true }).count() && await owner.getByText('Your Match', { exact: true }).count(), 'not one continuous overlay');
       assert(!(await owner.getByRole('tab').count()), 'overlay has tabs');
-      assert(await owner.locator('#hf-laundryLocation').inputValue() === 'first_floor', 'imported laundry location not shown');
+      assert(await owner.locator('#hf-laundryLocation').inputValue() === '', 'laundry location was guessed');
       await shot(owner, tag('01-overlay-imported'));
       await shot(owner, tag('01b-overlay-imported-full'), { tall: width < 500 ? 2600 : 2300 });
     }, [owner]);

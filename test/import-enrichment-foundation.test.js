@@ -87,15 +87,17 @@ test('RentCast adapter keeps normalized fields, zeroes, booleans when supported,
     formattedAddress: '123 Main St', bedrooms: 3, bathrooms: 2, squareFootage: 1400, propertyType: 'Single Family',
     lotSize: 0, yearBuilt: 1990, features: { garageSpaces: 0 }, latitude: 0, longitude: 0,
     hoa: { fee: 0 }, propertyTaxes: { latest: { year: 2025, total: 0 } },
-  }, { price: 0, daysOnMarket: 0 });
+  }, { price: 0, daysOnMarket: 0, status: 'Active' }, { requestedAddress: '123 Main St' });
+  // Meaningful zeroes survive ($0/mo HOA, 0 garage spaces, $0 taxes). A 0 sq ft
+  // lot and the 0,0 "Null Island" point are not real values and stay Unknown.
   assert.deepEqual(result.fields, {
     address: '123 Main St', price: '0', beds: '3', baths: '2', sqft: '1400',
-    lotSize: '0 sq ft', yearBuilt: '1990', propertyType: 'house', garageSpaces: '0', daysOnMarket: '0',
-    latitude: 0, longitude: 0, hoaFeeMonthly: 0, propertyTaxAnnual: 0, propertyTaxYear: 2025,
+    yearBuilt: '1990', propertyType: 'house', garageSpaces: '0', daysOnMarket: '0',
+    hoaFeeMonthly: 0, propertyTaxAnnual: 0, propertyTaxYear: 2025,
   });
   assert.ok(result.findings.length > 0);
   assert.equal(normalizeRentCastFields({ propertyType: 'Manufactured' }, null).fields.propertyType, undefined);
-  assert.deepEqual(normalizeRentCastFields(null, null), { fields: {}, findings: [], resolutions: [], listingFacts: [], descriptionFeatures: [], foundAny: false });
+  assert.deepEqual(normalizeRentCastFields(null, null), { fields: {}, findings: [], resolutions: [], listingFacts: [], descriptionFeatures: [], listing: null, addressCheck: { property: null, listing: null }, foundAny: false });
 });
 
 test('import foundation does not modify Match unknown semantics, ratings, or checks', () => {
