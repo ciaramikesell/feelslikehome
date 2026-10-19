@@ -385,20 +385,24 @@ export function garageSpacesSelectValue(value) {
   return garageSpacesChoice(value) || (isBlank(value) ? '' : String(value).trim());
 }
 
-// HOA fee (homes.hoa_fee_monthly). Null is Unknown; 0 is a confirmed "no HOA",
-// stored as the number 0 so it stays distinct from Unknown. Never a Match
+// HOA fee (homes.hoa_fee_monthly). Null is Unknown; 0 is a confirmed $0
+// monthly fee, stored as the number 0 so it stays distinct from Unknown. A $0
+// fee does not prove there is no HOA (there may still be an association, or
+// fees billed another way), so it reads "$0/mo", never "No HOA". Never a Match
 // input: the personal "No HOA" answer is separate and is not changed here.
 export function formatHoaFee(value) {
   if (value === null || value === undefined || value === '') return '';
   const amount = Number(value);
   if (!Number.isFinite(amount)) return String(value);
-  return amount === 0 ? 'No HOA · $0/mo' : `${formatCurrencyDisplay(amount)}/mo`;
+  return amount === 0 ? '$0/mo' : `${formatCurrencyDisplay(amount)}/mo`;
 }
 // What the input holds while editing: a confirmed $0 stays "0", never blank.
 export const editHoaFee = (value) => (value === 0 || value === '0' ? '0' : formatCurrencyDisplay(value));
 
 // Property tax year (homes.property_tax_year): a four-digit year, or blank for
-// Unknown. Anything else is not saved (undefined reverts the field).
+// Unknown. Anything else is not saved: undefined keeps the typed text on screen
+// with TAX_YEAR_INVALID_MESSAGE (QuietInput invalidMessage) until it's fixed.
+export const TAX_YEAR_INVALID_MESSAGE = 'Not saved. Enter a four-digit year, like 2025, or clear it.';
 export function parseTaxYear(text) {
   const raw = String(text ?? '').trim();
   if (!raw) return null;

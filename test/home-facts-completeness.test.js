@@ -11,7 +11,7 @@ import { createTestDatabase, DB_TESTS_ENABLED, DB_SKIP_REASON } from './support/
 
 register('./support/aliasHooks.mjs', import.meta.url);
 const {
-  PROPERTY_TYPE_CHOICES, editHoaFee, formatHoaFee, parseTaxYear, propertyTaxPatch, propertyTypeLabel,
+  PROPERTY_TYPE_CHOICES, TAX_YEAR_INVALID_MESSAGE, editHoaFee, formatHoaFee, parseTaxYear, propertyTaxPatch, propertyTypeLabel,
 } = await import('../src/lib/homeFacts.js');
 const { fieldProvenance } = await import('../src/lib/homeProvenance.js');
 const { computeMatch } = await import('../src/lib/matching.js');
@@ -25,6 +25,8 @@ const {
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const homeFactsSource = read('src/components/HomeFacts.jsx');
 const homeModalSource = read('src/components/HomeModal.jsx');
+const factFieldsSource = read('src/components/FactFields.jsx');
+const installPromptSource = read('src/components/InstallPrompt.jsx');
 const dbTest = (name, fn) => test(name, { skip: DB_TESTS_ENABLED ? false : DB_SKIP_REASON }, fn);
 
 /* ----------------------------------- HOA ----------------------------------- */
@@ -32,7 +34,8 @@ const dbTest = (name, fn) => test(name, { skip: DB_TESTS_ENABLED ? false : DB_SK
 test('HOA fee: Unknown, a confirmed $0 and an amount read differently', () => {
   assert.equal(formatHoaFee(null), '', 'Unknown shows the Unknown placeholder');
   assert.equal(formatHoaFee(undefined), '');
-  assert.equal(formatHoaFee(0), 'No HOA · $0/mo', 'a confirmed $0 is a real answer');
+  assert.equal(formatHoaFee(0), '$0/mo', 'a confirmed $0 is a real answer');
+  assert.doesNotMatch(formatHoaFee(0), /no hoa/i, 'a $0 monthly fee does not prove there is no HOA');
   assert.equal(formatHoaFee(275), '$275/mo');
   assert.equal(editHoaFee(0), '0', 'editing a confirmed $0 never opens blank (blank would mean Unknown)');
   assert.equal(editHoaFee(null), '');
@@ -41,7 +44,8 @@ test('HOA fee: Unknown, a confirmed $0 and an amount read differently', () => {
 
 test('HOA fee is always offered for a home to buy, including when Unknown, and never for a rental', () => {
   assert.doesNotMatch(homeFactsSource, /home\.hoaFeeMonthly != null &&/, 'no longer hidden when empty');
-  assert.match(homeFactsSource, /\{!showsRentalFacts && <Row label="HOA fee" hint=\{isReadOnly \? null : 'Enter 0 if there’s no HOA'\} htmlFor="hf-hoaFeeMonthly">/, 'the $0 hint is for editors only');
+  assert.match(homeFactsSource, /\{!showsRentalFacts && <Row label="HOA fee" hint=\{isReadOnly \? null : 'Enter 0 for a \$0 monthly fee'\} htmlFor="hf-hoaFeeMonthly">/, 'the $0 hint is for editors only');
+  assert.doesNotMatch(homeFactsSource, /no HOA['’]/i, 'nothing claims "no HOA" from a $0 fee');
   assert.match(homeFactsSource, /text\('hoaFeeMonthly', null, \{ parse: parseMoneyNumber, format: formatHoaFee, edit: editHoaFee/);
 });
 
@@ -95,7 +99,7 @@ test('a year a person entered is theirs; setting the listing amount back brings 
 test('Home Facts edits the tax year beside the amount, and the amount routes through propertyTaxPatch', () => {
   assert.match(homeFactsSource, /<label htmlFor="hf-propertyTaxAnnual">Annual taxes<\/label>/);
   assert.match(homeFactsSource, /onCommit: \(value\) => save\(propertyTaxPatch\(home, value\)\)/);
-  assert.match(homeFactsSource, /<label htmlFor="hf-propertyTaxYear">Tax year<\/label>\{text\('propertyTaxYear', null, \{ parse: parseTaxYear/);
+  assert.match(homeFactsSource, /<label htmlFor="hf-propertyTaxYear">Tax year<\/label>\{text\('propertyTaxYear', null, \{ parse: parseTaxYear, invalidMessage: TAX_YEAR_INVALID_MESSAGE/);
   assert.doesNotMatch(homeFactsSource, /annualTaxesLabel/);
 });
 
@@ -152,7 +156,7 @@ dbTest('HOA: Unknown → confirmed $0 → amount → Unknown, saved and reloaded
   assert.equal(Number(row(added.id).hoa_fee_monthly), 0, 'a confirmed $0 is stored as 0, not null');
   const zero = await reload(ids.owner, added.id);
   assert.equal(Number(zero.hoaFeeMonthly), 0);
-  assert.equal(formatHoaFee(zero.hoaFeeMonthly), 'No HOA · $0/mo', 'and reloads as No HOA, not Unknown');
+  assert.equal(formatHoaFee(zero.hoaFeeMonthly), '$0/mo', 'and reloads as $0/mo, not Unknown');
 
   await saveHomeSharedFields(db.clientFor(ids.owner), added.id, { hoaFeeMonthly: 325 });
   assert.equal(Number((await reload(ids.coBuyer, added.id)).hoaFeeMonthly), 325);
@@ -214,4 +218,36 @@ dbTest('heating and cooling still save and reload exactly as before (unchanged b
   assert.deepEqual([view.heating, view.cooling], ['Forced Air, Gas', 'Central Air']);
   await saveHomeSharedFields(owner, added.id, { heating: null, cooling: null });
   assert.deepEqual([row(added.id).heating, row(added.id).cooling], [null, null]);
+});
+
+/* ------------------------ Invalid tax year is never quiet ------------------------ */
+
+test('an invalid tax year is kept on screen with a message, never saved and never silently reverted', () => {
+  assert.match(TAX_YEAR_INVALID_MESSAGE, /four-digit year/);
+  // Opt-in: only fields given invalidMessage keep invalid text; every other field reverts as before.
+  assert.match(factFieldsSource, /if \(next === undefined && invalidMessage\) \{\s*\/\/ Keep the text \(and the pending draft\) so it can be fixed; save nothing\.\s*if \(explicit\) \{ invalidRef\.current = true; setInvalid\(true\); \}\s*return;\s*\}/);
+  assert.match(factFieldsSource, /if \(next === undefined\) \{ setDraft\(null\); return; \}/, 'fields without a message still revert');
+  // The typing pause never shows the message; Enter and leaving the field do.
+  assert.match(factFieldsSource, /setTimeout\(\(\) => commitRef\.current\(\{ explicit: false \}\), DEBOUNCE_MS\)/);
+  assert.match(factFieldsSource, /onBlur=\{\(\) => \{ commitRef\.current\(\); if \(!invalidRef\.current\) setDraft\(null\); \}\}/);
+  assert.match(factFieldsSource, /aria-invalid=\{failed \|\| invalid \|\| undefined\} aria-describedby=\{errorId\}/);
+  assert.match(factFieldsSource, /<small id=\{errorId\} className="flh-quiet-error" role="alert">\{invalidMessage\}<\/small>/);
+});
+
+/* ------------------- Install banner never covers a modal's controls ------------------- */
+
+test('the Add to Home Screen banner steps aside while any modal dialog is open, and is otherwise unchanged', () => {
+  assert.match(installPromptSource, /const check = \(\) => setModalOpen\(!!document\.querySelector\('\[role="dialog"\]\[aria-modal="true"\]'\)\);/);
+  assert.match(installPromptSource, /observer\.observe\(document\.body, \{ childList: true, subtree: true \}\);/);
+  assert.match(installPromptSource, /if \(dismissed \|\| modalOpen \|\| \(!deferredPrompt && !showIOSHint\)\) return null;/);
+  // Stepping aside is not dismissing: the stored dismissal is still only written by Dismiss / Install.
+  assert.equal((installPromptSource.match(/localStorage\.setItem\(DISMISS_KEY, '1'\)/g) || []).length, 1);
+  assert.match(installPromptSource, /position: 'fixed', left: 12, right: 12, bottom: 12, zIndex: 100,/, 'the banner itself is unchanged');
+  // Every modal in the app is detectable: each role="dialog" that blocks the page says aria-modal="true".
+  for (const file of ['HomeModal.jsx', 'HomeOverlay.jsx', 'HomeOverlayLoading.jsx', 'Sheet.jsx', 'PostTourModal.jsx']) {
+    const source = read(`src/components/${file}`);
+    const dialogs = source.match(/role="dialog"[^>]*/g) || [];
+    assert.ok(dialogs.length, file);
+    for (const dialog of dialogs) assert.match(dialog, /aria-modal="true"/, `${file}: ${dialog.slice(0, 80)}`);
+  }
 });

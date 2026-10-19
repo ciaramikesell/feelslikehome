@@ -30,7 +30,8 @@ const OWNER = info.users.owner.id;
 const IGNORED_CONSOLE = /Download the React DevTools|favicon|maps\.googleapis|Google Maps|places|Failed to load resource/i;
 const VIEWPORTS = [
   ['desktop-1440', { viewport: { width: 1440, height: 900 } }],
-  ['ipad-820', devices['iPad Air'] || { viewport: { width: 820, height: 1180 }, isMobile: true, hasTouch: true }],
+  // iPad (10th/11th gen) portrait: Playwright's iPad UA and touch, at the device's 820 × 1180.
+  ['ipad-820', { ...devices['iPad (gen 11)'], viewport: { width: 820, height: 1180 } }],
   ['iphone-390', devices['iPhone 13']],
 ];
 
@@ -51,10 +52,12 @@ const until = async (fn, message, timeout = 15000) => {
   for (;;) { if (await fn()) return; if (Date.now() > end) throw new Error(message); await new Promise((r) => setTimeout(r, 150)); }
 };
 
-async function signedIn(browser, who, device) {
+// installBanner: leave the "Add to your home screen" banner undismissed (it
+// shows on iPhone / iPad user agents) to check it never covers a modal's controls.
+async function signedIn(browser, who, device, { installBanner = false } = {}) {
   const context = await browser.newContext({ ...device });
   await context.addCookies([{ name: 'sb-localhost-auth-token', value: `base64-${Buffer.from(JSON.stringify(info.users[who].session)).toString('base64url')}`, domain: 'localhost', path: '/' }]);
-  await context.addInitScript(() => { try { localStorage.setItem('flh-mobile-tour-dismissed', '1'); localStorage.setItem('flh-what-flh-found-dismissed', '1'); localStorage.setItem('flh-install-dismissed', '1'); } catch { /* ignore */ } });
+  await context.addInitScript((keepBanner) => { try { localStorage.setItem('flh-mobile-tour-dismissed', '1'); localStorage.setItem('flh-what-flh-found-dismissed', '1'); if (!keepBanner) localStorage.setItem('flh-install-dismissed', '1'); } catch { /* ignore */ } }, installBanner);
   const page = await context.newPage();
   page.errors = [];
   page.on('pageerror', (error) => page.errors.push(error.message));
@@ -97,7 +100,15 @@ const commit = async (page, id, text) => {
   await input.fill(text);
   await input.press('Enter');
 };
-const shot = (page, name, element = null) => (element ? page.locator(element).screenshot({ path: join(outDir, `${name}.png`) }) : page.screenshot({ path: join(outDir, `${name}.png`), fullPage: true }));
+const banner = (page) => page.locator('div').filter({ hasText: /^Add to your home screen/ }).filter({ has: page.getByRole('button', { name: 'Dismiss' }) });
+const bannerShown = async (page) => (await banner(page).count()) > 0 && banner(page).first().isVisible();
+// The control really receives a tap at its centre (nothing fixed on top of it).
+const tappable = (page, locator) => locator.evaluate((node) => {
+  const box = node.getBoundingClientRect();
+  const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+  return !!hit && (hit === node || node.contains(hit));
+});
+const shot = (page, name, element = null, { viewportOnly = false } = {}) => (element ? page.locator(element).screenshot({ path: join(outDir, `${name}.png`) }) : page.screenshot({ path: join(outDir, `${name}.png`), fullPage: !viewportOnly }));
 
 function insertHome(fields) {
   const id = randomUUID();
@@ -120,21 +131,22 @@ async function run() {
     let owner; let coBuyer; let realtor;
     const open = () => [owner, coBuyer, realtor].filter(Boolean);
 
-    await step(`[${label}] HOA: Unknown is shown and offered, a confirmed $0 saves and reloads as No HOA, then an amount`, async () => {
+    await step(`[${label}] HOA: Unknown is shown and offered, a confirmed $0 saves and reloads as $0/mo (never \"No HOA\"), then an amount`, async () => {
       owner = await signedIn(browser, 'owner', device);
       await owner.goto(`${base}/homes/${homeId}`, { waitUntil: 'networkidle' });
       await overlayOpen(owner);
       const hoa = owner.locator('#hf-hoaFeeMonthly');
       assert(await hoa.count() === 1, 'HOA field not offered while Unknown');
       assert(await hoa.inputValue() === '' && (await hoa.getAttribute('placeholder')) === 'Unknown', 'Unknown HOA should read as Unknown');
-      assert(await owner.getByText('Enter 0 if there’s no HOA').count() === 1, 'no $0 hint');
+      assert(await owner.getByText('Enter 0 for a $0 monthly fee').count() === 1, 'no $0 hint');
       await shot(owner, `${label}-1-hoa-unknown`);
       await commit(owner, 'hf-hoaFeeMonthly', '0');
       await until(() => Number(homeRow(homeId).hoa_fee_monthly) === 0 && homeRow(homeId).hoa_fee_monthly !== null, 'HOA $0 not saved');
       await owner.locator('.flh-overlay-save').filter({ hasText: /^\s*Saved\s*$/ }).waitFor();
       await owner.reload({ waitUntil: 'networkidle' });
       await overlayOpen(owner);
-      assert(await owner.locator('#hf-hoaFeeMonthly').inputValue() === 'No HOA · $0/mo', `reloaded $0 reads "${await owner.locator('#hf-hoaFeeMonthly').inputValue()}"`);
+      assert(await owner.locator('#hf-hoaFeeMonthly').inputValue() === '$0/mo', `reloaded $0 reads "${await owner.locator('#hf-hoaFeeMonthly').inputValue()}"`);
+      assert(!/no hoa/i.test(await owner.locator('.flh-overlay').innerText()), 'a $0 fee must never read as "No HOA"');
       await owner.locator('#hf-hoaFeeMonthly').focus();
       assert(await owner.locator('#hf-hoaFeeMonthly').inputValue() === '0', 'editing a confirmed $0 must not open blank');
       await owner.locator('#hf-hoaFeeMonthly').blur();
@@ -148,10 +160,25 @@ async function run() {
       await until(() => Number(homeRow(homeId).property_tax_annual) === 4800, 'amount not saved');
       await until(() => homeRow(homeId).property_tax_year === null, 'the old listing year was kept for a corrected amount');
       await until(async () => (await owner.locator('#hf-propertyTaxYear').inputValue()) === '', 'year field did not return to Unknown');
+      // Half-typed: the typing pause neither saves nor scolds.
+      await owner.locator('#hf-propertyTaxYear').fill('20');
+      await owner.waitForTimeout(1300);
+      assert(await owner.locator('.flh-quiet-error').count() === 0, 'the invalid-year message showed mid-typing');
+      assert(homeRow(homeId).property_tax_year === null, 'a half-typed year was saved');
+      // Invalid on Enter: kept on screen with a message, marked invalid, not saved.
       await commit(owner, 'hf-propertyTaxYear', '1850');
+      await owner.locator('#hf-propertyTaxYear-invalid').waitFor();
+      assert((await owner.locator('#hf-propertyTaxYear-invalid').innerText()).includes('four-digit year'), 'invalid-year message text');
+      assert(await owner.locator('#hf-propertyTaxYear').inputValue() === '1850', 'the invalid text was thrown away instead of kept for fixing');
+      assert(await owner.locator('#hf-propertyTaxYear').getAttribute('aria-invalid') === 'true', 'not marked invalid');
+      await owner.locator('#hf-propertyTaxYear').blur();
+      assert(await owner.locator('#hf-propertyTaxYear').inputValue() === '1850' && await owner.locator('#hf-propertyTaxYear-invalid').count() === 1, 'leaving the field silently reverted it');
       await owner.waitForTimeout(1200);
       assert(homeRow(homeId).property_tax_year === null, 'an invalid year was saved');
+      await shot(owner, `${label}-3a-tax-year-invalid`, '.flh-hf2-header');
+      // Corrected: the message clears and the year saves.
       await commit(owner, 'hf-propertyTaxYear', '2026');
+      await until(async () => (await owner.locator('.flh-quiet-error').count()) === 0, 'the message stayed after a valid year');
       await until(() => homeRow(homeId).property_tax_year === 2026, 'tax year not saved');
       assert(sameJson(homeRow(homeId).listing_import, snapshot), 'the listing snapshot changed');
       await owner.locator('.flh-overlay-save').filter({ hasText: /^\s*Saved\s*$/ }).waitFor();
@@ -199,7 +226,7 @@ async function run() {
       realtor = await signedIn(browser, 'realtor', device);
       await realtor.goto(`${base}/people/${info.search}/homes/${homeId}`, { waitUntil: 'networkidle' });
       await realtor.getByText('$325/mo').first().waitFor({ timeout: 30000 });
-      assert(await realtor.getByText('Enter 0 if there’s no HOA').count() === 0, 'the editing hint is shown to a read-only Realtor');
+      assert(await realtor.getByText('Enter 0 for a $0 monthly fee').count() === 0, 'the editing hint is shown to a read-only Realtor');
       await expandAll(realtor);
       for (const id of ['hf-hoaFeeMonthly', 'hf-propertyTaxAnnual', 'hf-propertyTaxYear', 'hf-propertyType']) {
         assert(await realtor.locator(`#${id}`).count() === 0, `Realtor can edit ${id}`);
@@ -219,17 +246,51 @@ async function run() {
     for (const [label, device] of VIEWPORTS) {
       const homeId = insertHome({ address: `${label.length} Tower Pl, Ann Arbor, MI 48104`, property_name: `The Tower ${label}`, property_type: 'apartment', price: '' });
       let owner;
+      const ios = label !== 'desktop-1440';
+      await step(`[${label}] install banner: shown on My Homes${ios ? '' : ' (not on desktop)'}, steps aside for Add Home and a Sheet, back when they close`, async () => {
+        owner = await signedIn(browser, 'owner', device, { installBanner: true });
+        await owner.goto(`${base}/homes`, { waitUntil: 'networkidle' });
+        await owner.waitForTimeout(800);
+        assert(await bannerShown(owner) === ios, `banner on My Homes: expected ${ios}`);
+        if (ios) await shot(owner, `${label}-8a-banner-my-homes`, null, { viewportOnly: true });
+        const add = owner.locator('button.hh-homes-add:visible, button:visible', { hasText: /Add a Property/i }).first();
+        await add.click();
+        await owner.locator('.hh-add-home-discovery[role="dialog"]').waitFor();
+        await owner.waitForTimeout(300);
+        assert(!(await bannerShown(owner)), 'banner covers the Add Home dialog');
+        const find = owner.getByRole('button', { name: /^Find property/ });
+        if (ios) assert(await tappable(owner, owner.getByRole('button', { name: 'Close add home' })), 'Add Home close is covered');
+        assert(await find.count() === 1, 'Find button missing');
+        await owner.getByRole('button', { name: 'Close add home' }).click();
+        await owner.locator('.hh-add-home-discovery').waitFor({ state: 'detached' });
+        await owner.waitForTimeout(300);
+        assert(await bannerShown(owner) === ios, 'banner did not come back after Add Home closed');
+        // A Sheet (the card's Archive confirmation), closed with Escape so nothing is archived.
+        await owner.locator('button:visible', { hasText: /^Archive$/ }).first().click();
+        await owner.locator('.hh-sheet[role="dialog"]').waitFor();
+        await owner.waitForTimeout(300);
+        assert(!(await bannerShown(owner)), 'banner covers the Archive sheet');
+        await owner.keyboard.press('Escape');
+        await owner.locator('.hh-sheet[role="dialog"]').waitFor({ state: 'detached' });
+        await owner.waitForTimeout(300);
+        assert(await bannerShown(owner) === ios, 'banner did not come back after the sheet closed');
+        assert(await owner.evaluate(() => localStorage.getItem('flh-install-dismissed')) === null, 'stepping aside dismissed the banner for good');
+      }, () => (owner ? [owner] : []));
+
       await step(`[${label}] apartment: floor plan name and unit edit in the full editor, save, reload and show`, async () => {
-        owner = await signedIn(browser, 'owner', device);
+        owner = owner || await signedIn(browser, 'owner', device, { installBanner: true });
         await owner.goto(`${base}/homes/${homeId}`, { waitUntil: 'networkidle' });
         await overlayOpen(owner);
+        assert(!(await bannerShown(owner)), 'banner shown over the home overlay');
         assert(await owner.locator('#hf-hoaFeeMonthly').count() === 0, 'HOA offered on an apartment');
         assert(await owner.locator('#hf-propertyTaxYear').count() === 0, 'tax year offered on an apartment');
         await owner.getByRole('button', { name: 'More property details' }).click();
         await owner.locator('#home-floor-plan-name').waitFor();
         await owner.locator('#home-floor-plan-name').fill('The Aspen');
         await owner.locator('#home-unit-label').fill('304');
-        await shot(owner, `${label}-6-apartment-editor`);
+        assert(!(await bannerShown(owner)), 'banner shown over the editor');
+        assert(await tappable(owner, owner.getByRole('button', { name: 'Save changes' })), 'Save changes is covered');
+        await shot(owner, `${label}-6-apartment-editor`, null, { viewportOnly: ios });
         await owner.getByRole('button', { name: 'Save changes' }).click();
         await until(() => homeRow(homeId).selected_unit_label === '304' && homeRow(homeId).selected_floor_plan_name === 'The Aspen', 'floor plan / unit not saved');
         await owner.locator('#home-floor-plan-name').waitFor({ state: 'detached' });
@@ -239,6 +300,16 @@ async function run() {
         await shot(owner, `${label}-7-apartment-facts`, '.flh-hf2-header');
         await owner.goto(`${base}/homes`, { waitUntil: 'networkidle' });
         await owner.getByText('The Aspen · 304').first().waitFor();
+        await owner.waitForTimeout(500);
+        assert(await bannerShown(owner) === ios, 'banner did not return on My Homes');
+        if (ios) {
+          // Dismiss still works and still sticks.
+          await banner(owner).first().getByRole('button', { name: 'Dismiss' }).click();
+          assert(!(await bannerShown(owner)), 'Dismiss did not hide the banner');
+          await owner.reload({ waitUntil: 'networkidle' });
+          await owner.waitForTimeout(500);
+          assert(!(await bannerShown(owner)), 'a dismissed banner came back');
+        }
       }, () => (owner ? [owner] : []));
       if (owner) await owner.context().close();
     }
