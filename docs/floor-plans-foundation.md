@@ -185,9 +185,10 @@ merging changes nothing visible):
    explicit approval, as it writes temporarily to Production (it cleans up
    after itself and uses no service-role key).
 
-**Stage C — UI**:
-10. PR 2 ships behind a flag that is off by default, so the UI cannot appear
-    before steps 6–9 pass. Turn it on only after they have.
+**Stage C — UI** (`docs/floor-plans-ui.md`):
+10. PR 2 ships behind a flag that is off by default (`FLH_FLOOR_PLANS`), so
+    the UI cannot appear before steps 6–9 pass. Turn it on only after they
+    have.
 
 The orphan sweep stays dry-run by default; `--apply` additionally needs
 `--project=<ref>`, and running it on Production (or using Production

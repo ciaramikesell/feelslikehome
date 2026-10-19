@@ -87,6 +87,31 @@ export async function getFloorPlans(supabase, homeId) {
   return (data || []).map(fromRow);
 }
 
+// Whether the caller may add / remove this home's plans right now (owner or
+// co-buyer, not a pending suggestion). Asked fresh each time the viewer opens,
+// so a removed co-buyer loses the controls; false on any error (the database
+// refuses the write anyway).
+export async function canEditFloorPlans(supabase, homeId) {
+  const { data, error } = await supabase.rpc('can_edit_home_floor_plans', { p_home_id: homeId });
+  return !error && data === true;
+}
+
+// What a list of home cards needs (server-side, flag already checked): plan
+// counts by home id and whether the caller is a decision-maker on the search.
+// null when the floor-plans migration is missing. Never throws — a failure
+// leaves counts unknown and the controls to the viewer's own check, so My
+// Homes always renders.
+export async function loadFloorPlanCardState(supabase, { searchId, userId, homeIds }) {
+  const [counts, canEdit] = await Promise.all([
+    getFloorPlanCounts(supabase, homeIds).catch(() => undefined),
+    searchId && userId
+      ? supabase.rpc('is_search_decision_maker', { p_search_id: searchId, p_user_id: userId }).then(({ data, error }) => !error && data === true, () => false)
+      : false,
+  ]);
+  if (counts === null) return null;
+  return { canEdit, counts: counts ? Object.fromEntries(counts) : null };
+}
+
 // Each plan with a short-lived `url`, or url: null when its image is missing
 // or no longer readable (the viewer shows "not available").
 export async function signFloorPlanUrls(supabase, plans, expiresIn = FLOOR_PLAN_URL_TTL_SECONDS) {
