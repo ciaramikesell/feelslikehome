@@ -373,6 +373,12 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
           <section className="hh-edit-home-card" data-step="review" aria-labelledby="property-address-heading">
             <h2 id="property-address-heading" className="hh-serif">Property address</h2>
             {apartment && <div><label className="hh-label">Property name</label><input className="hh-input" value={form.propertyName || ''} onChange={(e) => set('propertyName', e.target.value)} /></div>}
+            {/* The option being considered at this community. Typed by a person only:
+                a community-level lookup never proves which plan or unit (importDomain). */}
+            {apartment && <div className="hh-edit-fields-grid">
+              <div><label className="hh-label" htmlFor="home-floor-plan-name">Floor plan name</label><input id="home-floor-plan-name" className="hh-input" value={form.selectedFloorPlanName || ''} onChange={(e) => set('selectedFloorPlanName', e.target.value)} placeholder="Unknown" /></div>
+              <div><label className="hh-label" htmlFor="home-unit-label">Unit</label><input id="home-unit-label" className="hh-input" value={form.selectedUnitLabel || ''} onChange={(e) => set('selectedUnitLabel', e.target.value)} placeholder="Unknown" /></div>
+            </div>}
             <div><label className="hh-label">Address *</label><AddressAutocomplete value={form.address} onChange={(value) => set('address', value)} onSelect={(value) => set('address', value)} placeholder="123 Maple St, Ann Arbor, MI" /></div>
             <div><label className="hh-label">Original listing URL</label><input className="hh-input" type="url" value={form.listingUrl || ''} onChange={(e) => set('listingUrl', e.target.value)} placeholder="https://…" /></div>
           </section>

@@ -80,10 +80,10 @@ export function normalizeLotSizeInput(raw) {
 /* ---------------------------------- Choices ---------------------------------- */
 
 // Property type stays the canonical homes.property_type value (Match's
-// preferred-property-type input); these are the three offered on Home Facts.
-// A different saved value (Townhome, Other …) stays visible and selected.
+// preferred-property-type input); these are the four offered on Home Facts.
+// A different saved value (Other, Apartment …) stays visible and selected.
 export const PROPERTY_TYPE_CHOICES = Object.freeze([
-  ['house', 'Single-Family'], ['multifamily', 'Multi-Family'], ['condo', 'Condominium'],
+  ['house', 'Single-Family'], ['townhome', 'Townhome'], ['multifamily', 'Multi-Family'], ['condo', 'Condominium'],
 ]);
 export const propertyTypeLabel = (value) => PROPERTY_TYPE_CHOICES.find(([key]) => key === value)?.[1] || PROPERTY_TYPE_LABELS[value] || value || '';
 
@@ -385,5 +385,43 @@ export function garageSpacesSelectValue(value) {
   return garageSpacesChoice(value) || (isBlank(value) ? '' : String(value).trim());
 }
 
-// Annual taxes label, with the tax year when known.
-export const annualTaxesLabel = (home) => `Annual taxes${home?.propertyTaxYear ? ` · ${home.propertyTaxYear}` : ''}`;
+// HOA fee (homes.hoa_fee_monthly). Null is Unknown; 0 is a confirmed "no HOA",
+// stored as the number 0 so it stays distinct from Unknown. Never a Match
+// input: the personal "No HOA" answer is separate and is not changed here.
+export function formatHoaFee(value) {
+  if (value === null || value === undefined || value === '') return '';
+  const amount = Number(value);
+  if (!Number.isFinite(amount)) return String(value);
+  return amount === 0 ? 'No HOA · $0/mo' : `${formatCurrencyDisplay(amount)}/mo`;
+}
+// What the input holds while editing: a confirmed $0 stays "0", never blank.
+export const editHoaFee = (value) => (value === 0 || value === '0' ? '0' : formatCurrencyDisplay(value));
+
+// Property tax year (homes.property_tax_year): a four-digit year, or blank for
+// Unknown. Anything else is not saved (undefined reverts the field).
+export function parseTaxYear(text) {
+  const raw = String(text ?? '').trim();
+  if (!raw) return null;
+  if (!/^\d{4}$/.test(raw)) return undefined;
+  const year = Number(raw);
+  return year >= 1900 && year <= new Date().getFullYear() + 1 ? year : undefined;
+}
+
+const sameAmount = (a, b) => !isBlank(a) && !isBlank(b) && Number(a) === Number(b);
+
+// The tax year says which bill the amount is. When a person changes an amount
+// whose year came from the listing, that year no longer describes it, so it
+// returns to Unknown instead of quietly labelling the new figure. Setting the
+// amount back to the listing's figure brings the listing's year back with it.
+// A year a person entered is theirs and is never touched. The listing snapshot
+// itself is never edited, so "From listing" stays provable.
+export function propertyTaxPatch(home, value) {
+  const patch = { propertyTaxAnnual: value };
+  const snapshot = home?.listingImport || null;
+  const importedAmount = snapshot?.fields?.propertyTaxAnnual;
+  const importedYear = snapshot?.fields?.propertyTaxYear;
+  const yearFromListing = fieldProvenance(home?.propertyTaxYear, snapshot, 'propertyTaxYear') === 'listing';
+  if (yearFromListing && !sameAmount(value, importedAmount)) patch.propertyTaxYear = null;
+  else if (isBlank(home?.propertyTaxYear) && !isBlank(importedYear) && sameAmount(value, importedAmount)) patch.propertyTaxYear = Number(importedYear);
+  return patch;
+}

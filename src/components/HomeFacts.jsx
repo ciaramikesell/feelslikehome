@@ -5,8 +5,8 @@ import { ArrowUpRight, House, Link2, Pencil, Upload } from 'lucide-react';
 import {
   BASEMENT_CONDITION_CHOICES, BASEMENT_STYLE_CHOICES, CONDITION_FACT_CHOICES, COOLING_SUGGESTIONS, GARAGE_SPACE_CHOICES,
   GARAGE_TYPE_CHOICES, HEATING_SUGGESTIONS, LAUNDRY_LOCATION_CHOICES, LAYOUT_FACT_CHOICES, PROPERTY_TYPE_CHOICES,
-  annualTaxesLabel, basementPatch, garagePatch, garageSpacesSelectValue, homeFactsAvailability, layoutPatch, layoutValues,
-  listingSays, normalizeLotSizeInput,
+  basementPatch, editHoaFee, formatHoaFee, garagePatch, garageSpacesSelectValue, homeFactsAvailability, layoutPatch, layoutValues,
+  listingSays, normalizeLotSizeInput, parseTaxYear, propertyTaxPatch,
 } from '@/lib/homeFacts';
 import { photoFileError, PHOTO_BUCKET, storagePathFromPublicUrl, uploadHomePhoto } from '@/lib/homePhoto';
 import { digitsOnly, formatCurrencyDisplay, formatDateOnly, formatLotSizeDisplay, formatTriState, splitAddressLines } from '@/lib/homeDisplay';
@@ -141,6 +141,8 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
             format={(value) => (value ? `${money(value)}${showsRentalFacts ? '/mo' : ''}` : '')} edit={(value) => money(value)} parse={parseMoney} placeholder="Add price" inputMode="numeric"
             onCommit={(price) => save({ price })} className="flh-hf2-price" />
           {apartment && identity.primary !== home.address && <p className="flh-hf2-name">{identity.primary}</p>}
+          {/* Floor plan · unit, edited with the property name under "More property details". */}
+          {apartment && identity.option && <p className="flh-hf2-locality">{identity.option}</p>}
           <QuietInput id="hf-address" label="Address" value={home.address} readOnly={isReadOnly} failed={failed('address')} registerDraft={editor?.registerDraft}
             format={(value) => splitAddressLines(value).line1 || value} edit={(value) => value} parse={(value) => value.trim() || undefined} placeholder="Add address" multiline
             onCommit={(address) => save({ address })} className="flh-hf2-address" />
@@ -162,8 +164,11 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
 
         <PhoneCollapse id={`hf-utilities-${home.id}`} title="Year, taxes & utilities" summary={utilitiesSummary || 'Unknown'} className="flh-hf2-secondary">
           <div className="flh-hf2-secondary-grid">
+            {!showsRentalFacts && <>
+              <div className="flh-hf2-mini"><label htmlFor="hf-propertyTaxAnnual">Annual taxes</label>{text('propertyTaxAnnual', null, { parse: parseMoneyNumber, format: (value) => (value ? `${money(value)}/yr` : ''), edit: (value) => money(value), inputMode: 'numeric', onCommit: (value) => save(propertyTaxPatch(home, value)) })}</div>
+              <div className="flh-hf2-mini"><label htmlFor="hf-propertyTaxYear">Tax year</label>{text('propertyTaxYear', null, { parse: parseTaxYear, inputMode: 'numeric', size: 4 })}</div>
+            </>}
             <div className="flh-hf2-mini"><label htmlFor="hf-yearBuilt">Year built</label>{text('yearBuilt', null, { parse: parseLegacyText, inputMode: 'numeric', placeholder: 'Unknown' })}</div>
-            {!showsRentalFacts && <div className="flh-hf2-mini"><label htmlFor="hf-propertyTaxAnnual">{annualTaxesLabel(home)}</label>{text('propertyTaxAnnual', null, { parse: parseMoneyNumber, format: (value) => (value ? `${money(value)}/yr` : ''), edit: (value) => money(value), inputMode: 'numeric' })}</div>}
             {!apartment && <>
               <div className="flh-hf2-mini is-wide"><label htmlFor="hf-heating">Heating</label>{text('heating', null, { list: 'hf-heating-options' })}{!home.heating && listingSays(home, 'heating') && <small className="flh-hf2-hint">{listingSays(home, 'heating')}</small>}</div>
               <div className="flh-hf2-mini is-wide"><label htmlFor="hf-cooling">Cooling</label>{text('cooling', null, { list: 'hf-cooling-options' })}{!home.cooling && listingSays(home, 'cooling') && <small className="flh-hf2-hint">{listingSays(home, 'cooling')}</small>}</div>
@@ -190,7 +195,8 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
               {/* An existing Match input with no other home here: shown when it's
                   part of this search or already has a value. */}
               {!apartment && (home.secondaryBedroomLocation || (priorities.secondaryBedroomLocation?.value && priorities.secondaryBedroomLocation.tier !== 'dontcare')) && <Row label="Secondary bedrooms" htmlFor="hf-secondaryBedroomLocation">{select('secondaryBedroomLocation', null, SECONDARY_BEDROOM_CHOICES, (value) => save({ secondaryBedroomLocation: value || '' }))}</Row>}
-              {!showsRentalFacts && home.hoaFeeMonthly != null && <Row label="HOA fee" htmlFor="hf-hoaFeeMonthly">{text('hoaFeeMonthly', null, { parse: parseMoneyNumber, format: (value) => (value || value === 0 ? `${money(value) || '$0'}/mo` : ''), edit: (value) => money(value), inputMode: 'numeric' })}</Row>}
+              {/* Always offered for a home to buy: blank is Unknown, 0 is a confirmed "no HOA". */}
+              {!showsRentalFacts && <Row label="HOA fee" hint={isReadOnly ? null : 'Enter 0 if there’s no HOA'} htmlFor="hf-hoaFeeMonthly">{text('hoaFeeMonthly', null, { parse: parseMoneyNumber, format: formatHoaFee, edit: editHoaFee, inputMode: 'numeric' })}</Row>}
               {showsRentalFacts && home.availableOn && <Row label="Available on"><span className="flh-fact-text">{formatDateOnly(home.availableOn)}</span></Row>}
               {showsRentalFacts && [['petsAllowed', 'Pets allowed'], ['utilitiesIncluded', 'Utilities included'], ['inUnitLaundry', 'In-unit laundry']].map(([field, label]) => (
                 home[field] == null ? null : <Row key={field} label={label}><span className="flh-fact-text">{formatTriState(home[field])}</span></Row>
