@@ -42,12 +42,14 @@ Each test file creates its own `flh_test_<pid>_<time>` database and drops it.
 
 1. Installs a minimal Supabase shim: `anon` / `authenticated` /
    `service_role` roles, `auth.users`, and `auth.uid()` reading
-   `request.jwt.claim.sub`, the same claim Supabase sets.
+   `request.jwt.claim.sub`, the same claim Supabase sets; plus
+   `storage.buckets` / `storage.objects` (RLS on), the part of Supabase
+   Storage its policies run against.
 2. Runs `supabase/schema.sql`, then `POST_SNAPSHOT_MIGRATIONS`: the
    migrations `schema.sql` does not yet contain, in production order.
 3. Provides `clientFor(userId)`, a Supabase-shaped client
    (`from().select/insert/update/upsert/delete/eq/in/order/single/maybeSingle`,
-   `rpc()`). It executes each call through `psql` inside
+   `rpc()`, and `storage.from(bucket).upload/remove/createSignedUrls`). It executes each call through `psql` inside
    `set local role authenticated` with that user's id as the JWT subject.
    RLS, column grants, triggers and SECURITY DEFINER functions all apply as
    they do in production. Errors carry the Postgres SQLSTATE as `code`, as
@@ -56,6 +58,16 @@ Each test file creates its own `flh_test_<pid>_<time>` database and drops it.
    the embedded table is aliased `homes_1` (so a missing column fails as
    `42703 column homes_1.<column> does not exist`), it is read under the
    caller's RLS, and the foreign key is assumed to be `<table minus s>_id`.
+   Storage calls behave as Supabase Storage (storage-api v1.25.7) does
+   against Postgres, as observed in the floor-plans Stage A run: an upload is
+   a pre-check `insert` into `storage.objects` as the caller that is rolled
+   back (refused if a policy says no, 403), then — after the file is written —
+   the real `insert` as Storage's admin role, which RLS does not apply to.
+   `preauthorizeUpload` / `completeUpload` expose the two stages so tests can
+   interleave them. A remove silently skips objects the caller may not see or
+   delete, and a signed URL is issued only for an object the caller may
+   `select`. Bucket size (413) and MIME (400) limits come from
+   `storage.buckets`.
 4. Provides `admin(sql)` for fixtures and for checking ground truth
    independently of what RLS shows a caller.
 
@@ -74,8 +86,9 @@ before it. That is already needed for `resolve_collaborator_search_context`.
 ## Limits
 
 The shim is not GoTrue: there are no sessions, refresh tokens, email
-confirmation, or Storage. The tests cover authorization and SQL behavior, not
-authentication flows or HTTP/PostgREST serialization.
+confirmation, or Storage API server. The tests cover authorization and SQL
+behavior (including `storage.objects` policies), not authentication flows,
+HTTP/PostgREST serialization, or Storage's own HTTP endpoints.
 
 ## Full-stack browser QA on the same database
 
