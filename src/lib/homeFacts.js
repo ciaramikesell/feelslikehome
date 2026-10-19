@@ -15,6 +15,7 @@
 
 import { LAYOUT_DISPLAY_LABELS, CONDITION_DISPLAY_LABELS, showsMultiselectCategory, showsHomeLayout } from './constants.js';
 import { parseNum } from './matching.js';
+import { typedLotSizeAcres } from './lotSize.js';
 import { searchIntentCapabilities, PROPERTY_TYPE_LABELS } from './searchIntent.js';
 import { formatCurrencyDisplay, formatHomePrice, formatLotSizeDisplay, formatTriState, formatDateOnly, digitsOnly } from './homeDisplay.js';
 import { fieldProvenance, hasImportSnapshot } from './homeProvenance.js';
@@ -61,30 +62,17 @@ export function listingFactValue(snapshot, key) {
 
 /* --------------------------------- Lot size --------------------------------- */
 
-const SQFT_PER_ACRE = 43560;
-const UNIT_TO_ACRES = [
-  [/^(?:acres?|ac)\.?$/i, 1],
-  [/^(?:sq\.?\s*ft\.?|sqft|sf|ft2|ft²|square\s*f(?:ee|oo)t)$/i, 1 / SQFT_PER_ACRE],
-  [/^(?:sq\.?\s*m\.?|sqm|m2|m²|square\s*met(?:er|re)s?)$/i, 1 / 4046.8564224],
-  [/^(?:hectares?|ha)$/i, 2.4710538147],
-];
-
 // Normalizes a lot size a person typed to acres, the unit Match's lot-size
 // target uses. A bare number means acres (the field is labeled in acres);
-// "sq ft", "sq m" and "hectares" are converted. Anything else is kept exactly as
-// typed rather than guessed at. Only a person's edit is normalized: stored
-// values are never rewritten (formatLotSizeDisplay only changes how they read).
+// "sq ft", "sq m" and "hectares" are converted (typedLotSizeAcres, the same
+// units Match reads). Anything else is kept exactly as typed rather than guessed at.
+// Only a person's edit is normalized: stored values are never rewritten
+// (formatLotSizeDisplay only changes how they read).
 export function normalizeLotSizeInput(raw) {
   const text = String(raw ?? '').trim();
   if (!text) return '';
-  const match = text.match(/^([\d,]*\.?\d+)\s*(.*)$/);
-  if (!match) return text;
-  const amount = Number(match[1].replace(/,/g, ''));
-  if (!Number.isFinite(amount) || amount <= 0) return text;
-  const unit = match[2].trim();
-  const factor = unit === '' ? 1 : UNIT_TO_ACRES.find(([pattern]) => pattern.test(unit))?.[1];
-  if (!factor) return text;
-  const acres = amount * factor;
+  const acres = typedLotSizeAcres(text);
+  if (acres === null) return text;
   const rounded = acres >= 0.01 ? Number(acres.toFixed(2)) : Number(acres.toFixed(4));
   return `${rounded} ${rounded === 1 ? 'acre' : 'acres'}`;
 }

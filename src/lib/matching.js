@@ -1,6 +1,7 @@
 import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier, isExperientialCriterion, isRetiredPurchaseBuiltIn, foldLegacyCheckAliases, TOUR_RESPONSE, tourResponseLabel, criterionDisplayLabel } from './constants.js';
 import { normalizeSearchIntent } from './searchIntent.js';
 import { EVIDENCE_STRENGTH, findingsFromFields } from './importDomain.js';
+import { lotSizeAcres } from './lotSize.js';
 
 export function parseNum(v) {
   if (v === '' || v === null || v === undefined) return null;
@@ -347,10 +348,12 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
   }
   if (priorities.lotSizeTarget?.value && priorities.lotSizeTarget.tier !== 'dontcare') {
     const target = parseNum(priorities.lotSizeTarget.value);
-    const actual = parseNum(home.lotSize);
+    // The target is acres; the home's lot size is read with its stored unit.
+    const actual = lotSizeAcres(home.lotSize);
     if (target && actual !== null) {
       const met = actual >= target;
-      push('lotSize', 'Lot size', priorities.lotSizeTarget.tier, true, met ? 1 : Math.max(0, actual / target), met, met ? `${actual} (wanted ${target}+)` : `${actual} below target ${target}`, true);
+      const acres = `${Number(actual.toFixed(actual >= 0.01 ? 2 : 4))} acres`;
+      push('lotSize', 'Lot size', priorities.lotSizeTarget.tier, true, met ? 1 : Math.max(0, actual / target), met, met ? `${acres} (wanted ${target}+)` : `${acres} below target ${target}`, true);
     } else {
       notEvaluated('lotSize', 'Lot size', priorities.lotSizeTarget.tier, true);
     }
