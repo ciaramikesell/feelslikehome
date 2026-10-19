@@ -444,3 +444,45 @@ test('owner, agent, office, sale history and assessments never reach the client 
     }
   }
 });
+
+/* ------------------- legacy snapshots (saved before PR #161) ------------------ */
+
+test('a legacy snapshot\'s "HOA — No" entry is never shown or counted; $0/mo and Unknown stay distinct', async () => {
+  const { groupListingFacts, countListingDetails, isLegacyNoHoaFact } = await import('../src/lib/listingFacts.js');
+  const { homeFactSections } = await import('../src/lib/homeFacts.js');
+  // Shape the pre-#161 importer saved for a $0 fee: the fee field plus a false 'hoa' fact.
+  const legacy = Object.freeze({
+    fields: Object.freeze({ address: DOC_ADDRESS, price: '289000', hoaFeeMonthly: 0 }),
+    listingFacts: Object.freeze([
+      Object.freeze({ key: 'hoa', label: 'HOA', value: false, group: 'costs', sourceType: 'structured_listing', sourceProvider: 'rentcast', explicitNegative: true }),
+      Object.freeze({ key: 'roof', label: 'Roof', value: 'Asphalt', group: 'structure', sourceType: 'structured_listing', sourceProvider: 'rentcast', explicitNegative: false }),
+    ]),
+    descriptionFeatures: Object.freeze([]),
+  });
+  const before = JSON.stringify(legacy);
+
+  // The listing-details panel and its counts skip the legacy entry...
+  const shown = groupListingFacts(legacy.listingFacts).flatMap((section) => section.facts);
+  assert.deepEqual(shown.map((item) => item.key), ['roof']);
+  assert.equal(countListingDetails(legacy.fields, legacy.listingFacts, legacy.descriptionFeatures), 3 + 1);
+  assert.equal(importedDetailCount(legacy), 2 + 1, 'price, HOA fee and roof — not the legacy entry');
+  // ...and the panel shows the fee from the fields as $0, never "No".
+  const modal = readFileSync(new URL('../src/components/HomeModal.jsx', import.meta.url), 'utf8');
+  assert.match(modal, /groupListingFacts\(\[\.\.\.basicFacts, \.\.\.\(result\?\.listingFacts \|\| \[\]\)\]\)/);
+  assert.match(modal, /label: 'HOA fee', value: `\$\{formatCurrencyDisplay\(fields\.hoaFeeMonthly\)\}\/month`/);
+
+  // Only the exact legacy shape is hidden: a "Yes" from an old snapshot still shows.
+  assert.equal(isLegacyNoHoaFact({ key: 'hoa', value: true }), false);
+  assert.equal(isLegacyNoHoaFact({ key: 'hoa', value: null }), false);
+  assert.equal(isLegacyNoHoaFact({ key: 'pool', value: false }), false);
+
+  // Home Facts: a confirmed $0 is "$0/mo" from listing; a missing fee is Unknown.
+  const hoaRow = (home) => homeFactSections(home, { searchType: 'buy' }).flatMap((section) => section.rows).find((row) => row.key === 'hoaFeeMonthly');
+  const zero = hoaRow({ address: DOC_ADDRESS, hoaFeeMonthly: 0, listingImport: legacy });
+  assert.equal(zero.value, '$0/mo');
+  assert.equal(zero.provenance, 'listing');
+  assert.equal(hoaRow({ address: DOC_ADDRESS, hoaFeeMonthly: null, listingImport: legacy })?.value ?? null, null);
+
+  // Nothing about the saved snapshot is changed.
+  assert.equal(JSON.stringify(legacy), before);
+});

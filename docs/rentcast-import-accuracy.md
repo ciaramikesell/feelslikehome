@@ -168,7 +168,10 @@ of `rate_limited`, `timeout`, `invalid_address` (RentCast HTTP 400) or
 known price, the three dates, days on market, MLS name and number) and
 `sources` (per-lookup outcome). Provenance is unchanged: "From listing" still
 means the value equals the snapshot's. Older snapshots without the new keys
-read as before.
+read as before. Snapshots saved before this PR can hold a `{ key: 'hoa', value:
+false }` entry that the old importer derived from a $0 fee. It is never shown
+or counted (`isLegacyNoHoaFact` in `src/lib/listingFacts.js`); the fee still
+shows as $0. Saved data is not changed.
 
 ## What a buyer sees
 
@@ -192,8 +195,8 @@ iPad 820, iPhone 390; Chromium emulation, QA fixture data).
 
 ## Test and QA results
 
-- `npm test` with real PostgreSQL 16: **1125 / 1125 pass, 0 skipped**. That
-  includes 33 tests in `test/rentcast-import-accuracy.test.js` and 3
+- `npm test` with real PostgreSQL 16: **1126 / 1126 pass, 0 skipped**. That
+  includes 34 tests in `test/rentcast-import-accuracy.test.js` and 3
   real-Postgres tests in `test/rentcast-import-db.test.js`:
   - save and reload of an import (including $0/mo HOA);
   - the address-change trigger clearing an imported point;
