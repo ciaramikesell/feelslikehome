@@ -14,6 +14,7 @@ import HomeModal from '@/components/HomeModal';
 import PostTourModal from '@/components/PostTourModal';
 import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
 import Sheet from '@/components/Sheet';
+import { FloorPlansAction, FloorPlansViewer } from '@/components/FloorPlans';
 import { useHomesWorkspace } from '@/components/HomesWorkspace';
 import {
   EMPTY_FILTERS, SORT_MENU, activeFilterCount, activeFilterLabels, applyContenderFilters, currentUserWantsToTour,
@@ -80,7 +81,7 @@ function commuteRouteParts(destination, state) {
 // actions. Every value comes from the same helpers as before (computeMatch,
 // selectHomeCardCriteria, homeCardSnapshot, evaluateCommute); only the
 // presentation changed.
-function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onOpen, onArchiveRequest, onWantToTour, onOpenPostTour, onRemoveFromTour, onRestore, onRequestDelete }) {
+function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onOpen, onArchiveRequest, onWantToTour, onOpenPostTour, onRemoveFromTour, onRestore, onRequestDelete, floorPlans = null }) {
   const [imgError, setImgError] = useState(false);
   const styleSummary = homeStyleSummary(home);
   const showPhoto = home.photoUrl && !imgError;
@@ -122,6 +123,8 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onOpen,
   const propertyFacts = homeCardSnapshot(home, styleSummary);
   // Pros / cons are freeform text: counted once per field, never split on commas.
   const noteCount = noteFieldCount(home);
+  const notesLink = noteCount > 0 && <Link className="hh-notes-indicator" scroll={false} onClick={onOpen} href={`${homeHref}${homeHref.includes('?') ? '&' : '?'}section=tour`}><StickyNote size={13} aria-hidden="true" /> Notes ({noteCount})</Link>;
+  const floorPlansAction = floorPlans && <FloorPlansAction count={floorPlans.countFor(home)} canEdit={floorPlans.canEdit} address={identity.accessible} onOpen={() => floorPlans.open(home)} />;
   const { mustHaves, hiddenMustHaves, mustOverflow, criteriaSummary } = cardCriteria;
   const displayedMustHaves = showAllMustHaves ? [...mustHaves, ...hiddenMustHaves] : mustHaves;
   const coBuyerActivity = home.coBuyerWantsToTour ? 'Co-buyer wants to tour' : home.coBuyerFavorited ? 'Co-buyer favorited' : null;
@@ -248,7 +251,16 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onOpen,
             </>
           )}
 
-          {noteCount > 0 && <Link className="hh-notes-indicator" scroll={false} onClick={onOpen} href={`${homeHref}${homeHref.includes('?') ? '&' : '?'}section=tour`}><StickyNote size={13} aria-hidden="true" /> Notes ({noteCount})</Link>}
+          {/* Floor Plans off (the default): exactly the Notes link as before. On:
+              Notes on the left, the quiet Floor Plans action on the right. */}
+          {floorPlans ? (
+            (noteCount > 0 || floorPlansAction) && (
+              <div className="hh-card-notes-row">
+                {notesLink || <span aria-hidden="true" />}
+                {floorPlansAction}
+              </div>
+            )
+          ) : notesLink}
 
           {mode === 'tour' && wantToTourState?.wantToTourLabel && (
             <div className="hh-lifecycle-status">
@@ -306,14 +318,14 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onOpen,
   );
 }
 
-function CardGrid({ homes, priorities, commuteDestinations, mode, onEdit, onOpen, onArchiveRequest, onWantToTour, onOpenPostTour, onRemoveFromTour, onRestore, onRequestDelete }) {
+function CardGrid({ homes, priorities, commuteDestinations, mode, onEdit, onOpen, onArchiveRequest, onWantToTour, onOpenPostTour, onRemoveFromTour, onRestore, onRequestDelete, floorPlans = null }) {
   return (
     <div className="hh-homes-grid">
       {homes.map((h) => (
         <HomeCard
           key={h.id} home={h} priorities={priorities} commuteDestinations={commuteDestinations} mode={mode} onEdit={onEdit} onOpen={onOpen} onArchiveRequest={onArchiveRequest}
           onWantToTour={onWantToTour} onOpenPostTour={onOpenPostTour} onRemoveFromTour={onRemoveFromTour}
-          onRestore={onRestore} onRequestDelete={onRequestDelete}
+          onRestore={onRestore} onRequestDelete={onRequestDelete} floorPlans={floorPlans}
         />
       ))}
     </div>
@@ -333,7 +345,7 @@ function EmptyLifecycleState({ icon: Icon, title, body, children }) {
 
 /* ---------------------------------- board ---------------------------------- */
 
-export default function HomesBoard({ mode, userId, searchId, initialHomes, initialPriorities, initialCommuteDestinations = [], sharedFactAwareness, isCollaborative = false, collaborationSlot = null }) {
+export default function HomesBoard({ mode, userId, searchId, initialHomes, initialPriorities, initialCommuteDestinations = [], sharedFactAwareness, isCollaborative = false, collaborationSlot = null, floorPlans = null }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   // Under My Homes' layout the board shares one copy of the homes with the
@@ -367,6 +379,25 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   const mutationQueues = useRef(new Map());
   const confirmedHomes = useRef(new Map(initialHomes.map((home) => [home.id, home])));
   const autoOpenedRef = useRef(false);
+  // Floor Plans (null unless the server-side flag is on): counts from the
+  // server, kept current by the viewer; null counts mean "unknown".
+  const [floorPlanCounts, setFloorPlanCounts] = useState(floorPlans?.counts ?? null);
+  useEffect(() => { setFloorPlanCounts(floorPlans?.counts ?? null); }, [floorPlans?.counts]);
+  const [floorPlanHome, setFloorPlanHome] = useState(null);
+  const floorPlanCards = useMemo(() => floorPlans && {
+    canEdit: Boolean(floorPlans.canEdit),
+    countFor: (home) => (floorPlanCounts ? floorPlanCounts[home.id] ?? 0 : null),
+    open: setFloorPlanHome,
+  }, [floorPlans, floorPlanCounts]);
+  const floorPlanViewer = floorPlans && floorPlanHome && (
+    <FloorPlansViewer
+      key={floorPlanHome.id}
+      homeId={floorPlanHome.id}
+      address={homeIdentity(floorPlanHome, initialPriorities).accessible}
+      onClose={() => setFloorPlanHome(null)}
+      onCountChange={(count) => setFloorPlanCounts((current) => (current ? { ...current, [floorPlanHome.id]: count } : current))}
+    />
+  );
 
   // The guard prevents concurrent effects / duplicate native events from
   // opening intake twice, but it must not outlive the consumed query. Without
@@ -646,8 +677,9 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         {archivedHomes.length === 0 ? (
           <EmptyLifecycleState icon={ArchiveIcon} title="Nothing archived." body="Homes you set aside will stay here with your notes and history intact." />
         ) : (
-          <CardGrid homes={archivedHomes} priorities={priorities} commuteDestinations={initialCommuteDestinations} mode={mode} onEdit={openHome} onOpen={markOpenedFromBoard} onRestore={restoreHome} onRequestDelete={setDeleteTarget} />
+          <CardGrid homes={archivedHomes} priorities={priorities} commuteDestinations={initialCommuteDestinations} mode={mode} onEdit={openHome} onOpen={markOpenedFromBoard} onRestore={restoreHome} onRequestDelete={setDeleteTarget} floorPlans={floorPlanCards} />
         )}
+        {floorPlanViewer}
         {modalHome && <HomeModal initial={modalHome} priorities={priorities} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} userId={userId} onSave={saveEditedHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget} />}
         {deleteTarget && (
           <ConfirmModal
@@ -732,9 +764,11 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         <CardGrid
           homes={filtered} priorities={priorities} commuteDestinations={initialCommuteDestinations} mode={mode} onEdit={openHome} onOpen={markOpenedFromBoard} onArchiveRequest={setArchiveTarget}
           onWantToTour={wantToTour} onOpenPostTour={setPostTourTarget} onRemoveFromTour={removeFromTour}
-          onRestore={restoreHome} onRequestDelete={setDeleteTarget}
+          onRestore={restoreHome} onRequestDelete={setDeleteTarget} floorPlans={floorPlanCards}
         />
       )}
+
+      {floorPlanViewer}
 
       {modalHome && (
         <HomeModal

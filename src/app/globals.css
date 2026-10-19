@@ -2937,6 +2937,109 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 @media (prefers-reduced-motion: reduce) { .flh-overlay-save.is-saving svg, .flh-skeleton { animation: none; } }
 
 
+/* ── Floor Plans (FloorPlans.jsx, behind FLH_FLOOR_PLANS) ──────────────────────
+   A quiet card action opposite Notes, and a full-screen viewer: paper chrome,
+   a soft warm stage (plans are mostly line drawings on white), 44px controls,
+   safe-area aware, a side rail in short landscape. Modal, so it sits above the
+   install prompt (z-index 100) and below only the native boot screen (1000). */
+.hh-card-notes-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; }
+.hh-card-notes-row .hh-notes-indicator { align-self: center; }
+.hh-floor-plans-action { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; margin-left: auto; padding: 0; border: 0; background: none; color: var(--ink-soft); cursor: pointer; font: 600 12px var(--font-ui); white-space: nowrap; }
+.hh-floor-plans-action:hover { color: var(--brick); }
+.hh-floor-plans-action:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; border-radius: 4px; }
+.hh-realtor-home-extras { display: flex; justify-content: flex-end; margin-top: 8px; }
+@media (max-width: 700px) { .hh-floor-plans-action, .hh-card-notes-row .hh-notes-indicator { min-height: 44px; } }
+
+.hh-fp-backdrop { position: fixed; inset: 0; z-index: 200; background: rgba(46,38,33,.55); display: flex; align-items: center; justify-content: center; padding: 24px; }
+.hh-fp-viewer { position: relative; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; width: min(1120px, 100%); height: min(860px, 100%); overflow: hidden; border-radius: 20px; background: var(--paper); box-shadow: 0 30px 80px -30px rgba(46,38,33,.55); outline: none; font-family: var(--font-ui); color: var(--ink); }
+.hh-fp-header { display: flex; align-items: center; gap: 12px; padding: 14px 14px 12px 22px; border-bottom: 1px solid var(--line); }
+.hh-fp-heading { flex: 1; min-width: 0; }
+.hh-fp-title { margin: 0; font: 600 21px/1.2 var(--font-serif); color: var(--ink); }
+.hh-fp-subtitle { margin: 2px 0 0; overflow: hidden; color: var(--ink-soft); font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
+.hh-fp-counter { flex: 0 0 auto; margin: 0; color: var(--ink-soft); font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.hh-fp-icon-button { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; flex: 0 0 auto; padding: 0; border: 1px solid transparent; border-radius: 999px; background: transparent; color: var(--ink); cursor: pointer; }
+.hh-fp-icon-button:hover:not(:disabled) { background: rgba(46,38,33,.07); }
+.hh-fp-icon-button:disabled { opacity: .35; cursor: default; }
+.hh-fp-icon-button:focus-visible, .hh-fp-page:focus-visible, .hh-fp-text-button:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+.hh-fp-main { position: relative; min-height: 0; background: #EFE7DC; }
+.hh-fp-stage-wrap { position: absolute; inset: 0; }
+.hh-fp-stage { position: absolute; inset: 12px; overflow: hidden; }
+.hh-fp-canvas { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: zoom-in; }
+.hh-fp-stage.is-zoomed .hh-fp-canvas { cursor: grab; }
+.hh-fp-stage.is-zoomed .hh-fp-canvas:active { cursor: grabbing; }
+.hh-fp-image { display: block; max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px; background: #fff; box-shadow: 0 1px 2px rgba(46,38,33,.08), 0 16px 34px -24px rgba(46,38,33,.45); transform-origin: center; transition: transform .2s ease, opacity .2s ease; pointer-events: none; }
+/* A compositing layer only while a finger is down: a permanent one keeps a
+   bitmap of the zoomed image (many screens' worth on a 3× display) and
+   rasterises it blurry at fit size. */
+.hh-fp-image.is-gesturing { transition: opacity .2s ease; will-change: transform; }
+.hh-fp-image-loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--ink-soft); }
+.hh-fp-spin { animation: flh-spin .9s linear infinite; }
+.hh-fp-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255,253,250,.92); border-color: var(--flh-card-line); box-shadow: 0 6px 16px -10px rgba(46,38,33,.5); }
+.hh-fp-nav.is-prev { left: 14px; }
+.hh-fp-nav.is-next { right: 14px; }
+.hh-fp-nav:hover:not(:disabled) { background: #fff; }
+.hh-fp-nav:disabled { opacity: 0; pointer-events: none; }
+.hh-fp-zoom { position: absolute; right: 14px; bottom: 14px; display: flex; gap: 2px; padding: 3px; border: 1px solid var(--flh-card-line); border-radius: 999px; background: rgba(255,253,250,.94); box-shadow: 0 6px 16px -10px rgba(46,38,33,.5); }
+.hh-fp-state { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; color: var(--ink-soft); font-size: 13.5px; line-height: 1.55; text-align: center; }
+.hh-fp-state p { max-width: 380px; margin: 0; }
+.hh-fp-state .hh-btn { margin-top: 8px; }
+.hh-fp-state-title { color: var(--ink); font: 600 18px/1.3 var(--font-serif); }
+.hh-fp-state-overlay { background: rgba(239,231,220,.94); }
+.hh-fp-empty-icon { display: grid; place-items: center; width: 56px; height: 56px; margin-bottom: 4px; border-radius: 50%; background: var(--flh-warm); color: var(--brick); }
+.hh-fp-add.hh-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; padding: 0 16px; border-radius: 10px; font: 700 13.5px var(--font-ui); }
+.hh-fp-add.hh-btn:disabled { opacity: .7; cursor: progress; }
+.hh-fp-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px; padding: 12px 18px calc(12px + var(--flh-safe-bottom, 0px)); border-top: 1px solid var(--line); background: var(--paper); }
+.hh-fp-pages { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.hh-fp-page { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 1px solid var(--flh-card-line); border-radius: 999px; background: var(--paper-raised); color: var(--ink); cursor: pointer; font: 700 14px var(--font-ui); font-variant-numeric: tabular-nums; }
+.hh-fp-page:hover:not(.is-current) { border-color: var(--brick); color: var(--brick); }
+.hh-fp-page.is-current { border-color: var(--brick); background: var(--brick); color: #fff; }
+.hh-fp-edit { display: flex; align-items: center; gap: 4px 14px; flex-wrap: wrap; margin-left: auto; }
+.hh-fp-room { color: var(--ink-soft); font-size: 12px; font-variant-numeric: tabular-nums; }
+.hh-fp-text-button { display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 4px; border: 0; border-radius: 6px; background: none; color: var(--ink-soft); cursor: pointer; font: 600 13px var(--font-ui); }
+.hh-fp-text-button:hover:not(:disabled) { color: var(--negative); }
+.hh-fp-text-button:disabled { opacity: .5; cursor: default; }
+.hh-fp-confirm { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: 8px 14px; margin-left: auto; }
+.hh-fp-confirm p { margin: 0; font-size: 13px; color: var(--ink); }
+.hh-fp-confirm > div { display: flex; gap: 8px; }
+.hh-fp-confirm .hh-btn { min-height: 44px; padding: 0 14px; border-radius: 10px; }
+.hh-fp-remove-confirm.hh-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--brick); border-color: var(--brick); }
+/* Notes sit at the top of the stage, clear of every control. */
+.hh-fp-notice-region { position: absolute; top: 12px; left: 50%; z-index: 2; display: grid; gap: 6px; width: max-content; max-width: calc(100% - 32px); transform: translateX(-50%); pointer-events: none; }
+.hh-fp-notice { margin: 0; padding: 10px 14px; border-radius: 10px; font-size: 13px; line-height: 1.45; text-align: center; box-shadow: 0 10px 24px -14px rgba(46,38,33,.5); }
+.hh-fp-notice:empty { display: none; }
+.hh-fp-notice.is-success { background: var(--flh-sage-bg); color: var(--flh-sage-ink); }
+.hh-fp-notice.is-error { background: var(--flh-negative-bg); color: var(--negative); }
+
+/* Phones and small tablets: full-screen, under the status bar / notch. */
+@media (max-width: 760px), (max-height: 560px) {
+  .hh-fp-backdrop { padding: 0; background: var(--paper); }
+  .hh-fp-viewer { width: 100%; height: 100%; height: 100dvh; border-radius: 0; box-shadow: none; padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+  .hh-fp-header { padding: calc(8px + var(--flh-safe-top, 0px)) 6px 8px 16px; }
+  .hh-fp-title { font-size: 19px; }
+  .hh-fp-stage { inset: 8px; }
+  .hh-fp-nav.is-prev { left: 8px; }
+  .hh-fp-nav.is-next { right: 8px; }
+  .hh-fp-zoom { right: 10px; bottom: 10px; }
+  .hh-fp-footer { padding: 10px 14px calc(10px + var(--flh-safe-bottom, 0px)); }
+  .hh-fp-confirm { justify-content: flex-start; margin-left: 0; }
+}
+/* Short landscape (iPhone on its side): the stage takes the height, the
+   plan numbers and actions move to a rail on the right. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .hh-fp-viewer { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); }
+  .hh-fp-header { grid-column: 1 / -1; padding-top: calc(4px + var(--flh-safe-top, 0px)); padding-bottom: 4px; }
+  .hh-fp-subtitle { display: inline; margin-left: 10px; }
+  .hh-fp-title { display: inline; font-size: 17px; }
+  .hh-fp-main { grid-column: 1; grid-row: 2; }
+  .hh-fp-footer { grid-column: 2; grid-row: 2; flex-direction: column; flex-wrap: nowrap; align-items: stretch; justify-content: flex-start; width: 172px; overflow-y: auto; padding: 10px 12px calc(10px + var(--flh-safe-bottom, 0px)); border-top: 0; border-left: 1px solid var(--line); }
+  .hh-fp-edit, .hh-fp-confirm { flex-direction: column; align-items: stretch; margin-left: 0; gap: 4px; }
+  .hh-fp-confirm > div { flex-direction: column; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hh-fp-image { transition: none; }
+  .hh-fp-spin { animation-duration: 2.4s; }
+}
+
 /* ── Onboarding V2 shell (Phase 1) ───────────────────────────────────────────
    Frame only: background, columns, top bar, progress, type scale, step rhythm
    and the forward action. Step content keeps its existing styles. Every rule is

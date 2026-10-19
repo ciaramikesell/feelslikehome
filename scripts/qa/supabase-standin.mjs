@@ -146,7 +146,8 @@ function rpc(userId, fn, args) {
   if (shape.set) return result;
   const [row] = result.data;
   if (shape.kind === 'c') return { data: row ?? null };
-  return { data: row ? Object.values(row)[0] : null };
+  // A scalar function aggregates to bare values ([true]), not rows.
+  return { data: row !== null && typeof row === 'object' ? Object.values(row)[0] : row ?? null };
 }
 
 /* ----------------------------------- auth ----------------------------------- */
@@ -213,6 +214,8 @@ async function handle(req, res) {
     }
     return { body, type };
   };
+  if (await floorPlanStorage(req, res, path, url, caller, raw, storedObject)) return undefined;
+
   const storage = path.match(/^\/storage\/v1\/object\/(public\/)?([^/]+)\/(.+)$/);
   if (storage) {
     const key = `${storage[2]}/${decodeURIComponent(storage[3])}`;
@@ -241,6 +244,74 @@ async function handle(req, res) {
   } catch (error) {
     return send(res, error.status || 500, { code: 'STANDIN', message: error.message });
   }
+}
+
+/* --------------------------- private floor-plan bucket --------------------------- */
+
+// home-floor-plans is private: upload, remove and signing go through the
+// harness's two-stage Storage stand-in (test/support/supabaseDb.mjs), so the
+// real storage.objects policies, bucket MIME / size limits and the 8-object
+// cap decide, as the signed-in caller. Bytes are kept in memory. Signed URLs
+// carry their own expiry (like Storage's JWT) and are served without
+// re-checking access, exactly like the real service.
+//
+// QA switches (POST /__qa/floor-plans, JSON): { ttlSeconds } shortens every
+// newly signed URL; { failSign: true } makes signing fail; { failUpload: true }
+// fails uploads before Storage sees them; { reset: true } clears all of them.
+const FLOOR_PLAN_BUCKET = 'home-floor-plans';
+const qaFloorPlans = { ttlSeconds: null, failSign: false, failUpload: false };
+// true once the request is answered.
+const sent = (...args) => { send(...args); return true; };
+async function floorPlanStorage(req, res, path, url, caller, raw, storedObject) {
+  if (path === '/__qa/floor-plans' && req.method === 'POST') {
+    const body = JSON.parse(raw.toString() || '{}');
+    if (body.reset) Object.assign(qaFloorPlans, { ttlSeconds: null, failSign: false, failUpload: false });
+    for (const key of ['ttlSeconds', 'failSign', 'failUpload']) if (key in body) qaFloorPlans[key] = body[key];
+    return sent(res, 200, qaFloorPlans);
+  }
+  const bucketApi = () => db.clientFor(caller.sub).storage.from(FLOOR_PLAN_BUCKET);
+  const signed = path.match(/^\/storage\/v1\/object\/sign\/home-floor-plans\/(.+)$/);
+  if (signed && req.method === 'GET') {
+    const key = decodeURIComponent(signed[1]);
+    let claim = null;
+    try { claim = JSON.parse(Buffer.from(url.searchParams.get('token') || '', 'base64url').toString()); } catch { /* invalid */ }
+    if (!claim || claim.path !== key) return sent(res, 400, { statusCode: '400', error: 'InvalidJWT', message: 'invalid signature' });
+    if (Date.now() > claim.exp) return sent(res, 400, { statusCode: '400', error: 'InvalidJWT', message: '"exp" claim timestamp check failed' });
+    const object = objects.get(`${FLOOR_PLAN_BUCKET}/${key}`);
+    return object ? sent(res, 200, object.body, { 'content-type': object.type, 'cache-control': 'private, max-age=60' }) : sent(res, 404, { message: 'Object not found' });
+  }
+  if (path === `/storage/v1/object/sign/${FLOOR_PLAN_BUCKET}` && req.method === 'POST') {
+    if (!caller) return sent(res, 400, { message: 'invalid JWT' });
+    if (qaFloorPlans.failSign) return sent(res, 503, { message: 'QA: signing unavailable' });
+    const { paths = [], expiresIn = 60 } = JSON.parse(raw.toString() || '{}');
+    const { data, error } = await bucketApi().createSignedUrls(paths, expiresIn);
+    if (error) return sent(res, 400, error);
+    const ttl = (qaFloorPlans.ttlSeconds ?? expiresIn) * 1000;
+    return sent(res, 200, data.map((entry) => (entry.signedUrl
+      ? { path: entry.path, error: null, signedURL: `/object/sign/${FLOOR_PLAN_BUCKET}/${entry.path}?token=${b64url({ path: entry.path, exp: Date.now() + ttl })}` }
+      : { path: entry.path, error: entry.error, signedURL: null })));
+  }
+  if (path === `/storage/v1/object/${FLOOR_PLAN_BUCKET}` && req.method === 'DELETE') {
+    if (!caller) return sent(res, 400, { message: 'invalid JWT' });
+    const { prefixes = [] } = JSON.parse(raw.toString() || '{}');
+    const { data, error } = await bucketApi().remove(prefixes);
+    if (error) return sent(res, 400, error);
+    for (const row of data || []) objects.delete(`${FLOOR_PLAN_BUCKET}/${row.name}`);
+    return sent(res, 200, (data || []).map((row) => ({ name: row.name, bucket_id: FLOOR_PLAN_BUCKET })));
+  }
+  const upload = path.match(/^\/storage\/v1\/object\/home-floor-plans\/(.+)$/);
+  if (upload) {
+    if (req.method !== 'POST') return sent(res, 400, { message: 'QA stand-in: home-floor-plans supports upload only (read through signed URLs)' });
+    if (!caller) return sent(res, 400, { message: 'invalid JWT' });
+    if (qaFloorPlans.failUpload) return sent(res, 500, { statusCode: '500', message: 'QA: upload failed' });
+    const key = decodeURIComponent(upload[1]);
+    const object = storedObject(raw, req.headers['content-type'] || 'application/octet-stream');
+    const result = await bucketApi().upload(key, { size: object.body.length, type: object.type }, { contentType: object.type });
+    if (result.error) return sent(res, Number(result.error.statusCode) || 400, { statusCode: result.error.statusCode, error: 'Error', message: result.error.message });
+    objects.set(`${FLOOR_PLAN_BUCKET}/${key}`, object);
+    return sent(res, 200, { Key: `${FLOOR_PLAN_BUCKET}/${key}`, Id: randomUUID() });
+  }
+  return false;
 }
 
 /* ----------------------------------- seed ----------------------------------- */
@@ -288,6 +359,10 @@ db = createTestDatabase();
 const seeded = await seed();
 process.on('SIGINT', () => { db.drop(); process.exit(0); });
 process.on('SIGTERM', () => { db.drop(); process.exit(0); });
-createServer((req, res) => handle(req, res).catch((error) => send(res, 500, { message: error.message }))).listen(PORT, () => {
+// An error after the response went out (a client that hung up) is logged, never re-sent.
+createServer((req, res) => handle(req, res).catch((error) => {
+  if (res.headersSent) console.error(`standin: ${req.method} ${req.url}: ${error.message}`);
+  else send(res, 500, { message: error.message });
+})).listen(PORT, () => {
   console.log(JSON.stringify({ url: `http://localhost:${PORT}`, database: db.name, ...seeded }));
 });
