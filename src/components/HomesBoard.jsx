@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   Plus, Search, Archive as ArchiveIcon, ArrowUpRight, Car, ChevronDown,
-  Heart, Home as HomeIcon, Undo2, Footprints, MessageCircle, Check, StickyNote,
+  Heart, Home as HomeIcon, Undo2, Footprints, MessageCircle, Check, StickyNote, SlidersHorizontal, X,
 } from 'lucide-react';
 import { CriteriaDisclosure, MatchSummary } from '@/components/ui';
 import { useCommuteObserver, readCommuteResult, useCommuteCacheVersion } from '@/lib/useCommuteObserver';
@@ -14,18 +14,23 @@ import HomeModal from '@/components/HomeModal';
 import PostTourModal from '@/components/PostTourModal';
 import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
 import Sheet from '@/components/Sheet';
+import HomeFiltersSheet from '@/components/HomeFiltersSheet';
 import { useHomesWorkspace } from '@/components/HomesWorkspace';
 import {
   EMPTY_FILTERS, SORT_MENU, activeFilterCount, activeFilterLabels, applyContenderFilters, currentUserWantsToTour,
   singleFilterCounts, sortContenders,
 } from '@/lib/homesCollection';
+import {
+  EMPTY_HOME_FILTERS, SHOW_CONFIRMED, SHOW_POSSIBLE, applyHomeFilters, filterableCriteria, possibleMatchNote,
+  readStoredHomeFilters, writeStoredHomeFilters,
+} from '@/lib/homeFilters';
 import { emptyHome, isArchivedStatus } from '@/lib/constants';
 import { isLikelyListingUrl, findHomeByListingUrl } from '@/lib/listingUrl';
 import { parseNum, fmtMoney, homeStyleSummary, computeMatch, matchColor, matchTint, selectHomeCardCriteria, criterionLabel } from '@/lib/matching';
 import { homeCardSnapshot } from '@/lib/homeCardPresentation';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
 import { formatHomePrice, formatLotSizeDisplay, noteFieldCount } from '@/lib/homeDisplay';
-import { searchIntentCapabilities } from '@/lib/searchIntent';
+import { normalizeSearchIntent, searchIntentCapabilities } from '@/lib/searchIntent';
 import { isNativeApp } from '@/lib/platform';
 import { deriveFlhMoment } from '@/lib/flhMoments';
 import { applyPostTourVerdict, archiveHome, hasToured, isFavoriteHome, restoreHome as restoreLifecycleHome } from '@/lib/lifecycle';
@@ -80,7 +85,7 @@ function commuteRouteParts(destination, state) {
 // actions. Every value comes from the same helpers as before (computeMatch,
 // selectHomeCardCriteria, homeCardSnapshot, evaluateCommute); only the
 // presentation changed.
-function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onOpen, onArchiveRequest, onWantToTour, onOpenPostTour, onRemoveFromTour, onRestore, onRequestDelete }) {
+function HomeCard({ home, priorities, commuteDestinations, mode, filterResult = null, onEdit, onOpen, onArchiveRequest, onWantToTour, onOpenPostTour, onRemoveFromTour, onRestore, onRequestDelete }) {
   const [imgError, setImgError] = useState(false);
   const styleSummary = homeStyleSummary(home);
   const showPhoto = home.photoUrl && !imgError;
@@ -172,6 +177,11 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onOpen,
             </p>
             {factLine.length > 0 && <p className="hh-card-factline">{factLine.join(' · ')}</p>}
           </div>
+
+          {/* Filter My Homes: why a shown home is only a possible match. */}
+          {filterResult?.status === 'possible' && (
+            <p className="hh-card-filter-note"><span>Possible match</span> {possibleMatchNote(filterResult)}</p>
+          )}
 
           {/* On an archived Home, why it was set aside is more decision-relevant than
               whether it had an 89% Match — so this leads, and the Match panel right
@@ -306,12 +316,12 @@ function HomeCard({ home, priorities, commuteDestinations, mode, onEdit, onOpen,
   );
 }
 
-function CardGrid({ homes, priorities, commuteDestinations, mode, onEdit, onOpen, onArchiveRequest, onWantToTour, onOpenPostTour, onRemoveFromTour, onRestore, onRequestDelete }) {
+function CardGrid({ homes, priorities, commuteDestinations, mode, filterResults = null, onEdit, onOpen, onArchiveRequest, onWantToTour, onOpenPostTour, onRemoveFromTour, onRestore, onRequestDelete }) {
   return (
     <div className="hh-homes-grid">
       {homes.map((h) => (
         <HomeCard
-          key={h.id} home={h} priorities={priorities} commuteDestinations={commuteDestinations} mode={mode} onEdit={onEdit} onOpen={onOpen} onArchiveRequest={onArchiveRequest}
+          key={h.id} home={h} priorities={priorities} commuteDestinations={commuteDestinations} mode={mode} filterResult={filterResults?.get(h.id) || null} onEdit={onEdit} onOpen={onOpen} onArchiveRequest={onArchiveRequest}
           onWantToTour={onWantToTour} onOpenPostTour={onOpenPostTour} onRemoveFromTour={onRemoveFromTour}
           onRestore={onRestore} onRequestDelete={onRequestDelete}
         />
@@ -351,6 +361,21 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   // Filters combine (AND). Each one keeps its existing meaning; see homesCollection.
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [sortBy, setSortBy] = useState('newest');
+  // Filter My Homes (src/lib/homeFilters.js): temporary, read-only narrowing of
+  // the active saved homes. Remembered for this browser session only.
+  const [homeFilters, setHomeFilters] = useState(EMPTY_HOME_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filtersRestored = useRef(false);
+  useEffect(() => {
+    if (mode !== 'homes') return;
+    if (!filtersRestored.current) {
+      filtersRestored.current = true;
+      const stored = readStoredHomeFilters(typeof window === 'undefined' ? null : window.sessionStorage, searchId);
+      setHomeFilters(stored);
+      return;
+    }
+    writeStoredHomeFilters(window.sessionStorage, searchId, homeFilters);
+  }, [mode, searchId, homeFilters]);
   const [modalHome, setModalHome] = useState(null);
   // Carries the "this particular modal open should auto-run Find" intent
   // separately from modalHome itself, set at the same moment as the home
@@ -625,19 +650,41 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [priorities, initialCommuteDestinations, commuteCacheVersion]);
 
+  // Search text and the quick chips narrow first; Filter My Homes then
+  // classifies what is left. The buyer's sort is applied last and never changed.
+  const filterCriteria = useMemo(() => filterableCriteria(priorities), [priorities]);
+  const isRental = normalizeSearchIntent(priorities.searchType) === 'rental';
+  const quickFiltered = useMemo(() => (mode === 'homes' ? applyContenderFilters(baseList, filters, evaluate, query) : baseList), [baseList, query, mode, filters, evaluate]);
+  const refinement = useMemo(
+    () => applyHomeFilters(quickFiltered, mode === 'homes' ? homeFilters : EMPTY_HOME_FILTERS, evaluate, { criteria: filterCriteria, rental: isRental }),
+    [quickFiltered, mode, homeFilters, evaluate, filterCriteria, isRental]
+  );
+  const previewHomeFilters = useCallback((draft) => {
+    const preview = applyHomeFilters(quickFiltered, draft, evaluate, { criteria: filterCriteria, rental: isRental });
+    return { ...preview.counts, active: preview.active };
+  }, [quickFiltered, evaluate, filterCriteria, isRental]);
   const filtered = useMemo(() => {
     if (mode !== 'homes') return baseList;
-    return sortContenders(applyContenderFilters(baseList, filters, evaluate, query), sortBy, evaluate);
-  }, [baseList, query, mode, filters, sortBy, evaluate]);
+    return sortContenders(refinement.visible, sortBy, evaluate);
+  }, [baseList, mode, refinement, sortBy, evaluate]);
+  const clearAllFilters = () => { setFilters({ ...EMPTY_FILTERS }); setHomeFilters({ ...EMPTY_HOME_FILTERS }); };
+  const removeHomeFilter = (key) => setHomeFilters((current) => {
+    if (key === 'price') return { ...current, priceMin: '', priceMax: '' };
+    if (key === 'sqft') return { ...current, sqftMin: '', sqftMax: '' };
+    if (key === 'lot') return { ...current, lotMinAcres: '' };
+    if (key === 'beds') return { ...current, bedsMin: '' };
+    if (key === 'baths') return { ...current, bathsMin: '' };
+    if (key === 'propertyType') return { ...current, propertyTypes: [] };
+    return { ...current, criteria: current.criteria.filter((criterion) => `criterion:${criterion}` !== key) };
+  });
 
   const filterCounts = useMemo(() => singleFilterCounts(activeHomes, evaluate), [activeHomes, evaluate]);
   const activeLabels = activeFilterLabels(filters);
-  const toggleChip = (key) => setFilters((current) => {
-    if (key === 'all') return { ...EMPTY_FILTERS };
+  const toggleChip = (key) => (key === 'all' ? clearAllFilters() : setFilters((current) => {
     if (key === 'match90') return { ...current, minMatch: current.minMatch === 90 ? null : 90 };
     return { ...current, [key]: !current[key] };
-  });
-  const chipOn = (key) => (key === 'all' ? activeFilterCount(filters) === 0 : key === 'match90' ? filters.minMatch === 90 : !!filters[key]);
+  }));
+  const chipOn = (key) => (key === 'all' ? activeFilterCount(filters) === 0 && !refinement.active : key === 'match90' ? filters.minMatch === 90 : !!filters[key]);
 
   if (mode === 'archive') {
     return (
@@ -692,6 +739,15 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
           </div>
           <div className="hh-homes-toolbar-row is-secondary">
             <div className="hh-filter-chips" role="group" aria-label={`Filter ${vocabulary.pluralLower}`}>
+              <button
+                type="button" className={`hh-filter-open${refinement.active ? ' is-active' : ''}`} aria-haspopup="dialog"
+                aria-label={refinement.active ? `Filter, ${refinement.conditions.length} active` : `Filter ${vocabulary.pluralLower}`}
+                onClick={() => setFiltersOpen(true)}
+              >
+                <SlidersHorizontal size={14} aria-hidden="true" /> Filter
+                {refinement.active && <span className="hh-filter-open-count" aria-hidden="true">{refinement.conditions.length}</span>}
+              </button>
+              <span className="hh-filter-divider" aria-hidden="true" />
               {chips.map((f) => (
                 <button
                   key={f.key}
@@ -706,6 +762,32 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
             </div>
             {collaborationSlot && <div className="hh-homes-collaboration">{collaborationSlot}</div>}
           </div>
+          {refinement.active && (
+            <div className="hh-refine-summary" role="status" aria-live="polite">
+              <p className="hh-refine-summary-counts">
+                <strong>{refinement.counts.confirmed} confirmed</strong>
+                <span>{refinement.counts.possible} possible</span>
+                <span>{refinement.counts.excluded} don’t match</span>
+                <span className="hh-refine-summary-of">of {refinement.counts.total} {refinement.counts.total === 1 ? vocabulary.singularLower : vocabulary.pluralLower}</span>
+              </p>
+              <ul className="hh-refine-pills" aria-label="Active filters">
+                {refinement.conditions.map((condition) => (
+                  <li key={condition.key}>
+                    <button type="button" className="hh-refine-pill" onClick={() => removeHomeFilter(condition.key)} aria-label={`Remove filter: ${condition.label}`}>
+                      {condition.label} <X size={12} aria-hidden="true" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <div className="hh-refine-summary-actions">
+                <div className="hh-refine-segments is-compact" role="radiogroup" aria-label="Which matches to show">
+                  <button type="button" role="radio" aria-checked={refinement.show === SHOW_CONFIRMED} className={`hh-refine-segment${refinement.show === SHOW_CONFIRMED ? ' on' : ''}`} onClick={() => setHomeFilters((current) => ({ ...current, show: SHOW_CONFIRMED }))}>Confirmed only</button>
+                  <button type="button" role="radio" aria-checked={refinement.show === SHOW_POSSIBLE} className={`hh-refine-segment${refinement.show === SHOW_POSSIBLE ? ' on' : ''}`} onClick={() => setHomeFilters((current) => ({ ...current, show: SHOW_POSSIBLE }))}>Confirmed + possible</button>
+                </div>
+                <button type="button" className="hh-refine-clear" onClick={() => setHomeFilters({ ...EMPTY_HOME_FILTERS })}>Clear filters</button>
+              </div>
+            </div>
+          )}
         </section>
       )}
 
@@ -721,18 +803,43 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
             <Link href="/homes" className="hh-btn hh-btn-ghost">Go to My Homes</Link>
           </EmptyLifecycleState>
         ) : (
+          activeHomes.length > 0 && refinement.active && quickFiltered.length > 0 ? (
+            <div className="hh-homes-empty is-filtered">
+              <p className="hh-homes-empty-title">No {vocabulary.pluralLower} meet every filter yet</p>
+              <p>
+                {refinement.show === SHOW_CONFIRMED && refinement.counts.possible > 0
+                  ? `${refinement.counts.possible} ${refinement.counts.possible === 1 ? `${vocabulary.singularLower} might` : `${vocabulary.pluralLower} might`} — something is still unknown.`
+                  : `Try relaxing a filter. Your saved ${vocabulary.pluralLower} are all still here.`}
+              </p>
+              <div className="hh-homes-empty-actions">
+                {refinement.show === SHOW_CONFIRMED && refinement.counts.possible > 0 && (
+                  <button type="button" className="hh-btn" onClick={() => setHomeFilters((current) => ({ ...current, show: SHOW_POSSIBLE }))}>Show possible matches</button>
+                )}
+                <button type="button" className="hh-btn hh-btn-ghost" onClick={() => setFiltersOpen(true)}>Adjust filters</button>
+                <button type="button" className="hh-btn hh-btn-ghost" onClick={clearAllFilters}>Clear filters</button>
+              </div>
+            </div>
+          ) : (
           <div className="hh-homes-empty">
             <p className="hh-homes-empty-title">{activeHomes.length === 0 ? vocabulary.apartment ? "No properties yet" : "You found the homes. We'll help you choose." : 'Nothing matches that search'}</p>
             <p>{activeHomes.length === 0 ? 'Paste a listing link from anywhere to get started.' : 'Try a different search or filter.'}</p>
-            {activeHomes.length > 0 && activeLabels.length > 0 && <button type="button" className="hh-btn hh-btn-ghost" onClick={() => setFilters({ ...EMPTY_FILTERS })}>Clear filters</button>}
+            {activeHomes.length > 0 && (activeLabels.length > 0 || refinement.active) && <button type="button" className="hh-btn hh-btn-ghost" onClick={clearAllFilters}>Clear filters</button>}
             {activeHomes.length === 0 && <button type="button" className="hh-btn" onClick={() => openHomeModal(emptyHome())}><Plus size={15} aria-hidden="true" /> Add a {vocabulary.singular}</button>}
           </div>
+          )
         )
       ) : (
         <CardGrid
-          homes={filtered} priorities={priorities} commuteDestinations={initialCommuteDestinations} mode={mode} onEdit={openHome} onOpen={markOpenedFromBoard} onArchiveRequest={setArchiveTarget}
+          homes={filtered} priorities={priorities} commuteDestinations={initialCommuteDestinations} mode={mode} filterResults={refinement.active ? refinement.byId : null} onEdit={openHome} onOpen={markOpenedFromBoard} onArchiveRequest={setArchiveTarget}
           onWantToTour={wantToTour} onOpenPostTour={setPostTourTarget} onRemoveFromTour={removeFromTour}
           onRestore={restoreHome} onRequestDelete={setDeleteTarget}
+        />
+      )}
+
+      {mode === 'homes' && (
+        <HomeFiltersSheet
+          open={filtersOpen} initial={homeFilters} criteria={filterCriteria} vocabulary={vocabulary} rental={isRental} showLot={!vocabulary.apartment}
+          preview={previewHomeFilters} onApply={(next) => { setHomeFilters(next); setFiltersOpen(false); }} onClose={() => setFiltersOpen(false)}
         />
       )}
 

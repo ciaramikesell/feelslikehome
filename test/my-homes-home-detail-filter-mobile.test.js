@@ -142,7 +142,10 @@ test('My Homes filters, sorts, and counts with the same Match the cards render (
   const board = read('src/components/HomesBoard.jsx');
   assert.match(board, /evaluateCommute\(initialCommuteDestinations, \(destination\) => readCommuteResult\(home, destination\)\)/);
   assert.match(board, /cache\.set\(home, computeMatch\(home, priorities, commuteEvaluation\)\)/);
-  assert.match(board, /sortContenders\(applyContenderFilters\(baseList, filters, evaluate, query\), sortBy, evaluate\)/);
+  // Quick filters, then Filter My Homes, then the chosen sort — every step with the same evaluate.
+  assert.match(board, /applyContenderFilters\(baseList, filters, evaluate, query\)/);
+  assert.match(board, /applyHomeFilters\(quickFiltered, mode === 'homes' \? homeFilters : EMPTY_HOME_FILTERS, evaluate,/);
+  assert.match(board, /sortContenders\(refinement\.visible, sortBy, evaluate\)/);
   assert.match(board, /singleFilterCounts\(activeHomes, evaluate\)/);
   // The former commute-less pathway is gone.
   assert.doesNotMatch(board, /computeMatch\(h, priorities\)/);
