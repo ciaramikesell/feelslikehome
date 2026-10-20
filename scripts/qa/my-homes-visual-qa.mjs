@@ -151,7 +151,7 @@ async function main() {
       assert(heading && heading.width <= 1 && heading.height <= 1, 'old My Homes heading still visible');
       assert(!(await page.getByText('All the places you’re considering').count()), 'old subtitle still rendered');
       // Toolbar contract.
-      const chips = await page.locator('.hh-filter-chips button').allInnerTexts();
+      const chips = await page.locator('.hh-filter-chips .hh-chip').allInnerTexts();
       assert(chips.length === 4 && chips[0] === 'All (5)' && chips[3] === 'Want to Tour (1)', `chips: ${chips}`);
       assert(!chips.some((chip) => /favorite/i.test(chip)), 'Favorites filter reappeared');
       assert(await page.getByRole('button', { name: 'Add a Home' }).isVisible(), 'Add a Home missing');
