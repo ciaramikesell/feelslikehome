@@ -85,7 +85,7 @@ export default function HomeFiltersSheet({ open, initial, criteria, vocabulary, 
   return (
     <Sheet open={open} onClose={onClose} title={`Filter my ${vocabulary.pluralLower}`} size="large" className="hh-refine-sheet">
       <p className="hh-refine-lead">
-        Narrow down the {vocabulary.pluralLower} you’ve saved. Filters are just for exploring — they don’t change My Search, your priorities, or any Match score.
+        Narrow down the {vocabulary.pluralLower} you’ve saved. Filters are just for exploring — they don’t change My Search, your priorities, or any Match score. They apply to this list only; Want to Tour and Archived always show everything.
       </p>
 
       <section className="hh-refine-section" aria-labelledby="hh-refine-facts">

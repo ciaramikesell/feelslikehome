@@ -331,6 +331,20 @@ async function main() {
     const summary = await page.locator('.hh-refine-summary-counts').innerText();
     assert(summary.includes(`${fenced.counts.confirmed} confirmed`), `co-buyer summary "${summary}" expected ${fenced.counts.confirmed}`);
     await shot(page, 'cobuyer-fenced');
+    // Switching search: the other search starts unfiltered, and coming back restores these.
+    const switchTo = async (current) => {
+      await page.getByRole('button', { name: /Switch search/ }).first().click();
+      await page.locator(`.hh-search-option${current ? '.is-current' : ':not(.is-current)'}`).first().click();
+    };
+    await switchTo(false);
+    await page.waitForFunction(() => !document.querySelector('.hh-refine-summary'), null, { timeout: 30000 });
+    await settle(page);
+    assert(!(await page.locator('.hh-refine-summary').count()), 'filters carried into another search');
+    await switchTo(false);
+    await page.locator('.hh-refine-summary').waitFor({ timeout: 30000 });
+    const restored = await page.locator('.hh-refine-summary-counts').innerText();
+    assert(restored.includes(`${fenced.counts.confirmed} confirmed`), `filters not restored after switching back: "${restored}"`);
+    assert(await page.getByText('Filters apply to this list only').isVisible(), 'scope note missing');
     await page.context().close();
   });
 

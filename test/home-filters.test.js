@@ -340,6 +340,11 @@ test('My Homes: a Filter action, live counts, removable pills, both display mode
   assert.match(board, /Remove filter: \$\{condition\.label\}/);
   assert.match(board, /Confirmed only/);
   assert.match(board, /Confirmed \+ possible/);
+  // Scope is said where filters are set and where they are shown.
+  assert.match(board, /Filters apply to this list only — Want to Tour and Archived always show everything\./);
+  assert.match(read('src/components/HomeFiltersSheet.jsx'), /They apply to this list only; Want to Tour and Archived always show everything\./);
+  // Each search restores its own filters, even when switching search keeps the board mounted.
+  assert.match(board, /if \(filtersRestoredFor\.current !== searchId\) \{/);
   // Filters only ever narrow the active My Homes list; Want to Tour, Favorites
   // and Archive keep their own unfiltered lists.
   assert.match(board, /applyHomeFilters\(quickFiltered, mode === 'homes' \? homeFilters : EMPTY_HOME_FILTERS/);

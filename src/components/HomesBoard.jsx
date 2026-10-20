@@ -365,11 +365,13 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   // the active saved homes. Remembered for this browser session only.
   const [homeFilters, setHomeFilters] = useState(EMPTY_HOME_FILTERS);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const filtersRestored = useRef(false);
+  // The search whose filters are loaded. Switching search keeps this board
+  // mounted, so each search restores its own filters rather than inheriting.
+  const filtersRestoredFor = useRef(null);
   useEffect(() => {
     if (mode !== 'homes') return;
-    if (!filtersRestored.current) {
-      filtersRestored.current = true;
+    if (filtersRestoredFor.current !== searchId) {
+      filtersRestoredFor.current = searchId;
       const stored = readStoredHomeFilters(typeof window === 'undefined' ? null : window.sessionStorage, searchId);
       setHomeFilters(stored);
       return;
@@ -770,6 +772,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
                 <span>{refinement.counts.excluded} don’t match</span>
                 <span className="hh-refine-summary-of">of {refinement.counts.total} {refinement.counts.total === 1 ? vocabulary.singularLower : vocabulary.pluralLower}</span>
               </p>
+              <p className="hh-refine-summary-scope">Filters apply to this list only — Want to Tour and Archived always show everything.</p>
               <ul className="hh-refine-pills" aria-label="Active filters">
                 {refinement.conditions.map((condition) => (
                   <li key={condition.key}>
