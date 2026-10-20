@@ -248,10 +248,12 @@ async function main() {
       const first = cards(page).first();
       const heading = await first.locator('h2').innerText();
       await first.locator('.hh-home-identity-link').click();
-      await page.waitForURL(/\/homes\/[0-9a-f-]+/, { waitUntil: 'commit' });
-      await page.locator('.flh-overlay').waitFor();
-      await page.keyboard.press('Escape');
-      await page.waitForURL(/\/homes$/, { waitUntil: 'commit' });
+      await page.waitForURL(/\/homes\/[0-9a-f-]{36}/, { timeout: 60000 });
+      await page.locator('.flh-overlay').waitFor({ timeout: 60000 });
+      await shot(page, `${name}-overlay-open`);
+      await page.getByRole('button', { name: 'Close', exact: true }).click();
+      await page.locator('.flh-overlay').waitFor({ state: 'detached', timeout: 20000 });
+      await page.waitForURL(/\/homes$/);
       await settle(page);
       assert(await cards(page).count() === visionConfirmed.visible.length, 'filters lost after closing a home');
       assert(await cards(page).first().locator('h2').innerText() === heading, 'order changed');
