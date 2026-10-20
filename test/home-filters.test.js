@@ -212,7 +212,7 @@ test('rental shared facts (Pets Allowed) read the shared field, and a neutral to
   assert.deepEqual(neutral.unknown, ['Natural Light rated “Fine”']);
   assert.equal(at({ id: 'd', petsAllowed: null, ratings: {} }).status, 'possible');
   // Rental price filter reads monthly rent and says so.
-  assert.equal(buildConditions({ priceMax: '2500' }, { rental: true })[0].label, 'Rent Up to $2,500');
+  assert.equal(buildConditions({ priceMax: '2500' }, { rental: true })[0].label, 'Rent up to $2,500');
 });
 
 /* --------------------------------- co-buyer separation --------------------------------- */

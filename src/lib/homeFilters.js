@@ -141,7 +141,7 @@ export function buildConditions(filters, { criteria = [], rental = false } = {})
   const priceWord = rental ? 'Rent' : 'Price';
   const range = (key, label, read, min, max, format, unknownReason) => {
     if (min === null && max === null) return;
-    const text = min !== null && max !== null ? `${format(min)}–${format(max)}` : min !== null ? `${format(min)}+` : `Up to ${format(max)}`;
+    const text = min !== null && max !== null ? `${format(min)}–${format(max)}` : min !== null ? `${format(min)}+` : `up to ${format(max)}`;
     conditions.push({
       key, label: `${label} ${text}`,
       test: (home) => {

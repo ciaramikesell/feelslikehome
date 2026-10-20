@@ -12,7 +12,8 @@ and not a second score.
 * **Filter** action at the start of the My Homes quick-filter row (beside All /
   90%+ Matches / No Must-Haves Missing / Want to Tour).
 * Opens `HomeFiltersSheet`: a bottom sheet on iPhone, a centered panel on iPad,
-  and a right-hand panel beside the homes on desktop (≥ 1121px).
+  and a right-hand panel beside the homes on desktop (≥ 1121px). Touch screens
+  get 44px targets (`pointer: coarse`), including iPad in landscape.
 * Applied filters show as a summary bar under the toolbar: counts, one removable
   pill per condition, the Confirmed only / Confirmed + possible switch, and
   Clear filters.
@@ -106,6 +107,16 @@ the database around real filtering.
   real-Postgres tests.
 * `scripts/qa/home-filters-e2e.mjs` — browser QA (30 homes, owner and co-buyer,
   desktop / iPad / iPhone).
+
+## QA
+
+`scripts/qa/home-filters-e2e.mjs` (37 steps) passed at 1440×900, iPad
+820×1180 and 1180×820, and iPhone 390×844: live counts equal the pure module's,
+possible-match reasons, Confirmed only, open/close a home, tab switching,
+Want to Tour on a filtered card, zero results → relax → clear, keyboard and
+focus return, a co-buyer's separate answers, no horizontal overflow, no console
+errors, and an unchanged database fingerprint. Screenshots:
+`docs/filter-my-homes-screenshots/`.
 
 ## Not in v1
 
