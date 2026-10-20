@@ -2612,9 +2612,11 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
   .hh-sheet-backdrop:has(> .hh-refine-sheet) { justify-content: flex-end; align-items: stretch; padding: 0; }
   .hh-refine-sheet.hh-sheet { max-width: 460px; max-height: none; height: 100dvh; border-radius: 18px 0 0 18px; }
 }
-/* iPad: a spacious centered panel with large touch targets. */
-@media (min-width: 701px) and (max-width: 1120px) {
-  .hh-refine-sheet .hh-refine-chip, .hh-refine-sheet .hh-refine-segment { min-height: 44px; }
+/* Touch screens (iPad in either orientation, phones): 44px targets. */
+@media (pointer: coarse) {
+  .hh-refine-sheet .hh-refine-chip, .hh-refine-sheet .hh-refine-segment, .hh-refine-sheet .hh-sheet-close,
+  .hh-refine-summary .hh-refine-segment, .hh-refine-pill, .hh-refine-clear, .hh-filter-open { min-height: 44px; }
+  .hh-refine-sheet .hh-sheet-close { min-width: 44px; display: inline-flex; align-items: center; justify-content: center; }
 }
 @media (max-width: 700px) {
   .hh-refine-summary { grid-template-columns: minmax(0, 1fr); padding: 12px 13px; }

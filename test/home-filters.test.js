@@ -356,9 +356,9 @@ test('My Homes: a Filter action, live counts, removable pills, both display mode
   assert.match(sheet, /never as a No/);
 });
 
-test('responsive presentation: phone bottom sheet, iPad panel, desktop side panel, 16px inputs on phones', () => {
+test('responsive presentation: phone bottom sheet, iPad panel, desktop side panel, 44px touch targets, 16px inputs on phones', () => {
   const css = read('src/app/globals.css');
   assert.match(css, /@media \(min-width: 1121px\) \{\n  \.hh-sheet-backdrop:has\(> \.hh-refine-sheet\) \{ justify-content: flex-end;/);
-  assert.match(css, /@media \(min-width: 701px\) and \(max-width: 1120px\) \{\n  \.hh-refine-sheet \.hh-refine-chip, \.hh-refine-sheet \.hh-refine-segment \{ min-height: 44px; \}/);
+  assert.match(css, /@media \(pointer: coarse\) \{\n  \.hh-refine-sheet \.hh-refine-chip, \.hh-refine-sheet \.hh-refine-segment, \.hh-refine-sheet \.hh-sheet-close,/);
   assert.match(css, /\.hh-refine-input input \{ font-size: 16px; \} \/\* no iOS focus zoom \*\//);
 });

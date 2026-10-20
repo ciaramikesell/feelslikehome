@@ -124,7 +124,7 @@ const fingerprint = () => q(`select
   (select md5(coalesce(string_agg(t::text, '|' order by t.user_id), '')) from public.search_member_priorities t where t.search_id = '${info.search}') as priorities`)[0];
 
 async function signedIn(browser, who, viewport, { touch = false } = {}) {
-  const context = await browser.newContext({ viewport, deviceScaleFactor: viewport.width < 500 ? 3 : viewport.width < 1100 ? 2 : 1, hasTouch: touch, isMobile: viewport.width < 500 });
+  const context = await browser.newContext({ viewport, deviceScaleFactor: viewport.width < 500 ? 3 : viewport.width < 1100 ? 2 : 1, hasTouch: touch, isMobile: touch });
   const session = info.users[who].session;
   await context.addCookies([{ name: 'sb-localhost-auth-token', value: `base64-${Buffer.from(JSON.stringify(session)).toString('base64url')}`, domain: 'localhost', path: '/' }]);
   await context.addInitScript(() => { try { localStorage.setItem('flh-mobile-tour-dismissed', '1'); localStorage.setItem('flh-name-prompt-dismissed', '1'); } catch { /* ignore */ } });
@@ -207,7 +207,7 @@ async function main() {
       }
       // Touch targets.
       if (touch) {
-        const small = await page.evaluate(() => [...document.querySelectorAll('.hh-refine-sheet button, .hh-refine-sheet input')]
+        const small = await page.evaluate(() => [...document.querySelectorAll('.hh-refine-sheet button, .hh-refine-sheet .hh-refine-input')]
           .filter((el) => el.getBoundingClientRect().height < 40).map((el) => el.textContent.trim() || el.getAttribute('aria-label') || el.id));
         assert(!small.length, `targets under 40px: ${small.join(', ')}`);
       }
@@ -248,10 +248,10 @@ async function main() {
       const first = cards(page).first();
       const heading = await first.locator('h2').innerText();
       await first.locator('.hh-home-identity-link').click();
-      await page.waitForURL(/\/homes\/[0-9a-f-]+/);
+      await page.waitForURL(/\/homes\/[0-9a-f-]+/, { waitUntil: 'commit' });
       await page.locator('.flh-overlay').waitFor();
       await page.keyboard.press('Escape');
-      await page.waitForURL(/\/homes$/);
+      await page.waitForURL(/\/homes$/, { waitUntil: 'commit' });
       await settle(page);
       assert(await cards(page).count() === visionConfirmed.visible.length, 'filters lost after closing a home');
       assert(await cards(page).first().locator('h2').innerText() === heading, 'order changed');
