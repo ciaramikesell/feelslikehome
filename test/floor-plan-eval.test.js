@@ -21,7 +21,7 @@ import { estimateClaudeImageTokens, normalizeImage } from '../scripts/floor-plan
 import { measuredCallUsd, PRICES } from '../scripts/floor-plan-eval/pricing.mjs';
 import { PROFILES, PURCHASE_ALL, PURCHASE_CUSTOM } from '../scripts/floor-plan-eval/profiles.mjs';
 import { SYSTEM_PROMPT, USER_PROMPT } from '../scripts/floor-plan-eval/prompt.mjs';
-import { prepareFixtures, runBenchmark } from '../scripts/floor-plan-eval/run.mjs';
+import { checkReadiness, prepareFixtures, runBenchmark } from '../scripts/floor-plan-eval/run.mjs';
 import { attemptBound, BudgetError, Ledger, overshootReserveUsd, promptTokenBound } from '../scripts/floor-plan-eval/budget.mjs';
 import { EXTRACTION_SCHEMA, PORTABLE_SCHEMA_KEYWORDS } from '../scripts/floor-plan-eval/schema.mjs';
 import { scoreResponse } from '../scripts/floor-plan-eval/score.mjs';
@@ -366,7 +366,7 @@ const config = readJson('providers.config.json');
 const tmpDir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'fpa-ledger-'));
 const approvedManifest = { runId: 'test-run-001', approvedBy: 'test', approvedOn: '2026-11-02', maxTotalUsd: 5, providers: ['sonnet-5-5', 'gemini-3-flash'], repeats: 1, fixtureSource: 'committed-synthetic-fixtures', geminiPaidTierConfirmed: true, confirmedModelIds: ['gemini-3-flash-preview'] };
 const enabledConfig = { providers: config.providers.map((p) => ({ ...p, enabled: true })) };
-const env = { FLH_FPA_PAID_RUN: 'test-run-001', ANTHROPIC_API_KEY: 'test-not-a-key', GEMINI_API_KEY: 'test-not-a-key' };
+const env = { FLH_FPA_PAID_RUN: 'test-run-001', FLH_FPA_ANTHROPIC_API_KEY: 'test-not-a-key', FLH_FPA_GEMINI_API_KEY: 'test-not-a-key' };
 
 test('every paid adapter is disabled in the committed configuration', () => {
   assert.ok(config.providers.length >= 3);
@@ -386,7 +386,8 @@ test('a paid adapter is refused unless every approval condition holds', () => {
     [{ paid: false }, /--paid/],
     [{ manifest: null }, /no approved run manifest/],
     [{ env: { ...env, FLH_FPA_PAID_RUN: 'other' } }, /FLH_FPA_PAID_RUN/],
-    [{ env: { ...env, ANTHROPIC_API_KEY: '' } }, /ANTHROPIC_API_KEY/],
+    [{ env: { ...env, FLH_FPA_ANTHROPIC_API_KEY: '' } }, /FLH_FPA_ANTHROPIC_API_KEY/],
+    [{ env: { ANTHROPIC_API_KEY: 'ambient-key', FLH_FPA_PAID_RUN: 'test-run-001' } }, /FLH_FPA_ANTHROPIC_API_KEY/],
     [{ manifest: { ...approvedManifest, providers: ['haiku-5-5'] } }, /does not approve/],
     [{ manifest: { ...approvedManifest, maxTotalUsd: 500 } }, /hard ceiling/],
   ];
@@ -395,7 +396,10 @@ test('a paid adapter is refused unless every approval condition holds', () => {
     assert.throws(() => createAdapter('sonnet-5-5', options), (e) => e instanceof PaidRunNotApprovedError && e.reasons.some((r) => pattern.test(r)), String(pattern));
   }
   assert.throws(() => createAdapter('gemini-3-flash', { config: enabledConfig, paid: true, manifest: { ...approvedManifest, geminiPaidTierConfirmed: false }, env }), /paid-tier|free tier/);
-  assert.throws(() => createAdapter('gemini-3-flash', { config: enabledConfig, paid: true, manifest: { ...approvedManifest, confirmedModelIds: [] }, env }), /unverified/);
+  const unverifiedModel = { providers: enabledConfig.providers.map((p) => (p.provider === 'google' ? { ...p, modelIdVerified: false } : p)) };
+  assert.throws(() => createAdapter('gemini-3-flash', { config: unverifiedModel, paid: true, manifest: { ...approvedManifest, confirmedModelIds: [] }, env }), /unverified/);
+  assert.match(validateRunManifest({ ...approvedManifest, approvedBy: 'PENDING owner' }).join(), /draft manifest is never an approval/);
+  assert.match(validateRunManifest({ ...approvedManifest, approvedBy: '' }).join(), /approvedBy missing/);
   assert.deepEqual(validateRunManifest({ ...approvedManifest, fixtureSource: 'user-uploads' }), ['manifest.fixtureSource must be "committed-synthetic-fixtures"']);
 });
 
@@ -423,7 +427,9 @@ test('adapters build the expected requests and normalize measured usage into cos
   assert.equal(gemini.usage.separateThinkingTokens, 1000);
   const geminiCost = measuredCallUsd({ provider: 'google', model: 'gemini-3-flash-preview', usage: gemini.usage });
   assert.equal(geminiCost.usd.toFixed(4), '0.0110'); // 4000×0.5 + (2000+1000)×3 per MTok
-  assert.match(geminiCost.basis, /UNVERIFIED/);
+  assert.equal(geminiCost.basis, 'measured tokens × verified published price');
+  assert.equal(sent.gemini.config.serviceTier, 'standard');
+  assert.equal(sent.anthropic.service_tier, 'standard_only');
 });
 
 test('budget: a paid run whose worst case exceeds the approved cap stops before the first call', async () => {
@@ -436,7 +442,7 @@ test('budget: a paid run whose worst case exceeds the approved cap stops before 
   assert.equal(calls, 0);
   assert.ok(attemptBound(config.providers[0]).usd < 0.1);
   assert.equal(PRICES['anthropic:claude-sonnet-5-5'].verified, true);
-  assert.equal(PRICES['google:gemini-3-flash-preview'].verified, false);
+  assert.equal(PRICES['google:gemini-3-flash-preview'].verified, true);
 });
 
 test('an approved paid run (fake client) records measured usage, latency and cost per call', async () => {
@@ -591,7 +597,7 @@ test('error text never carries a key', async () => {
   const secret = 'sk-test-abcdefghijklmnop';
   const client = { messages: { create: async () => { throw apiError(400, `bad key ${secret}`); } } };
   const { results } = await runBenchmark({
-    paid: true, config: enabledConfig, env: { ...env, ANTHROPIC_API_KEY: secret }, ledgerDir: tmpDir(), clientFactories: { anthropic: async () => client },
+    paid: true, config: enabledConfig, env: { ...env, FLH_FPA_ANTHROPIC_API_KEY: secret }, ledgerDir: tmpDir(), clientFactories: { anthropic: async () => client },
     manifest: { ...approvedManifest, providers: ['sonnet-5-5'], fixtures: ['F01-ranch-clean'], maxTotalUsd: 1 },
   });
   assert.ok(!results['sonnet-5-5'].calls[0].error.includes(secret));
@@ -622,4 +628,50 @@ test('scoring: partial transcriptions are misses, not hallucinations; symbol ove
   assert.deepEqual(s6.overclaims, ['soaking_tub']);
   x6.rooms.push({ id: 'zz', floorId: 'f1', printedLabel: 'SAUNA', qualifierText: '', type: 'other', evidenceCategory: 'printed_label', configuration: 'as_drawn', evidence: 'x' });
   assert.deepEqual(scoreResponse(gt6, JSON.stringify(x6)).hallucinatedLabels, ['SAUNA']);
+});
+
+// ---- standard paid tier, keys, readiness -------------------------------------------
+
+test('Gemini is costed at the owner-verified standard paid rates, thinking at the output rate', () => {
+  const price = PRICES['google:gemini-3-flash-preview'];
+  assert.deepEqual([price.inputPerMTok, price.outputPerMTok, price.verified], [0.5, 3, true]);
+  assert.match(price.tier, /standard/);
+  assert.match(price.notes, /55 days/);
+  const gemini = config.providers.find((p) => p.provider === 'google');
+  assert.equal(gemini.model, 'gemini-3-flash-preview');
+  assert.equal(gemini.modelIdVerified, true);
+  assert.equal(gemini.serviceTier, 'standard');
+  // 1M prompt tokens + 1M answer tokens + 1M thinking tokens = $0.50 + $3 + $3.
+  const usd = measuredCallUsd({ provider: 'google', model: 'gemini-3-flash-preview', usage: { inputTokens: 1e6, outputTokens: 1e6, separateThinkingTokens: 1e6 } }).usd;
+  assert.equal(usd.toFixed(2), '6.50');
+  for (const p of config.providers) assert.match(p.apiKeyEnv, /^FLH_FPA_/, 'harness-only key names');
+});
+
+test('a response billed at a non-standard tier, or in fast mode, ends the run', async () => {
+  let calls = 0;
+  const client = { messages: { create: async () => { calls += 1; return { ...okReply(), usage: { input_tokens: 7000, output_tokens: 2000, service_tier: 'priority' } }; } } };
+  const { run } = await paidRun(client, { fixtures: ['F01-ranch-clean', 'F02a-two-story-first'] });
+  assert.equal(calls, 1);
+  assert.match(run.abortReason, /billing tier "priority"/);
+  calls = 0;
+  const fast = { messages: { create: async () => { calls += 1; return { ...okReply(), usage: { input_tokens: 7000, output_tokens: 2000, service_tier: 'standard', speed: 'fast' } }; } } };
+  assert.match((await paidRun(fast, { fixtures: ['F01-ranch-clean', 'F02a-two-story-first'] })).run.abortReason, /fast mode/);
+  assert.equal(calls, 1);
+});
+
+test('readiness check sends nothing and reports exactly what is missing', async () => {
+  const draft = { ...approvedManifest, runId: 'fpa2-smoke-test', approvedBy: '', approvedOn: '', maxTotalUsd: 0.5, providers: ['sonnet-5-5', 'haiku-5-5', 'gemini-3-flash'], repeats: 1, fixtures: ['F01-ranch-clean'], geminiPaidTierConfirmed: false };
+  const notReady = await checkReadiness({ manifest: draft, enable: [], env: {}, ledgerDir: tmpDir(), skipNetwork: true });
+  const failed = notReady.filter((c) => !c.ok).map((c) => c.name);
+  assert.ok(failed.includes('manifest is a complete approval'));
+  assert.ok(failed.includes('sonnet-5-5: key present in FLH_FPA_ANTHROPIC_API_KEY'));
+  assert.ok(notReady.find((c) => c.name === 'budget preflight fits the cap').ok);
+  const approved = { ...draft, approvedBy: 'Owner', approvedOn: '2026-11-02', geminiPaidTierConfirmed: true };
+  const ready = await checkReadiness({
+    manifest: approved, enable: ['sonnet-5-5', 'haiku-5-5', 'gemini-3-flash'], ledgerDir: tmpDir(), skipNetwork: true,
+    env: { FLH_FPA_PAID_RUN: 'fpa2-smoke-test', FLH_FPA_ANTHROPIC_API_KEY: 'x', FLH_FPA_GEMINI_API_KEY: 'y' },
+  });
+  const notOk = ready.filter((c) => !c.ok && !/importable/.test(c.name)); // SDKs are installed only for an approved run
+  assert.deepEqual(notOk, []);
+  assert.ok(ready.find((c) => c.name.startsWith('manifest is the smoke run')).ok);
 });

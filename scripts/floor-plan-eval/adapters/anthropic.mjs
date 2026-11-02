@@ -32,6 +32,7 @@ export function buildAnthropicRequest(cfg, { image, systemPrompt, userPrompt, sc
       ],
     }],
     output_config: { effort: cfg.effort, format: { type: 'json_schema', schema } },
+    service_tier: 'standard_only', // never Priority Tier pricing
   };
 }
 
@@ -57,6 +58,9 @@ export function createAnthropicAdapter(cfg, { clientFactory = defaultClient } = 
         requestId: response._request_id ?? response.id ?? null,
         latencyMs,
         measured: true,
+        // Billing tier the provider reports; the runner aborts on anything but standard.
+        pricingTier: usage.service_tier ?? null,
+        fastMode: usage.speed === 'fast',
         usage: {
           // Caching is not used; any cache tokens are priced pessimistically in pricing.mjs.
           inputTokens: (usage.input_tokens || 0) + (usage.cache_read_input_tokens || 0),

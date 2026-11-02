@@ -15,7 +15,8 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createAdapter } from './adapters/index.mjs';
+import dns from 'node:dns/promises';
+import { createAdapter, PaidRunNotApprovedError, validateRunManifest } from './adapters/index.mjs';
 import { attemptBound, Ledger, overshootReserveUsd } from './budget.mjs';
 import { inspectImageMetadata } from './metadata.mjs';
 import { normalizeImage } from './normalize.mjs';
@@ -30,7 +31,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const readJson = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
 
 function parseArgs(argv) {
-  const args = { providers: null, repeats: null, fixtures: null, out: null, paid: false, manifest: null, label: null, estimate: false, enable: null };
+  const args = { providers: null, repeats: null, fixtures: null, out: null, paid: false, manifest: null, label: null, estimate: false, enable: null, check: false };
   for (let i = 0; i < argv.length; i += 1) {
     const a = argv[i];
     const next = () => argv[++i];
@@ -42,6 +43,7 @@ function parseArgs(argv) {
     else if (a === '--manifest') args.manifest = next();
     else if (a === '--label') args.label = next();
     else if (a === '--estimate') args.estimate = true;
+    else if (a === '--check') args.check = true;
     else if (a === '--enable') args.enable = next().split(',').map((x) => x.trim()).filter(Boolean);
     else throw new Error(`unknown argument ${a}`);
   }
@@ -138,13 +140,17 @@ export async function runBenchmark(options = {}) {
               Object.assign(call, {
                 latencyMs: response.latencyMs, measured: response.measured, usage: response.usage, rawUsage: response.rawUsage,
                 stopReason: response.stopReason, refusal: response.refusal, truncated: response.truncated, servedModel: response.servedModel, requestId: response.requestId,
-                responseText: response.text, error: undefined,
+                responseText: response.text, pricingTier: response.pricingTier ?? null, error: undefined,
               });
               if (adapter.paid) {
                 const cost = measuredCallUsd({ provider: adapter.provider, model: adapter.model, usage: response.usage });
                 call.costUsd = cost.usd;
                 call.costBasis = cost.basis;
                 ledger.settle(entry, { measuredUsd: cost.usd, status: 'ok' });
+                const tier = String(response.pricingTier ?? 'standard').toLowerCase();
+                if (!['standard', 'unspecified'].includes(tier) || response.fastMode) {
+                  abortReason = `${adapter.id} ${p.fixture.id}: provider reported billing tier "${response.pricingTier}"${response.fastMode ? ' (fast mode)' : ''}, not standard`;
+                }
                 if (cost.usd > bound(adapter)) {
                   abortReason = `${adapter.id} ${p.fixture.id}: measured $${cost.usd.toFixed(4)} exceeded the modeled bound $${bound(adapter).toFixed(4)}`;
                 }
@@ -201,8 +207,78 @@ export async function estimateRun({ providers, repeats = 1, fixtures = null }) {
   return { rows, reserveUsd, totalTypicalUsd: rows.reduce((s, r) => s + r.typicalUsd, 0), totalBoundUsd, requiredCapUsd: totalBoundUsd + reserveUsd };
 }
 
+// Readiness check for an approved paid run. Sends NO request to any provider:
+// it evaluates the gates, key presence (never values), SDK availability,
+// fixtures and privacy, the budget preflight, the ledger, and DNS resolution
+// of the API hosts, then stops.
+const API_HOSTS = Object.freeze({ anthropic: 'api.anthropic.com', google: 'generativelanguage.googleapis.com' });
+const SDK_MODULES = Object.freeze({ anthropic: '@anthropic-ai/sdk', google: '@google/genai' });
+
+export async function checkReadiness({ manifest: manifestArg, enable = [], env = process.env, ledgerDir = path.join(here, 'runs', 'ledger'), skipNetwork = false }) {
+  const checks = [];
+  const add = (name, ok, detail = '') => checks.push({ name, ok, detail });
+  const config = readJson(path.join(here, 'providers.config.json'));
+  const manifest = typeof manifestArg === 'string' ? readJson(manifestArg) : manifestArg;
+  const problems = validateRunManifest(manifest);
+  add('manifest is a complete approval', problems.length === 0, problems.join('; '));
+  if (!manifest) return checks;
+  const smoke = manifest.repeats === 1 && manifest.fixtures?.length === 1 && manifest.maxTotalUsd <= 0.5;
+  add('manifest is the smoke run (1 fixture, 1 repeat, cap ≤ $0.50)', smoke, `fixtures=${JSON.stringify(manifest.fixtures)} repeats=${manifest.repeats} cap=$${manifest.maxTotalUsd}`);
+  add('FLH_FPA_PAID_RUN matches the manifest runId', env.FLH_FPA_PAID_RUN === manifest.runId);
+  const configs = [];
+  for (const id of manifest.providers || []) {
+    const cfg = config.providers.find((p) => p.id === id);
+    if (!cfg) { add(`${id}: known provider`, false); continue; }
+    configs.push(cfg);
+    add(`${id}: key present in ${cfg.apiKeyEnv}`, Boolean(env[cfg.apiKeyEnv]), 'value not read or printed');
+    try {
+      createAdapter(id, { paid: true, manifest, env, config, enable });
+      add(`${id}: approval gate passes`, true);
+    } catch (error) {
+      add(`${id}: approval gate passes`, false, error instanceof PaidRunNotApprovedError ? error.reasons.join('; ') : error.message);
+    }
+    try {
+      await import(SDK_MODULES[cfg.provider]);
+      add(`${id}: ${cfg.sdk} importable`, true);
+    } catch {
+      add(`${id}: ${cfg.sdk} importable`, false, `npm install --no-save ${cfg.sdk}`);
+    }
+    if (!skipNetwork) try {
+      await dns.lookup(API_HOSTS[cfg.provider]);
+      add(`${id}: ${API_HOSTS[cfg.provider]} resolves (DNS only, no request)`, true);
+    } catch (error) {
+      add(`${id}: ${API_HOSTS[cfg.provider]} resolves (DNS only, no request)`, false, `${error.code || error.message}: allow this host in the environment's network settings`);
+    }
+  }
+  try {
+    const prepared = await prepareFixtures({ fixtureIds: manifest.fixtures || null });
+    add('fixtures match the CC0 manifest and normalize without metadata', prepared.every((p) => p.privacy.normalizedClean), prepared.map((p) => p.fixture.id).join(', '));
+    const boundUsd = configs.reduce((sum, cfg) => sum + attemptBound(cfg).usd * prepared.length * manifest.repeats, 0);
+    const reserveUsd = overshootReserveUsd(configs);
+    add('budget preflight fits the cap', boundUsd + reserveUsd <= manifest.maxTotalUsd, `bound $${boundUsd.toFixed(4)} + reserve $${reserveUsd.toFixed(4)} ≤ $${manifest.maxTotalUsd}`);
+  } catch (error) {
+    add('fixtures match the CC0 manifest and normalize without metadata', false, error.message);
+  }
+  // Node's built-in fetch (used by both SDKs) ignores HTTPS_PROXY unless
+  // NODE_USE_ENV_PROXY=1 (Node ≥ 22.21). NO_PROXY keeps api.anthropic.com direct.
+  if (env.HTTPS_PROXY && configs.some((cfg) => cfg.provider === 'google')) {
+    add('NODE_USE_ENV_PROXY=1 so Gemini traffic uses the environment proxy', env.NODE_USE_ENV_PROXY === '1', 'prefix the run command with NODE_USE_ENV_PROXY=1');
+  }
+  const ledgerFile = path.join(ledgerDir, `${manifest.runId}.json`);
+  const committed = fs.existsSync(ledgerFile) ? JSON.parse(fs.readFileSync(ledgerFile, 'utf8')).committedUsd : 0;
+  add('ledger: nothing committed yet for this runId', committed === 0, `$${committed}`);
+  add('ledger: no lock held', !fs.existsSync(path.join(ledgerDir, `${manifest.runId}.lock`)));
+  return checks;
+}
+
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   const args = parseArgs(process.argv.slice(2));
+  if (args.check) {
+    const checks = await checkReadiness({ manifest: args.manifest, enable: args.enable || [] });
+    for (const c of checks) console.log(`${c.ok ? 'ok  ' : 'FAIL'} ${c.name}${c.detail ? ` — ${c.detail}` : ''}`);
+    console.log(checks.every((c) => c.ok) ? 'READY (no request was sent)' : 'NOT READY (no request was sent)');
+    process.exit(0);
+  }
   if (args.estimate) {
     const estimate = await estimateRun({ providers: args.providers || ['sonnet-5-5', 'haiku-5-5', 'gemini-3-flash'], repeats: args.repeats || 3, fixtures: args.fixtures });
     for (const r of estimate.rows) console.log(`${r.id.padEnd(16)} ${String(r.calls).padStart(3)} calls  typical $${r.typicalUsd.toFixed(2)}  bound $${r.boundUsd.toFixed(2)} ($${r.perAttemptBoundUsd.toFixed(4)}/attempt)${r.priceVerified ? '' : '  (price UNVERIFIED)'}`);

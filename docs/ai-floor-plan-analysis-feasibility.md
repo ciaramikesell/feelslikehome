@@ -69,22 +69,22 @@ Estimated cost at the recommended model is about **$0.06 per analysis, budgeted 
 |---|---|---|
 | Anthropic (Claude API) | Yes: `platform.claude.com` pricing, vision, structured outputs, API data retention pages fetched 2026-10-31 | **Verified** from official docs |
 | OpenAI | **No.** `platform.openai.com` and `developers.openai.com` are outside this session's network allowlist | **Unverified.** Taken from search-engine snippets of OpenAI's own pages. Re-check before use |
-| Google Gemini | **No.** `ai.google.dev` is outside the allowlist | **Unverified.** Taken from search-engine snippets of Google's own pages. Re-check before use |
+| Google Gemini | **No.** `ai.google.dev` is outside the allowlist | **Partly verified.** On 2026-11-02 the project owner confirmed from Google's official docs: model id `gemini-3-flash-preview`; standard paid tier $0.50 input / $3 output per 1M tokens, output including thinking; paid services not used to improve Google products; 55-day abuse-monitoring retention; AI Studio project spend caps may overshoot because of billing delays. Image-token counts, per-image limits and JSON-schema details remain unverified. |
 | Anthropic privacy center | **No** (`privacy.claude.com` blocked) | The commercial-retention article could not be read directly (see the retention note) |
 
-To verify the OpenAI and Google rows, allow `platform.openai.com`, `developers.openai.com` and `ai.google.dev` in the environment's network settings and re-run this section.
+To verify the OpenAI row and the rest of the Google row, allow `platform.openai.com`, `developers.openai.com` and `ai.google.dev` in the environment's network settings and re-run this section.
 
 ### Comparison
 
-| | **Claude Sonnet 5.5** (recommended start) | Claude Opus 5.5 | Claude Haiku 5.5 | Gemini 3 Flash *(unverified)* | GPT-5.5 *(unverified)* |
+| | **Claude Sonnet 5.5** (recommended start) | Claude Opus 5.5 | Claude Haiku 5.5 | Gemini 3 Flash (`gemini-3-flash-preview`) *(price and retention owner-verified)* | GPT-5.5 *(unverified)* |
 |---|---|---|---|---|---|
 | Price / 1M input · output | **$2 · $10** | $4 · $20 | $0.10 · $0.50 (≤ 100k prompt) | $0.50 · $3 | $5 · $30 |
 | Batch | 50% off, but **29-day retention, not ZDR-eligible**, so don't use | same | same | ~50% off reported | 50% off reported |
 | Image resolution | High-res tier: **2,576 px long edge, max 4,784 visual tokens**; `⌈w/28⌉×⌈h/28⌉` tokens | same | high-res tier | `media_resolution` caps: 280 / 560 / **1,120** (high, default) / 2,240 (ultra-high, per part) tokens per image | 32 px patches × model multiplier, patch budget per model (exact GPT-5.5 limits not confirmed) |
 | Per-image limits | 10 MB base64 (first-party), up to 600 images/request | same | same | not verified | not verified |
 | Structured JSON | GA `output_config.format` json_schema (enums, `required`, `additionalProperties:false`; no min/max length constraints) | same | same | JSON schema response format (not verified here) | Structured Outputs (not verified here) |
-| Training on API data | No, unless expressly permitted | same | same | Paid tier: no; **free tier: yes, human review possible** | No (per data-controls page) |
-| Default retention | Docs: conversation content **not retained by default** except Covered Models (Fable/Mythos 5.x, 30 days). Flagged content up to 2 years. | same | same | Paid: prompts and responses logged **55 days** for abuse monitoring; ZDR only via Vertex AI | Abuse-monitoring logs **up to 30 days**; ZDR/Modified Abuse Monitoring on approval; Responses API `store` defaults to 30-day app state, so set `store:false` |
+| Training on API data | No, unless expressly permitted | same | same | Paid tier: no (owner-verified); **free tier: yes, human review possible** | No (per data-controls page) |
+| Default retention | Docs: conversation content **not retained by default** except Covered Models (Fable/Mythos 5.x, 30 days). Flagged content up to 2 years. | same | same | Paid: prompts and responses logged **55 days** for abuse monitoring (owner-verified); ZDR only via Vertex AI | Abuse-monitoring logs **up to 30 days**; ZDR/Modified Abuse Monitoring on approval; Responses API `store` defaults to 30-day app state, so set `store:false` |
 | ZDR | Messages API eligible on request (per org) | same | same | Via Vertex AI | On approval |
 | Likely accuracy (judgment, to be measured) | Strong on printed labels and dense documents at high-res; spatial relationships "approximate" per docs | Highest Claude accuracy, about 2× cost | Cheapest; likely weaker on small abbreviations and adjacency | Low cost; the 1,120-token default may blur small labels on dense plans, so ultra-high is needed | Strong vision reported; highest cost of the set |
 | Latency (unmeasured) | Estimate 10–40 s with ~4k output tokens at low/medium effort | slower | fastest | fast | unknown |
@@ -300,7 +300,7 @@ New schema (proposed, not created): `floor_plan_analyses`, `floor_plan_analysis_
 | Claude Haiku 5.5 | $0.10 / $0.50 | $0.003 | $0.006 | Verified |
 | **Claude Sonnet 5.5** | $2 / $10 | **$0.056** | **$0.12** | Verified |
 | Claude Opus 5.5 | $4 / $20 | $0.111 | $0.24 | Verified |
-| Gemini 3 Flash (1,120 → 2,240 image tokens) | $0.50 / $3 | $0.014 | $0.033 | **Unverified** |
+| Gemini 3 Flash (1,120 → 2,240 image tokens) | $0.50 / $3 | $0.014 | $0.033 | Price owner-verified 2026-11-02 (image tokens unverified) |
 | GPT-5.5 (~3,000 image tokens assumed) | $5 / $30 | $0.15 | $0.34 | **Unverified** (image tokens also unverified) |
 
 ### Per month
@@ -310,10 +310,10 @@ New schema (proposed, not created): `floor_plan_analyses`, `floor_plan_analysis_
 | Claude Haiku 5.5 | $0.30 – $0.60 | $3 – $6 | $28 – $60 |
 | **Claude Sonnet 5.5** | **$6 – $12** | **$56 – $120** | **$560 – $1,200** |
 | Claude Opus 5.5 | $11 – $24 | $111 – $240 | $1,110 – $2,400 |
-| Gemini 3 Flash *(unverified)* | $1.40 – $3.30 | $14 – $33 | $140 – $330 |
+| Gemini 3 Flash | $1.40 – $3.30 | $14 – $33 | $140 – $330 |
 | GPT-5.5 *(unverified)* | $15 – $34 | $150 – $340 | $1,500 – $3,400 |
 
-**Verified:** Claude per-token prices, the image token formula, resolution caps, the batch discount and the US-inference multiplier. **Estimated:** prompt size, output/thinking tokens, retry overhead and volume. **Unverified:** all Gemini and OpenAI prices and image-token behavior. The proof of concept replaces these estimates with measured `usage` numbers per model.
+**Verified:** Claude per-token prices, the image token formula, resolution caps, the batch discount and the US-inference multiplier. **Estimated:** prompt size, output/thinking tokens, retry overhead and volume. **Owner-verified (2026-11-02):** Gemini 3 Flash standard paid-tier prices. **Unverified:** OpenAI prices, and image-token behavior for Gemini and OpenAI. The proof of concept replaces these estimates with measured `usage` numbers per model.
 
 ---
 
@@ -405,7 +405,7 @@ Each step needs approval; nothing here is started.
 - **Accuracy on real-world plans** (photos of brochures, unlabeled MLS plans) is unmeasured. This is the main viability risk, and the POC exists to measure it.
 - **Thinking-token volume** drives cost more than image tokens; it must be measured per effort level.
 - **Retention wording** differs between Anthropic's API docs and an older privacy article; resolve this via ZDR or written confirmation.
-- **Unverified competitor numbers** (network-blocked docs).
+- **Unverified competitor numbers** (network-blocked docs): OpenAI throughout; for Gemini, image-token counts and per-image limits (price, retention and model id were owner-verified on 2026-11-02).
 - **Copyright:** user-uploaded plans are usually the listing's copyrighted material. Sending one to a processor for the user's own analysis is likely fine under our terms, but legal should confirm the user-content license language.
 - **Vercel function duration** limits on the current plan should be confirmed (route needs ~60–90 s headroom).
 - **New dependency** (`sharp` or equivalent) for server-side image normalization.
@@ -428,7 +428,7 @@ The extraction schema is now `fpa-2`. It adds `configuration` and `qualifierText
 Verified (fetched):
 - Anthropic: [Pricing](https://platform.claude.com/docs/en/about-claude/pricing), [Vision](https://platform.claude.com/docs/en/build-with-claude/vision), [Structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs), [API and data retention](https://platform.claude.com/docs/en/manage-claude/api-and-data-retention)
 
-Unverified (search snippets of official pages; direct fetch blocked by network policy):
+Unverified from this environment (search snippets of official pages; direct fetch blocked by network policy). The Gemini price, retention, model id and spend-cap behavior were later confirmed by the project owner from these official pages:
 - OpenAI: [GPT-5.5 model](https://developers.openai.com/api/docs/models/gpt-5.5), [Images and vision](https://developers.openai.com/api/docs/guides/images-vision), [Image cost calculator](https://developers.openai.com/api/docs/guides/image-cost-calculator), [Data controls](https://developers.openai.com/api/docs/guides/your-data)
 - Google: [Gemini API pricing](https://ai.google.dev/gemini-api/docs/pricing), [Media resolution](https://ai.google.dev/gemini-api/docs/media-resolution), [Abuse monitoring](https://ai.google.dev/gemini-api/docs/usage-policies), [Gemini API terms](https://ai.google.dev/gemini-api/terms), [ZDR](https://ai.google.dev/gemini-api/docs/zdr)
 - Anthropic privacy center: [How long do you store my organization's data?](https://privacy.claude.com/en/articles/7996866-how-long-do-you-store-my-organization-s-data)

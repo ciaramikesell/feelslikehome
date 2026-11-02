@@ -40,6 +40,7 @@ const checks = [
   ['anthropic effort', a.body.output_config?.effort === 'low'],
   ['anthropic inline base64 image', a.body.messages[0].content[0].source.type === 'base64'],
   ['anthropic no tools / batch / files / url image', !a.body.tools && !JSON.stringify(a.body).includes('"file_id"') && !JSON.stringify(a.body).includes('"type":"url"')],
+  ['anthropic standard tier only', a.body.service_tier === 'standard_only'],
   ['anthropic usage normalized', c.usage.inputTokens === 7100 && c.usage.outputTokens === 2400 && c.usage.thinkingTokens === 900],
   ['anthropic text', c.text === '{"ok":true}'],
   ['gemini endpoint', /\/models\/gemini-3-flash-preview:generateContent/.test(b.url)],
@@ -47,9 +48,11 @@ const checks = [
   ['gemini media resolution on the image part', b.body.contents[0].parts[0].mediaResolution?.level === 'MEDIA_RESOLUTION_HIGH'],
   ['gemini thinking level', b.body.generationConfig?.thinkingConfig?.thinkingLevel === 'LOW'],
   ['gemini system instruction', Boolean(b.body.systemInstruction)],
+  ['gemini standard paid tier', JSON.stringify(b.body).includes('"serviceTier":"standard"') || JSON.stringify(b.body).includes('"service_tier":"standard"')],
   ['gemini usage normalized', g.usage.inputTokens === 4300 && g.usage.outputTokens === 2100 && g.usage.separateThinkingTokens === 800],
   ['gemini text', g.text === '{"ok":true}'],
 ];
+console.log(`gemini body keys: ${Object.keys(b.body).join(', ')}; generationConfig keys: ${Object.keys(b.body.generationConfig || {}).join(', ')}`);
 let failed = 0;
 for (const [label, ok] of checks) { console.log(`${ok ? 'ok  ' : 'FAIL'} ${label}`); if (!ok) failed += 1; }
 console.log(`requests captured: ${captured.length}; network calls: 0`);

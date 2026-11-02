@@ -17,7 +17,7 @@ Preparation for the proof of concept in [`docs/ai-floor-plan-analysis-feasibilit
 | `score.mjs`, `report.mjs` | Ground-truth scoring, the 14-check rubric, the Markdown comparison report |
 | `pricing.mjs` | Published prices, for estimates only; measured usage replaces them in a paid run |
 | `budget.mjs` | Per-attempt cost bound and the persistent per-run ledger that enforces the cap |
-| `adapters/` | `replay` (offline), `anthropic` (Sonnet 5.5, Haiku 5.5), `gemini` (Gemini 3 Flash), and the approval gate in `index.mjs` |
+| `adapters/` | `replay` (offline), `anthropic` (Sonnet 5.5, Haiku 5.5), `gemini` (`gemini-3-flash-preview`), and the approval gate in `index.mjs` |
 | `providers.config.json` | Model settings and budget bounds; **every provider `enabled: false`** (a run enables one per invocation with `--enable`) |
 | `profiles.mjs` | Synthetic buyer profiles for exercising the mapper (never sent anywhere) |
 | `fixtures/` | 10 synthetic CC0 floor plans, ground truth, replay sets, manifest with sha256. See [`fixtures/LICENSE.md`](fixtures/LICENSE.md) |
@@ -124,52 +124,46 @@ node scripts/floor-plan-eval/verify-sdk-shapes.mjs
 ### Step 0: owner actions and checks (no spend)
 
 1. Approve this plan and the **$5.00** cap (`manifest.maxTotalUsd`).
-2. **Network:** allow `ai.google.dev` and `docs.cloud.google.com`, then re-verify:
-   - the Gemini 3 Flash model code (search snippets show `gemini-3-flash-preview`) → `manifest.confirmedModelIds`;
-   - its price (update `pricing.mjs`);
-   - whether thoughts count toward `maxOutputTokens`;
-   - image tokens at `MEDIA_RESOLUTION_HIGH`;
-   - paid-tier retention;
-   - whether preview models carry different data terms.
+2. **Gemini facts — confirmed by the project owner from Google's official documentation on 2026-11-02** (Google's docs are unreachable from the preparation environment):
+   - model id `gemini-3-flash-preview`;
+   - standard paid tier: $0.50 input and $3 output per 1M tokens, the output price including thinking;
+   - paid services are not used to improve Google's products;
+   - abuse monitoring retains prompts and responses for 55 days;
+   - AI Studio project spend caps may overshoot because of billing processing delays.
 
-   If anything differs, update the config and re-run `--estimate` before approving.
+   Still modeled pessimistically rather than verified: whether thoughts count toward `maxOutputTokens` (8,192 extra allowed), image tokens at `MEDIA_RESOLUTION_HIGH` (4,784 assumed), and the model's maximum output (65,536 assumed for the reserve). Requests pin the standard tier (`serviceTier: "standard"`; Claude `service_tier: "standard_only"`), and a response reporting any other tier, or fast mode, ends the run.
 3. Create the accounts, limits and keys in the checklist below yourself. Keys go only into environment variables of the run session. Never commit them or paste them anywhere.
 4. Only the 10 committed CC0 fixtures are eligible:
    - the runner refuses any image whose sha256 or path doesn't match `fixtures/manifest.json`;
    - it refuses any normalized image that still carries metadata.
 
-### Step 1: smoke run (cap $0.50; preflight needs $0.34)
+### Step 1: smoke run — the only run being prepared (cap $0.50; preflight needs $0.34)
 
-`runs/approved-run.json` (git-ignored):
+**Not authorized yet.** It runs only after the owner explicitly authorizes it.
 
-```json
-{
-  "runId": "fpa2-smoke-YYYYMMDD",
-  "approvedBy": "<your name>",
-  "approvedOn": "YYYY-MM-DD",
-  "maxTotalUsd": 0.5,
-  "providers": ["sonnet-5-5", "haiku-5-5", "gemini-3-flash"],
-  "repeats": 1,
-  "fixtures": ["F01-ranch-clean"],
-  "fixtureSource": "committed-synthetic-fixtures",
-  "geminiPaidTierConfirmed": true,
-  "confirmedModelIds": ["gemini-3-flash-preview"]
-}
+A git-ignored draft manifest is already in place: `scripts/floor-plan-eval/runs/smoke-run.draft.json`. It covers 1 fixture (F01) × 1 repeat × 3 models, with a $0.50 cap. Its `approvedBy` and `approvedOn` are empty and `geminiPaidTierConfirmed` is `false`, so every gate refuses it as it stands. At authorization time those three fields are filled in.
+
+Keys: the harness reads only its own variable names, `FLH_FPA_ANTHROPIC_API_KEY` and `FLH_FPA_GEMINI_API_KEY`. Any other key in the environment (e.g. a generic `ANTHROPIC_API_KEY`) is never used.
+
+Readiness check — sends nothing to any provider; prints only whether each condition holds, never a key value:
+
+```bash
+NODE_USE_ENV_PROXY=1 FLH_FPA_PAID_RUN=fpa2-smoke-20261102 node scripts/floor-plan-eval/run.mjs --check --enable sonnet-5-5,haiku-5-5,gemini-3-flash --manifest scripts/floor-plan-eval/runs/smoke-run.draft.json
 ```
 
-Install the SDKs without touching `package.json` or the lockfile:
+The run itself, after authorization. `NODE_USE_ENV_PROXY=1` lets Node's fetch use the environment proxy for Gemini; `api.anthropic.com` is in `NO_PROXY` and stays direct.
 
 ```bash
 npm install --no-save @anthropic-ai/sdk@1.3.0 @google/genai@2.32.0
 ```
 
 ```bash
-FLH_FPA_PAID_RUN=fpa2-smoke-YYYYMMDD node scripts/floor-plan-eval/run.mjs --paid --enable sonnet-5-5,haiku-5-5,gemini-3-flash --manifest scripts/floor-plan-eval/runs/approved-run.json
+NODE_USE_ENV_PROXY=1 FLH_FPA_PAID_RUN=fpa2-smoke-20261102 node scripts/floor-plan-eval/run.mjs --paid --enable sonnet-5-5,haiku-5-5,gemini-3-flash --manifest scripts/floor-plan-eval/runs/smoke-run.draft.json
 ```
 
-Stop and review the report: schema validity, refusals, truncation, measured tokens and cost per call, and that measured costs sit well under the bounds.
+Stop and review the report: schema validity, refusals, truncation, the reported billing tier, measured tokens and cost per call, and that measured costs sit well under the bounds.
 
-### Step 2: full benchmark (cap $5.00; preflight needs $4.92; typical ≈ $2.09)
+### Step 2: full benchmark (cap $5.00; preflight needs $4.92; typical ≈ $2.09) — not authorized
 
 Use a new `runId`, `"repeats": 3`, no `fixtures` key (all 10) and `"maxTotalUsd": 5`. That is 90 calls.
 
@@ -177,7 +171,7 @@ Use a new `runId`, `"repeats": 3`, no `fixtures` key (all 10) and `"maxTotalUsd"
 |---|---|---|---|---|---|
 | Claude Sonnet 5.5 (effort low) | 30 | $1.58 | $2.95 | $0.0983 | verified 2026-11-02 |
 | Claude Haiku 5.5 (effort medium) | 30 | $0.08 | $0.15 | $0.0049 | verified 2026-11-02 |
-| Gemini 3 Flash (preview; high media resolution, thinking low) | 30 | $0.43 | $1.65 | $0.0549 | **unverified** |
+| Gemini 3 Flash (`gemini-3-flash-preview`; high media resolution, thinking low) | 30 | $0.43 | $1.65 | $0.0549 | standard paid tier, owner-verified 2026-11-02 |
 | **Total** | 90 | **$2.09** | **$4.74** + $0.18 reserve | | |
 
 `node scripts/floor-plan-eval/run.mjs --estimate` recomputes these figures from the fixtures and config.
@@ -195,18 +189,19 @@ Apply the decision rule. Then, each with its own approval:
 - [ ] A dedicated workspace, e.g. `flh-floorplan-poc`. Spend limits can't be set on the Default workspace.
 - [ ] A workspace **spend limit of $5/month**: a hard limit, after which requests are rejected (HTTP 400).
 - [ ] Optional second ceiling: prepaid credits with **auto-reload off** (requests stop at a zero balance).
-- [ ] One API key created **in that workspace**. Put it in the run environment as `ANTHROPIC_API_KEY`.
+- [ ] One API key created **in that workspace**. Put it in the run environment as `FLH_FPA_ANTHROPIC_API_KEY`.
 - [ ] No US-only data residency default needed; the harness assumes ×1.1 anyway.
 - [ ] Revoke the key after the run.
 
 **Google (Gemini Developer API)**
 - [ ] A dedicated Google Cloud project with an **active billing account**, so the paid tier applies and data is not used to improve products.
-- [ ] A **project spend cap** in Google AI Studio (e.g. $3). Google documents it as enforced, but forum reports describe lag and overshoot, so treat it as best-effort.
+- [ ] A **project spend cap** in Google AI Studio (e.g. $3). Google documents that it may overshoot because of billing processing delays, so it is a backstop, not a guarantee.
 - [ ] A Cloud Billing **budget with alerts** at $1, $2 and $3. Alerts only: they do not stop spending.
-- [ ] One API key restricted to the Generative Language API. Put it in the run environment as `GEMINI_API_KEY`.
+- [ ] One API key restricted to the Generative Language API. Put it in the run environment as `FLH_FPA_GEMINI_API_KEY`.
 - [ ] Revoke the key after the run.
 
 **Run environment**
 - [ ] Set keys as environment variables only: never in files, commits, chat, manifests or command lines that get logged.
 - [ ] Keep the approved manifest in `scripts/floor-plan-eval/runs/` (git-ignored).
+- [ ] If the run happens in this cloud environment, add the two `FLH_FPA_*` keys as environment secrets in the environment settings; they reach the session as environment variables.
 - [ ] Use a fresh `runId` per approval.

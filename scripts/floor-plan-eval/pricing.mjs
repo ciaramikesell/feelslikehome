@@ -1,22 +1,25 @@
 // Published prices, used ONLY as estimates until a run measures real usage.
-// `verified` means the figure was read on the provider's official pricing page
-// on `checked`; unverified figures came from search-engine snippets of the
-// official page and must be re-read before a paid run (README → Paid run plan).
+// `verified` means the figure was confirmed on the provider's official pricing
+// page on `checked` (Anthropic: read by the harness author; Google: confirmed
+// by the project owner, since Google's docs are unreachable from here).
+// All prices are the standard (non-batch, non-priority) paid tier.
 export const PRICES = Object.freeze({
   'anthropic:claude-sonnet-5-5': {
-    inputPerMTok: 2.0, outputPerMTok: 10.0, verified: true, checked: '2026-10-31',
+    inputPerMTok: 2.0, outputPerMTok: 10.0, verified: true, checked: '2026-11-02',
     source: 'https://platform.claude.com/docs/en/about-claude/pricing',
-    notes: 'Thinking tokens bill as output. US-only inference (inference_geo "us") would be ×1.1 — not used.',
+    notes: 'Thinking tokens bill as output. US-only inference (inference_geo "us") would be ×1.1 — not used. Requests pin service_tier "standard_only".',
   },
   'anthropic:claude-haiku-5-5': {
-    inputPerMTok: 0.10, outputPerMTok: 0.50, verified: true, checked: '2026-10-31',
+    inputPerMTok: 0.10, outputPerMTok: 0.50, verified: true, checked: '2026-11-02',
     source: 'https://platform.claude.com/docs/en/about-claude/pricing',
     notes: 'Prompts ≤ 100k tokens. Above that $0.50 / $2.50 (never reached here).',
   },
   'google:gemini-3-flash-preview': {
-    inputPerMTok: 0.50, outputPerMTok: 3.0, verified: false, checked: '2026-10-31',
+    inputPerMTok: 0.50, outputPerMTok: 3.0, verified: true, checked: '2026-11-02',
+    verifiedBy: 'project owner, from Google\'s official documentation (not readable from the preparation environment)',
     source: 'https://ai.google.dev/gemini-api/docs/pricing',
-    notes: 'UNVERIFIED (official page was network-blocked; search snippets of the pricing page list "Gemini 3 Flash Preview" at these rates). Paid tier only — the free tier may use data to improve products. Thinking tokens assumed billed as output.',
+    tier: 'standard paid tier (requests pin serviceTier "standard"; not Batch, Flex or Priority)',
+    notes: 'Output price includes thinking tokens. Paid services are not used to improve Google products. Abuse monitoring retains prompts and responses for 55 days. Free-tier keys are refused by the run gate (geminiPaidTierConfirmed).',
   },
 });
 

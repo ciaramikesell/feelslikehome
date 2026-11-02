@@ -1,6 +1,6 @@
 # Floor-plan extraction benchmark — offline validation (oracle + flawed replay)
 
-- Run: `offline-2026-11-02T12-26-05-804Z` · 2026-11-02T12:26:05.804Z
+- Run: `offline-2026-11-02T13-24-10-439Z` · 2026-11-02T13:24:10.439Z
 - Pipeline: `fpa-2` · fixtures: 10 · repeats: 2
 - Paid calls: none (offline replay only)
 - Costs: replay rows cost nothing. Paid rows show measured tokens × published price; unverified prices are marked in the provider table.

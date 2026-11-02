@@ -35,6 +35,7 @@ export function buildGeminiRequest(cfg, { image, systemPrompt, userPrompt, schem
       responseJsonSchema: schema,
       maxOutputTokens: cfg.maxOutputTokens,
       thinkingConfig: { thinkingLevel: cfg.thinkingLevel },
+      serviceTier: 'standard', // standard paid tier: never Flex or Priority
       // No retryOptions: the SDK then makes exactly one attempt (checked in
       // @google/genai 2.32.0); the runner owns retries and budget.
       httpOptions: { timeout: cfg.timeoutMs },
@@ -65,11 +66,16 @@ export function createGeminiAdapter(cfg, { clientFactory = defaultClient } = {})
         requestId: response.responseId ?? null,
         latencyMs,
         measured: true,
+        // Billing tier the provider reports; the runner aborts on anything but standard.
+        pricingTier: usage.serviceTier ?? null,
+        fastMode: false,
         usage: {
+          // Includes the image and any implicitly cached tokens, all charged at
+          // the full standard input rate (pessimistic if a cache discount applied).
           inputTokens: usage.promptTokenCount || 0,
           outputTokens: usage.candidatesTokenCount || 0,
           thinkingTokens: usage.thoughtsTokenCount ?? null,
-          separateThinkingTokens: usage.thoughtsTokenCount || 0, // billed as output, reported separately
+          separateThinkingTokens: usage.thoughtsTokenCount || 0, // billed at the output rate (verified), reported separately
         },
         rawUsage: usage,
       };

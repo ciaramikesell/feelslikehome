@@ -19,7 +19,7 @@ export function validateRunManifest(manifest) {
   const problems = [];
   if (!manifest || typeof manifest !== 'object') return ['no approved run manifest (--manifest runs/approved-run.json)'];
   if (!/^[A-Za-z0-9-]{6,64}$/.test(manifest.runId || '')) problems.push('manifest.runId missing or malformed');
-  if (!manifest.approvedBy) problems.push('manifest.approvedBy missing');
+  if (!manifest.approvedBy || /pending|todo|<|>/i.test(manifest.approvedBy)) problems.push('manifest.approvedBy missing (a draft manifest is never an approval)');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(manifest.approvedOn || '')) problems.push('manifest.approvedOn missing (YYYY-MM-DD)');
   if (!(manifest.maxTotalUsd > 0)) problems.push('manifest.maxTotalUsd must be > 0');
   if (manifest.maxTotalUsd > HARD_CEILING_USD) problems.push(`manifest.maxTotalUsd exceeds the hard ceiling of $${HARD_CEILING_USD}`);
