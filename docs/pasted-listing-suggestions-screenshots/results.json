@@ -1,0 +1,62 @@
+[
+  {
+    "step": "[desktop-1440] owner: pasted text shows suggestions with their sentences; nothing is answered yet",
+    "ok": true,
+    "ms": 2497
+  },
+  {
+    "step": "[desktop-1440] owner: confirm one, leave one Unknown; undo and redo works",
+    "ok": true,
+    "ms": 339
+  },
+  {
+    "step": "[desktop-1440] owner: Add saves only the confirmed answer, only for the owner; evidence stays pasted listing text",
+    "ok": true,
+    "ms": 6002
+  },
+  {
+    "step": "[desktop-1440] owner: pasting and adding without confirming writes no answer at all",
+    "ok": true,
+    "ms": 4779
+  },
+  {
+    "step": "[ipad-820] owner: pasted text shows suggestions with their sentences; nothing is answered yet",
+    "ok": true,
+    "ms": 2568
+  },
+  {
+    "step": "[ipad-820] owner: confirm one, leave one Unknown; undo and redo works",
+    "ok": true,
+    "ms": 386
+  },
+  {
+    "step": "[ipad-820] owner: Add saves only the confirmed answer, only for the owner; evidence stays pasted listing text",
+    "ok": true,
+    "ms": 5899
+  },
+  {
+    "step": "[iphone-390] owner: pasted text shows suggestions with their sentences; nothing is answered yet",
+    "ok": true,
+    "ms": 2764
+  },
+  {
+    "step": "[iphone-390] owner: confirm one, leave one Unknown; undo and redo works",
+    "ok": true,
+    "ms": 368
+  },
+  {
+    "step": "[iphone-390] owner: Add saves only the confirmed answer, only for the owner; evidence stays pasted listing text",
+    "ok": true,
+    "ms": 5958
+  },
+  {
+    "step": "[desktop-1440] co-buyer: suggestions follow their own priorities; confirming writes only their checks",
+    "ok": true,
+    "ms": 6022
+  },
+  {
+    "step": "[desktop-1440] Realtor: pasting into Suggest a Home offers no Match answers and writes none",
+    "ok": true,
+    "ms": 2490
+  }
+]

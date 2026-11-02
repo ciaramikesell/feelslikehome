@@ -111,7 +111,8 @@ test('import foundation does not modify Match unknown semantics, ratings, or che
 
 test('HomeModal models successful raw text separately from provider errors and uses the shared merge', () => {
   assert.match(modal, /text-success/);
-  assert.match(modal, /setImportPhase\(additions\.length > 0 \? 'text-success' : 'empty'\)/);
+  // Filled details and answers to review both count; Notes-only suggestions aren't shown, so they don't.
+  assert.match(modal, /setImportPhase\(canonicalAdditions\.length \+ answers\.length > 0 \? 'text-success' : 'empty'\)/);
   assert.doesNotMatch(modal, /setImportPhase\('error'\);\s*\/\/ reveal the reviewable manual form/);
   assert.match(modal, /mergeImportFields\(form, result\.fieldPatch\)/);
   assert.match(modal, /mergeImportFields\(f, data\.fields \|\| \{\}\)/);

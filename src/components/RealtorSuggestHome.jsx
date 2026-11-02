@@ -37,6 +37,6 @@ export default function RealtorSuggestHome({ context }) {
       <button className="hh-btn" onClick={() => { setMessage(''); setOpen(true); }}><Plus size={15} /> Suggest a Home</button>
       {message && <p role="status">{message}</p>}
     </div>
-    {open && <HomeModal initial={emptyHome()} priorities={ownerPriorities} userId={context.viewerId} onSave={suggest} onClose={() => setOpen(false)} matchPerspectives={perspectives} saveLabel="Suggest this home" />}
+    {open && <HomeModal initial={emptyHome()} priorities={ownerPriorities} userId={context.viewerId} onSave={suggest} onClose={() => setOpen(false)} matchPerspectives={perspectives} saveLabel="Suggest this home" personalAnswers={false} />}
   </>;
 }
