@@ -400,6 +400,11 @@ const PURCHASE_LEGACY_LABEL_ALIASES = {
   exterior: { 'Fenced Yard': 'Fenced yard', 'Patio / Deck / Outdoor Living': 'Patio / deck' },
 };
 
+// Read-only [legacyKey, canonicalKey] view of the aliases above, for the
+// scorer-parity contract: the co-buyer Compare scorer folds exactly these.
+export const PURCHASE_LEGACY_ALIAS_KEYS = Object.freeze(Object.entries(PURCHASE_LEGACY_LABEL_ALIASES)
+  .flatMap(([categoryKey, aliases]) => Object.entries(aliases).map(([legacy, canonical]) => Object.freeze([`${categoryKey}:${legacy}`, `${categoryKey}:${canonical}`]))));
+
 // Every purchase category's coreItems is always empty (see LOCATION_CORE/
 // FEATURES_CORE/EXTERIOR_CORE) — every canonical item, including alias targets,
 // is a "suggested" item that only renders as a selected priority once it has

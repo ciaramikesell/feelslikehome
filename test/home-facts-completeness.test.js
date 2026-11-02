@@ -49,7 +49,9 @@ test('HOA fee is always offered for a home to buy, including when Unknown, and n
   assert.match(homeFactsSource, /text\('hoaFeeMonthly', null, \{ parse: parseMoneyNumber, format: formatHoaFee, edit: editHoaFee/);
 });
 
-test('HOA fee is not a Match input, and the personal "No HOA" answer is untouched; weights stay 4 / 2 / 1', () => {
+// Home Facts → Match parity (src/lib/homeFactCriteria.js): a fee above $0 now
+// answers No HOA as No; Unknown and a $0 fee still answer nothing.
+test('HOA fee answers No HOA only when above $0; a $0 fee never means "No HOA"; weights stay 4 / 2 / 1', () => {
   assert.deepEqual([TIER_META.must.weight, TIER_META.important.weight, TIER_META.nice.weight], [4, 2, 1]);
   let priorities = applySearchChoice(normalizePriorities({}), 'home_buy');
   priorities.preferredPropertyTypes = { values: [], tier: 'dontcare' };
@@ -57,11 +59,17 @@ test('HOA fee is not a Match input, and the personal "No HOA" answer is untouche
   priorities = addCriterion(priorities, { categoryKey: 'location', label: 'No HOA', kind: 'check' }, 'must');
   const base = { price: '350000', checks: {} };
   const unknown = computeMatch(base, priorities);
-  for (const hoaFeeMonthly of [null, 0, 450]) {
+  for (const hoaFeeMonthly of [null, '', 0, '0']) {
     assert.deepEqual(computeMatch({ ...base, hoaFeeMonthly }, priorities), unknown, `HOA ${hoaFeeMonthly} never moves Match`);
   }
   const noHoa = unknown.allSelected.find((item) => item.key === 'location:No HOA');
   assert.equal(noHoa.evaluated, false, 'a $0 fee does not answer anyone\'s personal No HOA');
+  const withFee = computeMatch({ ...base, hoaFeeMonthly: 450 }, priorities);
+  const fromFee = withFee.allSelected.find((item) => item.key === 'location:No HOA');
+  assert.deepEqual([fromFee.evaluated, fromFee.met, fromFee.source], [true, false, 'home_facts']);
+  assert.equal(withFee.pct, 33, 'budget 1×2 + No HOA 0×4 over 6');
+  // The buyer's own Yes still overrides the fee.
+  assert.equal(computeMatch({ ...base, hoaFeeMonthly: 450, checks: { 'location:No HOA': true } }, priorities).pct, 100);
 });
 
 /* -------------------------------- Tax year -------------------------------- */
