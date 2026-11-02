@@ -14,7 +14,9 @@ async function defaultClient(cfg) {
   } catch {
     throw new Error(`@anthropic-ai/sdk is not installed. For an approved run: npm install --no-save ${cfg.sdk}`);
   }
-  return new Anthropic({ apiKey, maxRetries: 1, timeout: cfg.timeoutMs });
+  // No SDK retries: the runner retries at most once itself, reserving budget
+  // for every attempt (an SDK retry would be billed but not counted).
+  return new Anthropic({ apiKey, maxRetries: 0, timeout: cfg.timeoutMs });
 }
 
 export function buildAnthropicRequest(cfg, { image, systemPrompt, userPrompt, schema }) {
@@ -56,8 +58,10 @@ export function createAnthropicAdapter(cfg, { clientFactory = defaultClient } = 
         latencyMs,
         measured: true,
         usage: {
-          // Cache fields are counted at the full input price (conservative; caching is not used).
-          inputTokens: (usage.input_tokens || 0) + (usage.cache_creation_input_tokens || 0) + (usage.cache_read_input_tokens || 0),
+          // Caching is not used; any cache tokens are priced pessimistically in pricing.mjs.
+          inputTokens: (usage.input_tokens || 0) + (usage.cache_read_input_tokens || 0),
+          cacheWriteTokens: usage.cache_creation_input_tokens || 0,
+          priceMultiplier: usage.inference_geo === 'us' ? 1.1 : 1,
           outputTokens: usage.output_tokens || 0, // includes thinking
           thinkingTokens: usage.output_tokens_details?.thinking_tokens ?? null,
           separateThinkingTokens: 0,

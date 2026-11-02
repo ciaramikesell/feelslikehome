@@ -13,10 +13,10 @@ export const PRICES = Object.freeze({
     source: 'https://platform.claude.com/docs/en/about-claude/pricing',
     notes: 'Prompts ≤ 100k tokens. Above that $0.50 / $2.50 (never reached here).',
   },
-  'google:gemini-3-flash': {
+  'google:gemini-3-flash-preview': {
     inputPerMTok: 0.50, outputPerMTok: 3.0, verified: false, checked: '2026-10-31',
     source: 'https://ai.google.dev/gemini-api/docs/pricing',
-    notes: 'UNVERIFIED (official page was network-blocked). Paid tier only — the free tier may use data to improve products. Thinking tokens assumed billed as output.',
+    notes: 'UNVERIFIED (official page was network-blocked; search snippets of the pricing page list "Gemini 3 Flash Preview" at these rates). Paid tier only — the free tier may use data to improve products. Thinking tokens assumed billed as output.',
   },
 });
 
@@ -37,8 +37,10 @@ export function worstCaseCallUsd({ provider, model, imageTokens, textTokens = 35
 export function measuredCallUsd({ provider, model, usage }) {
   const price = priceFor(provider, model);
   const output = (usage.outputTokens || 0) + (usage.separateThinkingTokens || 0);
+  // Cache writes at 2× input (the 1-hour rate, the higher of the two).
+  const input = (usage.inputTokens || 0) + 2 * (usage.cacheWriteTokens || 0);
   return {
-    usd: ((usage.inputTokens || 0) * price.inputPerMTok + output * price.outputPerMTok) / 1e6,
+    usd: ((input * price.inputPerMTok + output * price.outputPerMTok) / 1e6) * (usage.priceMultiplier || 1),
     basis: price.verified ? 'measured tokens × verified published price' : 'measured tokens × UNVERIFIED published price',
   };
 }

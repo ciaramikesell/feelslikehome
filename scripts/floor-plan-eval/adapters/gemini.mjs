@@ -35,6 +35,8 @@ export function buildGeminiRequest(cfg, { image, systemPrompt, userPrompt, schem
       responseJsonSchema: schema,
       maxOutputTokens: cfg.maxOutputTokens,
       thinkingConfig: { thinkingLevel: cfg.thinkingLevel },
+      // No retryOptions: the SDK then makes exactly one attempt (checked in
+      // @google/genai 2.32.0); the runner owns retries and budget.
       httpOptions: { timeout: cfg.timeoutMs },
     },
   };

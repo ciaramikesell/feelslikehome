@@ -15,7 +15,12 @@ export function buildReport({ run, results }) {
   lines.push(`# Floor-plan extraction benchmark — ${run.label}`, '');
   lines.push(`- Run: \`${run.runId}\` · ${run.startedAt}`);
   lines.push(`- Pipeline: \`${run.pipelineVersion}\` · fixtures: ${run.fixtureCount} · repeats: ${run.repeats}`);
-  lines.push(`- Paid calls: ${run.paid ? `**yes** (cap $${run.maxTotalUsd}, worst-case preflight $${run.worstCaseUsd?.toFixed(2)})` : 'none (offline replay only)'}`);
+  lines.push(`- Paid calls: ${run.paid ? `**yes** — cap $${run.maxTotalUsd}; preflight bound $${run.worstCaseUsd?.toFixed(2)} + reserve $${run.reserveUsd?.toFixed(2)}` : 'none (offline replay only)'}`);
+  if (run.paid) {
+    lines.push(`- Ledger: this invocation $${run.spentUsd.toFixed(4)}; all invocations of this run $${run.committedUsd.toFixed(4)} (failed attempts counted at their full bound)`);
+    if (run.budgetStopped) lines.push('- **Stopped early: the next attempt would not have fit the cap.**');
+    if (run.abortReason) lines.push(`- **Aborted: ${run.abortReason}**`);
+  }
   lines.push('- Costs: replay rows cost nothing. Paid rows show measured tokens × published price; unverified prices are marked in the provider table.', '');
 
   lines.push('## Rubric', '', `| # | Check | Threshold | ${ids.join(' | ')} |`, `|---|---|---|${ids.map(() => '---').join('|')}|`);
@@ -37,6 +42,7 @@ export function buildReport({ run, results }) {
     ['Confident wrong floors', (m) => fmt(m.floorConfidentWrong)],
     ['False ensuite / false adjacency', (m) => `${m.falseEnsuite} / ${m.falseAdjacency}`],
     ['Optional as present / ambiguous as present', (m) => `${m.optionalAsPresent} / ${m.ambiguousAsPresent}`],
+    ['Symbol over-claims (not offered)', (m) => fmt(m.overclaims)],
     ['Local gate saves (optional/ambiguous language)', (m) => fmt(m.gateSaves)],
     ['Latency p50 / p95', (m) => `${fmt(m.latencyP50Ms, 'ms')} / ${fmt(m.latencyP95Ms, 'ms')}`],
     ['Total cost', (m) => fmt(m.totalCostUsd, 'usd')],

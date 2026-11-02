@@ -16,8 +16,9 @@ Preparation for the proof of concept in [`docs/ai-floor-plan-analysis-feasibilit
 | `normalize.mjs`, `metadata.mjs` | Image normalization (orientation, metadata removal, ≤ 2,576 px) and an independent metadata inspector |
 | `score.mjs`, `report.mjs` | Ground-truth scoring, the 14-check rubric, the Markdown comparison report |
 | `pricing.mjs` | Published prices, for estimates only; measured usage replaces them in a paid run |
+| `budget.mjs` | Per-attempt cost bound and the persistent per-run ledger that enforces the cap |
 | `adapters/` | `replay` (offline), `anthropic` (Sonnet 5.5, Haiku 5.5), `gemini` (Gemini 3 Flash), and the approval gate in `index.mjs` |
-| `providers.config.json` | Model settings; **every provider `enabled: false`** |
+| `providers.config.json` | Model settings and budget bounds; **every provider `enabled: false`** (a run enables one per invocation with `--enable`) |
 | `profiles.mjs` | Synthetic buyer profiles for exercising the mapper (never sent anywhere) |
 | `fixtures/` | 10 synthetic CC0 floor plans, ground truth, replay sets, manifest with sha256. See [`fixtures/LICENSE.md`](fixtures/LICENSE.md) |
 | `verify-sdk-shapes.mjs` | No-network check of the adapters against the real SDKs |
@@ -107,22 +108,39 @@ node scripts/floor-plan-eval/verify-sdk-shapes.mjs
 
 ## Paid run plan (not started; needs explicit approval)
 
+### How the $5 cap is enforced (`budget.mjs`, `run.mjs`)
+
+1. **Per-attempt bound.** Each attempt's cost is bounded from documented limits plus pessimistic allowances, then × 1.1 (US-only inference multiplier and rounding):
+   - **Input:** at most the UTF-8 bytes of prompt + schema (9,886 incl. 2,000 for an undocumented structured-output prompt) plus 4,784 image tokens.
+   - **Output:** at most `maxOutputTokens` (6,000; for Claude, `max_tokens` is the documented hard ceiling including thinking). Gemini gets 8,192 extra thinking tokens, because whether thoughts count toward `maxOutputTokens` is unverified.
+   - **Resulting bound per attempt:** Sonnet 5.5 $0.0983, Haiku 5.5 $0.0049, Gemini 3 Flash $0.0549.
+2. **Ledger before every attempt.** The runner reserves that bound in `runs/ledger/<runId>.json` (fsync'd) and only sends the request if committed + bound + overshoot reserve ($0.18) ≤ cap. Otherwise the run stops ("stopped early").
+3. **Settlement.** A successful attempt settles to its measured cost. A failed, timed-out or usage-less attempt stays charged at its full bound.
+4. **Retries.** There are no SDK retries (Anthropic `maxRetries: 0`; Gemini without `retryOptions` makes one attempt). The runner retries once, only for 429/5xx/connection/timeout errors, and reserves budget for that attempt too. Other client errors are not retried.
+5. **Aborts.** A provider spend-limit error ends the run. A measured cost above its bound ends the run; the overshoot reserve exists so that one such attempt still fits.
+6. **Re-runs.** The ledger is keyed by `runId`, survives restarts and is locked against a concurrent run. Re-running an approval continues from what it already spent, and a later manifest can lower the cap but never raise it.
+7. **Preflight.** Every planned call once at its bound, plus the reserve, must fit the cap before anything is sent. The full run below needs $4.92 of the $5.00.
+
 ### Step 0: owner actions and checks (no spend)
 
-1. **Approve** this plan and the cap. The proposed cap is **$5.00** (`manifest.maxTotalUsd`; the harness's hard ceiling is $50). The computed worst case for the full run below is **$2.92**, so the cap leaves headroom for a re-run of one provider only.
-2. **Network:** allow `ai.google.dev` (and `platform.openai.com` if OpenAI is ever added) in the environment's network settings. Then verify and record:
-   - the Gemini 3 Flash **model id** (`providers.config.json` → add to `manifest.confirmedModelIds`);
-   - its **price** (update `pricing.mjs`, set `verified: true`, `checked` date);
-   - the **paid-tier data terms** (prompts and responses logged for abuse monitoring, reported as 55 days; not used for training on the paid tier).
-3. **Credentials** (created by you, not by Claude):
-   - Anthropic: a dedicated workspace (e.g. `flh-floorplan-poc`) with a **monthly spend limit of $5**, and one API key in it.
-   - Google: a key from a Cloud project **with billing enabled**, so the paid tier applies. Set a billing budget alert at $2 and $5.
-   - Provide the keys only as environment variables of the run session (`ANTHROPIC_API_KEY`, `GEMINI_API_KEY`). Never commit them. Revoke both after the run.
-4. **Data:** only the 10 committed CC0 synthetic fixtures are eligible. The runner refuses any image whose sha256 differs from `fixtures/manifest.json`, and any normalized image that still carries metadata. No user image can be selected.
+1. Approve this plan and the **$5.00** cap (`manifest.maxTotalUsd`).
+2. **Network:** allow `ai.google.dev` and `docs.cloud.google.com`, then re-verify:
+   - the Gemini 3 Flash model code (search snippets show `gemini-3-flash-preview`) → `manifest.confirmedModelIds`;
+   - its price (update `pricing.mjs`);
+   - whether thoughts count toward `maxOutputTokens`;
+   - image tokens at `MEDIA_RESOLUTION_HIGH`;
+   - paid-tier retention;
+   - whether preview models carry different data terms.
 
-### Step 1: smoke run (≈ $0.10 worst case)
+   If anything differs, update the config and re-run `--estimate` before approving.
+3. Create the accounts, limits and keys in the checklist below yourself. Keys go only into environment variables of the run session. Never commit them or paste them anywhere.
+4. Only the 10 committed CC0 fixtures are eligible:
+   - the runner refuses any image whose sha256 or path doesn't match `fixtures/manifest.json`;
+   - it refuses any normalized image that still carries metadata.
 
-One fixture, one repeat, all three models, to confirm keys, model ids, request shapes and usage reporting. `runs/` is git-ignored, so the manifest is a local file.
+### Step 1: smoke run (cap $0.50; preflight needs $0.34)
+
+`runs/approved-run.json` (git-ignored):
 
 ```json
 {
@@ -135,41 +153,60 @@ One fixture, one repeat, all three models, to confirm keys, model ids, request s
   "fixtures": ["F01-ranch-clean"],
   "fixtureSource": "committed-synthetic-fixtures",
   "geminiPaidTierConfirmed": true,
-  "confirmedModelIds": ["gemini-3-flash"]
+  "confirmedModelIds": ["gemini-3-flash-preview"]
 }
 ```
 
-Set `"enabled": true` for the three providers in a **local, uncommitted** copy of `providers.config.json`. Then:
+Install the SDKs without touching `package.json` or the lockfile:
 
 ```bash
 npm install --no-save @anthropic-ai/sdk@1.3.0 @google/genai@2.32.0
 ```
 
 ```bash
-FLH_FPA_PAID_RUN=fpa2-smoke-YYYYMMDD node scripts/floor-plan-eval/run.mjs --paid --manifest scripts/floor-plan-eval/runs/approved-run.json
+FLH_FPA_PAID_RUN=fpa2-smoke-YYYYMMDD node scripts/floor-plan-eval/run.mjs --paid --enable sonnet-5-5,haiku-5-5,gemini-3-flash --manifest scripts/floor-plan-eval/runs/approved-run.json
 ```
 
-Stop and review the report: schema validity, refusals, truncation and measured tokens per call.
+Stop and review the report: schema validity, refusals, truncation, measured tokens and cost per call, and that measured costs sit well under the bounds.
 
-### Step 2: full benchmark (worst case $2.92, typical ≈ $2.11)
+### Step 2: full benchmark (cap $5.00; preflight needs $4.92; typical ≈ $2.09)
 
-Use the same manifest with a new `runId`, `"repeats": 3`, no `fixtures` key (all 10) and `"maxTotalUsd": 5`. That is 90 calls: 30 per model.
+Use a new `runId`, `"repeats": 3`, no `fixtures` key (all 10) and `"maxTotalUsd": 5`. That is 90 calls.
 
-| Model | Calls | Typical | Worst case | Price |
-|---|---|---|---|---|
-| Claude Sonnet 5.5 (effort low) | 30 | $1.58 | $2.18 | verified 2026-10-31 |
-| Claude Haiku 5.5 (effort medium) | 30 | $0.08 | $0.11 | verified 2026-10-31 |
-| Gemini 3 Flash (media resolution high, thinking low) | 30 | $0.45 | $0.63 | **unverified** until Step 0.2 |
+| Model | Calls | Typical | Bound (each call once) | Per-attempt bound | Price |
+|---|---|---|---|---|---|
+| Claude Sonnet 5.5 (effort low) | 30 | $1.58 | $2.95 | $0.0983 | verified 2026-11-02 |
+| Claude Haiku 5.5 (effort medium) | 30 | $0.08 | $0.15 | $0.0049 | verified 2026-11-02 |
+| Gemini 3 Flash (preview; high media resolution, thinking low) | 30 | $0.43 | $1.65 | $0.0549 | **unverified** |
+| **Total** | 90 | **$2.09** | **$4.74** + $0.18 reserve | | |
 
-Guards active during the run:
-- Preflight refuses to start if the worst case exceeds the cap.
-- Before each call, the runner stops if spent + that call's worst case would exceed the cap. A failed call is charged at its worst case.
-- One SDK retry on 429/5xx only.
-- No batch API, no Files API, no URL-sourced images, no server-side model fallback, no caching. Every call is a synchronous request carrying one inline image.
+`node scripts/floor-plan-eval/run.mjs --estimate` recomputes these figures from the fixtures and config.
 
 ### Step 3: decision and follow-up
 
-1. Apply the decision rule; publish `report.md`, which shows measured cost and latency per call.
-2. If Sonnet at `low` effort narrowly misses only gates 4–6, an optional extra arm at `medium` effort costs about $2 more and needs a new approval.
-3. A small **real-plan set** (≤ 5 plans of team members' own homes, with written permission, addresses cropped) comes next. It needs its own approval, because real plans carry third-party copyright and location data.
-4. Only after that: the implementation sequence in the feasibility study §12 (pure library, migrations, route, review UI), each with its own approval.
+Apply the decision rule. Then, each with its own approval:
+- an optional Sonnet `medium`-effort arm;
+- a ≤ 5-plan real set (own homes, written permission, addresses cropped);
+- the implementation sequence in the feasibility study §12.
+
+### Owner account checklist (create these yourself)
+
+**Anthropic (Claude Console)**
+- [ ] A dedicated workspace, e.g. `flh-floorplan-poc`. Spend limits can't be set on the Default workspace.
+- [ ] A workspace **spend limit of $5/month**: a hard limit, after which requests are rejected (HTTP 400).
+- [ ] Optional second ceiling: prepaid credits with **auto-reload off** (requests stop at a zero balance).
+- [ ] One API key created **in that workspace**. Put it in the run environment as `ANTHROPIC_API_KEY`.
+- [ ] No US-only data residency default needed; the harness assumes ×1.1 anyway.
+- [ ] Revoke the key after the run.
+
+**Google (Gemini Developer API)**
+- [ ] A dedicated Google Cloud project with an **active billing account**, so the paid tier applies and data is not used to improve products.
+- [ ] A **project spend cap** in Google AI Studio (e.g. $3). Google documents it as enforced, but forum reports describe lag and overshoot, so treat it as best-effort.
+- [ ] A Cloud Billing **budget with alerts** at $1, $2 and $3. Alerts only: they do not stop spending.
+- [ ] One API key restricted to the Generative Language API. Put it in the run environment as `GEMINI_API_KEY`.
+- [ ] Revoke the key after the run.
+
+**Run environment**
+- [ ] Set keys as environment variables only: never in files, commits, chat, manifests or command lines that get logged.
+- [ ] Keep the approved manifest in `scripts/floor-plan-eval/runs/` (git-ignored).
+- [ ] Use a fresh `runId` per approval.

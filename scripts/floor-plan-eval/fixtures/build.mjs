@@ -37,6 +37,11 @@ export function buildGroundTruth(plan) {
     unlabeledRooms: [...located.values()].filter(({ room }) => !roomLabel(room)).length,
     // Printed text that is not a room name (fixture notes such as "FIREPLACE", "UP").
     otherText: plan.drawings.flatMap((d) => (d.texts || []).map((t) => t.t)),
+    // Every piece of text printed anywhere on the sheet. A printed label a
+    // model reports must appear in here, or it is a hallucination.
+    sheetText: [plan.title, plan.subtitle, ...(plan.notes || []).flatMap((n) => n.lines),
+      ...plan.drawings.flatMap((d) => [d.caption, ...(d.texts || []).map((t) => t.t), ...d.rooms.flatMap((r) => (r.text || []).map((l) => (typeof l === 'string' ? l : l.t)))])]
+      .filter(Boolean),
     doors: plan.drawings.flatMap((d) => (d.doors || []).map(([a, b]) => [labelOf(a), labelOf(b)])),
     expected: {
       asDrawn: expect.asDrawn || [],

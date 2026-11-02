@@ -42,7 +42,7 @@ const checks = [
   ['anthropic no tools / batch / files / url image', !a.body.tools && !JSON.stringify(a.body).includes('"file_id"') && !JSON.stringify(a.body).includes('"type":"url"')],
   ['anthropic usage normalized', c.usage.inputTokens === 7100 && c.usage.outputTokens === 2400 && c.usage.thinkingTokens === 900],
   ['anthropic text', c.text === '{"ok":true}'],
-  ['gemini endpoint', /\/models\/gemini-3-flash:generateContent/.test(b.url)],
+  ['gemini endpoint', /\/models\/gemini-3-flash-preview:generateContent/.test(b.url)],
   ['gemini json schema', b.body.generationConfig?.responseMimeType === 'application/json' && Boolean(b.body.generationConfig?.responseJsonSchema)],
   ['gemini media resolution on the image part', b.body.contents[0].parts[0].mediaResolution?.level === 'MEDIA_RESOLUTION_HIGH'],
   ['gemini thinking level', b.body.generationConfig?.thinkingConfig?.thinkingLevel === 'LOW'],

@@ -39,14 +39,21 @@ export function scoreFixture(gt, extraction, { issues = [] } = {}) {
   const offerable = new Set(findings.filter(isOfferable).map((f) => f.concept));
   const allowed = new Set([...exp.asDrawn, ...exp.acceptable, ...exp.optional, ...exp.ambiguous, ...exp.notOfferable, 'other', 'den_flex']);
 
-  // 1. Hallucinations: printed/symbol findings the plan does not show, any
-  //    mention of a forbidden concept, and printed room labels not on the plan.
+  // 1. Hallucinations: a printed claim of a feature the plan does not show,
+  //    any mention of a forbidden concept (injection traps), and printed room
+  //    labels whose text appears nowhere on the sheet. A partial transcription
+  //    ("GARAGE" for "2-CAR GARAGE") is a transcription miss, not a hallucination;
+  //    a symbol-based over-reading (a tub read as a soaking tub) is an
+  //    "overclaim", reported separately and penalized only if offered as Yes.
   const hallucinatedFeatures = findings.filter((f) => exp.forbidden.includes(f.concept)
-    || (f.evidenceCategory !== EVIDENCE.LAYOUT_INFERRED && !allowed.has(f.concept) && !exp.forbiddenDerived.includes(f.concept)))
+    || (f.evidenceCategory === EVIDENCE.PRINTED_LABEL && !allowed.has(f.concept) && !exp.forbiddenDerived.includes(f.concept)))
     .map((f) => f.concept);
-  const otherText = new Set((gt.otherText || []).map(compact));
+  const overclaims = findings.filter((f) => f.evidenceCategory === EVIDENCE.DRAWN_SYMBOL && !allowed.has(f.concept)
+    && !exp.forbidden.includes(f.concept) && !exp.forbiddenDerived.includes(f.concept)).map((f) => f.concept);
+  const sheet = compact((gt.sheetText || []).join(' '));
+  const onSheet = (text) => compact(text).length >= 2 && sheet.includes(compact(text));
   const hallucinatedLabels = extraction.rooms.filter((r) => r.evidenceCategory === EVIDENCE.PRINTED_LABEL
-    && !gt.rooms.some((g) => labelMatches(r, g.label)) && !otherText.has(compact(r.printedLabel))).map((r) => r.printedLabel);
+    && !gt.rooms.some((g) => labelMatches(r, g.label)) && !onSheet(r.printedLabel)).map((r) => r.printedLabel);
 
   // 2. Offerable findings: what could be offered as "Yes".
   const offeredWrong = [];
@@ -106,6 +113,7 @@ export function scoreFixture(gt, extraction, { issues = [] } = {}) {
     hallucinatedFeatures,
     hallucinatedLabels,
     hallucinations: hallucinatedFeatures.length + hallucinatedLabels.length,
+    overclaims,
     offerable: [...offerable].sort(),
     offerableCount: offerable.size,
     offeredWrong,
@@ -176,6 +184,7 @@ export function aggregate(calls) {
     errors: calls.filter((c) => c.error).length,
     schemaValid: scored.length,
     hallucinations: sum('hallucinations'),
+    overclaims: scored.reduce((s, c) => s + (c.score.overclaims?.length || 0), 0),
     precision: rate(offerable - offeredWrong, offerable),
     recall: rate(sum('expectedFound'), sum('expectedTotal')),
     offerableRecall: rate(sum('expectedOffered'), sum('expectedTotal')),

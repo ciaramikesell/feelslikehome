@@ -21,6 +21,9 @@
   "rooms": [],
   "unlabeledRooms": 8,
   "otherText": [],
+  "sheetText": [
+    "PLAN A"
+  ],
   "doors": [
     [
       "(unlabeled living)",

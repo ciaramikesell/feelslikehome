@@ -1,4 +1,5 @@
-// The only place adapters are created. Replay adapters are always allowed.
+// The only place adapters are created.
+// Replay adapters are always allowed.
 // A paid adapter is created only when EVERY condition below holds; otherwise
 // this throws before any SDK is loaded or any key is read.
 import { createAnthropicAdapter } from './anthropic.mjs';
@@ -28,7 +29,7 @@ export function validateRunManifest(manifest) {
   return problems;
 }
 
-export function createAdapter(providerId, { paid = false, manifest = null, env = process.env, config, clientFactories = {} } = {}) {
+export function createAdapter(providerId, { paid = false, manifest = null, env = process.env, config, enable = null, clientFactories = {} } = {}) {
   if (providerId.startsWith('replay:')) return createReplayAdapter(providerId.slice('replay:'.length));
   const cfg = config?.providers?.find((p) => p.id === providerId);
   if (!cfg) throw new Error(`unknown provider "${providerId}"`);
@@ -38,7 +39,9 @@ export function createAdapter(providerId, { paid = false, manifest = null, env =
   reasons.push(...validateRunManifest(manifest));
   if (manifest && !manifest.providers?.includes(providerId)) reasons.push(`manifest does not approve "${providerId}"`);
   if (manifest && env.FLH_FPA_PAID_RUN !== manifest.runId) reasons.push('FLH_FPA_PAID_RUN does not equal manifest.runId');
-  if (cfg.enabled !== true) reasons.push(`providers.config.json has "${providerId}" disabled`);
+  // The committed config keeps every provider disabled; an approved run enables
+  // one for a single invocation with --enable, so nothing needs editing or committing.
+  if (cfg.enabled !== true && !enable?.includes(providerId)) reasons.push(`"${providerId}" is disabled (pass --enable ${providerId} for an approved run)`);
   if (!env[cfg.apiKeyEnv]) reasons.push(`${cfg.apiKeyEnv} is not set`);
   if (cfg.requiresPaidTier && manifest?.geminiPaidTierConfirmed !== true) reasons.push('manifest.geminiPaidTierConfirmed must be true (the free tier may use data to improve products)');
   if (cfg.modelIdVerified === false && !manifest?.confirmedModelIds?.includes(cfg.model)) reasons.push(`model id "${cfg.model}" is unverified; add it to manifest.confirmedModelIds after checking the provider's model list`);

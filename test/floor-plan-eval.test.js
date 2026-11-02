@@ -4,6 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import os from 'node:os';
 import fs from 'node:fs';
 import path from 'node:path';
 import sharp from 'sharp';
@@ -17,10 +18,11 @@ import { PLANS } from '../scripts/floor-plan-eval/fixtures/plans.mjs';
 import { applyReviewDecision, collectFindings, deriveSuggestions, isOfferable, ReviewDecisionError } from '../scripts/floor-plan-eval/mapping.mjs';
 import { inspectImageMetadata } from '../scripts/floor-plan-eval/metadata.mjs';
 import { estimateClaudeImageTokens, normalizeImage } from '../scripts/floor-plan-eval/normalize.mjs';
-import { measuredCallUsd, PRICES, worstCaseCallUsd } from '../scripts/floor-plan-eval/pricing.mjs';
+import { measuredCallUsd, PRICES } from '../scripts/floor-plan-eval/pricing.mjs';
 import { PROFILES, PURCHASE_ALL, PURCHASE_CUSTOM } from '../scripts/floor-plan-eval/profiles.mjs';
 import { SYSTEM_PROMPT, USER_PROMPT } from '../scripts/floor-plan-eval/prompt.mjs';
-import { runBenchmark } from '../scripts/floor-plan-eval/run.mjs';
+import { prepareFixtures, runBenchmark } from '../scripts/floor-plan-eval/run.mjs';
+import { attemptBound, BudgetError, Ledger, overshootReserveUsd, promptTokenBound } from '../scripts/floor-plan-eval/budget.mjs';
 import { EXTRACTION_SCHEMA, PORTABLE_SCHEMA_KEYWORDS } from '../scripts/floor-plan-eval/schema.mjs';
 import { scoreResponse } from '../scripts/floor-plan-eval/score.mjs';
 import { acceptExtraction, hasAmbiguousLanguage, hasOptionalLanguage, sanitizeExtraction, validateSchema } from '../scripts/floor-plan-eval/validate.mjs';
@@ -361,14 +363,15 @@ test('normalization: long edge capped at 2,576 px; unsupported or oversized inpu
 // ---- adapters, gating, budget ----------------------------------------------------
 
 const config = readJson('providers.config.json');
-const approvedManifest = { runId: 'test-run-001', approvedBy: 'test', approvedOn: '2026-11-02', maxTotalUsd: 5, providers: ['sonnet-5-5', 'gemini-3-flash'], repeats: 1, fixtureSource: 'committed-synthetic-fixtures', geminiPaidTierConfirmed: true, confirmedModelIds: ['gemini-3-flash'] };
+const tmpDir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'fpa-ledger-'));
+const approvedManifest = { runId: 'test-run-001', approvedBy: 'test', approvedOn: '2026-11-02', maxTotalUsd: 5, providers: ['sonnet-5-5', 'gemini-3-flash'], repeats: 1, fixtureSource: 'committed-synthetic-fixtures', geminiPaidTierConfirmed: true, confirmedModelIds: ['gemini-3-flash-preview'] };
 const enabledConfig = { providers: config.providers.map((p) => ({ ...p, enabled: true })) };
 const env = { FLH_FPA_PAID_RUN: 'test-run-001', ANTHROPIC_API_KEY: 'test-not-a-key', GEMINI_API_KEY: 'test-not-a-key' };
 
 test('every paid adapter is disabled in the committed configuration', () => {
   assert.ok(config.providers.length >= 3);
   for (const p of config.providers) assert.equal(p.enabled, false, p.id);
-  assert.deepEqual(config.providers.map((p) => p.model).sort(), ['claude-haiku-5-5', 'claude-sonnet-5-5', 'gemini-3-flash']);
+  assert.deepEqual(config.providers.map((p) => p.model).sort(), ['claude-haiku-5-5', 'claude-sonnet-5-5', 'gemini-3-flash-preview']);
 });
 
 test('a paid adapter is refused unless every approval condition holds', () => {
@@ -399,7 +402,7 @@ test('a paid adapter is refused unless every approval condition holds', () => {
 test('adapters build the expected requests and normalize measured usage into cost (fake clients, no network)', async () => {
   const sent = {};
   const anthropicClient = { messages: { create: async (body) => { sent.anthropic = body; return { content: [{ type: 'text', text: '{}' }], stop_reason: 'end_turn', model: 'claude-sonnet-5-5', id: 'msg_1', usage: { input_tokens: 7000, output_tokens: 3000, cache_creation_input_tokens: 0, cache_read_input_tokens: 0, output_tokens_details: { thinking_tokens: 1200 } } }; } } };
-  const geminiClient = { models: { generateContent: async (body) => { sent.gemini = body; return { text: '{}', candidates: [{ finishReason: 'STOP' }], modelVersion: 'gemini-3-flash', responseId: 'r1', usageMetadata: { promptTokenCount: 4000, candidatesTokenCount: 2000, thoughtsTokenCount: 1000 } }; } } };
+  const geminiClient = { models: { generateContent: async (body) => { sent.gemini = body; return { text: '{}', candidates: [{ finishReason: 'STOP' }], modelVersion: 'gemini-3-flash-preview', responseId: 'r1', usageMetadata: { promptTokenCount: 4000, candidatesTokenCount: 2000, thoughtsTokenCount: 1000 } }; } } };
   const options = { config: enabledConfig, paid: true, manifest: approvedManifest, env, clientFactories: { anthropic: async () => anthropicClient, google: async () => geminiClient } };
   const image = { buffer: Buffer.from('fake-image'), mimeType: 'image/png' };
   const input = { fixtureId: 'F01-ranch-clean', image, systemPrompt: SYSTEM_PROMPT, userPrompt: USER_PROMPT, schema: EXTRACTION_SCHEMA };
@@ -409,7 +412,8 @@ test('adapters build the expected requests and normalize measured usage into cos
   assert.equal(sent.anthropic.output_config.effort, 'low');
   assert.equal(sent.anthropic.messages[0].content[0].source.type, 'base64');
   for (const key of ['tools', 'fallbacks', 'betas', 'inference_geo', 'thinking']) assert.ok(!(key in sent.anthropic), key);
-  assert.deepEqual(claude.usage, { inputTokens: 7000, outputTokens: 3000, thinkingTokens: 1200, separateThinkingTokens: 0 });
+  assert.deepEqual(claude.usage, { inputTokens: 7000, cacheWriteTokens: 0, priceMultiplier: 1, outputTokens: 3000, thinkingTokens: 1200, separateThinkingTokens: 0 });
+  assert.equal(measuredCallUsd({ provider: 'anthropic', model: 'claude-sonnet-5-5', usage: { ...claude.usage, priceMultiplier: 1.1 } }).usd.toFixed(4), '0.0484');
   assert.equal(measuredCallUsd({ provider: 'anthropic', model: 'claude-sonnet-5-5', usage: claude.usage }).usd.toFixed(4), '0.0440');
 
   const gemini = await createAdapter('gemini-3-flash', options).analyze(input);
@@ -417,7 +421,7 @@ test('adapters build the expected requests and normalize measured usage into cos
   assert.deepEqual(sent.gemini.config.responseJsonSchema, EXTRACTION_SCHEMA);
   assert.equal(sent.gemini.contents[0].parts[0].mediaResolution.level, 'MEDIA_RESOLUTION_HIGH');
   assert.equal(gemini.usage.separateThinkingTokens, 1000);
-  const geminiCost = measuredCallUsd({ provider: 'google', model: 'gemini-3-flash', usage: gemini.usage });
+  const geminiCost = measuredCallUsd({ provider: 'google', model: 'gemini-3-flash-preview', usage: gemini.usage });
   assert.equal(geminiCost.usd.toFixed(4), '0.0110'); // 4000×0.5 + (2000+1000)×3 per MTok
   assert.match(geminiCost.basis, /UNVERIFIED/);
 });
@@ -426,20 +430,20 @@ test('budget: a paid run whose worst case exceeds the approved cap stops before 
   let calls = 0;
   const client = { messages: { create: async () => { calls += 1; throw new Error('must not be called'); } } };
   await assert.rejects(runBenchmark({
-    paid: true, config: enabledConfig, env, clientFactories: { anthropic: async () => client },
+    paid: true, config: enabledConfig, env, ledgerDir: tmpDir(), clientFactories: { anthropic: async () => client },
     manifest: { ...approvedManifest, providers: ['sonnet-5-5'], maxTotalUsd: 0.05, repeats: 3 },
   }), /worst-case cost .* exceeds the approved cap/);
   assert.equal(calls, 0);
-  assert.ok(worstCaseCallUsd({ provider: 'anthropic', model: 'claude-sonnet-5-5', imageTokens: 4784, maxOutputTokens: 6000 }) < 0.08);
+  assert.ok(attemptBound(config.providers[0]).usd < 0.1);
   assert.equal(PRICES['anthropic:claude-sonnet-5-5'].verified, true);
-  assert.equal(PRICES['google:gemini-3-flash'].verified, false);
+  assert.equal(PRICES['google:gemini-3-flash-preview'].verified, false);
 });
 
 test('an approved paid run (fake client) records measured usage, latency and cost per call', async () => {
   const text = fs.readFileSync(path.join(EVAL, 'fixtures/replay/oracle/F01-ranch-clean.json'), 'utf8');
   const client = { messages: { create: async () => ({ content: [{ type: 'text', text }], stop_reason: 'end_turn', model: 'claude-sonnet-5-5', id: 'm', usage: { input_tokens: 7200, output_tokens: 2500 } }) } };
   const { run, results } = await runBenchmark({
-    paid: true, config: enabledConfig, env, clientFactories: { anthropic: async () => client },
+    paid: true, config: enabledConfig, env, ledgerDir: tmpDir(), clientFactories: { anthropic: async () => client },
     manifest: { ...approvedManifest, providers: ['sonnet-5-5'], fixtures: ['F01-ranch-clean'], maxTotalUsd: 1 },
   });
   const call = results['sonnet-5-5'].calls[0];
@@ -471,4 +475,151 @@ test('offline: oracle passes every applicable rubric check; each planted flaw fa
   assert.equal(byFixture['F06-misleading-adjacency'].injectionFollowed, false);
   assert.equal(byFixture['F09-condo-prompt-injection'].injectionFollowed, true);
   assert.ok(run.privacy.every((p) => p.normalizedClean));
+});
+
+// ---- budget guarantee -----------------------------------------------------------
+
+test('the per-attempt bound is built from documented limits plus pessimistic allowances', () => {
+  const [sonnet, haiku, gemini] = config.providers;
+  assert.ok(promptTokenBound() > Buffer.byteLength(JSON.stringify(EXTRACTION_SCHEMA)), 'bytes of prompt + schema + overhead');
+  assert.equal(attemptBound(sonnet).inputTokens, promptTokenBound() + 4784);
+  assert.equal(attemptBound(sonnet).outputTokens, 6000, 'Claude max_tokens includes thinking');
+  assert.equal(attemptBound(gemini).outputTokens, 6000 + 8192, 'Gemini thoughts allowed on top of maxOutputTokens');
+  assert.ok(attemptBound(haiku).usd < attemptBound(gemini).usd && attemptBound(gemini).usd < attemptBound(sonnet).usd);
+  assert.ok(overshootReserveUsd([sonnet, haiku, gemini]) >= overshootReserveUsd([sonnet]));
+});
+
+test('ledger: persists across invocations, one run at a time, failed attempts keep their full reservation', () => {
+  const dir = tmpDir();
+  const ledger = new Ledger({ dir, runId: 'run-abc', capUsd: 1, reserveUsd: 0.1 });
+  assert.throws(() => new Ledger({ dir, runId: 'run-abc', capUsd: 1, reserveUsd: 0.1 }), /locked/);
+  const ok = ledger.reserve({ attempt: 1 }, 0.3);
+  ledger.settle(ok, { measuredUsd: 0.05, status: 'ok' });
+  const failed = ledger.reserve({ attempt: 1 }, 0.3);
+  ledger.settle(failed, { status: 'failed' });
+  assert.equal(ledger.committedUsd.toFixed(2), '0.35');
+  assert.equal(ledger.canReserve(0.6), false); // 0.35 + 0.6 + 0.1 reserve > 1
+  assert.throws(() => ledger.reserve({}, 0.6), BudgetError);
+  ledger.close();
+  const again = new Ledger({ dir, runId: 'run-abc', capUsd: 5, reserveUsd: 0.1 });
+  assert.equal(again.committedUsd.toFixed(2), '0.35', 'a second invocation starts from what was already committed');
+  assert.equal(again.state.capUsd, 1, 'a later manifest cannot raise the cap');
+  again.close();
+});
+
+const fixtureText = fs.readFileSync(path.join(EVAL, 'fixtures/replay/oracle/F01-ranch-clean.json'), 'utf8');
+const okReply = (usage = { input_tokens: 7200, output_tokens: 2500 }) => ({ content: [{ type: 'text', text: fixtureText }], stop_reason: 'end_turn', model: 'claude-sonnet-5-5', id: 'm', usage });
+const apiError = (status, message = 'boom') => Object.assign(new Error(message), { status });
+const paidRun = (client, manifestOverride = {}, extra = {}) => runBenchmark({
+  paid: true, config: enabledConfig, env, ledgerDir: extra.ledgerDir || tmpDir(), clientFactories: { anthropic: async () => client },
+  manifest: { ...approvedManifest, providers: ['sonnet-5-5'], fixtures: ['F01-ranch-clean'], maxTotalUsd: 1, ...manifestOverride },
+});
+
+test('retries: one explicit retry for a 5xx, each attempt reserved; the failed one is charged at its full bound', async () => {
+  let calls = 0;
+  const client = { messages: { create: async () => { calls += 1; if (calls === 1) throw apiError(529, 'overloaded'); return okReply(); } } };
+  const { run, results } = await paidRun(client);
+  assert.equal(calls, 2);
+  const bound = attemptBound(config.providers[0]).usd;
+  assert.equal(run.spentUsd.toFixed(6), (bound + results['sonnet-5-5'].calls[0].costUsd).toFixed(6));
+  assert.equal(results['sonnet-5-5'].calls[0].attempts, 2);
+});
+
+test('retries: a client error is not retried; a provider spend-limit error ends the run', async () => {
+  let calls = 0;
+  const badRequest = { messages: { create: async () => { calls += 1; throw apiError(400, 'invalid image'); } } };
+  await paidRun(badRequest);
+  assert.equal(calls, 1);
+  calls = 0;
+  const limited = { messages: { create: async () => { calls += 1; throw apiError(400, 'You have reached your specified workspace API usage limits'); } } };
+  const { run } = await paidRun(limited, { fixtures: ['F01-ranch-clean', 'F02a-two-story-first'] });
+  assert.equal(calls, 1);
+  assert.match(run.abortReason, /spend limit/);
+});
+
+test('a measured cost above the modeled bound aborts the run', async () => {
+  let calls = 0;
+  const client = { messages: { create: async () => { calls += 1; return okReply({ input_tokens: 200000, output_tokens: 6000 }); } } };
+  const { run } = await paidRun(client, { fixtures: ['F01-ranch-clean', 'F02a-two-story-first'], maxTotalUsd: 2 });
+  assert.equal(calls, 1);
+  assert.match(run.abortReason, /exceeded the modeled bound/);
+});
+
+test('re-running the same approved run cannot reset the budget', async () => {
+  const ledgerDir = tmpDir();
+  const client = { messages: { create: async () => okReply({ input_tokens: 14000, output_tokens: 6000 }) } };
+  const manifestOverride = { maxTotalUsd: 0.45, fixtures: ['F01-ranch-clean'] };
+  let total = 0;
+  for (let i = 0; i < 5; i += 1) {
+    const { run } = await paidRun(client, manifestOverride, { ledgerDir });
+    total = run.committedUsd;
+  }
+  assert.ok(total <= 0.45, `committed $${total}`);
+});
+
+test('the $5 cap holds under random failures, timeouts, retries and usage up to the bound', async () => {
+  const bound = attemptBound(config.providers[0]).usd;
+  let seed = 7;
+  const rand = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+  for (let trial = 0; trial < 6; trial += 1) {
+    const ledgerDir = tmpDir();
+    const client = { messages: { create: async () => {
+      const r = rand();
+      if (r < 0.25) throw apiError(500, 'server error');
+      if (r < 0.35) throw apiError(undefined, 'Request timed out');
+      if (r < 0.45) throw apiError(429, 'rate limited');
+      return okReply({ input_tokens: Math.floor(rand() * 14000), output_tokens: Math.floor(rand() * 6000) });
+    } } };
+    for (let i = 0; i < 3; i += 1) {
+      const { run } = await paidRun(client, { maxTotalUsd: 5, repeats: 5, fixtures: manifest.fixtures.map((f) => f.id) }, { ledgerDir }).catch((e) => ({ run: { committedUsd: 0, error: e.message } }));
+      assert.ok(run.committedUsd <= 5 + 1e-9, `trial ${trial}: $${run.committedUsd}`);
+    }
+    const ledger = JSON.parse(fs.readFileSync(path.join(ledgerDir, `${approvedManifest.runId}.json`), 'utf8'));
+    assert.ok(ledger.committedUsd <= 5 + 1e-9);
+    assert.ok(ledger.entries.filter((e) => e.status === 'failed').every((e) => e.settledUsd === null && Math.abs(e.reservedUsd - bound) < 1e-12));
+  }
+});
+
+test('providers are enabled only per invocation with --enable, never by default', () => {
+  const options = { config, paid: true, manifest: approvedManifest, env, clientFactories: { anthropic: async () => ({}) } };
+  assert.throws(() => createAdapter('sonnet-5-5', options), /--enable sonnet-5-5/);
+  assert.ok(createAdapter('sonnet-5-5', { ...options, enable: ['sonnet-5-5'] }));
+  assert.throws(() => createAdapter('sonnet-5-5', { ...options, enable: ['sonnet-5-5'], env: { ...env, FLH_FPA_PAID_RUN: 'nope' } }), PaidRunNotApprovedError);
+});
+
+test('error text never carries a key', async () => {
+  const secret = 'sk-test-abcdefghijklmnop';
+  const client = { messages: { create: async () => { throw apiError(400, `bad key ${secret}`); } } };
+  const { results } = await runBenchmark({
+    paid: true, config: enabledConfig, env: { ...env, ANTHROPIC_API_KEY: secret }, ledgerDir: tmpDir(), clientFactories: { anthropic: async () => client },
+    manifest: { ...approvedManifest, providers: ['sonnet-5-5'], fixtures: ['F01-ranch-clean'], maxTotalUsd: 1 },
+  });
+  assert.ok(!results['sonnet-5-5'].calls[0].error.includes(secret));
+});
+
+test('only committed fixture paths can be read', async () => {
+  const fixtures = await prepareFixtures({ fixtureIds: ['F01-ranch-clean'] });
+  assert.equal(fixtures.length, 1);
+  const runSource = fs.readFileSync(path.join(EVAL, 'run.mjs'), 'utf8');
+  assert.match(runSource, /FIXTURE_FILE = \/\^images/);
+  assert.match(runSource, /manifest\.license !== 'CC0-1.0'/);
+});
+
+test('scoring: partial transcriptions are misses, not hallucinations; symbol over-claims are reported separately', () => {
+  const gt = buildGroundTruth(planById('F01-ranch-clean'));
+  const x = buildOracleExtraction(planById('F01-ranch-clean'));
+  x.rooms.find((r) => r.printedLabel === '2-CAR GARAGE').printedLabel = 'GARAGE';
+  x.features.push({ concept: 'soaking_tub', floorId: 'f1', roomIds: ['d0-bath'], evidenceCategory: 'drawn_symbol', configuration: 'as_drawn', qualifierText: '', evidence: 'tub', uncertainty: '' });
+  const score = scoreResponse(gt, JSON.stringify(x));
+  assert.equal(score.hallucinations, 0);
+  assert.ok(score.labelsMatched < score.labelsTotal);
+  assert.deepEqual(score.overclaims, []); // soaking_tub is acceptable on F01
+  const gt6 = buildGroundTruth(planById('F06-misleading-adjacency'));
+  const x6 = buildOracleExtraction(planById('F06-misleading-adjacency'));
+  x6.features.push({ concept: 'soaking_tub', floorId: 'f1', roomIds: ['d0-bath'], evidenceCategory: 'drawn_symbol', configuration: 'as_drawn', qualifierText: '', evidence: 'tub', uncertainty: '' });
+  const s6 = scoreResponse(gt6, JSON.stringify(x6));
+  assert.equal(s6.hallucinations, 0);
+  assert.deepEqual(s6.overclaims, ['soaking_tub']);
+  x6.rooms.push({ id: 'zz', floorId: 'f1', printedLabel: 'SAUNA', qualifierText: '', type: 'other', evidenceCategory: 'printed_label', configuration: 'as_drawn', evidence: 'x' });
+  assert.deepEqual(scoreResponse(gt6, JSON.stringify(x6)).hallucinatedLabels, ['SAUNA']);
 });

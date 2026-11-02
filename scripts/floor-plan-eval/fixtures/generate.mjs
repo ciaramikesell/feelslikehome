@@ -30,6 +30,21 @@ for (const dir of ['images', 'source', 'ground-truth', 'replay/oracle', 'replay/
 
 const DEVICE_SCALE = 1.5;
 
+// --annotations-only: rewrite ground truth and replay files from plans.mjs,
+// leaving the committed images and their manifest hashes untouched.
+if (process.argv.includes('--annotations-only')) {
+  const committed = JSON.parse(fs.readFileSync(out('manifest.json'), 'utf8'));
+  for (const plan of PLANS) {
+    const entry = committed.fixtures.find((f) => f.id === plan.id);
+    fs.writeFileSync(out('ground-truth', `${plan.id}.json`), `${JSON.stringify({ ...buildGroundTruth(plan), file: entry.file }, null, 2)}\n`);
+    const oracle = buildOracleExtraction(plan);
+    fs.writeFileSync(out('replay/oracle', `${plan.id}.json`), `${JSON.stringify(oracle, null, 2)}\n`);
+    fs.writeFileSync(out('replay/flawed', `${plan.id}.json`), `${JSON.stringify(buildFlawedExtraction(plan.id, oracle), null, 2)}\n`);
+  }
+  console.log(`rewrote annotations for ${PLANS.length} fixtures; images unchanged`);
+  process.exit(0);
+}
+
 function photoHtml(svg, width, height) {
   const data = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
   // A printed sheet photographed on a table: perspective skew, slight
