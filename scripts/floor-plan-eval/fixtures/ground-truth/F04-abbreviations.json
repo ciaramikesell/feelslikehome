@@ -1,0 +1,195 @@
+{
+  "fixtureId": "F04-abbreviations",
+  "homeId": "home-04",
+  "searchProfile": "purchase",
+  "description": "Builder abbreviations with dimensions (MBR, MBA, WIC, PNTRY, MUD, W/D, DR, LR, KIT, BR2, BA) and an abbreviated floor caption.",
+  "cases": [
+    "abbreviation",
+    "dimensions",
+    "first_floor_primary",
+    "laundry_floor"
+  ],
+  "unlabeledOnly": false,
+  "injection": false,
+  "personalMetadata": false,
+  "floors": [
+    {
+      "caption": "1ST FLR",
+      "level": "main"
+    }
+  ],
+  "rooms": [
+    {
+      "label": "LR",
+      "type": "living",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "KIT",
+      "type": "kitchen",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "PNTRY",
+      "type": "pantry",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "MUD",
+      "type": "mudroom",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "DR",
+      "type": "dining",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "MBR",
+      "type": "primary_bedroom",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "MBA",
+      "type": "primary_bath",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "WIC",
+      "type": "walk_in_closet",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "W/D",
+      "type": "laundry",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "BA",
+      "type": "full_bath",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "BR2",
+      "type": "bedroom",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "BR3",
+      "type": "bedroom",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    }
+  ],
+  "unlabeledRooms": 1,
+  "otherText": [],
+  "doors": [
+    [
+      "LR",
+      "KIT"
+    ],
+    [
+      "LR",
+      "MBR"
+    ],
+    [
+      "KIT",
+      "(unlabeled hall)"
+    ],
+    [
+      "KIT",
+      "PNTRY"
+    ],
+    [
+      "MUD",
+      "(unlabeled hall)"
+    ],
+    [
+      "DR",
+      "(unlabeled hall)"
+    ],
+    [
+      "MBR",
+      "MBA"
+    ],
+    [
+      "MBR",
+      "WIC"
+    ],
+    [
+      "W/D",
+      "(unlabeled hall)"
+    ],
+    [
+      "BA",
+      "(unlabeled hall)"
+    ],
+    [
+      "BR2",
+      "(unlabeled hall)"
+    ],
+    [
+      "BR3",
+      "W/D"
+    ]
+  ],
+  "expected": {
+    "asDrawn": [
+      "pantry",
+      "mudroom",
+      "formal_dining",
+      "primary_ensuite",
+      "walk_in_closet",
+      "double_vanity",
+      "laundry",
+      "first_floor_primary",
+      "first_floor_bedroom",
+      "laundry_first_floor"
+    ],
+    "acceptable": [
+      "walk_in_pantry"
+    ],
+    "optional": [],
+    "ambiguous": [],
+    "notOfferable": [],
+    "forbidden": [],
+    "forbiddenDerived": []
+  },
+  "relationships": {
+    "ensuitePairs": [
+      [
+        "MBR",
+        "MBA"
+      ]
+    ],
+    "forbiddenEnsuitePairs": [],
+    "forbiddenDoorPairs": []
+  },
+  "counts": {
+    "bedroomsLabeled": 3
+  },
+  "file": "images/F04-abbreviations.png"
+}

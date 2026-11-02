@@ -1,0 +1,318 @@
+{
+  "schemaVersion": "fpa-2",
+  "image": {
+    "isFloorPlan": true,
+    "legibility": "clear",
+    "multipleDrawings": false
+  },
+  "floors": [
+    {
+      "id": "f1",
+      "printedCaption": "SECOND FLOOR",
+      "level": "main"
+    }
+  ],
+  "rooms": [
+    {
+      "id": "d0-br2",
+      "floorId": "f1",
+      "printedLabel": "BEDROOM 2",
+      "qualifierText": "",
+      "type": "bedroom",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"BEDROOM 2\""
+    },
+    {
+      "id": "d0-bath2",
+      "floorId": "f1",
+      "printedLabel": "BATH 2",
+      "qualifierText": "",
+      "type": "full_bath",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"BATH 2\""
+    },
+    {
+      "id": "d0-br3",
+      "floorId": "f1",
+      "printedLabel": "BEDROOM 3",
+      "qualifierText": "",
+      "type": "bedroom",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"BEDROOM 3\""
+    },
+    {
+      "id": "d0-suite",
+      "floorId": "f1",
+      "printedLabel": "OWNER'S SUITE",
+      "qualifierText": "",
+      "type": "primary_bedroom",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"OWNER'S SUITE\""
+    },
+    {
+      "id": "d0-obath",
+      "floorId": "f1",
+      "printedLabel": "OWNER'S BATH",
+      "qualifierText": "",
+      "type": "primary_bath",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"OWNER'S BATH\""
+    },
+    {
+      "id": "d0-wic",
+      "floorId": "f1",
+      "printedLabel": "W.I.C.",
+      "qualifierText": "",
+      "type": "walk_in_closet",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"W.I.C.\""
+    },
+    {
+      "id": "d0-hall",
+      "floorId": "f1",
+      "printedLabel": "",
+      "qualifierText": "",
+      "type": "hall",
+      "evidenceCategory": "layout_inferred",
+      "configuration": "as_drawn",
+      "evidence": "Walls and fixture symbols only"
+    },
+    {
+      "id": "d0-br4",
+      "floorId": "f1",
+      "printedLabel": "BEDROOM 4",
+      "qualifierText": "",
+      "type": "bedroom",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"BEDROOM 4\""
+    },
+    {
+      "id": "d0-laundry",
+      "floorId": "f1",
+      "printedLabel": "LAUNDRY",
+      "qualifierText": "",
+      "type": "laundry",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"LAUNDRY\""
+    },
+    {
+      "id": "d0-lin",
+      "floorId": "f1",
+      "printedLabel": "LIN.",
+      "qualifierText": "",
+      "type": "closet",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"LIN.\""
+    },
+    {
+      "id": "d0-loft",
+      "floorId": "f1",
+      "printedLabel": "LOFT",
+      "qualifierText": "",
+      "type": "bonus_room",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"LOFT\""
+    }
+  ],
+  "relationships": [
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-br2",
+      "toRoomId": "d0-bath2",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-bath2",
+      "toRoomId": "d0-br3",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-br2",
+      "toRoomId": "d0-hall",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-br3",
+      "toRoomId": "d0-hall",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-suite",
+      "toRoomId": "d0-hall",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-suite",
+      "toRoomId": "d0-wic",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-suite",
+      "toRoomId": "d0-obath",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-br4",
+      "toRoomId": "d0-hall",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-laundry",
+      "toRoomId": "d0-hall",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-lin",
+      "toRoomId": "d0-hall",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-loft",
+      "toRoomId": "d0-hall",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "ensuite_bath",
+      "fromRoomId": "d0-suite",
+      "toRoomId": "d0-obath",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door drawn directly between the rooms"
+    },
+    {
+      "type": "closet_of",
+      "fromRoomId": "d0-wic",
+      "toRoomId": "d0-suite",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door drawn directly between the rooms"
+    },
+    {
+      "type": "jack_and_jill",
+      "fromRoomId": "d0-bath2",
+      "toRoomId": "d0-br2",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door drawn directly between the rooms"
+    },
+    {
+      "type": "jack_and_jill",
+      "fromRoomId": "d0-bath2",
+      "toRoomId": "d0-br3",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door drawn directly between the rooms"
+    }
+  ],
+  "features": [
+    {
+      "concept": "primary_ensuite",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-suite",
+        "d0-obath"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"OWNER'S SUITE\" / \"OWNER'S BATH\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "walk_in_closet",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-wic"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"W.I.C.\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "double_vanity",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-obath"
+      ],
+      "evidenceCategory": "drawn_symbol",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"OWNER'S BATH\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "jack_and_jill_bath",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-bath2",
+        "d0-br2",
+        "d0-br3"
+      ],
+      "evidenceCategory": "layout_inferred",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"BATH 2\" / \"BEDROOM 2\" / \"BEDROOM 3\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "laundry",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-laundry"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"LAUNDRY\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "bonus_room",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-loft"
+      ],
+      "evidenceCategory": "layout_inferred",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"LOFT\"",
+      "uncertainty": ""
+    }
+  ],
+  "counts": {
+    "bedroomsLabeled": 3,
+    "fullBathsBySymbol": 2,
+    "halfBathsBySymbol": 0,
+    "note": ""
+  },
+  "warnings": []
+}

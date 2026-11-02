@@ -3,6 +3,7 @@
 **Status:** read-only study; no code, schema, Storage, credentials, paid service or Production change  
 **Study date:** 2026-10-31  
 **Part of:** [Import & Enrichment V1 audit](import-enrichment-v1-technical-product-design-audit.md) §13  
+**Update 2026-11-02:** approved for offline proof-of-concept preparation with three refinements (§14). The harness is in [`scripts/floor-plan-eval/`](../scripts/floor-plan-eval/README.md). No paid call has been made.  
 **Product goal:** analyze a buyer-uploaded floor plan and suggest layout features relevant to that buyer's own My Search priorities. A person confirms every answer; nothing changes Match on its own.
 
 Constraints held during this study: draft PR #159 (`claude/amazing-mccarthy-5seyri`) was read, not modified. No user image was sent anywhere, no API key was created, no paid service was enabled.
@@ -411,6 +412,16 @@ Each step needs approval; nothing here is started.
 - **User trust:** suggestions that are wrong but confidently worded would undermine Match. Evidence-first copy and the no-auto-answer rule are the mitigation.
 
 ---
+
+## 14. Approved refinements (2026-11-02)
+
+These supersede the earlier sections where they differ.
+
+1. **Custom criteria: "Possibly relevant to your criterion".** An exact printed-label match to a custom criterion may still be offered as Yes. A semantic relationship supported by visible evidence (e.g. "Room for aging parents" ↔ a labeled first-floor bedroom; "Work from home space" ↔ a labeled office) is shown in a separate category, **possibly relevant**, which is never offered as Yes. The matching runs locally from a curated lexicon. Custom criteria and personal priorities are never sent to the vision provider.
+2. **Optional and configuration labels.** Optional, Opt., Alternate, Alt., Proposed, Upgrade, Future, Potential, Possible, Rough-in and similar labels make a room or feature `optional_or_alternate`. Dual-purpose labels (Den/BR 4, Flex) make it `unclear`. Neither can be offered as Yes, because the plan does not show that the selected home includes that configuration. A local gate enforces this on the provider's output regardless of what the provider reports.
+3. **"Not right" vs "Mark No".** *Not right* means the AI's evidence or interpretation is wrong: it records a correction and does not change Match (the criterion stays Unknown). *Mark No* is the buyer's explicit assertion that the property lacks the criterion, and writes `'no'` to that buyer's own answer. Absence from a plan is never interpreted as No, and the schema has no value that could express absence.
+
+The extraction schema is now `fpa-2`. It adds `configuration` and `qualifierText` to rooms and features, and derives floor-dependent concepts locally from captioned floors.
 
 ## Sources (fetched or searched 2026-10-31)
 

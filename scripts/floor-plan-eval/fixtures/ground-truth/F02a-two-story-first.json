@@ -1,0 +1,156 @@
+{
+  "fixtureId": "F02a-two-story-first",
+  "homeId": "home-02",
+  "searchProfile": "purchase",
+  "description": "Two-story home, first-floor drawing as its own image (pairs with F02b). No bedrooms or laundry on this floor.",
+  "cases": [
+    "multi_image_home",
+    "floor_assignment",
+    "abbreviation",
+    "half_bath"
+  ],
+  "unlabeledOnly": false,
+  "injection": false,
+  "personalMetadata": false,
+  "floors": [
+    {
+      "caption": "FIRST FLOOR",
+      "level": "main"
+    }
+  ],
+  "rooms": [
+    {
+      "label": "2-CAR GARAGE",
+      "type": "garage",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "MUD RM",
+      "type": "mudroom",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "POWDER",
+      "type": "half_bath",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "KITCHEN",
+      "type": "kitchen",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "DINING",
+      "type": "dining",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "FOYER",
+      "type": "foyer",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "FAMILY ROOM",
+      "type": "family",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "STUDY",
+      "type": "office",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "FRONT PORCH",
+      "type": "porch",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    }
+  ],
+  "unlabeledRooms": 0,
+  "otherText": [
+    "UP"
+  ],
+  "doors": [
+    [
+      "2-CAR GARAGE",
+      "MUD RM"
+    ],
+    [
+      "MUD RM",
+      "KITCHEN"
+    ],
+    [
+      "POWDER",
+      "FOYER"
+    ],
+    [
+      "FOYER",
+      "FAMILY ROOM"
+    ],
+    [
+      "KITCHEN",
+      "DINING"
+    ],
+    [
+      "KITCHEN",
+      "FAMILY ROOM"
+    ],
+    [
+      "FAMILY ROOM",
+      "STUDY"
+    ],
+    [
+      "FOYER",
+      "FRONT PORCH"
+    ]
+  ],
+  "expected": {
+    "asDrawn": [
+      "mudroom",
+      "kitchen_island",
+      "formal_dining",
+      "office",
+      "front_porch",
+      "garage"
+    ],
+    "acceptable": [
+      "attached_garage"
+    ],
+    "optional": [],
+    "ambiguous": [],
+    "notOfferable": [],
+    "forbidden": [],
+    "forbiddenDerived": [
+      "first_floor_primary",
+      "first_floor_bedroom",
+      "laundry_first_floor",
+      "laundry_second_floor"
+    ]
+  },
+  "relationships": {
+    "ensuitePairs": [],
+    "forbiddenEnsuitePairs": [],
+    "forbiddenDoorPairs": []
+  },
+  "counts": {
+    "bedroomsLabeled": 0
+  },
+  "file": "images/F02a-two-story-first.png"
+}

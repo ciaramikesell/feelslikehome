@@ -1,0 +1,41 @@
+{
+  "_comment": "Provider adapters for the floor-plan benchmark. Every paid adapter is disabled. Enabling one needs ALL of: an approved run manifest (runs/approved-run.json, see README), the --paid flag, FLH_FPA_PAID_RUN set to that manifest's runId, the provider key in the environment, and enabled:true here for that provider. Model ids marked unverified must be confirmed against the provider's model list before a run.",
+  "providers": [
+    {
+      "id": "sonnet-5-5",
+      "provider": "anthropic",
+      "model": "claude-sonnet-5-5",
+      "enabled": false,
+      "effort": "low",
+      "maxOutputTokens": 6000,
+      "timeoutMs": 90000,
+      "apiKeyEnv": "ANTHROPIC_API_KEY",
+      "sdk": "@anthropic-ai/sdk@1.3.0"
+    },
+    {
+      "id": "haiku-5-5",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "enabled": false,
+      "effort": "medium",
+      "maxOutputTokens": 6000,
+      "timeoutMs": 90000,
+      "apiKeyEnv": "ANTHROPIC_API_KEY",
+      "sdk": "@anthropic-ai/sdk@1.3.0"
+    },
+    {
+      "id": "gemini-3-flash",
+      "provider": "google",
+      "model": "gemini-3-flash",
+      "modelIdVerified": false,
+      "enabled": false,
+      "mediaResolution": "MEDIA_RESOLUTION_HIGH",
+      "thinkingLevel": "LOW",
+      "maxOutputTokens": 6000,
+      "timeoutMs": 90000,
+      "apiKeyEnv": "GEMINI_API_KEY",
+      "sdk": "@google/genai@2.32.0",
+      "requiresPaidTier": true
+    }
+  ]
+}

@@ -1,0 +1,227 @@
+{
+  "fixtureId": "F03-three-levels-one-sheet",
+  "homeId": "home-03",
+  "searchProfile": "purchase",
+  "description": "Three floor drawings on one sheet (finished lower level, main, upper). Tests per-drawing floor assignment.",
+  "cases": [
+    "multi_floor_single_image",
+    "floor_assignment",
+    "finished_basement",
+    "first_floor_primary"
+  ],
+  "unlabeledOnly": false,
+  "injection": false,
+  "personalMetadata": false,
+  "floors": [
+    {
+      "caption": "LOWER LEVEL (FINISHED)",
+      "level": "basement"
+    },
+    {
+      "caption": "MAIN LEVEL",
+      "level": "main"
+    },
+    {
+      "caption": "UPPER LEVEL",
+      "level": "second"
+    }
+  ],
+  "rooms": [
+    {
+      "label": "REC ROOM",
+      "type": "rec_room",
+      "level": "basement",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "BEDROOM 4",
+      "type": "bedroom",
+      "level": "basement",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "BATH 3",
+      "type": "full_bath",
+      "level": "basement",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "STOR.",
+      "type": "storage",
+      "level": "basement",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "UNFINISHED MECH.",
+      "type": "unfinished",
+      "level": "basement",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "GREAT ROOM",
+      "type": "great_room",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "KITCHEN",
+      "type": "kitchen",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "PRIMARY BEDROOM",
+      "type": "primary_bedroom",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "PRIMARY BATH",
+      "type": "primary_bath",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "WIC",
+      "type": "walk_in_closet",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "LAUNDRY",
+      "type": "laundry",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "BEDROOM 2",
+      "type": "bedroom",
+      "level": "second",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "BEDROOM 3",
+      "type": "bedroom",
+      "level": "second",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "BATH 2",
+      "type": "full_bath",
+      "level": "second",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "BONUS ROOM",
+      "type": "bonus_room",
+      "level": "second",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    }
+  ],
+  "unlabeledRooms": 1,
+  "otherText": [],
+  "doors": [
+    [
+      "REC ROOM",
+      "BEDROOM 4"
+    ],
+    [
+      "REC ROOM",
+      "UNFINISHED MECH."
+    ],
+    [
+      "BEDROOM 4",
+      "BATH 3"
+    ],
+    [
+      "GREAT ROOM",
+      "KITCHEN"
+    ],
+    [
+      "GREAT ROOM",
+      "PRIMARY BEDROOM"
+    ],
+    [
+      "PRIMARY BEDROOM",
+      "PRIMARY BATH"
+    ],
+    [
+      "PRIMARY BATH",
+      "WIC"
+    ],
+    [
+      "PRIMARY BATH",
+      "LAUNDRY"
+    ],
+    [
+      "BEDROOM 2",
+      "BONUS ROOM"
+    ],
+    [
+      "BEDROOM 3",
+      "(unlabeled hall)"
+    ],
+    [
+      "BATH 2",
+      "(unlabeled hall)"
+    ],
+    [
+      "BONUS ROOM",
+      "(unlabeled hall)"
+    ]
+  ],
+  "expected": {
+    "asDrawn": [
+      "rec_room",
+      "finished_basement",
+      "kitchen_island",
+      "primary_ensuite",
+      "walk_in_closet",
+      "double_vanity",
+      "laundry",
+      "bonus_room",
+      "first_floor_primary",
+      "first_floor_bedroom",
+      "laundry_first_floor"
+    ],
+    "acceptable": [
+      "basement"
+    ],
+    "optional": [],
+    "ambiguous": [],
+    "notOfferable": [],
+    "forbidden": [],
+    "forbiddenDerived": [
+      "laundry_second_floor"
+    ]
+  },
+  "relationships": {
+    "ensuitePairs": [
+      [
+        "PRIMARY BEDROOM",
+        "PRIMARY BATH"
+      ]
+    ],
+    "forbiddenEnsuitePairs": [],
+    "forbiddenDoorPairs": []
+  },
+  "counts": {
+    "bedroomsLabeled": 4
+  },
+  "file": "images/F03-three-levels-one-sheet.png"
+}

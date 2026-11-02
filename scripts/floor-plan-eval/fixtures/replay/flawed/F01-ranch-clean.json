@@ -1,0 +1,493 @@
+{
+  "schemaVersion": "fpa-2",
+  "image": {
+    "isFloorPlan": true,
+    "legibility": "clear",
+    "multipleDrawings": false
+  },
+  "floors": [
+    {
+      "id": "f1",
+      "printedCaption": "MAIN FLOOR",
+      "level": "main"
+    }
+  ],
+  "rooms": [
+    {
+      "id": "d0-garage",
+      "floorId": "f1",
+      "printedLabel": "2-CAR GARAGE",
+      "qualifierText": "",
+      "type": "garage",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"2-CAR GARAGE\""
+    },
+    {
+      "id": "d0-mud",
+      "floorId": "f1",
+      "printedLabel": "MUDROOM",
+      "qualifierText": "",
+      "type": "mudroom",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"MUDROOM\""
+    },
+    {
+      "id": "d0-laundry",
+      "floorId": "f1",
+      "printedLabel": "LAUNDRY",
+      "qualifierText": "",
+      "type": "laundry",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"LAUNDRY\""
+    },
+    {
+      "id": "d0-kitchen",
+      "floorId": "f1",
+      "printedLabel": "KITCHEN",
+      "qualifierText": "",
+      "type": "kitchen",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"KITCHEN\""
+    },
+    {
+      "id": "d0-pantry",
+      "floorId": "f1",
+      "printedLabel": "WALK-IN PANTRY",
+      "qualifierText": "",
+      "type": "walk_in_pantry",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"WALK-IN PANTRY\""
+    },
+    {
+      "id": "d0-cl1",
+      "floorId": "f1",
+      "printedLabel": "CL",
+      "qualifierText": "",
+      "type": "closet",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"CL\""
+    },
+    {
+      "id": "d0-dining",
+      "floorId": "f1",
+      "printedLabel": "DINING ROOM",
+      "qualifierText": "",
+      "type": "dining",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"DINING ROOM\""
+    },
+    {
+      "id": "d0-hall",
+      "floorId": "f1",
+      "printedLabel": "",
+      "qualifierText": "",
+      "type": "hall",
+      "evidenceCategory": "layout_inferred",
+      "configuration": "as_drawn",
+      "evidence": "Walls and fixture symbols only"
+    },
+    {
+      "id": "d0-living",
+      "floorId": "f1",
+      "printedLabel": "LIVING ROOM",
+      "qualifierText": "",
+      "type": "living",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"LIVING ROOM\""
+    },
+    {
+      "id": "d0-office",
+      "floorId": "f1",
+      "printedLabel": "OFFICE",
+      "qualifierText": "",
+      "type": "office",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"OFFICE\""
+    },
+    {
+      "id": "d0-br2",
+      "floorId": "f1",
+      "printedLabel": "BEDROOM 2",
+      "qualifierText": "",
+      "type": "bedroom",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"BEDROOM 2\""
+    },
+    {
+      "id": "d0-br3",
+      "floorId": "f1",
+      "printedLabel": "BEDROOM 3",
+      "qualifierText": "",
+      "type": "bedroom",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"BEDROOM 3\""
+    },
+    {
+      "id": "d0-corr",
+      "floorId": "f1",
+      "printedLabel": "",
+      "qualifierText": "",
+      "type": "hall",
+      "evidenceCategory": "layout_inferred",
+      "configuration": "as_drawn",
+      "evidence": "Walls and fixture symbols only"
+    },
+    {
+      "id": "d0-bath",
+      "floorId": "f1",
+      "printedLabel": "BATH",
+      "qualifierText": "",
+      "type": "full_bath",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"BATH\""
+    },
+    {
+      "id": "d0-linen",
+      "floorId": "f1",
+      "printedLabel": "LINEN",
+      "qualifierText": "",
+      "type": "closet",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"LINEN\""
+    },
+    {
+      "id": "d0-pbr",
+      "floorId": "f1",
+      "printedLabel": "PRIMARY BEDROOM",
+      "qualifierText": "",
+      "type": "primary_bedroom",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"PRIMARY BEDROOM\""
+    },
+    {
+      "id": "d0-pbath",
+      "floorId": "f1",
+      "printedLabel": "PRIMARY BATH",
+      "qualifierText": "",
+      "type": "primary_bath",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"PRIMARY BATH\""
+    },
+    {
+      "id": "d0-wic",
+      "floorId": "f1",
+      "printedLabel": "WALK-IN CLOSET",
+      "qualifierText": "",
+      "type": "walk_in_closet",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"WALK-IN CLOSET\""
+    }
+  ],
+  "relationships": [
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-garage",
+      "toRoomId": "d0-mud",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-mud",
+      "toRoomId": "d0-kitchen",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-mud",
+      "toRoomId": "d0-laundry",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-laundry",
+      "toRoomId": "d0-hall",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-kitchen",
+      "toRoomId": "d0-pantry",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-kitchen",
+      "toRoomId": "d0-cl1",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-kitchen",
+      "toRoomId": "d0-living",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-dining",
+      "toRoomId": "d0-living",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-living",
+      "toRoomId": "d0-office",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-living",
+      "toRoomId": "d0-hall",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-hall",
+      "toRoomId": "d0-corr",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-br2",
+      "toRoomId": "d0-corr",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-br3",
+      "toRoomId": "d0-corr",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-bath",
+      "toRoomId": "d0-corr",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-linen",
+      "toRoomId": "d0-corr",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-hall",
+      "toRoomId": "d0-pbr",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-pbr",
+      "toRoomId": "d0-pbath",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-pbath",
+      "toRoomId": "d0-wic",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "ensuite_bath",
+      "fromRoomId": "d0-pbr",
+      "toRoomId": "d0-pbath",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door drawn directly between the rooms"
+    },
+    {
+      "type": "closet_of",
+      "fromRoomId": "d0-wic",
+      "toRoomId": "d0-pbr",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door drawn directly between the rooms"
+    }
+  ],
+  "features": [
+    {
+      "concept": "mudroom",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-mud"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"MUDROOM\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "laundry",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-laundry"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"LAUNDRY\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "walk_in_pantry",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-pantry"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"WALK-IN PANTRY\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "formal_dining",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-dining"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"DINING ROOM\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "office",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-office"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"OFFICE\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "kitchen_island",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-kitchen"
+      ],
+      "evidenceCategory": "drawn_symbol",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"KITCHEN\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "fireplace",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-living"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"LIVING ROOM\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "primary_ensuite",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-pbr",
+        "d0-pbath"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"PRIMARY BEDROOM\" / \"PRIMARY BATH\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "double_vanity",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-pbath"
+      ],
+      "evidenceCategory": "drawn_symbol",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"PRIMARY BATH\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "garage",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-garage"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"2-CAR GARAGE\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "attached_garage",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-garage"
+      ],
+      "evidenceCategory": "layout_inferred",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"2-CAR GARAGE\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "pool",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-living"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"POOL\"",
+      "uncertainty": ""
+    }
+  ],
+  "counts": {
+    "bedroomsLabeled": 3,
+    "fullBathsBySymbol": 2,
+    "halfBathsBySymbol": 0,
+    "note": ""
+  },
+  "warnings": []
+}

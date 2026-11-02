@@ -1,0 +1,246 @@
+{
+  "schemaVersion": "fpa-2",
+  "image": {
+    "isFloorPlan": true,
+    "legibility": "clear",
+    "multipleDrawings": false
+  },
+  "floors": [
+    {
+      "id": "f1",
+      "printedCaption": "FIRST FLOOR",
+      "level": "main"
+    }
+  ],
+  "rooms": [
+    {
+      "id": "d0-garage",
+      "floorId": "f1",
+      "printedLabel": "2-CAR GARAGE",
+      "qualifierText": "",
+      "type": "garage",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"2-CAR GARAGE\""
+    },
+    {
+      "id": "d0-mud",
+      "floorId": "f1",
+      "printedLabel": "MUD RM",
+      "qualifierText": "",
+      "type": "mudroom",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"MUD RM\""
+    },
+    {
+      "id": "d0-powder",
+      "floorId": "f1",
+      "printedLabel": "POWDER",
+      "qualifierText": "",
+      "type": "half_bath",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"POWDER\""
+    },
+    {
+      "id": "d0-kitchen",
+      "floorId": "f1",
+      "printedLabel": "KITCHEN",
+      "qualifierText": "",
+      "type": "kitchen",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"KITCHEN\""
+    },
+    {
+      "id": "d0-dining",
+      "floorId": "f1",
+      "printedLabel": "DINING",
+      "qualifierText": "",
+      "type": "dining",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"DINING\""
+    },
+    {
+      "id": "d0-foyer",
+      "floorId": "f1",
+      "printedLabel": "FOYER",
+      "qualifierText": "",
+      "type": "foyer",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"FOYER\""
+    },
+    {
+      "id": "d0-family",
+      "floorId": "f1",
+      "printedLabel": "FAMILY ROOM",
+      "qualifierText": "",
+      "type": "family",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"FAMILY ROOM\""
+    },
+    {
+      "id": "d0-study",
+      "floorId": "f1",
+      "printedLabel": "STUDY",
+      "qualifierText": "",
+      "type": "office",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"STUDY\""
+    },
+    {
+      "id": "d0-porch",
+      "floorId": "f1",
+      "printedLabel": "FRONT PORCH",
+      "qualifierText": "",
+      "type": "porch",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"FRONT PORCH\""
+    }
+  ],
+  "relationships": [
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-garage",
+      "toRoomId": "d0-mud",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-mud",
+      "toRoomId": "d0-kitchen",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-powder",
+      "toRoomId": "d0-foyer",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-foyer",
+      "toRoomId": "d0-family",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-kitchen",
+      "toRoomId": "d0-dining",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-kitchen",
+      "toRoomId": "d0-family",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-family",
+      "toRoomId": "d0-study",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-foyer",
+      "toRoomId": "d0-porch",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    }
+  ],
+  "features": [
+    {
+      "concept": "mudroom",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-mud"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"MUD RM\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "kitchen_island",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-kitchen"
+      ],
+      "evidenceCategory": "drawn_symbol",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"KITCHEN\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "formal_dining",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-dining"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"DINING\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "office",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-study"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"STUDY\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "front_porch",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-porch"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"FRONT PORCH\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "garage",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-garage"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"2-CAR GARAGE\"",
+      "uncertainty": ""
+    }
+  ],
+  "counts": {
+    "bedroomsLabeled": 0,
+    "fullBathsBySymbol": 0,
+    "halfBathsBySymbol": 1,
+    "note": ""
+  },
+  "warnings": []
+}

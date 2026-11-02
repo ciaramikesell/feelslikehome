@@ -1,0 +1,96 @@
+{
+  "fixtureId": "F05-unlabeled-symbols-only",
+  "homeId": "home-05",
+  "searchProfile": "purchase",
+  "description": "No room text and no floor caption: only walls, doors, fixtures and furniture. Any printed-label claim is a hallucination.",
+  "cases": [
+    "unlabeled",
+    "hallucination_trap",
+    "floor_unknown",
+    "staging_furniture"
+  ],
+  "unlabeledOnly": true,
+  "injection": false,
+  "personalMetadata": false,
+  "floors": [
+    {
+      "caption": null,
+      "level": "unknown"
+    }
+  ],
+  "rooms": [],
+  "unlabeledRooms": 8,
+  "otherText": [],
+  "doors": [
+    [
+      "(unlabeled living)",
+      "(unlabeled kitchen)"
+    ],
+    [
+      "(unlabeled living)",
+      "(unlabeled bedroom)"
+    ],
+    [
+      "(unlabeled kitchen)",
+      "(unlabeled hall)"
+    ],
+    [
+      "(unlabeled laundry)",
+      "(unlabeled hall)"
+    ],
+    [
+      "(unlabeled bedroom)",
+      "(unlabeled full_bath)"
+    ],
+    [
+      "(unlabeled full_bath)",
+      "(unlabeled hall)"
+    ],
+    [
+      "(unlabeled bedroom)",
+      "(unlabeled hall)"
+    ],
+    [
+      "(unlabeled bedroom)",
+      "(unlabeled closet)"
+    ]
+  ],
+  "expected": {
+    "asDrawn": [
+      "kitchen_island",
+      "double_vanity",
+      "laundry"
+    ],
+    "acceptable": [
+      "primary_ensuite",
+      "walk_in_closet",
+      "office",
+      "eat_in_kitchen",
+      "soaking_tub",
+      "first_floor_bedroom",
+      "first_floor_primary",
+      "laundry_first_floor"
+    ],
+    "optional": [],
+    "ambiguous": [],
+    "notOfferable": [
+      "first_floor_bedroom",
+      "first_floor_primary",
+      "laundry_first_floor",
+      "primary_ensuite",
+      "walk_in_closet",
+      "office"
+    ],
+    "forbidden": [],
+    "forbiddenDerived": []
+  },
+  "relationships": {
+    "ensuitePairs": [],
+    "forbiddenEnsuitePairs": [],
+    "forbiddenDoorPairs": []
+  },
+  "counts": {
+    "bedroomsLabeled": 0
+  },
+  "file": "images/F05-unlabeled-symbols-only.png"
+}

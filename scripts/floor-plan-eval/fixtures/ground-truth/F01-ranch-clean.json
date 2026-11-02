@@ -1,0 +1,259 @@
+{
+  "fixtureId": "F01-ranch-clean",
+  "homeId": "home-01",
+  "searchProfile": "purchase",
+  "description": "Single-story ranch, every room labeled, floor captioned. Baseline transcription and recall.",
+  "cases": [
+    "baseline",
+    "first_floor_primary",
+    "primary_ensuite",
+    "walk_in_closet",
+    "walk_in_pantry",
+    "mudroom",
+    "laundry_floor"
+  ],
+  "unlabeledOnly": false,
+  "injection": false,
+  "personalMetadata": false,
+  "floors": [
+    {
+      "caption": "MAIN FLOOR",
+      "level": "main"
+    }
+  ],
+  "rooms": [
+    {
+      "label": "2-CAR GARAGE",
+      "type": "garage",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "MUDROOM",
+      "type": "mudroom",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "LAUNDRY",
+      "type": "laundry",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "KITCHEN",
+      "type": "kitchen",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "WALK-IN PANTRY",
+      "type": "walk_in_pantry",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "CL",
+      "type": "closet",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "DINING ROOM",
+      "type": "dining",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "LIVING ROOM",
+      "type": "living",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "OFFICE",
+      "type": "office",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "BEDROOM 2",
+      "type": "bedroom",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "BEDROOM 3",
+      "type": "bedroom",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "BATH",
+      "type": "full_bath",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "LINEN",
+      "type": "closet",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "PRIMARY BEDROOM",
+      "type": "primary_bedroom",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "PRIMARY BATH",
+      "type": "primary_bath",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "WALK-IN CLOSET",
+      "type": "walk_in_closet",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    }
+  ],
+  "unlabeledRooms": 2,
+  "otherText": [
+    "FIREPLACE"
+  ],
+  "doors": [
+    [
+      "2-CAR GARAGE",
+      "MUDROOM"
+    ],
+    [
+      "MUDROOM",
+      "KITCHEN"
+    ],
+    [
+      "MUDROOM",
+      "LAUNDRY"
+    ],
+    [
+      "LAUNDRY",
+      "(unlabeled hall)"
+    ],
+    [
+      "KITCHEN",
+      "WALK-IN PANTRY"
+    ],
+    [
+      "KITCHEN",
+      "CL"
+    ],
+    [
+      "KITCHEN",
+      "LIVING ROOM"
+    ],
+    [
+      "DINING ROOM",
+      "LIVING ROOM"
+    ],
+    [
+      "LIVING ROOM",
+      "OFFICE"
+    ],
+    [
+      "LIVING ROOM",
+      "(unlabeled hall)"
+    ],
+    [
+      "(unlabeled hall)",
+      "(unlabeled hall)"
+    ],
+    [
+      "BEDROOM 2",
+      "(unlabeled hall)"
+    ],
+    [
+      "BEDROOM 3",
+      "(unlabeled hall)"
+    ],
+    [
+      "BATH",
+      "(unlabeled hall)"
+    ],
+    [
+      "LINEN",
+      "(unlabeled hall)"
+    ],
+    [
+      "(unlabeled hall)",
+      "PRIMARY BEDROOM"
+    ],
+    [
+      "PRIMARY BEDROOM",
+      "PRIMARY BATH"
+    ],
+    [
+      "PRIMARY BATH",
+      "WALK-IN CLOSET"
+    ]
+  ],
+  "expected": {
+    "asDrawn": [
+      "mudroom",
+      "laundry",
+      "walk_in_pantry",
+      "formal_dining",
+      "office",
+      "kitchen_island",
+      "fireplace",
+      "primary_ensuite",
+      "walk_in_closet",
+      "double_vanity",
+      "first_floor_primary",
+      "first_floor_bedroom",
+      "laundry_first_floor",
+      "garage"
+    ],
+    "acceptable": [
+      "pantry",
+      "attached_garage",
+      "soaking_tub",
+      "eat_in_kitchen"
+    ],
+    "optional": [],
+    "ambiguous": [],
+    "notOfferable": [],
+    "forbidden": [],
+    "forbiddenDerived": []
+  },
+  "relationships": {
+    "ensuitePairs": [
+      [
+        "PRIMARY BEDROOM",
+        "PRIMARY BATH"
+      ]
+    ],
+    "forbiddenEnsuitePairs": [],
+    "forbiddenDoorPairs": []
+  },
+  "counts": {
+    "bedroomsLabeled": 3
+  },
+  "file": "images/F01-ranch-clean.png"
+}
