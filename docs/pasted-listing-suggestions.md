@@ -122,3 +122,29 @@ buyer's own `home_member_state.checks`, exactly as a manual answer would.
   real app against the Postgres-backed stand-in on desktop 1440, iPad 820 and
   iPhone 390, as owner, co-buyer and Realtor, and checks the database after
   each save. Screenshots are in `docs/pasted-listing-suggestions-screenshots/`.
+
+## Rental shared facts from pasted text (safety correction)
+
+Pasted rental text also fills the shared **Pets Allowed**, **Utilities
+Included** and **In-Unit Laundry** fields, which Match reads directly. The old
+patterns misread several phrases. `parseRentalSharedFacts`
+(`src/lib/matching.js`) now reads each sentence on its own.
+
+| Pasted text | Before | After |
+|---|---|---|
+| "In-unit laundry hookups." / "In-unit washer/dryer hookups." | In-Unit Laundry: Yes | Unknown: hookups are where a washer could go, not working laundry |
+| "In-unit laundry is not available." / "In-unit laundry: no" | Yes | No |
+| "In-unit laundry possible." / "…available for an additional fee." / "Washer/dryer in unit not included." | Yes | Unknown |
+| "No utilities included." / "Utilities included: none" | Utilities Included: Yes | No |
+| "Utilities included except electric." / "Water and trash utilities included." / "Gas utilities included." | Yes | Unknown (only some are included) |
+| "Pets allowed? Ask landlord." | Pets Allowed: Yes | Unknown (a question) |
+| "Pets allowed: no" | Yes | No |
+| "Close to pet-friendly parks." / "Pet-friendly neighborhood." | Yes | Unknown (nearby places, not the home) |
+| "Pets allowed. No pets over 25 lbs." | No | Yes (a size limit is not a ban) |
+| A Yes and a No in different sentences | No | Unknown (conflict) |
+
+Explicit statements are read as before ("Pets allowed", "No pets", "All
+utilities included", "Tenant pays all utilities", "In-unit washer and dryer",
+"Shared laundry only"). Missed negatives that stay Unknown, such as "Pets are
+not permitted", are left unchanged here because Unknown is the safe outcome.
+Regression tests: `test/rental-shared-facts-text.test.js`.
