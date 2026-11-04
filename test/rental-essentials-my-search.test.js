@@ -11,7 +11,9 @@ const { RENTAL_ESSENTIALS, criterionDisplayLabel, normalizePriorities, isDiscont
 const { applySearchChoice, ONBOARDING_SUGGESTIONS } = await import('../src/lib/onboarding.js');
 const { availableCriteriaGroups, moveCriterion, offeredCriteriaGroups, priorityLevels, toggleCriterion } = await import('../src/lib/searchProfile.js');
 const { computeMatch, parseListingText } = await import('../src/lib/matching.js');
-const { derivePriorityCheckPatch } = await import('../src/lib/importReview.js');
+const { suggestListingAnswers } = await import('../src/lib/listingTextAnswers.js');
+// Suggested answers as a key → answer map (nothing is written until confirmed).
+const derivePriorityCheckPatch = (text, priorities, checks) => Object.fromEntries(suggestListingAnswers(text, priorities, checks).map((item) => [item.key, item.answer]));
 
 const search = (type) => applySearchChoice(normalizePriorities({}), type);
 const titles = (priorities) => offeredCriteriaGroups(priorities).map((group) => group.title);

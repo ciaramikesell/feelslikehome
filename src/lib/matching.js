@@ -172,6 +172,55 @@ function parseExplicitPropertyType(text) {
 }
 
 /** Parse pasted listing text in the context of its search intent. */
+// Rental facts stored on the shared home, which Match reads directly (Pets
+// Allowed, Utilities Included, In-Unit Laundry). Each sentence is read on its
+// own; a fact is set only when the text states it and nothing contradicts it:
+//   - a question, hedged or optional wording proves nothing ("Pets allowed?",
+//     "In-unit laundry possible");
+//   - laundry hookups are where a washer could go, not working laundry;
+//   - a No in the same sentence wins ("Pets allowed: no"); a Yes and a No in
+//     different sentences is a conflict and stays Unknown;
+//   - only some utilities, or all but one, is not "utilities included";
+//   - a pet limit ("no pets over 25 lbs") is not a ban, and a pet-friendly park
+//     nearby says nothing about the home.
+const RENTAL_UNCERTAIN = /\?|\b(?:possible|possibly|potential(?:ly)?|optional|may be|might|could|can be|upon request|on request|tbd|to be determined)\b/i;
+const STATED_NO_AFTER = String.raw`\s*[:\-\u2013\u2014]\s*(?:no|none|n\/a)\b`;
+const RENTAL_FACT_RULES = Object.freeze({
+  petsAllowed: {
+    no: [/\bno pets\b(?!\s+(?:over|under|larger|heavier|bigger|above|exceeding|more than|weighing)\b)/i, /\bpets (?:are )?not allowed\b/i, new RegExp(`\\bpets?(?: allowed)?${STATED_NO_AFTER}`, 'i')],
+    yes: [/\bpets (?:are )?allowed\b/i, /\bpet[- ]friendly\b(?!\s+(?:parks?|trails?|neighborhoods?|area|restaurants?|cafes?|beach(?:es)?|downtown|patios?)\b)/i, /\bdogs and cats (?:are )?allowed\b/i],
+    notYes: [],
+  },
+  utilitiesIncluded: {
+    no: [/\butilities (?:are )?not included\b/i, /\btenant (?:is responsible for|pays)(?: for)? (?:all )?utilities\b/i, /\bno utilities(?: are)? included\b/i, new RegExp(`\\butilities(?: included)?${STATED_NO_AFTER}`, 'i')],
+    yes: [/\b(?:all )?utilities (?:are )?included\b/i],
+    notYes: [/\bsome utilities\b/i, /\b(?:water|sewer|trash|gas|heat|electric(?:ity)?|internet|cable|basic|most|certain|select)\b[^.\n]{0,40}\butilities (?:are )?included\b/i,
+      /\butilities (?:are )?included,?\s*(?:except|excluding|but|other than|minus)\b/i],
+  },
+  inUnitLaundry: {
+    no: [/\b(?:no|without) in-unit laundry\b/i, /\bshared laundry only\b/i, /\blaundry room in (?:the )?building[^.\n]*(?:no in-unit|no washer)\b/i,
+      /\bin-unit laundry(?: is)? (?:not available|not included|unavailable)\b/i, new RegExp(`\\bin-unit laundry${STATED_NO_AFTER}`, 'i')],
+    yes: [/\bin-unit laundry\b/i, /\bwasher\s*(?:\/|and)\s*dryer in (?:the )?unit\b/i, /\bin-unit washer\s*(?:\/|and)\s*dryer\b/i],
+    notYes: [/\bhook[ -]?ups?\b/i, /\bfor an? (?:additional|extra) (?:fee|charge|cost)\b/i, /\b(?:not included|not provided|excluded|unavailable|not available|not working|broken|removed)\b/i],
+  },
+});
+
+export function parseRentalSharedFacts(text) {
+  const sentences = String(text || '').split(/\n+|(?<=[.!?;])\s+/).map((part) => part.trim()).filter(Boolean);
+  const out = {};
+  Object.entries(RENTAL_FACT_RULES).forEach(([field, rule]) => {
+    let yes = false; let no = false;
+    for (const sentence of sentences) {
+      if (RENTAL_UNCERTAIN.test(sentence)) continue;
+      const saysNo = rule.no.some((pattern) => pattern.test(sentence));
+      if (saysNo) no = true;
+      else if (rule.yes.some((pattern) => pattern.test(sentence)) && !rule.notYes.some((pattern) => pattern.test(sentence))) yes = true;
+    }
+    if (yes !== no) out[field] = yes;
+  });
+  return out;
+}
+
 export function parseListingText(text, searchType = null) {
   const t = text || '';
   const out = {};
@@ -218,14 +267,7 @@ export function parseListingText(text, searchType = null) {
     const availableOn = parseExplicitAvailability(t);
     if (availableOn) out.availableOn = availableOn; // "Available now" intentionally stays unknown.
 
-    if (/\b(?:no pets|pets (?:are )?not allowed)\b/i.test(t)) out.petsAllowed = false;
-    else if (/\b(?:pets allowed|pet[- ]friendly|dogs and cats (?:are )?allowed)\b/i.test(t)) out.petsAllowed = true;
-
-    if (/\b(?:utilities (?:are )?not included|tenant (?:is responsible for|pays)(?: for)? (?:all )?utilities)\b/i.test(t)) out.utilitiesIncluded = false;
-    else if (/\b(?:all )?utilities (?:are )?included\b/i.test(t) && !/\bsome utilities (?:are )?included\b/i.test(t)) out.utilitiesIncluded = true;
-
-    if (/\b(?:no in-unit laundry|shared laundry only|laundry room in (?:the )?building[^.\n]*(?:no in-unit|no washer))\b/i.test(t)) out.inUnitLaundry = false;
-    else if (/\b(?:in-unit laundry|washer\s*(?:\/|and)\s*dryer in (?:the )?unit|in-unit washer\s*(?:\/|and)\s*dryer)\b/i.test(t)) out.inUnitLaundry = true;
+    Object.assign(out, parseRentalSharedFacts(t));
   }
 
   const lines = t.split('\n').map((l) => l.trim()).filter(Boolean);
