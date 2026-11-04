@@ -153,6 +153,45 @@ async function run() {
       await shot(owner, `${label}-3-match-after-save`);
     }, open);
 
+    // Rerunning extraction after confirming: an answer confirmed from earlier text
+    // is kept only while the new text still says the same thing.
+    await step(`[${label}] owner: rerun after confirming keeps a still-supported answer and clears an outdated one`, async () => {
+      const rerunAddress = `${number + 4} Paste Ln, New Baltimore, MI 48047`;
+      const rerun = async (text) => {
+        await owner.getByPlaceholder('Paste listing details (optional)').fill(text);
+        await owner.getByRole('button', { name: 'Fill in details' }).click();
+      };
+      await paste(owner, rerunAddress);
+      await review(owner).waitFor();
+      await reviewItem(owner, 'Fireplace').getByRole('button', { name: /Confirm/ }).click();
+      await reviewItem(owner, 'Finished Basement').getByRole('button', { name: /Leave .* Unknown/ }).click();
+      // Identical text: Fireplace stays confirmed and undoable; Finished basement is offered again.
+      await rerun(listingText(rerunAddress));
+      await reviewItem(owner, 'Fireplace').getByText('Your answer: Yes').waitFor();
+      assert(await reviewItem(owner, 'Fireplace').getByRole('button', { name: 'Undo' }).isVisible(), 'Undo gone after an identical rerun');
+      assert(await reviewItem(owner, 'Finished Basement').getByRole('button', { name: /Confirm/ }).isVisible(), 'the Unknown suggestion was not offered again');
+      // "No fireplace": the confirmed Yes goes back to Unknown, the buyer is told, and No is only suggested.
+      await rerun(`${rerunAddress}\nNo fireplace. Does not have a finished basement.`);
+      await reviewItem(owner, 'Fireplace').getByText('Listing suggests No').waitFor();
+      assert(await reviewItem(owner, 'Fireplace').getByRole('button', { name: 'Confirm Fireplace: No' }).isVisible() && await reviewItem(owner, 'Fireplace').getByText('Your answer').count() === 0, 'the new No was applied instead of suggested');
+      const note = await owner.locator('.flh-found-address p').first().innerText();
+      assert(/Fireplace is back to Unknown/.test(note), `note: ${note}`);
+      await shot(owner, `${label}-6-rerun-conflicting-text`, '.flh-found');
+      // Confirm the basement No, then text that never mentions a fireplace and still says the basement isn't finished.
+      await reviewItem(owner, 'Finished Basement').getByRole('button', { name: /Confirm/ }).click();
+      await reviewItem(owner, 'Fireplace').getByRole('button', { name: /Confirm/ }).click();
+      await rerun(`${rerunAddress}\nBright kitchen. Does not have a finished basement.`);
+      await reviewItem(owner, 'Finished Basement').getByText('Your answer: No').waitFor();
+      assert(await reviewItem(owner, 'Fireplace').count() === 0, 'Fireplace still shown with no evidence');
+      assert(/Fireplace is back to Unknown/.test(await owner.locator('.flh-found-address p').first().innerText()), 'silent clear');
+      assert(homeByAddress(rerunAddress).length === 0, 'rerunning saved the home');
+      await addToMyHomes(owner);
+      const [home] = homeByAddress(rerunAddress);
+      assert(JSON.stringify(checksOf(home.id, OWNER)) === JSON.stringify({ 'features:Finished basement': 'no' }), `owner checks: ${JSON.stringify(checksOf(home.id, OWNER))}`);
+      const others = memberStates(home.id).filter((row) => row.user_id !== OWNER && Object.keys(row.checks || {}).length);
+      assert(!others.length, `another participant got answers: ${JSON.stringify(others)}`);
+    }, open);
+
     if (label === 'desktop-1440') {
       await step(`[${label}] owner: pasting and adding without confirming writes no answer at all`, async () => {
         const untouched = '14 Paste Ln, New Baltimore, MI 48047';

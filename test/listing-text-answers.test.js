@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   applyListingAnswer, classifyListingText, criterionConcept, hasRecordedAnswer, listingTextEvidence,
-  suggestListingAnswers, undoListingAnswer,
+  resuggestListingAnswers, suggestListingAnswers, undoListingAnswer,
 } from '../src/lib/listingTextAnswers.js';
 import * as importReview from '../src/lib/importReview.js';
 import { computeMatch } from '../src/lib/matching.js';
@@ -272,13 +272,124 @@ test('the silent answer writer is gone, and nothing here can reach a database', 
   assert.doesNotMatch(lib, /supabase|fetch\(|localStorage|onSave/);
   const modal = read('src/components/HomeModal.jsx');
   const autofill = modal.match(/const runAutofill = \(\) => \{[\s\S]*?\n {2}\};/)[0];
-  assert.doesNotMatch(autofill, /checks\s*:|checks\s*=|setCheckItem/, 'pasting never writes checks');
+  // The only checks a rerun hands back come from resuggestListingAnswers, which
+  // can keep or clear a suggestion-confirmed answer but never adds or changes one
+  // (see the "Rerunning extraction" tests below).
+  assert.equal((autofill.match(/checks\s*:/g) || []).length, 2, 'checks come only from the rerun reconciliation');
+  assert.match(autofill, /checks: rerun\.checks/);
+  assert.match(autofill, /: \{ suggestions: \[\], checks: form\.checks,/, 'a Realtor rerun leaves checks as they are');
+  assert.doesNotMatch(autofill, /setCheckItem|applyListingAnswer/, 'pasting never writes checks');
   assert.equal(IMPORT_DESTINATIONS.includes('checks') || IMPORT_DESTINATIONS.includes('ratings'), false, 'the field merge cannot reach answers');
   assert.doesNotMatch(autofill, /onSave|createClient|fetch\(/);
-  assert.match(autofill, /personalAnswers \? suggestListingAnswers\(/);
+  assert.match(autofill, /personalAnswers\s*\? resuggestListingAnswers\(pasteText, priorities, form\.checks, confirmedAnswers\)/);
   const handlers = modal.match(/const confirmAnswer = [\s\S]*?const answerReview = /)[0];
   assert.doesNotMatch(handlers, /onSave|createClient|fetch\(|submit\(/, 'confirming changes the form only; Save is still the buyer\'s action');
   assert.match(handlers, /hasRecordedAnswer\(form\.checks/);
   // A Realtor suggesting a home has no Match answers, so gets no suggestions.
   assert.match(read('src/components/RealtorSuggestHome.jsx'), /personalAnswers=\{false\}/);
+});
+
+/* -------------- Rerunning extraction after confirming a suggestion -------------- */
+
+// What HomeModal does, without React: Confirm records { key: answer } in its
+// session-only `confirmedAnswers`; a manual edit drops that key; rerunning
+// extraction goes through resuggestListingAnswers.
+const fireplaceBuyer = select(start('home_buy'), ['features', 'Fireplace'], ['exterior', 'Pool']);
+const FIRE = 'features:Fireplace';
+function confirmFrom(text, key, checks = {}) {
+  const suggestion = suggestListingAnswers(text, fireplaceBuyer, checks).find((item) => item.key === key);
+  return { checks: applyListingAnswer(checks, suggestion, fireplaceBuyer.searchType), confirmed: { [key]: suggestion.answer }, suggestion };
+}
+
+test('rerun 1: a confirmed Yes, then "No fireplace", goes back to Unknown and suggests No for review', () => {
+  const session = confirmFrom('Gas fireplace in the den.', FIRE, { 'exterior:Pool': 'no', 'ratings:x': 3 });
+  assert.equal(session.checks[FIRE], true);
+  const rerun = resuggestListingAnswers('No fireplace.', fireplaceBuyer, session.checks, session.confirmed);
+  assert.equal(Object.hasOwn(rerun.checks, FIRE), false, 'the outdated Yes is not kept');
+  assert.deepEqual(rerun.cleared, [FIRE], 'and the buyer is told it was cleared');
+  assert.deepEqual(rerun.suggestions.map((item) => [item.key, item.answer, item.evidence]), [[FIRE, 'no', 'No fireplace.']]);
+  assert.deepEqual(rerun.decisions, {}, 'the new No waits for the buyer');
+  assert.deepEqual(rerun.confirmed, {});
+  assert.deepEqual(rerun.checks, { 'exterior:Pool': 'no', 'ratings:x': 3 }, 'unrelated answers are untouched');
+});
+
+test('rerun 2: a confirmed Yes, then text that never mentions a fireplace, goes back to Unknown', () => {
+  const session = confirmFrom('Wood-burning fireplace.', FIRE);
+  const rerun = resuggestListingAnswers('Bright kitchen with quartz counters. New roof in 2021.', fireplaceBuyer, session.checks, session.confirmed);
+  assert.deepEqual(rerun.checks, {});
+  assert.deepEqual(rerun.cleared, [FIRE]);
+  assert.deepEqual(rerun.suggestions, [], 'absence is never No');
+  // A conflict in the new text is not support either.
+  const conflict = resuggestListingAnswers('Gas fireplace. No fireplace.', fireplaceBuyer, session.checks, session.confirmed);
+  assert.deepEqual(conflict.checks, {});
+  assert.deepEqual(conflict.cleared, [FIRE]);
+});
+
+test('rerun 3: identical text keeps the confirmed Yes, still confirmed and undoable', () => {
+  const text = 'Gas fireplace in the den.';
+  const session = confirmFrom(text, FIRE);
+  const rerun = resuggestListingAnswers(text, fireplaceBuyer, session.checks, session.confirmed);
+  assert.deepEqual(rerun.checks, { [FIRE]: true });
+  assert.deepEqual(rerun.confirmed, { [FIRE]: true });
+  assert.deepEqual(rerun.cleared, []);
+  const [shown] = rerun.suggestions;
+  assert.equal(shown.id, session.suggestion.id);
+  assert.equal(rerun.decisions[shown.id], 'confirmed');
+  assert.deepEqual(undoListingAnswer(rerun.checks, shown), {});
+  // Different wording with the same answer is still support.
+  const reworded = resuggestListingAnswers('Living room with a stone fireplace.', fireplaceBuyer, session.checks, session.confirmed);
+  assert.deepEqual(reworded.checks, { [FIRE]: true });
+  assert.equal(reworded.decisions[reworded.suggestions[0].id], 'confirmed');
+});
+
+test('rerun 4: a manual answer set before extraction is never overwritten, removed or re-suggested', () => {
+  const manual = Object.freeze({ [FIRE]: true });
+  for (const text of ['No fireplace.', 'Bright kitchen.', 'Gas fireplace.']) {
+    const rerun = resuggestListingAnswers(text, fireplaceBuyer, manual, {});
+    assert.deepEqual(rerun.checks, { [FIRE]: true }, text);
+    assert.deepEqual(rerun.cleared, [], text);
+    assert.deepEqual(rerun.suggestions, [], text);
+  }
+  // Same if the buyer typed No by hand.
+  assert.deepEqual(resuggestListingAnswers('Gas fireplace.', fireplaceBuyer, { [FIRE]: 'no' }, {}).checks, { [FIRE]: 'no' });
+});
+
+test('rerun 5: confirm, then change the answer by hand: it is the buyer\'s own answer, and Undo cannot touch it', () => {
+  const session = confirmFrom('Gas fireplace.', FIRE);
+  // The manual edit (setCheckItem) drops the key from confirmedAnswers.
+  const checks = { ...session.checks, [FIRE]: 'no' };
+  const confirmed = {};
+  assert.deepEqual(undoListingAnswer(checks, session.suggestion), checks, 'Undo of the Yes never reverts a manual No');
+  const rerun = resuggestListingAnswers('Bright kitchen.', fireplaceBuyer, checks, confirmed);
+  assert.deepEqual(rerun.checks, { [FIRE]: 'no' });
+  assert.deepEqual(rerun.cleared, []);
+  // Even a stale confirmed entry is ignored once the value differs from what Confirm wrote.
+  assert.deepEqual(resuggestListingAnswers('No fireplace.', fireplaceBuyer, checks, session.confirmed).checks, { [FIRE]: 'no' });
+  // HomeModal also hides the confirmed row, and refuses Undo, unless confirmedAnswers still owns the key.
+  const modal = read('src/components/HomeModal.jsx');
+  assert.match(modal, /const undoAnswer = \(suggestion\) => \{\n\s*\/\/[^\n]*\n\s*if \(confirmedAnswers\[suggestion\.key\] !== suggestion\.answer\) return;/);
+  assert.match(modal, /form\.checks\?\.\[suggestion\.key\] === suggestion\.answer && confirmedAnswers\[suggestion\.key\] === suggestion\.answer/);
+  assert.match(modal, /const setCheckItem = \(cat, label, value\) => \{\n\s*setConfirmedAnswers\(/, 'a manual edit ends the suggestion\'s ownership');
+});
+
+test('rerun 6: one confirmed, one left Unknown, reprocess the same text: confirmed stays, Unknown is offered again', () => {
+  const text = 'Gas fireplace. Private in-ground pool.';
+  const session = confirmFrom(text, FIRE);
+  const rerun = resuggestListingAnswers(text, fireplaceBuyer, session.checks, session.confirmed);
+  assert.deepEqual(rerun.checks, { [FIRE]: true }, 'the Unknown criterion is still not answered');
+  const byKey = Object.fromEntries(rerun.suggestions.map((item) => [item.key, item]));
+  assert.equal(rerun.decisions[byKey[FIRE].id], 'confirmed');
+  assert.equal(rerun.decisions[byKey['exterior:Pool'].id], undefined, 'Pool is pending again, never auto-confirmed');
+});
+
+test('a rerun never adds or changes an answer: it can only keep or clear one Confirm wrote', () => {
+  const texts = ['Gas fireplace. Private in-ground pool.', 'No fireplace. No pool.', 'Bright kitchen.', ''];
+  const starts = [{}, { [FIRE]: true }, { [FIRE]: 'no', 'exterior:Pool': true }, { 'exterior:Pool': false }];
+  for (const text of texts) for (const checks of starts) for (const confirmed of [{}, { [FIRE]: true }, { 'exterior:Pool': true }]) {
+    const rerun = resuggestListingAnswers(text, fireplaceBuyer, checks, confirmed);
+    for (const [key, value] of Object.entries(rerun.checks)) assert.equal(checks[key], value, `${text} ${key}`);
+    for (const key of Object.keys(checks)) {
+      if (!Object.hasOwn(rerun.checks, key)) assert.equal(confirmed[key], checks[key], `only a Confirm-owned answer is cleared: ${key}`);
+    }
+  }
 });

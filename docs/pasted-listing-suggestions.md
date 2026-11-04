@@ -92,6 +92,23 @@ was already a documented decision in
 Nothing is saved until **Add to My Homes** / **Save home**. That saves the
 buyer's own `home_member_state.checks`, exactly as a manual answer would.
 
+### Running the extraction again before saving
+
+The modal remembers, for this session only, which answers came from **Confirm**
+(`confirmedAnswers`, `{ key: answer }`). Running **Fill in details** again goes
+through `resuggestListingAnswers`:
+
+| Before the rerun | New text | Result |
+|---|---|---|
+| Confirmed from a suggestion | Suggests the same answer | Kept, still shown as confirmed with **Undo** |
+| Confirmed from a suggestion | Suggests the other answer, a conflict, or never mentions it | Back to Unknown, and the note says so ("Fireplace is back to Unknown — …"). A new suggestion is offered for review, never applied |
+| Answered by hand (including after confirming) | Anything | Left exactly as it is; no suggestion |
+| Left Unknown / pending | Anything | Offered again if the new text supports it |
+
+A manual change to a confirmed criterion ends the suggestion's ownership: Undo
+can no longer revert it, and a rerun never clears it. Other checks, ratings and
+Home Facts are never touched by a rerun.
+
 ## Provenance and permissions
 
 - **Listing evidence:** stored in `homes.listing_import.descriptionFeatures`

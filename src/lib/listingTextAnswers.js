@@ -369,3 +369,39 @@ export function listingTextEvidence(text) {
     };
   });
 }
+
+/**
+ * Rerunning extraction after the buyer confirmed suggestions in this session.
+ * `confirmed` maps a check key to the answer a Confirm wrote ({ key: true|'no' });
+ * it holds only answers that came from a suggestion and that the buyer hasn't
+ * since changed by hand (an entry whose current value differs is ignored).
+ *
+ * Each confirmed answer is checked against the new text:
+ *   - the new text suggests the same answer → kept, shown as confirmed (Undo works)
+ *   - it suggests the other answer, a conflict, or says nothing → cleared back to
+ *     Unknown and reported in `cleared`; any new suggestion is shown for review
+ * Manual answers (anything not in `confirmed`) and every other check are left
+ * exactly as they are, and still never receive a suggestion.
+ * @returns {{ suggestions, checks, confirmed, decisions, cleared: string[] }}
+ */
+export function resuggestListingAnswers(text, priorities, checks = {}, confirmed = {}) {
+  const current = checks || {};
+  const live = Object.entries(confirmed || {}).filter(([key, answer]) => current[key] === answer);
+  // Re-read the text as if the suggestion-derived answers were still Unknown.
+  const base = { ...current };
+  for (const [key] of live) delete base[key];
+  const suggestions = suggestListingAnswers(text, priorities, base);
+  const nextChecks = { ...base };
+  const nextConfirmed = {};
+  const decisions = {};
+  const cleared = [];
+  for (const [key, answer] of live) {
+    const same = suggestions.find((item) => item.key === key && item.answer === answer);
+    if (same) {
+      nextChecks[key] = answer;
+      nextConfirmed[key] = answer;
+      decisions[same.id] = 'confirmed';
+    } else cleared.push(key);
+  }
+  return { suggestions, checks: nextChecks, confirmed: nextConfirmed, decisions, cleared };
+}

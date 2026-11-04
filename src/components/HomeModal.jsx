@@ -14,7 +14,7 @@ import { extractAddressFromListingUrl, extractApartmentIdentityFromListingUrl, i
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { mergeImportFields, resolveImport } from '@/lib/importDomain';
 import { appendAllSuggestions, appendSuggestionToNotes, extractEnrichmentSuggestions } from '@/lib/importReview';
-import { applyListingAnswer, hasRecordedAnswer, listingTextEvidence, suggestListingAnswers, undoListingAnswer } from '@/lib/listingTextAnswers';
+import { applyListingAnswer, hasRecordedAnswer, listingTextEvidence, resuggestListingAnswers, undoListingAnswer } from '@/lib/listingTextAnswers';
 import { splitAddressLines, formatFoundCardFacts, formatCurrencyDisplay, digitsOnly, formatLotSizeDisplay, formatHomePrice } from '@/lib/homeDisplay';
 import { withAcresUnit } from '@/lib/lotSize';
 import { createClient } from '@/lib/supabase/client';
@@ -506,12 +506,15 @@ function ListingAnswerReview({ review }) {
 // address; everything else is filled in on Home Facts.
 // What pasted listing text produced: details filled into empty fields, and
 // answers waiting for the buyer's review.
-function pastedTextMessage(details, answers) {
+// `cleared` names answers confirmed from earlier text that the new text no
+// longer supports; they went back to Unknown and the buyer is told so.
+function pastedTextMessage(details, answers, cleared = []) {
   const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
-  if (!details && !answers) return 'Couldn’t find anything usable in that text — try filling fields in manually.';
+  const reset = cleared.length ? `${cleared.join(', ')} ${cleared.length === 1 ? 'is' : 'are'} back to Unknown — the new text doesn’t support the answer you confirmed earlier.` : '';
+  if (!details && !answers) return [reset, 'Couldn’t find anything usable in that text — try filling fields in manually.'].filter(Boolean).join(' ');
   const filled = details ? `Found ${plural(details, 'useful detail')} from what you pasted — double-check before saving.` : '';
   const review = answers ? `${plural(answers, 'possible answer')} to review below.` : '';
-  return [filled, review].filter(Boolean).join(' ');
+  return [reset, filled, review].filter(Boolean).join(' ');
 }
 
 // Why a lookup came back empty-handed, in the buyer's terms. Never a status code.
@@ -586,6 +589,10 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   // ('confirmed' / 'dismissed'). Session state only; never saved on its own.
   const [answerSuggestions, setAnswerSuggestions] = useState([]);
   const [answerDecisions, setAnswerDecisions] = useState({});
+  // Answers this buyer confirmed from a suggestion in this session ({ key: answer }),
+  // so a rerun can re-check them against the new text. A manual change to the
+  // same criterion removes its entry: from then on it is the buyer's own answer.
+  const [confirmedAnswers, setConfirmedAnswers] = useState({});
   const [importErrorMsg, setImportErrorMsg] = useState('');
   const [urlFallbackMsg, setUrlFallbackMsg] = useState('');
   const [fallbackAddressInput, setFallbackAddressInput] = useState('');
@@ -751,7 +758,14 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   // JSON serialization naturally drops undefined-valued keys, so this cleanly
   // returns the criterion to "absent" (Unknown) without needing a separate
   // delete path.
-  const setCheckItem = (cat, label, value) => setForm((f) => {
+  const setCheckItem = (cat, label, value) => {
+    setConfirmedAnswers((confirmed) => {
+      if (!(nsKey(cat, label) in confirmed)) return confirmed;
+      const next = { ...confirmed }; delete next[nsKey(cat, label)]; return next;
+    });
+    setCheckItemValue(cat, label, value);
+  };
+  const setCheckItemValue = (cat, label, value) => setForm((f) => {
     const k = nsKey(cat, label);
     const next = { ...f.checks };
     if (value === undefined) delete next[k];
@@ -765,26 +779,39 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     const findings = parseListingTextFindings(pasteText, priorities.searchType);
     const result = resolveImport(findings, form);
     const canonicalAdditions = Object.keys(result.fieldPatch);
-    const next = mergeImportFields(form, result.fieldPatch);
-    const answers = personalAnswers ? suggestListingAnswers(pasteText, priorities, form.checks) : [];
+    const merged = mergeImportFields(form, result.fieldPatch);
+    // Answers confirmed from earlier text are re-checked against this text:
+    // kept only when it still suggests the same answer, otherwise back to Unknown.
+    const rerun = personalAnswers
+      ? resuggestListingAnswers(pasteText, priorities, form.checks, confirmedAnswers)
+      : { suggestions: [], checks: form.checks, confirmed: {}, decisions: {}, cleared: [] };
+    const answers = rerun.suggestions;
+    const next = { ...merged, checks: rerun.checks };
     const suggestions = extractEnrichmentSuggestions(pasteText, next, { acceptedIds: acceptedSuggestionIds });
+    const clearedLabels = rerun.cleared.map((key) => { const at = key.indexOf(':'); return criterionDisplayLabel(key.slice(0, at), key.slice(at + 1)); });
     setForm(next);
     setAnswerSuggestions(answers);
-    setAnswerDecisions({});
+    setAnswerDecisions(rerun.decisions);
+    setConfirmedAnswers(rerun.confirmed);
     // The evidence itself is listing material and is kept on the import snapshot.
     setImportResult({ ...result, fields: result.fieldPatch, suggestions, descriptionFeatures: listingTextEvidence(pasteText), source: 'raw-text' });
     setEditDetailsOpen(true);
     setImportPhase(canonicalAdditions.length + answers.length > 0 ? 'text-success' : 'empty');
-    setParseMsg(pastedTextMessage(canonicalAdditions.length, answers.length));
+    const pending = answers.filter((item) => rerun.decisions[item.id] !== 'confirmed').length;
+    setParseMsg(pastedTextMessage(canonicalAdditions.length, pending, clearedLabels));
   };
 
   const confirmAnswer = (suggestion) => {
     if (hasRecordedAnswer(form.checks, suggestion.key, priorities.searchType)) return;
     setForm((f) => ({ ...f, checks: applyListingAnswer(f.checks, suggestion, priorities.searchType) }));
+    setConfirmedAnswers((confirmed) => ({ ...confirmed, [suggestion.key]: suggestion.answer }));
     setAnswerDecisions((decisions) => ({ ...decisions, [suggestion.id]: 'confirmed' }));
   };
   const dismissAnswer = (suggestion) => setAnswerDecisions((decisions) => ({ ...decisions, [suggestion.id]: 'dismissed' }));
   const undoAnswer = (suggestion) => {
+    // Only an answer still owned by the suggestion; a manual answer is never undone.
+    if (confirmedAnswers[suggestion.key] !== suggestion.answer) return;
+    setConfirmedAnswers((confirmed) => { const next = { ...confirmed }; delete next[suggestion.key]; return next; });
     setForm((f) => ({ ...f, checks: undoListingAnswer(f.checks, suggestion) }));
     setAnswerDecisions((decisions) => { const next = { ...decisions }; delete next[suggestion.id]; return next; });
   };
@@ -792,7 +819,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   // answered it some other way) or confirmed (so it can be undone).
   const answerReview = {
     suggestions: answerSuggestions.filter((suggestion) => answerDecisions[suggestion.id] === 'confirmed'
-      ? form.checks?.[suggestion.key] === suggestion.answer
+      ? form.checks?.[suggestion.key] === suggestion.answer && confirmedAnswers[suggestion.key] === suggestion.answer
       : answerDecisions[suggestion.id] !== 'dismissed' && !hasRecordedAnswer(form.checks, suggestion.key, priorities.searchType)),
     decisions: answerDecisions, onConfirm: confirmAnswer, onDismiss: dismissAnswer, onUndo: undoAnswer, isCollaborative,
   };
