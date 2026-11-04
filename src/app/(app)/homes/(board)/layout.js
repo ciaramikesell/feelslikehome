@@ -5,6 +5,8 @@ import HomesWorkspace from '@/components/HomesWorkspace';
 import CoBuyerHomesLine from '@/components/CoBuyerHomesLine';
 import { homeVocabulary } from '@/lib/homePresentation';
 import { normalizePriorities } from '@/lib/constants';
+import { floorPlansEnabled } from '@/lib/featureFlags';
+import { loadFloorPlanCardState } from '@/lib/homeFloorPlans';
 import { resolveActiveSearch, resolvePriorities, resolveSharedFactPriorityAwareness, getHomesForUser, getParticipantStatusesForHomes, addCoBuyerPersonalSignals, getSearchParticipantIds, getCommuteDestinations, getSuggestions, resolveCollaboratorSearchContext } from '@/lib/supabase/collaboration';
 
 // My Homes is a layout so it stays mounted under the home overlay
@@ -30,9 +32,11 @@ export default async function HomesLayout({ children }) {
     // The collaborator's display name only labels the toolbar's "Searching
     // together" avatars (the same read-only context My Search uses). It is never
     // needed to render homes, so a failure here degrades to a generic label.
-    const [statusesByHome, collaboratorContext] = await Promise.all([
+    // Floor Plans stays off (no read at all) unless FLH_FLOOR_PLANS is on.
+    const [statusesByHome, collaboratorContext, floorPlans] = await Promise.all([
       getParticipantStatusesForHomes(supabase, search, homes),
       isCollaborative ? resolveCollaboratorSearchContext(supabase, search).catch(() => null) : null,
+      floorPlansEnabled() ? loadFloorPlanCardState(supabase, { searchId: search.id, userId: user.id, homeIds: homes.map((home) => home.id) }) : null,
     ]);
     const homesWithSignal = addCoBuyerPersonalSignals(homes, statusesByHome, user.id);
     const normalizedPriorities = normalizePriorities(priorities);
@@ -47,7 +51,7 @@ export default async function HomesLayout({ children }) {
           {outstandingSuggestions.length > 0 && <a className="hh-suggestions-entry" href="/homes/suggestions"><strong>{outstandingSuggestions[0].suggestedByName} suggested {outstandingSuggestions.length} {outstandingSuggestions.length === 1 ? 'home' : 'homes'} →</strong></a>}
           <HomesBoard
             mode="homes" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizedPriorities} initialCommuteDestinations={commuteDestinations}
-            sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative}
+            sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} floorPlans={floorPlans}
             collaborationSlot={<CoBuyerHomesLine searchId={search.id} userId={user.id} isOwner={isOwner} isCollaborative={isCollaborative} collaboratorName={collaboratorContext?.displayName || null} />}
           />
           <section className="hh-match-editorial">

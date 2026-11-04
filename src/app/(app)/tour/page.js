@@ -3,6 +3,8 @@ import { requireUser, withAuthRecovery } from '@/lib/supabase/auth';
 import HomesBoard from '@/components/HomesBoard';
 import { PageIntro } from '@/components/ui';
 import { normalizePriorities } from '@/lib/constants';
+import { floorPlansEnabled } from '@/lib/featureFlags';
+import { loadFloorPlanCardState } from '@/lib/homeFloorPlans';
 import {
   resolveActiveSearch, resolvePriorities, resolveSharedFactPriorityAwareness, getHomesForUser, getParticipantStatusesForHomes,
   addCoBuyerPersonalSignals, deriveWantToTourState, getSearchParticipantIds, getCommuteDestinations,
@@ -21,7 +23,10 @@ export default async function TourPage() {
       getSearchParticipantIds(supabase, search),
     ]);
 
-    const statusesByHome = await getParticipantStatusesForHomes(supabase, search, homes);
+    const [statusesByHome, floorPlans] = await Promise.all([
+      getParticipantStatusesForHomes(supabase, search, homes),
+      floorPlansEnabled() ? loadFloorPlanCardState(supabase, { searchId: search.id, userId: user.id, homeIds: homes.map((home) => home.id) }) : null,
+    ]);
     const homesWithPersonalSignals = addCoBuyerPersonalSignals(homes, statusesByHome, user.id);
     const homesWithSignal = homesWithPersonalSignals.map((home) => {
       return {
@@ -33,7 +38,7 @@ export default async function TourPage() {
     return (
       <main className="hh-collection-page">
         <PageIntro title="Want to Tour" subtitle="Homes that you or your collaborator are thinking about seeing in person." />
-        <HomesBoard mode="tour" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizePriorities(priorities)} initialCommuteDestinations={commuteDestinations} sharedFactAwareness={sharedFactAwareness} isCollaborative={participantIds.length > 1} />
+        <HomesBoard mode="tour" userId={user.id} searchId={search.id} initialHomes={homesWithSignal} initialPriorities={normalizePriorities(priorities)} initialCommuteDestinations={commuteDestinations} sharedFactAwareness={sharedFactAwareness} isCollaborative={participantIds.length > 1} floorPlans={floorPlans} />
       </main>
     );
   });
