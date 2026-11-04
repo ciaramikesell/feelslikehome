@@ -1,0 +1,125 @@
+{
+  "expected": [
+    {
+      "street": "210 Maple Ave",
+      "must": 10,
+      "facts": [
+        {
+          "label": "Garage",
+          "value": "2 Car"
+        },
+        {
+          "label": "Basement",
+          "value": "Finished, Traditional"
+        },
+        {
+          "label": "Home condition",
+          "value": "Move-In Ready"
+        },
+        {
+          "label": "Schools",
+          "value": "Royal Oak"
+        },
+        {
+          "label": "Style",
+          "value": "Two Story"
+        }
+      ],
+      "counts": [
+        7,
+        2,
+        5
+      ]
+    },
+    {
+      "street": "4471 Long Description Blvd",
+      "must": 10,
+      "facts": [
+        {
+          "label": "Garage",
+          "value": "3 Car"
+        },
+        {
+          "label": "Basement",
+          "value": "Partially finished, Walkout"
+        },
+        {
+          "label": "Home condition",
+          "value": "Needs Cosmetic Updates"
+        },
+        {
+          "label": "Schools",
+          "value": "Bloomfield Hills Schools — Lahser High School attendance area (verify boundaries with the district)"
+        },
+        {
+          "label": "Style",
+          "value": "Split Level, Colonial, Cape Cod"
+        }
+      ],
+      "counts": [
+        4,
+        2,
+        8
+      ]
+    },
+    {
+      "street": "9 Unknown Ct",
+      "must": 10,
+      "facts": [],
+      "counts": [
+        0,
+        0,
+        14
+      ]
+    },
+    {
+      "street": "77 Short St",
+      "must": 10,
+      "facts": [
+        {
+          "label": "Garage",
+          "value": "0 Car"
+        },
+        {
+          "label": "Basement",
+          "value": "No basement"
+        },
+        {
+          "label": "Schools",
+          "value": "Troy"
+        },
+        {
+          "label": "Style",
+          "value": "Ranch"
+        }
+      ],
+      "counts": [
+        3,
+        4,
+        7
+      ]
+    }
+  ],
+  "log": [
+    {
+      "step": "[desktop] every card: all Must Haves, every known fact, nothing overflowing",
+      "ok": true,
+      "ms": 2839
+    },
+    {
+      "step": "[desktop] criteria summaries: keyboard focus is visible, Enter opens the list, Escape closes it",
+      "ok": true,
+      "ms": 186
+    },
+    {
+      "step": "[iphone] every card: all Must Haves, every known fact, nothing overflowing",
+      "ok": true,
+      "ms": 3461
+    },
+    {
+      "step": "[iphone] criteria summaries: keyboard focus is visible, Enter opens the list, Escape closes it",
+      "ok": true,
+      "ms": 104
+    }
+  ]
+}
