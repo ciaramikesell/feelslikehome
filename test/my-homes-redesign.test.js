@@ -28,7 +28,7 @@ test('card overlays expose truthful status, provenance, and co-buyer activity (n
 test('card hierarchy keeps Must Haves, aggregate criteria coverage, facts, and unknown distinct', () => {
   assert.match(board, /className="hh-must-summary"/);
   assert.match(board, /selectHomeCardCriteria\(match\)/);
-  assert.match(board, /mustOverflow > 0/);
+  assert.doesNotMatch(board, /mustOverflow/);
   assert.doesNotMatch(board, /Personalized Criteria/);
   assert.match(board, /criteriaSummary\.matches\.length/);
   assert.match(board, /criteriaSummary\.mismatches\.length/);

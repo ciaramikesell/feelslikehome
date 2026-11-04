@@ -6,32 +6,32 @@ import { formatCardGarage, homeCardSnapshot } from '../src/lib/homeCardPresentat
 
 const criterion = (key, tier, evaluated, met, objective = true) => ({ key, label: key.split(':').at(-1), tier, evaluated, met, objective });
 
-test('Must Haves prioritize failed, then unknown, then met and use truthful overflow', () => {
+test('Must Haves list every one, failed first, then unknown, then met — no preview limit or overflow', () => {
   const match = { allSelected: [
     criterion('features:Fenced Yard', 'must', true, true),
     criterion('features:Office', 'must', false, null),
     criterion('features:Pool', 'must', true, false),
     criterion('features:Fireplace', 'must', true, true),
   ] };
-  const result = selectHomeCardCriteria(match, 3);
+  const result = selectHomeCardCriteria(match);
   assert.deepEqual(result.mustHaves.map((item) => [item.label, item.evaluated, item.met]), [
-    ['Pool', true, false], ['Office', false, null], ['Fenced Yard', true, true],
+    ['Pool', true, false], ['Office', false, null], ['Fenced Yard', true, true], ['Fireplace', true, true],
   ]);
-  assert.equal(result.mustOverflow, 1);
+  assert.deepEqual(Object.keys(result).sort(), ['criteriaSummary', 'mustHaves'], 'no hidden / overflow fields');
 });
 
-test('Must Have preview never hides a failure to enforce its visual limit', () => {
+test('a long Must Have list is never cut: twelve Must Haves, twelve rows', () => {
   const match = { allSelected: [
     ...Array.from({ length: 6 }, (_, index) => criterion(`features:Failure ${index + 1}`, 'must', true, false)),
-    criterion('features:Known good', 'must', true, true),
+    ...Array.from({ length: 5 }, (_, index) => criterion(`features:Good ${index + 1}`, 'must', true, true)),
+    criterion('features:Unknown one', 'must', false, null),
   ] };
-  const result = selectHomeCardCriteria(match, 3);
-  assert.equal(result.mustHaves.length, 6);
-  assert.ok(result.mustHaves.every((item) => item.met === false));
-  assert.deepEqual(result.hiddenMustHaves.map((item) => item.label), ['Known good']);
+  const result = selectHomeCardCriteria(match);
+  assert.equal(result.mustHaves.length, 12);
+  assert.deepEqual(result.mustHaves.slice(0, 7).map((item) => item.label), ['Failure 1', 'Failure 2', 'Failure 3', 'Failure 4', 'Failure 5', 'Failure 6', 'Unknown one']);
 });
 
-test('Personalized Criteria excludes Must Haves, reconciles all states, and preserves importance order', () => {
+test('the breakdown covers every selected criterion, Must Haves included, reconciles all states, and orders Must, Important, Nice', () => {
   const match = { allSelected: [
     criterion('budget', 'important', true, true),
     criterion('beds', 'important', true, true),
@@ -47,20 +47,62 @@ test('Personalized Criteria excludes Must Haves, reconciles all states, and pres
     criterion('exterior:Important negative one', 'important', true, false),
     criterion('features:Important negative two', 'important', true, false),
     criterion('features:Extra negative', 'nice', true, false),
+    criterion('features:Pool', 'must', true, false),
+    criterion('features:Office', 'must', false, null),
   ] };
   const result = selectHomeCardCriteria(match);
   const summary = result.criteriaSummary;
-  assert.equal(summary.total, 13);
-  assert.equal(summary.evaluated, 12);
-  assert.equal(summary.matches.length, 8);
-  assert.equal(summary.mismatches.length, 4);
-  assert.equal(summary.unknown.length, 1);
+  assert.equal(summary.total, 16);
+  assert.equal(summary.matches.length, 9, 'the met Must Have counts');
+  assert.equal(summary.mismatches.length, 5, 'the failed Must Have counts');
+  assert.equal(summary.unknown.length, 2, 'the unknown Must Have counts');
   assert.equal(summary.evaluated, summary.matches.length + summary.mismatches.length);
-  assert.equal(summary.total, summary.evaluated + summary.unknown.length);
-  assert.ok([...summary.matches, ...summary.mismatches, ...summary.unknown].every((item) => item.tier !== 'must'));
+  assert.equal(summary.total, summary.evaluated + summary.unknown.length + summary.neutral.length);
   assert.deepEqual(summary.mismatches.map((item) => item.label), [
-    'Important negative one', 'Important negative two', 'Nice negative', 'Extra negative',
+    'Pool', 'Important negative one', 'Important negative two', 'Nice negative', 'Extra negative',
   ]);
+  assert.deepEqual(summary.unknown.map((item) => item.label), ['Office', 'Unknown']);
+  assert.equal(summary.matches[0].label, 'Fenced Yard', 'Must Haves first');
+});
+
+test('a failed Must Have is in the visible Must Have list AND the complete "don\'t match" list: 1 failed Must Have + 5 others = 6', () => {
+  const match = { allSelected: [
+    criterion('features:Finished basement', 'must', true, false),
+    criterion('features:Garage', 'must', true, true),
+    ...Array.from({ length: 3 }, (_, index) => criterion(`features:Important miss ${index + 1}`, 'important', true, false)),
+    ...Array.from({ length: 2 }, (_, index) => criterion(`exterior:Nice miss ${index + 1}`, 'nice', true, false)),
+    criterion('features:Nice hit', 'nice', true, true),
+  ] };
+  const { mustHaves, criteriaSummary } = selectHomeCardCriteria(match);
+  assert.deepEqual(mustHaves.map((item) => item.label), ['Finished basement', 'Garage']);
+  assert.equal(criteriaSummary.mismatches.length, 6);
+  assert.deepEqual(criteriaSummary.mismatches.map((item) => item.label), ['Finished basement', 'Important miss 1', 'Important miss 2', 'Important miss 3', 'Nice miss 1', 'Nice miss 2']);
+  assert.ok(mustHaves.includes(criteriaSummary.mismatches[0]), 'the same criterion object, listed in both places');
+  assert.deepEqual(criteriaSummary.matches.map((item) => item.label), ['Garage', 'Nice hit']);
+});
+
+test('an unknown Must Have is Unknown, never a mismatch; a neutral criterion is in none of the three lists', () => {
+  const match = { allSelected: [
+    criterion('features:Fireplace', 'must', false, null),
+    criterion('homeFeel:Natural Light', 'must', true, null, false),
+    criterion('homeFeel:Layout / Flow', 'important', true, null, false),
+    criterion('features:Pool', 'important', true, true),
+  ] };
+  const { mustHaves, criteriaSummary: s } = selectHomeCardCriteria(match);
+  assert.deepEqual(mustHaves.map((item) => [item.label, item.evaluated, item.met]), [['Fireplace', false, null], ['Natural Light', true, null]]);
+  assert.deepEqual(s.unknown.map((item) => item.label), ['Fireplace']);
+  assert.deepEqual(s.mismatches, []);
+  assert.deepEqual(s.matches.map((item) => item.label), ['Pool']);
+  assert.deepEqual(s.neutral.map((item) => item.label), ['Natural Light', 'Layout / Flow']);
+  assert.equal(s.total, s.matches.length + s.mismatches.length + s.unknown.length + s.neutral.length);
+});
+
+test('no criterion appears twice in a disclosure, even if a result repeats a key', () => {
+  const twice = criterion('features:Pool', 'nice', true, false);
+  const { criteriaSummary: s } = selectHomeCardCriteria({ allSelected: [twice, { ...twice }, criterion('features:Pool', 'must', true, true)] });
+  assert.deepEqual(s.mismatches.map((item) => item.key), ['features:Pool']);
+  assert.deepEqual(s.matches, []);
+  for (const list of [s.matches, s.mismatches, s.unknown, s.neutral]) assert.equal(new Set(list.map((item) => item.key)).size, list.length);
 });
 
 test('Personalized Criteria derives fresh counts and exact names from current participant state', () => {
@@ -86,7 +128,7 @@ test('compact property facts use canonical values, fixed order, and omit unknown
   assert.deepEqual(homeCardSnapshot({ basementNotes: 'Unknown', schoolsNotes: 'N/A', homeCondition: [] }, null), []);
 });
 
-test('every Must Have is eligible for the preview regardless of category, with truthful overflow', () => {
+test('every Must Have is listed regardless of category, and the match itself is untouched', () => {
   const allSelected = [
     criterion('preferredPropertyTypes', 'must', true, false),
     criterion('budget', 'must', true, false),
@@ -99,13 +141,12 @@ test('every Must Have is eligible for the preview regardless of category, with t
   ];
   const match = { allSelected, pct: 42 };
   const result = selectHomeCardCriteria(match);
-  // Failures first, then Unknown, then met — the preview limit (5) never hides a
-  // failure, and nothing is excluded for its category; the rest is overflow.
-  assert.deepEqual(result.mustHaves.map(({ label }) => label), ['preferredPropertyTypes', 'budget', 'beds', 'sqft', 'Fenced Yard']);
-  assert.deepEqual(result.hiddenMustHaves.map(({ label }) => label), ['homeCondition', 'Home Office', 'Natural Light']);
-  assert.equal(result.mustOverflow, 3);
-  assert.equal(result.mustHaves.length + result.hiddenMustHaves.length, allSelected.length);
+  // Failures first, then Unknown, then met — all eight, nothing excluded for its category.
+  assert.deepEqual(result.mustHaves.map(({ label }) => label), ['preferredPropertyTypes', 'budget', 'beds', 'sqft', 'Fenced Yard', 'homeCondition', 'Home Office', 'Natural Light']);
+  assert.equal(result.criteriaSummary.mismatches.length, 3);
+  assert.equal(result.criteriaSummary.unknown.length, 2);
   assert.equal(match.allSelected, allSelected);
+  assert.deepEqual(allSelected.map(({ label }) => label), ['preferredPropertyTypes', 'budget', 'beds', 'sqft', 'homeCondition', 'Home Office', 'Fenced Yard', 'Natural Light'], 'sorting never reorders computeMatch\'s array');
   assert.equal(match.pct, 42);
 });
 
