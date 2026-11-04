@@ -28,7 +28,7 @@ hasn't overridden it, immediately.
 
 | Criterion (every stored label) | Yes | No | Unknown |
 |---|---|---|---|
-| Garage | Garage spaces greater than 0 (`'3+'` reads as 3) | `0`, `none`, `no`, `no garage` | Blank; text with no count (`Attached`, `yes`); garbled numbers (`1.2.3`) |
+| Garage | Exactly one number, greater than 0 (`'3+'`, `'2 car'` read as 3, 2) | That number is `0`; or exactly `none`, `no`, `no garage` | Blank; text with no count (`Attached`, `yes`); several numbers (`1-2`, `1.2.3`, `2 + 1 carport`); a negation beside a number (`No garage, 2 carport`) |
 | Finished basement / Finished Basement | Condition **Finished** | Condition **Unfinished**; condition or style **None** | Partially finished; not recorded; contradictory fields (see below) |
 | Walkout basement / Walkout Basement | Style **Walkout** | Style or condition **None** | **Traditional** or **Gardenview** (neither says there's no walkout); not recorded; contradictory fields |
 | First-floor laundry / First-Floor Laundry | Laundry location **First floor** | — (never No) | Any other location, or not recorded |
@@ -56,6 +56,7 @@ legacy aliases.
 | Garage with spaces blank and an own answer | Unknown | Used the answer | Uses the answer |
 | Garage spaces with no digits (`Attached`) | Read as **0 → No garage** | Unknown | Unknown |
 | Garage spaces like `1.2.3` | Unknown | **Error for the whole Compare call** | Unknown |
+| Garage spaces with several numbers or a negation (`1-2`, `No garage, 2 carport`) | Digits run together (**12**, **2 → Yes**) | Same | Unknown |
 | A search saved under an older purchase label (`First-Floor Laundry`, `Home Office`, `Fenced Yard` …) with the current label also selected | Counted once | **Counted twice** | Once, at the current label's level |
 | Answer stored under the other label (old vs current) | Found (folded) | Missed | Found, current label first |
 | Rating stored under an older label | Not read | Read | Not read (matches JS) |
@@ -95,7 +96,9 @@ Nothing stored is rewritten. Scores change only through:
    which Match used to ignore whenever garage spaces were set.
 3. **Garage text.** A garage-spaces value with no digits, such as `Attached`,
    counted as "No garage" in the buyer's own Match and is now Unknown. A value
-   like `1.2.3` used to break Compare and is now Unknown.
+   like `1.2.3` used to break Compare and is now Unknown. A value with several
+   numbers or a negation (`1-2`, `No garage, 2 carport`) used to read as the
+   digits run together (a Yes) on both sides and is now Unknown.
 4. **Older purchase labels in Compare.** These are folded exactly as the
    buyer's own Match already did. A co-buyer's Compare score can change where
    their saved search still used an older label.
@@ -103,11 +106,18 @@ Nothing stored is rewritten. Scores change only through:
 `supabase/home-facts-match-parity-preflight.sql` is a read-only SELECT that
 returns counts only. It reports each of these before the migration is applied:
 - evaluations newly answered per criterion and tier
-- Must-Haves that become misses
+- Must-Haves that become misses (from a Home Fact, and from a Garage No that now wins)
+- home × participant pairs by number of changed evaluations (1 / 2 / 3+), and
+  the number of searches affected, to spot unexpectedly large moves
 - Garage overrides that now win
 - historical `false` Garage answers
 - garage text that changes reading
 - older-label documents
+
+It reads each participant's selection and answer exactly as the scorer does:
+an older purchase label counts once under today's label (not at all when
+today's label is selected too), and an answer stored under the other label is
+found.
 
 ## Deploying (needs approval; not done)
 
@@ -125,8 +135,17 @@ returns counts only. It reports each of these before the migration is applied:
    criteria).
 4. Re-run the preflight. The body row then reads `ALREADY APPLIED`.
 
-**Rollback:** re-apply `2026-10-18-lot-size-units-match-parity.sql` and revert the
-app.
+**Between steps 2 and 3:** a co-buyer's Compare view of the other buyer (SQL)
+already uses the new rule, while each buyer's own Match (the old app) does not.
+Nothing is written either way, so this only shows as differing percentages for
+the fact-backed criteria until the app is live. Reversing the order gives the
+mirror-image gap, and a Compare call on a home with garage spaces like `1.2.3`
+keeps failing until the migration is applied, so migration first is preferred.
+
+**Rollback:** re-apply `2026-10-18-lot-size-units-match-parity.sql` (one
+function body; the preflight body row then reads `expected: 2026-10-18`) and
+promote the previous Vercel deployment. Neither step touches stored data, and
+`test/home-fact-match-parity-db.test.js` runs this rollback and the re-apply.
 
 ## Tests
 

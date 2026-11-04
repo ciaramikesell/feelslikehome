@@ -177,12 +177,16 @@ test('personal criteria are the buyer’s own My Search criteria, including cust
   assert.equal(conditions.length, 0);
 });
 
-test('Garage reads the canonical garageSpaces fact, exactly as Match does — never the old checkbox', () => {
+test('Garage follows Match exactly: garage spaces, unless the buyer\'s own Yes / No overrides (Home Facts → Match)', () => {
   const conditions = buildConditions({ criteria: ['exterior:Garage'] }, { criteria });
   const at = (home) => classifyHome(home, conditions, evaluate).status;
   assert.equal(at({ id: 'a', garageSpaces: '2', checks: {} }), 'confirmed');
-  assert.equal(at({ id: 'b', garageSpaces: '0', checks: { 'exterior:Garage': true } }), 'excluded');
-  assert.equal(at({ id: 'c', garageSpaces: '', checks: { 'exterior:Garage': true } }), 'possible');
+  assert.equal(at({ id: 'a0', garageSpaces: '0', checks: {} }), 'excluded');
+  assert.equal(at({ id: 'b', garageSpaces: '0', checks: { 'exterior:Garage': true } }), 'confirmed', 'an own Yes overrides 0 spaces');
+  assert.equal(at({ id: 'b2', garageSpaces: '2', checks: { 'exterior:Garage': 'no' } }), 'excluded', 'an own No overrides 2 spaces');
+  assert.equal(at({ id: 'c', garageSpaces: '', checks: { 'exterior:Garage': true } }), 'confirmed', 'an own Yes answers unknown spaces');
+  assert.equal(at({ id: 'd', garageSpaces: '', checks: { 'exterior:Garage': false } }), 'possible', 'historical false stays Unknown');
+  assert.equal(at({ id: 'e', garageSpaces: 'Attached', checks: {} }), 'possible', 'text with no count is Unknown, never No');
 });
 
 test('nothing is inferred: bedrooms never imply a guest suite, lot size never implies a fence', () => {

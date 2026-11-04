@@ -173,7 +173,7 @@ test('Match scoring is unchanged: the new Home Facts details never move a Match'
   assert.deepEqual(computeMatch(withDetails, priorities), computeMatch(home, priorities));
   // The new "3+" spaces choice still reads as 3 for Garage, in JS and in the SQL Compare scorer.
   assert.equal(computeMatch({ ...home, garageSpaces: '3+' }, priorities).allSelected.find((item) => item.key === 'exterior:Garage').met, true);
-  assert.match(read('supabase/migrations/2026-11-02-home-facts-match-parity.sql'), /regexp_replace\(v_home\.garage_spaces, '\[\^0-9\.\]', '', 'g'\)/);
+  assert.match(read('supabase/migrations/2026-11-02-home-facts-match-parity.sql'), /substring\(v_home\.garage_spaces from '\[0-9\]\+\(\?:\\\.\[0-9\]\+\)\?\|\\\.\[0-9\]\+'\)::numeric > 0/);
   // No scorer reads the descriptive details. (Basement style and condition answer
   // Finished / Walkout basement since the Home Facts → Match parity PR; see
   // test/home-fact-match-parity.test.js.)

@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs';
 import { register } from 'node:module';
 import { createTestDatabase, DB_TESTS_ENABLED, DB_SKIP_REASON, POST_SNAPSHOT_MIGRATIONS } from './support/supabaseDb.mjs';
 import { computeMatch } from '../src/lib/matching.js';
+import { homeFactAnswer } from '../src/lib/homeFactCriteria.js';
 import { normalizePriorities } from '../src/lib/constants.js';
 import { addCriterion } from '../src/lib/searchProfile.js';
 
@@ -220,7 +221,7 @@ dbTest('exhaustive: every basement condition × style, garage text and HOA value
   const styles = [null, 'none', 'traditional', 'gardenview', 'walkout'];
   const grid = {};
   conditions.forEach((condition, i) => styles.forEach((style, j) => { grid[`basement-${i}${j}`] = { basement_condition: condition, basement_style: style }; }));
-  ['2', '3+', '0', ' 1 ', '2 car', 'none', 'No garage', '', 'Attached', 'yes', '1.2.3'].forEach((value, i) => { grid[`garage-${i}`] = { garage_spaces: value }; });
+  ['2', '3+', '0', ' 1 ', '2 car', 'none', 'No garage', '', 'Attached', 'yes', '1.2.3', '1-2', 'No garage, 2 carport', '2.5', '0.0', '2 + 1 carport'].forEach((value, i) => { grid[`garage-${i}`] = { garage_spaces: value }; });
   [null, 0, 0.5, 450].forEach((fee, i) => { grid[`hoa-${i}`] = { hoa_fee_monthly: fee }; });
   ['Main Floor', 'Upstairs', '', 'No Preference'].forEach((location, i) => { grid[`primary-${i}`] = { primary_bedroom_location: location }; });
   ['first_floor', 'second_floor', 'basement', null].forEach((location, i) => { grid[`laundry-${i}`] = { laundry_location: location }; });
@@ -238,6 +239,57 @@ dbTest('exhaustive: every basement condition × style, garage text and HOA value
       assert.equal(match.pct, item.evaluated ? (item.met ? 100 : 0) : null, `${label} on ${name}`);
     }
   }
+  await savePriorities(db.clientFor(ids.coBuyer), { id: ids.search }, ids.coBuyer, factBuyer());
+  for (const id of Object.values(homeIds)) await db.clientFor(ids.owner).from('homes').delete().eq('id', id);
+});
+
+// Both participants scored at once, each with their own answer state, over every
+// fact combination: an own Yes / No overrides in either direction, false and
+// absence fall through to the fact, and the other participant never moves.
+dbTest('owner and co-buyer together: every fact × own-answer state, both scorers, both directions', async () => {
+  const conditions = [null, 'none', 'unfinished', 'partially_finished', 'finished'];
+  const styles = [null, 'none', 'traditional', 'gardenview', 'walkout'];
+  const grid = {};
+  conditions.forEach((condition, i) => styles.forEach((style, j) => {
+    grid[`b${i}${j}`] = { basement_condition: condition, basement_style: style, garage_spaces: ['2', '0', 'none', '', 'No garage, 2 carport'][(i + j) % 5],
+      laundry_location: ['first_floor', 'second_floor', 'basement', null][(i + j) % 4], primary_bedroom_location: ['Main Floor', 'Upstairs', ''][(i * 5 + j) % 3],
+      hoa_fee_monthly: [null, 0, 125][(i * 5 + j) % 3] };
+  }));
+  const homeIds = {};
+  for (const [name, facts] of Object.entries(grid)) {
+    homeIds[name] = (await db.clientFor(ids.owner).from('homes').insert({ user_id: ids.owner, search_id: ids.search, address: `${name} Both Way, Royal Oak, MI 48073`, ...facts }).select('id').single()).data.id;
+  }
+  const STATES = [undefined, false, true, 'no'];
+  const toCamel = (facts) => ({ basementCondition: facts.basement_condition, basementStyle: facts.basement_style, garageSpaces: facts.garage_spaces,
+    laundryLocation: facts.laundry_location, primaryBedroomLocation: facts.primary_bedroom_location, hoaFeeMonthly: facts.hoa_fee_monthly });
+  const expected = (facts, own, key) => (own === true || own === 'no' ? own : homeFactAnswer(toCamel(facts), key));
+  const checksFor = (offset, key) => (name) => {
+    const own = STATES[(Object.keys(grid).indexOf(name) + offset) % 4];
+    return own === undefined ? {} : { [key]: own };
+  };
+  for (const [categoryKey, label] of FACT_CRITERIA) {
+    const key = `${categoryKey}:${label}`;
+    const one = addCriterion(normalizePriorities({ searchType: 'purchase' }), { categoryKey, label, kind: 'check' }, 'must');
+    await savePriorities(db.clientFor(ids.owner), { id: ids.search }, ids.owner, one);
+    await savePriorities(db.clientFor(ids.coBuyer), { id: ids.search }, ids.coBuyer, one);
+    // Different states for the two participants on every home.
+    await setChecks(db, ids.owner, ids.search, homeIds, checksFor(0, key));
+    await setChecks(db, ids.coBuyer, ids.search, homeIds, checksFor(1, key));
+    const asOwner = await bothScorers(db, { viewer: 'co-buyer', viewerId: ids.coBuyer, subject: 'owner', subjectId: ids.owner, search: ids.search, homeIds });
+    const asCoBuyer = await bothScorers(db, { viewer: 'owner', viewerId: ids.owner, subject: 'co-buyer', subjectId: ids.coBuyer, search: ids.search, homeIds });
+    for (const name of Object.keys(grid)) {
+      const ownerOwn = checksFor(0, key)(name)[key];
+      const coBuyerOwn = checksFor(1, key)(name)[key];
+      const toPct = (value) => (value === true ? 100 : value === 'no' ? 0 : null);
+      assert.equal(asOwner[name].pct, toPct(expected(grid[name], ownerOwn, key)), `owner ${label} on ${name} (own ${ownerOwn})`);
+      assert.equal(asCoBuyer[name].pct, toPct(expected(grid[name], coBuyerOwn, key)), `co-buyer ${label} on ${name} (own ${coBuyerOwn})`);
+    }
+  }
+  // Nothing derived was written: every stored check is one the test saved.
+  const stored = db.admin(`select checks from public.home_member_state where home_id in (${Object.values(homeIds).map((id) => `'${id}'`).join(',')})`);
+  assert.ok(stored.every((row) => Object.values(row.checks).every((value) => value === false || value === true || value === 'no')));
+  assert.ok(stored.every((row) => Object.keys(row.checks).length <= 1));
+  await savePriorities(db.clientFor(ids.owner), { id: ids.search }, ids.owner, factBuyer());
   await savePriorities(db.clientFor(ids.coBuyer), { id: ids.search }, ids.coBuyer, factBuyer());
   for (const id of Object.values(homeIds)) await db.clientFor(ids.owner).from('homes').delete().eq('id', id);
 });
@@ -268,6 +320,17 @@ dbTest('production path: preflight on pre-migration data, then the migration —
     assert.equal(projected.get(homeIds.allYes).match.evaluatedCount, 2, 'budget and Garage from spaces, nothing else');
     assert.equal(projected.get(homeIds.allNo).match.evaluatedCount, 2);
 
+    // The owner's document predates the label unification: the legacy and the current laundry label are
+    // both selected (the scorer counts it once, under the current label) and their No is stored under the
+    // legacy key, which the scorer reads. The preflight must see that as an own answer, not a new fact.
+    const legacyDoc = '{"searchType":"purchase","features":{"tiers":{"First-Floor Laundry":"nice","First-floor laundry":"must"}}}';
+    // The owner has no search_member_priorities row here, so (as for older searches) the scorer and the
+    // preflight read the search's own priorities.
+    assert.equal(legacy.admin(`select count(*)::int as n from public.search_member_priorities where search_id = '${search}' and user_id = '${owner}'`)[0].n, 0);
+    legacy.exec(`update public.searches set priorities = '${legacyDoc}'::jsonb where id = '${search}'`);
+    const ownerHomes = await getHomesForUser(legacy.clientFor(owner), owner, search);
+    await saveHomePersonalState(legacy.clientFor(owner), { ...ownerHomes.find((home) => home.id === homeIds.allYes), checks: { 'features:First-Floor Laundry': 'no' } }, owner, search);
+
     const before = snapshot();
     const report = legacy.admin(PREFLIGHT);
     assert.deepEqual(report.filter((row) => row.check === 'required' && row.ok !== true), []);
@@ -275,12 +338,18 @@ dbTest('production path: preflight on pre-migration data, then the migration —
     assert.match(info('current body is the 2026-10-18'), /^expected: 2026-10-18-lot-size-units-match-parity\.sql/);
     // Checked by hand against EXPECTED_FACTS (Garage is reported separately below).
     assert.equal(info('home × participant evaluations newly answered'), 'features:Finished basement important: 1 / 2, features:First-Floor Primary must: 1 / 1, features:First-floor laundry important: 1 / 0, features:Second-Floor Laundry nice: 1 / 0, features:Walkout basement nice: 1 / 1, location:No HOA important: 0 / 1');
-    assert.equal(info('own answers that differ from the Home Fact'), '0');
+    assert.equal(info('own answers that differ from the Home Fact'), '1', 'the owner\'s No under the legacy key, over first-floor laundry');
+    assert.equal(info('participant selections of the fact-backed criteria'), 'exterior:Garage: 1, features:Finished basement: 1, features:First-Floor Primary: 1, features:First-floor laundry: 2, features:Second-Floor Laundry: 1, features:Walkout basement: 1, location:No HOA: 1', 'the owner\'s two laundry labels count once');
     assert.equal(info('Must-Haves that become a confirmed miss'), '1', 'First-Floor Primary: Upstairs on one home');
     assert.equal(info('Garage: own Yes / No that disagrees'), 'must: 1');
     assert.equal(info('Garage: historical false'), '0');
     assert.equal(info('saved homes whose garage spaces have no digits'), '1');
     assert.equal(info('saved homes whose garage spaces made the Compare cast fail'), '1');
+    assert.equal(info('saved homes whose garage spaces have digits but several numbers'), '1', '"1.2.3" has two numbers');
+    assert.equal(info('Garage: Must-Haves that become a confirmed miss'), '0');
+    // allNo: Garage own Yes (changed) + 5 newly answered; allYes 5; partial 0 (Garage is not new); oddText 1; walkoutNoBasement 0.
+    assert.equal(info('home × participant pairs by number of changed evaluations'), '1 / 0 / 2; Must-Have newly missed: 1');
+    assert.equal(info('searches with at least one changed evaluation'), '1 of 2', 'the co-buyer also has a search of their own');
     assert.deepEqual(snapshot(), before, 'the preflight writes nothing');
 
     const applied = legacy.applyFile(MIGRATION);
@@ -296,6 +365,20 @@ dbTest('production path: preflight on pre-migration data, then the migration —
     const result = await bothScorers(legacy, { viewer: 'owner', viewerId: owner, subject: 'co-buyer', subjectId: coBuyer, search, homeIds });
     assert.equal(result.allNo.allSelected.find((item) => item.key === 'exterior:Garage').met, true);
     assert.equal(result.allNo.allSelected.find((item) => item.key === 'features:Walkout basement').met, false, 'historical false: the fact decides');
+
+    // Rollback: re-applying the previous scorer restores its exact body and contract and rewrites nothing.
+    const afterMigration = snapshot();
+    assert.equal(legacy.applyFile('supabase/migrations/2026-10-18-lot-size-units-match-parity.sql').error, null);
+    assert.deepEqual(snapshot(), afterMigration, 'the rollback rewrites no preferences, homes or answers');
+    assert.match(legacy.admin(PREFLIGHT).find((row) => row.item.startsWith('current body is the 2026-10-18')).detail, /^expected: 2026-10-18-lot-size-units-match-parity\.sql/);
+    const rolledBack = legacy.admin(`select p.prosecdef, p.proconfig, has_function_privilege('authenticated', p.oid, 'execute') as auth, has_function_privilege('anon', p.oid, 'execute') as anon
+      from pg_proc p where p.proname = 'resolve_cobuyer_compare_perspectives'`)[0];
+    assert.deepEqual([rolledBack.prosecdef, rolledBack.proconfig, rolledBack.auth, rolledBack.anon], [true, ['search_path=""'], true, false]);
+    const old = await resolveCoBuyerComparePerspectives(legacy.clientFor(owner), { id: search }, readable);
+    assert.equal(old.get(homeIds.allYes).match.evaluatedCount, 2, 'the previous Compare behaviour is back');
+    // And forward again (re-runnable both ways).
+    assert.equal(legacy.applyFile(MIGRATION).error, null);
+    assert.match(legacy.admin(PREFLIGHT).find((row) => row.item.startsWith('current body is the 2026-10-18')).detail, /^ALREADY APPLIED/);
   } finally {
     legacy.drop();
   }

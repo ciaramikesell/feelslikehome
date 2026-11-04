@@ -23,7 +23,7 @@ fn as (
 ),
 versions(body_md5, label) as (values
   ('507da3d7681a30eec49a8311d30bb180', 'expected: 2026-10-18-lot-size-units-match-parity.sql'),
-  ('10cf0ecaf261696b4b0ac478d17cdfa4', 'ALREADY APPLIED: 2026-11-02-home-facts-match-parity.sql'),
+  ('ee7daf7cbc20d5e361aaac18c8b3735b', 'ALREADY APPLIED: 2026-11-02-home-facts-match-parity.sql'),
   ('7e70b54fa45614c9c0e219d7d8df9a4f', 'OLDER: 2026-10-15-cobuyer-compare-mudroom-parity.sql (stop: apply 2026-10-18-lot-size-units-match-parity.sql first)'),
   ('960d7123231eb983709350e11602b6f9', 'OLDER: 2026-10-07-cobuyer-compare-garage-parity.sql (stop: apply the 2026-10-15 and 2026-10-18 scorers first)')
 ),
@@ -60,7 +60,7 @@ fact_keys(key) as (values
   ('features:Walkout Basement'), ('features:First-floor laundry'), ('features:First-Floor Laundry'),
   ('features:Second-Floor Laundry'), ('features:First-Floor Primary'), ('location:No HOA')
 ),
-selected as (
+selected_raw as (
   select p.search_id, p.user_id, c.category || ':' || t.key as key, t.value #>> '{}' as tier,
          coalesce(p.priorities ->> 'searchType', '') in ('purchase', 'buy') as purchase
   from participants p
@@ -68,17 +68,37 @@ selected as (
   cross join lateral jsonb_each(coalesce(p.priorities #> array[c.category, 'tiers'], '{}'::jsonb)) t
   where t.value #>> '{}' <> 'dontcare'
 ),
+-- Pre-unification purchase labels, [legacy, current], exactly as the scorer folds them.
+label_aliases(legacy, current) as (values
+  ('location:Parks Nearby', 'location:Parks nearby'), ('features:Home Office', 'features:Home office'),
+  ('features:Central Air', 'features:Central air'), ('features:Primary Ensuite', 'features:Primary ensuite'),
+  ('features:First-Floor Laundry', 'features:First-floor laundry'), ('features:Guest suite', 'features:Guest / In-Law Suite'),
+  ('exterior:Fenced Yard', 'exterior:Fenced yard'), ('exterior:Patio / Deck / Outdoor Living', 'exterior:Patio / deck')
+),
+-- What the scorer counts: a purchase legacy label counts once, under the current
+-- label, and not at all when the current label is selected too.
+selected as (
+  select s.search_id, s.user_id, coalesce(a.current, s.key) as key, s.tier, s.purchase,
+         (select a2.legacy from label_aliases a2 where s.purchase and a2.current = coalesce(a.current, s.key)) as legacy_key
+  from selected_raw s
+  left join label_aliases a on s.purchase and a.legacy = s.key
+  where a.current is null or not exists (
+    select 1 from selected_raw cur where cur.search_id = s.search_id and cur.user_id = s.user_id and cur.key = a.current)
+),
 -- Every home × participant × fact criterion, with the participant's own answer
 -- (as the scorer reads it) and the exact fact reading (the migration's table).
 pairs as (
-  select sel.key, sel.tier, h.garage_spaces,
-         coalesce(hms.checks, case when h.user_id = sel.user_id then h.checks else '{}'::jsonb end) -> sel.key as own_raw,
+  select h.id as home_id, sel.user_id, sel.key, sel.tier, h.garage_spaces,
+         -- The answer under today's key, else (purchase) under its older label, as the scorer reads it.
+         coalesce(coalesce(hms.checks, case when h.user_id = sel.user_id then h.checks else '{}'::jsonb end) -> sel.key,
+                  coalesce(hms.checks, case when h.user_id = sel.user_id then h.checks else '{}'::jsonb end) -> sel.legacy_key) as own_raw,
          case
            when sel.key = 'exterior:Garage' then case
              when btrim(coalesce(h.garage_spaces, '')) = '' then null
              when btrim(h.garage_spaces) ~* '^(none|no|no garage)$' then 0
-             when regexp_replace(h.garage_spaces, '[^0-9.]', '', 'g') ~ '^([0-9]+\.?[0-9]*|\.[0-9]+)$'
-               then (regexp_replace(h.garage_spaces, '[^0-9.]', '', 'g')::numeric > 0)::integer
+             when h.garage_spaces !~* '\m(no|none|not|without)\M'
+               and (select count(*) from regexp_matches(h.garage_spaces, '[0-9]+(\.[0-9]+)?|\.[0-9]+', 'g')) = 1
+               then (substring(h.garage_spaces from '[0-9]+(?:\.[0-9]+)?|\.[0-9]+')::numeric > 0)::integer
            end
            when sel.key in ('features:Finished basement', 'features:Finished Basement') then case
              when h.basement_condition = 'unfinished' then 0
@@ -107,12 +127,23 @@ classified as (
   -- No answer (NULL) is not explicit: coalesce, or NOT would drop those rows.
   select *, coalesce(own_raw in ('true'::jsonb, '"no"'::jsonb), false) as own_explicit from pairs
 ),
-legacy_labels(key) as (values
-  ('location:Parks Nearby'), ('features:Home Office'), ('features:Central Air'), ('features:Primary Ensuite'),
-  ('features:First-Floor Laundry'), ('features:Guest suite'), ('exterior:Fenced Yard'), ('exterior:Patio / Deck / Outdoor Living')
+-- One row per evaluation whose result changes when the migration and the app
+-- ship: newly answered by a fact (not Garage, which was already read from
+-- spaces), or a Garage own answer that now counts (over disagreeing spaces, or,
+-- in the participant's own Match, where spaces are Unknown).
+changed as (
+  select home_id, user_id, key, tier,
+         case when key = 'exterior:Garage' then case when own_raw = 'true'::jsonb then 1 else 0 end else fact end as now_score
+  from classified
+  where (key <> 'exterior:Garage' and not own_explicit and fact is not null)
+     or (key = 'exterior:Garage' and own_explicit and (fact is null or fact <> case when own_raw = 'true'::jsonb then 1 else 0 end))
 ),
+changed_pairs as (
+  select home_id, user_id, count(*) as n, bool_or(now_score = 0 and tier = 'must') as must_miss from changed group by home_id, user_id
+),
+legacy_labels(key) as (select legacy from label_aliases),
 legacy_selected as (
-  select s.* from selected s join legacy_labels l on l.key = s.key where s.purchase
+  select s.* from selected_raw s join legacy_labels l on l.key = s.key where s.purchase
 )
 select section, "check", item, ok, detail from (
   -- 1. Prerequisites -------------------------------------------------------
@@ -120,7 +151,7 @@ select section, "check", item, ok, detail from (
          exists (select 1 from fn) as ok, null::text as detail
   union all
   select 1, 'required', 'current body is the 2026-10-18 lot-size version (or this one)',
-         exists (select 1 from fn f where f.body_md5_lf in ('507da3d7681a30eec49a8311d30bb180', '10cf0ecaf261696b4b0ac478d17cdfa4')),
+         exists (select 1 from fn f where f.body_md5_lf in ('507da3d7681a30eec49a8311d30bb180', 'ee7daf7cbc20d5e361aaac18c8b3735b')),
          coalesce((select v.label from fn f join versions v on v.body_md5 = f.body_md5_lf),
                   'NO REPOSITORY MATCH: ' || coalesce((select body_md5_lf from fn), 'function absent') || ' — stop and review')
   union all
@@ -148,12 +179,23 @@ select section, "check", item, ok, detail from (
   select 2, 'info', 'own answers that differ from the Home Fact (kept: the answer is an override)', null,
          (select count(*)::text from classified where own_explicit and fact is not null and key <> 'exterior:Garage'
             and fact <> case when own_raw = 'true'::jsonb then 1 else 0 end)
+  union all
+  select 2, 'info', 'home × participant pairs by number of changed evaluations (1 / 2 / 3+), and with a newly missed Must-Have', null,
+         (select coalesce(sum((n = 1)::int), 0) || ' / ' || coalesce(sum((n = 2)::int), 0) || ' / ' || coalesce(sum((n >= 3)::int), 0)
+            || '; Must-Have newly missed: ' || coalesce(sum(must_miss::int), 0) from changed_pairs)
+  union all
+  select 2, 'info', 'searches with at least one changed evaluation (of all searches)', null,
+         (select count(distinct h.search_id) || ' of ' || (select count(*) from public.searches)
+            from changed_pairs c join public.homes h on h.id = c.home_id)
   -- 3. Garage --------------------------------------------------------------
   union all
   select 3, 'info', 'Garage: own Yes / No that disagrees with garage spaces (own answer now wins; by tier)', null,
          coalesce((select string_agg(tier || ': ' || n, ', ' order by tier) from (
            select tier, count(*) as n from classified where key = 'exterior:Garage' and own_explicit and fact is not null
              and fact <> case when own_raw = 'true'::jsonb then 1 else 0 end group by tier) t), 'none')
+  union all
+  select 3, 'info', 'Garage: Must-Haves that become a confirmed miss (own No now wins over spaces > 0)', null,
+         (select count(*)::text from classified where key = 'exterior:Garage' and own_raw = '"no"'::jsonb and fact = 1 and tier = 'must')
   union all
   select 3, 'info', 'Garage: own Yes / No with garage spaces Unknown (own Match: Unknown -> answered; Compare already counted it)', null,
          (select count(*)::text from classified where key = 'exterior:Garage' and own_explicit and fact is null)
@@ -165,6 +207,12 @@ select section, "check", item, ok, detail from (
          (select count(*)::text from public.homes h where btrim(coalesce(h.garage_spaces, '')) <> ''
             and regexp_replace(h.garage_spaces, '[^0-9.]', '', 'g') = '' and btrim(h.garage_spaces) !~* '^(none|no|no garage)$')
   union all
+  select 3, 'info', 'saved homes whose garage spaces have digits but several numbers or a negation (e.g. "1-2", "No garage, 2 carport"; read as the digits run together, now Unknown)', null,
+         (select count(*)::text from public.homes h where regexp_replace(coalesce(h.garage_spaces, ''), '[^0-9.]', '', 'g') <> ''
+            and btrim(h.garage_spaces) !~* '^(none|no|no garage)$'
+            and (h.garage_spaces ~* '\m(no|none|not|without)\M'
+              or (select count(*) from regexp_matches(h.garage_spaces, '[0-9]+(\.[0-9]+)?|\.[0-9]+', 'g')) <> 1))
+  union all
   select 3, 'info', 'saved homes whose garage spaces made the Compare cast fail (e.g. "1.2.3"; now Unknown)', null,
          (select count(*)::text from public.homes h where regexp_replace(coalesce(h.garage_spaces, ''), '[^0-9.]', '', 'g') <> ''
             and regexp_replace(h.garage_spaces, '[^0-9.]', '', 'g') !~ '^([0-9]+\.?[0-9]*|\.[0-9]+)$')
@@ -174,13 +222,8 @@ select section, "check", item, ok, detail from (
          (select count(distinct (search_id, user_id))::text from legacy_selected)
   union all
   select 4, 'info', 'of those, with the current label also selected (Compare counted the criterion twice)', null,
-         (select count(*)::text from legacy_selected l join legacy_labels ll on ll.key = l.key
-            join selected cur on cur.search_id = l.search_id and cur.user_id = l.user_id
-             and cur.key = case l.key
-               when 'location:Parks Nearby' then 'location:Parks nearby' when 'features:Home Office' then 'features:Home office'
-               when 'features:Central Air' then 'features:Central air' when 'features:Primary Ensuite' then 'features:Primary ensuite'
-               when 'features:First-Floor Laundry' then 'features:First-floor laundry' when 'features:Guest suite' then 'features:Guest / In-Law Suite'
-               when 'exterior:Fenced Yard' then 'exterior:Fenced yard' when 'exterior:Patio / Deck / Outdoor Living' then 'exterior:Patio / deck' end)
+         (select count(*)::text from legacy_selected l join label_aliases a on a.legacy = l.key
+            join selected_raw cur on cur.search_id = l.search_id and cur.user_id = l.user_id and cur.key = a.current)
   union all
   select 4, 'info', 'migration rewrites preferences, homes or answers', null, 'no — it replaces one function body only'
 ) report

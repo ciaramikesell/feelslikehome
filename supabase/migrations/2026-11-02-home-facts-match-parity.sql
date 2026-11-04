@@ -5,8 +5,9 @@
 -- For every check criterion the answer is, in order:
 --   1. the participant's own explicit Yes (true) or No ("no") — an override;
 --   2. otherwise an exact reading of a shared Home Fact:
---        Garage                    garage_spaces: a count > 0 Yes, 0 / 'none' / 'no' / 'no garage' No,
---                                  anything else (blank, words, '1.2.3') Unknown
+--        Garage                    garage_spaces: exactly one number, > 0 Yes, 0 No; 'none' / 'no' /
+--                                  'no garage' No; anything else (blank, words, several numbers
+--                                  such as '1-2' or '1.2.3', a negation beside a number) Unknown
 --        Finished basement         basement_condition finished Yes; unfinished No; none (either
 --                                  field) No; partially finished Unknown
 --        Walkout basement          basement_style walkout Yes; none (either field) No;
@@ -22,8 +23,10 @@
 --
 -- Behaviour changes for the scored participant (nothing is rewritten):
 --   * Garage: the participant's own Yes / No now wins over garage_spaces (it
---     used to be ignored whenever garage spaces were set), and garage spaces
---     with no digits read as Unknown instead of failing the numeric cast.
+--     used to be ignored whenever garage spaces were set); garage spaces with no
+--     digits read as Unknown instead of failing the numeric cast; and text with
+--     several numbers or a negation ('1-2', 'No garage, 2 carport') is Unknown
+--     instead of the digits run together.
 --   * The six criteria above are now answered by the Home Fact when the
 --     participant has no Yes / No of their own.
 --   * Pre-unification purchase labels ('First-Floor Laundry', 'Home Office',
@@ -311,8 +314,10 @@ begin
               when v_key = 'exterior:Garage' then case
                 when btrim(coalesce(v_home.garage_spaces, '')) = '' then null
                 when btrim(v_home.garage_spaces) ~* '^(none|no|no garage)$' then 0
-                when regexp_replace(v_home.garage_spaces, '[^0-9.]', '', 'g') ~ '^([0-9]+\.?[0-9]*|\.[0-9]+)$'
-                  then (regexp_replace(v_home.garage_spaces, '[^0-9.]', '', 'g')::numeric > 0)::integer
+                -- Exactly one number and no negation (homeFactCriteria.js garageSpacesCount).
+                when v_home.garage_spaces !~* '\m(no|none|not|without)\M'
+                  and (select count(*) from regexp_matches(v_home.garage_spaces, '[0-9]+(\.[0-9]+)?|\.[0-9]+', 'g')) = 1
+                  then (substring(v_home.garage_spaces from '[0-9]+(?:\.[0-9]+)?|\.[0-9]+')::numeric > 0)::integer
               end
               -- A contradiction (one basement field says none, the other describes
               -- a basement) answers nothing, except that unfinished is never finished.

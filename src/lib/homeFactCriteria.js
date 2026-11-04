@@ -32,17 +32,20 @@ export function homeFactConcept(key) {
   return CONCEPT_BY_KEY.get(key) || null;
 }
 
-// Garage spaces as a count: digits read as the number ('3+' is 3); 'none', 'no'
-// or 'no garage' is 0; anything else (blank, 'Attached', '1.2.3') is Unknown.
-// The database scorer reads it with the same rules.
+// Garage spaces as a count: exactly one number is the count ('2', '3+', '2 car',
+// '2.5'); 'none', 'no' or 'no garage' is 0; anything else is Unknown — blank,
+// no number ('Attached'), several numbers ('1-2', '1.2.3', '2 + 1 carport') or a
+// negation beside a number ('No garage, 2 carport'), so text is never misread as
+// a count. The database scorer reads it with the same rules.
+const GARAGE_NUMBER = /[0-9]+(?:\.[0-9]+)?|\.[0-9]+/g;
 export function garageSpacesCount(value) {
   if (value === null || value === undefined) return null;
   const text = String(value).trim();
   if (!text) return null;
   if (/^(?:none|no|no garage)$/i.test(text)) return 0;
-  const digits = text.replace(/[^0-9.]/g, '');
-  if (!/^(?:[0-9]+\.?[0-9]*|\.[0-9]+)$/.test(digits)) return null;
-  return Number(digits);
+  const numbers = text.match(GARAGE_NUMBER) || [];
+  if (numbers.length !== 1 || /\b(?:no|none|not|without)\b/i.test(text)) return null;
+  return Number(numbers[0]);
 }
 
 const isSet = (value) => value !== null && value !== undefined && value !== '';
