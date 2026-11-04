@@ -1,44 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { appendAllSuggestions, appendSuggestionToNotes, derivePriorityCheckPatch, extractEnrichmentSuggestions } from '../src/lib/importReview.js';
-import { computeMatch } from '../src/lib/matching.js';
+import { appendAllSuggestions, appendSuggestionToNotes, extractEnrichmentSuggestions } from '../src/lib/importReview.js';
 
-const priorities = {
-  searchType: 'purchase',
-  features: { tiers: { 'Finished basement': 'must', Fireplace: 'important', 'Central air': 'nice', 'Home office': 'nice' }, customItems: [{ label: 'Sauna', kind: 'check' }] },
-  exterior: { tiers: { 'Fenced yard': 'important', 'Attached garage': 'must' } },
-};
-
-test('selected allowlisted objective criteria receive explicit Yes and No only', () => {
-  assert.deepEqual(derivePriorityCheckPatch('Finished basement. No fireplace.', priorities), {
-    'features:Finished basement': true,
-    'features:Fireplace': 'no',
-  });
-  assert.deepEqual(derivePriorityCheckPatch('A comfortable home.', priorities), {});
-  assert.deepEqual(derivePriorityCheckPatch('Fireplace. No fireplace.', priorities), {});
-});
-
-test('unselected, existing, rating, custom, and collaborator checks remain untouched', () => {
-  const mine = { 'features:Fireplace': true };
-  const collaborator = { 'features:Basement': 'no' };
-  const patch = derivePriorityCheckPatch('No fireplace. Fully fenced yard. Turnkey. Great schools. Open concept. Spacious rooms. Close to everything. Sauna.', priorities, mine);
-  assert.deepEqual(patch, { 'exterior:Fenced yard': true });
-  assert.deepEqual(mine, { 'features:Fireplace': true });
-  assert.deepEqual(collaborator, { 'features:Basement': 'no' });
-  assert.equal(Object.hasOwn(patch, 'features:Sauna'), false);
-  assert.equal(Object.keys(patch).some((key) => /Condition|Schools|Layout|Room Sizes|Walkability/.test(key)), false);
-});
-
-test('ambiguous language and listing omission stay Unknown', () => {
-  assert.deepEqual(derivePriorityCheckPatch('Office potential. Space for a fireplace. Crawlspace. Community fenced yard.', priorities), {});
-  assert.deepEqual(derivePriorityCheckPatch('', priorities), {});
-});
-
-test('shared Garage evidence does not create a personal check and Match behavior is unchanged', () => {
-  assert.deepEqual(derivePriorityCheckPatch('Two-car garage.', priorities), {});
-  assert.deepEqual(computeMatch({ garageSpaces: '2', checks: {} }, priorities), computeMatch({ garageSpaces: '2', checks: {} }, priorities));
-});
+// Suggested Match answers moved to listingTextAnswers.js (see
+// test/listing-text-answers.test.js); this file covers Property Notes suggestions.
 
 test('high-signal suggestions are normalized, capped, and marketing is excluded', () => {
   const suggestions = extractEnrichmentSuggestions('Roof replaced in 2021. City water and city sewer. Seller offering 2-1 rate buydown. Granite countertops. Beautiful landscaping. Spacious bedrooms. Gorgeous curb appeal. Charming and stunning.');

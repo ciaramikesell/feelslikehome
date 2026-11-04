@@ -1,0 +1,77 @@
+[
+  {
+    "step": "[desktop-1440] owner: pasted text shows suggestions with their sentences; nothing is answered yet",
+    "ok": true,
+    "ms": 2382
+  },
+  {
+    "step": "[desktop-1440] owner: confirm one, leave one Unknown; undo and redo works",
+    "ok": true,
+    "ms": 341
+  },
+  {
+    "step": "[desktop-1440] owner: Add saves only the confirmed answer, only for the owner; evidence stays pasted listing text",
+    "ok": true,
+    "ms": 5134
+  },
+  {
+    "step": "[desktop-1440] owner: rerun after confirming keeps a still-supported answer and clears an outdated one",
+    "ok": true,
+    "ms": 5191
+  },
+  {
+    "step": "[desktop-1440] owner: pasting and adding without confirming writes no answer at all",
+    "ok": true,
+    "ms": 4255
+  },
+  {
+    "step": "[ipad-820] owner: pasted text shows suggestions with their sentences; nothing is answered yet",
+    "ok": true,
+    "ms": 2555
+  },
+  {
+    "step": "[ipad-820] owner: confirm one, leave one Unknown; undo and redo works",
+    "ok": true,
+    "ms": 417
+  },
+  {
+    "step": "[ipad-820] owner: Add saves only the confirmed answer, only for the owner; evidence stays pasted listing text",
+    "ok": true,
+    "ms": 5296
+  },
+  {
+    "step": "[ipad-820] owner: rerun after confirming keeps a still-supported answer and clears an outdated one",
+    "ok": true,
+    "ms": 5401
+  },
+  {
+    "step": "[iphone-390] owner: pasted text shows suggestions with their sentences; nothing is answered yet",
+    "ok": true,
+    "ms": 2553
+  },
+  {
+    "step": "[iphone-390] owner: confirm one, leave one Unknown; undo and redo works",
+    "ok": true,
+    "ms": 376
+  },
+  {
+    "step": "[iphone-390] owner: Add saves only the confirmed answer, only for the owner; evidence stays pasted listing text",
+    "ok": true,
+    "ms": 5823
+  },
+  {
+    "step": "[iphone-390] owner: rerun after confirming keeps a still-supported answer and clears an outdated one",
+    "ok": true,
+    "ms": 5328
+  },
+  {
+    "step": "[desktop-1440] co-buyer: suggestions follow their own priorities; confirming writes only their checks",
+    "ok": true,
+    "ms": 7407
+  },
+  {
+    "step": "[desktop-1440] Realtor: pasting into Suggest a Home offers no Match answers and writes none",
+    "ok": true,
+    "ms": 2927
+  }
+]
