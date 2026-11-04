@@ -2631,6 +2631,8 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .hh-refine-show .hh-refine-note { margin: 8px 0 0; }
 .hh-refine-actions { position: sticky; bottom: 0; z-index: 1; display: flex; justify-content: space-between; gap: 12px; margin: 0 -24px; padding: 14px 24px 20px; border-top: 1px solid var(--line); background: var(--paper-raised); }
 .hh-refine-actions .hh-btn { min-height: 46px; justify-content: center; }
+.hh-refine-actions { flex-wrap: wrap; }
+.hh-refine-blocked { flex: 1 0 100%; margin: 0; }
 .hh-refine-actions .hh-btn:last-child { flex: 1 1 auto; max-width: 280px; }
 
 /* Desktop: a right-hand panel beside the homes rather than a centered dialog. */

@@ -84,9 +84,12 @@ Unknown, and each home is:
   confirmed · Lot size unit not recorded"*.
 * **Doesn't match** — at least one condition is a known No.
 
-Unknown is never No. Thresholds are inclusive (≥ min, ≤ max). In the sheet, a
-malformed or zero threshold is flagged and ignored, and a min above a max is
-called out.
+Unknown is never No. Thresholds are inclusive (≥ min, ≤ max). A blank field
+is "no filter". A malformed or zero threshold, or a min above a max, is never
+silently dropped: `homeFilterErrors` gives each a field-level message, the
+fields are marked `aria-invalid`, and **Show results** stays disabled ("Fix the
+highlighted field to show results.") until it is corrected or cleared. A value
+restored from the session that isn't valid is not restored.
 
 ## Match safety
 
@@ -110,10 +113,12 @@ the database around real filtering.
 
 ## QA
 
-`scripts/qa/home-filters-e2e.mjs` (37 steps) passed at 1440×900, iPad
+`scripts/qa/home-filters-e2e.mjs` (45 steps) passed at 1440×900, iPad
 820×1180 and 1180×820, and iPhone 390×844: live counts equal the pure module's,
 possible-match reasons, Confirmed only, open/close a home, tab switching,
-Want to Tour on a filtered card, zero results → relax → clear, keyboard and
+Want to Tour on a filtered card, invalid input blocking Show until fixed,
+removing one pill, quick chips combined with filters and All clearing both,
+zero results → relax → clear, keyboard and
 focus return, a co-buyer's separate answers, no horizontal overflow, no console
 errors, and an unchanged database fingerprint. Screenshots:
 `docs/filter-my-homes-screenshots/`.

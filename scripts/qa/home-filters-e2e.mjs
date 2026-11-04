@@ -24,6 +24,7 @@ const { addCriterion } = await import('../../src/lib/searchProfile.js');
 const { prioritiesForExplicitSave } = await import('../../src/lib/searchIntent.js');
 const { computeMatch } = await import('../../src/lib/matching.js');
 const { applyHomeFilters, filterableCriteria } = await import('../../src/lib/homeFilters.js');
+const { applyContenderFilters, EMPTY_FILTERS } = await import('../../src/lib/homesCollection.js');
 
 const [infoPath, outArg, base = 'http://localhost:3200'] = process.argv.slice(2);
 if (!infoPath || !outArg) throw new Error('Usage: home-filters-e2e.mjs <standin.json> <outDir> [baseUrl]');
@@ -109,13 +110,16 @@ function seed() {
 }
 
 // What the pure module says for this participant (the same shapes getHomesForUser returns).
-function expected(filters, { who = 'owner' } = {}) {
+function expected(filters, { who = 'owner', quick = null } = {}) {
   const priorities = normalizePriorities(prioritiesForExplicitSave(who === 'owner' ? ownerPriorities : coBuyerPriorities));
-  const homes = HOMES.filter((home) => home.status !== 'Archived').map((home) => ({
+  const all = HOMES.filter((home) => home.status !== 'Archived').map((home) => ({
     id: home.id, price: home.price, sqft: home.sqft, lotSize: home.lot, beds: home.beds, baths: home.baths, propertyType: home.type,
-    checks: who === 'owner' ? home.checks : home.coChecks, ratings: {},
+    checks: who === 'owner' ? home.checks : home.coChecks, ratings: {}, status: home.status,
   }));
-  return applyHomeFilters(homes, filters, (home) => computeMatch(home, priorities), { criteria: filterableCriteria(priorities) });
+  const evaluate = (home) => computeMatch(home, priorities);
+  // Quick chips narrow first, exactly as HomesBoard does.
+  const homes = quick ? applyContenderFilters(all, { ...EMPTY_FILTERS, ...quick }, evaluate, '') : all;
+  return applyHomeFilters(homes, filters, evaluate, { criteria: filterableCriteria(priorities) });
 }
 
 const fingerprint = () => q(`select
@@ -285,6 +289,72 @@ async function main() {
       assert(status === 'Want to Tour', `status ${status}`);
       assert(await cards(page).filter({ has: page.getByRole('heading', { name: street }) }).count() === 1, 'card vanished after Want to Tour');
       exec(`update public.home_member_state set status = 'Saved' where home_id = '${home.id}' and user_id = '${owner}'`);
+    });
+
+    await step(`[${name}] Invalid input: field messages, Show disabled until fixed, nothing applied`, async () => {
+      const cardsBefore = await cards(page).count();
+      const pillsBefore = await page.locator('.hh-refine-pill').allInnerTexts();
+      await openFilters(page);
+      const dialog = sheet(page);
+      const show = dialog.locator('.hh-refine-actions .hh-btn:not(.hh-btn-ghost)');
+      const maxPrice = dialog.getByLabel(/Max price/);
+      await maxPrice.fill('400k');
+      assert(await show.isDisabled(), 'Show enabled with "400k"');
+      assert(await show.innerText() === 'Show results', `blocked label "${await show.innerText()}"`);
+      assert(await maxPrice.getAttribute('aria-invalid') === 'true', 'aria-invalid missing');
+      const described = (await maxPrice.getAttribute('aria-describedby')) || '';
+      assert(described && (await dialog.locator(`[id="${described.split(' ')[0]}"]`).innerText()) === 'Enter a number, like 1200', 'field message not linked');
+      assert(await dialog.getByText('Fix the highlighted field to show results.').isVisible(), 'blocked message hidden');
+      assert((await show.getAttribute('aria-describedby')) === await dialog.locator('.hh-refine-blocked').getAttribute('id'), 'Show not described by the blocked message');
+      await shot(page, `${name}-sheet-invalid`);
+      await maxPrice.fill('0');
+      assert(await dialog.getByText('Use a number above 0').isVisible(), 'zero message');
+      assert(await show.isDisabled(), 'Show enabled with 0');
+      // Min above max: both fields marked, one message under the pair.
+      await maxPrice.fill('');
+      await dialog.getByLabel('Max sq ft').fill('1,000');
+      assert(await dialog.getByText('The minimum is above the maximum.').isVisible(), 'min-above-max message');
+      assert(await dialog.getByLabel('Min sq ft').getAttribute('aria-invalid') === 'true' && await dialog.getByLabel('Max sq ft').getAttribute('aria-invalid') === 'true', 'pair not marked');
+      assert(await show.isDisabled(), 'Show enabled with min above max');
+      await shot(page, `${name}-sheet-min-above-max`);
+      // Correct it: blank is "no filter" again and Show comes back with the live count.
+      await dialog.getByLabel('Max sq ft').fill('');
+      assert(!(await show.isDisabled()), 'Show still disabled after fixing');
+      assert(/^Show \d+ homes?$/.test(await show.innerText()), `label after fixing "${await show.innerText()}"`);
+      assert(!(await dialog.locator('[aria-invalid="true"]').count()), 'a field still marked invalid');
+      // Keyboard: the Show button is reachable and applies with Enter.
+      await dialog.getByLabel('Max price').focus();
+      await dialog.getByLabel('Max price').fill('400000');
+      const withMax = expected({ ...VISION, priceMax: '400000' });
+      await show.focus();
+      await page.keyboard.press('Enter');
+      await sheet(page).waitFor({ state: 'detached' });
+      assert(await cards(page).count() === withMax.visible.length, `cards with max price ${await cards(page).count()} vs ${withMax.visible.length}`);
+      assert((await page.locator('.hh-refine-pill').allInnerTexts()).some((pill) => pill.includes('up to $400,000')), 'max price pill missing');
+      // Remove only that pill: back to exactly the earlier result.
+      await page.getByRole('button', { name: /Remove filter: Price up to \$400,000/ }).click();
+      assert(await cards(page).count() === cardsBefore, `after removing the price pill ${await cards(page).count()} vs ${cardsBefore}`);
+      assert(JSON.stringify(await page.locator('.hh-refine-pill').allInnerTexts()) === JSON.stringify(pillsBefore), 'other pills changed');
+    });
+
+    await step(`[${name}] Quick chips combine with filters; one pill removes one filter; All clears both`, async () => {
+      const quick = { noMustMissing: true };
+      await page.getByRole('button', { name: 'No Must-Haves Missing' }).click();
+      const both = expected(VISION, { quick });
+      assert(await cards(page).count() === both.visible.length, `chip + filters ${await cards(page).count()} vs ${both.visible.length}`);
+      await page.getByRole('button', { name: 'Remove filter: Fenced Yard' }).click();
+      const fewer = expected({ ...VISION, criteria: [SUITE] }, { quick });
+      assert(await cards(page).count() === fewer.visible.length, `after removing Fenced Yard ${await cards(page).count()} vs ${fewer.visible.length}`);
+      assert((await page.locator('.hh-refine-pill').count()) === 3, 'pill count after removing one');
+      await page.getByRole('button', { name: /^All \(\d+\)$/ }).click();
+      await page.locator('.hh-refine-summary').waitFor({ state: 'detached' });
+      assert(await cards(page).count() === 30, `after All ${await cards(page).count()}`);
+      assert(await page.getByRole('button', { name: 'No Must-Haves Missing' }).getAttribute('aria-pressed') !== 'true', 'quick chip still on after All');
+      // Put the vision filters back for the steps below.
+      await openFilters(page);
+      await fillVision(page);
+      await sheet(page).getByRole('button', { name: /^Show / }).click();
+      await sheet(page).waitFor({ state: 'detached' });
     });
 
     await step(`[${name}] Zero results: inviting empty state, relax, clear`, async () => {

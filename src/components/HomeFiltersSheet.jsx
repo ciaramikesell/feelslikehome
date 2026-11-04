@@ -5,7 +5,7 @@ import { Check } from 'lucide-react';
 import Sheet from '@/components/Sheet';
 import {
   BATHS_OPTIONS, BEDS_OPTIONS, EMPTY_HOME_FILTERS, PROPERTY_TYPE_OPTIONS, SHOW_CONFIRMED, SHOW_POSSIBLE,
-  normalizeHomeFilters, parseThreshold, propertyTypeFilterLabel,
+  homeFilterErrors, normalizeHomeFilters, propertyTypeFilterLabel,
 } from '@/lib/homeFilters';
 
 // Filter My Homes (see src/lib/homeFilters.js). Edits a draft; nothing applies
@@ -13,24 +13,20 @@ import {
 // browser session. Bottom sheet on phones, a centered panel on iPad, a
 // right-hand panel on desktop (.hh-refine-sheet).
 
-function thresholdHint(raw) {
-  const { state } = parseThreshold(raw);
-  if (state === 'invalid') return 'Enter a number, like 1200';
-  if (state === 'zero') return 'Use a number above 0';
-  return null;
-}
-
-function NumberField({ label, value, onChange, prefix, placeholder, inputMode = 'numeric' }) {
+// `hint` is this field's own problem (homeFilterErrors); `pairInvalid` marks
+// both fields of a min-above-max range, whose message sits under the pair.
+function NumberField({ label, value, onChange, prefix, placeholder, inputMode = 'numeric', hint = null, pairInvalid = false, pairHintId = null }) {
   const id = useId();
-  const hint = thresholdHint(value);
+  const invalid = !!hint || pairInvalid;
+  const describedBy = [hint ? `${id}-hint` : null, pairInvalid ? pairHintId : null].filter(Boolean).join(' ') || undefined;
   return (
     <div className="hh-refine-field">
       <label htmlFor={id}>{label}</label>
-      <div className={`hh-refine-input${hint ? ' is-invalid' : ''}`}>
+      <div className={`hh-refine-input${invalid ? ' is-invalid' : ''}`}>
         {prefix && <span aria-hidden="true">{prefix}</span>}
         <input
           id={id} type="text" inputMode={inputMode} autoComplete="off" placeholder={placeholder} value={value}
-          onChange={(event) => onChange(event.target.value)} aria-invalid={hint ? 'true' : undefined} aria-describedby={hint ? `${id}-hint` : undefined}
+          onChange={(event) => onChange(event.target.value)} aria-invalid={invalid ? 'true' : undefined} aria-describedby={describedBy}
         />
       </div>
       {hint && <p id={`${id}-hint`} className="hh-refine-hint" role="status">{hint}</p>}
@@ -77,10 +73,11 @@ export default function HomeFiltersSheet({ open, initial, criteria, vocabulary, 
   const counts = useMemo(() => preview(draft), [preview, draft]);
   const shown = draft.show === SHOW_CONFIRMED ? counts.confirmed : counts.confirmed + counts.possible;
   const noun = (n) => (n === 1 ? vocabulary.singularLower : vocabulary.pluralLower);
-  const minAboveMax = (min, max) => {
-    const a = parseThreshold(min).value; const b = parseThreshold(max).value;
-    return a !== null && b !== null && a > b;
-  };
+  // Invalid input blocks "Show …" instead of being dropped from the result.
+  const errors = homeFilterErrors(draft);
+  const blocked = Object.keys(errors).length > 0;
+  const pairHintId = useId();
+  const blockedId = useId();
 
   return (
     <Sheet open={open} onClose={onClose} title={`Filter my ${vocabulary.pluralLower}`} size="large" className="hh-refine-sheet">
@@ -91,18 +88,18 @@ export default function HomeFiltersSheet({ open, initial, criteria, vocabulary, 
       <section className="hh-refine-section" aria-labelledby="hh-refine-facts">
         <h3 id="hh-refine-facts">{vocabulary.singular} facts</h3>
         <div className="hh-refine-pair">
-          <NumberField label={rental ? 'Min rent' : 'Min price'} prefix="$" placeholder="No min" value={draft.priceMin} onChange={(v) => set('priceMin', v)} />
-          <NumberField label={rental ? 'Max rent' : 'Max price'} prefix="$" placeholder="No max" value={draft.priceMax} onChange={(v) => set('priceMax', v)} />
+          <NumberField label={rental ? 'Min rent' : 'Min price'} prefix="$" placeholder="No min" value={draft.priceMin} onChange={(v) => set('priceMin', v)} hint={errors.priceMin} pairInvalid={!!errors.price} pairHintId={`${pairHintId}-price`} />
+          <NumberField label={rental ? 'Max rent' : 'Max price'} prefix="$" placeholder="No max" value={draft.priceMax} onChange={(v) => set('priceMax', v)} hint={errors.priceMax} pairInvalid={!!errors.price} pairHintId={`${pairHintId}-price`} />
         </div>
-        {minAboveMax(draft.priceMin, draft.priceMax) && <p className="hh-refine-hint" role="status">The minimum is above the maximum, so nothing can match.</p>}
+        {errors.price && <p id={`${pairHintId}-price`} className="hh-refine-hint" role="status">{errors.price}</p>}
         <div className="hh-refine-pair">
-          <NumberField label="Min sq ft" placeholder="No min" value={draft.sqftMin} onChange={(v) => set('sqftMin', v)} />
-          <NumberField label="Max sq ft" placeholder="No max" value={draft.sqftMax} onChange={(v) => set('sqftMax', v)} />
+          <NumberField label="Min sq ft" placeholder="No min" value={draft.sqftMin} onChange={(v) => set('sqftMin', v)} hint={errors.sqftMin} pairInvalid={!!errors.sqft} pairHintId={`${pairHintId}-sqft`} />
+          <NumberField label="Max sq ft" placeholder="No max" value={draft.sqftMax} onChange={(v) => set('sqftMax', v)} hint={errors.sqftMax} pairInvalid={!!errors.sqft} pairHintId={`${pairHintId}-sqft`} />
         </div>
-        {minAboveMax(draft.sqftMin, draft.sqftMax) && <p className="hh-refine-hint" role="status">The minimum is above the maximum, so nothing can match.</p>}
+        {errors.sqft && <p id={`${pairHintId}-sqft`} className="hh-refine-hint" role="status">{errors.sqft}</p>}
         {showLot && (
           <div className="hh-refine-pair">
-            <NumberField label="Min lot size (acres)" placeholder="e.g. 0.2" inputMode="decimal" value={draft.lotMinAcres} onChange={(v) => set('lotMinAcres', v)} />
+            <NumberField label="Min lot size (acres)" placeholder="e.g. 0.2" inputMode="decimal" value={draft.lotMinAcres} onChange={(v) => set('lotMinAcres', v)} hint={errors.lotMinAcres} />
           </div>
         )}
         <MinimumChoices legend="Bedrooms" options={BEDS_OPTIONS} value={draft.bedsMin} onChange={(v) => set('bedsMin', v)} />
@@ -147,9 +144,10 @@ export default function HomeFiltersSheet({ open, initial, criteria, vocabulary, 
       </fieldset>
 
       <div className="hh-refine-actions">
+        {blocked && <p id={blockedId} className="hh-refine-hint hh-refine-blocked" role="status">Fix the highlighted {Object.keys(errors).length === 1 ? 'field' : 'fields'} to show results.</p>}
         <button type="button" className="hh-btn hh-btn-ghost" onClick={() => setDraft({ ...EMPTY_HOME_FILTERS })}>Clear all</button>
-        <button type="button" className="hh-btn" onClick={() => onApply(draft)}>
-          {counts.active ? `Show ${shown} ${noun(shown)}` : `Show all ${counts.total} ${noun(counts.total)}`}
+        <button type="button" className="hh-btn" onClick={() => { if (!blocked) onApply(draft); }} disabled={blocked} aria-describedby={blocked ? blockedId : undefined}>
+          {blocked ? 'Show results' : counts.active ? `Show ${shown} ${noun(shown)}` : `Show all ${counts.total} ${noun(counts.total)}`}
         </button>
       </div>
     </Sheet>

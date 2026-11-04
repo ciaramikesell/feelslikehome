@@ -5,7 +5,7 @@ import { normalizePriorities, getItemlistCategories } from '../src/lib/constants
 import { computeMatch, selectPriorityItem } from '../src/lib/matching.js';
 import {
   EMPTY_HOME_FILTERS, SHOW_CONFIRMED, SHOW_POSSIBLE, applyHomeFilters, buildConditions, classifyHome, filterableCriteria,
-  homeFactReaders, homeFiltersStorageKey, normalizeHomeFilters, parseThreshold, possibleMatchNote,
+  THRESHOLD_MESSAGES, hasHomeFilterErrors, homeFactReaders, homeFilterErrors, homeFiltersStorageKey, normalizeHomeFilters, parseThreshold, possibleMatchNote,
   readStoredHomeFilters, writeStoredHomeFilters,
 } from '../src/lib/homeFilters.js';
 
@@ -100,11 +100,11 @@ test('numeric thresholds are inclusive at both ends', () => {
   assert.equal(at({ bathsMin: '3' }, home), 'excluded');
 });
 
-test('min above max matches nothing that is known, and says so in the sheet', () => {
+test('min above max matches nothing that is known, and the sheet blocks applying it', () => {
   const result = applyHomeFilters(homes, { priceMin: '500000', priceMax: '300000' }, evaluate);
   assert.equal(result.counts.confirmed, 0);
   assert.deepEqual(ids(result.visible), ['sparse']); // only the home with no price
-  assert.match(read('src/components/HomeFiltersSheet.jsx'), /minimum is above the maximum/);
+  assert.deepEqual(homeFilterErrors({ priceMin: '500000', priceMax: '300000' }), { price: THRESHOLD_MESSAGES.minAboveMax });
 });
 
 test('lot size: square feet, acres, commas, hectares and unknown units all read through lotSizeAcres', () => {
@@ -366,4 +366,52 @@ test('responsive presentation: phone bottom sheet, iPad panel, desktop side pane
   assert.match(css, /@media \(min-width: 1121px\) \{\n  \.hh-sheet-backdrop:has\(> \.hh-refine-sheet\) \{ justify-content: flex-end;/);
   assert.match(css, /@media \(pointer: coarse\) \{\n  \.hh-refine-sheet \.hh-refine-chip, \.hh-refine-sheet \.hh-refine-segment, \.hh-refine-sheet \.hh-sheet-close,/);
   assert.match(css, /\.hh-refine-input input \{ font-size: 16px; \} \/\* no iOS focus zoom \*\//);
+});
+
+/* ------------------------- invalid input is never silently dropped ------------------------- */
+
+test('invalid input: malformed, zero and min-above-max thresholds are field errors, blank is no filter', () => {
+  assert.deepEqual(homeFilterErrors(EMPTY_HOME_FILTERS), {});
+  assert.deepEqual(homeFilterErrors({ priceMin: '  ', sqftMax: '' }), {}, 'blank is "no filter", not an error');
+  assert.deepEqual(homeFilterErrors({ priceMin: '$300,000', priceMax: '450000', sqftMin: '1,200', sqftMax: '1200', lotMinAcres: '.2' }), {}, 'valid, and min equal to max is fine');
+  assert.deepEqual(homeFilterErrors({ priceMax: '400k' }), { priceMax: THRESHOLD_MESSAGES.invalid });
+  assert.deepEqual(homeFilterErrors({ sqftMin: '4,00,000' }), { sqftMin: THRESHOLD_MESSAGES.invalid });
+  assert.deepEqual(homeFilterErrors({ lotMinAcres: '0,2' }), { lotMinAcres: THRESHOLD_MESSAGES.invalid });
+  assert.deepEqual(homeFilterErrors({ priceMin: '-5' }), { priceMin: THRESHOLD_MESSAGES.invalid });
+  assert.deepEqual(homeFilterErrors({ priceMax: '0', lotMinAcres: '0' }), { priceMax: THRESHOLD_MESSAGES.zero, lotMinAcres: THRESHOLD_MESSAGES.zero });
+  assert.deepEqual(homeFilterErrors({ sqftMin: '2000', sqftMax: '1500' }), { sqft: THRESHOLD_MESSAGES.minAboveMax });
+  // A malformed half is reported on its own field, not as min-above-max.
+  assert.deepEqual(homeFilterErrors({ priceMin: '500000', priceMax: 'abc' }), { priceMax: THRESHOLD_MESSAGES.invalid });
+  assert.equal(hasHomeFilterErrors({ priceMax: '400k' }), true);
+  assert.equal(hasHomeFilterErrors({ priceMax: '400000' }), false);
+});
+
+test('invalid input: zero-versus-Unknown Home Facts are unchanged by the input checks', () => {
+  // A valid threshold still reads a stored 0 bedrooms as a real count and a stored $0 price as Unknown.
+  assert.equal(classifyHome({ id: 'x', beds: '0' }, buildConditions({ bedsMin: '1' }), evaluate).status, 'excluded');
+  assert.equal(classifyHome({ id: 'x', price: '0' }, buildConditions({ priceMax: '300000' }), evaluate).status, 'possible');
+  assert.equal(classifyHome({ id: 'x', price: '' }, buildConditions({ priceMax: '300000' }), evaluate).status, 'possible');
+});
+
+test('invalid input: the sheet shows field messages and disables Show until they are fixed', () => {
+  const sheet = read('src/components/HomeFiltersSheet.jsx');
+  assert.match(sheet, /const errors = homeFilterErrors\(draft\);/);
+  assert.match(sheet, /onClick=\{\(\) => \{ if \(!blocked\) onApply\(draft\); \}\} disabled=\{blocked\} aria-describedby=\{blocked \? blockedId : undefined\}/);
+  assert.match(sheet, /Fix the highlighted \{Object\.keys\(errors\)\.length === 1 \? 'field' : 'fields'\} to show results\./);
+  // Each typed field gets its own message and aria-invalid; both halves of a min-above-max pair are marked.
+  for (const key of ['priceMin', 'priceMax', 'sqftMin', 'sqftMax', 'lotMinAcres']) assert.match(sheet, new RegExp(`hint=\\{errors\\.${key}\\}`), key);
+  assert.equal((sheet.match(/pairInvalid=\{!!errors\.price\}/g) || []).length, 2);
+  assert.equal((sheet.match(/pairInvalid=\{!!errors\.sqft\}/g) || []).length, 2);
+  assert.match(sheet, /aria-invalid=\{invalid \? 'true' : undefined\}/);
+  // Clear all still works while blocked (it is never disabled).
+  assert.match(sheet, /<button type="button" className="hh-btn hh-btn-ghost" onClick=\{\(\) => setDraft\(\{ \.\.\.EMPTY_HOME_FILTERS \}\)\}>Clear all<\/button>/);
+});
+
+test('invalid input: a value saved earlier that is not valid is not restored half-applied', () => {
+  const store = new Map();
+  const storage = { getItem: (k) => store.get(k) ?? null, setItem: (k, v) => store.set(k, v), removeItem: (k) => store.delete(k) };
+  store.set(homeFiltersStorageKey('s1'), JSON.stringify({ priceMax: '400k', sqftMin: '2000', sqftMax: '1500', lotMinAcres: '0', bedsMin: '3', criteria: [FENCED] }));
+  const restored = readStoredHomeFilters(storage, 's1');
+  assert.deepEqual(restored, { ...EMPTY_HOME_FILTERS, bedsMin: '3', criteria: [FENCED] });
+  assert.equal(hasHomeFilterErrors(restored), false);
 });

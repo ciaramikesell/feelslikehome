@@ -78,6 +78,36 @@ export function parseThreshold(raw) {
   return { state: 'ok', value };
 }
 
+// Why a typed threshold can't be applied, per field, or {} when every field is
+// blank or valid. The sheet shows these and keeps "Show …" disabled while any
+// is present, so a malformed value is never silently dropped.
+//   priceMin … lotMinAcres  'Enter a number, like 1200' / 'Use a number above 0'
+//   price / sqft            the minimum is above the maximum
+export const THRESHOLD_MESSAGES = Object.freeze({
+  invalid: 'Enter a number, like 1200',
+  zero: 'Use a number above 0',
+  minAboveMax: 'The minimum is above the maximum.',
+});
+const RANGE_PAIRS = Object.freeze({ price: ['priceMin', 'priceMax'], sqft: ['sqftMin', 'sqftMax'] });
+const TYPED_KEYS = ['priceMin', 'priceMax', 'sqftMin', 'sqftMax', 'lotMinAcres'];
+
+export function homeFilterErrors(filters) {
+  const source = filters && typeof filters === 'object' ? filters : {};
+  const errors = {};
+  TYPED_KEYS.forEach((key) => {
+    const { state } = parseThreshold(source[key]);
+    if (state === 'invalid' || state === 'zero') errors[key] = THRESHOLD_MESSAGES[state];
+  });
+  Object.entries(RANGE_PAIRS).forEach(([pair, [minKey, maxKey]]) => {
+    const min = parseThreshold(source[minKey]).value;
+    const max = parseThreshold(source[maxKey]).value;
+    if (min !== null && max !== null && min > max) errors[pair] = THRESHOLD_MESSAGES.minAboveMax;
+  });
+  return errors;
+}
+
+export const hasHomeFilterErrors = (filters) => Object.keys(homeFilterErrors(filters)).length > 0;
+
 const SQFT_UNIT = /\s*(?:sq\.?\s*ft\.?|sqft|sf|square\s*f(?:ee|oo)t)$/i;
 
 // Stored Home Facts read for filtering. A price or floor area of 0 is not a
@@ -250,7 +280,14 @@ export const homeFiltersStorageKey = (searchId) => `flh-home-filters:${searchId 
 export function readStoredHomeFilters(storage, searchId) {
   try {
     const raw = storage?.getItem(homeFiltersStorageKey(searchId));
-    return raw ? normalizeHomeFilters(JSON.parse(raw)) : { ...EMPTY_HOME_FILTERS };
+    if (!raw) return { ...EMPTY_HOME_FILTERS };
+    const restored = normalizeHomeFilters(JSON.parse(raw));
+    // Only valid filters are ever applied, so only those are restored (a value
+    // saved before the sheet blocked invalid input is dropped, not half-applied).
+    const errors = homeFilterErrors(restored);
+    TYPED_KEYS.forEach((key) => { if (errors[key]) restored[key] = ''; });
+    Object.entries(RANGE_PAIRS).forEach(([pair, keys]) => { if (errors[pair]) keys.forEach((key) => { restored[key] = ''; }); });
+    return restored;
   } catch {
     return { ...EMPTY_HOME_FILTERS };
   }
