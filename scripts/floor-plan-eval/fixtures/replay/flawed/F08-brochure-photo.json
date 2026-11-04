@@ -1,0 +1,358 @@
+{
+  "schemaVersion": "fpa-2",
+  "image": {
+    "isFloorPlan": true,
+    "legibility": "partly_legible",
+    "multipleDrawings": false
+  },
+  "floors": [
+    {
+      "id": "f1",
+      "printedCaption": "1ST FLR",
+      "level": "main"
+    }
+  ],
+  "rooms": [
+    {
+      "id": "d0-lr",
+      "floorId": "f1",
+      "printedLabel": "LR",
+      "qualifierText": "",
+      "type": "living",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"LR\""
+    },
+    {
+      "id": "d0-kit",
+      "floorId": "f1",
+      "printedLabel": "KIT",
+      "qualifierText": "",
+      "type": "kitchen",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"KIT\""
+    },
+    {
+      "id": "d0-pntry",
+      "floorId": "f1",
+      "printedLabel": "PNTRY",
+      "qualifierText": "",
+      "type": "pantry",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"PNTRY\""
+    },
+    {
+      "id": "d0-mud",
+      "floorId": "f1",
+      "printedLabel": "MUD",
+      "qualifierText": "",
+      "type": "mudroom",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"MUD\""
+    },
+    {
+      "id": "d0-dr",
+      "floorId": "f1",
+      "printedLabel": "DR",
+      "qualifierText": "",
+      "type": "dining",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"DR\""
+    },
+    {
+      "id": "d0-hall",
+      "floorId": "f1",
+      "printedLabel": "",
+      "qualifierText": "",
+      "type": "hall",
+      "evidenceCategory": "layout_inferred",
+      "configuration": "as_drawn",
+      "evidence": "Walls and fixture symbols only"
+    },
+    {
+      "id": "d0-mbr",
+      "floorId": "f1",
+      "printedLabel": "MBR",
+      "qualifierText": "",
+      "type": "primary_bedroom",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"MBR\""
+    },
+    {
+      "id": "d0-mba",
+      "floorId": "f1",
+      "printedLabel": "MBA",
+      "qualifierText": "",
+      "type": "primary_bath",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"MBA\""
+    },
+    {
+      "id": "d0-wic",
+      "floorId": "f1",
+      "printedLabel": "WIC",
+      "qualifierText": "",
+      "type": "walk_in_closet",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"WIC\""
+    },
+    {
+      "id": "d0-wd",
+      "floorId": "f1",
+      "printedLabel": "W/D",
+      "qualifierText": "",
+      "type": "laundry",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"W/D\""
+    },
+    {
+      "id": "d0-ba",
+      "floorId": "f1",
+      "printedLabel": "BA",
+      "qualifierText": "",
+      "type": "full_bath",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"BA\""
+    },
+    {
+      "id": "d0-br2",
+      "floorId": "f1",
+      "printedLabel": "BR2",
+      "qualifierText": "",
+      "type": "bedroom",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"BR2\""
+    },
+    {
+      "id": "d0-den",
+      "floorId": "f1",
+      "printedLabel": "DEN",
+      "qualifierText": "",
+      "type": "office",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"DEN / BR 4\""
+    }
+  ],
+  "relationships": [
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-lr",
+      "toRoomId": "d0-kit",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-lr",
+      "toRoomId": "d0-mbr",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-kit",
+      "toRoomId": "d0-hall",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-kit",
+      "toRoomId": "d0-pntry",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-mud",
+      "toRoomId": "d0-hall",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-dr",
+      "toRoomId": "d0-hall",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-mbr",
+      "toRoomId": "d0-mba",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-mbr",
+      "toRoomId": "d0-wic",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-wd",
+      "toRoomId": "d0-hall",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-ba",
+      "toRoomId": "d0-hall",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-br2",
+      "toRoomId": "d0-hall",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-den",
+      "toRoomId": "d0-wd",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "ensuite_bath",
+      "fromRoomId": "d0-mbr",
+      "toRoomId": "d0-mba",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door drawn directly between the rooms"
+    }
+  ],
+  "features": [
+    {
+      "concept": "pantry",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-pntry"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"PNTRY\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "mudroom",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-mud"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"MUD\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "formal_dining",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-dr"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"DR\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "primary_ensuite",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-mbr",
+        "d0-mba"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"MBR\" / \"MBA\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "walk_in_closet",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-wic"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"WIC\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "double_vanity",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-mba"
+      ],
+      "evidenceCategory": "drawn_symbol",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"MBA\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "laundry",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-wd"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"W/D\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "den_flex",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-den"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "unclear",
+      "qualifierText": "",
+      "evidence": "Printed \"DEN / BR 4\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "office",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-den"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"DEN\"",
+      "uncertainty": ""
+    }
+  ],
+  "counts": {
+    "bedroomsLabeled": 2,
+    "fullBathsBySymbol": 2,
+    "halfBathsBySymbol": 0,
+    "note": ""
+  },
+  "warnings": []
+}

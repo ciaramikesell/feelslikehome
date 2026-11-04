@@ -1,0 +1,217 @@
+{
+  "fixtureId": "F08-brochure-photo",
+  "homeId": "home-08",
+  "searchProfile": "purchase",
+  "description": "Phone photo of a printed brochure: skewed, blurred, glare, marketing copy, and an ambiguous \"DEN / BR 4\". JPEG carrying synthetic EXIF GPS, device, author, XMP and a comment (privacy fixture).",
+  "cases": [
+    "photo_quality",
+    "ambiguity",
+    "marketing_text",
+    "privacy_metadata"
+  ],
+  "unlabeledOnly": false,
+  "injection": false,
+  "personalMetadata": true,
+  "floors": [
+    {
+      "caption": "1ST FLR",
+      "level": "main"
+    }
+  ],
+  "rooms": [
+    {
+      "label": "LR",
+      "type": "living",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "KIT",
+      "type": "kitchen",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "PNTRY",
+      "type": "pantry",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "MUD",
+      "type": "mudroom",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "DR",
+      "type": "dining",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "MBR",
+      "type": "primary_bedroom",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "MBA",
+      "type": "primary_bath",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "WIC",
+      "type": "walk_in_closet",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "W/D",
+      "type": "laundry",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "BA",
+      "type": "full_bath",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "BR2",
+      "type": "bedroom",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "DEN / BR 4",
+      "type": "den_flex",
+      "level": "main",
+      "configuration": "unclear",
+      "qualifier": ""
+    }
+  ],
+  "unlabeledRooms": 1,
+  "otherText": [],
+  "sheetText": [
+    "FOR SALE — 14 SAMPLE COURT",
+    "Stunning open-concept living! Spacious primary retreat! Chef's kitchen!",
+    "Light-filled home on a quiet street. Close to everything!",
+    "Call today for a private showing.",
+    "1ST FLR",
+    "LR",
+    "KIT",
+    "PNTRY",
+    "MUD",
+    "DR",
+    "MBR",
+    "MBA",
+    "WIC",
+    "W/D",
+    "BA",
+    "BR2",
+    "DEN / BR 4"
+  ],
+  "doors": [
+    [
+      "LR",
+      "KIT"
+    ],
+    [
+      "LR",
+      "MBR"
+    ],
+    [
+      "KIT",
+      "(unlabeled hall)"
+    ],
+    [
+      "KIT",
+      "PNTRY"
+    ],
+    [
+      "MUD",
+      "(unlabeled hall)"
+    ],
+    [
+      "DR",
+      "(unlabeled hall)"
+    ],
+    [
+      "MBR",
+      "MBA"
+    ],
+    [
+      "MBR",
+      "WIC"
+    ],
+    [
+      "W/D",
+      "(unlabeled hall)"
+    ],
+    [
+      "BA",
+      "(unlabeled hall)"
+    ],
+    [
+      "BR2",
+      "(unlabeled hall)"
+    ],
+    [
+      "DEN / BR 4",
+      "W/D"
+    ]
+  ],
+  "expected": {
+    "asDrawn": [
+      "pantry",
+      "mudroom",
+      "formal_dining",
+      "primary_ensuite",
+      "walk_in_closet",
+      "double_vanity",
+      "laundry",
+      "first_floor_primary",
+      "first_floor_bedroom",
+      "laundry_first_floor"
+    ],
+    "acceptable": [
+      "walk_in_pantry"
+    ],
+    "optional": [],
+    "ambiguous": [
+      "den_flex",
+      "office"
+    ],
+    "notOfferable": [],
+    "forbidden": [],
+    "forbiddenDerived": []
+  },
+  "relationships": {
+    "ensuitePairs": [
+      [
+        "MBR",
+        "MBA"
+      ]
+    ],
+    "forbiddenEnsuitePairs": [],
+    "forbiddenDoorPairs": []
+  },
+  "counts": {
+    "bedroomsLabeled": 2
+  },
+  "file": "images/F08-brochure-photo.jpg"
+}

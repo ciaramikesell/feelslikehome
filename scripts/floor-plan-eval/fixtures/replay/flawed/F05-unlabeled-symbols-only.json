@@ -1,0 +1,214 @@
+{
+  "schemaVersion": "fpa-2",
+  "image": {
+    "isFloorPlan": true,
+    "legibility": "clear",
+    "multipleDrawings": false
+  },
+  "floors": [
+    {
+      "id": "f1",
+      "printedCaption": "",
+      "level": "main"
+    }
+  ],
+  "rooms": [
+    {
+      "id": "d0-r1",
+      "floorId": "f1",
+      "printedLabel": "",
+      "qualifierText": "",
+      "type": "living",
+      "evidenceCategory": "drawn_symbol",
+      "configuration": "as_drawn",
+      "evidence": "Walls and fixture symbols only"
+    },
+    {
+      "id": "d0-r2",
+      "floorId": "f1",
+      "printedLabel": "",
+      "qualifierText": "",
+      "type": "kitchen",
+      "evidenceCategory": "drawn_symbol",
+      "configuration": "as_drawn",
+      "evidence": "Walls and fixture symbols only"
+    },
+    {
+      "id": "d0-r3",
+      "floorId": "f1",
+      "printedLabel": "",
+      "qualifierText": "",
+      "type": "laundry",
+      "evidenceCategory": "drawn_symbol",
+      "configuration": "as_drawn",
+      "evidence": "Walls and fixture symbols only"
+    },
+    {
+      "id": "d0-hall",
+      "floorId": "f1",
+      "printedLabel": "",
+      "qualifierText": "",
+      "type": "hall",
+      "evidenceCategory": "layout_inferred",
+      "configuration": "as_drawn",
+      "evidence": "Walls and fixture symbols only"
+    },
+    {
+      "id": "d0-r4",
+      "floorId": "f1",
+      "printedLabel": "",
+      "qualifierText": "",
+      "type": "bedroom",
+      "evidenceCategory": "drawn_symbol",
+      "configuration": "as_drawn",
+      "evidence": "Walls and fixture symbols only"
+    },
+    {
+      "id": "d0-r5",
+      "floorId": "f1",
+      "printedLabel": "",
+      "qualifierText": "",
+      "type": "full_bath",
+      "evidenceCategory": "drawn_symbol",
+      "configuration": "as_drawn",
+      "evidence": "Walls and fixture symbols only"
+    },
+    {
+      "id": "d0-r6",
+      "floorId": "f1",
+      "printedLabel": "",
+      "qualifierText": "",
+      "type": "bedroom",
+      "evidenceCategory": "drawn_symbol",
+      "configuration": "as_drawn",
+      "evidence": "Walls and fixture symbols only"
+    },
+    {
+      "id": "d0-r7",
+      "floorId": "f1",
+      "printedLabel": "WIC",
+      "qualifierText": "",
+      "type": "walk_in_closet",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"WIC\""
+    }
+  ],
+  "relationships": [
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-r1",
+      "toRoomId": "d0-r2",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-r1",
+      "toRoomId": "d0-r4",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-r2",
+      "toRoomId": "d0-hall",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-r3",
+      "toRoomId": "d0-hall",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-r4",
+      "toRoomId": "d0-r5",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-r5",
+      "toRoomId": "d0-hall",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-r6",
+      "toRoomId": "d0-hall",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-r4",
+      "toRoomId": "d0-r7",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    }
+  ],
+  "features": [
+    {
+      "concept": "kitchen_island",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-r2"
+      ],
+      "evidenceCategory": "drawn_symbol",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Fixture symbols drawn",
+      "uncertainty": ""
+    },
+    {
+      "concept": "double_vanity",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-r5"
+      ],
+      "evidenceCategory": "drawn_symbol",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Fixture symbols drawn",
+      "uncertainty": ""
+    },
+    {
+      "concept": "laundry",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-r3"
+      ],
+      "evidenceCategory": "drawn_symbol",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Fixture symbols drawn",
+      "uncertainty": ""
+    },
+    {
+      "concept": "walk_in_closet",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-r7"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"WIC\"",
+      "uncertainty": ""
+    }
+  ],
+  "counts": {
+    "bedroomsLabeled": 0,
+    "fullBathsBySymbol": 1,
+    "halfBathsBySymbol": 0,
+    "note": ""
+  },
+  "warnings": [
+    "No room labels or floor caption are printed."
+  ]
+}

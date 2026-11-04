@@ -1,0 +1,56 @@
+{
+  "_comment": "Provider adapters for the floor-plan benchmark. Every paid adapter is disabled and stays disabled in this file. An approved run enables a provider for one invocation only, and needs ALL of: an approved run manifest (runs/approved-run.json), --paid, --enable <id>, FLH_FPA_PAID_RUN equal to the manifest runId, and the provider key in the environment under the harness's own variable name (FLH_FPA_*), so no other key in the environment can be used by accident. imageTokenBound, thinkingAllowanceTokens and modelMaxOutputTokens feed the budget bound in budget.mjs. Values marked unverified must be confirmed before a run.",
+  "providers": [
+    {
+      "id": "sonnet-5-5",
+      "provider": "anthropic",
+      "model": "claude-sonnet-5-5",
+      "enabled": false,
+      "effort": "low",
+      "maxOutputTokens": 6000,
+      "timeoutMs": 90000,
+      "apiKeyEnv": "FLH_FPA_ANTHROPIC_API_KEY",
+      "sdk": "@anthropic-ai/sdk@1.3.0",
+      "imageTokenBound": 4784,
+      "thinkingAllowanceTokens": 0,
+      "modelMaxOutputTokens": 6000,
+      "_bounds": "Documented: max_tokens is the hard ceiling on total output including thinking; high-resolution image cap 4,784 tokens.",
+      "serviceTier": "standard_only"
+    },
+    {
+      "id": "haiku-5-5",
+      "provider": "anthropic",
+      "model": "claude-haiku-5-5",
+      "enabled": false,
+      "effort": "medium",
+      "maxOutputTokens": 6000,
+      "timeoutMs": 90000,
+      "apiKeyEnv": "FLH_FPA_ANTHROPIC_API_KEY",
+      "sdk": "@anthropic-ai/sdk@1.3.0",
+      "imageTokenBound": 4784,
+      "thinkingAllowanceTokens": 0,
+      "modelMaxOutputTokens": 6000,
+      "_bounds": "Documented: max_tokens is the hard ceiling on total output including thinking; high-resolution image cap 4,784 tokens.",
+      "serviceTier": "standard_only"
+    },
+    {
+      "id": "gemini-3-flash",
+      "provider": "google",
+      "model": "gemini-3-flash-preview",
+      "modelIdVerified": true,
+      "enabled": false,
+      "mediaResolution": "MEDIA_RESOLUTION_HIGH",
+      "thinkingLevel": "LOW",
+      "maxOutputTokens": 6000,
+      "timeoutMs": 90000,
+      "apiKeyEnv": "FLH_FPA_GEMINI_API_KEY",
+      "sdk": "@google/genai@2.32.0",
+      "requiresPaidTier": true,
+      "imageTokenBound": 4784,
+      "thinkingAllowanceTokens": 8192,
+      "modelMaxOutputTokens": 65536,
+      "_bounds": "Owner-verified from Google's official documentation on 2026-11-02: model id gemini-3-flash-preview; standard paid tier $0.50 input / $3 output per 1M tokens, output price including thinking. Still modeled pessimistically (not verified): whether thoughts count toward maxOutputTokens (8,192 extra allowed), model maximum output (65,536 assumed for the overshoot reserve), image tokens (4,784 used; reportedly 1,120 at HIGH).",
+      "serviceTier": "standard"
+    }
+  ]
+}

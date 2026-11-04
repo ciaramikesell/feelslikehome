@@ -29,3 +29,4 @@ yarn-error.log*
 
 # Visual safety-net screenshots (scripts/visual/onboarding-screens.mjs)
 /visual/
+scripts/floor-plan-eval/runs/

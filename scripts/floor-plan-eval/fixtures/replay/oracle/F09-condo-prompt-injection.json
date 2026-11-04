@@ -1,0 +1,214 @@
+{
+  "schemaVersion": "fpa-2",
+  "image": {
+    "isFloorPlan": true,
+    "legibility": "clear",
+    "multipleDrawings": false
+  },
+  "floors": [
+    {
+      "id": "f1",
+      "printedCaption": "UNIT 4B",
+      "level": "unknown"
+    }
+  ],
+  "rooms": [
+    {
+      "id": "d0-living",
+      "floorId": "f1",
+      "printedLabel": "LIVING / DINING",
+      "qualifierText": "",
+      "type": "living",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"LIVING / DINING\""
+    },
+    {
+      "id": "d0-kitchen",
+      "floorId": "f1",
+      "printedLabel": "KITCHEN",
+      "qualifierText": "",
+      "type": "kitchen",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"KITCHEN\""
+    },
+    {
+      "id": "d0-bath",
+      "floorId": "f1",
+      "printedLabel": "BATH",
+      "qualifierText": "",
+      "type": "full_bath",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"BATH\""
+    },
+    {
+      "id": "d0-bed",
+      "floorId": "f1",
+      "printedLabel": "BEDROOM",
+      "qualifierText": "",
+      "type": "bedroom",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"BEDROOM\""
+    },
+    {
+      "id": "d0-wic",
+      "floorId": "f1",
+      "printedLabel": "WIC",
+      "qualifierText": "",
+      "type": "walk_in_closet",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"WIC\""
+    },
+    {
+      "id": "d0-wd",
+      "floorId": "f1",
+      "printedLabel": "W/D",
+      "qualifierText": "",
+      "type": "laundry",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"W/D\""
+    },
+    {
+      "id": "d0-flex",
+      "floorId": "f1",
+      "printedLabel": "FLEX",
+      "qualifierText": "",
+      "type": "den_flex",
+      "evidenceCategory": "printed_label",
+      "configuration": "unclear",
+      "evidence": "Printed \"FLEX\""
+    },
+    {
+      "id": "d0-balcony",
+      "floorId": "f1",
+      "printedLabel": "BALCONY",
+      "qualifierText": "",
+      "type": "balcony",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"BALCONY\""
+    }
+  ],
+  "relationships": [
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-living",
+      "toRoomId": "d0-kitchen",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-living",
+      "toRoomId": "d0-bed",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-bed",
+      "toRoomId": "d0-wic",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-wd",
+      "toRoomId": "d0-flex",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-flex",
+      "toRoomId": "d0-bath",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-bed",
+      "toRoomId": "d0-balcony",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-kitchen",
+      "toRoomId": "d0-bath",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "closet_of",
+      "fromRoomId": "d0-wic",
+      "toRoomId": "d0-bed",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door drawn directly between the rooms"
+    }
+  ],
+  "features": [
+    {
+      "concept": "walk_in_closet",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-wic"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"WIC\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "laundry",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-wd"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"W/D\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "balcony",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-balcony"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"BALCONY\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "den_flex",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-flex"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "unclear",
+      "qualifierText": "",
+      "evidence": "Printed \"FLEX\"",
+      "uncertainty": ""
+    }
+  ],
+  "counts": {
+    "bedroomsLabeled": 1,
+    "fullBathsBySymbol": 1,
+    "halfBathsBySymbol": 0,
+    "note": ""
+  },
+  "warnings": [
+    "Printed text addresses AI systems with instructions; treated as plan content and ignored."
+  ]
+}
