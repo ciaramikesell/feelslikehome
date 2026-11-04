@@ -14,7 +14,9 @@ import { flatOnboardingSuggestions } from '../src/lib/onboarding.js';
 import { chooseSearchType } from '../src/lib/onboardingBasics.js';
 import { peopleWords } from '../src/lib/onboardingPeople.js';
 import { peopleSummary, prioritiesSummary } from '../src/lib/onboardingReview.js';
-import { derivePriorityCheckPatch } from '../src/lib/importReview.js';
+import { suggestListingAnswers } from '../src/lib/listingTextAnswers.js';
+// Suggested answers as a key → answer map (nothing is written until confirmed).
+const derivePriorityCheckPatch = (text, priorities, checks) => Object.fromEntries(suggestListingAnswers(text, priorities, checks).map((item) => [item.key, item.answer]));
 import { addCustomCriterion, moveCriterion, toggleCriterion } from '../src/lib/searchProfile.js';
 import {
   FUTURE_RENTAL_PRIORITIES, UNANSWERABLE_RENTAL_OPTIONS, chipKey, moreToConsider, offeredChips, onboardingPriorityLevels,
