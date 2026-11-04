@@ -1,0 +1,57 @@
+[
+  {
+    "step": "[desktop-1440] owner: Home Facts answer Garage, Finished basement and No HOA; Walkout stays Unknown; nothing is written",
+    "ok": true,
+    "ms": 5976
+  },
+  {
+    "step": "[desktop-1440] owner: Yes overrides the fact for the owner only; \"Home Facts\" removes the override",
+    "ok": true,
+    "ms": 633
+  },
+  {
+    "step": "[desktop-1440] owner: correcting a Home Fact updates the derived answer with no write to checks",
+    "ok": true,
+    "ms": 4566
+  },
+  {
+    "step": "[desktop-1440] co-buyer: their own Match follows the fact, the owner's override never reaches it, and Compare agrees",
+    "ok": true,
+    "ms": 7583
+  },
+  {
+    "step": "[desktop-1440] Realtor: sees the answers and where they came from, with no controls",
+    "ok": true,
+    "ms": 3332
+  },
+  {
+    "step": "[ipad-820] owner: Home Facts answer Garage, Finished basement and No HOA; Walkout stays Unknown; nothing is written",
+    "ok": true,
+    "ms": 2633
+  },
+  {
+    "step": "[ipad-820] owner: Yes overrides the fact for the owner only; \"Home Facts\" removes the override",
+    "ok": true,
+    "ms": 453
+  },
+  {
+    "step": "[ipad-820] owner: correcting a Home Fact updates the derived answer with no write to checks",
+    "ok": true,
+    "ms": 4492
+  },
+  {
+    "step": "[iphone-390] owner: Home Facts answer Garage, Finished basement and No HOA; Walkout stays Unknown; nothing is written",
+    "ok": true,
+    "ms": 2987
+  },
+  {
+    "step": "[iphone-390] owner: Yes overrides the fact for the owner only; \"Home Facts\" removes the override",
+    "ok": true,
+    "ms": 665
+  },
+  {
+    "step": "[iphone-390] owner: correcting a Home Fact updates the derived answer with no write to checks",
+    "ok": true,
+    "ms": 5212
+  }
+]

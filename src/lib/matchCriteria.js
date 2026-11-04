@@ -2,17 +2,19 @@
 // answer. Pure: shared by the MatchCriteria component and tests.
 import { foldLegacyCheckAliases, getItemlistCategories, isExperientialCriterion, TOUR_RESPONSE } from './constants.js';
 import { SHARED_BOOLEAN_FACT_FIELDS, sharedFactAnswer, sharedFactValue, visibleOrderedItems } from './matching.js';
+import { HOME_FACT_LINKS, homeFactConcept, resolveCriterionAnswer } from './homeFactCriteria.js';
 
 // The criteria a buyer can answer here: check-kind priorities whose Match state
-// comes from an answer. Garage is scored from Home Facts' garage spaces and
-// Commute from saved places, so both stay read-only here.
+// comes from an answer. Garage is answered too: Home Facts' garage spaces
+// answers it unless the buyer overrides it (homeFactCriteria.js). Commute comes
+// from saved places, so it stays read-only here.
 export function answerableCriteriaKeys(priorities) {
   const keys = new Set();
   getItemlistCategories(priorities.searchType).forEach((category) => {
     visibleOrderedItems(category, priorities).forEach((item) => {
       if (item.kind !== 'check' || isExperientialCriterion(category.key, item.label)) return;
       const key = `${category.key}:${item.label}`;
-      if (key === 'exterior:Garage' || key === 'location:Commute') return;
+      if (key === 'location:Commute') return;
       keys.add(key);
     });
   });
@@ -25,6 +27,19 @@ export function criterionAnswer(home, key, searchType) {
   if (SHARED_BOOLEAN_FACT_FIELDS[key]) return sharedFactAnswer(home, key);
   const value = foldLegacyCheckAliases(home.checks, searchType)[key];
   return value === true || value === 'no' ? value : undefined;
+}
+
+// The answer Match uses and where it came from: the buyer's own answer, an
+// exact Home Fact, or nothing (Unknown). `link` is the Home Facts field behind
+// a criterion a fact can answer, as [field id, short label].
+export function criterionResolution(home, key, searchType) {
+  if (SHARED_BOOLEAN_FACT_FIELDS[key]) {
+    const value = sharedFactAnswer(home, key);
+    return { value, source: value === undefined ? null : 'answer', fact: undefined, link: null };
+  }
+  const resolved = resolveCriterionAnswer(home, key, foldLegacyCheckAliases(home?.checks, searchType));
+  const concept = homeFactConcept(key);
+  return { ...resolved, link: concept ? HOME_FACT_LINKS[concept] : null };
 }
 
 // What an answer writes, and through which path:

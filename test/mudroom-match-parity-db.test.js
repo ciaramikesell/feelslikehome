@@ -39,6 +39,7 @@ after(() => db?.drop());
 
 const MIGRATION = 'supabase/migrations/2026-10-15-cobuyer-compare-mudroom-parity.sql';
 const LATER_SCORER = 'supabase/migrations/2026-10-18-lot-size-units-match-parity.sql';
+const LATEST_SCORER = 'supabase/migrations/2026-11-02-home-facts-match-parity.sql';
 const PREFLIGHT = readFileSync(new URL('../supabase/mudroom-parity-preflight.sql', import.meta.url), 'utf8').replace(/;\s*$/, '');
 
 test('Mudroom is no longer a retired purchase built-in in JS; Must-Have and Unknown rules are unchanged', () => {
@@ -132,7 +133,7 @@ dbTest('the co-buyer’s Mudroom counts the same in their own Match and in the o
 dbTest('production path: preflight on pre-migration data, then the migration — saved Mudroom choices start counting and nothing is rewritten', async () => {
   // Production as it was before this migration: the later scorer body
   // (2026-10-18 lot-size units) builds on it, so it is left out too.
-  const legacy = createTestDatabase({ steps: POST_SNAPSHOT_MIGRATIONS.filter((step) => ![MIGRATION, LATER_SCORER].includes(step.file)) });
+  const legacy = createTestDatabase({ steps: POST_SNAPSHOT_MIGRATIONS.filter((step) => ![MIGRATION, LATER_SCORER, LATEST_SCORER].includes(step.file)) });
   try {
     const owner = legacy.createUser({ email: 'owner.legacy.mudroom@example.com', firstName: 'Ciara', lastName: 'M' });
     const coBuyer = legacy.createUser({ email: 'cobuyer.legacy.mudroom@example.com', firstName: 'Andrew', lastName: 'M' });

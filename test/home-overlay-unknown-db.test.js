@@ -80,10 +80,14 @@ test('an Unknown fact is not None, and an Unknown answer is not No — exact per
   // A historical boolean false is still Unknown, exactly as before.
   assert.equal(row(computeMatch({ ...base, checks: { 'features:Fireplace': false } }, priorities), 'features:Fireplace').evaluated, false);
 
-  // Facts that are not Match inputs never move the score, known or not.
-  for (const extra of [{ laundryLocation: 'basement' }, { laundryLocation: null }, { basementStyle: 'none', basementCondition: 'none' }, { heating: 'Forced Air' }, { schoolDistrict: 'Anchor Bay' }]) {
+  // Facts that are not Match inputs for these criteria never move the score, known or not.
+  for (const extra of [{ laundryLocation: 'basement' }, { laundryLocation: null }, { basementStyle: 'traditional' }, { basementCondition: 'partially_finished' }, { heating: 'Forced Air' }, { schoolDistrict: 'Anchor Bay' }]) {
     assert.deepEqual(computeMatch({ ...none, ...extra }, priorities), computeMatch(none, priorities), JSON.stringify(extra));
   }
+  // An exact basement fact answers Finished basement (homeFactCriteria.js), unless the buyer answered it.
+  const noBasement = row(computeMatch({ ...none, basementStyle: 'none', basementCondition: 'none' }, priorities), 'features:Finished basement');
+  assert.deepEqual([noBasement.evaluated, noBasement.met, noBasement.source], [true, false, 'home_facts']);
+  assert.equal(row(computeMatch({ ...none, basementCondition: 'none', checks: { 'features:Finished basement': true } }, priorities), 'features:Finished basement').met, true);
 });
 
 let db;

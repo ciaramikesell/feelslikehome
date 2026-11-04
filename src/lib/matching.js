@@ -2,6 +2,7 @@ import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlist
 import { normalizeSearchIntent } from './searchIntent.js';
 import { EVIDENCE_STRENGTH, findingsFromFields } from './importDomain.js';
 import { lotSizeAcres } from './lotSize.js';
+import { garageSpacesCount, resolveCriterionAnswer } from './homeFactCriteria.js';
 
 export function parseNum(v) {
   if (v === '' || v === null || v === undefined) return null;
@@ -339,12 +340,23 @@ export function parseListingTextFindings(text, searchType = null) {
  *   - star-rating criteria: evaluated only when rated (> 0); an unrated criterion
  *     is excluded entirely, never scored as a 0.
  *
- * Garage is the one exception: `home.garageSpaces` is a separate, reliable numeric
- * field already populated by RentCast import or manual entry, so we use it directly
- * to evaluate the "Garage" criterion (a `garageSpaces` of "0" is a real, distinct,
- * known answer from an empty/unknown value) — this is exactly the "objective
- * auto-data should feed Match when reliable" case, with no extra question asked.
+ * Home Facts answer some check criteria exactly (src/lib/homeFactCriteria.js):
+ * Garage from `home.garageSpaces` ("0" is a real No, empty is Unknown), Finished
+ * and Walkout basement, first/second-floor laundry, First-Floor Primary and No
+ * HOA. The buyer's own explicit Yes / No overrides the fact; without either the
+ * criterion stays Unknown. This is the "objective auto-data should feed Match
+ * when reliable" case, with no extra question asked.
  * ---------------------------------------------------------------------------------- */
+
+// The detail line for a check answer. Garage read from Home Facts keeps its
+// established wording ("2-car garage" / "No garage").
+function answerDetail(key, yes, source, home) {
+  if (source === 'home_facts' && key === 'exterior:Garage') {
+    const spaces = garageSpacesCount(home.garageSpaces);
+    return yes ? `${spaces}-car garage` : 'No garage';
+  }
+  return yes ? 'Yes' : 'No';
+}
 
 export function computeMatch(home, priorities, commuteEvaluation = null) {
   if (!priorities) return null;
@@ -353,8 +365,8 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
   // priority has folded onto the canonical label — never silently forgotten.
   const checks = foldLegacyCheckAliases(home.checks, priorities.searchType);
   const all = []; // every priority the user actually selected, evaluated or not
-  const push = (key, label, tier, evaluated, score, met, detail, objective) => {
-    all.push({ key, label, tier, evaluated, score, met, detail, objective });
+  const push = (key, label, tier, evaluated, score, met, detail, objective, source) => {
+    all.push({ key, label, tier, evaluated, score, met, detail, objective, ...(source ? { source } : {}) });
   };
   const notEvaluated = (key, label, tier, objective) => push(key, label, tier, false, null, null, 'Not evaluated yet', objective);
 
@@ -479,19 +491,6 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
         return;
       }
 
-      // Garage: a reliable numeric field already exists (garageSpaces), so use it
-      // directly instead of the separate manual checkbox — see comment above.
-      if (def.key === 'exterior' && item.label === 'Garage') {
-        const spaces = parseNum(home.garageSpaces);
-        if (spaces !== null) {
-          const met = spaces > 0;
-          push(ns, item.label, tier, true, met ? 1 : 0, met, met ? `${spaces}-car garage` : 'No garage', true);
-        } else {
-          notEvaluated(ns, item.label, tier, true);
-        }
-        return;
-      }
-
       // Other check-kind criteria: three real states now. `true` continues to
       // mean Yes exactly as it always has (zero behavior change for existing
       // data). The string 'no' is the ONLY value that produces a confirmed
@@ -502,9 +501,16 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
       // touched" — both rendered identically) is deliberately still treated
       // as Unknown here, preserving today's exact Match behavior for every
       // home that predates this UI. UNKNOWN MUST NOT PRODUCE MISSING.
-      const raw = checks[ns];
-      if (raw === true) { push(ns, item.label, tier, true, 1, true, 'Yes', true); return; }
-      if (raw === 'no') { push(ns, item.label, tier, true, 0, false, 'No', true); return; }
+      //
+      // A Home Fact can answer some of these exactly (homeFactCriteria.js:
+      // Garage from garage spaces, Finished / Walkout basement, laundry floor,
+      // First-Floor Primary, No HOA). The buyer's own Yes / No always wins;
+      // otherwise the fact answers; otherwise Unknown. The fact is read here,
+      // never copied into anyone's checks.
+      const answer = resolveCriterionAnswer(home, ns, checks);
+      const source = answer.source === 'home_facts' ? 'home_facts' : undefined;
+      if (answer.value === true) { push(ns, item.label, tier, true, 1, true, answerDetail(ns, true, answer.source, home), true, source); return; }
+      if (answer.value === 'no') { push(ns, item.label, tier, true, 0, false, answerDetail(ns, false, answer.source, home), true, source); return; }
       notEvaluated(ns, item.label, tier, true);
     });
   });

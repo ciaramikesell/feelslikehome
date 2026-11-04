@@ -212,10 +212,12 @@ dbTest('buyer / co-buyer parity: every stored lot-size shape scores the same in 
 });
 
 const MIGRATION = 'supabase/migrations/2026-10-18-lot-size-units-match-parity.sql';
+// The later scorer body (Home Facts → Match parity) builds on this one, so pre-migration production leaves it out too.
+const LATEST_SCORER = 'supabase/migrations/2026-11-02-home-facts-match-parity.sql';
 const PREFLIGHT = readFileSync(new URL('../supabase/lot-size-match-preflight.sql', import.meta.url), 'utf8').replace(/;\s*$/, '');
 
 dbTest('production path: preflight reports the impact on pre-migration data; the migration corrects Compare and rewrites nothing', async () => {
-  const legacy = createTestDatabase({ steps: POST_SNAPSHOT_MIGRATIONS.filter((step) => step.file !== MIGRATION) });
+  const legacy = createTestDatabase({ steps: POST_SNAPSHOT_MIGRATIONS.filter((step) => ![MIGRATION, LATEST_SCORER].includes(step.file)) });
   try {
     const { owner, coBuyer, search, ownerClient, coBuyerClient } = await cobuyerSearch(legacy, 'legacy');
     await savePriorities(coBuyerClient, { id: search }, coBuyer, lotBuyer('0.5', 'must'));
@@ -274,7 +276,7 @@ dbTest('production path: preflight reports the impact on pre-migration data; the
 });
 
 dbTest('a lot size the old Compare scorer could not cast no longer errors the whole projection', async () => {
-  const legacy = createTestDatabase({ steps: POST_SNAPSHOT_MIGRATIONS.filter((step) => step.file !== MIGRATION) });
+  const legacy = createTestDatabase({ steps: POST_SNAPSHOT_MIGRATIONS.filter((step) => ![MIGRATION, LATEST_SCORER].includes(step.file)) });
   try {
     const { owner, coBuyer, search, ownerClient, coBuyerClient } = await cobuyerSearch(legacy, 'cast');
     await savePriorities(coBuyerClient, { id: search }, coBuyer, lotBuyer('0.5', 'important'));
@@ -292,7 +294,7 @@ dbTest('a lot size the old Compare scorer could not cast no longer errors the wh
 });
 
 dbTest('preflight robustness: every stored shape, owner and co-buyer documents, and malformed targets never error it', async () => {
-  const legacy = createTestDatabase({ steps: POST_SNAPSHOT_MIGRATIONS.filter((step) => step.file !== MIGRATION) });
+  const legacy = createTestDatabase({ steps: POST_SNAPSHOT_MIGRATIONS.filter((step) => ![MIGRATION, LATEST_SCORER].includes(step.file)) });
   try {
     const { owner, coBuyer, search, ownerClient, coBuyerClient } = await cobuyerSearch(legacy, 'robust');
     await savePriorities(coBuyerClient, { id: search }, coBuyer, lotBuyer('0.5', 'must'));
