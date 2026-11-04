@@ -214,6 +214,9 @@ async function handle(req, res) {
     }
     return { body, type };
   };
+  // Every floor-plan read, RPC or Storage call, from the browser or the app's
+  // server alike (QA: proves the flag-off app makes none).
+  if (FLOOR_PLAN_REQUEST.test(path)) qaFloorPlanRequests.push(`${req.method} ${path}`);
   if (await floorPlanStorage(req, res, path, url, caller, raw, storedObject)) return undefined;
 
   const storage = path.match(/^\/storage\/v1\/object\/(public\/)?([^/]+)\/(.+)$/);
@@ -258,7 +261,11 @@ async function handle(req, res) {
 // QA switches (POST /__qa/floor-plans, JSON): { ttlSeconds } shortens every
 // newly signed URL; { failSign: true } makes signing fail; { failUpload: true }
 // fails uploads before Storage sees them; { reset: true } clears all of them.
+// { requests: true } returns (and { clearRequests: true } empties) the log of
+// every floor-plan request the stand-in has received, server-side ones included.
 const FLOOR_PLAN_BUCKET = 'home-floor-plans';
+const FLOOR_PLAN_REQUEST = /home_floor_plans|home-floor-plans|_home_floor_plan/;
+const qaFloorPlanRequests = [];
 const qaFloorPlans = { ttlSeconds: null, failSign: false, failUpload: false };
 // true once the request is answered.
 const sent = (...args) => { send(...args); return true; };
@@ -267,6 +274,8 @@ async function floorPlanStorage(req, res, path, url, caller, raw, storedObject) 
     const body = JSON.parse(raw.toString() || '{}');
     if (body.reset) Object.assign(qaFloorPlans, { ttlSeconds: null, failSign: false, failUpload: false });
     for (const key of ['ttlSeconds', 'failSign', 'failUpload']) if (key in body) qaFloorPlans[key] = body[key];
+    if (body.clearRequests) qaFloorPlanRequests.length = 0;
+    if (body.requests) return sent(res, 200, { requests: [...qaFloorPlanRequests] });
     return sent(res, 200, qaFloorPlans);
   }
   const bucketApi = () => db.clientFor(caller.sub).storage.from(FLOOR_PLAN_BUCKET);

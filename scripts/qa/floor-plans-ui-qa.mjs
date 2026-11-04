@@ -249,6 +249,36 @@ async function main() {
     await page.context().close();
   });
 
+  // Server-side reads count too: the stand-in logs every floor-plan request it
+  // receives, so this proves the flag-off app (pages and browser) makes none.
+  await step('[flag off] every screen on desktop and iPhone, and the Realtor workspace: no Floor Plans UI and zero floor-plan requests, server-side included', async () => {
+    await qaSwitch({ clearRequests: true });
+    for (const device of ['desktop', 'iphone']) {
+      const page = await signedIn(browser, owner, device, { url: offBase });
+      for (const path of ['/homes', '/tour', '/favorites', '/archive']) {
+        await page.goto(`${offBase}${path}`, { waitUntil: 'networkidle' });
+        await settle(page);
+        assert(await page.locator('.hh-floor-plans-action, .hh-fp-viewer, .hh-card-notes-row').count() === 0, `${device} ${path}: Floor Plans UI with the flag off`);
+        assert(await overflow(page) <= 0, `${device} ${path}: horizontal overflow`);
+      }
+      // Filter My Homes (#164) is still there and still opens.
+      await page.goto(`${offBase}/homes`, { waitUntil: 'networkidle' });
+      await page.getByRole('button', { name: /^Filter/ }).click();
+      await page.getByRole('dialog', { name: 'Filter my homes' }).waitFor();
+      await page.keyboard.press('Escape');
+      assert(!page.errors.length, `${device}: ${page.errors.join(' | ')}`);
+      await page.context().close();
+    }
+    const rp = await signedIn(browser, realtor, 'iphone', { url: offBase });
+    await rp.goto(`${offBase}/people/${info.search}`, { waitUntil: 'networkidle' });
+    await rp.locator('article.hh-realtor-home-card').first().waitFor();
+    assert(await rp.locator('.hh-floor-plans-action, .hh-fp-viewer').count() === 0, 'Realtor: Floor Plans UI with the flag off');
+    assert(!rp.errors.length, rp.errors.join(' | '));
+    await rp.context().close();
+    const { requests } = await qaSwitch({ requests: true });
+    assert(requests.length === 0, `floor-plan requests with the flag off: ${requests.join(', ')}`);
+  });
+
   /* ------------------------- owner on iPhone ------------------------- */
   const page = await signedIn(browser, owner, 'iphone');
   await step('[owner iPhone] card: Notes left, quiet "Add floor plan" right; cover photo unchanged', async () => {
@@ -594,6 +624,43 @@ async function main() {
     await shot(ipad, '14-ipad-landscape-my-homes');
     assert(!ipad.errors.length, ipad.errors.join(' | '));
     await ipad.context().close();
+  });
+
+  await step('[owner desktop] keyboard only: open from the card, focus stays in the viewer, arrows / + / − / Escape, focus returns; nothing left behind', async () => {
+    await qaSwitch({ clearRequests: true });
+    const desk = await signedIn(browser, owner, 'desktop');
+    await desk.goto(`${base}/homes`, { waitUntil: 'networkidle' });
+    const action = cardFor(desk, '412 Linden Ave').getByRole('button', { name: /^Floor plans \(3\)/ });
+    await action.waitFor();
+    assert((await qaSwitch({ requests: true })).requests.length > 0, 'the request log saw no flag-on reads (the flag-off check would prove nothing)');
+    await action.focus();
+    await desk.keyboard.press('Enter');
+    await viewer(desk).waitFor();
+    await imageReady(desk);
+    for (let i = 0; i < 12; i += 1) {
+      await desk.keyboard.press('Tab');
+      assert(await desk.evaluate(() => !!document.activeElement?.closest('.hh-fp-viewer')), `Tab ${i + 1} left the viewer`);
+    }
+    const counter = desk.locator('.hh-fp-counter');
+    // Arrows move between plans and stop at the ends (the viewer opens on plan 1).
+    const first = await counter.textContent();
+    const [away, back] = first.startsWith('1 of') ? ['ArrowRight', 'ArrowLeft'] : ['ArrowLeft', 'ArrowRight'];
+    await desk.keyboard.press(away);
+    assert((await counter.textContent()) !== first, `${away} did not change plan`);
+    await desk.keyboard.press(back);
+    assert((await counter.textContent()) === first, `${back} did not return to ${first}`);
+    await imageReady(desk);
+    await desk.keyboard.press('+');
+    assert(await currentScale(desk) > 1, 'keyboard zoom in');
+    await desk.keyboard.press('-');
+    assert(Math.abs(await currentScale(desk) - 1) < 0.01, 'keyboard zoom out back to fit');
+    await shot(desk, '17-desktop-viewer');
+    await desk.keyboard.press('Escape');
+    await viewer(desk).waitFor({ state: 'detached' });
+    assert(await action.evaluate((el) => el === document.activeElement), 'focus did not return to the card action');
+    assert(await desk.evaluate(() => [...document.images].filter((img) => img.src.includes('home-floor-plans')).length) === 0, 'image left after closing');
+    assert(!desk.errors.length, desk.errors.join(' | '));
+    await desk.context().close();
   });
 
   /* ------------------------------ Realtor ------------------------------ */

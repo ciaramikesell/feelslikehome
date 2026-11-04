@@ -20,10 +20,17 @@ signs or uploads anything.
 * Off means: no `home_floor_plans` read, no `can_edit_home_floor_plans` /
   `is_search_decision_maker` call, no viewer mounted, so no signed-URL request
   and no upload. The card renders the original Notes link unchanged.
-  (Proven in browser QA: the flag-off run records every network request and
-  finds none.)
-* No database or Storage change is needed or made by this PR; the foundation
-  is already in Production.
+  (Proven in browser QA: the flag-off run visits My Homes, Want to Tour,
+  Favorites and Archive on desktop and iPhone, and the Realtor client page,
+  and the Supabase stand-in logs every floor-plan request it receives —
+  including the app server's own — and finds none.)
+* No database or Storage change is needed or made by this PR. Before the flag
+  is turned on anywhere, the foundation (#157) must be confirmed on that
+  project: the read-only `supabase/home-floor-plans-verification.sql` with
+  every row `ok`, and the hosted Storage smoke test
+  (`docs/floor-plans-foundation.md`, Release order, steps 6–9). Neither has
+  been run against Production from this repository. With the flag off, nothing
+  reads the foundation, so merging does not depend on it.
 
 **Turning it on** (each step needs your approval):
 
@@ -146,7 +153,11 @@ a gallery, anything inside Add/Edit Home.
   outsider and removed members.
 * `scripts/qa/floor-plans-ui-qa.mjs` — browser QA against the local Supabase
   stand-in (real policies, bucket limits, signed-URL expiry), on iPhone- and
-  iPad-sized touch viewports with real touch input (CDP). 29 steps: flag off;
+  iPad-sized touch viewports with real touch input (CDP), plus desktop. 31
+  steps: flag off (every card screen on desktop and iPhone and the Realtor
+  page, with zero floor-plan requests from the browser or the app server);
+  desktop keyboard-only viewer (focus trap, arrows, + / −, Escape, focus
+  return);
   owner zero → one → four (PNG, JPEG, WebP); invalid / oversized files; failed
   upload; over-limit batch; stale viewer at the limit; navigation; swipe,
   pinch, pan, double-tap, Fit; remove; signing failure; expired URL re-signed;
