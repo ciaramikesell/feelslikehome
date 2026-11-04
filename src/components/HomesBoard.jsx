@@ -90,7 +90,6 @@ function HomeCard({ home, priorities, commuteDestinations, mode, filterResult = 
   const [imgError, setImgError] = useState(false);
   const styleSummary = homeStyleSummary(home);
   const showPhoto = home.photoUrl && !imgError;
-  const [showAllMustHaves, setShowAllMustHaves] = useState(false);
   const identity = homeIdentity(home, priorities);
   const vocabulary = homeVocabulary(priorities);
   // The home overlay over My Homes. From Want to Tour / Favorites / Archive,
@@ -130,8 +129,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, filterResult = 
   const noteCount = noteFieldCount(home);
   const notesLink = noteCount > 0 && <Link className="hh-notes-indicator" scroll={false} onClick={onOpen} href={`${homeHref}${homeHref.includes('?') ? '&' : '?'}section=tour`}><StickyNote size={13} aria-hidden="true" /> Notes ({noteCount})</Link>;
   const floorPlansAction = floorPlans && <FloorPlansAction count={floorPlans.countFor(home)} canEdit={floorPlans.canEdit} address={identity.accessible} onOpen={() => floorPlans.open(home)} />;
-  const { mustHaves, hiddenMustHaves, mustOverflow, criteriaSummary } = cardCriteria;
-  const displayedMustHaves = showAllMustHaves ? [...mustHaves, ...hiddenMustHaves] : mustHaves;
+  const { mustHaves, criteriaSummary } = cardCriteria;
   const coBuyerActivity = home.coBuyerWantsToTour ? 'Co-buyer wants to tour' : home.coBuyerFavorited ? 'Co-buyer favorited' : null;
   const price = formatHomePrice(home.price, priorities.searchType);
   const monthly = showsPurchaseFinancials && home.estMonthly ? `${fmtMoney(home.estMonthly)}/mo est.` : null;
@@ -201,7 +199,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, filterResult = 
               <MatchSummary match={match} />
               {mustHaves.length > 0 && (
                 <ul className="hh-must-summary" aria-label="Must Haves">
-                  {displayedMustHaves.map((item) => {
+                  {mustHaves.map((item) => {
                     const neutral = item.evaluated && item.met === null;
                     const tone = !item.evaluated ? 'is-unknown' : neutral ? 'is-neutral' : item.met ? 'is-positive' : 'is-negative';
                     return (
@@ -212,7 +210,6 @@ function HomeCard({ home, priorities, commuteDestinations, mode, filterResult = 
                       </li>
                     );
                   })}
-                  {mustOverflow > 0 && <li className="hh-must-overflow"><button type="button" className="hh-criteria-overflow" aria-expanded={showAllMustHaves} onClick={() => setShowAllMustHaves((value) => !value)}>{showAllMustHaves ? 'Show fewer' : `+ ${mustOverflow} more Must Have${mustOverflow === 1 ? '' : 's'}`}</button></li>}
                 </ul>
               )}
               {criteriaSummary?.total > 0 && (

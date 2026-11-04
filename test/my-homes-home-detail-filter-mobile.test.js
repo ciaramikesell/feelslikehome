@@ -80,15 +80,22 @@ test('regression: a neutral tour response on a Must Have is not reported as miss
   assert.doesNotMatch(matchFactualSummary({ ...match, pct: 50 }).mustClause, /missing/);
 });
 
-test('personalized criteria keep evaluated = match + don’t match, with unknown and neutral as their own groups', () => {
+test('the card breakdown keeps evaluated = match + don’t match, with unknown and neutral as their own groups, over every selected criterion', () => {
   for (const home of homes) {
     const { criteriaSummary: s } = selectHomeCardCriteria(evaluate(home));
     assert.equal(s.evaluated, s.matches.length + s.mismatches.length);
     assert.equal(s.total, s.evaluated + s.unknown.length + s.neutral.length);
+    // Every selected criterion, Must Haves included, is in exactly one group.
+    assert.equal(s.total, evaluate(home).allSelected.length, home.id);
   }
   const { criteriaSummary } = selectHomeCardCriteria(evaluate(homes.find((home) => home.id === 'nothing-known')));
-  // Unknown is never a mismatch.
-  assert.deepEqual([criteriaSummary.matches.length, criteriaSummary.mismatches.length, criteriaSummary.unknown.length], [0, 0, 2]);
+  // Unknown is never a mismatch — including the two unknown Must Haves.
+  assert.deepEqual([criteriaSummary.matches.length, criteriaSummary.mismatches.length, criteriaSummary.unknown.length], [0, 0, 4]);
+  assert.deepEqual(criteriaSummary.unknown.slice(0, 2).map((criterion) => criterion.tier), ['must', 'must'], 'Must Haves first');
+  // A failed Must Have is counted in "don't match" as well as listed above it.
+  const missed = selectHomeCardCriteria(evaluate(homes.find((home) => home.id === 'must-missed')));
+  assert.ok(missed.criteriaSummary.mismatches.some((criterion) => criterion.key === 'features:Home office'));
+  assert.ok(missed.mustHaves.some((criterion) => criterion.key === 'features:Home office' && criterion.met === false));
 });
 
 /* ------------------------------------ filters and sorting ------------------------------------ */
@@ -273,13 +280,12 @@ const mixedHomes = [
 const evaluateMixed = (home) => computeMatch(home, mixed);
 const stateOf = (criterion) => (!criterion.evaluated ? 'unknown' : criterion.met === null ? 'neutral' : criterion.met ? 'met' : 'missing');
 
-test('desktop card preview includes Location, custom, and Basics Must Haves — not only Features/Exterior', () => {
+test('desktop card lists Location, custom, and Basics Must Haves — not only Features/Exterior', () => {
   const preview = selectHomeCardCriteria(evaluateMixed(mixedHomes[0]));
-  const shown = [...preview.mustHaves, ...preview.hiddenMustHaves];
+  const shown = preview.mustHaves;
   assert.deepEqual(new Set(shown.map((criterion) => criterion.key)), new Set(['budget', 'location:Reputable Schools', 'features:Mudroom', 'exterior:Fenced yard', 'features:Home office']));
-  // Bounded preview with explicit overflow, never a dropped category: all 5 fit.
+  // Every Must Have, never a dropped category.
   assert.equal(preview.mustHaves.length, 5);
-  assert.equal(preview.mustOverflow, 0);
   // The failed Location Must Have leads the preview.
   assert.equal(preview.mustHaves[0].key, 'location:Reputable Schools');
   assert.deepEqual(shown.map(criterionLabel).sort(), ['Fenced Yard', 'Home Office', 'Mudroom', 'Reputable Schools', 'Within budget']);
@@ -292,7 +298,7 @@ test('card preview, Home Detail, and the No Must-Haves missing filter agree on e
     const match = evaluateMixed(home);
     const detail = mustHaveStatus(match); // Home Detail panel + phone card cue
     const card = selectHomeCardCriteria(match); // desktop card preview
-    const cardStates = Object.fromEntries([...card.mustHaves, ...card.hiddenMustHaves].map((criterion) => [criterion.key, stateOf(criterion)]));
+    const cardStates = Object.fromEntries(card.mustHaves.map((criterion) => [criterion.key, stateOf(criterion)]));
     const detailStates = Object.fromEntries(detail.all.map((criterion) => [criterion.key, stateOf(criterion)]));
     assert.deepEqual(cardStates, detailStates, home.id);
     const cardShowsMiss = Object.values(cardStates).includes('missing');
@@ -306,11 +312,12 @@ test('card preview, Home Detail, and the No Must-Haves missing filter agree on e
   assert.ok(!states.includes('missing'));
 });
 
-test('the desktop card renders every previewed Must Have with the shared label and an explicit overflow', () => {
+test('the card renders every Must Have with the shared label, and no "+N more" / "Show fewer" control', () => {
   const board = read('src/components/HomesBoard.jsx');
   assert.match(board, /\{!item\.evaluated \? '\?' : neutral \? '—' : item\.met \? '✓' : '✕'\}<\/span>\s*\{criterionLabel\(item\)\}/);
-  assert.match(board, /`\+ \$\{mustOverflow\} more Must Have\$\{mustOverflow === 1 \? '' : 's'\}`/);
+  assert.match(board, /\{mustHaves\.map\(\(item\) => \{/);
+  assert.doesNotMatch(board, /mustOverflow|hiddenMustHaves|showAllMustHaves|more Must Have|Show fewer|hh-must-overflow/);
   const matching = read('src/lib/matching.js');
-  assert.match(matching, /const isVisibleMustHave = \(criterion\) => criterion\.tier === 'must';/);
+  assert.match(matching, /\.filter\(\(\{ criterion \}\) => criterion\.tier === 'must'\)/);
   assert.doesNotMatch(matching, /category === 'features' \|\| category === 'exterior'/);
 });

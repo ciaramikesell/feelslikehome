@@ -1,0 +1,76 @@
+{
+  "expected": {
+    "pct": 66,
+    "must": [
+      "Finished Basement (missing)",
+      "Fireplace (unknown)",
+      "Within budget (met)",
+      "Home Office (met)",
+      "First-Floor Laundry (met)",
+      "Garage (met)",
+      "Fenced Yard (met)"
+    ],
+    "matches": [
+      "Within budget",
+      "Home office",
+      "First-floor laundry",
+      "Garage",
+      "Fenced yard",
+      "Patio / deck"
+    ],
+    "mismatches": [
+      "Finished basement",
+      "Minimum bedrooms",
+      "Central air",
+      "Mudroom",
+      "Pool",
+      "Walk-in pantry"
+    ],
+    "unknown": [
+      "Fireplace",
+      "Primary ensuite"
+    ]
+  },
+  "log": [
+    {
+      "step": "[desktop] /homes: all 7 Must Haves, and the breakdown counts equal their lists",
+      "ok": true,
+      "ms": 2543
+    },
+    {
+      "step": "[desktop] /tour: all 7 Must Haves, and the breakdown counts equal their lists",
+      "ok": true,
+      "ms": 2167
+    },
+    {
+      "step": "[desktop] /favorites: all 7 Must Haves, and the breakdown counts equal their lists",
+      "ok": true,
+      "ms": 2151
+    },
+    {
+      "step": "[desktop] /archive: all 7 Must Haves, and the breakdown counts equal their lists",
+      "ok": true,
+      "ms": 2186
+    },
+    {
+      "step": "[iphone] /homes: all 7 Must Haves, and the breakdown counts equal their lists",
+      "ok": true,
+      "ms": 2688
+    },
+    {
+      "step": "[iphone] /tour: all 7 Must Haves, and the breakdown counts equal their lists",
+      "ok": true,
+      "ms": 5275
+    },
+    {
+      "step": "[iphone] /favorites: all 7 Must Haves, and the breakdown counts equal their lists",
+      "ok": true,
+      "ms": 2116
+    },
+    {
+      "step": "[iphone] /archive: all 7 Must Haves, and the breakdown counts equal their lists",
+      "ok": true,
+      "ms": 2283
+    }
+  ]
+}

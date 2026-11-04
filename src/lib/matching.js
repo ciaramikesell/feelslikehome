@@ -579,49 +579,49 @@ export function summarizeForCard(match) {
   };
 }
 
-// The Homes card derives both its bounded Must Have preview and its aggregate
-// non-Must-Have coverage from the canonical Match result. No counts are stored.
-export function selectHomeCardCriteria(match, mustLimit = 5) {
-  if (!match) return { mustHaves: [], mustOverflow: 0, criteriaSummary: null };
-  const source = match.allSelected || [];
+// The Homes card derives its complete Must Have list and its Matches / Doesn't
+// match / Unknown breakdown of every selected criterion from the canonical,
+// participant-owned Match result. No counts are stored.
+export function selectHomeCardCriteria(match) {
+  if (!match) return { mustHaves: [], criteriaSummary: null };
+  // One entry per criterion key, in computeMatch's order (allSelected never
+  // repeats a key; this only guards the card against a malformed result).
+  const seen = new Set();
+  const source = (match.allSelected || []).filter((criterion) => !seen.has(criterion.key) && seen.add(criterion.key));
   const indexed = source.map((criterion, order) => ({ criterion, order }));
   const stateRank = (criterion) => criterion.evaluated ? (criterion.met === false ? 0 : 2) : 1;
-  // Every Must Have is eligible for the preview, whatever its category (location,
-  // features, exterior, a custom priority, a baseline like budget, or an
-  // after-tour criterion) — the same set mustHaveStatus, Home Detail, and the
-  // "No Must-Haves missing" filter read. Space is handled by the bounded preview
-  // plus explicit overflow below, never by excluding a category.
-  const isVisibleMustHave = (criterion) => criterion.tier === 'must';
-  const mustAll = indexed
-    .filter(({ criterion }) => isVisibleMustHave(criterion))
+  // Every Must Have, whatever its category (location, features, exterior, a
+  // custom priority, a baseline like budget, or an after-tour criterion) — the
+  // same set mustHaveStatus, Home Detail, and the "No Must-Haves missing" filter
+  // read. No preview limit: the card lists them all (misses first, then
+  // unknown, then met or neutral), so it grows with the buyer's own list.
+  const mustHaves = indexed
+    .filter(({ criterion }) => criterion.tier === 'must')
     .sort((a, b) => stateRank(a.criterion) - stateRank(b.criterion) || a.order - b.order)
     .map(({ criterion }) => criterion);
-  const mustPreviewLimit = Math.max(mustLimit, mustAll.filter((criterion) => criterion.evaluated && criterion.met === false).length);
 
+  // The Matches / Doesn't match / Unknown breakdown covers EVERY selected
+  // criterion in this participant's own computeMatch result, Must Haves
+  // included (they appear in the list above too, by design), ordered Must Have,
+  // Important, Nice to Have, then Match's own order.
   const tierRank = { must: 0, important: 1, nice: 2, dontcare: 3 };
-  // Must Haves are already visible immediately above this summary. Excluding
-  // them here keeps the coverage number from reading like a second Must Have
-  // score, while every remaining item still comes directly from computeMatch's
-  // canonical participant-owned `allSelected` result.
-  const personalized = indexed
-    .filter(({ criterion }) => criterion.tier !== 'must')
+  const all = indexed
     .sort((a, b) => (tierRank[a.criterion.tier] ?? 3) - (tierRank[b.criterion.tier] ?? 3) || a.order - b.order)
     .map(({ criterion }) => criterion);
 
-  const matches = personalized.filter((criterion) => criterion.evaluated && criterion.met === true);
-  const mismatches = personalized.filter((criterion) => criterion.evaluated && criterion.met === false);
-  const unknown = personalized.filter((criterion) => !criterion.evaluated);
+  const matches = all.filter((criterion) => criterion.evaluated && criterion.met === true);
+  const mismatches = all.filter((criterion) => criterion.evaluated && criterion.met === false);
+  // Unknown is never a mismatch: an unevaluated criterion is only ever here.
+  const unknown = all.filter((criterion) => !criterion.evaluated);
   // A neutral tour response is evaluated but deliberately neither a match nor a
   // miss (see computeMatch). It is reported as its own group, never folded into
-  // either count, so total = evaluated + unknown + neutral.
-  const neutral = personalized.filter((criterion) => criterion.evaluated && criterion.met === null);
+  // any of the three, so total = matches + mismatches + unknown + neutral.
+  const neutral = all.filter((criterion) => criterion.evaluated && criterion.met === null);
 
   return {
-    mustHaves: mustAll.slice(0, mustPreviewLimit),
-    hiddenMustHaves: mustAll.slice(mustPreviewLimit),
-    mustOverflow: Math.max(0, mustAll.length - mustPreviewLimit),
+    mustHaves,
     criteriaSummary: {
-      total: personalized.length,
+      total: all.length,
       evaluated: matches.length + mismatches.length,
       matches,
       mismatches,
