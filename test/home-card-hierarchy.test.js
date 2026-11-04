@@ -187,7 +187,7 @@ test('criteria disclosure supports hover, focus, touch/click, Escape, and outsid
   assert.match(ui, /items\.map\(\(item\).*item\.label/);
 });
 
-test('card polish: room under the score, link-like criteria summaries with focus ring, facts never shrink below 11px labels / 13px values', () => {
+test('card polish: room under the score, link-like criteria summaries with focus ring, fact labels 12px small caps, values 13px', () => {
   const css = fs.readFileSync('src/app/globals.css', 'utf8');
   assert.match(css, /\.hh-must-summary \{[^}]*margin: 14px 0 0;/);
   assert.match(css, /\.hh-home-card \.hh-match-score-value strong \{ font-size: 21px;/);
@@ -195,6 +195,6 @@ test('card polish: room under the score, link-like criteria summaries with focus
   assert.match(css, /\.hh-match-summary-line \.hh-criteria-disclosure > button \{ text-decoration: underline;/);
   assert.match(css, /button\[aria-expanded="true"\] \{ text-decoration-color: currentColor; \}/);
   assert.match(css, /\.hh-criteria-disclosure>button:focus-visible\{outline:2px solid var\(--focus-ring\)/, 'the shared focus ring stays');
-  assert.match(css, /\.hh-property-fact dt \{[^}]*font: 600 11px/);
+  assert.match(css, /\.hh-property-fact dt \{[^}]*font: 600 12px\/1\.25 var\(--font-ui\); letter-spacing: \.035em; text-transform: uppercase;/);
   assert.match(css, /\.hh-property-fact dd \{[^}]*font-size: 13px;/);
 });

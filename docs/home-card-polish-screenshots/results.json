@@ -104,22 +104,22 @@
     {
       "step": "[desktop] every card: all Must Haves, every known fact, nothing overflowing",
       "ok": true,
-      "ms": 2839
+      "ms": 7066
     },
     {
       "step": "[desktop] criteria summaries: keyboard focus is visible, Enter opens the list, Escape closes it",
       "ok": true,
-      "ms": 186
+      "ms": 270
     },
     {
       "step": "[iphone] every card: all Must Haves, every known fact, nothing overflowing",
       "ok": true,
-      "ms": 3461
+      "ms": 3657
     },
     {
       "step": "[iphone] criteria summaries: keyboard focus is visible, Enter opens the list, Escape closes it",
       "ok": true,
-      "ms": 104
+      "ms": 139
     }
   ]
 }
