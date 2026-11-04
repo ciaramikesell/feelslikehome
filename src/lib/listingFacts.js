@@ -63,12 +63,21 @@ export function fact(key, label, value, group, options = {}) {
   };
 }
 
+// Import snapshots saved before PR #161 can hold { key: 'hoa', value: false },
+// which the old importer derived from a $0 monthly fee. A $0 fee is not "no
+// HOA", so that stored entry is never shown or counted. The saved snapshot is
+// left as it is; its fee still shows as $0 from the snapshot's hoaFeeMonthly.
+export function isLegacyNoHoaFact(fact) {
+  return fact?.key === 'hoa' && fact.value === false;
+}
+
 export function countListingDetails(fields = {}, facts = [], features = []) {
   const fieldCount = Object.values(fields).filter(present).length;
-  return fieldCount + facts.filter(Boolean).length + features.length;
+  return fieldCount + facts.filter((fact) => fact && !isLegacyNoHoaFact(fact)).length + features.length;
 }
 
 export function groupListingFacts(facts = []) {
   const order = ['basics', 'structure', 'parking', 'costs', 'utilities', 'listing'];
-  return order.map((key) => ({ key, facts: facts.filter((item) => item?.group === key) })).filter((section) => section.facts.length);
+  const shown = facts.filter((item) => !isLegacyNoHoaFact(item));
+  return order.map((key) => ({ key, facts: shown.filter((item) => item?.group === key) })).filter((section) => section.facts.length);
 }

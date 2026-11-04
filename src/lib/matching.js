@@ -2,6 +2,7 @@ import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlist
 import { normalizeSearchIntent } from './searchIntent.js';
 import { EVIDENCE_STRENGTH, findingsFromFields } from './importDomain.js';
 import { lotSizeAcres } from './lotSize.js';
+import { garageSpacesCount, resolveCriterionAnswer } from './homeFactCriteria.js';
 
 export function parseNum(v) {
   if (v === '' || v === null || v === undefined) return null;
@@ -171,6 +172,55 @@ function parseExplicitPropertyType(text) {
 }
 
 /** Parse pasted listing text in the context of its search intent. */
+// Rental facts stored on the shared home, which Match reads directly (Pets
+// Allowed, Utilities Included, In-Unit Laundry). Each sentence is read on its
+// own; a fact is set only when the text states it and nothing contradicts it:
+//   - a question, hedged or optional wording proves nothing ("Pets allowed?",
+//     "In-unit laundry possible");
+//   - laundry hookups are where a washer could go, not working laundry;
+//   - a No in the same sentence wins ("Pets allowed: no"); a Yes and a No in
+//     different sentences is a conflict and stays Unknown;
+//   - only some utilities, or all but one, is not "utilities included";
+//   - a pet limit ("no pets over 25 lbs") is not a ban, and a pet-friendly park
+//     nearby says nothing about the home.
+const RENTAL_UNCERTAIN = /\?|\b(?:possible|possibly|potential(?:ly)?|optional|may be|might|could|can be|upon request|on request|tbd|to be determined)\b/i;
+const STATED_NO_AFTER = String.raw`\s*[:\-\u2013\u2014]\s*(?:no|none|n\/a)\b`;
+const RENTAL_FACT_RULES = Object.freeze({
+  petsAllowed: {
+    no: [/\bno pets\b(?!\s+(?:over|under|larger|heavier|bigger|above|exceeding|more than|weighing)\b)/i, /\bpets (?:are )?not allowed\b/i, new RegExp(`\\bpets?(?: allowed)?${STATED_NO_AFTER}`, 'i')],
+    yes: [/\bpets (?:are )?allowed\b/i, /\bpet[- ]friendly\b(?!\s+(?:parks?|trails?|neighborhoods?|area|restaurants?|cafes?|beach(?:es)?|downtown|patios?)\b)/i, /\bdogs and cats (?:are )?allowed\b/i],
+    notYes: [],
+  },
+  utilitiesIncluded: {
+    no: [/\butilities (?:are )?not included\b/i, /\btenant (?:is responsible for|pays)(?: for)? (?:all )?utilities\b/i, /\bno utilities(?: are)? included\b/i, new RegExp(`\\butilities(?: included)?${STATED_NO_AFTER}`, 'i')],
+    yes: [/\b(?:all )?utilities (?:are )?included\b/i],
+    notYes: [/\bsome utilities\b/i, /\b(?:water|sewer|trash|gas|heat|electric(?:ity)?|internet|cable|basic|most|certain|select)\b[^.\n]{0,40}\butilities (?:are )?included\b/i,
+      /\butilities (?:are )?included,?\s*(?:except|excluding|but|other than|minus)\b/i],
+  },
+  inUnitLaundry: {
+    no: [/\b(?:no|without) in-unit laundry\b/i, /\bshared laundry only\b/i, /\blaundry room in (?:the )?building[^.\n]*(?:no in-unit|no washer)\b/i,
+      /\bin-unit laundry(?: is)? (?:not available|not included|unavailable)\b/i, new RegExp(`\\bin-unit laundry${STATED_NO_AFTER}`, 'i')],
+    yes: [/\bin-unit laundry\b/i, /\bwasher\s*(?:\/|and)\s*dryer in (?:the )?unit\b/i, /\bin-unit washer\s*(?:\/|and)\s*dryer\b/i],
+    notYes: [/\bhook[ -]?ups?\b/i, /\bfor an? (?:additional|extra) (?:fee|charge|cost)\b/i, /\b(?:not included|not provided|excluded|unavailable|not available|not working|broken|removed)\b/i],
+  },
+});
+
+export function parseRentalSharedFacts(text) {
+  const sentences = String(text || '').split(/\n+|(?<=[.!?;])\s+/).map((part) => part.trim()).filter(Boolean);
+  const out = {};
+  Object.entries(RENTAL_FACT_RULES).forEach(([field, rule]) => {
+    let yes = false; let no = false;
+    for (const sentence of sentences) {
+      if (RENTAL_UNCERTAIN.test(sentence)) continue;
+      const saysNo = rule.no.some((pattern) => pattern.test(sentence));
+      if (saysNo) no = true;
+      else if (rule.yes.some((pattern) => pattern.test(sentence)) && !rule.notYes.some((pattern) => pattern.test(sentence))) yes = true;
+    }
+    if (yes !== no) out[field] = yes;
+  });
+  return out;
+}
+
 export function parseListingText(text, searchType = null) {
   const t = text || '';
   const out = {};
@@ -217,14 +267,7 @@ export function parseListingText(text, searchType = null) {
     const availableOn = parseExplicitAvailability(t);
     if (availableOn) out.availableOn = availableOn; // "Available now" intentionally stays unknown.
 
-    if (/\b(?:no pets|pets (?:are )?not allowed)\b/i.test(t)) out.petsAllowed = false;
-    else if (/\b(?:pets allowed|pet[- ]friendly|dogs and cats (?:are )?allowed)\b/i.test(t)) out.petsAllowed = true;
-
-    if (/\b(?:utilities (?:are )?not included|tenant (?:is responsible for|pays)(?: for)? (?:all )?utilities)\b/i.test(t)) out.utilitiesIncluded = false;
-    else if (/\b(?:all )?utilities (?:are )?included\b/i.test(t) && !/\bsome utilities (?:are )?included\b/i.test(t)) out.utilitiesIncluded = true;
-
-    if (/\b(?:no in-unit laundry|shared laundry only|laundry room in (?:the )?building[^.\n]*(?:no in-unit|no washer))\b/i.test(t)) out.inUnitLaundry = false;
-    else if (/\b(?:in-unit laundry|washer\s*(?:\/|and)\s*dryer in (?:the )?unit|in-unit washer\s*(?:\/|and)\s*dryer)\b/i.test(t)) out.inUnitLaundry = true;
+    Object.assign(out, parseRentalSharedFacts(t));
   }
 
   const lines = t.split('\n').map((l) => l.trim()).filter(Boolean);
@@ -297,12 +340,23 @@ export function parseListingTextFindings(text, searchType = null) {
  *   - star-rating criteria: evaluated only when rated (> 0); an unrated criterion
  *     is excluded entirely, never scored as a 0.
  *
- * Garage is the one exception: `home.garageSpaces` is a separate, reliable numeric
- * field already populated by RentCast import or manual entry, so we use it directly
- * to evaluate the "Garage" criterion (a `garageSpaces` of "0" is a real, distinct,
- * known answer from an empty/unknown value) — this is exactly the "objective
- * auto-data should feed Match when reliable" case, with no extra question asked.
+ * Home Facts answer some check criteria exactly (src/lib/homeFactCriteria.js):
+ * Garage from `home.garageSpaces` ("0" is a real No, empty is Unknown), Finished
+ * and Walkout basement, first/second-floor laundry, First-Floor Primary and No
+ * HOA. The buyer's own explicit Yes / No overrides the fact; without either the
+ * criterion stays Unknown. This is the "objective auto-data should feed Match
+ * when reliable" case, with no extra question asked.
  * ---------------------------------------------------------------------------------- */
+
+// The detail line for a check answer. Garage read from Home Facts keeps its
+// established wording ("2-car garage" / "No garage").
+function answerDetail(key, yes, source, home) {
+  if (source === 'home_facts' && key === 'exterior:Garage') {
+    const spaces = garageSpacesCount(home.garageSpaces);
+    return yes ? `${spaces}-car garage` : 'No garage';
+  }
+  return yes ? 'Yes' : 'No';
+}
 
 export function computeMatch(home, priorities, commuteEvaluation = null) {
   if (!priorities) return null;
@@ -311,8 +365,8 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
   // priority has folded onto the canonical label — never silently forgotten.
   const checks = foldLegacyCheckAliases(home.checks, priorities.searchType);
   const all = []; // every priority the user actually selected, evaluated or not
-  const push = (key, label, tier, evaluated, score, met, detail, objective) => {
-    all.push({ key, label, tier, evaluated, score, met, detail, objective });
+  const push = (key, label, tier, evaluated, score, met, detail, objective, source) => {
+    all.push({ key, label, tier, evaluated, score, met, detail, objective, ...(source ? { source } : {}) });
   };
   const notEvaluated = (key, label, tier, objective) => push(key, label, tier, false, null, null, 'Not evaluated yet', objective);
 
@@ -437,19 +491,6 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
         return;
       }
 
-      // Garage: a reliable numeric field already exists (garageSpaces), so use it
-      // directly instead of the separate manual checkbox — see comment above.
-      if (def.key === 'exterior' && item.label === 'Garage') {
-        const spaces = parseNum(home.garageSpaces);
-        if (spaces !== null) {
-          const met = spaces > 0;
-          push(ns, item.label, tier, true, met ? 1 : 0, met, met ? `${spaces}-car garage` : 'No garage', true);
-        } else {
-          notEvaluated(ns, item.label, tier, true);
-        }
-        return;
-      }
-
       // Other check-kind criteria: three real states now. `true` continues to
       // mean Yes exactly as it always has (zero behavior change for existing
       // data). The string 'no' is the ONLY value that produces a confirmed
@@ -460,9 +501,16 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
       // touched" — both rendered identically) is deliberately still treated
       // as Unknown here, preserving today's exact Match behavior for every
       // home that predates this UI. UNKNOWN MUST NOT PRODUCE MISSING.
-      const raw = checks[ns];
-      if (raw === true) { push(ns, item.label, tier, true, 1, true, 'Yes', true); return; }
-      if (raw === 'no') { push(ns, item.label, tier, true, 0, false, 'No', true); return; }
+      //
+      // A Home Fact can answer some of these exactly (homeFactCriteria.js:
+      // Garage from garage spaces, Finished / Walkout basement, laundry floor,
+      // First-Floor Primary, No HOA). The buyer's own Yes / No always wins;
+      // otherwise the fact answers; otherwise Unknown. The fact is read here,
+      // never copied into anyone's checks.
+      const answer = resolveCriterionAnswer(home, ns, checks);
+      const source = answer.source === 'home_facts' ? 'home_facts' : undefined;
+      if (answer.value === true) { push(ns, item.label, tier, true, 1, true, answerDetail(ns, true, answer.source, home), true, source); return; }
+      if (answer.value === 'no') { push(ns, item.label, tier, true, 0, false, answerDetail(ns, false, answer.source, home), true, source); return; }
       notEvaluated(ns, item.label, tier, true);
     });
   });

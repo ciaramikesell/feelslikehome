@@ -21,6 +21,7 @@ export default function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showIOSHint, setShowIOSHint] = useState(false);
   const [dismissed, setDismissed] = useState(true); // starts hidden until we know it's safe to show
+  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
     // Already installed, natively — no "add to home screen" prompt to show,
@@ -48,6 +49,20 @@ export default function InstallPrompt() {
     return () => window.removeEventListener('beforeinstallprompt', onBeforeInstall);
   }, []);
 
+  // On phones a modal's essential controls (Save, Add, Close) sit at the bottom
+  // of the screen, exactly where this banner floats. While any modal dialog is
+  // open the banner steps aside, without being dismissed, and comes back when
+  // the dialog closes. Every FLH modal (HomeModal, the home overlay, Sheet,
+  // PostTourModal, AppShell's mobile tour) marks itself aria-modal="true".
+  useEffect(() => {
+    if (dismissed) return undefined;
+    const check = () => setModalOpen(!!document.querySelector('[role="dialog"][aria-modal="true"]'));
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [dismissed]);
+
   const dismiss = () => {
     localStorage.setItem(DISMISS_KEY, '1');
     setDismissed(true);
@@ -61,7 +76,7 @@ export default function InstallPrompt() {
     dismiss();
   };
 
-  if (dismissed || (!deferredPrompt && !showIOSHint)) return null;
+  if (dismissed || modalOpen || (!deferredPrompt && !showIOSHint)) return null;
 
   return (
     <div style={{

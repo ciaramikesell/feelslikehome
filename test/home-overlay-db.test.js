@@ -46,8 +46,9 @@ test('Laundry Location imports only an explicit, single location', () => {
   // A basement existing says nothing about the laundry.
   const { fields } = normalizeRentCastFields({ features: { basement: 'Finished' } }, null);
   assert.equal(fields.laundryLocation, undefined);
-  assert.equal(normalizeRentCastFields({ features: { laundry: 'Basement' } }, null).fields.laundryLocation, 'basement');
-  // Apartment communities never import it; import only fills an empty field.
+  // RentCast documents no laundry field, so the RentCast import never fills it,
+  // even when a response happens to carry an undocumented key.
+  assert.equal(normalizeRentCastFields({ features: { laundry: 'Basement', laundryLocation: 'Basement' } }, null).fields.laundryLocation, undefined);
   assert.equal(normalizeRentCastFields({ features: { laundry: 'Basement' } }, null, { apartmentCommunity: true }).fields.laundryLocation, undefined);
   assert.equal(mergeImportFields({ laundryLocation: 'second_floor' }, { laundryLocation: 'basement' }).laundryLocation, 'second_floor');
   assert.deepEqual(LAUNDRY_LOCATION_CHOICES.map(([key]) => key), ['basement', 'first_floor', 'second_floor']);
@@ -72,15 +73,23 @@ test('layout, garage and basement edits write only what changed and keep None di
   assert.equal(garageSpacesSelectValue('tandem'), 'tandem');
 });
 
-test('Laundry Location is not a Match input and scoring is unchanged', () => {
+// Home Facts → Match parity (src/lib/homeFactCriteria.js): Laundry Location now
+// answers the laundry-floor criteria Yes, never No; the buyer's own answer wins.
+test('Laundry Location answers its floor\'s criterion Yes only; an own answer wins; weights unchanged', () => {
   let priorities = applySearchChoice(normalizePriorities({}), 'home_buy');
   priorities = addCriterion(priorities, { categoryKey: 'features', label: 'First-floor laundry', kind: 'check' }, 'must');
   priorities = addCriterion(priorities, { categoryKey: 'features', label: 'Second-Floor Laundry', kind: 'check' }, 'important');
   const home = { price: '300000', beds: '3', checks: { 'features:First-floor laundry': true } };
+  const state = (fields, key) => computeMatch({ ...home, ...fields }, priorities).allSelected.find((item) => item.key === key);
+  // The buyer's own Yes for first-floor laundry is unchanged by any location.
   for (const laundryLocation of [undefined, null, 'basement', 'first_floor', 'second_floor']) {
-    assert.deepEqual(computeMatch({ ...home, laundryLocation }, priorities), computeMatch(home, priorities));
+    assert.deepEqual([state({ laundryLocation }, 'features:First-floor laundry').met, state({ laundryLocation }, 'features:First-floor laundry').source], [true, undefined]);
   }
-  assert.doesNotMatch(read('src/lib/matching.js') + read('src/lib/matchCriteria.js'), /laundryLocation|laundry_location/);
+  // Second-floor laundry has no own answer: only the second floor answers it (Yes); nothing answers No.
+  assert.deepEqual([state({ laundryLocation: 'second_floor' }, 'features:Second-Floor Laundry').met, state({ laundryLocation: 'second_floor' }, 'features:Second-Floor Laundry').source], [true, 'home_facts']);
+  for (const laundryLocation of [undefined, null, 'basement', 'first_floor']) {
+    assert.equal(state({ laundryLocation }, 'features:Second-Floor Laundry').evaluated, false, String(laundryLocation));
+  }
   assert.match(read('src/lib/matching.js'), /must: \{ label: 'Must have', weight: 4|weight/);
   assert.match(read('src/lib/constants.js'), /must: \{ label: 'Must have', weight: 4, [^}]*\},\s*important: \{ label: 'Important', weight: 2, [^}]*\},\s*nice: \{ label: 'Nice to have', weight: 1,/);
 });
@@ -240,9 +249,11 @@ dbTest('the autosave queue against real Postgres: rapid edits land as the last v
   assert.equal(row(added.id).high_school, 'Anchor Bay High');
 });
 
-dbTest('no SQL function reads laundry_location (the SQL scorer is unchanged)', () => {
+// Since Home Facts → Match parity (2026-11-02-home-facts-match-parity.sql) the
+// co-buyer Compare scorer reads Laundry Location, exactly as computeMatch does.
+dbTest('only the Compare scorer reads laundry_location', () => {
   const readers = db.admin(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace where n.nspname = 'public' and p.prosrc ilike '%laundry_location%'`);
-  assert.deepEqual(readers, []);
+  assert.deepEqual(readers.map((row) => row.proname), ['resolve_cobuyer_compare_perspectives']);
 });
 
 dbTest('before the migration is applied the app still reads and writes homes (Laundry Location just hides); preflight, migration (twice) and verification', async () => {

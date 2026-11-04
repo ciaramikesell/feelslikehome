@@ -181,8 +181,10 @@ test('the one-shot guard resets after query cleanup so a later Share Extension h
 
 test('regression guard: importer failure/retry behavior in HomeModal is untouched by this pass', () => {
   assert.match(homeModal, /Intentionally do NOT set lastLookupAddress here/);
-  assert.match(homeModal, /We couldn't look up that address right now — you can enter details manually below\./);
-  assert.match(homeModal, /We couldn't reach the property data provider — you can enter details manually below\./);
+  // Failure wording now depends on why the lookup failed (rate limit, timeout,
+  // outage) — see test/rentcast-import-accuracy.test.js — but is still shown.
+  assert.match(homeModal, /setImportErrorMsg\(LOOKUP_FAILURE_NOTES\[data\.reason\] \|\| LOOKUP_FAILURE_NOTES\.unavailable\)/);
+  assert.match(homeModal, /setImportErrorMsg\(LOOKUP_FAILURE_NOTES\.unavailable\)/);
 });
 
 /* ------------------------------ Part 9: mobile/native compatibility ------------------------------ */

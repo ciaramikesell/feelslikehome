@@ -173,10 +173,12 @@ test('Match scoring is unchanged: the new Home Facts details never move a Match'
   assert.deepEqual(computeMatch(withDetails, priorities), computeMatch(home, priorities));
   // The new "3+" spaces choice still reads as 3 for Garage, in JS and in the SQL Compare scorer.
   assert.equal(computeMatch({ ...home, garageSpaces: '3+' }, priorities).allSelected.find((item) => item.key === 'exterior:Garage').met, true);
-  assert.match(read('supabase/migrations/2026-10-18-lot-size-units-match-parity.sql'), /regexp_replace\(v_home\.garage_spaces, '\[\^0-9\.\]', '', 'g'\)/);
-  // And no scorer (JS or the SQL Compare function) reads the new columns.
-  const sqlScorer = read('supabase/migrations/2026-10-18-lot-size-units-match-parity.sql');
-  for (const column of ['garage_type', 'basement_style', 'basement_condition', 'heating', 'school_district_name']) assert.doesNotMatch(sqlScorer + read('src/lib/matching.js'), new RegExp(`\\b${column}\\b`));
+  assert.match(read('supabase/migrations/2026-11-02-home-facts-match-parity.sql'), /substring\(v_home\.garage_spaces from '\[0-9\]\+\(\?:\\\.\[0-9\]\+\)\?\|\\\.\[0-9\]\+'\)::numeric > 0/);
+  // No scorer reads the descriptive details. (Basement style and condition answer
+  // Finished / Walkout basement since the Home Facts → Match parity PR; see
+  // test/home-fact-match-parity.test.js.)
+  const sqlScorer = read('supabase/migrations/2026-11-02-home-facts-match-parity.sql');
+  for (const column of ['garage_type', 'heating', 'school_district_name']) assert.doesNotMatch(sqlScorer + read('src/lib/matching.js'), new RegExp(`\\b${column}\\b`));
 });
 
 test('the welcome says "We found your home." for an import, counts only imported details, and falls back for manual homes', () => {
@@ -194,8 +196,9 @@ test('import: only explicit, unambiguous listing values become Home Facts fields
   assert.equal(fields.heating, 'Forced Air');
   assert.equal(fields.cooling, undefined, 'a bare "has cooling" says nothing about the kind');
   assert.equal(fields.garageType, 'detached');
-  assert.equal(fields.basementCondition, 'finished');
-  assert.equal(fields.basementStyle, 'walkout');
+  // RentCast documents no basement field: an undocumented key is never mapped.
+  assert.equal(fields.basementCondition, undefined);
+  assert.equal(fields.basementStyle, undefined);
   assert.equal(fields.listingId, 'MLS-9');
   assert.equal(normalizeRentCastFields({}, { id: 'rentcast-internal-id' }).fields.listingId, undefined, 'RentCast’s own record id is not a listing ID');
   assert.equal(canonicalGarageType('Attached and detached'), null);
@@ -228,11 +231,14 @@ test('Match Criteria: three tiers, real Yes / No / Unknown radios, rows straight
   assert.match(read('src/components/HomeOverlay.jsx'), /const patch = criterionAnswerPatch\(homeRef\.current, item\.key, next, priorities\.searchType\);\s*if \(patch\.shared\) autosave\.saveShared\(patch\.shared\); else autosave\.savePersonal\(patch\.personal\);/);
 });
 
-test('Garage, Commute and after-tour criteria are never answered in Match Criteria', async () => {
+// Home Facts → Match parity: Garage is answered by garage spaces unless the
+// buyer overrides it, so it is answerable (with "Home Facts" as the third option).
+test('Commute and after-tour criteria are never answered in Match Criteria; Garage can be overridden', async () => {
   let priorities = addCriterion(buy(), { categoryKey: 'exterior', label: 'Garage', kind: 'check' }, 'must');
   priorities = addCriterion(priorities, { categoryKey: 'features', label: 'Finished basement', kind: 'check' }, 'nice');
   const keys = answerableCriteriaKeys(priorities);
-  assert.equal(keys.has('exterior:Garage'), false, 'Garage is scored from Home Facts garage spaces');
+  assert.equal(keys.has('exterior:Garage'), true, 'Garage: Home Facts garage spaces, or the buyer\'s own override');
+  assert.equal(keys.has('location:Commute'), false);
   assert.equal(keys.has('features:Finished basement'), true);
   assert.equal(criterionAnswer({ checks: { 'features:Finished basement': 'no' } }, 'features:Finished basement', priorities.searchType), 'no');
   assert.equal(criterionAnswer({ petsAllowed: false }, 'features:Pets Allowed', 'rent_home'), 'no');

@@ -13,7 +13,9 @@ import { computeMatch } from '../src/lib/matching.js';
 import { ONBOARDING_SUGGESTIONS } from '../src/lib/onboarding.js';
 import { CURRENT_ONBOARDING_VERSION, onboardingStepsFor } from '../src/lib/onboardingFlow.js';
 import { homePreferenceCriterionKeys, homePreferenceRows, homePreferencesSummary, toggleHomePreference } from '../src/lib/homePreferences.js';
-import { derivePriorityCheckPatch } from '../src/lib/importReview.js';
+import { suggestListingAnswers } from '../src/lib/listingTextAnswers.js';
+// Suggested answers as a key → answer map (nothing is written until confirmed).
+const derivePriorityCheckPatch = (text, priorities, checks) => Object.fromEntries(suggestListingAnswers(text, priorities, checks).map((item) => [item.key, item.answer]));
 import {
   addCriterion, availableCriteriaGroups, basicsFieldsFor, isCriterionSelected, moveCriterion, offeredCriteriaGroups, priorityLevels,
 } from '../src/lib/searchProfile.js';

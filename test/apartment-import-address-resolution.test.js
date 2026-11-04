@@ -45,7 +45,7 @@ test('ambiguous and generic URLs gracefully provide no identity', () => {
 test('community RentCast lookup promotes only property-scoped facts', () => {
   const property = { formattedAddress: '2511 Packard St, Ann Arbor, MI 48104', bedrooms: 99, bathrooms: 99, squareFootage: 99999, yearBuilt: 1974, propertyType: 'Apartment', lotSize: 43560, latitude: 42.25, longitude: -83.72 };
   const arbitraryUnit = { price: 1976, bedrooms: 2, bathrooms: 2, squareFootage: 1050, daysOnMarket: 8 };
-  assert.deepEqual(normalizeRentCastFields(property, arbitraryUnit, { apartmentCommunity: true }).fields, {
+  assert.deepEqual(normalizeRentCastFields(property, arbitraryUnit, { apartmentCommunity: true, requestedAddress: '2511 Packard St, Ann Arbor, MI 48104' }).fields, {
     address: property.formattedAddress, lotSize: '1.00 acres', yearBuilt: '1974', propertyType: 'apartment', latitude: 42.25, longitude: -83.72,
   });
 });
@@ -58,7 +58,7 @@ test('community listing cannot populate option and explicit user option survives
 });
 
 test('ordinary rentals remain unchanged and an explicitly scoped option can merge', () => {
-  assert.equal(normalizeRentCastFields(null, { price: 1976, bedrooms: 2 }).fields.price, '1976');
+  assert.equal(normalizeRentCastFields(null, { price: 1976, bedrooms: 2, status: 'Active' }).fields.price, '1976');
   const candidate = { selectedFloorPlanName: 'B2', price: '2050', beds: '2' };
   assert.deepEqual(mergeImportFields({ selectedFloorPlanName: '', price: '', beds: '' }, candidate), candidate);
 });

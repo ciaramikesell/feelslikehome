@@ -92,6 +92,6 @@ test('Tour Feedback keeps its own view of the overlay with every existing contro
 
 test('missing values are visibly Unknown and never written by just looking at a field', () => {
   assert.match(fields, /const unknown = value === null \|\| value === undefined \|\| String\(value\)\.trim\(\) === '';/);
-  assert.match(fields, /if \(!touched\.current \|\| text === null\) return;/);
+  assert.match(fields, /if \(!touched\.current \|\| text === null\) \{ registerDraft\?\.\(id, null\); return; \}/);
   assert.match(read('src/app/globals.css'), /\.flh-quiet\.is-boxed\.is-unknown \.flh-quiet-input \{ background: var\(--warm-unknown\);/);
 });

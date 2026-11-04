@@ -127,6 +127,27 @@ dbTest('a connected Realtor reads the client search and suggests, but never edit
 
 /* ----------------------- buyers control accepted homes ---------------------- */
 
+// Suggest a Home runs HomeModal with personalAnswers={false}, but the editor still
+// sends a whole home object. Answers in it (Match checks, ratings) must never
+// become any buyer's answers, before or after the suggestion is accepted.
+dbTest('a Realtor-suggested home carrying checks or ratings writes no buyer answers, even after it is accepted', async () => {
+  const p = await household();
+  const created = await createRealtorSuggestion(as(p.realtor), p.search, {
+    address: '7 Answer Lane', listingUrl: 'https://example.com/7-answer-lane',
+    checks: { 'features:Fireplace': true, 'features:Finished basement': 'no' }, ratings: { overall: 5 }, reaction: 'love',
+  });
+  assert.equal(created.result, 'created');
+  const answers = () => db.admin(`select user_id, checks, ratings from public.home_member_state where home_id = '${created.home_id}' order by user_id`);
+  assert.equal(answers().some((row) => Object.keys(row.checks || {}).length || Object.keys(row.ratings || {}).length), false, 'nothing staged as an answer');
+  await promoteSuggestion(as(p.owner), created.suggestion_id);
+  const after = answers();
+  assert.ok(after.length >= 1, 'the accepting buyer has a member state');
+  for (const row of after) {
+    assert.deepEqual(row.checks || {}, {}, `no checks for ${row.user_id}`);
+    assert.deepEqual(row.ratings || {}, {}, `no ratings for ${row.user_id}`);
+  }
+});
+
 dbTest('the owner and the co-buyer can each delete an accepted Realtor-suggested home; outsiders cannot', async () => {
   const p = await household();
   const first = await acceptedSuggestion(db, p, '20 First Ave');
