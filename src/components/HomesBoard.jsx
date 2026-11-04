@@ -229,7 +229,8 @@ function HomeCard({ home, priorities, commuteDestinations, mode, filterResult = 
           {propertyFacts.length > 0 && (
             <dl className="hh-property-facts">
               {propertyFacts.map(({ label, value }) => (
-                <div className="hh-property-fact" key={label}>
+                // A value too long for half the card takes the whole row.
+                <div className={`hh-property-fact${String(value).length > 24 ? ' is-wide' : ''}`} key={label}>
                   <dt>{label}</dt>
                   <dd>{value}</dd>
                 </div>
