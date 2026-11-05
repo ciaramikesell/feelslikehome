@@ -683,6 +683,35 @@ export function sharedColumnFor(field) {
 
 // Personal lifecycle/evaluation actions always touch only the authenticated
 // participant's state row, never the shared homes row.
+// Match Reveal (docs/match-reveal.md): records that this buyer's one-time reveal
+// for a home has been shown, and says whether this call was the one that did
+// it. Called only after a save that crossed the threshold, and BEFORE the
+// reveal is shown, so a repeat, a second tab or a reload never shows it twice.
+// `token` is this crossing's own id: when the network drops the request or its
+// response, the claim is retried with the same token, and the server answers
+// true again only if that very claim was the one recorded. A definite answer
+// (false, no permission, migration not applied) is never retried, and nothing
+// here ever throws into the save path.
+export async function claimMatchReveal(supabase, homeId, { token, attempts = 3, retryDelayMs = 400 } = {}) {
+  if (!token) return false;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    let result;
+    try {
+      result = await supabase.rpc('claim_match_reveal', { p_home_id: homeId, p_token: token });
+    } catch {
+      result = { error: { transient: true } };
+    }
+    const { data, error } = result || {};
+    // PostgREST returns a scalar boolean as `true`; tolerate a one-row array too.
+    if (!error) return (Array.isArray(data) ? data[0] : data) === true;
+    // Only a network-level failure (no Postgres / PostgREST code, no HTTP status) is worth another try.
+    const transient = error.transient || (!error.code && !error.status);
+    if (!transient || attempt === attempts - 1) return false;
+    await new Promise((resolve) => setTimeout(resolve, retryDelayMs * 2 ** attempt));
+  }
+  return false;
+}
+
 export async function saveHomePersonalState(supabase, home, userId, searchId) {
   if (!home.id) throw new Error('Cannot save personal state for a home without an id.');
 
