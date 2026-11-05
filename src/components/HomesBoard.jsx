@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   Plus, Search, Archive as ArchiveIcon, ArrowUpRight, Car, ChevronDown,
-  Heart, Home as HomeIcon, Undo2, Footprints, MessageCircle, Check, StickyNote, SlidersHorizontal, X,
+  Heart, Home as HomeIcon, Undo2, Footprints, MessageCircle, Check, SlidersHorizontal, X,
 } from 'lucide-react';
 import { CriteriaDisclosure, MatchSummary } from '@/components/ui';
 import { useCommuteObserver, readCommuteResult, useCommuteCacheVersion } from '@/lib/useCommuteObserver';
@@ -30,7 +30,8 @@ import { isLikelyListingUrl, findHomeByListingUrl } from '@/lib/listingUrl';
 import { parseNum, fmtMoney, homeStyleSummary, computeMatch, matchColor, matchTint, selectHomeCardCriteria, criterionLabel } from '@/lib/matching';
 import { homeCardSnapshot } from '@/lib/homeCardPresentation';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
-import { formatHomePrice, formatLotSizeDisplay, noteFieldCount } from '@/lib/homeDisplay';
+import { formatHomePrice, formatLotSizeDisplay, homeNoteGroups } from '@/lib/homeDisplay';
+import HomeNotesPreview from '@/components/HomeNotesPreview';
 import { normalizeSearchIntent, searchIntentCapabilities } from '@/lib/searchIntent';
 import { isNativeApp } from '@/lib/platform';
 import { deriveFlhMoment } from '@/lib/flhMoments';
@@ -125,9 +126,11 @@ function HomeCard({ home, priorities, commuteDestinations, mode, filterResult = 
   // Descriptive shared facts ("what this home has"). homeCardSnapshot drops a
   // fact with no saved value (or an Unknown one) rather than inventing it.
   const propertyFacts = homeCardSnapshot(home, styleSummary);
-  // Pros / cons are freeform text: counted once per field, never split on commas.
-  const noteCount = noteFieldCount(home);
-  const notesLink = noteCount > 0 && <Link className="hh-notes-indicator" scroll={false} onClick={onOpen} href={`${homeHref}${homeHref.includes('?') ? '&' : '?'}section=tour`}><StickyNote size={13} aria-hidden="true" /> Notes ({noteCount})</Link>;
+  // Shared Notes / Pros / Cons: "Notes (n) · Pros (n) · Cons (n)", one entry per
+  // written line (never split on commas), each previewed on hover, tap or focus.
+  // Nothing renders when none is written.
+  const notesPreview = <HomeNotesPreview home={home} href={`${homeHref}${homeHref.includes('?') ? '&' : '?'}section=tour`} onOpen={onOpen} address={identity.accessible} />;
+  const hasNotes = homeNoteGroups(home).length > 0;
   const floorPlansAction = floorPlans && <FloorPlansAction count={floorPlans.countFor(home)} canEdit={floorPlans.canEdit} address={identity.accessible} onOpen={() => floorPlans.open(home)} />;
   const { mustHaves, criteriaSummary } = cardCriteria;
   const coBuyerActivity = home.coBuyerWantsToTour ? 'Co-buyer wants to tour' : home.coBuyerFavorited ? 'Co-buyer favorited' : null;
@@ -229,8 +232,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, filterResult = 
           {propertyFacts.length > 0 && (
             <dl className="hh-property-facts">
               {propertyFacts.map(({ label, value }) => (
-                // A value too long for half the card takes the whole row.
-                <div className={`hh-property-fact${String(value).length > 24 ? ' is-wide' : ''}`} key={label}>
+                <div className="hh-property-fact" key={label}>
                   <dt>{label}</dt>
                   <dd>{value}</dd>
                 </div>
@@ -259,16 +261,16 @@ function HomeCard({ home, priorities, commuteDestinations, mode, filterResult = 
             </>
           )}
 
-          {/* Floor Plans off (the default): exactly the Notes link as before. On:
-              Notes on the left, the quiet Floor Plans action on the right. */}
+          {/* Floor Plans off (the default): the Notes / Pros / Cons previews alone.
+              On: previews on the left, the quiet Floor Plans action on the right. */}
           {floorPlans ? (
-            (noteCount > 0 || floorPlansAction) && (
+            (hasNotes || floorPlansAction) && (
               <div className="hh-card-notes-row">
-                {notesLink || <span aria-hidden="true" />}
+                {hasNotes ? notesPreview : <span aria-hidden="true" />}
                 {floorPlansAction}
               </div>
             )
-          ) : notesLink}
+          ) : notesPreview}
 
           {mode === 'tour' && wantToTourState?.wantToTourLabel && (
             <div className="hh-lifecycle-status">

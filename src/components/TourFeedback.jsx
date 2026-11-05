@@ -6,6 +6,7 @@ import { POST_TOUR_EVALUATIONS, POST_TOUR_RESPONSES, POST_TOUR_VERDICTS } from '
 import { criterionDisplayLabel, isArchivedStatus, TOUR_RATING_KEY, tourResponseLabel, tourResponseOptions } from '@/lib/constants';
 import { inPersonAnswer, inPersonCriteria } from '@/lib/matchCriteria';
 import { hasToured, postTourVerdict } from '@/lib/lifecycle';
+import { noteEntries } from '@/lib/homeDisplay';
 
 // Tour Feedback — "how did I actually feel about this home?"
 // Reuses the existing stores and workflows only:
@@ -99,8 +100,8 @@ function NotesEditor({ home, onSave, onCancel }) {
   };
   return (
     <div className="flh-tour-notes-form">
-      <label>What you loved<textarea className="hh-textarea flh-tour-short-text" value={draft.pros} onChange={(event) => setDraft({ ...draft, pros: event.target.value })} placeholder="Great kitchen, quiet street" /></label>
-      <label>What gave you pause<textarea className="hh-textarea flh-tour-short-text" value={draft.cons} onChange={(event) => setDraft({ ...draft, cons: event.target.value })} placeholder="Busy road" /></label>
+      <label>What you loved <span>One per line</span><textarea className="hh-textarea flh-tour-short-text" value={draft.pros} onChange={(event) => setDraft({ ...draft, pros: event.target.value })} placeholder={'Great kitchen\nQuiet street'} /></label>
+      <label>What gave you pause <span>One per line</span><textarea className="hh-textarea flh-tour-short-text" value={draft.cons} onChange={(event) => setDraft({ ...draft, cons: event.target.value })} placeholder="Busy road" /></label>
       <label className="wide">Notes<textarea className="hh-textarea" value={draft.notes} onChange={(event) => setDraft({ ...draft, notes: event.target.value })} placeholder="HOA details, sewer/water, financing options, recent updates, listing terms, or anything else worth noting." /></label>
       {error && <p className="hh-save-error wide" role="alert">{error}</p>}
       <div className="wide flh-tour-form-actions"><button type="button" className="hh-btn hh-btn-ghost" onClick={onCancel} disabled={saving}>Cancel</button><button type="button" className="hh-btn" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save notes'}</button></div>
@@ -108,13 +109,16 @@ function NotesEditor({ home, onSave, onCancel }) {
   );
 }
 
+// eslint-disable-next-line react/no-array-index-key
+const EntryList = ({ entries, marker }) => <ul>{entries.map((entry, i) => <li key={`${i}-${entry}`}><span aria-hidden="true">{marker}</span>{entry}</li>)}</ul>;
+
 function NotesSection({ home, title, intro, readOnly, isCollaborative, onSaveNotes }) {
   const [editing, setEditing] = useState(false);
-  // Shown exactly as written: splitting on commas would break phrases such as
-  // "Bright, open living room" (pros and cons are free text, not lists).
-  const pros = (home.pros || '').trim();
-  const cons = (home.cons || '').trim();
-  const hasAny = pros || cons || home.notes;
+  // One entry per written line, each exactly as written: never split on commas,
+  // which would break phrases such as "Bright, open living room".
+  const pros = noteEntries(home.pros);
+  const cons = noteEntries(home.cons);
+  const hasAny = pros.length || cons.length || home.notes;
   return (
     <section className="flh-tour-block" aria-labelledby="tour-notes-title">
       <div className="flh-tour-block-head">
@@ -123,8 +127,8 @@ function NotesSection({ home, title, intro, readOnly, isCollaborative, onSaveNot
       </div>
       {editing ? <NotesEditor home={home} onCancel={() => setEditing(false)} onSave={async (draft) => { await onSaveNotes(draft); setEditing(false); }} />
         : hasAny ? <div className="flh-tour-notes">
-          <div className="flh-tour-list is-loved"><h4>What {readOnly ? 'they' : 'you'} loved</h4>{pros ? <p>{pros}</p> : <p className="flh-tour-empty-line">Nothing yet.</p>}</div>
-          <div className="flh-tour-list is-pause"><h4>What gave {readOnly ? 'them' : 'you'} pause</h4>{cons ? <p>{cons}</p> : <p className="flh-tour-empty-line">Nothing yet.</p>}</div>
+          <div className="flh-tour-list is-loved"><h4>What {readOnly ? 'they' : 'you'} loved</h4>{pros.length ? <EntryList entries={pros} marker="+" /> : <p className="flh-tour-empty-line">Nothing yet.</p>}</div>
+          <div className="flh-tour-list is-pause"><h4>What gave {readOnly ? 'them' : 'you'} pause</h4>{cons.length ? <EntryList entries={cons} marker="−" /> : <p className="flh-tour-empty-line">Nothing yet.</p>}</div>
           {home.notes && <div className="flh-tour-list is-notes wide"><h4>Notes</h4><p>{home.notes}</p></div>}
         </div>
           : <p className="flh-tour-empty-line">{readOnly ? 'No notes yet.' : 'Nothing written yet. Jot down anything — before or after a visit.'}</p>}

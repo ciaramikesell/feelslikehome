@@ -12,6 +12,7 @@ import {
 import { visibleOrderedItems, parseListingTextFindings, selectedSubjectiveCriteria, computeMatch, SHARED_BOOLEAN_FACT_FIELDS, sharedFactAnswer, sharedFactValue } from '@/lib/matching';
 import { extractAddressFromListingUrl, extractApartmentIdentityFromListingUrl, isLikelyListingUrl, findHomeByListingUrl } from '@/lib/listingUrl';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
+import NoteListFields from '@/components/NoteListFields';
 import { mergeImportFields, resolveImport } from '@/lib/importDomain';
 import { appendAllSuggestions, appendSuggestionToNotes, extractEnrichmentSuggestions } from '@/lib/importReview';
 import { applyListingAnswer, hasRecordedAnswer, listingTextEvidence, resuggestListingAnswers, undoListingAnswer } from '@/lib/listingTextAnswers';
@@ -455,11 +456,7 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
           <section className="hh-edit-home-card" data-step="match" aria-labelledby="shared-notes-heading">
             <h2 id="shared-notes-heading" className="hh-serif">{isCollaborative ? 'Shared notes' : 'Your perspective'}</h2>
             <p className="hh-edit-context">{isCollaborative ? 'Pros, cons, and notes are visible to everyone in this search.' : 'Your impressions — not verified property facts.'}{isCollaborative && ' Your Yes / No / Unknown answers and Match stay your own.'}</p>
-            <div className="hh-edit-notes-fields">
-              <div><label className="hh-label" htmlFor="edit-home-pros">+ Pros</label><textarea id="edit-home-pros" className="hh-textarea" value={form.pros || ''} onChange={(e) => set('pros', e.target.value)} placeholder="Bright front room, dedicated office…" /></div>
-              <div><label className="hh-label" htmlFor="edit-home-cons">− Cons</label><textarea id="edit-home-cons" className="hh-textarea" value={form.cons || ''} onChange={(e) => set('cons', e.target.value)} placeholder="Backyard fencing is unclear…" /></div>
-              <div><label className="hh-label" htmlFor="edit-home-notes">Notes</label><textarea id="edit-home-notes" className="hh-textarea" value={form.notes || ''} onChange={(e) => set('notes', e.target.value)} placeholder="HOA details, sewer/water, financing options, recent updates, listing terms, or anything else worth noting." /></div>
-            </div>
+            <NoteListFields form={form} set={set} idPrefix="edit-home" />
           </section>
           {matchPerspectives.length > 0 && form.address.trim() && <section className="hh-edit-home-card hh-suggestion-match-preview" data-step="match" aria-label="Buyer Match preview"><h2 className="hh-serif">How this lines up</h2><p>Based only on currently known property facts. Unknown details are not counted as misses.</p>{matchPerspectives.map((perspective) => { const match = computeMatch(form, perspective.priorities); return <div key={perspective.userId}><b>{perspective.name}</b><span>{match?.pct == null ? 'Match needs more known facts' : `${match.pct}% Match`}</span><small>{match?.allSelected?.filter((item) => !item.evaluated).slice(0, 3).map((item) => `${item.label} — Unknown`).join(' · ')}</small></div>; })}</section>}
         </div>
@@ -615,6 +612,11 @@ function ImportFoundCard({ form, set, importResult, lookupResult = null, importP
     <ListingDetailsPaste paste={paste} />
     <HomeFactReview review={factReview} />
     <ListingAnswerReview review={answerReview} />
+    {/* Optional and collapsed: shared Notes / Pros / Cons saved with the home. */}
+    <details className="hh-details flh-found-notes">
+      <summary>Add notes, pros, or cons <span>Optional · shared with this search</span><ChevronDown className="hh-accordion-chevron" size={18} aria-hidden="true" /></summary>
+      <NoteListFields form={form} set={set} idPrefix="add-home" />
+    </details>
     {saveErrorMsg && <div className="hh-edit-save-error" role="alert">{saveErrorMsg}</div>}
     <div className="flh-found-actions">
       <button type="button" className="hh-btn flh-found-add" onClick={onAdd} disabled={saving || !form.address.trim()}><Plus size={16} aria-hidden="true" /> {saving ? 'Adding…' : 'Add to My Homes'}</button>

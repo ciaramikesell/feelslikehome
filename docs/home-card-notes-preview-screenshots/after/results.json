@@ -1,0 +1,65 @@
+{
+  "homes": [
+    {
+      "street": "210 Maple Ave",
+      "expect": [
+        "Notes (3)",
+        "Pros (3)",
+        "Cons (3)"
+      ]
+    },
+    {
+      "street": "4471 Long Description Blvd",
+      "expect": [
+        "Cons (8)"
+      ]
+    },
+    {
+      "street": "9 Legacy Ct",
+      "expect": [
+        "Pros (1)"
+      ]
+    },
+    {
+      "street": "77 Short St",
+      "expect": []
+    }
+  ],
+  "log": [
+    {
+      "step": "[desktop] counts only for written groups, below Commute and above the actions; calm fact rows; no overflow",
+      "ok": true,
+      "ms": 2949
+    },
+    {
+      "step": "[desktop] hover previews without a click; moving into the preview keeps it; leaving closes it; click pins",
+      "ok": true,
+      "ms": 900
+    },
+    {
+      "step": "[desktop] keyboard: Tab shows the preview with a visible focus ring; Enter pins; Escape closes and keeps focus; link reachable",
+      "ok": true,
+      "ms": 259
+    },
+    {
+      "step": "[iphone] counts only for written groups, below Commute and above the actions; calm fact rows; no overflow",
+      "ok": true,
+      "ms": 3170
+    },
+    {
+      "step": "[iphone] tap opens the preview, tap again closes, tap outside closes; 44px targets",
+      "ok": true,
+      "ms": 1150
+    },
+    {
+      "step": "[iphone] Add Home: optional Notes / Pros / Cons, collapsed; saved with the home and counted on its card",
+      "ok": true,
+      "ms": 7203
+    },
+    {
+      "step": "[iphone] edit Pros in Tour Feedback (\"View or edit notes\"): saved and reflected on the card",
+      "ok": true,
+      "ms": 3709
+    }
+  ]
+}

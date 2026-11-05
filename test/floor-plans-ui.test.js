@@ -47,10 +47,10 @@ test('the flag is server-side and gates every page that renders plan cards', () 
 
 /* ----------------------------- flag off = as before ----------------------------- */
 
-test('flag off: the card renders exactly the old Notes link and mounts no viewer', () => {
+test('flag off: the card renders only the Notes / Pros / Cons previews and mounts no viewer', () => {
   assert.match(card, /floorPlans = null \}\) \{/);
-  assert.match(card, /\{floorPlans \? \([\s\S]*?\) : notesLink\}/);
-  assert.match(card, /const notesLink = noteCount > 0 && <Link className="hh-notes-indicator" scroll=\{false\} onClick=\{onOpen\} href=\{`\$\{homeHref\}\$\{homeHref\.includes\('\?'\) \? '&' : '\?'\}section=tour`\}><StickyNote size=\{13\} aria-hidden="true" \/> Notes \(\{noteCount\}\)<\/Link>;/);
+  assert.match(card, /\{floorPlans \? \([\s\S]*?\) : notesPreview\}/);
+  assert.match(card, /const notesPreview = <HomeNotesPreview home=\{home\} href=\{`\$\{homeHref\}\$\{homeHref\.includes\('\?'\) \? '&' : '\?'\}section=tour`\} onOpen=\{onOpen\}/);
   assert.match(card, /const floorPlansAction = floorPlans && <FloorPlansAction/);
   assert.match(board, /const floorPlanViewer = floorPlans && floorPlanHome && \(/);
   assert.match(board, /const floorPlanCards = useMemo\(\(\) => floorPlans && \{/);
@@ -94,7 +94,7 @@ test('card action: Realtors with no plans see nothing; buyers are offered Add; c
   assert.equal(floorPlansActionLabel(null, false), 'Floor plans', 'unknown count still lets anyone look');
   assert.match(realtor, /<FloorPlansAction count=\{floorPlans\.countFor\(home\)\} canEdit=\{false\}/);
   // Notes on the left, Floor Plans on the right, quiet text styling, 44px on phones.
-  assert.match(card, /<div className="hh-card-notes-row">\s*\{notesLink \|\| <span aria-hidden="true" \/>\}\s*\{floorPlansAction\}/);
+  assert.match(card, /<div className="hh-card-notes-row">\s*\{hasNotes \? notesPreview : <span aria-hidden="true" \/>\}\s*\{floorPlansAction\}/);
   assert.match(fpCss, /\.hh-card-notes-row \{ display: flex; align-items: center; justify-content: space-between;/);
   assert.match(fpCss, /\.hh-floor-plans-action \{[^}]*margin-left: auto;[^}]*background: none; color: var\(--ink-soft\);/);
   assert.match(fpCss, /@media \(max-width: 700px\) \{ \.hh-floor-plans-action, \.hh-card-notes-row \.hh-notes-indicator \{ min-height: 44px; \} \}/);

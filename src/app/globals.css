@@ -204,6 +204,9 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .hh-edit-note-summary span, .hh-edit-note-summary li { color: var(--ink-soft); font-size: 11px; line-height: 1.45; }
 .hh-edit-note-summary ul { margin: 0; padding-left: 16px; }
 .hh-edit-notes-fields { display: grid; gap: 10px; }
+.hh-note-list-field .hh-label { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.hh-note-list-hint { color: var(--ink-soft); font-size: 11.5px; font-weight: 500; letter-spacing: 0; text-transform: none; }
+.hh-note-list-field textarea { min-height: 76px; line-height: 1.5; }
 .hh-edit-save-error { margin: 0 24px 12px; padding: 10px 14px; border: 1px solid var(--negative); border-radius: 10px; color: var(--negative); background: rgba(166,63,50,.07); font-size: 12.5px; }
 .hh-edit-home-footer { position: sticky; bottom: 0; display: flex; justify-content: flex-end; gap: 10px; padding: 14px 24px; border-top: 1px solid var(--line); background: rgba(255,255,255,.97); }
 .hh-scrollx { overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; background: var(--paper-raised); }
@@ -2421,6 +2424,12 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 /* Add Home: the listing was found. A calm card, a sage acknowledgement and one
    clear action — never a long form first. */
 .flh-found { display: grid; gap: 14px; margin-top: 16px; }
+/* Add Home: optional shared Notes / Pros / Cons, collapsed by default. */
+.flh-found-notes { margin: 0; }
+.flh-found-notes > summary { list-style: none; justify-content: space-between; flex-wrap: wrap; min-height: 28px; }
+.flh-found-notes > summary::-webkit-details-marker { display: none; }
+.flh-found-notes > summary > span { flex: 1 1 auto; color: var(--ink-soft); font-size: 12px; font-weight: 500; }
+.flh-found-notes[open] > summary { margin-bottom: 12px; }
 .flh-found-card { display: grid; grid-template-columns: minmax(150px,.85fr) minmax(0,1.15fr); gap: 20px; align-items: center; padding: 16px; border: 1px solid rgba(138,124,110,.2); border-radius: 16px; background: var(--paper-raised); }
 .flh-found-photo { display: grid; place-items: center; height: 150px; overflow: hidden; border-radius: 12px; background: #ece4d8; color: rgba(46,38,33,.3); }
 .flh-found-photo img { width: 100%; height: 100%; object-fit: cover; }
@@ -2742,17 +2751,13 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .hh-match-summary-sep { color: var(--ink-soft); }
 .hh-match-empty { margin: 0; color: var(--ink-soft); font-size: 12px; }
 
-/* Property facts: a two-column grid, each fact's quiet label above its value
-   (a 12px small-caps label in the card's secondary ink). A long
-   value takes the full row instead of wrapping in a narrow column. */
-.hh-property-facts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; margin: 0; }
-.hh-property-fact { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.hh-property-fact.is-wide { grid-column: 1 / -1; }
-.hh-property-fact dt { color: var(--ink-soft); font: 600 12px/1.25 var(--font-ui); letter-spacing: .035em; text-transform: uppercase; }
-.hh-property-fact dd { margin: 0; min-width: 0; color: var(--ink); font-size: 13px; line-height: 1.35; overflow-wrap: break-word; text-wrap: pretty; }
-@container (max-width: 220px) {
-  .hh-property-facts { grid-template-columns: minmax(0, 1fr); }
-}
+/* Property facts: calm label → value rows (the pre-polish layout), values a
+   touch larger and rows a little roomier so they scan easily. Labels stay in
+   sentence case in the secondary ink; a long value wraps in its own column. */
+.hh-property-facts { display: grid; gap: 7px; margin: 0; }
+.hh-property-fact { display: grid; grid-template-columns: minmax(88px, 40%) minmax(0, 1fr); gap: 12px; align-items: baseline; font-size: 13px; line-height: 1.4; }
+.hh-property-fact dt { color: var(--ink-soft); }
+.hh-property-fact dd { margin: 0; min-width: 0; color: var(--ink); overflow-wrap: break-word; text-wrap: pretty; }
 
 /* Commute */
 .hh-card-commute { display: grid; gap: 6px; padding: 10px 12px; border-radius: 8px; background: #F2EFEA; }
@@ -2763,8 +2768,27 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .hh-card-commute-route strong.is-quiet { color: var(--ink-soft); font-weight: 500; }
 
 /* Want to Tour / toured follow-ups keep their existing actions. */
-.hh-notes-indicator { display: inline-flex; align-self: flex-start; align-items: center; gap: 5px; min-height: 32px; color: var(--ink-soft); font-size: 12px; font-weight: 600; text-decoration: none; }
-.hh-notes-indicator:hover { color: var(--brick); }
+/* Notes / Pros / Cons: quiet counts under Commute; each previews its entries
+   in a small popover above the row (hover, focus, or tap). The popover spans
+   the row, so it never runs past the card's edge. */
+.hh-note-previews { position: relative; display: flex; flex-wrap: wrap; align-items: center; align-self: flex-start; gap: 0 6px; min-width: 0; max-width: 100%; }
+.hh-note-preview { display: inline-flex; align-items: center; gap: 6px; }
+.hh-note-preview-sep { color: var(--ink-soft); font-size: 12px; }
+.hh-note-preview-trigger { min-height: 32px; padding: 0; -webkit-tap-highlight-color: transparent; border: 0; background: none; color: var(--ink-soft); font: 600 12px/1.3 var(--font-ui); cursor: pointer; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); }
+.hh-note-preview.is-pros .hh-note-preview-trigger { color: var(--flh-sage-ink); }
+.hh-note-preview.is-cons .hh-note-preview-trigger { color: var(--brick); }
+.hh-note-preview-trigger:hover, .hh-note-preview-trigger[aria-expanded="true"] { text-decoration-color: currentColor; }
+.hh-note-preview-trigger:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: 3px; }
+.hh-note-popover { position: absolute; z-index: 20; left: 0; bottom: calc(100% + 4px); width: min(280px, 100cqw); max-height: 240px; overflow: auto; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper-raised); box-shadow: 0 8px 22px rgba(46,38,33,.18); color: var(--ink); font-family: var(--font-ui); text-align: left; }
+.hh-note-popover > strong { display: block; margin-bottom: 6px; color: var(--ink-soft); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
+.hh-note-popover ul { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.hh-note-popover li { display: flex; gap: 7px; font-size: 12.5px; line-height: 1.4; overflow-wrap: anywhere; }
+.hh-note-popover li > span:first-child { flex: 0 0 9px; color: var(--ink-soft); font-weight: 700; text-align: center; }
+.hh-note-preview.is-pros .hh-note-popover li > span:first-child { color: var(--flh-sage-ink); }
+.hh-note-preview.is-cons .hh-note-popover li > span:first-child { color: var(--brick); }
+.hh-note-popover-link { display: inline-block; margin-top: 8px; color: var(--ink-soft); font-size: 11.5px; font-weight: 600; }
+.hh-note-popover-link:hover { color: var(--brick); }
+@media (max-width: 700px), (pointer: coarse) { .hh-note-preview-trigger { min-height: 44px; } }
 .hh-card-tour-action.hh-btn { justify-content: center; min-height: 40px; padding: 8px 12px; border-radius: 8px; font-size: 13px; }
 .hh-card-tour-action.is-quiet { border-color: rgba(185,83,50,.4); color: var(--brick); }
 
