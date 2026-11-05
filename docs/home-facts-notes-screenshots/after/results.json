@@ -1,0 +1,175 @@
+{
+  "captureOnly": false,
+  "layout": {
+    "desktop": {
+      "clipped": [],
+      "garage": {
+        "sameRow": true,
+        "widths": [
+          278,
+          278
+        ]
+      },
+      "basement": {
+        "sameRow": true,
+        "widths": [
+          278,
+          278
+        ]
+      },
+      "labelBeside": false,
+      "columns": [
+        471,
+        515
+      ],
+      "sideWidth": 570,
+      "notesAfterBasement": true,
+      "spill": [],
+      "overflow": 0,
+      "pageOverflow": 0
+    },
+    "ipad-landscape": {
+      "clipped": [],
+      "garage": {
+        "sameRow": true,
+        "widths": [
+          203,
+          203
+        ]
+      },
+      "basement": {
+        "sameRow": true,
+        "widths": [
+          203,
+          203
+        ]
+      },
+      "labelBeside": false,
+      "columns": [
+        483,
+        515
+      ],
+      "sideWidth": 420,
+      "notesAfterBasement": true,
+      "spill": [],
+      "overflow": 0,
+      "pageOverflow": 0
+    },
+    "ipad-portrait": {
+      "clipped": [],
+      "garage": {
+        "sameRow": false,
+        "widths": [
+          167,
+          167
+        ]
+      },
+      "basement": {
+        "sameRow": false,
+        "widths": [
+          167,
+          167
+        ]
+      },
+      "labelBeside": true,
+      "columns": [
+        493,
+        597
+      ],
+      "sideWidth": 312,
+      "notesAfterBasement": true,
+      "spill": [],
+      "overflow": 0,
+      "pageOverflow": 0
+    },
+    "iphone": {
+      "clipped": [],
+      "garage": {
+        "sameRow": false,
+        "widths": [
+          192,
+          192
+        ]
+      },
+      "basement": {
+        "sameRow": false,
+        "widths": [
+          192,
+          192
+        ]
+      },
+      "labelBeside": true,
+      "columns": [
+        336,
+        597
+      ],
+      "sideWidth": 358,
+      "notesAfterBasement": true,
+      "spill": [],
+      "overflow": 0,
+      "pageOverflow": 0
+    }
+  },
+  "log": [
+    {
+      "step": "[desktop] Home Facts layout",
+      "ok": true,
+      "ms": 6504
+    },
+    {
+      "step": "[desktop] Unknown values and long options fit; dropdown edits save as before",
+      "ok": true,
+      "ms": 3597
+    },
+    {
+      "step": "[desktop] keyboard: Type → Spaces → Style → Condition → Notes → Pros → Cons, visible focus",
+      "ok": true,
+      "ms": 2509
+    },
+    {
+      "step": "[desktop] edit Pros inline: saved as typed, and the Home Card shows the new count at once",
+      "ok": true,
+      "ms": 3625
+    },
+    {
+      "step": "[desktop] a co-buyer sees the same text in Home Facts and on their card",
+      "ok": true,
+      "ms": 4752
+    },
+    {
+      "step": "[desktop] simultaneous edits: conflict shown, nothing overwritten; unrelated facts kept; Keep mine / Use theirs",
+      "ok": true,
+      "ms": 9270
+    },
+    {
+      "step": "[desktop] a failed save keeps the text, marks the field and Retry saves it",
+      "ok": true,
+      "ms": 3451
+    },
+    {
+      "step": "[desktop] Tour Feedback's notes editor and Home Facts stay in step",
+      "ok": true,
+      "ms": 505
+    },
+    {
+      "step": "[ipad-landscape] Home Facts layout",
+      "ok": true,
+      "ms": 2985
+    },
+    {
+      "step": "[ipad-portrait] Home Facts layout",
+      "ok": true,
+      "ms": 2834
+    },
+    {
+      "step": "[iphone] Home Facts layout",
+      "ok": true,
+      "ms": 3038
+    },
+    {
+      "step": "[iphone] edit Cons inline (16px, no zoom), saved, card updated; close commits typed text",
+      "ok": true,
+      "ms": 4546
+    }
+  ]
+}

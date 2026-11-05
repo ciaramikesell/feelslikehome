@@ -60,7 +60,11 @@ test('one continuous scroll: no tabs or section switcher, no Edit or Save button
 });
 
 test('shared facts autosave as partial updates; personal answers only to the caller\'s own row', () => {
-  assert.match(overlay, /writeShared: \(patch\) => saveHomeSharedFields\(createClient\(\), serverHome\.id, patch\)/);
+  // Every shared fact: a column-level update. Notes / Pros / Cons: the same,
+  // guarded against overwriting someone else's newer text.
+  assert.match(overlay, /if \(Object\.keys\(other\)\.length\) await saveHomeSharedFields\(createClient\(\), serverHome\.id, other\);/);
+  assert.match(overlay, /await saveHomeSharedFields\(createClient\(\), serverHome\.id, notes, \{ expected: /);
+  assert.match(overlay, /const autosave = useHomeAutosave\(\{\s*home,\s*applyLocal,\s*writeShared,/);
   assert.match(overlay, /writePersonal: \(snapshot\) => saveHomePersonalState\(createClient\(\), snapshot, userId, searchId\)/);
   const fn = read('src/lib/supabase/collaboration.js').match(/export async function saveHomeSharedFields\([\s\S]*?\n\}/)[0];
   assert.match(fn, /if \(unknown\.length\) throw new Error/);

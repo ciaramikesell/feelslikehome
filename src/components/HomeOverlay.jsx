@@ -23,13 +23,38 @@ import { useCommuteObserver } from '@/lib/useCommuteObserver';
 import { useHomeAutosave } from '@/lib/useHomeAutosave';
 import { applyPostTourVerdict, archiveHome, restoreHome, toggleFavorite } from '@/lib/lifecycle';
 import { createClient } from '@/lib/supabase/client';
-import { claimMatchReveal, saveHomePersonalAndShared, saveHomePersonalState, saveHomeSharedFields, sharedFieldChanges } from '@/lib/supabase/collaboration';
+import {
+  SHARED_NOTE_FIELDS, SHARED_NOTES_CONFLICT, claimMatchReveal, saveHomePersonalAndShared, saveHomePersonalState, saveHomeSharedFields, sharedFieldChanges,
+} from '@/lib/supabase/collaboration';
+import { noteEntries } from '@/lib/homeDisplay';
 import { refreshMyHomes } from '@/app/(app)/homes/actions';
 
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const PERSONAL_FIELDS = ['status', 'touredAt', 'isFavorite', 'reaction', 'rejectionReason', 'ratings', 'checks'];
+const NOTE_LABELS = { notes: 'Notes', pros: 'Pros', cons: 'Cons' };
+const pickNotes = (home) => Object.fromEntries(SHARED_NOTE_FIELDS.map((field) => [field, home?.[field] ?? '']));
+const listJoin = (items) => (items.length < 3 ? items.join(' and ') : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`);
 
-function SaveState({ status, onRetry }) {
+// Shared Notes / Pros / Cons someone else changed while this buyer was
+// editing: their version is shown, nothing is overwritten until they choose.
+function NotesConflict({ conflict, onKeepMine, onUseTheirs }) {
+  const fields = Object.keys(conflict);
+  return <div className="flh-overlay-blocked flh-notes-conflict" role="alert">
+    <p><strong>{listJoin(fields.map((field) => NOTE_LABELS[field]))} {fields.length === 1 ? 'was' : 'were'} changed by someone else in this search while you were editing.</strong> Your version is still on screen and hasn’t been saved.</p>
+    {fields.map((field) => {
+      const entries = noteEntries(conflict[field]);
+      return <div className="flh-notes-conflict-theirs" key={field}><span>Their {NOTE_LABELS[field]}</span>{entries.length ? <ul>{entries.map((entry, i) => <li key={`${i}-${entry}`}>{entry}</li>)}</ul> : <em>Empty</em>}</div>;
+    })}
+    <div>
+      <button type="button" className="hh-btn" onClick={onKeepMine}>Keep mine</button>
+      <button type="button" className="hh-btn hh-btn-ghost" onClick={onUseTheirs}>Use theirs</button>
+    </div>
+  </div>;
+}
+
+function SaveState({ status, onRetry, conflict = false }) {
+  // A notes conflict needs a choice (Keep mine / Use theirs), not a retry.
+  if (conflict) return <span className="flh-overlay-save is-error" role="status"><AlertCircle size={14} aria-hidden="true" /> Notes not saved — choose a version</span>;
   if (status === 'saving') return <span className="flh-overlay-save is-saving" role="status"><Loader2 size={14} aria-hidden="true" /> Saving…</span>;
   if (status === 'error') return <span className="flh-overlay-save is-error" role="alert"><AlertCircle size={14} aria-hidden="true" /> Couldn’t save <button type="button" onClick={onRetry}>Retry</button></span>;
   if (status === 'saved') return <span className="flh-overlay-save is-saved" role="status"><Check size={14} aria-hidden="true" /> Saved</span>;
@@ -66,10 +91,36 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
   nestedRef.current = nestedOpen;
 
   const applyLocal = useCallback((patch) => updateHome(serverHome.id, patch), [updateHome, serverHome.id]);
+  // Shared Notes / Pros / Cons: the text this buyer last saw saved. A note write
+  // succeeds only if the saved text is still that (saveHomeSharedFields'
+  // `expected`); otherwise the conflict is shown and nothing is overwritten.
+  // Every other shared fact keeps its column-level write.
+  const notesSeen = useRef(null);
+  if (notesSeen.current === null) notesSeen.current = pickNotes(serverHome);
+  const [notesConflict, setNotesConflict] = useState(null);
+  const writeShared = async (patch) => {
+    const noteFields = SHARED_NOTE_FIELDS.filter((field) => field in patch);
+    const other = Object.fromEntries(Object.entries(patch).filter(([field]) => !noteFields.includes(field)));
+    if (Object.keys(other).length) await saveHomeSharedFields(createClient(), serverHome.id, other);
+    if (!noteFields.length) return;
+    const notes = Object.fromEntries(noteFields.map((field) => [field, patch[field] ?? '']));
+    try {
+      await saveHomeSharedFields(createClient(), serverHome.id, notes, { expected: Object.fromEntries(noteFields.map((field) => [field, notesSeen.current[field]])) });
+    } catch (error) {
+      if (error?.code === SHARED_NOTES_CONFLICT) setNotesConflict((current) => ({ ...current, ...error.current }));
+      throw error;
+    }
+    Object.assign(notesSeen.current, notes);
+    setNotesConflict((current) => {
+      if (!current) return current;
+      const rest = Object.fromEntries(Object.entries(current).filter(([field]) => !noteFields.includes(field)));
+      return Object.keys(rest).length ? rest : null;
+    });
+  };
   const autosave = useHomeAutosave({
     home,
     applyLocal,
-    writeShared: (patch) => saveHomeSharedFields(createClient(), serverHome.id, patch),
+    writeShared,
     writePersonal: (snapshot) => saveHomePersonalState(createClient(), snapshot, userId, searchId),
     onBusyChange: (busy) => setBusy(serverHome.id, busy),
   });
@@ -97,6 +148,32 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
   // local home is exactly what was persisted. savedVersion makes this run once
   // per completed save, even if 'saving' and 'saved' render together.
   useEffect(() => { if (autosave.status === 'saved') considerReveal(homeRef.current); }, [autosave.status, autosave.savedVersion, considerReveal]);
+  // A fresh server read is what this buyer has now seen, unless their own
+  // edits are still unsaved (then they keep the text they started from).
+  // Runs on a new server read only (never on re-render: that would put an
+  // older read back over text this buyer has since saved).
+  const hasUnsavedRef = useRef(autosave.hasUnsaved);
+  hasUnsavedRef.current = autosave.hasUnsaved;
+  const seenServerHome = useRef(serverHome);
+  useEffect(() => {
+    if (seenServerHome.current === serverHome) return;
+    seenServerHome.current = serverHome;
+    if (!hasUnsavedRef.current()) notesSeen.current = pickNotes(serverHome);
+  }, [serverHome]);
+  const keepMyNotes = () => {
+    Object.assign(notesSeen.current, notesConflict);
+    setNotesConflict(null);
+    setCloseBlocked(false);
+    autosave.retry();
+  };
+  const takeTheirNotes = () => {
+    Object.assign(notesSeen.current, notesConflict);
+    const theirs = notesConflict;
+    setNotesConflict(null);
+    setCloseBlocked(false);
+    autosave.saveShared(theirs);
+    autosave.retry();
+  };
 
   const { setRef, getState } = useCommuteObserver(home, commuteDestinations);
   const match = computeMatch(home, priorities, evaluateCommute(commuteDestinations, getState));
@@ -226,12 +303,13 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
           {identity.supporting && <p>{identity.supporting}</p>}
         </div>
         <div className="flh-overlay-bar-actions">
-          <SaveState status={autosave.status} onRetry={autosave.retry} />
+          <SaveState status={autosave.status} onRetry={autosave.retry} conflict={!!notesConflict} />
           <button type="button" className="flh-overlay-close" onClick={() => close()} disabled={closing}>{closing ? 'Saving…' : 'Close'} <X size={15} aria-hidden="true" /></button>
         </div>
       </header>
 
-      {closeBlocked && <div className="flh-overlay-blocked" role="alert">
+      {notesConflict && <NotesConflict conflict={notesConflict} onKeepMine={keepMyNotes} onUseTheirs={takeTheirNotes} />}
+      {closeBlocked && !notesConflict && <div className="flh-overlay-blocked" role="alert">
         <p><strong>Some changes couldn’t be saved.</strong> They’re still on screen. Check your connection and try again.</p>
         <div>
           <button type="button" className="hh-btn" onClick={() => { setCloseBlocked(false); autosave.retry(); }}>Retry</button>
@@ -241,7 +319,7 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
 
       <div className="flh-overlay-scroll" ref={scrollRef}>
         {view === 'research' ? <>
-          <HomeFacts home={home} priorities={priorities} vocabulary={vocabulary} editor={editor} userId={userId} onEditAll={usesFullEditor ? () => setFullEditor(true) : null} />
+          <HomeFacts home={home} priorities={priorities} vocabulary={vocabulary} editor={editor} userId={userId} isCollaborative={isCollaborative} onEditAll={usesFullEditor ? () => setFullEditor(true) : null} />
 
           <section className="flh-overlay-match" aria-labelledby="flh-match-title" ref={matchRef} tabIndex={-1}>
             <header className="flh-hf2-section-head">

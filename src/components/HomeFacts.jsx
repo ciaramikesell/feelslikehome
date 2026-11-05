@@ -9,20 +9,22 @@ import {
   listingSays, normalizeLotSizeInput, parseTaxYear, propertyTaxPatch, TAX_YEAR_INVALID_MESSAGE,
 } from '@/lib/homeFacts';
 import { photoFileError, PHOTO_BUCKET, storagePathFromPublicUrl, uploadHomePhoto } from '@/lib/homePhoto';
-import { digitsOnly, formatCurrencyDisplay, formatDateOnly, formatLotSizeDisplay, formatTriState, splitAddressLines } from '@/lib/homeDisplay';
+import { digitsOnly, formatCurrencyDisplay, formatDateOnly, formatLotSizeDisplay, formatTriState, noteEntries, splitAddressLines } from '@/lib/homeDisplay';
 import { homeIdentity } from '@/lib/homePresentation';
 import { isUnitlessLotSize } from '@/lib/lotSize';
 import { parseNum } from '@/lib/matching';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { createClient } from '@/lib/supabase/client';
 import { MultiSelectField, PhoneCollapse, QuietInput, SelectField } from '@/components/FactFields';
+import { NOTE_LIST_FIELDS, noteListHint } from '@/components/NoteListFields';
 
 // Home Facts — everything FLH knows about the property, directly editable.
 // No Edit buttons and no Save: each change is handed to `editor.saveShared`,
 // which applies it at once and autosaves only the changed shared fields
 // (src/lib/useHomeAutosave.js). Imported values look like any other value;
 // missing ones stay visible as Unknown with a warm highlight. Personal answers
-// live in Match Criteria; impressions and notes live in Tour Feedback.
+// live in Match Criteria. The shared Notes / Pros / Cons are editable here
+// (below Basement) as well as in Tour Feedback: the same three fields.
 //
 // Not shown here (still stored, never deleted): Listing ID, Exterior, Roof,
 // days on market and every other listing-snapshot fact.
@@ -47,6 +49,63 @@ function Group({ id, title, children }) {
     <h3 id={id} className="flh-hf-block-title">{title}</h3>
     {children}
   </section>;
+}
+
+// Two separate facts side by side under one heading (Garage: Type · Spaces;
+// Basement: Style · Condition). Each keeps its own label, control and save.
+// The pair stacks into label-beside-control rows when the column is narrow.
+function Pair({ children }) {
+  return <div className="flh-hf-pair">{children}</div>;
+}
+function PairField({ label, htmlFor, children }) {
+  return <div className="flh-hf-pair-field">
+    <label className="flh-hf-row-label" htmlFor={htmlFor}>{label}</label>
+    <div className="flh-hf-row-control">{children}</div>
+  </div>;
+}
+
+const NOTE_DEBOUNCE_MS = 900;
+
+// One shared note field (notes / pros / cons), saved as typed: after a typing
+// pause, on leaving the field, or on Close (registerDraft). One entry per line.
+function NoteTextField({ id, label, marker, placeholder, value, readOnly, failed, registerDraft, onCommit }) {
+  const [draft, setDraft] = useState(null);
+  const timer = useRef(null);
+  const latest = useRef({ draft: null, value, onCommit });
+  latest.current = { draft, value, onCommit };
+  const commit = () => {
+    clearTimeout(timer.current);
+    const { draft: text, value: stored, onCommit: save } = latest.current;
+    registerDraft?.(id, null);
+    if (text !== null && text !== (stored ?? '')) save(text);
+  };
+  const commitRef = useRef(commit);
+  commitRef.current = commit;
+  useEffect(() => () => { clearTimeout(timer.current); commitRef.current(); }, []);
+  const shown = draft ?? (value ?? '');
+  const hintId = `${id}-hint`;
+  if (readOnly) {
+    const entries = noteEntries(value);
+    return <div className={`flh-hf-note is-read is-${id.replace('hf-', '')}`}>
+      <span className="flh-hf-row-label">{marker}{label}</span>
+      {entries.length ? <ul>{entries.map((entry, i) => <li key={`${i}-${entry}`}>{entry}</li>)}</ul> : <span className="flh-fact-text is-unknown">None yet</span>}
+    </div>;
+  }
+  return <div className={`flh-hf-note is-${id.replace('hf-', '')}`}>
+    <label className="flh-hf-note-label" htmlFor={id}>{marker}{label}<span id={hintId}>{noteListHint(shown)}</span></label>
+    <textarea
+      id={id} className={`flh-hf-note-input ${failed ? 'is-failed' : ''}`} value={shown} placeholder={placeholder}
+      rows={Math.min(3, Math.max(2, shown.split('\n').length))} aria-describedby={hintId} aria-invalid={failed || undefined}
+      onChange={(event) => {
+        setDraft(event.target.value);
+        latest.current.draft = event.target.value;
+        registerDraft?.(id, () => commitRef.current());
+        clearTimeout(timer.current);
+        timer.current = setTimeout(() => commitRef.current(), NOTE_DEBOUNCE_MS);
+      }}
+      onBlur={() => { commitRef.current(); setDraft(null); }}
+    />
+  </div>;
 }
 
 function PhotoControls({ home, readOnly, editor, userId, alt }) {
@@ -114,7 +173,7 @@ function ListingLink({ home, readOnly, editor }) {
   </div>;
 }
 
-export default function HomeFacts({ home, priorities, vocabulary, readOnly = false, editor = null, userId = null, onEditAll = null, showHeading = true }) {
+export default function HomeFacts({ home, priorities, vocabulary, readOnly = false, editor = null, userId = null, onEditAll = null, showHeading = true, isCollaborative = false }) {
   const isReadOnly = readOnly || !editor;
   const apartment = vocabulary.apartment;
   const available = homeFactsAvailability(priorities, { apartment });
@@ -129,6 +188,8 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
   const laundryKnownToDatabase = home.laundryLocation !== undefined;
   const utilitiesSummary = [home.yearBuilt, !showsRentalFacts && home.propertyTaxAnnual ? `${money(home.propertyTaxAnnual)}/yr` : null, home.heating || home.cooling ? 'Heating & cooling' : null].filter(Boolean).join(' · ');
   const schoolCount = ['schoolDistrict', 'elementarySchool', 'middleSchool', 'highSchool'].filter((field) => home[field]).length;
+  // Read-only viewers (a Realtor) see the section only when something is written.
+  const showNotes = !isReadOnly || NOTE_LIST_FIELDS.some(({ key }) => noteEntries(home[key]).length > 0);
 
   return (
     <div className="flh-hf2">
@@ -216,16 +277,30 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
             </PhoneCollapse>}
           </div>
 
-          {(available.garage || available.basement) && <div className="flh-hf2-column">
+          {(available.garage || available.basement || showNotes) && <div className="flh-hf2-column flh-hf2-column-side">
             {available.garage && <Group id="hf-garage-title" title="Garage">
-              <Row label="Type" htmlFor="hf-garageType">{select('garageType', null, GARAGE_TYPE_CHOICES, (value) => save(garagePatch(home, 'garageType', value)))}</Row>
-              <Row label="Spaces" htmlFor="hf-garageSpaces"><SelectField id="hf-garageSpaces" value={garageSpacesSelectValue(home.garageSpaces)} choices={GARAGE_SPACE_CHOICES} readOnly={isReadOnly} failed={failed('garageSpaces')} onCommit={(value) => save(garagePatch(home, 'garageSpaces', value))} /></Row>
+              <Pair>
+                <PairField label="Type" htmlFor="hf-garageType">{select('garageType', null, GARAGE_TYPE_CHOICES, (value) => save(garagePatch(home, 'garageType', value)))}</PairField>
+                <PairField label="Spaces" htmlFor="hf-garageSpaces"><SelectField id="hf-garageSpaces" value={garageSpacesSelectValue(home.garageSpaces)} choices={GARAGE_SPACE_CHOICES} readOnly={isReadOnly} failed={failed('garageSpaces')} onCommit={(value) => save(garagePatch(home, 'garageSpaces', value))} /></PairField>
+              </Pair>
             </Group>}
             {available.basement && <Group id="hf-basement-title" title="Basement">
-              <Row label="Style" htmlFor="hf-basementStyle">{select('basementStyle', null, BASEMENT_STYLE_CHOICES, (value) => save(basementPatch(home, 'basementStyle', value)))}</Row>
-              <Row label="Condition" htmlFor="hf-basementCondition">{select('basementCondition', null, BASEMENT_CONDITION_CHOICES, (value) => save(basementPatch(home, 'basementCondition', value)))}</Row>
+              <Pair>
+                <PairField label="Style" htmlFor="hf-basementStyle">{select('basementStyle', null, BASEMENT_STYLE_CHOICES, (value) => save(basementPatch(home, 'basementStyle', value)))}</PairField>
+                <PairField label="Condition" htmlFor="hf-basementCondition">{select('basementCondition', null, BASEMENT_CONDITION_CHOICES, (value) => save(basementPatch(home, 'basementCondition', value)))}</PairField>
+              </Pair>
               {home.basementNotes && !home.basementStyle && !home.basementCondition && <p className="flh-hf2-note">Earlier note: “{home.basementNotes}”</p>}
             </Group>}
+            {/* The shared notes / pros / cons (the same fields as Tour Feedback and
+                the Home Card previews), saved like every other fact here. */}
+            {showNotes && <section className="flh-hf-block flh-hf-notes" aria-labelledby="hf-notes-title">
+              <div className="flh-hf-notes-head">
+                <h3 id="hf-notes-title" className="flh-hf-block-title">Notes, Pros &amp; Cons</h3>
+                {isCollaborative && !isReadOnly && <span className="flh-hf-notes-context">Shared with this search</span>}
+              </div>
+              {NOTE_LIST_FIELDS.map(({ key, label, marker, placeholder }) => <NoteTextField key={key} id={`hf-${key}`} label={label} marker={marker} placeholder={placeholder}
+                value={home[key]} readOnly={isReadOnly} failed={failed(key)} registerDraft={editor?.registerDraft} onCommit={(text) => save({ [key]: text })} />)}
+            </section>}
           </div>}
         </div>
       </section>
