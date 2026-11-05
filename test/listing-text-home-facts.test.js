@@ -8,9 +8,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   HOME_FACT_SUGGESTION_FIELDS, applyHomeFactSuggestion, combineImportResults, importResultWithHomeFacts,
-  readHomeFactsFromText, resuggestHomeFacts, suggestHomeFacts, undoHomeFactSuggestion, withoutSharedDuplicates,
+  personalSuggestionStatus, personalSuggestionsAnsweredBy, readHomeFactsFromText, resuggestHomeFacts, suggestHomeFacts, undoHomeFactSuggestion, visiblePersonalSuggestions,
 } from '../src/lib/listingTextHomeFacts.js';
-import { suggestListingAnswers } from '../src/lib/listingTextAnswers.js';
+import { resuggestListingAnswers, suggestListingAnswers } from '../src/lib/listingTextAnswers.js';
 import { listingImportSnapshot } from '../src/lib/importSnapshot.js';
 import { fieldProvenance } from '../src/lib/homeProvenance.js';
 import { computeMatch } from '../src/lib/matching.js';
@@ -212,18 +212,106 @@ test('rerunning on new text keeps a used fact it still supports and clears the r
 
 /* ----------------------- Shared vs personal, one prompt per fact ----------------------- */
 
-test('a criterion a shared Home Fact settles is not also asked as a personal answer', () => {
-  const buyer = select(start('home_buy'), ['features', 'Finished basement'], ['features', 'First-floor laundry'], ['features', 'First-Floor Primary'],
-    ['features', 'Primary ensuite'], ['exterior', 'Fenced yard'], ['features', 'Fireplace']);
-  const personal = suggestListingAnswers(REAL_WORLD, buyer);
-  assert.ok(personal.some((item) => item.key === 'features:Finished basement'));
+// One buyer who selected criteria Home Facts answer (#167) and ones it can't.
+const dedupeBuyer = () => select(start('home_buy'), ['features', 'Finished basement'], ['features', 'First-floor laundry'], ['features', 'First-Floor Primary'],
+  ['features', 'Primary ensuite'], ['exterior', 'Fenced yard'], ['features', 'Fireplace']);
+const keysOf = (items) => items.map((item) => item.key).sort();
+const status = (items, key, context) => personalSuggestionStatus(items.find((item) => item.key === key), context);
+
+test('pending: a shared suggestion that would answer a criterion holds its personal question on one row', () => {
+  const personal = suggestListingAnswers(REAL_WORLD, dedupeBuyer());
   const shared = suggestHomeFacts(REAL_WORLD);
-  const kept = withoutSharedDuplicates(personal, shared, emptyHome()).map((item) => item.key).sort();
-  assert.deepEqual(kept, ['exterior:Fenced yard', 'features:Fireplace', 'features:Primary ensuite'], 'no shared field: still personal');
-  // A fact already on the home answers the criterion, so it isn't asked either.
-  const onlyPersonal = withoutSharedDuplicates(personal, [], { ...emptyHome(), laundryLocation: 'first_floor' }).map((item) => item.key);
-  assert.equal(onlyPersonal.includes('features:First-floor laundry'), false);
-  assert.equal(onlyPersonal.includes('features:Finished basement'), true);
+  const context = { home: emptyHome(), factSuggestions: shared, factDecisions: {} };
+  assert.equal(status(personal, 'features:Finished basement', context), 'held');
+  assert.equal(status(personal, 'features:First-floor laundry', context), 'held');
+  assert.equal(status(personal, 'features:First-Floor Primary', context), 'held');
+  // Criteria with no shared field are never held.
+  assert.deepEqual(keysOf(visiblePersonalSuggestions(personal, context)), ['exterior:Fenced yard', 'features:Fireplace', 'features:Primary ensuite']);
+  // The shared row names what it would also answer.
+  const basement = shared.find((item) => item.field === 'basementCondition');
+  assert.deepEqual(personalSuggestionsAnsweredBy(basement, personal, emptyHome()).map((item) => item.key), ['features:Finished basement']);
+  const school = shared.find((item) => item.field === 'schoolDistrict');
+  assert.deepEqual(personalSuggestionsAnsweredBy(school, personal, emptyHome()), [], 'a district answers no Match criterion');
+});
+
+test('skipped: the fact stays Unknown and the personal question comes back — never a No', () => {
+  const personal = suggestListingAnswers(REAL_WORLD, dedupeBuyer());
+  const shared = suggestHomeFacts(REAL_WORLD);
+  const basement = shared.find((item) => item.field === 'basementCondition');
+  const home = emptyHome();
+  const context = { home, factSuggestions: shared, factDecisions: { [basement.id]: 'skipped' } };
+  assert.equal(status(personal, 'features:Finished basement', context), 'show');
+  assert.equal(home.basementCondition, null, 'Skip writes nothing');
+  assert.equal(resolveCriterionAnswer(home, 'features:Finished basement', {}).value, undefined, 'Unknown, not No');
+  // The returned personal suggestion is still the listing's Yes, for this buyer to confirm.
+  assert.equal(personal.find((item) => item.key === 'features:Finished basement').answer, true);
+  // Other held criteria are unaffected by skipping the basement.
+  assert.equal(status(personal, 'features:First-floor laundry', context), 'held');
+});
+
+test('accepted: a used shared fact settles the criterion; Undo puts it back to pending', () => {
+  const personal = suggestListingAnswers(REAL_WORLD, dedupeBuyer());
+  const shared = suggestHomeFacts(REAL_WORLD);
+  const laundry = shared.find((item) => item.field === 'laundryLocation');
+  const home = applyHomeFactSuggestion(emptyHome(), laundry);
+  const context = { home, factSuggestions: shared, factDecisions: { [laundry.id]: 'used' } };
+  assert.equal(status(personal, 'features:First-floor laundry', context), 'settled');
+  assert.equal(resolveCriterionAnswer(home, 'features:First-floor laundry', {}).source, 'home_facts');
+  assert.deepEqual(personalSuggestionsAnsweredBy(laundry, personal, home), [], 'a used fact names nothing');
+  const undone = undoHomeFactSuggestion(home, laundry);
+  assert.equal(status(personal, 'features:First-floor laundry', { home: undone, factSuggestions: shared, factDecisions: {} }), 'held');
+});
+
+test('previously determined: a fact already on the home settles it; a value that answers nothing does not', () => {
+  const personal = suggestListingAnswers(REAL_WORLD, dedupeBuyer());
+  // From the lookup or typed: no shared suggestion is offered for it, and the personal question is settled.
+  const known = { ...emptyHome(), laundryLocation: 'first_floor', basementCondition: 'unfinished' };
+  assert.equal(suggestHomeFacts(REAL_WORLD, known).some((item) => ['laundryLocation', 'basementCondition'].includes(item.field)), false);
+  assert.equal(status(personal, 'features:First-floor laundry', { home: known }), 'settled');
+  assert.equal(status(personal, 'features:Finished basement', { home: known }), 'settled', 'Unfinished answers Finished basement (No)');
+  // Partially finished answers neither Yes nor No: the buyer keeps their own question.
+  const partial = { ...emptyHome(), basementCondition: 'partially_finished' };
+  assert.equal(status(personal, 'features:Finished basement', { home: partial, factSuggestions: suggestHomeFacts(REAL_WORLD, partial) }), 'show');
+  // Laundry in the basement says nothing about the first floor (Laundry never answers No).
+  assert.equal(status(personal, 'features:First-floor laundry', { home: { ...emptyHome(), laundryLocation: 'basement' } }), 'show');
+});
+
+test('explicit answers and #165 stale-evidence protection are unchanged', () => {
+  const buyer = dedupeBuyer();
+  // A buyer who already answered gets no suggestion at all, whatever the shared state.
+  assert.equal(suggestListingAnswers(REAL_WORLD, buyer, { 'features:Finished basement': 'no' }).some((item) => item.key === 'features:Finished basement'), false);
+  // Their explicit No still overrides a used fact in Match.
+  const home = suggestHomeFacts(REAL_WORLD).reduce(applyHomeFactSuggestion, emptyHome());
+  assert.equal(resolveCriterionAnswer(home, 'features:Finished basement', { 'features:Finished basement': 'no' }).value, 'no');
+  // A personal answer confirmed after Skip is re-checked by a rerun exactly as before.
+  const [confirmed] = suggestListingAnswers('Finished basement.', buyer).filter((item) => item.key === 'features:Finished basement');
+  const checks = { [confirmed.key]: confirmed.answer };
+  const rerun = resuggestListingAnswers('No basement information here.', buyer, checks, { [confirmed.key]: confirmed.answer });
+  assert.deepEqual(rerun.cleared, ['features:Finished basement']);
+  assert.equal(rerun.checks['features:Finished basement'], undefined);
+});
+
+test('co-buyers: each buyer\'s Match and suggestions stay their own', () => {
+  const owner = dedupeBuyer();
+  const coBuyer = select(start('home_buy'), ['features', 'Finished basement', 'must'], ['features', 'Walkout basement']);
+  const shared = suggestHomeFacts(REAL_WORLD);
+  const basement = shared.find((item) => item.field === 'basementCondition');
+  // The owner skips the shared fact and confirms their own Yes: only the owner's checks change.
+  const ownerPersonal = suggestListingAnswers(REAL_WORLD, owner);
+  assert.equal(status(ownerPersonal, 'features:Finished basement', { home: emptyHome(), factSuggestions: shared, factDecisions: { [basement.id]: 'skipped' } }), 'show');
+  const ownerChecks = { 'features:Finished basement': true };
+  const home = emptyHome();
+  assert.equal(computeMatch({ ...home, checks: ownerChecks }, owner).allSelected.find((item) => item.key === 'features:Finished basement').met, true);
+  assert.equal(computeMatch({ ...home, checks: {} }, coBuyer).allSelected.find((item) => item.key === 'features:Finished basement').evaluated, false, 'the co-buyer is still Unknown');
+  // The co-buyer, pasting the same text, gets their own suggestions; the shared state is the home's.
+  const coPersonal = suggestListingAnswers(REAL_WORLD, coBuyer);
+  assert.deepEqual(keysOf(coPersonal), ['features:Finished basement', 'features:Walkout basement']);
+  assert.equal(status(coPersonal, 'features:Walkout basement', { home, factSuggestions: shared, factDecisions: {} }), 'held');
+  // Once a buyer uses the shared fact, it answers both buyers through Home Facts unless one overrides.
+  const withFact = applyHomeFactSuggestion(home, basement);
+  assert.equal(resolveCriterionAnswer(withFact, 'features:Finished basement', {}).source, 'home_facts');
+  assert.equal(resolveCriterionAnswer(withFact, 'features:Finished basement', { 'features:Finished basement': 'no' }).value, 'no', "a co-buyer's own No still wins for them");
+  assert.equal(status(coPersonal, 'features:Finished basement', { home: withFact }), 'settled');
 });
 
 /* ------------------------- Snapshot, provenance, provider ------------------------- */
@@ -329,7 +417,9 @@ test('Add Home offers the optional paste after any lookup, never requires it, an
   assert.match(handlers, /applyHomeFactSuggestion/);
   assert.doesNotMatch(handlers, /onSave|createClient|fetch\(|submit\(|checks/);
   // Personal answers stay separate, and a shared fact removes the duplicate personal prompt.
-  assert.match(modal, /withoutSharedDuplicates\(rerun\.suggestions, facts\.suggestions, next\)/);
+  assert.match(modal, /const answers = rerun\.suggestions;/, 'every personal suggestion is kept; visibility follows the shared state');
+  assert.match(modal, /personalSuggestionStatus\(suggestion, \{ home: form, factSuggestions, factDecisions \}\) === 'show'/);
+  assert.match(modal, /Also answers your Match: <b>\{answers\.join\(', '\)\}<\/b>\. Skip keeps this fact Unknown, and you can still answer/);
   assert.match(modal, /These are for your Match only/);
   assert.match(modal, /FLH hasn’t verified it or checked school boundaries/);
 });

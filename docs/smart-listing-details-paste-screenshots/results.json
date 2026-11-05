@@ -2,46 +2,61 @@
   {
     "step": "[desktop-1440] lookup succeeds → optional paste offered; Home Facts suggested only for empty fields; Use / Undo / Skip; saved with evidence",
     "ok": true,
-    "ms": 10103
+    "ms": 8763
+  },
+  {
+    "step": "[desktop-1440] Skip a shared fact → it stays Unknown and the personal question comes back for this buyer only",
+    "ok": true,
+    "ms": 4938
   },
   {
     "step": "[desktop-1440] lookup fails → same optional paste; Use all fills empty fields; saved as pasted text",
     "ok": true,
-    "ms": 5103
+    "ms": 5134
   },
   {
     "step": "[desktop-1440] hedged text → nothing suggested, Unknown stays Unknown, home still adds",
     "ok": true,
-    "ms": 4446
+    "ms": 5114
   },
   {
     "step": "[ipad-820] lookup succeeds → optional paste offered; Home Facts suggested only for empty fields; Use / Undo / Skip; saved with evidence",
     "ok": true,
-    "ms": 10341
+    "ms": 10133
+  },
+  {
+    "step": "[ipad-820] Skip a shared fact → it stays Unknown and the personal question comes back for this buyer only",
+    "ok": true,
+    "ms": 5941
   },
   {
     "step": "[ipad-820] lookup fails → same optional paste; Use all fills empty fields; saved as pasted text",
     "ok": true,
-    "ms": 6028
+    "ms": 5763
   },
   {
     "step": "[ipad-820] hedged text → nothing suggested, Unknown stays Unknown, home still adds",
     "ok": true,
-    "ms": 5906
+    "ms": 5285
   },
   {
     "step": "[iphone-390] lookup succeeds → optional paste offered; Home Facts suggested only for empty fields; Use / Undo / Skip; saved with evidence",
     "ok": true,
-    "ms": 10406
+    "ms": 10884
+  },
+  {
+    "step": "[iphone-390] Skip a shared fact → it stays Unknown and the personal question comes back for this buyer only",
+    "ok": true,
+    "ms": 6033
   },
   {
     "step": "[iphone-390] lookup fails → same optional paste; Use all fills empty fields; saved as pasted text",
     "ok": true,
-    "ms": 5099
+    "ms": 6540
   },
   {
     "step": "[iphone-390] hedged text → nothing suggested, Unknown stays Unknown, home still adds",
     "ok": true,
-    "ms": 5074
+    "ms": 5308
   }
 ]

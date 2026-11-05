@@ -16,7 +16,7 @@ import NoteListFields from '@/components/NoteListFields';
 import { mergeImportFields, resolveImport } from '@/lib/importDomain';
 import { appendAllSuggestions, appendSuggestionToNotes, extractEnrichmentSuggestions } from '@/lib/importReview';
 import { applyListingAnswer, hasRecordedAnswer, listingTextEvidence, resuggestListingAnswers, undoListingAnswer } from '@/lib/listingTextAnswers';
-import { applyHomeFactSuggestion, combineImportResults, importResultWithHomeFacts, resuggestHomeFacts, undoHomeFactSuggestion, withoutSharedDuplicates } from '@/lib/listingTextHomeFacts';
+import { applyHomeFactSuggestion, combineImportResults, importResultWithHomeFacts, personalSuggestionStatus, personalSuggestionsAnsweredBy, resuggestHomeFacts, undoHomeFactSuggestion, visiblePersonalSuggestions } from '@/lib/listingTextHomeFacts';
 import { splitAddressLines, formatFoundCardFacts, formatCurrencyDisplay, digitsOnly, formatLotSizeDisplay, formatHomePrice } from '@/lib/homeDisplay';
 import { withAcresUnit } from '@/lib/lotSize';
 import { createClient } from '@/lib/supabase/client';
@@ -507,7 +507,7 @@ function ListingAnswerReview({ review }) {
 // Unknown, and Undo takes back only what Use wrote. Nothing saves until Save.
 function HomeFactReview({ review }) {
   if (!review?.suggestions.length) return null;
-  const { suggestions, decisions, onUse, onSkip, onUndo, onUseAll, isCollaborative } = review;
+  const { suggestions, decisions, onUse, onSkip, onUndo, onUseAll, isCollaborative, alsoAnswers = () => [] } = review;
   const pending = suggestions.filter((suggestion) => decisions[suggestion.id] !== 'used');
   return <section className="flh-fact-review" aria-labelledby="flh-fact-review-title">
     <div className="flh-fact-review-heading">
@@ -517,8 +517,10 @@ function HomeFactReview({ review }) {
     <p>{isCollaborative ? 'These describe the home for everyone in this search. ' : ''}Use what’s right. Anything you skip stays Unknown, and you can change any of it later in Home Facts.</p>
     <ul>{suggestions.map((suggestion) => {
       const used = decisions[suggestion.id] === 'used';
+      const answers = used ? [] : alsoAnswers(suggestion);
       return <li key={suggestion.id} className={used ? 'is-confirmed' : ''}>
         <div className="flh-answer-review-head"><b>{suggestion.label}</b><span className="flh-answer-chip is-fact">{suggestion.display}</span></div>
+        {answers.length > 0 && <p className="flh-fact-review-also">Also answers your Match: <b>{answers.join(', ')}</b>. Skip keeps this fact Unknown, and you can still answer {answers.length === 1 ? 'it' : 'them'} for yourself.</p>}
         <blockquote><span>“{suggestion.evidence}”</span><cite>{suggestion.school ? 'As named in the listing text you pasted. FLH hasn’t verified it or checked school boundaries.' : 'From the listing text you pasted'}</cite></blockquote>
         <div className="flh-answer-review-actions">
           {used
@@ -855,8 +857,11 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
       ? resuggestListingAnswers(pasteText, priorities, form.checks, confirmedAnswers)
       : { suggestions: [], checks: form.checks, confirmed: {}, decisions: {}, cleared: [] };
     const next = { ...merged, checks: rerun.checks };
-    // A criterion a shared Home Fact settles isn't also asked as a personal question.
-    const answers = withoutSharedDuplicates(rerun.suggestions, facts.suggestions, next);
+    // Every personal suggestion is kept; which ones show depends on the shared
+    // facts' state at render time (personalSuggestionStatus): one a used or
+    // known fact answers is settled, one a pending shared suggestion would
+    // answer is held on that row, and Skip gives it back to the buyer.
+    const answers = rerun.suggestions;
     const suggestions = extractEnrichmentSuggestions(pasteText, next, { acceptedIds: acceptedSuggestionIds });
     const clearedLabels = [...rerun.cleared.map((key) => { const at = key.indexOf(':'); return criterionDisplayLabel(key.slice(0, at), key.slice(at + 1)); }), ...facts.cleared];
     setForm(next);
@@ -872,7 +877,9 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     setEditDetailsOpen(true);
     const found = canonicalAdditions.length + answers.length + facts.suggestions.length;
     setImportPhase(providerResult ? 'success' : found > 0 ? 'text-success' : importPhase === 'error' ? 'error' : 'empty');
-    const pending = answers.filter((item) => rerun.decisions[item.id] !== 'confirmed').length;
+    const usedDecisions = Object.fromEntries(Object.keys(facts.used).map((id) => [id, 'used']));
+    const pending = visiblePersonalSuggestions(answers, { home: next, factSuggestions: facts.suggestions, factDecisions: usedDecisions })
+      .filter((item) => rerun.decisions[item.id] !== 'confirmed').length;
     const pendingFacts = facts.suggestions.filter((item) => !facts.used[item.id]).length;
     setParseMsg(pastedTextMessage(canonicalAdditions.length, pending, clearedLabels, pendingFacts));
   };
@@ -896,9 +903,14 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   const answerReview = {
     suggestions: answerSuggestions.filter((suggestion) => answerDecisions[suggestion.id] === 'confirmed'
       ? form.checks?.[suggestion.key] === suggestion.answer && confirmedAnswers[suggestion.key] === suggestion.answer
-      : answerDecisions[suggestion.id] !== 'dismissed' && !hasRecordedAnswer(form.checks, suggestion.key, priorities.searchType)),
+      : answerDecisions[suggestion.id] !== 'dismissed' && !hasRecordedAnswer(form.checks, suggestion.key, priorities.searchType)
+        // Not when a used or known Home Fact answers it, or a pending shared suggestion would (that row says so).
+        && personalSuggestionStatus(suggestion, { home: form, factSuggestions, factDecisions }) === 'show'),
     decisions: answerDecisions, onConfirm: confirmAnswer, onDismiss: dismissAnswer, onUndo: undoAnswer, isCollaborative,
   };
+  // Personal suggestions still open to this buyer, for the "also answers" note on a shared row.
+  const openPersonal = answerSuggestions.filter((suggestion) => answerDecisions[suggestion.id] !== 'confirmed' && answerDecisions[suggestion.id] !== 'dismissed'
+    && !hasRecordedAnswer(form.checks, suggestion.key, priorities.searchType));
 
   // Use writes one shared Home Fact into the form, only while that field is
   // still empty; nothing is saved until the buyer saves the home.
@@ -929,6 +941,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
       ? !!usedFacts[suggestion.id] && String(form[suggestion.field]) === String(suggestion.value)
       : factDecisions[suggestion.id] !== 'skipped' && isEmptyField(form[suggestion.field])),
     decisions: factDecisions, onUse: useFact, onSkip: skipFact, onUndo: undoFact, onUseAll: useAllFacts, isCollaborative,
+    alsoAnswers: (fact) => personalSuggestionsAnsweredBy(fact, openPersonal, form).map((item) => criterionDisplayLabel(item.categoryKey, item.label)),
   };
 
   const addSuggestion = (suggestion) => {

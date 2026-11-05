@@ -2415,6 +2415,8 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-fact-review { border-color: rgba(185,83,50,.22); }
 .flh-fact-review-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; }
 .flh-fact-review-heading .hh-btn { min-height: 36px; }
+.flh-fact-review-also { margin: 0; color: var(--ink-soft); font-size: 12.5px; line-height: 1.45; }
+.flh-fact-review-also b { color: var(--ink); }
 .flh-answer-chip.is-fact { background: var(--peach); color: var(--brick-deep); white-space: normal; text-align: right; }
 @media (max-width: 560px) {
   .flh-listing-paste { padding: 12px; }

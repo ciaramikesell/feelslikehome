@@ -164,12 +164,27 @@ pattern read "Detached garage 24x30" as 24 spaces.
   describe the home for everyone in the search.
 * **Possible answers from the listing** (personal, unchanged from #165).
   These are for this buyer's own Match.
-* **No duplicate prompts.** A personal suggestion is dropped when its
-  criterion is one Match reads from Home Facts (#167: Finished / Walkout
-  basement, First/Second-floor laundry, First-Floor Primary) and either a
-  shared suggestion covers it or the home's facts already answer it. Criteria
-  with no shared field keep their personal suggestions: Primary ensuite,
-  Fenced yard, Fireplace, Pool, the legacy Attached Garage and others.
+* **One prompt per criterion, decided by the shared fact's state**
+  (`personalSuggestionStatus`, computed when the review renders and never
+  written). This only applies to criteria Match reads from Home Facts (#167:
+  Finished / Walkout basement, First/Second-floor laundry, First-Floor
+  Primary). For each one, the buyer's personal suggestion is:
+
+  | Shared fact | Personal suggestion |
+  |---|---|
+  | **Used**, or the home already has a value that answers the criterion (lookup, typed, a co-buyer's) | **Settled.** Not asked: Match reads the fact. The buyer's own Yes/No in Match still overrides it |
+  | **Pending:** a shared suggestion would answer it but isn't used yet | **Held** on the shared row: "Also answers your Match: Finished Basement. Skip keeps this fact Unknown, and you can still answer it for yourself." |
+  | **Skipped**, or no shared suggestion | **Shown** with Confirm / Leave Unknown. Skip writes nothing: the fact stays Unknown, never No |
+  | A value that answers neither way (Partially finished; laundry in the basement for First-floor laundry) | **Shown** |
+
+  * Undoing a used fact makes it pending again, so the personal question is
+    held again.
+  * A personal answer the buyer already confirmed always stays visible, with
+    Undo.
+  * Criteria with no shared field (ensuite, fenced yard, fireplace, pool, the
+    legacy Attached Garage …) are always shown.
+  * Each buyer's suggestions come from their own priorities, and a
+    confirmation writes only their own `checks`.
 * **Undo** removes only what Use wrote. A value the buyer changed after Use is
   never reverted.
 * **Rerun.** Pasting new text re-reads every used fact. A fact the new text
@@ -241,9 +256,6 @@ reaches Notes.
   personal suggestions. No columns were added.
 * "Gardenview" basement and an "upstairs" laundry are never suggested,
   because the text can't establish them.
-* Skipping a shared basement or laundry fact also removes the duplicate
-  personal question for that criterion. The buyer can still answer it in
-  Match.
 
 ## Risks
 
@@ -255,3 +267,23 @@ reaches Notes.
 * **False positives.** Regex rules can misread unusual sentences. Mitigations:
   every suggestion needs a Use, shows its sentence, and can be undone or
   edited in Home Facts.
+
+## Pre-existing `home-overlay-e2e` failures (not from this PR)
+
+`scripts/qa/home-overlay-e2e.mjs` passes 19 of 27 steps, both on this branch
+and on unmodified `main` (`3501989`). Each run used a freshly seeded stand-in.
+The same 8 steps fail with the same messages on both. The step this PR changes
+(Add Home paste, selector updated for the "No link?" title) passes.
+
+| Step (1440 and 390) | Failed assertion (script line) | Error |
+|---|---|---|
+| 3. Open from the card → edit facts → close → reopen → persisted; filters and scroll kept | `assert(Math.abs(window.scrollY - scrollBefore) < 5, 'scroll position lost')` (l. 180) | `scroll position lost` |
+| 4. Personal Match answers update the score without a reload | `pct()` → `page.locator('.flh-match-pill').textContent()` (l. 103) | `locator.textContent: Timeout 30000ms exceeded`, waiting for `.flh-match-pill` |
+| 7/8. Laundry Location and garage/basement: Unknown and None stay distinct | `owner.locator('#hf-laundryLocation').selectOption('basement')` (l. 207) | `locator.selectOption: Timeout 30000ms exceeded`, waiting for `#hf-laundryLocation` |
+| 9. Rapid changes keep the last value; a failed save shows Retry and close waits | `owner.locator('#hf-propertyType').selectOption(value)` (l. 226) | `locator.selectOption: Timeout 30000ms exceeded`, waiting for `#hf-propertyType` |
+
+The selectors still exist in the app (`HomeOverlay.jsx`, `HomeFacts.jsx`), so
+the script is probably out of step with the overlay layout after the recent
+home-card and overlay changes: the Match pill is rendered only when Match has
+a %, and the selects sit in a phone-collapsed or gated group. This is
+unverified. Fixing that script is left for its own change, not this PR.

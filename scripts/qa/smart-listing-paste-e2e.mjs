@@ -148,7 +148,10 @@ async function run() {
       const reviewText = await review(owner).innerText();
       assert(reviewText.includes('The finished walkout basement adds a rec room and full bath.'), 'evidence sentence missing');
       assert(reviewText.includes('FLH hasn’t verified it or checked school boundaries'), 'school caveat missing');
-      // Personal answers: Finished basement is settled by the shared fact, Fireplace is still asked.
+      // One prompt per criterion: the pending Basement condition row names the personal
+      // criterion it would answer; that personal question is held, Fireplace is still asked.
+      const conditionRow = review(owner).locator('li').filter({ has: owner.locator('b', { hasText: /^Basement condition$/ }) });
+      assert(/Also answers your Match: Finished basement/i.test(await conditionRow.innerText()), 'shared row does not name the personal criterion');
       const personal = owner.locator('.flh-answer-review');
       const personalText = (await personal.count()) ? await personal.innerText() : '';
       assert(personalText.includes('Fireplace') && !personalText.includes('Finished basement'), `personal suggestions: ${personalText.slice(0, 200)}`);
@@ -190,6 +193,34 @@ async function run() {
       const from = await basementRow.locator('.flh-mc2-from').textContent();
       assert(from?.startsWith('From Home Facts: Yes'), `Finished basement Match row reads "${from}"`);
       await shot(owner, `${label}-4-success-home-facts`);
+    }, open);
+
+    await step(`[${label}] Skip a shared fact → it stays Unknown and the personal question comes back for this buyer only`, async () => {
+      n += 1;
+      const url = listingUrl(51613, label, n);
+      await find(owner, url);
+      await paste(owner, DESCRIPTION);
+      const personal = owner.locator('.flh-answer-review');
+      assert(!/Finished basement/i.test((await personal.count()) ? await personal.innerText() : ''), 'personal basement shown while the shared fact is pending');
+      await review(owner).getByRole('button', { name: 'Skip Basement condition' }).click();
+      const question = personal.locator('li').filter({ has: owner.locator('b', { hasText: /^Finished basement$/i }) });
+      await question.waitFor();
+      assert((await question.innerText()).includes('Listing suggests Yes'), 'returned personal suggestion');
+      await view(owner, `${label}-8-skip-returns-personal`, '.flh-answer-review');
+      await question.getByRole('button', { name: /^Confirm Finished basement: Yes$/i }).click();
+      const row = await add(owner, url);
+      assert(row.basement_condition === null, `Skip wrote basement condition: ${row.basement_condition}`);
+      assert(JSON.stringify(ownChecks(row.id)) === JSON.stringify({ 'features:Finished basement': true }), `owner checks: ${JSON.stringify(ownChecks(row.id))}`);
+      const others = q(`select user_id, checks from public.home_member_state where home_id = ${lit(row.id)} and user_id <> ${lit(OWNER)}`);
+      assert(others.every((state) => !('features:Finished basement' in (state.checks || {}))), 'another participant got the owner\'s answer');
+      for (let i = 0; i < 4; i += 1) {
+        const toggle = owner.locator('.flh-mc2-toggle[aria-expanded="false"]:visible').first();
+        if (!(await toggle.count())) break;
+        await toggle.click();
+        await owner.waitForTimeout(100);
+      }
+      const matchRow = owner.locator('.flh-mc2-row').filter({ has: owner.locator('.flh-mc2-name', { hasText: /^Finished basement/i }) });
+      assert(!(await matchRow.locator('.flh-mc2-from').count()) || !(await matchRow.locator('.flh-mc2-from').textContent()).startsWith('From Home Facts'), 'Match reads a Home Fact that was skipped');
     }, open);
 
     await step(`[${label}] lookup fails → same optional paste; Use all fills empty fields; saved as pasted text`, async () => {

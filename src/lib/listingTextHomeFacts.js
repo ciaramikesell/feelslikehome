@@ -450,27 +450,39 @@ export function resuggestHomeFacts(text, home = {}, used = {}) {
 
 /* ------------------------- Shared vs personal suggestions ------------------------ */
 
-// The personal concept each shared field answers through #167.
-const FIELD_CONCEPTS = Object.freeze({
-  basementCondition: ['finishedBasement', 'walkoutBasement', 'basement'],
-  basementStyle: ['walkoutBasement'],
-  laundryLocation: ['firstFloorLaundry', 'secondFloorLaundry'],
-  primaryBedroomLocation: ['firstFloorPrimary'],
-});
+// A shared Home Fact settles a personal criterion only when Match reads an
+// answer from it (#167, homeFactCriteria.js) — not because a suggestion for it
+// exists. So a personal suggestion is:
+//   'settled'  the home's facts already answer it (a used suggestion, a value
+//              from the lookup, or one a person entered) — Match reads that
+//              fact, so asking again would be a duplicate;
+//   'held'     a shared suggestion that would answer it is still pending —
+//              the shared row says so, and only one prompt is shown;
+//   'show'     nothing settles it, or the buyer skipped the shared suggestion
+//              (Skip leaves the fact Unknown and keeps their own answer open).
+// Criteria with no shared field (ensuite, fenced yard, fireplace, the legacy
+// Attached Garage …) are always 'show'. Nothing here writes anything.
 
-/**
- * Personal answer suggestions minus the ones a shared Home Fact settles: a
- * criterion Match reads from Home Facts (homeFactCriteria.js) is not asked as
- * a personal question when a shared suggestion covers it, or the home's facts
- * already answer it. Criteria with no shared field (ensuite, fenced yard,
- * fireplace, the legacy Attached Garage …) keep their personal suggestions.
- */
-export function withoutSharedDuplicates(answerSuggestions = [], factSuggestions = [], home = {}) {
-  const covered = new Set(factSuggestions.flatMap((item) => FIELD_CONCEPTS[item.field] || []));
-  return answerSuggestions.filter((item) => {
-    if (!homeFactConcept(item.key)) return true;
-    return !covered.has(item.concept) && homeFactAnswer(home, item.key) === undefined;
-  });
+const factIsPending = (fact, decisions, home) => decisions?.[fact.id] !== 'used' && decisions?.[fact.id] !== 'skipped' && isEmpty(home?.[fact.field]);
+const factWouldAnswer = (fact, key, home) => homeFactAnswer(applyHomeFactSuggestion(home, fact), key) !== undefined;
+
+/** @returns {'settled'|'held'|'show'} */
+export function personalSuggestionStatus(suggestion, { home = {}, factSuggestions = [], factDecisions = {} } = {}) {
+  if (!suggestion?.key || !homeFactConcept(suggestion.key)) return 'show';
+  if (homeFactAnswer(home, suggestion.key) !== undefined) return 'settled';
+  const pending = factSuggestions.some((fact) => factIsPending(fact, factDecisions, home) && factWouldAnswer(fact, suggestion.key, home));
+  return pending ? 'held' : 'show';
+}
+
+/** The personal suggestions to show beside the shared ones (see personalSuggestionStatus). */
+export function visiblePersonalSuggestions(answerSuggestions = [], context = {}) {
+  return answerSuggestions.filter((item) => personalSuggestionStatus(item, context) === 'show');
+}
+
+/** The personal suggestions a pending shared suggestion would answer if used — named on its row. */
+export function personalSuggestionsAnsweredBy(fact, answerSuggestions = [], home = {}) {
+  if (!fact || !isEmpty(home?.[fact.field])) return [];
+  return answerSuggestions.filter((item) => homeFactConcept(item.key) && homeFactAnswer(home, item.key) === undefined && factWouldAnswer(fact, item.key, home));
 }
 
 /* --------------------------------- Import snapshot -------------------------------- */
