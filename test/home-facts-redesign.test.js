@@ -276,8 +276,13 @@ test('the disappearing home is fixed at the source: the Router Cache is rebuilt 
   assert.match(action, /export async function refreshMyHomes\(\) \{\s*revalidatePath\('\/homes'\);\s*\}/);
 });
 
-test('Home Facts keeps opinions out and never offers edit controls to read-only viewers', () => {
-  for (const personal of ['pros', 'cons', 'reaction', 'ratings', 'checks', 'PostTourModal']) assert.doesNotMatch(facts.replace(/\/\/[^\n]*/g, ''), new RegExp(`\\b${personal}\\b`));
+test('Home Facts keeps personal answers out and never offers edit controls to read-only viewers', () => {
+  // Personal answers stay in Match Criteria / Tour Feedback. The shared Notes /
+  // Pros / Cons are edited here too (below Basement), only through the shared
+  // NoteListFields definitions and the same shared save.
+  for (const personal of ['reaction', 'ratings', 'checks', 'PostTourModal']) assert.doesNotMatch(facts.replace(/\/\/[^\n]*/g, ''), new RegExp(`\\b${personal}\\b`));
+  assert.match(facts, /\{NOTE_LIST_FIELDS\.map\(\(\{ key, label, marker, placeholder \}\) => <NoteTextField key=\{key\}/);
+  assert.match(facts, /onCommit=\{\(text\) => save\(\{ \[key\]: text \}\)\}/);
   for (const personal of ['pros', 'cons', 'reaction', 'ratings']) assert.doesNotMatch(factsLib, new RegExp(`home\\??\\.${personal}\\b`));
   assert.match(facts, /const isReadOnly = readOnly \|\| !editor;/);
   assert.match(detail, /<HomeFacts home=\{home\} priorities=\{priorities\} vocabulary=\{vocabulary\} readOnly userId=\{userId\} showHeading=\{false\} \/>/);

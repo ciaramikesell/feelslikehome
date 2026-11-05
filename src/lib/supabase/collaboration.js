@@ -664,16 +664,57 @@ export async function saveHomePersonalAndShared(supabase, home, userId, searchId
 // fact is never overwritten by a stale copy of the whole row. Same UPDATE
 // policy and column grants as saveHomePersonalAndShared; never an insert, never
 // personal state. Returns the saved shared home (personal fields untouched).
-export async function saveHomeSharedFields(supabase, homeId, patch) {
+//
+// `expected` guards shared free text (notes / pros / cons) against a silent
+// overwrite: { field: the value this editor last saw }. The write goes ahead
+// only if each guarded column still holds that value (or already holds the
+// value being written). Otherwise it throws SharedNotesConflictError with the
+// current text and writes nothing. The check and the write are tied together
+// by the row's updated_at (set by the homes_set_updated_at trigger on every
+// update): the UPDATE matches only the version that was read, so a change
+// landing in between makes it match no row, and the read is repeated.
+export async function saveHomeSharedFields(supabase, homeId, patch, { expected = null } = {}) {
   if (!homeId) throw new Error('Cannot autosave a home without an id.');
   const unknown = Object.keys(patch).filter((field) => !SHARED_FIELDS.includes(field));
   if (unknown.length) throw new Error(`Not shared home fields: ${unknown.join(', ')}`);
   const full = homeToSharedRow({ ...patch, id: homeId }, null, null);
   const row = Object.fromEntries(Object.keys(patch).map((field) => [sharedColumnFor(field), full[sharedColumnFor(field)]]));
   row.updated_at = full.updated_at;
-  const { data, error } = await supabase.from('homes').update(row).eq('id', homeId).select('id,updated_at').single();
-  if (error) throw error;
-  return data;
+  const guarded = expected ? Object.keys(expected).filter((field) => field in patch) : [];
+  if (!guarded.length) {
+    const { data, error } = await supabase.from('homes').update(row).eq('id', homeId).select('id,updated_at').single();
+    if (error) throw error;
+    return data;
+  }
+  const columns = guarded.map(sharedColumnFor);
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const { data: current, error: readError } = await supabase.from('homes').select(['id', 'updated_at', ...columns].join(',')).eq('id', homeId).single();
+    if (readError) throw readError;
+    const text = (value) => value ?? '';
+    const changed = guarded.filter((field) => {
+      const now = text(current[sharedColumnFor(field)]);
+      return now !== text(expected[field]) && now !== text(row[sharedColumnFor(field)]);
+    });
+    if (changed.length) throw new SharedNotesConflictError(Object.fromEntries(changed.map((field) => [field, text(current[sharedColumnFor(field)])])));
+    const { data, error } = await supabase.from('homes').update(row).eq('id', homeId).eq('updated_at', current.updated_at).select('id,updated_at').maybeSingle();
+    if (error) throw error;
+    if (data) return data;
+  }
+  // Four other writes landed between our read and write: report it as a
+  // failed save (Retry), never as a conflict and never as saved.
+  throw new Error('This home is being edited right now. Try again.');
+}
+
+// Shared free text guarded by saveHomeSharedFields' `expected`.
+export const SHARED_NOTE_FIELDS = Object.freeze(['notes', 'pros', 'cons']);
+export const SHARED_NOTES_CONFLICT = 'FLH_SHARED_NOTES_CONFLICT';
+export class SharedNotesConflictError extends Error {
+  constructor(current) {
+    super('Someone else changed these notes.');
+    this.code = SHARED_NOTES_CONFLICT;
+    // { field: the text saved now }, for each field that changed underneath.
+    this.current = current;
+  }
 }
 
 const SHARED_COLUMN_EXCEPTIONS = Object.freeze({ schoolDistrict: 'school_district_name' });

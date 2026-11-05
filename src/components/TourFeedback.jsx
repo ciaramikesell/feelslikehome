@@ -136,7 +136,7 @@ function NotesSection({ home, title, intro, readOnly, isCollaborative, onSaveNot
   );
 }
 
-export default function TourFeedback({ home, match, vocabulary, readOnly = false, isCollaborative = false, perspectiveName = null, coBuyerPerspective = null, coBuyerName = null, saveError = '', onRetry = null, onRecordTake, onToggleWantToTour, onToggleFavorite, onArchive, onRestore, onSaveNotes, onAnswerInPerson, children = null }) {
+export default function TourFeedback({ home, match, vocabulary, readOnly = false, isCollaborative = false, perspectiveName = null, coBuyerPerspective = null, coBuyerName = null, saveError = '', onRetry = null, onRecordTake, onToggleWantToTour, onToggleFavorite, onArchive, onRestore, onSaveNotes, onAnswerInPerson, notesEditorKey = 0, children = null }) {
   const toured = hasToured(home);
   const verdict = POST_TOUR_VERDICTS.find((item) => item.key === postTourVerdict(home));
   const overall = home.ratings?.[TOUR_RATING_KEY] || 0;
@@ -197,7 +197,7 @@ export default function TourFeedback({ home, match, vocabulary, readOnly = false
         </dl>
       </section>}
 
-      <NotesSection
+      <NotesSection key={notesEditorKey}
         home={home} readOnly={readOnly} isCollaborative={isCollaborative} onSaveNotes={onSaveNotes}
         title={toured ? 'What stood out' : 'Notes so far'}
         intro={readOnly ? 'What the buyers loved, what gave them pause, and their notes.' : toured ? 'What you loved, what gave you pause, and anything else worth remembering.' : 'Anything you’ve noticed or want to ask — these are notes, not tour feedback.'}

@@ -2992,6 +2992,40 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-hf-row-label { color: var(--ink-soft); font-size: 13px; line-height: 1.3; }
 .flh-hf-row-label small { display: block; font-size: 11px; color: #A8998B; }
 .flh-hf-row-control { min-width: 0; }
+/* Garage (Type · Spaces) and Basement (Style · Condition): two separate
+   controls side by side, equal width, each label above its own control. A
+   column narrower than 360px (phones, tablets in portrait) goes back to one
+   label-beside-control row per fact, so no option text is ever clipped. */
+.flh-hf2-column-side { container: hf-side / inline-size; }
+.flh-hf-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; }
+.flh-hf-pair-field { display: grid; gap: 4px; min-width: 0; align-content: start; }
+.flh-hf-pair-field .flh-hf-row-label { font-size: 12.5px; }
+@container hf-side (max-width: 359px) {
+  .flh-hf-pair { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .flh-hf-pair-field { grid-template-columns: minmax(0, 44%) minmax(0, 1fr); align-items: center; gap: 8px; min-height: 44px; padding: 3px 0; }
+  .flh-hf-pair-field .flh-hf-row-label { font-size: 13px; }
+}
+/* Notes, Pros & Cons (below Basement): the shared fields, compact textareas. */
+.flh-hf-notes { display: grid; gap: 7px; }
+.flh-hf-notes-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 10px; }
+.flh-hf-notes .flh-hf-block-title { margin-bottom: 0; }
+.flh-hf-notes-context { color: var(--ink-soft); font-size: 12px; }
+.flh-hf-note { display: grid; gap: 3px; min-width: 0; }
+.flh-hf-note-label { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; color: var(--ink-soft); font-size: 13px; }
+.flh-hf-note-label span { color: #A8998B; font-size: 11.5px; }
+.flh-hf-note.is-pros .flh-hf-note-label, .flh-hf-note.is-pros > .flh-hf-row-label { color: var(--flh-sage-ink); }
+.flh-hf-note.is-cons .flh-hf-note-label, .flh-hf-note.is-cons > .flh-hf-row-label { color: var(--brick); }
+.flh-hf-note-input { box-sizing: border-box; width: 100%; min-height: 52px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); font: 500 13.5px/1.45 var(--font-ui); resize: vertical; overflow-wrap: anywhere; }
+.flh-hf-note-input::placeholder { color: #A8998B; }
+.flh-hf-note-input:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; border-color: var(--brick); }
+.flh-hf-note-input.is-failed { border-color: var(--negative); box-shadow: 0 0 0 2px rgba(166,63,50,.15); }
+.flh-hf-note.is-read ul { display: grid; gap: 3px; margin: 0; padding: 0 0 0 16px; color: var(--ink); font-size: 13.5px; line-height: 1.45; overflow-wrap: anywhere; }
+/* Someone else changed shared notes mid-edit (HomeOverlay). */
+.flh-overlay-blocked.flh-notes-conflict { display: block; }
+.flh-overlay-blocked.flh-notes-conflict p { margin-bottom: 8px; }
+.flh-overlay-blocked .flh-notes-conflict-theirs { display: grid; gap: 3px; margin: 4px 0 8px; font-size: 13px; }
+.flh-notes-conflict-theirs > span { color: var(--ink-soft); font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.flh-notes-conflict-theirs ul { margin: 0; padding-left: 18px; overflow-wrap: anywhere; }
 .flh-hf2-note { margin: 4px 0 0; color: var(--ink-soft); font-size: 12px; }
 .flh-hf2-more { margin-top: 8px; padding: 0; border: 0; background: none; color: var(--brick); font: 600 13px var(--font-ui); cursor: pointer; }
 
@@ -3093,6 +3127,7 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
   .flh-hf-block-title { font-size: 21px; margin-bottom: 4px; }
   .flh-hf-row { grid-template-columns: minmax(0, 44%) minmax(0, 1fr); gap: 8px; min-height: 44px; }
   .flh-select select, .flh-quiet.is-boxed .flh-quiet-input, .flh-multi-field { min-height: 40px; font-size: 16px; }
+  .flh-hf-note-input { font-size: 16px; }
   .flh-multi-toggle { font-size: 16px; }
   .flh-quiet-input { font-size: max(16px, 1em); }
   .flh-hf2-price .flh-quiet-input, .flh-hf2-address .flh-quiet-input { font-size: inherit; }
