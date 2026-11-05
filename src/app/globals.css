@@ -2377,27 +2377,50 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 
 /* Add Home: possible Match answers from pasted listing text. Each shows its
    sentence; only Confirm writes the buyer's own answer. */
-.flh-answer-review { display: grid; gap: 10px; padding: 16px; border: 1px solid rgba(138,124,110,.2); border-radius: 16px; background: var(--paper-raised); }
-.flh-answer-review h3 { margin: 0; color: var(--ink); font-size: 17px; font-weight: 700; }
-.flh-answer-review > p { margin: 0; color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
-.flh-answer-review ul { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
-.flh-answer-review li { display: grid; gap: 8px; padding: 12px; border: 1px solid rgba(138,124,110,.18); border-radius: 12px; background: var(--paper); }
-.flh-answer-review li.is-confirmed { border-color: rgba(86,114,77,.35); }
+:is(.flh-answer-review, .flh-fact-review) { display: grid; gap: 10px; padding: 16px; border: 1px solid rgba(138,124,110,.2); border-radius: 16px; background: var(--paper-raised); }
+:is(.flh-answer-review, .flh-fact-review) h3 { margin: 0; color: var(--ink); font-size: 17px; font-weight: 700; }
+:is(.flh-answer-review, .flh-fact-review) > p { margin: 0; color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
+:is(.flh-answer-review, .flh-fact-review) ul { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+:is(.flh-answer-review, .flh-fact-review) li { display: grid; gap: 8px; padding: 12px; border: 1px solid rgba(138,124,110,.18); border-radius: 12px; background: var(--paper); }
+:is(.flh-answer-review, .flh-fact-review) li.is-confirmed { border-color: rgba(86,114,77,.35); }
 .flh-answer-review-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; }
 .flh-answer-review-head b { color: var(--ink); font-size: 14px; }
 .flh-answer-chip { padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
 .flh-answer-chip.is-yes { background: rgba(86,114,77,.14); color: var(--positive); }
 .flh-answer-chip.is-no { background: rgba(166,63,50,.1); color: var(--negative); }
-.flh-answer-review blockquote { display: grid; gap: 3px; margin: 0; padding: 2px 0 2px 10px; border-left: 3px solid rgba(138,124,110,.35); }
-.flh-answer-review blockquote span { color: var(--ink); font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
-.flh-answer-review cite { color: var(--ink-soft); font-size: 11.5px; font-style: normal; }
+:is(.flh-answer-review, .flh-fact-review) blockquote { display: grid; gap: 3px; margin: 0; padding: 2px 0 2px 10px; border-left: 3px solid rgba(138,124,110,.35); }
+:is(.flh-answer-review, .flh-fact-review) blockquote span { color: var(--ink); font-size: 13px; line-height: 1.45; overflow-wrap: anywhere; }
+:is(.flh-answer-review, .flh-fact-review) cite { color: var(--ink-soft); font-size: 11.5px; font-style: normal; }
 .flh-answer-review-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .flh-answer-review-actions .hh-btn { min-height: 40px; }
 .flh-answer-confirmed { display: inline-flex; align-items: center; gap: 5px; color: var(--positive); font-size: 13px; font-weight: 700; }
 @media (max-width: 560px) {
-  .flh-answer-review { padding: 12px; }
+  :is(.flh-answer-review, .flh-fact-review) { padding: 12px; }
   .flh-answer-review-actions { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
   .flh-answer-review-actions .hh-btn { justify-content: center; min-height: 44px; }
+}
+
+/* Smart Listing Details Paste: the optional paste area after a lookup, and the
+   shared Home Facts it suggests (kept visually apart from personal answers). */
+.flh-listing-paste { display: grid; gap: 8px; padding: 14px 16px; border: 1px dashed rgba(185,83,50,.4); border-radius: 16px; background: var(--paper); }
+.flh-listing-paste-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.flh-listing-paste-heading > span:first-child { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 999px; background: var(--peach); color: var(--brick); }
+.flh-listing-paste h3 { margin: 0; color: var(--ink); font-size: 16px; font-weight: 700; }
+.flh-optional-tag { padding: 2px 8px; border-radius: 999px; background: rgba(138,124,110,.12); color: var(--ink-soft); font-size: 11.5px; font-weight: 700; }
+.flh-listing-paste > p { margin: 0; color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
+.flh-listing-paste textarea { min-height: 76px; resize: vertical; }
+.flh-listing-paste-actions { display: flex; justify-content: flex-end; }
+.flh-listing-paste-actions .hh-btn { min-height: 40px; }
+.flh-listing-paste-status { color: var(--ink) !important; }
+.flh-fact-review { border-color: rgba(185,83,50,.22); }
+.flh-fact-review-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; }
+.flh-fact-review-heading .hh-btn { min-height: 36px; }
+.flh-fact-review-also { margin: 0; color: var(--ink-soft); font-size: 12.5px; line-height: 1.45; }
+.flh-fact-review-also b { color: var(--ink); }
+.flh-answer-chip.is-fact { background: var(--peach); color: var(--brick-deep); white-space: normal; text-align: right; }
+@media (max-width: 560px) {
+  .flh-listing-paste { padding: 12px; }
+  .flh-listing-paste-actions .hh-btn { width: 100%; justify-content: center; min-height: 44px; }
 }
 
 /* Add Home: the listing was found. A calm card, a sage acknowledgement and one

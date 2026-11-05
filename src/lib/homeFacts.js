@@ -19,7 +19,7 @@ import { typedLotSizeAcres } from './lotSize.js';
 import { searchIntentCapabilities, PROPERTY_TYPE_LABELS } from './searchIntent.js';
 import { formatCurrencyDisplay, formatHomePrice, formatLotSizeDisplay, formatTriState, formatDateOnly, digitsOnly } from './homeDisplay.js';
 import { fieldProvenance, hasImportSnapshot } from './homeProvenance.js';
-import { isLegacyNoHoaFact } from './listingFacts.js';
+import { isLegacyNoHoaFact, uncoveredFeatures } from './listingFacts.js';
 
 const isBlank = (value) => value === null || value === undefined || (typeof value === 'string' && value.trim() === '')
   || (Array.isArray(value) && value.length === 0);
@@ -48,7 +48,8 @@ export function importedDetailCount(snapshot) {
   const fieldCount = Object.entries(fields).filter(([key, value]) => !UNCOUNTED_IMPORT_FIELDS.has(key) && !isBlank(value)).length;
   const covered = (fact) => (FACT_COVERED_BY_FIELDS[fact?.key] || []).some((field) => !isBlank(fields[field]));
   const facts = Array.isArray(snapshot.listingFacts) ? snapshot.listingFacts.filter((fact) => fact && !covered(fact) && !UNCOUNTED_LISTING_FACTS.has(fact.key) && !isLegacyNoHoaFact(fact)).length : 0;
-  const features = Array.isArray(snapshot.descriptionFeatures) ? snapshot.descriptionFeatures.length : 0;
+  // Evidence for a fact the snapshot also holds as a field counts once.
+  const features = uncoveredFeatures(snapshot.descriptionFeatures, fields).length;
   return fieldCount + facts + features;
 }
 

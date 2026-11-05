@@ -14,6 +14,12 @@ export function listingImportSnapshot(importResult, importedAt = new Date().toIS
     fields: importResult.fields || {},
     listingFacts: importResult.listingFacts || [],
     descriptionFeatures: importResult.descriptionFeatures || [],
+    // Home Facts the buyer chose to use from pasted listing text, each with the
+    // sentence that stated it (listingTextHomeFacts.js). Their values are also in
+    // `fields`, which is what makes Home Facts show them as From listing.
+    ...(Array.isArray(importResult.pastedFacts) && importResult.pastedFacts.length ? { pastedFacts: importResult.pastedFacts } : {}),
+    // Basics pasted text filled beside a property lookup (which fields came from the text).
+    ...(Array.isArray(importResult.pastedFields) && importResult.pastedFields.length ? { pastedFields: importResult.pastedFields } : {}),
   };
   // Pasted listing text is the buyer's own material, not a provider lookup.
   if (importResult.source === 'raw-text') return { ...snapshot, source: 'pasted_text', importedAt };

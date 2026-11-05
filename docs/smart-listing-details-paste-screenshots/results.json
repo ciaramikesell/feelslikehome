@@ -1,0 +1,62 @@
+[
+  {
+    "step": "[desktop-1440] lookup succeeds → optional paste offered; Home Facts suggested only for empty fields; Use / Undo / Skip; saved with evidence",
+    "ok": true,
+    "ms": 18389
+  },
+  {
+    "step": "[desktop-1440] Skip a shared fact → it stays Unknown and the personal question comes back for this buyer only",
+    "ok": true,
+    "ms": 3952
+  },
+  {
+    "step": "[desktop-1440] lookup fails → same optional paste; Use all fills empty fields; saved as pasted text",
+    "ok": true,
+    "ms": 4300
+  },
+  {
+    "step": "[desktop-1440] hedged text → nothing suggested, Unknown stays Unknown, home still adds",
+    "ok": true,
+    "ms": 4194
+  },
+  {
+    "step": "[ipad-820] lookup succeeds → optional paste offered; Home Facts suggested only for empty fields; Use / Undo / Skip; saved with evidence",
+    "ok": true,
+    "ms": 7883
+  },
+  {
+    "step": "[ipad-820] Skip a shared fact → it stays Unknown and the personal question comes back for this buyer only",
+    "ok": true,
+    "ms": 4330
+  },
+  {
+    "step": "[ipad-820] lookup fails → same optional paste; Use all fills empty fields; saved as pasted text",
+    "ok": true,
+    "ms": 4447
+  },
+  {
+    "step": "[ipad-820] hedged text → nothing suggested, Unknown stays Unknown, home still adds",
+    "ok": true,
+    "ms": 4408
+  },
+  {
+    "step": "[iphone-390] lookup succeeds → optional paste offered; Home Facts suggested only for empty fields; Use / Undo / Skip; saved with evidence",
+    "ok": true,
+    "ms": 8016
+  },
+  {
+    "step": "[iphone-390] Skip a shared fact → it stays Unknown and the personal question comes back for this buyer only",
+    "ok": true,
+    "ms": 4484
+  },
+  {
+    "step": "[iphone-390] lookup fails → same optional paste; Use all fills empty fields; saved as pasted text",
+    "ok": true,
+    "ms": 4526
+  },
+  {
+    "step": "[iphone-390] hedged text → nothing suggested, Unknown stays Unknown, home still adds",
+    "ok": true,
+    "ms": 4204
+  }
+]

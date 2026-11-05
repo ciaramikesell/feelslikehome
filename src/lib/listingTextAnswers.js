@@ -218,7 +218,9 @@ function hedged(scope, { start, end }, rule) {
   const before = scope.slice(0, start);
   const after = clauseAfter(scope, end);
   const around = `${clauseBefore(scope, start)}${scope.slice(start, end)}${after}`;
-  if (HEDGE.test(before) || HEDGE.test(after) || HEDGE.test(scope.slice(start, end))) return true;
+  // A rule whose own wording is a qualifier ("partially finished basement")
+  // still rejects hedges around it, just not inside the matched words.
+  if (HEDGE.test(before) || HEDGE.test(after) || (!rule.allowHedgeInMatch && HEDGE.test(scope.slice(start, end)))) return true;
   if (rule.shareable && (SHARED.test(before) || SHARED.test(after) || NEARBY.test(clauseBefore(scope, start)) || NEARBY.test(after))) return true;
   return (rule.blockers || []).some((pattern) => pattern.test(around));
 }
@@ -258,17 +260,52 @@ function excerpt(scope) {
 export function classifyListingText(text) {
   const scopes = sentenceScopes(text);
   return Object.entries(LISTING_TEXT_CONCEPTS).map(([concept, rule]) => {
-    const yes = []; const no = [];
-    for (const scope of scopes) {
-      const found = readScope(scope, rule);
-      if (found.yes && !found.no) yes.push(excerpt(scope));
-      else if (found.no && !found.yes) no.push(excerpt(scope));
-      else if (found.yes && found.no) { yes.push(excerpt(scope)); no.push(excerpt(scope)); }
-    }
-    if (!yes.length && !no.length) return null;
-    const answer = yes.length && no.length ? 'conflict' : yes.length ? 'yes' : 'no';
-    return { concept, answer, evidence: [...new Set(answer === 'no' ? no : answer === 'yes' ? yes : [...yes, ...no])] };
+    const found = readRuleInScopes(scopes, rule);
+    return found ? { concept, ...found } : null;
   }).filter(Boolean);
+}
+
+function readRuleInScopes(scopes, rule) {
+  const yes = []; const no = [];
+  for (const scope of scopes) {
+    const found = readScope(scope, rule);
+    if (found.yes && !found.no) yes.push(excerpt(scope));
+    else if (found.no && !found.yes) no.push(excerpt(scope));
+    else if (found.yes && found.no) { yes.push(excerpt(scope)); no.push(excerpt(scope)); }
+  }
+  if (!yes.length && !no.length) return null;
+  const answer = yes.length && no.length ? 'conflict' : yes.length ? 'yes' : 'no';
+  return { answer, evidence: [...new Set(answer === 'no' ? no : answer === 'yes' ? yes : [...yes, ...no])] };
+}
+
+/* ------------- Shared readers (used by listingTextHomeFacts.js) -------------- */
+// The same sentence splitting, negation and hedge guards as the concepts above,
+// for readers that suggest shared Home Facts instead of a buyer's own answers.
+
+/** One rule ({ yes, no?, mention?, blockers?, shareable?, allowHedgeInMatch? }) read
+ * across the text. @returns {{ answer: 'yes'|'no'|'conflict', evidence: string[] } | null} */
+export function readListingRule(text, rule) {
+  return readRuleInScopes(sentenceScopes(text), rule);
+}
+
+/** The text's sentence / clause scopes, as every reader here splits it. */
+export function listingTextScopes(text) {
+  return sentenceScopes(text);
+}
+
+/** Is the match at [start, end) of a scope negated or hedged? */
+export function isUnclearMention(scope, start, end, rule = {}) {
+  return NEGATION.test(scope.slice(0, start)) || NEGATION.test(clauseAfter(scope, end)) || hedged(scope, { start, end }, rule);
+}
+
+/** Hedged only (no negation check): for statements whose negation is the point ("No garage"). */
+export function isHedgedMention(scope, start, end, rule = {}) {
+  return hedged(scope, { start, end }, rule);
+}
+
+/** A scope as stored evidence (whitespace folded, at most 200 characters). */
+export function listingEvidenceExcerpt(scope) {
+  return excerpt(scope);
 }
 
 /* ------------------------------ Buyer suggestions ----------------------------- */

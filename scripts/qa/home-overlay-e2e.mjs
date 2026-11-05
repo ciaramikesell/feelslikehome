@@ -279,7 +279,7 @@ async function run() {
       // Manual entry, with the first personal-state write interrupted.
       await owner.goto(`${base}/homes`, { waitUntil: 'networkidle' });
       await owner.getByRole('button', { name: /Add a Home/ }).first().click();
-      await owner.getByText(/Can.t find the home\?/).click();
+      await owner.getByText(/No link\? Paste the listing details/).click();
       await owner.getByRole('button', { name: 'Enter manually' }).click();
       const address = `9 Manual Way ${width}, Chesterfield, MI 48051`;
       await owner.locator('#found-home-address').fill(address);

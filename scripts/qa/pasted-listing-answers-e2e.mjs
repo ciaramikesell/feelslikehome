@@ -116,7 +116,7 @@ async function run() {
       const fireplace = await reviewItem(owner, 'Fireplace').innerText();
       assert(fireplace.includes('Listing suggests Yes') && fireplace.includes('Gas fireplace in the family room.'), `fireplace item: ${fireplace}`);
       assert(!/pool/i.test(await review(owner).innerText()), 'Pool was suggested from a community pool / "room for a pool"');
-      const note = await owner.locator('.flh-found-address p').first().innerText();
+      const note = await owner.locator('.flh-listing-paste-status, .hh-manual-fallback .hh-edit-context').first().innerText();
       assert(/2 possible answers to review below/.test(note), `note: ${note}`);
       await shot(owner, `${label}-1-suggestions`, '.flh-found');
     }, open);
@@ -174,7 +174,7 @@ async function run() {
       await rerun(`${rerunAddress}\nNo fireplace. Does not have a finished basement.`);
       await reviewItem(owner, 'Fireplace').getByText('Listing suggests No').waitFor();
       assert(await reviewItem(owner, 'Fireplace').getByRole('button', { name: 'Confirm Fireplace: No' }).isVisible() && await reviewItem(owner, 'Fireplace').getByText('Your answer').count() === 0, 'the new No was applied instead of suggested');
-      const note = await owner.locator('.flh-found-address p').first().innerText();
+      const note = await owner.locator('.flh-listing-paste-status, .hh-manual-fallback .hh-edit-context').first().innerText();
       assert(/Fireplace is back to Unknown/.test(note), `note: ${note}`);
       await shot(owner, `${label}-6-rerun-conflicting-text`, '.flh-found');
       // Confirm the basement No, then text that never mentions a fireplace and still says the basement isn't finished.
@@ -183,7 +183,7 @@ async function run() {
       await rerun(`${rerunAddress}\nBright kitchen. Does not have a finished basement.`);
       await reviewItem(owner, 'Finished Basement').getByText('Your answer: No').waitFor();
       assert(await reviewItem(owner, 'Fireplace').count() === 0, 'Fireplace still shown with no evidence');
-      assert(/Fireplace is back to Unknown/.test(await owner.locator('.flh-found-address p').first().innerText()), 'silent clear');
+      assert(/Fireplace is back to Unknown/.test(await owner.locator('.flh-listing-paste-status, .hh-manual-fallback .hh-edit-context').first().innerText()), 'silent clear');
       assert(homeByAddress(rerunAddress).length === 0, 'rerunning saved the home');
       await addToMyHomes(owner);
       const [home] = homeByAddress(rerunAddress);
