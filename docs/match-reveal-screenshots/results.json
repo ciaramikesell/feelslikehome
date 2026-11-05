@@ -1,0 +1,94 @@
+{
+  "log": [
+    {
+      "step": "[desktop] high: opening shows nothing; the persisted answer that reaches 90% reveals 100% once",
+      "ok": true,
+      "ms": 12691
+    },
+    {
+      "step": "[desktop] medium: opening shows nothing; the persisted answer that reaches 90% reveals 78% once",
+      "ok": true,
+      "ms": 11471
+    },
+    {
+      "step": "[desktop] low: opening shows nothing; the persisted answer that reaches 90% reveals 30% once",
+      "ok": true,
+      "ms": 11562
+    },
+    {
+      "step": "[iphone] high: opening shows nothing; the persisted answer that reaches 90% reveals 100% once",
+      "ok": true,
+      "ms": 12161
+    },
+    {
+      "step": "[iphone] medium: opening shows nothing; the persisted answer that reaches 90% reveals 78% once",
+      "ok": true,
+      "ms": 12281
+    },
+    {
+      "step": "[iphone] low: opening shows nothing; the persisted answer that reaches 90% reveals 30% once",
+      "ok": true,
+      "ms": 11984
+    },
+    {
+      "step": "[small] high: opening shows nothing; the persisted answer that reaches 90% reveals 100% once",
+      "ok": true,
+      "ms": 12091
+    },
+    {
+      "step": "[small] medium: opening shows nothing; the persisted answer that reaches 90% reveals 78% once",
+      "ok": true,
+      "ms": 11712
+    },
+    {
+      "step": "[small] low: opening shows nothing; the persisted answer that reaches 90% reveals 30% once",
+      "ok": true,
+      "ms": 11820
+    },
+    {
+      "step": "[smallest] high: opening shows nothing; the persisted answer that reaches 90% reveals 100% once",
+      "ok": true,
+      "ms": 12309
+    },
+    {
+      "step": "[smallest] medium: opening shows nothing; the persisted answer that reaches 90% reveals 78% once",
+      "ok": true,
+      "ms": 11952
+    },
+    {
+      "step": "[smallest] low: opening shows nothing; the persisted answer that reaches 90% reveals 30% once",
+      "ok": true,
+      "ms": 11895
+    },
+    {
+      "step": "[desktop] a home already above 90% when opened never reveals, even after edits",
+      "ok": true,
+      "ms": 7636
+    },
+    {
+      "step": "[desktop] two tabs on the same home: only one ever reveals",
+      "ok": true,
+      "ms": 7893
+    },
+    {
+      "step": "[desktop] a failed claim shows nothing and never breaks the save",
+      "ok": true,
+      "ms": 5077
+    },
+    {
+      "step": "[co-buyer] earns their own reveal on the same home, from their own answers",
+      "ok": true,
+      "ms": 9781
+    },
+    {
+      "step": "[Realtor] the client home view never reveals and records nothing",
+      "ok": true,
+      "ms": 4650
+    },
+    {
+      "step": "[reduced motion] no confetti and no animation",
+      "ok": true,
+      "ms": 2663
+    }
+  ]
+}

@@ -133,7 +133,7 @@ async function openHome(page, home) {
   await page.locator('#flh-match-title').waitFor();
 }
 async function answer(page, label, value) {
-  for (const toggle of await page.locator('.flh-mc2-toggle[aria-expanded="false"]').all()) await toggle.click();
+  for (const toggle of await page.locator('.flh-mc2-toggle[aria-expanded="false"]').all()) if (await toggle.isVisible()) await toggle.click();
   const field = page.locator('fieldset.flh-mc2-answer').filter({ has: page.locator('legend', { hasText: new RegExp(`^${label}$`) }) });
   await field.scrollIntoViewIfNeeded();
   await field.getByRole('radio', { name: value, exact: true }).check();
