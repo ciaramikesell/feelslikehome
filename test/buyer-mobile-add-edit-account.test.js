@@ -108,9 +108,11 @@ test('pros, cons, and notes remain shared fields and are labeled truthfully', ()
     assert.match(shared, new RegExp(`'${field}'`));
   }
   // Directly editable (no hidden toggle) and never described as private in a shared search.
-  assert.match(editor, /id="edit-home-pros"/);
-  assert.match(editor, /id="edit-home-cons"/);
-  assert.match(editor, /id="edit-home-notes"/);
+  // NoteListFields renders id={`${idPrefix}-${key}`}: edit-home-notes / -pros / -cons.
+  assert.match(editor, /<NoteListFields form=\{form\} set=\{set\} idPrefix="edit-home" \/>/);
+  const fields = read('src/components/NoteListFields.jsx');
+  for (const key of ['notes', 'pros', 'cons']) assert.match(fields, new RegExp(`key: '${key}'`));
+  assert.match(fields, /const id = `\$\{idPrefix\}-\$\{key\}`;/);
   assert.doesNotMatch(editor, /notesOpen|NoteSummary/);
   assert.match(editor, /isCollaborative \? 'Pros, cons, and notes are visible to everyone in this search\.'/);
   assert.doesNotMatch(editor, /private notes|only you can see/i);

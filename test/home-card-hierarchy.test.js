@@ -154,14 +154,13 @@ test('card renders compact unboxed facts and preserves adjacent component contra
   const board = fs.readFileSync('src/components/HomesBoard.jsx', 'utf8');
   const css = fs.readFileSync('src/app/globals.css', 'utf8');
   assert.doesNotMatch(board, /Home Snapshot|hh-snapshot-fact|hh-card-context-group/);
-  // Unboxed (no border, padding or background); a two-column facts grid with
-  // each label above its value, and a long value taking the full row.
+  // Unboxed (no border, padding or background) label → value rows; the
+  // condensed two-column small-caps grid was reverted after product review.
   const factListRule = css.match(/\.hh-property-facts\s*\{([^}]*)\}/)?.[1] || '';
-  assert.doesNotMatch(factListRule, /border|padding|background/);
-  assert.match(factListRule, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(css, /\.hh-property-fact\.is-wide \{ grid-column: 1 \/ -1; \}/);
+  assert.doesNotMatch(factListRule, /border|padding|background|grid-template-columns/);
+  assert.doesNotMatch(css, /\.hh-property-fact\.is-wide/);
   assert.match(board, /className="hh-property-facts"/);
-  assert.match(board, /className=\{`hh-property-fact\$\{String\(value\)\.length > 24 \? ' is-wide' : ''\}`\}/);
+  assert.match(board, /<div className="hh-property-fact" key=\{label\}>/);
   assert.doesNotMatch(board, /Property Snapshot|PROPERTY SNAPSHOT|Must Haves<\/(h\d|strong|span)>/i, 'no added headings');
   // My Homes Visual Refresh: the "Personalized Criteria — n/n evaluated" heading is
   // gone; one compact summary line (matches · misses · unknown) replaces it.
@@ -187,7 +186,7 @@ test('criteria disclosure supports hover, focus, touch/click, Escape, and outsid
   assert.match(ui, /items\.map\(\(item\).*item\.label/);
 });
 
-test('card polish: room under the score, link-like criteria summaries with focus ring, fact labels 12px small caps, values 13px', () => {
+test('card polish: room under the score, link-like criteria summaries with focus ring, calm fact rows at 13px', () => {
   const css = fs.readFileSync('src/app/globals.css', 'utf8');
   assert.match(css, /\.hh-must-summary \{[^}]*margin: 14px 0 0;/);
   assert.match(css, /\.hh-home-card \.hh-match-score-value strong \{ font-size: 21px;/);
@@ -195,6 +194,8 @@ test('card polish: room under the score, link-like criteria summaries with focus
   assert.match(css, /\.hh-match-summary-line \.hh-criteria-disclosure > button \{ text-decoration: underline;/);
   assert.match(css, /button\[aria-expanded="true"\] \{ text-decoration-color: currentColor; \}/);
   assert.match(css, /\.hh-criteria-disclosure>button:focus-visible\{outline:2px solid var\(--focus-ring\)/, 'the shared focus ring stays');
-  assert.match(css, /\.hh-property-fact dt \{[^}]*font: 600 12px\/1\.25 var\(--font-ui\); letter-spacing: \.035em; text-transform: uppercase;/);
-  assert.match(css, /\.hh-property-fact dd \{[^}]*font-size: 13px;/);
+  // Label column then value, sentence-case labels in the secondary ink, 13px.
+  assert.match(css, /\.hh-property-fact \{ display: grid; grid-template-columns: minmax\(88px, 40%\) minmax\(0, 1fr\);[^}]*font-size: 13px;/);
+  assert.match(css, /\.hh-property-fact dt \{ color: var\(--ink-soft\); \}/);
+  assert.doesNotMatch(css, /\.hh-property-fact dt \{[^}]*text-transform: uppercase/);
 });

@@ -166,10 +166,12 @@ test('Tour Feedback never marks a home toured or records a reaction by itself', 
   assert.match(detail, /!readOnly && reflecting && <PostTourModal/);
 });
 
-test('pros and cons are shown exactly as written, never split on commas', () => {
+test('pros and cons are shown one entry per written line, never split on commas', () => {
   assert.doesNotMatch(tour, /parseCommaList/);
-  assert.match(tour, /\{pros \? <p>\{pros\}<\/p>/);
-  assert.match(tour, /\{cons \? <p>\{cons\}<\/p>/);
+  assert.match(tour, /const pros = noteEntries\(home\.pros\);/);
+  assert.match(tour, /const cons = noteEntries\(home\.cons\);/);
+  assert.match(tour, /\{pros\.length \? <EntryList entries=\{pros\} marker="\+" \/>/);
+  assert.match(tour, /\{cons\.length \? <EntryList entries=\{cons\} marker="−" \/>/);
 });
 
 test('freeform pros / cons keep every phrase intact, and the My Homes notes count is one per field', () => {
@@ -189,7 +191,8 @@ test('My Homes cards and Compare show pros / cons as written: no comma splitting
   const compare = read('src/components/CompareBoard.jsx');
   const display = read('src/lib/homeDisplay.js');
   for (const source of [cards, compare, tour, display]) assert.doesNotMatch(source, /parseCommaList|split\(','\)/);
-  assert.match(cards, /const noteCount = noteFieldCount\(home\);/);
+  assert.match(cards, /const notesPreview = <HomeNotesPreview home=\{home\}/);
+  assert.match(read('src/components/HomeNotesPreview.jsx'), /const groups = homeNoteGroups\(home\);/);
   assert.match(compare, /const liked = freeformText\(h\.pros\);/);
   assert.match(compare, /<strong style=\{\{ color: 'var\(--moss\)' \}\}>Liked: <\/strong>\{liked\}<\/div>/);
   assert.match(compare, /<strong style=\{\{ color: 'var\(--brick\)' \}\}>Didn't like: <\/strong>\{disliked\}<\/div>/);

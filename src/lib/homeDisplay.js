@@ -131,6 +131,26 @@ export function noteFieldCount(home) {
   return [home?.notes, home?.conditionNotes, home?.pros, home?.cons].filter((text) => freeformText(text)).length;
 }
 
+// Pros, cons and notes as short lists: one entry per written line, never one
+// per comma ("Bright, open living room" stays one pro). A leading list marker
+// a buyer typed or pasted ("- ", "• ", "* ", "1. ") is dropped from the entry;
+// the stored text itself is never rewritten.
+const LIST_MARKER = /^(?:[-•*·–—]|\d{1,2}[.)])\s+/;
+export function noteEntries(text) {
+  return freeformText(text).split(/\r?\n/).map((line) => line.trim().replace(LIST_MARKER, '').trim()).filter(Boolean);
+}
+
+// The card's Notes / Pros / Cons previews, in that order, only those with
+// something written. Notes also carries the older condition notes so nothing
+// a buyer wrote before disappears from the card.
+export function homeNoteGroups(home) {
+  return [
+    { key: 'notes', label: 'Notes', entries: [...noteEntries(home?.notes), ...noteEntries(home?.conditionNotes)] },
+    { key: 'pros', label: 'Pros', entries: noteEntries(home?.pros) },
+    { key: 'cons', label: 'Cons', entries: noteEntries(home?.cons) },
+  ].filter((group) => group.entries.length > 0);
+}
+
 // Count of "property details" found, for the "We found N property details" message.
 // Address identifies the home rather than describing a fact about it, and latitude/
 // longitude are invisible infrastructure fields, never shown in the UI — both kinds
