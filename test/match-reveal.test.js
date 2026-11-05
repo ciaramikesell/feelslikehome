@@ -5,7 +5,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { MIN_ELIGIBLE, REVEAL_THRESHOLD, crossedRevealThreshold, isCompletenessEligible, matchCompleteness, revealCopy } from '../src/lib/matchReveal.js';
+import { CONFETTI_ABOVE, MIN_ELIGIBLE, REVEAL_THRESHOLD, crossedRevealThreshold, isCompletenessEligible, matchCompleteness, revealCopy } from '../src/lib/matchReveal.js';
+import { register } from 'node:module';
+
+register('./support/aliasHooks.mjs', import.meta.url);
+const { claimMatchReveal } = await import('../src/lib/supabase/collaboration.js');
 import { computeMatch } from '../src/lib/matching.js';
 import { normalizePriorities } from '../src/lib/constants.js';
 import { addCriterion } from '../src/lib/searchProfile.js';
@@ -17,14 +21,16 @@ const unknown = (n) => Array.from({ length: n }, (_, i) => c(`features:Unknown $
 
 /* --------------------------------- completeness --------------------------------- */
 
-test('completeness: 0%, 89%, exactly 90% and 100%', () => {
-  assert.equal(REVEAL_THRESHOLD, 90);
+test('completeness: 0%, 74%, exactly 75%, 90% and 100%', () => {
+  assert.equal(REVEAL_THRESHOLD, 75);
   assert.deepEqual(matchCompleteness({ allSelected: unknown(10) }), { eligible: 10, determined: 0, pct: 0, unlocked: false });
-  assert.deepEqual(matchCompleteness({ allSelected: [...known(89), ...unknown(11)] }), { eligible: 100, determined: 89, pct: 89, unlocked: false });
+  assert.deepEqual(matchCompleteness({ allSelected: [...known(74), ...unknown(26)] }), { eligible: 100, determined: 74, pct: 74, unlocked: false });
+  assert.deepEqual(matchCompleteness({ allSelected: [...known(75), ...unknown(25)] }), { eligible: 100, determined: 75, pct: 75, unlocked: true });
+  assert.deepEqual(matchCompleteness({ allSelected: [...known(3), ...unknown(1)] }), { eligible: 4, determined: 3, pct: 75, unlocked: true });
   assert.deepEqual(matchCompleteness({ allSelected: [...known(9), ...unknown(1)] }), { eligible: 10, determined: 9, pct: 90, unlocked: true });
   assert.deepEqual(matchCompleteness({ allSelected: known(12) }), { eligible: 12, determined: 12, pct: 100, unlocked: true });
-  // 8 of 9 is 88.9%: shown as 88 and still locked (never rounded up to 90).
-  assert.deepEqual(matchCompleteness({ allSelected: [...known(8), ...unknown(1)] }), { eligible: 9, determined: 8, pct: 88, unlocked: false });
+  // 5 of 7 is 71.4% and 8 of 11 is 72.7%: locked; 11 of 15 is 73.3%: locked (never rounded up).
+  for (const [k, n] of [[5, 7], [8, 11], [11, 15]]) assert.equal(matchCompleteness({ allSelected: [...known(k), ...unknown(n - k)] }).unlocked, false, `${k}/${n}`);
 });
 
 test('determined Yes and No both count; Unknown and neutral never do', () => {
@@ -37,8 +43,8 @@ test('tour-only criteria, star ratings and Commute are not eligible; nothing sel
   assert.equal(isCompletenessEligible(c('location:Commute', { evaluated: true, met: true })), false);
   assert.equal(isCompletenessEligible(c('budget', { evaluated: true, met: true })), true);
   // Answered tour criteria never inflate completeness.
-  const r = matchCompleteness({ allSelected: [...known(3), ...unknown(1), ...Array.from({ length: 6 }, (_, i) => c(`homeFeel:Tour ${i}`, { objective: false, evaluated: true, met: true }))] });
-  assert.deepEqual([r.eligible, r.determined, r.unlocked], [4, 3, false]);
+  const r = matchCompleteness({ allSelected: [...known(2), ...unknown(2), ...Array.from({ length: 6 }, (_, i) => c(`homeFeel:Tour ${i}`, { objective: false, evaluated: true, met: true }))] });
+  assert.deepEqual([r.eligible, r.determined, r.unlocked], [4, 2, false]);
   assert.deepEqual(matchCompleteness({ allSelected: [] }), { eligible: 0, determined: 0, pct: 0, unlocked: false });
   assert.deepEqual(matchCompleteness(null), { eligible: 0, determined: 0, pct: 0, unlocked: false });
   // A meaningful denominator: fewer than three eligible criteria never unlock, even at 100%.
@@ -80,16 +86,16 @@ test('only a crossing from locked to unlocked triggers', () => {
 test('the overlay: baseline from the server copy, trigger only on persisted saves, claim before showing', () => {
   const overlay = read('src/components/HomeOverlay.jsx');
   assert.match(overlay, /useEffect\(\(\) => \{ revealBaseline\.current = matchCompleteness\(computeMatch\(serverHome, prioritiesRef\.current\)\); \}, \[serverHome\]\);/);
-  assert.match(overlay, /useEffect\(\(\) => \{ if \(autosave\.status === 'saved'\) considerReveal\(homeRef\.current\); \}, \[autosave\.status, considerReveal\]\);/);
+  assert.match(overlay, /useEffect\(\(\) => \{ if \(autosave\.status === 'saved'\) considerReveal\(homeRef\.current\); \}, \[autosave\.status, autosave\.savedVersion, considerReveal\]\);/, 'once per completed save');
+  assert.match(read('src/lib/autosaveQueue.js'), /failed, pending, saves \};/);
   assert.match(overlay, /setFullEditor\(false\); considerReveal\(saved\); return saved;/, 'the full editor after a successful save only');
-  assert.match(overlay, /claimMatchReveal\(createClient\(\), persisted\.id\)\.then\(\(claimed\) => \{ if \(claimed\) setRevealOpen\(true\); \}\);/);
+  assert.match(overlay, /claimMatchReveal\(createClient\(\), persisted\.id, \{ token: crypto\.randomUUID\(\) \}\)\.then\(\(claimed\) => \{ if \(claimed\) setRevealOpen\(true\); \}\);/);
   assert.match(overlay, /const nestedOpen = reflecting \|\| !!archiveTarget \|\| fullEditor \|\| revealOpen;/, 'Escape / Tab belong to the reveal while it is open');
   // Nowhere else can reveal: not Add Home, the board, the Realtor's read-only Home Detail or Compare.
   for (const file of ['src/components/HomesBoard.jsx', 'src/components/HomeModal.jsx', 'src/components/HomeDetail.jsx', 'src/components/RealtorWorkspace.jsx', 'src/components/CompareBoard.jsx']) {
     assert.doesNotMatch(read(file), /claimMatchReveal|MatchReveal/, file);
   }
-  // A failed claim is just "no reveal".
-  assert.match(read('src/lib/supabase/collaboration.js'), /export async function claimMatchReveal\(supabase, homeId\) \{\n  try \{\n    const \{ data, error \} = await supabase\.rpc\('claim_match_reveal', \{ p_home_id: homeId \}\);\n    \/\/ PostgREST returns a scalar boolean as `true`; tolerate a one-row array too\.\n    return !error && \(Array\.isArray\(data\) \? data\[0\] : data\) === true;\n  \} catch \{\n    return false;/);
+  // claimMatchReveal: see the token / retry test below.
 });
 
 /* ------------------------------------ copy ------------------------------------ */
@@ -100,34 +106,70 @@ const failedMust = c('features:Pool', { tier: 'must', evaluated: true, met: fals
 const unknownMust = c('features:Office', { tier: 'must' });
 const metMust = c('features:Garage', { tier: 'must', evaluated: true, met: true });
 
-test('copy bands follow the real Match %; a high Match with a failed Must Have is not a celebration', () => {
-  assert.deepEqual(revealCopy(match(96, [metMust]), done), { band: 'high', headline: 'Well, hello there!', body: 'It lines up with nearly everything you told us matters.', progress: 'You’ve gathered 92% of the details that matter to you.', celebrate: true });
-  const catchy = revealCopy(match(95, [failedMust, metMust]), done);
-  assert.equal(catchy.celebrate, false);
-  assert.equal(catchy.headline, 'Strong, with one catch.');
-  assert.match(catchy.body, /misses a Must Have/);
+test('confetti follows the Match score: 85% none, 86% and up yes, whatever the Must Haves', () => {
+  assert.equal(CONFETTI_ABOVE, 85);
+  for (const must of [[], [metMust], [failedMust], [unknownMust], [failedMust, unknownMust]]) {
+    assert.equal(revealCopy(match(85, must), done).celebrate, false, `85 ${must.length}`);
+    for (const pct of [86, 89, 90, 95, 100]) assert.equal(revealCopy(match(pct, must), done).celebrate, true, `${pct} ${must.length}`);
+  }
+  for (const pct of [84, 75, 60, 30]) assert.equal(revealCopy(match(pct), done).celebrate, false);
+});
+
+test('copy bands follow the real Match %; 86%+ with a missed Must Have celebrates but names the miss', () => {
+  assert.deepEqual(revealCopy(match(96, [metMust]), done), { band: 'high', headline: 'Well, hello there!', body: 'It lines up with nearly everything you told us matters.', progress: 'You’ve gathered 92% of the details that matter to you, and a few are still worth confirming.', celebrate: true });
+  assert.equal(revealCopy(match(86, [metMust]), done).headline, 'Well, hello there!', '86% gets the warm headline');
+  const missed = revealCopy(match(95, [failedMust, metMust]), done);
+  assert.equal(missed.celebrate, true);
+  assert.match(missed.body, /misses a Must Have/);
+  assert.match(revealCopy(match(87, [failedMust]), done).body, /misses a Must Have/);
   assert.match(revealCopy(match(80, [failedMust]), done).body, /misses a Must Have/);
-  assert.equal(revealCopy(match(80, [metMust]), done).headline, 'There’s something here!');
+  assert.equal(revealCopy(match(85, [metMust]), done).headline, 'There’s something here!');
   assert.equal(revealCopy(match(62), done).headline, 'A little give and take.');
   assert.equal(revealCopy(match(31, [failedMust]), done).headline, 'Not quite your match?');
-  assert.equal(revealCopy(match(90), done).band, 'high');
-  assert.equal(revealCopy(match(89), done).band, 'good');
-  assert.equal(revealCopy(match(75), done).band, 'good');
-  assert.equal(revealCopy(match(74), done).band, 'mixed');
-  assert.equal(revealCopy(match(50), done).band, 'mixed');
-  assert.equal(revealCopy(match(49), done).band, 'low');
+  for (const [pct, band] of [[100, 'high'], [86, 'high'], [85, 'good'], [75, 'good'], [74, 'mixed'], [50, 'mixed'], [49, 'low'], [0, 'low']]) assert.equal(revealCopy(match(pct), done).band, band, String(pct));
+  // Complete information drops the "still worth confirming" note.
+  assert.equal(revealCopy(match(96), { pct: 100 }).progress, 'You’ve gathered 100% of the details that matter to you.');
+  assert.equal(revealCopy(match(96), { pct: 75 }).progress, 'You’ve gathered 75% of the details that matter to you, and a few are still worth confirming.');
 });
 
 test('unknown Must Haves are never implied verified; nothing is "perfect", guaranteed or ruled out', () => {
-  const high = revealCopy(match(94, [unknownMust, metMust]), done);
-  assert.match(high.body, /still need confirming/);
+  assert.match(revealCopy(match(94, [unknownMust, metMust]), done).body, /still need confirming/);
   assert.match(revealCopy(match(81, [unknownMust]), done).body, /still to confirm/);
-  const all = [96, 95, 90, 85, 80, 75, 60, 50, 40, 10].flatMap((pct) => [[], [failedMust], [unknownMust], [metMust]].map((must) => revealCopy(match(pct, must), done)));
-  for (const copy of all) {
+  const all = [100, 96, 90, 86, 85, 80, 75, 60, 50, 40, 10].flatMap((pct) => [[], [failedMust], [unknownMust], [metMust]].map((must) => [must, revealCopy(match(pct, must), done)]));
+  for (const [must, copy] of all) {
     assert.doesNotMatch(`${copy.headline} ${copy.body}`, /perfect|guarantee|ideal|dream|ruled out|deal ?breaker|definitely|bad|poor|fail/i, copy.headline);
-    if (copy.celebrate) assert.equal(copy.band, 'high');
+    if (must.includes(unknownMust) && copy.band !== 'mixed' && copy.band !== 'low') assert.match(copy.body, /confirm/, `unknown Must Have at ${copy.band}`);
+    if (must.includes(unknownMust)) assert.doesNotMatch(copy.body, /nearly everything you told us/, 'never the all-clear line with an unconfirmed Must Have');
   }
-  assert.equal(all.filter((copy) => copy.celebrate).length, 9, 'celebration only at 90%+ with no failed Must Have (3 scores × 3 Must Have states)');
+});
+
+/* --------------------------- claiming: one token per crossing --------------------------- */
+
+const fakeRpc = (responses) => {
+  const calls = [];
+  return { calls, rpc: async (name, args) => { calls.push([name, args]); const next = responses.shift(); if (next instanceof Error) throw next; return next; } };
+};
+
+test('claim: a lost response is retried with the same token; a definite answer is never retried', async () => {
+  // Network drop, then the server says true (this token's claim was recorded): shown once.
+  let api = fakeRpc([new Error('Failed to fetch'), { data: true, error: null }]);
+  assert.equal(await claimMatchReveal(api, 'h1', { token: 't1', retryDelayMs: 1 }), true);
+  assert.deepEqual(api.calls.map(([, args]) => args.p_token), ['t1', 't1'], 'same token on retry');
+  api = fakeRpc([{ data: null, error: { message: 'Failed to fetch' } }, { data: [true], error: null }]);
+  assert.equal(await claimMatchReveal(api, 'h1', { token: 't2', retryDelayMs: 1 }), true);
+  // Definite answers stop at once: already claimed, no permission, function missing.
+  for (const response of [{ data: false, error: null }, { data: null, error: { code: '42501', message: 'Match reveal not available' } }, { data: null, error: { code: 'PGRST202', message: 'not found' } }, { data: null, error: { status: 404, message: 'Not found' } }]) {
+    api = fakeRpc([response, { data: true, error: null }]);
+    assert.equal(await claimMatchReveal(api, 'h1', { token: 't3', retryDelayMs: 1 }), false);
+    assert.equal(api.calls.length, 1, JSON.stringify(response));
+  }
+  // Gives up after three tries; no token, no call.
+  api = fakeRpc([new Error('x'), new Error('x'), new Error('x'), { data: true, error: null }]);
+  assert.equal(await claimMatchReveal(api, 'h1', { token: 't4', retryDelayMs: 1 }), false);
+  assert.equal(api.calls.length, 3);
+  api = fakeRpc([{ data: true, error: null }]);
+  assert.equal(await claimMatchReveal(api, 'h1'), false);
+  assert.equal(api.calls.length, 0);
 });
 
 test('the dialog: real %, labelled, Escape / close / outside click, focus on the main action, reduced motion', () => {

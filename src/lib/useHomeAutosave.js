@@ -12,7 +12,7 @@ export function useHomeAutosave({ home, applyLocal, writeShared, writePersonal, 
   const latest = useRef(home);
   latest.current = home;
   const drafts = useRef(new Map());
-  const [status, setStatus] = useState({ state: 'idle', failed: [] });
+  const [status, setStatus] = useState({ state: 'idle', failed: [], saves: 0 });
   const handlers = useRef({ writeShared, writePersonal, onBusyChange });
   handlers.current = { writeShared, writePersonal, onBusyChange };
   const queueRef = useRef(null);
@@ -59,5 +59,8 @@ export function useHomeAutosave({ home, applyLocal, writeShared, writePersonal, 
     return () => window.removeEventListener('beforeunload', warn);
   }, [hasUnsaved]);
 
-  return { saveShared, savePersonal, retry: queue.retry, settle, registerDraft, hasUnsaved, status: status.state, failed: status.failed, savedCount: queue.savedCount };
+  return { saveShared, savePersonal, retry: queue.retry, settle, registerDraft, hasUnsaved, status: status.state, failed: status.failed, savedCount: queue.savedCount,
+    // Increments with every successful write, so a caller can act once per
+    // completed save even if two status changes render together.
+    savedVersion: status.saves || 0 };
 }

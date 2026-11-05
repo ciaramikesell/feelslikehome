@@ -7,7 +7,7 @@
 //   3. FLH_TEST_PGHOST=… FLH_TEST_PGPORT=… node scripts/qa/match-reveal-qa.mjs standin.json <outDir> [baseUrl]
 //
 // One buyer with ten pre-tour criteria (+ one tour-only). Each seeded home is at
-// 8 of 10 (80%); answering "Home office" takes it to 90%. Checks the reveal
+// 7 of 10 (70%); answering "Home office" takes it to 80% (the reveal is at 75%). Checks the reveal
 // appears once, with the real Match % and the matching copy, only after the
 // save persists; never on open, for a home already above 90%, on a later edit,
 // after a reload, in a second tab, when the claim fails, or for a Realtor; the
@@ -61,17 +61,21 @@ function buyer() {
 }
 const PRIORITIES = buyer();
 const FACTS = {
-  high: { price: '420000', beds: '4', baths: '3', sqft: '2400', garage_spaces: '2', basement_condition: 'finished', laundry_location: 'first_floor', fenced: true, answer: 'Yes' },
-  medium: { price: '468000', beds: '3', baths: '2', sqft: '1500', garage_spaces: '0', basement_condition: 'finished', laundry_location: 'first_floor', fenced: 'no', answer: 'Yes' },
-  low: { price: '560000', beds: '2', baths: '1', sqft: '1200', garage_spaces: '0', basement_condition: 'unfinished', laundry_location: 'first_floor', fenced: 'no', answer: 'No' },
+  // Each starts at 7 of 10 (70%): Fenced yard, Fireplace and Home office unanswered.
+  high: { price: '420000', beds: '4', baths: '3', sqft: '2400', garage_spaces: '2', basement_condition: 'finished', laundry_location: 'first_floor', answer: 'Yes' },
+  // Over budget (a missed Must Have) but a Match above 85%: confetti, and the copy names the miss.
+  catch: { price: '462000', beds: '4', baths: '3', sqft: '2400', garage_spaces: '2', basement_condition: 'finished', laundry_location: 'first_floor', answer: 'Yes' },
+  medium: { price: '468000', beds: '3', baths: '2', sqft: '1500', garage_spaces: '0', basement_condition: 'finished', laundry_location: 'first_floor', answer: 'Yes' },
+  low: { price: '560000', beds: '2', baths: '1', sqft: '1200', garage_spaces: '0', basement_condition: 'unfinished', laundry_location: 'first_floor', answer: 'No' },
 };
 const homes = {};
+const KINDS = { desktop: ['high', 'catch', 'medium', 'low'], iphone: ['high', 'catch', 'medium', 'low'], small: ['high', 'medium', 'low'], smallest: ['high', 'medium', 'low'] };
 function addHome(key, kind, extraChecks = {}) {
   const f = FACTS[kind];
   const id = randomUUID();
   exec(`insert into public.homes (id, user_id, search_id, address, price, beds, baths, sqft, garage_spaces, basement_condition, laundry_location)
     values ('${id}', '${owner.id}', '${info.search}', ${lit(`${100 + Object.keys(homes).length} ${key} Way, Troy, MI 48084`)}, ${lit(f.price)}, ${lit(f.beds)}, ${lit(f.baths)}, ${lit(f.sqft)}, ${lit(f.garage_spaces)}, ${lit(f.basement_condition)}, ${lit(f.laundry_location)})`);
-  const checks = { 'exterior:Fenced yard': f.fenced, ...extraChecks };
+  const checks = { ...extraChecks };
   exec(`insert into public.home_member_state (home_id, user_id, status, checks) values ('${id}', '${owner.id}', 'Saved', ${lit(JSON.stringify(checks))}::jsonb)
     on conflict (home_id, user_id) do update set checks = excluded.checks`);
   homes[key] = { id, kind, checks, facts: f };
@@ -85,11 +89,12 @@ function seed() {
   }
   exec(`update public.searches set priorities = ${lit(JSON.stringify(PRIORITIES))}::jsonb where id = '${info.search}'`);
   exec(`insert into public.search_members (search_id, user_id, role) values ('${info.search}', '${realtor.id}', 'realtor') on conflict (search_id, user_id) do nothing`);
-  for (const device of ['desktop', 'iphone', 'small', 'smallest']) for (const kind of ['high', 'medium', 'low']) addHome(`${device}-${kind}`, kind);
-  addHome('already', 'high', { 'features:Home office': true, 'features:Fireplace': true }); // 100% on arrival
+  for (const device of ['desktop', 'iphone', 'small', 'smallest']) for (const kind of KINDS[device]) addHome(`${device}-${kind}`, kind);
+  addHome('already', 'high', { 'exterior:Fenced yard': true, 'features:Home office': true, 'features:Fireplace': true }); // 100% on arrival
   addHome('shared', 'high');
   addHome('tabs', 'high');
   addHome('failing', 'high');
+  addHome('interrupted', 'high');
 }
 
 // What the dialog must say, from the pure functions on the post-answer data.
@@ -149,18 +154,20 @@ async function main() {
   seed();
   for (const [key, home] of Object.entries(homes)) {
     if (key === 'already') assert(before(home).unlocked, 'already should start unlocked');
-    else assert(before(home).pct === 80 && !before(home).unlocked, `${key} should start at 80%: ${JSON.stringify(before(home))}`);
+    else assert(before(home).pct === 70 && !before(home).unlocked, `${key} should start at 70%: ${JSON.stringify(before(home))}`);
   }
-  const bands = Object.fromEntries(['high', 'medium', 'low'].map((kind) => [kind, expectedFor(homes[`desktop-${kind}`], FACTS[kind].answer)]));
-  console.log('expected', JSON.stringify(Object.fromEntries(Object.entries(bands).map(([k, v]) => [k, { pct: v.match.pct, completeness: v.completeness.pct, headline: v.copy.headline }]))));
+  const bands = Object.fromEntries(['high', 'catch', 'medium', 'low'].map((kind) => [kind, expectedFor(homes[`desktop-${kind}`], FACTS[kind].answer)]));
+  console.log('expected', JSON.stringify(Object.fromEntries(Object.entries(bands).map(([k, v]) => [k, { pct: v.match.pct, completeness: v.completeness.pct, headline: v.copy.headline, confetti: v.copy.celebrate }]))));
+  assert(bands.high.copy.celebrate && bands.catch.copy.celebrate && !bands.medium.copy.celebrate && !bands.low.copy.celebrate, 'confetti only for the two scores above 85%');
+  assert(/misses a Must Have/.test(bands.catch.copy.body), 'the catch home names its missed Must Have');
   const browser = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } : {});
 
   for (const device of ['desktop', 'iphone', 'small', 'smallest']) {
     const page = await signedIn(browser, owner, device);
-    for (const kind of ['high', 'medium', 'low']) {
+    for (const kind of KINDS[device]) {
       const home = homes[`${device}-${kind}`];
       const expected = expectedFor(home, FACTS[kind].answer);
-      await step(`[${device}] ${kind}: opening shows nothing; the persisted answer that reaches 90% reveals ${expected.match.pct}% once`, async () => {
+      await step(`[${device}] ${kind}: opening shows nothing; the persisted answer that reaches 75% reveals ${expected.match.pct}% once`, async () => {
         await openHome(page, home);
         await noRevealFor(page, 1500);
         await answer(page, 'Home Office', FACTS[kind].answer);
@@ -168,7 +175,8 @@ async function main() {
         const text = (await reveal(page).innerText()).replace(/\s+/g, ' ');
         assert(text.includes(`${expected.match.pct}% Match`), `score: ${text}`);
         assert(text.includes(expected.copy.headline) && text.includes(expected.copy.body), `copy: ${text}`);
-        assert(text.includes(`You’ve gathered ${expected.completeness.pct}% of the details that matter to you.`), `progress: ${text}`);
+        assert(text.includes(expected.copy.progress), `progress: ${text}`);
+        assert((await page.locator('.flh-reveal-confetti').count() === 1) === expected.copy.celebrate, `confetti should be ${expected.copy.celebrate} at ${expected.match.pct}%`);
         assert(await page.evaluate(() => document.activeElement?.textContent) === 'See the breakdown', 'focus not on the main action');
         assert(reveals(home.id, owner.id) === 1, 'not recorded');
         // Fits the viewport without clipping.
@@ -208,7 +216,7 @@ async function main() {
     await page.context().close();
   }
 
-  await step('[desktop] a home already above 90% when opened never reveals, even after edits', async () => {
+  await step('[desktop] a home already above 75% when opened never reveals, even after edits', async () => {
     const page = await signedIn(browser, owner);
     await openHome(page, homes.already);
     await noRevealFor(page);
@@ -244,6 +252,27 @@ async function main() {
     await page.context().close();
   });
 
+  await step('[desktop] an interrupted claim: recorded on the server, response lost, the retry still reveals it exactly once', async () => {
+    const page = await signedIn(browser, owner);
+    let calls = 0;
+    await page.route('**/rpc/claim_match_reveal', async (route) => {
+      calls += 1;
+      if (calls === 1) { await route.fetch(); await route.abort('failed'); } // reached the server, answer lost
+      else await route.continue();
+    });
+    await openHome(page, homes.interrupted);
+    await answer(page, 'Home Office', 'Yes');
+    await reveal(page).waitFor({ timeout: 10000 });
+    assert(calls === 2, `claim calls ${calls}`);
+    assert(reveals(homes.interrupted.id, owner.id) === 1, 'not recorded once');
+    await page.keyboard.press('Escape');
+    await openHome(page, homes.interrupted);
+    await answer(page, 'Home Office', 'Unknown');
+    await answer(page, 'Home Office', 'Yes');
+    await noRevealFor(page);
+    await page.context().close();
+  });
+
   await step('[co-buyer] earns their own reveal on the same home, from their own answers', async () => {
     const page = await signedIn(browser, owner);
     await openHome(page, homes.shared);
@@ -253,8 +282,9 @@ async function main() {
     const co = await signedIn(browser, coBuyer, 'iphone');
     await openHome(co, homes.shared);
     await noRevealFor(co, 1500);
-    // The co-buyer has no answers of their own: 7 of 10. One answer is 80%, the second 90%.
-    await answer(co, 'Fenced Yard', 'Yes');
+    // The co-buyer has no answers of their own (70%). A saved answer that leaves it below 75% shows nothing.
+    await answer(co, 'Home Office', 'Unknown');
+    await answer(co, 'Fireplace', 'Unknown');
     await noRevealFor(co, 1500);
     await answer(co, 'Home Office', 'Yes');
     await reveal(co).waitFor({ timeout: 10000 });
@@ -275,7 +305,7 @@ async function main() {
 
   await step('[reduced motion] no confetti and no animation', async () => {
     exec(`delete from public.match_reveals where home_id = '${homes['desktop-high'].id}'`);
-    exec(`update public.home_member_state set checks = '{"exterior:Fenced yard": true}'::jsonb where home_id = '${homes['desktop-high'].id}' and user_id = '${owner.id}'`);
+    exec(`update public.home_member_state set checks = '{}'::jsonb where home_id = '${homes['desktop-high'].id}' and user_id = '${owner.id}'`);
     const page = await signedIn(browser, owner, 'desktop', { reducedMotion: 'reduce' });
     await openHome(page, homes['desktop-high']);
     await answer(page, 'Home Office', 'Yes');

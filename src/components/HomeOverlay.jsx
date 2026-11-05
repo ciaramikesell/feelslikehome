@@ -90,11 +90,13 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
     const crossed = crossedRevealThreshold(revealBaseline.current, after);
     revealBaseline.current = after;
     if (!crossed) return;
-    claimMatchReveal(createClient(), persisted.id).then((claimed) => { if (claimed) setRevealOpen(true); });
+    // One token per crossing: a retry after a lost response is the same claim.
+    claimMatchReveal(createClient(), persisted.id, { token: crypto.randomUUID() }).then((claimed) => { if (claimed) setRevealOpen(true); });
   }, []);
   // 'saved' = every queued write has succeeded and nothing is pending, so the
-  // local home is exactly what was persisted.
-  useEffect(() => { if (autosave.status === 'saved') considerReveal(homeRef.current); }, [autosave.status, considerReveal]);
+  // local home is exactly what was persisted. savedVersion makes this run once
+  // per completed save, even if 'saving' and 'saved' render together.
+  useEffect(() => { if (autosave.status === 'saved') considerReveal(homeRef.current); }, [autosave.status, autosave.savedVersion, considerReveal]);
 
   const { setRef, getState } = useCommuteObserver(home, commuteDestinations);
   const match = computeMatch(home, priorities, evaluateCommute(commuteDestinations, getState));

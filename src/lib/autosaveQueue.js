@@ -23,7 +23,7 @@ export function createAutosaveQueue({ getLatest, writeShared, writePersonal, onC
   const snapshot = () => {
     const pending = running > 0 || scheduled || dirtyShared.size > 0 || dirtyPersonal;
     const failed = [...failedShared, ...(failedPersonal ? ['personal'] : [])];
-    return { state: pending ? 'saving' : failed.length ? 'error' : saves ? 'saved' : 'idle', failed, pending };
+    return { state: pending ? 'saving' : failed.length ? 'error' : saves ? 'saved' : 'idle', failed, pending, saves };
   };
   const publish = () => onChange(snapshot());
 
