@@ -16,6 +16,7 @@ const {
   saveHomePersonalAndShared, saveHomeSharedFields,
 } = await import('../src/lib/supabase/collaboration.js');
 const { homeNoteGroups } = await import('../src/lib/homeDisplay.js');
+const { createAutosaveQueue } = await import('../src/lib/autosaveQueue.js');
 const { BASEMENT_CONDITION_CHOICES, BASEMENT_STYLE_CHOICES, GARAGE_SPACE_CHOICES, GARAGE_TYPE_CHOICES, basementPatch, garagePatch } = await import('../src/lib/homeFacts.js');
 const { computeMatch } = await import('../src/lib/matching.js');
 const { normalizePriorities } = await import('../src/lib/constants.js');
@@ -200,4 +201,109 @@ dbTest('permissions are unchanged: a non-member cannot read or write the notes (
   await assert.rejects(saveHomeSharedFields(db.clientFor(ids.outsider), home.id, { notes: 'Hijack' }, { expected: { notes: 'Private to this search' } }), (error) => { assert.notEqual(error.code, SHARED_NOTES_CONFLICT); return true; });
   await assert.rejects(saveHomeSharedFields(db.clientFor(ids.outsider), home.id, { notes: 'Hijack' }));
   assert.equal(row(home.id).notes, 'Private to this search');
+});
+
+/* ------------------ the autosave queue + guarded write, end to end ------------------ */
+
+// The overlay's write path (HomeOverlay writeShared) on the real queue and the
+// real guarded write: notes are checked against the text last seen saved,
+// which advances only on success. Drives the queue's own retry() so the
+// review's questions are answered by the queue, not only the browser.
+function overlayWriter(client, homeId, initial) {
+  const seen = { notes: initial.notes ?? '', pros: initial.pros ?? '', cons: initial.cons ?? '' };
+  let local = { ...initial };
+  let conflict = null;
+  const writes = [];
+  const queue = createAutosaveQueue({
+    getLatest: () => local,
+    writeShared: async (patch) => {
+      writes.push({ ...patch });
+      try {
+        await saveHomeSharedFields(client, homeId, patch, { expected: Object.fromEntries(Object.keys(patch).map((field) => [field, seen[field]])) });
+      } catch (error) {
+        if (error.code === SHARED_NOTES_CONFLICT) conflict = { ...conflict, ...error.current };
+        throw error;
+      }
+      Object.assign(seen, patch);
+      conflict = null;
+    },
+    writePersonal: async () => {},
+    log: { warn() {} },
+  });
+  return {
+    edit(patch) { local = { ...local, ...patch }; queue.markShared(Object.keys(patch)); },
+    keepMine() { Object.assign(seen, conflict); conflict = null; queue.retry(); },
+    useTheirs() { const theirs = conflict; Object.assign(seen, theirs); conflict = null; this.edit(theirs); queue.retry(); },
+    settle: () => queue.settle(),
+    status: () => queue.status(),
+    get conflict() { return conflict; },
+    get local() { return local; },
+    writes,
+  };
+}
+
+dbTest('queue: rapid edits coalesce, never self-conflict, and the last text is saved', async () => {
+  const owner = db.clientFor(ids.owner);
+  const home = await newHome(owner, { pros: 'A' });
+  const me = overlayWriter(owner, home.id, { pros: 'A' });
+  me.edit({ pros: 'A\nB' });
+  me.edit({ pros: 'A\nB\nC' }); // queued behind the first write
+  me.edit({ pros: 'A\nB\nC\nD' });
+  assert.equal(await me.settle(), true);
+  assert.equal(me.conflict, null);
+  assert.equal(row(home.id).pros, 'A\nB\nC\nD');
+  // Each write sent the newest text at the time it ran; the last one is the latest.
+  assert.equal(me.writes.at(-1).pros, 'A\nB\nC\nD');
+  assert.ok(me.writes.length <= 2, `coalesced: ${me.writes.length} writes`);
+  // Editing again after those saves is not a conflict with oneself.
+  me.edit({ pros: 'A\nB\nC\nD\nE' });
+  assert.equal(await me.settle(), true);
+  assert.equal(row(home.id).pros, 'A\nB\nC\nD\nE');
+});
+
+dbTest('queue: Keep mine saves the on-screen text and clears the failed field', async () => {
+  const owner = db.clientFor(ids.owner);
+  const home = await newHome(owner, { notes: 'N' });
+  const me = overlayWriter(owner, home.id, { notes: 'N' });
+  await saveHomeSharedFields(db.clientFor(ids.coBuyer), home.id, { notes: 'N\nTheirs' }, { expected: { notes: 'N' } });
+  me.edit({ notes: 'N\nMine' });
+  assert.equal(await me.settle(), false);
+  assert.deepEqual(me.conflict, { notes: 'N\nTheirs' });
+  assert.deepEqual(me.status().failed, ['notes']);
+  assert.equal(row(home.id).notes, 'N\nTheirs');
+  me.keepMine();
+  assert.equal(await me.settle(), true);
+  assert.deepEqual(me.status().failed, []);
+  assert.equal(me.status().state, 'saved');
+  assert.equal(row(home.id).notes, 'N\nMine');
+});
+
+dbTest('queue: Use theirs keeps their text; the retry never sends the older local text', async () => {
+  const owner = db.clientFor(ids.owner);
+  const home = await newHome(owner, { cons: 'C' });
+  const me = overlayWriter(owner, home.id, { cons: 'C', garageSpaces: '2' });
+  await saveHomeSharedFields(db.clientFor(ids.coBuyer), home.id, { cons: 'C\nTheirs' }, { expected: { cons: 'C' } });
+  me.edit({ cons: 'C\nMine' });
+  assert.equal(await me.settle(), false);
+  const before = me.writes.length;
+  me.edit({ cons: 'C\nMine, more' }); // typing on after the conflict
+  me.useTheirs();
+  assert.equal(await me.settle(), true);
+  assert.deepEqual(me.status().failed, []);
+  assert.equal(row(home.id).cons, 'C\nTheirs');
+  assert.equal(me.local.cons, 'C\nTheirs');
+  const after = me.writes.slice(before).map((write) => write.cons);
+  // The queue reads the newest local value when a write runs, and Use theirs
+  // sets it before that run: no write after the conflict carries older text.
+  assert.deepEqual(after, ['C\nTheirs'], JSON.stringify(after));
+  assert.equal(row(home.id).cons, 'C\nTheirs', 'no older text landed');
+});
+
+test('Use theirs restarts Tour Feedback\'s notes editor so its older draft can\'t be saved over their text', () => {
+  assert.match(overlay, /const \[notesEditorKey, setNotesEditorKey\] = useState\(0\);/);
+  assert.match(overlay, /const takeTheirNotes = \(\) => \{[\s\S]*?autosave\.retry\(\);\s*setNotesEditorKey\(\(key\) => key \+ 1\);\s*\};/);
+  assert.match(overlay, /notesEditorKey=\{notesEditorKey\}/);
+  const tour = read('src/components/TourFeedback.jsx');
+  assert.match(tour, /<NotesSection key=\{notesEditorKey\}/);
+  assert.doesNotMatch(overlay.match(/const keepMyNotes = \(\) => \{[\s\S]*?\n  \};/)[0], /setNotesEditorKey/, 'Keep mine leaves the editor (and its text) alone');
 });

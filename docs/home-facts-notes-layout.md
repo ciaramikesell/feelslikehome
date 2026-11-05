@@ -64,7 +64,9 @@ guarded (`saveHomeSharedFields(…, { expected })`):
    in between matches no row, and the read is repeated (up to 4 times).
 
 A conflict shows a banner with their version and two choices: **Keep mine**
-(save over it, deliberately) or **Use theirs**. Nothing else is blocked: other
+(save over it, deliberately) or **Use theirs**. Use theirs also restarts Tour
+Feedback's notes editor from the saved text (it keeps its own draft of all three
+fields), so a later Save there can't push the older draft back. Nothing else is blocked: other
 facts saved in the same batch are written separately and first. Same-text edits
 are not conflicts. Permissions and RLS are unchanged.
 
@@ -73,6 +75,16 @@ are not conflicts. Permissions and RLS are unchanged.
 * The full editor for apartments / rentals (`HomeModal` "detail-panel") still
   saves the whole row as before, without the notes guard.
 * Co-buyers don't see each other's edits until they reload the home.
+
+## Conflict review (pre-merge)
+
+`scripts/qa/notes-conflict-review-qa.mjs` drives two signed-in participants and
+records every PATCH the owner's browser sends: rapid edits over slow writes,
+unrelated co-buyer edits mid-write, a genuine conflict, Keep mine, Use theirs
+(Home Facts and Tour Feedback), both editors in one session, and Close / Escape
+during a slow save and during a conflict. `test/home-facts-notes-layout.test.js`
+runs the same sequences on the real autosave queue and guarded write against
+real Postgres.
 
 ## QA
 

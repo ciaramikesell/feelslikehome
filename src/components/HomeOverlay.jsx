@@ -98,6 +98,10 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
   const notesSeen = useRef(null);
   if (notesSeen.current === null) notesSeen.current = pickNotes(serverHome);
   const [notesConflict, setNotesConflict] = useState(null);
+  // Bumped by "Use theirs": Tour Feedback's notes editor (which keeps its own
+  // draft of all three fields) starts over from the saved text, so a later
+  // Save can't push the older draft back over their version.
+  const [notesEditorKey, setNotesEditorKey] = useState(0);
   const writeShared = async (patch) => {
     const noteFields = SHARED_NOTE_FIELDS.filter((field) => field in patch);
     const other = Object.fromEntries(Object.entries(patch).filter(([field]) => !noteFields.includes(field)));
@@ -173,6 +177,7 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
     setCloseBlocked(false);
     autosave.saveShared(theirs);
     autosave.retry();
+    setNotesEditorKey((key) => key + 1);
   };
 
   const { setRef, getState } = useCommuteObserver(home, commuteDestinations);
@@ -348,7 +353,7 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
             onToggleFavorite={() => applyChange({ ...home, ...toggleFavorite(home) })}
             onArchive={() => setArchiveTarget(home)}
             onRestore={() => applyChange({ ...home, ...restoreHome(home) })}
-            onSaveNotes={(draft) => applyAndConfirm({ ...homeRef.current, ...draft })}
+            onSaveNotes={(draft) => applyAndConfirm({ ...homeRef.current, ...draft })} notesEditorKey={notesEditorKey}
             onAnswerInPerson={(item, next) => autosave.savePersonal(inPersonAnswerPatch(homeRef.current, item.key, next))}
           >
             <RealtorContributions searchId={searchId} homeId={home.id} contributions={realtorContributions} viewerId={userId} realtorView={false} archived={isArchivedStatus(home.status)} />
