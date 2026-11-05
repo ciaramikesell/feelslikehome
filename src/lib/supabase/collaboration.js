@@ -683,6 +683,22 @@ export function sharedColumnFor(field) {
 
 // Personal lifecycle/evaluation actions always touch only the authenticated
 // participant's state row, never the shared homes row.
+// Match Reveal (docs/match-reveal.md): records that this buyer's one-time reveal
+// for a home has been shown, and says whether this call was the one that did
+// it. Called only after a save that crossed the threshold, and BEFORE the
+// reveal is shown, so a repeat, a second tab or a lost response never shows it
+// twice. Any failure (offline, migration not applied, no permission) is false:
+// no reveal, never a thrown error in the save path.
+export async function claimMatchReveal(supabase, homeId) {
+  try {
+    const { data, error } = await supabase.rpc('claim_match_reveal', { p_home_id: homeId });
+    // PostgREST returns a scalar boolean as `true`; tolerate a one-row array too.
+    return !error && (Array.isArray(data) ? data[0] : data) === true;
+  } catch {
+    return false;
+  }
+}
+
 export async function saveHomePersonalState(supabase, home, userId, searchId) {
   if (!home.id) throw new Error('Cannot save personal state for a home without an id.');
 

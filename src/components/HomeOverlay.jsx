@@ -10,9 +10,11 @@ import RealtorContributions from '@/components/RealtorContributions';
 import PostTourModal from '@/components/PostTourModal';
 import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
 import HomeModal from '@/components/HomeModal';
+import MatchReveal from '@/components/MatchReveal';
 import { useHomesWorkspace } from '@/components/HomesWorkspace';
 import { isArchivedStatus } from '@/lib/constants';
 import { computeMatch, matchFactualSummary } from '@/lib/matching';
+import { crossedRevealThreshold, matchCompleteness } from '@/lib/matchReveal';
 import { criterionAnswerPatch, inPersonAnswerPatch } from '@/lib/matchCriteria';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { evaluateCommute } from '@/lib/commute';
@@ -21,7 +23,7 @@ import { useCommuteObserver } from '@/lib/useCommuteObserver';
 import { useHomeAutosave } from '@/lib/useHomeAutosave';
 import { applyPostTourVerdict, archiveHome, restoreHome, toggleFavorite } from '@/lib/lifecycle';
 import { createClient } from '@/lib/supabase/client';
-import { saveHomePersonalAndShared, saveHomePersonalState, saveHomeSharedFields, sharedFieldChanges } from '@/lib/supabase/collaboration';
+import { claimMatchReveal, saveHomePersonalAndShared, saveHomePersonalState, saveHomeSharedFields, sharedFieldChanges } from '@/lib/supabase/collaboration';
 import { refreshMyHomes } from '@/app/(app)/homes/actions';
 
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -54,11 +56,12 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
   const [reflecting, setReflecting] = useState(false);
   const [archiveTarget, setArchiveTarget] = useState(null);
   const [fullEditor, setFullEditor] = useState(false);
+  const [revealOpen, setRevealOpen] = useState(false);
   const dialogRef = useRef(null);
   const scrollRef = useRef(null);
   const titleRef = useRef(null);
   const matchRef = useRef(null);
-  const nestedOpen = reflecting || !!archiveTarget || fullEditor;
+  const nestedOpen = reflecting || !!archiveTarget || fullEditor || revealOpen;
   const nestedRef = useRef(nestedOpen);
   nestedRef.current = nestedOpen;
 
@@ -71,6 +74,27 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
     onBusyChange: (busy) => setBusy(serverHome.id, busy),
   });
   const editor = useMemo(() => ({ saveShared: autosave.saveShared, registerDraft: autosave.registerDraft, failed: autosave.failed, settle: autosave.settle }), [autosave.saveShared, autosave.registerDraft, autosave.failed, autosave.settle]);
+
+  // Match Reveal (docs/match-reveal.md). The baseline is this buyer's
+  // completeness on the persisted home as read from the server — on open and on
+  // every fresh read — so opening a home, another buyer's edits or background
+  // data never trigger it. Only this buyer's own save, once persisted, that
+  // takes it from locked to unlocked may claim the one-time reveal; the claim
+  // (once per buyer and home, server-side) must succeed before it shows.
+  const revealBaseline = useRef(null);
+  const prioritiesRef = useRef(priorities);
+  prioritiesRef.current = priorities;
+  useEffect(() => { revealBaseline.current = matchCompleteness(computeMatch(serverHome, prioritiesRef.current)); }, [serverHome]);
+  const considerReveal = useCallback((persisted) => {
+    const after = matchCompleteness(computeMatch(persisted, prioritiesRef.current));
+    const crossed = crossedRevealThreshold(revealBaseline.current, after);
+    revealBaseline.current = after;
+    if (!crossed) return;
+    claimMatchReveal(createClient(), persisted.id).then((claimed) => { if (claimed) setRevealOpen(true); });
+  }, []);
+  // 'saved' = every queued write has succeeded and nothing is pending, so the
+  // local home is exactly what was persisted.
+  useEffect(() => { if (autosave.status === 'saved') considerReveal(homeRef.current); }, [autosave.status, considerReveal]);
 
   const { setRef, getState } = useCommuteObserver(home, commuteDestinations);
   const match = computeMatch(home, priorities, evaluateCommute(commuteDestinations, getState));
@@ -256,8 +280,11 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
       {archiveTarget && <ArchiveConfirmModal home={archiveTarget} onCancel={() => setArchiveTarget(null)} onConfirm={(reason) => { applyChange(archiveHome(homeRef.current, reason)); setArchiveTarget(null); }} />}
       {/* Apartments and rentals keep the full editor for the details Home Facts doesn't cover. */}
       {fullEditor && <HomeModal presentation="detail-panel" initial={home} priorities={priorities} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} userId={userId}
-        onSave={async (next) => { const saved = await saveHomePersonalAndShared(createClient(), next, userId, searchId); updateHome(home.id, saved); setFullEditor(false); return saved; }}
+        onSave={async (next) => { const saved = await saveHomePersonalAndShared(createClient(), next, userId, searchId); updateHome(home.id, saved); setFullEditor(false); considerReveal(saved); return saved; }}
         onClose={() => setFullEditor(false)} onWantToTour={() => autosave.savePersonal({ status: 'Want to Tour' })} onArchiveRequest={(target) => { setFullEditor(false); setArchiveTarget(target); }} />}
+      {revealOpen && match?.pct != null && <MatchReveal match={match} completeness={matchCompleteness(match)}
+        onClose={() => setRevealOpen(false)}
+        onOpenBreakdown={() => { setRevealOpen(false); requestAnimationFrame(() => { matchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); matchRef.current?.focus({ preventScroll: true }); }); }} />}
     </div>
   </div>;
 }
