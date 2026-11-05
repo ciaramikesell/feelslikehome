@@ -71,9 +71,23 @@ export function isLegacyNoHoaFact(fact) {
   return fact?.key === 'hoa' && fact.value === false;
 }
 
+// Pasted-text evidence for a concept that a filled field already holds (the
+// buyer used "Basement: Finished" from the same sentence) is one detail, not
+// two. Keyed by the evidence concept (listingTextEvidence in listingTextAnswers.js).
+export const FEATURE_FIELD_COVERAGE = Object.freeze({
+  finishedBasement: ['basementCondition'], walkoutBasement: ['basementStyle'], basement: ['basementCondition', 'basementStyle'],
+  firstFloorLaundry: ['laundryLocation'], secondFloorLaundry: ['laundryLocation'], firstFloorPrimary: ['primaryBedroomLocation'],
+  attachedGarage: ['garageType'],
+});
+
+export function uncoveredFeatures(features = [], fields = {}) {
+  return (Array.isArray(features) ? features : []).filter((feature) => feature
+    && !(FEATURE_FIELD_COVERAGE[feature.concept] || []).some((field) => present(fields?.[field])));
+}
+
 export function countListingDetails(fields = {}, facts = [], features = []) {
-  const fieldCount = Object.values(fields).filter(present).length;
-  return fieldCount + facts.filter((fact) => fact && !isLegacyNoHoaFact(fact)).length + features.length;
+  const fieldCount = Object.values(fields || {}).filter(present).length;
+  return fieldCount + (facts || []).filter((fact) => fact && !isLegacyNoHoaFact(fact)).length + uncoveredFeatures(features, fields).length;
 }
 
 export function groupListingFacts(facts = []) {

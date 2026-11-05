@@ -338,3 +338,58 @@ test('the reader is pure: no network, storage or model calls', () => {
   const lib = read('src/lib/listingTextHomeFacts.js');
   assert.doesNotMatch(lib, /fetch\(|supabase|localStorage|anthropic|openai|XMLHttpRequest|import\(/i);
 });
+
+/* ---------------------- Counts, Notes / Pros / Cons (#171) ---------------------- */
+
+test('detail counts are truthful: no double counting of lookup and pasted text', async () => {
+  const { countListingDetails } = await import('../src/lib/listingFacts.js');
+  const { importedDetailCount } = await import('../src/lib/homeFacts.js');
+  const { listingTextEvidence } = await import('../src/lib/listingTextAnswers.js');
+  const provider = { fields: { price: '335000', beds: '5', garageSpaces: '2' }, listingFacts: [], descriptionFeatures: [], searchedAddress: 'x' };
+  const lookupCount = importedDetailCount(provider);
+  // Text that restates a lookup field adds nothing; a new field adds one.
+  const text = { fields: { beds: '4', yearBuilt: '1990' }, descriptionFeatures: [], suggestions: [], source: 'raw-text' };
+  const once = combineImportResults(provider, text);
+  assert.equal(importedDetailCount(once), lookupCount + 1);
+  // Pasting again starts from the lookup, never from the previous combination.
+  assert.deepEqual(combineImportResults(provider, text), once);
+  // A used fact and the evidence sentence for the same concept count once.
+  const evidence = listingTextEvidence('Finished walkout basement. Gas fireplace.');
+  const used = Object.fromEntries(suggestHomeFacts('Finished walkout basement.').map((item) => [item.id, item]));
+  const home = Object.values(used).reduce(applyHomeFactSuggestion, emptyHome());
+  const saved = listingImportSnapshot(importResultWithHomeFacts({ ...provider, descriptionFeatures: evidence }, used, home), 'x');
+  // 3 lookup fields + condition + style + the fireplace evidence; the basement evidence is covered.
+  assert.equal(importedDetailCount(saved), 6);
+  assert.equal(countListingDetails(saved.fields, saved.listingFacts, saved.descriptionFeatures), 6);
+  // Without the used facts, the same evidence still counts (nothing hidden).
+  assert.equal(importedDetailCount(listingImportSnapshot({ ...provider, descriptionFeatures: evidence }, 'x')), 3 + evidence.length);
+  // The found card counts what the lookup returned, not the pasted text.
+  assert.match(read('src/components/HomeModal.jsx'), /const count = found \? importedDetailCount\(lookupResult \|\| importResult\) : 0;/);
+});
+
+test('pasting never writes Notes / Pros / Cons; seller concessions stay out (documented follow-up)', async () => {
+  const { extractEnrichmentSuggestions } = await import('../src/lib/importReview.js');
+  const text = 'Seller offering $5,000 toward closing costs. Seller will contribute $5,000 toward closing costs.';
+  assert.deepEqual(suggestHomeFacts(text), []);
+  // The existing Notes rules don't read a dollar concession, and Notes
+  // suggestions are not shown in Add Home today: nothing reaches Notes.
+  assert.deepEqual(extractEnrichmentSuggestions(text, {}), []);
+  const home = { ...emptyHome(), notes: 'Ask about sewer', pros: 'Big yard', cons: 'Busy road' };
+  const after = suggestHomeFacts(REAL_WORLD).reduce(applyHomeFactSuggestion, home);
+  assert.deepEqual([after.notes, after.pros, after.cons], ['Ask about sewer', 'Big yard', 'Busy road']);
+  assert.equal(HOME_FACT_SUGGESTION_FIELDS.some((field) => ['notes', 'pros', 'cons'].includes(field)), false);
+  const modal = read('src/components/HomeModal.jsx');
+  const autofill = modal.match(/const runAutofill = \(\) => \{[\s\S]*?\n {2}\};/)[0];
+  assert.doesNotMatch(autofill, /\.(?:notes|pros|cons)\b|\b(?:notes|pros|cons)\s*:|appendSuggestionToNotes|appendAllSuggestions/, 'pasting leaves Notes / Pros / Cons as typed');
+});
+
+test('the found card keeps one order: paste, Home Facts, personal answers, then the optional Notes / Pros / Cons', () => {
+  const modal = read('src/components/HomeModal.jsx');
+  const card = modal.match(/function ImportFoundCard[\s\S]*?\n\}/)[0];
+  const at = (needle) => card.indexOf(needle);
+  const order = ['<ListingDetailsPaste', '<HomeFactReview', '<ListingAnswerReview', 'className="hh-details flh-found-notes"', '<NoteListFields form={form} set={set} idPrefix="add-home" />', 'Add to My Homes'].map(at);
+  assert.ok(order.every((index) => index > 0), `missing: ${order}`);
+  assert.deepEqual([...order].sort((a, b) => a - b), order);
+  // Distinct ids: the paste box never collides with the Notes fields.
+  assert.doesNotMatch(read('src/components/NoteListFields.jsx'), /flh-listing-paste-text/);
+});

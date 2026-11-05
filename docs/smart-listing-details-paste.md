@@ -37,6 +37,15 @@ change to Match scoring.
   Limitations).
 * Pasting is never required. **Add to My Homes** works the same with or
   without it.
+* **Beside #171's Notes / Pros / Cons.** The found card reads, top to bottom:
+  1. Add more from the listing (optional);
+  2. Home Facts from the listing;
+  3. Possible answers from the listing;
+  4. Add notes, pros, or cons (optional, collapsed);
+  5. Add to My Homes.
+
+  Pasting never reads or writes Notes, Pros or Cons. What the buyer typed
+  there is saved exactly as typed (unit test and browser QA).
 
 ### Pasting after a successful lookup no longer replaces it
 
@@ -51,7 +60,21 @@ adds to it (`combineImportResults`):
   `pastedFields`;
 * the text's evidence joins RentCast's.
 
-The "N listing details came with it" count still counts only the lookup.
+### Counts stay truthful
+
+* **"N listing details came with it"** (found card) counts only what the
+  lookup returned (`lookupResult`). Pasted text is reported separately, in the
+  paste area: "Filled in N details … N Home Facts and N possible answers to
+  review below."
+* **Rerunning** always combines with the original lookup, never with an
+  earlier combination, so repeated pasting can't inflate anything.
+* **No double counting.** In the saved snapshot (Home Facts header) and the
+  editor's "N listing details found":
+  * a field that both RentCast and the text supplied is counted once,
+    because RentCast's value wins;
+  * a used Home Fact and the pasted evidence sentence for the same concept
+    (Basement: Finished and "Finished basement") count as one detail
+    (`FEATURE_FIELD_COVERAGE` in `listingFacts.js`).
 
 ## Supported fields
 
@@ -190,6 +213,23 @@ otherwise. Older snapshots read exactly as before.
   Both cases are tested in `test/listing-text-home-facts.test.js`. Product
   may want to revisit this if Smart Paste makes most homes arrive complete
   (see Risks).
+
+## Seller concessions: follow-up, not in this PR
+
+"Seller offering $5,000 toward closing costs" is a useful Notes line, but
+there is no safe path for it through existing logic today:
+
+* the existing Notes rules (`extractEnrichmentSuggestions` in
+  `importReview.js`) match "seller offering a closing credit" or a rate
+  buydown, not a dollar amount toward closing costs;
+* those Notes suggestions aren't shown anywhere in Add Home today. They are
+  computed, but no UI uses them.
+
+Surfacing them means a new review UI that appends to #171's Notes. That
+should be its own small PR: one "Add to Notes" suggestion per explicit term
+(concession amount, financing, possession, special assessment), each with its
+sentence, never written without a tap. A test pins today's behaviour: nothing
+reaches Notes.
 
 ## Limitations
 

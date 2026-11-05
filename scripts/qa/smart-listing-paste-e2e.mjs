@@ -45,7 +45,7 @@ const q = (sql) => JSON.parse(psql(`select coalesce(json_agg(t), '[]'::json) fro
 const lit = (value) => `'${String(value).replace(/'/g, "''")}'`;
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
 const savedRow = (url) => q(`select id, price, garage_type, garage_spaces, hoa_fee_monthly, basement_condition, basement_style, laundry_location,
-  primary_bedroom_location, school_district_name, listing_import from public.homes where listing_url = ${lit(url)}`);
+  primary_bedroom_location, school_district_name, notes, pros, cons, listing_import from public.homes where listing_url = ${lit(url)}`);
 const ownChecks = (homeId) => q(`select checks from public.home_member_state where home_id = ${lit(homeId)} and user_id = ${lit(OWNER)}`)[0]?.checks || {};
 
 async function signedIn(browser, who, device) {
@@ -131,7 +131,14 @@ async function run() {
       assert(!(await owner.locator('.hh-manual-fallback').count()), 'a second paste box is shown');
       const countBefore = (await owner.locator('.flh-found-note strong').innerText()).trim();
       await view(owner, `${label}-1-success-paste-offered`, '.flh-listing-paste');
+      // #171's optional Notes / Pros / Cons beside the paste area: typed first, never touched by pasting.
+      await owner.locator('.flh-found-notes summary').click();
+      await owner.locator('#add-home-pros').fill('Great backyard\nQuiet street');
+      await owner.locator('#add-home-notes').fill('Ask about the sewer line');
       await paste(owner, DESCRIPTION);
+      assert(await owner.locator('#add-home-pros').inputValue() === 'Great backyard\nQuiet street', 'pasting changed Pros');
+      assert(await owner.locator('#add-home-notes').inputValue() === 'Ask about the sewer line', 'pasting changed Notes');
+      assert(await owner.locator('#add-home-cons').inputValue() === '', 'pasting wrote Cons');
       // Still the found card for the RentCast home (the lookup is kept).
       assert(await owner.getByText('We found your home').isVisible(), 'the found card was replaced by pasting');
       assert((await owner.locator('.flh-found-note').innerText()).startsWith(countBefore), 'the lookup\'s detail count changed after pasting');
@@ -156,6 +163,7 @@ async function run() {
       assert(row.primary_bedroom_location === 'Main Floor', `primary: ${row.primary_bedroom_location}`);
       assert(row.school_district_name === 'Rochester Community Schools', `district: ${row.school_district_name}`);
       assert(row.laundry_location === null, `laundry was undone and skipped, saved ${row.laundry_location}`);
+      assert(row.pros === 'Great backyard\nQuiet street' && row.notes === 'Ask about the sewer line' && !row.cons, `notes/pros/cons: ${JSON.stringify([row.notes, row.pros, row.cons])}`);
       assert(row.garage_type === 'attached' && row.garage_spaces === '2', `RentCast garage changed: ${row.garage_type}/${row.garage_spaces}`);
       assert(Number(row.hoa_fee_monthly) === 0 && row.hoa_fee_monthly !== null, `RentCast $0 HOA changed: ${row.hoa_fee_monthly}`);
       const snap = row.listing_import;
