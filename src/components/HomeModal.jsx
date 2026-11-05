@@ -15,6 +15,7 @@ import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { mergeImportFields, resolveImport } from '@/lib/importDomain';
 import { appendAllSuggestions, appendSuggestionToNotes, extractEnrichmentSuggestions } from '@/lib/importReview';
 import { applyListingAnswer, hasRecordedAnswer, listingTextEvidence, resuggestListingAnswers, undoListingAnswer } from '@/lib/listingTextAnswers';
+import { applyHomeFactSuggestion, combineImportResults, importResultWithHomeFacts, resuggestHomeFacts, undoHomeFactSuggestion, withoutSharedDuplicates } from '@/lib/listingTextHomeFacts';
 import { splitAddressLines, formatFoundCardFacts, formatCurrencyDisplay, digitsOnly, formatLotSizeDisplay, formatHomePrice } from '@/lib/homeDisplay';
 import { withAcresUnit } from '@/lib/lotSize';
 import { createClient } from '@/lib/supabase/client';
@@ -300,7 +301,7 @@ function DuplicateHomeView({ home, priorities, userId, isCollaborative, vocabula
   </div>;
 }
 
-function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwareness, isCollaborative, vocabulary, photoFile, photoPreviewUrl, photoInputRef, handlePhotoFileChange, handleRemovePhoto, photoError, showPhotoUrlInput, setShowPhotoUrlInput, setCheckItem, saving, submit, saveErrorMsg, onClose, dialogRef, titleRef, importResult = null, presentation = 'modal', matchPerspectives = [], answerReview = null }) {
+function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwareness, isCollaborative, vocabulary, photoFile, photoPreviewUrl, photoInputRef, handlePhotoFileChange, handleRemovePhoto, photoError, showPhotoUrlInput, setShowPhotoUrlInput, setCheckItem, saving, submit, saveErrorMsg, onClose, dialogRef, titleRef, importResult = null, presentation = 'modal', matchPerspectives = [], answerReview = null, factReview = null }) {
   const [allCriteriaOpen, setAllCriteriaOpen] = useState(false);
   // Add Home on a phone is two steps — review what came through, then how it fits
   // you. Presentation only (see .hh-edit-steps in globals.css): desktop keeps the
@@ -419,6 +420,7 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
         </div>
 
         <div className="hh-edit-home-column">
+          {factReview?.suggestions.length > 0 && <div data-step="review"><HomeFactReview review={factReview} /></div>}
           <section className="hh-edit-home-card" data-step="review" aria-labelledby="home-details-heading">
             <h2 id="home-details-heading" className="hh-serif">Home details</h2>
             <div className="hh-edit-fields-grid">
@@ -502,6 +504,48 @@ function ListingAnswerReview({ review }) {
   </section>;
 }
 
+// Shared Home Facts suggested from pasted listing text (listingTextHomeFacts.js).
+// Kept apart from the personal answers above: these describe the property for
+// everyone in the search. Use writes one into an empty field, Skip leaves it
+// Unknown, and Undo takes back only what Use wrote. Nothing saves until Save.
+function HomeFactReview({ review }) {
+  if (!review?.suggestions.length) return null;
+  const { suggestions, decisions, onUse, onSkip, onUndo, onUseAll, isCollaborative } = review;
+  const pending = suggestions.filter((suggestion) => decisions[suggestion.id] !== 'used');
+  return <section className="flh-fact-review" aria-labelledby="flh-fact-review-title">
+    <div className="flh-fact-review-heading">
+      <h3 id="flh-fact-review-title">Home Facts from the listing</h3>
+      {pending.length > 1 && <button type="button" className="hh-btn hh-btn-ghost" onClick={() => onUseAll(pending)}>Use all {pending.length}</button>}
+    </div>
+    <p>{isCollaborative ? 'These describe the home for everyone in this search. ' : ''}Use what’s right. Anything you skip stays Unknown, and you can change any of it later in Home Facts.</p>
+    <ul>{suggestions.map((suggestion) => {
+      const used = decisions[suggestion.id] === 'used';
+      return <li key={suggestion.id} className={used ? 'is-confirmed' : ''}>
+        <div className="flh-answer-review-head"><b>{suggestion.label}</b><span className="flh-answer-chip is-fact">{suggestion.display}</span></div>
+        <blockquote><span>“{suggestion.evidence}”</span><cite>{suggestion.school ? 'As named in the listing text you pasted. FLH hasn’t verified it or checked school boundaries.' : 'From the listing text you pasted'}</cite></blockquote>
+        <div className="flh-answer-review-actions">
+          {used
+            ? <><span className="flh-answer-confirmed" role="status"><Check size={13} aria-hidden="true" /> Added to Home Facts</span><button type="button" className="hh-btn hh-btn-ghost" onClick={() => onUndo(suggestion)} aria-label={`Undo ${suggestion.label}`}>Undo</button></>
+            : <><button type="button" className="hh-btn" onClick={() => onUse(suggestion)} aria-label={`Use ${suggestion.label}: ${suggestion.display}`}>Use</button><button type="button" className="hh-btn hh-btn-ghost" onClick={() => onSkip(suggestion)} aria-label={`Skip ${suggestion.label}`}>Skip</button></>}
+        </div>
+      </li>;
+    })}</ul>
+  </section>;
+}
+
+// The optional "paste more from the listing" area, offered once a lookup has
+// run, whether it found the home or not. Never required to add a home.
+function ListingDetailsPaste({ paste }) {
+  return <section className="flh-listing-paste" aria-labelledby="flh-listing-paste-title">
+    <div className="flh-listing-paste-heading"><span aria-hidden="true"><ClipboardPaste size={18} /></span><h3 id="flh-listing-paste-title">Add more from the listing</h3><span className="flh-optional-tag">Optional</span></div>
+    <p id="flh-listing-paste-help">Copy the listing description or property features and paste them here. We’ll fill in what we can. School details work too.</p>
+    <label className="sr-only" htmlFor="flh-listing-paste-text">Listing description or features</label>
+    <textarea id="flh-listing-paste-text" className="hh-textarea" rows={3} value={paste.text} onChange={(event) => paste.setText(event.target.value)} aria-describedby="flh-listing-paste-help" placeholder="Paste listing details (optional)" />
+    <div className="flh-listing-paste-actions"><button type="button" className="hh-btn hh-btn-ghost" onClick={paste.onRun} disabled={!paste.text.trim()}><Sparkles size={15} aria-hidden="true" /> Fill in details</button></div>
+    {paste.message && <p className="flh-listing-paste-status" role="status">{paste.message}</p>}
+  </section>;
+}
+
 // The one Add Home step for a home (not an apartment): "We found your home."
 // There is exactly one action. Add to My Homes runs the single submit() (its
 // synchronous double-save guard and partial-write recovery included), and only
@@ -513,13 +557,13 @@ function ListingAnswerReview({ review }) {
 // answers waiting for the buyer's review.
 // `cleared` names answers confirmed from earlier text that the new text no
 // longer supports; they went back to Unknown and the buyer is told so.
-function pastedTextMessage(details, answers, cleared = []) {
+function pastedTextMessage(details, answers, cleared = [], facts = 0) {
   const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
-  const reset = cleared.length ? `${cleared.join(', ')} ${cleared.length === 1 ? 'is' : 'are'} back to Unknown — the new text doesn’t support the answer you confirmed earlier.` : '';
-  if (!details && !answers) return [reset, 'Couldn’t find anything usable in that text — try filling fields in manually.'].filter(Boolean).join(' ');
-  const filled = details ? `Found ${plural(details, 'useful detail')} from what you pasted — double-check before saving.` : '';
-  const review = answers ? `${plural(answers, 'possible answer')} to review below.` : '';
-  return [reset, filled, review].filter(Boolean).join(' ');
+  const reset = cleared.length ? `${cleared.join(', ')} ${cleared.length === 1 ? 'is' : 'are'} back to Unknown — the new text doesn’t support what you used earlier.` : '';
+  if (!details && !answers && !facts) return [reset, 'We didn’t find details we could use in that text. Anything not stated stays Unknown, and you can still add the home.'].filter(Boolean).join(' ');
+  const filled = details ? `Filled in ${plural(details, 'detail')} from what you pasted — double-check before saving.` : '';
+  const review = [facts && plural(facts, 'Home Fact'), answers && plural(answers, 'possible answer')].filter(Boolean).join(' and ');
+  return [reset, filled, review && `${review} to review below.`].filter(Boolean).join(' ');
 }
 
 // Why a lookup came back empty-handed, in the buyer's terms. Never a status code.
@@ -535,17 +579,17 @@ const PARTIAL_NOTES = {
   property_unavailable: 'Property records weren’t available right now, so some details may be missing.',
 };
 
-function ImportFoundCard({ form, set, importResult, importPhase, importErrorMsg, parseMsg, priorities, vocabulary, saving, saveErrorMsg, onAdd, answerReview }) {
+function ImportFoundCard({ form, set, importResult, lookupResult = null, importPhase, importErrorMsg, priorities, vocabulary, saving, saveErrorMsg, onAdd, answerReview, factReview, paste }) {
   const found = importPhase === 'success' && !!importResult;
   const { line1, line2 } = splitAddressLines(form.address);
-  const count = found ? importedDetailCount(importResult) : 0;
+  // "Came with it" counts what the lookup returned; pasted text is reviewed below.
+  const count = found ? importedDetailCount(lookupResult || importResult) : 0;
   const facts = [
     form.beds && `${form.beds} bd`, form.baths && `${form.baths} ba`,
     form.sqft && `${Number(String(form.sqft).replace(/[^0-9.]/g, '')).toLocaleString()} sq ft`,
     form.lotSize && formatLotSizeDisplay(form.lotSize),
   ].filter(Boolean);
-  const note = importPhase === 'text-success' ? parseMsg
-    : importPhase === 'error' ? importErrorMsg || LOOKUP_FAILURE_NOTES.unavailable
+  const note = importPhase === 'error' ? importErrorMsg || LOOKUP_FAILURE_NOTES.unavailable
       : importPhase === 'empty' && form.listingUrl ? 'We couldn’t find listing details for that link. Add the address and fill in the rest on Home Facts.'
         : 'Add the address. You can fill in everything else on Home Facts.';
   return <section className="flh-found" aria-labelledby="found-home-title">
@@ -568,6 +612,8 @@ function ImportFoundCard({ form, set, importResult, importPhase, importErrorMsg,
       <label className="hh-label" htmlFor="found-home-address">Address</label>
       <AddressAutocomplete id="found-home-address" value={form.address} onChange={(value) => set('address', value)} onSelect={(value) => set('address', value)} placeholder="123 Maple St, Ann Arbor, MI" />
     </div>}
+    <ListingDetailsPaste paste={paste} />
+    <HomeFactReview review={factReview} />
     <ListingAnswerReview review={answerReview} />
     {saveErrorMsg && <div className="hh-edit-save-error" role="alert">{saveErrorMsg}</div>}
     <div className="flh-found-actions">
@@ -598,6 +644,15 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   // so a rerun can re-check them against the new text. A manual change to the
   // same criterion removes its entry: from then on it is the buyer's own answer.
   const [confirmedAnswers, setConfirmedAnswers] = useState({});
+  // Shared Home Facts suggested from pasted text (listingTextHomeFacts.js), what the
+  // buyer did with each ('used' / 'skipped'), and the ones used in this session
+  // ({ id: suggestion }) so Undo and a rerun touch only what a suggestion wrote.
+  const [factSuggestions, setFactSuggestions] = useState([]);
+  const [factDecisions, setFactDecisions] = useState({});
+  const [usedFacts, setUsedFacts] = useState({});
+  // The last successful property lookup, kept apart from pasted text so pasting
+  // after a lookup adds to it instead of replacing it.
+  const [providerResult, setProviderResult] = useState(null);
   const [importErrorMsg, setImportErrorMsg] = useState('');
   const [urlFallbackMsg, setUrlFallbackMsg] = useState('');
   const [fallbackAddressInput, setFallbackAddressInput] = useState('');
@@ -729,7 +784,9 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         // saved value (even a bare number) is never rewritten.
         const lotSize = form.lotSize === (initial?.lotSize ?? '') ? form.lotSize : withAcresUnit(form.lotSize);
         const coordinates = importResult ? await importedCoordinatePatch(form, importResult) : {};
-        await onSave({ ...form, ...coordinates, lotSize, photoUrl: finalPhotoUrl, ...(importResult ? { listingImport: listingImportSnapshot(importResult) } : {}) });
+        // Home Facts used from pasted text join the snapshot with their sentences.
+        const snapshotSource = importResultWithHomeFacts(importResult, usedFacts, form);
+        await onSave({ ...form, ...coordinates, lotSize, photoUrl: finalPhotoUrl, ...(snapshotSource ? { listingImport: listingImportSnapshot(snapshotSource) } : {}) });
       } catch (saveErr) {
         console.error('Save home failed', saveErr);
         // If the shared home row was already persisted before this failure
@@ -777,33 +834,45 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     else next[k] = value;
     return { ...f, checks: next };
   });
-  // Pasted listing text fills only empty shared fields (as before). It never
-  // writes a Match answer: the answers it supports are suggestions this buyer
-  // confirms one by one. A Realtor suggesting a home has no Match answers.
+  // Pasted listing text fills only empty shared basics (as before). Shared Home
+  // Facts it states (basement, laundry, primary bedroom, garage, HOA fee,
+  // schools) are suggestions the buyer uses one by one, and it never writes a
+  // Match answer: those are suggestions this buyer confirms one by one. A
+  // Realtor suggesting a home gets the Home Facts suggestions but no answers.
   const runAutofill = () => {
-    const findings = parseListingTextFindings(pasteText, priorities.searchType);
-    const result = resolveImport(findings, form);
+    // Garage spaces come from the stricter Home Facts reader, as a suggestion.
+    const findings = parseListingTextFindings(pasteText, priorities.searchType).filter((finding) => finding.concept !== 'garageSpaces');
+    // Re-read Home Facts as if the ones used from earlier text were still Unknown.
+    const facts = resuggestHomeFacts(pasteText, form, usedFacts);
+    const result = resolveImport(findings, facts.home);
     const canonicalAdditions = Object.keys(result.fieldPatch);
-    const merged = mergeImportFields(form, result.fieldPatch);
+    const merged = mergeImportFields(facts.home, result.fieldPatch);
     // Answers confirmed from earlier text are re-checked against this text:
     // kept only when it still suggests the same answer, otherwise back to Unknown.
     const rerun = personalAnswers
       ? resuggestListingAnswers(pasteText, priorities, form.checks, confirmedAnswers)
       : { suggestions: [], checks: form.checks, confirmed: {}, decisions: {}, cleared: [] };
-    const answers = rerun.suggestions;
     const next = { ...merged, checks: rerun.checks };
+    // A criterion a shared Home Fact settles isn't also asked as a personal question.
+    const answers = withoutSharedDuplicates(rerun.suggestions, facts.suggestions, next);
     const suggestions = extractEnrichmentSuggestions(pasteText, next, { acceptedIds: acceptedSuggestionIds });
-    const clearedLabels = rerun.cleared.map((key) => { const at = key.indexOf(':'); return criterionDisplayLabel(key.slice(0, at), key.slice(at + 1)); });
+    const clearedLabels = [...rerun.cleared.map((key) => { const at = key.indexOf(':'); return criterionDisplayLabel(key.slice(0, at), key.slice(at + 1)); }), ...facts.cleared];
     setForm(next);
     setAnswerSuggestions(answers);
     setAnswerDecisions(rerun.decisions);
     setConfirmedAnswers(rerun.confirmed);
-    // The evidence itself is listing material and is kept on the import snapshot.
-    setImportResult({ ...result, fields: result.fieldPatch, suggestions, descriptionFeatures: listingTextEvidence(pasteText), source: 'raw-text' });
+    setFactSuggestions(facts.suggestions);
+    setUsedFacts(facts.used);
+    setFactDecisions(Object.fromEntries(Object.keys(facts.used).map((id) => [id, 'used'])));
+    // The evidence itself is listing material and is kept on the import snapshot,
+    // beside (never instead of) a property lookup that already succeeded.
+    setImportResult(combineImportResults(providerResult, { ...result, fields: result.fieldPatch, suggestions, descriptionFeatures: listingTextEvidence(pasteText), source: 'raw-text' }));
     setEditDetailsOpen(true);
-    setImportPhase(canonicalAdditions.length + answers.length > 0 ? 'text-success' : 'empty');
+    const found = canonicalAdditions.length + answers.length + facts.suggestions.length;
+    setImportPhase(providerResult ? 'success' : found > 0 ? 'text-success' : importPhase === 'error' ? 'error' : 'empty');
     const pending = answers.filter((item) => rerun.decisions[item.id] !== 'confirmed').length;
-    setParseMsg(pastedTextMessage(canonicalAdditions.length, pending, clearedLabels));
+    const pendingFacts = facts.suggestions.filter((item) => !facts.used[item.id]).length;
+    setParseMsg(pastedTextMessage(canonicalAdditions.length, pending, clearedLabels, pendingFacts));
   };
 
   const confirmAnswer = (suggestion) => {
@@ -829,6 +898,37 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     decisions: answerDecisions, onConfirm: confirmAnswer, onDismiss: dismissAnswer, onUndo: undoAnswer, isCollaborative,
   };
 
+  // Use writes one shared Home Fact into the form, only while that field is
+  // still empty; nothing is saved until the buyer saves the home.
+  const useFact = (suggestion) => {
+    if (applyHomeFactSuggestion(form, suggestion) === form) return;
+    setForm((f) => applyHomeFactSuggestion(f, suggestion));
+    setUsedFacts((used) => ({ ...used, [suggestion.id]: suggestion }));
+    setFactDecisions((decisions) => ({ ...decisions, [suggestion.id]: 'used' }));
+  };
+  const useAllFacts = (pending) => {
+    let next = form;
+    const applied = pending.filter((suggestion) => { const after = applyHomeFactSuggestion(next, suggestion); if (after === next) return false; next = after; return true; });
+    if (!applied.length) return;
+    setForm((f) => applied.reduce((home, suggestion) => applyHomeFactSuggestion(home, suggestion), f));
+    setUsedFacts((used) => ({ ...used, ...Object.fromEntries(applied.map((item) => [item.id, item])) }));
+    setFactDecisions((decisions) => ({ ...decisions, ...Object.fromEntries(applied.map((item) => [item.id, 'used'])) }));
+  };
+  const skipFact = (suggestion) => setFactDecisions((decisions) => ({ ...decisions, [suggestion.id]: 'skipped' }));
+  // Undo only what the suggestion wrote: a later edit by the buyer is never reverted.
+  const undoFact = (suggestion) => {
+    setForm((f) => undoHomeFactSuggestion(f, suggestion));
+    setUsedFacts((used) => { const next = { ...used }; delete next[suggestion.id]; return next; });
+    setFactDecisions((decisions) => { const next = { ...decisions }; delete next[suggestion.id]; return next; });
+  };
+  const isEmptyField = (value) => value === null || value === undefined || (typeof value === 'string' && value.trim() === '');
+  const factReview = {
+    suggestions: factSuggestions.filter((suggestion) => factDecisions[suggestion.id] === 'used'
+      ? !!usedFacts[suggestion.id] && String(form[suggestion.field]) === String(suggestion.value)
+      : factDecisions[suggestion.id] !== 'skipped' && isEmptyField(form[suggestion.field])),
+    decisions: factDecisions, onUse: useFact, onSkip: skipFact, onUndo: undoFact, onUseAll: useAllFacts, isCollaborative,
+  };
+
   const addSuggestion = (suggestion) => {
     setForm((f) => ({ ...f, notes: appendSuggestionToNotes(f.notes, suggestion) }));
     setAcceptedSuggestionIds((ids) => ids.includes(suggestion.id) ? ids : [...ids, suggestion.id]);
@@ -851,6 +951,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     if (!address || importPhase === 'loading' || address === lastLookupAddress) return;
 
     setImportPhase('loading');
+    setProviderResult(null);
     setImportErrorMsg('');
     setUrlFallbackMsg('');
     setForm((f) => ({ ...f, address, ...(opts.listingUrl !== undefined ? { listingUrl: opts.listingUrl } : {}) }));
@@ -881,7 +982,9 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         return;
       }
 
-      setImportResult({ fields: data.fields || {}, findings: data.findings || [], resolutions: data.resolutions || [], listingFacts: data.listingFacts || [], descriptionFeatures: data.descriptionFeatures || [], listing: data.listing || null, sources: data.sources || null, partial: data.partial || null, searchedAddress: address });
+      const lookup = { fields: data.fields || {}, findings: data.findings || [], resolutions: data.resolutions || [], listingFacts: data.listingFacts || [], descriptionFeatures: data.descriptionFeatures || [], listing: data.listing || null, sources: data.sources || null, partial: data.partial || null, searchedAddress: address };
+      setProviderResult(lookup);
+      setImportResult(lookup);
       setEditDetailsOpen(false);
       setImportPhase('success');
       setForm((f) => mergeImportFields(f, data.fields || {}));
@@ -975,7 +1078,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     showPhotoUrlInput={showPhotoUrlInput} setShowPhotoUrlInput={setShowPhotoUrlInput} setCheckItem={setCheckItem}
     saving={saving} submit={submit} saveErrorMsg={saveErrorMsg} onClose={onClose} dialogRef={dialogRef}
     titleRef={titleRef} importResult={importResult} presentation={presentation} matchPerspectives={matchPerspectives}
-    answerReview={answerReview}
+    answerReview={answerReview} factReview={factReview}
   />;
 
   return <div className="hh-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
@@ -995,14 +1098,14 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         {importPhase === 'identity' && apartmentIdentity && <div className="hh-manual-address"><p>We found {apartmentIdentity.propertyName}. Add its street address to continue.</p><AddressAutocomplete value={fallbackAddressInput} onChange={setFallbackAddressInput} onSelect={setFallbackAddressInput} /><button type="button" className="hh-btn" onClick={handleFallbackAddressLookup}>Use address</button></div>}
         {urlFallbackMsg && <p className="hh-edit-error">{urlFallbackMsg}</p>}
       </section>
-      {quickAdd && <ImportFoundCard form={form} set={set} importResult={importResult} importPhase={importPhase} importErrorMsg={importErrorMsg} parseMsg={parseMsg} priorities={priorities} vocabulary={vocabulary} saving={saving} saveErrorMsg={saveErrorMsg} onAdd={addImportedHome} answerReview={answerReview} />}
+      {quickAdd && <ImportFoundCard form={form} set={set} importResult={importResult} lookupResult={providerResult} importPhase={importPhase} importErrorMsg={importErrorMsg} priorities={priorities} vocabulary={vocabulary} saving={saving} saveErrorMsg={saveErrorMsg} onAdd={addImportedHome} answerReview={answerReview} factReview={factReview} paste={{ text: pasteText, setText: setPasteText, onRun: runAutofill, message: parseMsg }} />}
       {isNativeApp() && <aside className="flh-share-callout" aria-label="Add from the Share Sheet"><Share size={18} aria-hidden="true" /><div><strong>Faster from your listing app</strong><p>Tap Share on any listing, then choose Feels Like Home. It opens right here, ready to review.</p></div></aside>}
-      <details className="hh-details hh-manual-fallback">
-        <summary><span className="hh-accordion-icon"><ClipboardPaste size={24} /></span><span>Can&apos;t find the home? Paste listing details instead<small>Enter the details manually when a link isn&apos;t available.</small></span><ChevronDown className="hh-accordion-chevron" size={20} /></summary>
+      {!quickAdd && <details className="hh-details hh-manual-fallback">
+        <summary><span className="hh-accordion-icon"><ClipboardPaste size={24} /></span><span>No link? Paste the listing details<small>Copy the listing description or property features and paste them here. We’ll fill in what we can. School details work too.</small></span><ChevronDown className="hh-accordion-chevron" size={20} /></summary>
         <textarea className="hh-textarea" value={pasteText} onChange={(event) => setPasteText(event.target.value)} placeholder="Paste listing details (optional)" />
         {parseMsg && <p className="hh-edit-context">{parseMsg}</p>}
         <div className="hh-modal-actions"><button type="button" className="hh-btn hh-btn-ghost" onClick={() => setImportPhase('empty')}>Enter manually</button><button type="button" className="hh-btn" onClick={runAutofill} disabled={!pasteText.trim()}>Fill in details</button></div>
-      </details>
+      </details>}
     </div>
   </div>;
 }

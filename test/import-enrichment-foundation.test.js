@@ -111,10 +111,12 @@ test('import foundation does not modify Match unknown semantics, ratings, or che
 
 test('HomeModal models successful raw text separately from provider errors and uses the shared merge', () => {
   assert.match(modal, /text-success/);
-  // Filled details and answers to review both count; Notes-only suggestions aren't shown, so they don't.
-  assert.match(modal, /setImportPhase\(canonicalAdditions\.length \+ answers\.length > 0 \? 'text-success' : 'empty'\)/);
+  // Filled details, Home Facts and answers to review all count; Notes-only suggestions aren't shown, so they don't.
+  // Pasting after a successful lookup keeps that lookup's found card (Smart Listing Details Paste).
+  assert.match(modal, /const found = canonicalAdditions\.length \+ answers\.length \+ facts\.suggestions\.length;/);
+  assert.match(modal, /setImportPhase\(providerResult \? 'success' : found > 0 \? 'text-success' : importPhase === 'error' \? 'error' : 'empty'\)/);
   assert.doesNotMatch(modal, /setImportPhase\('error'\);\s*\/\/ reveal the reviewable manual form/);
-  assert.match(modal, /mergeImportFields\(form, result\.fieldPatch\)/);
+  assert.match(modal, /mergeImportFields\(facts\.home, result\.fieldPatch\)/);
   assert.match(modal, /mergeImportFields\(f, data\.fields \|\| \{\}\)/);
   assert.match(modal, /workspaceReady = !isNewHome/);
 });
