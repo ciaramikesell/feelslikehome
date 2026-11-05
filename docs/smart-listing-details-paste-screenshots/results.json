@@ -2,46 +2,46 @@
   {
     "step": "[desktop-1440] lookup succeeds → optional paste offered; Home Facts suggested only for empty fields; Use / Undo / Skip; saved with evidence",
     "ok": true,
-    "ms": 7811
+    "ms": 10103
   },
   {
     "step": "[desktop-1440] lookup fails → same optional paste; Use all fills empty fields; saved as pasted text",
     "ok": true,
-    "ms": 5610
+    "ms": 5103
   },
   {
     "step": "[desktop-1440] hedged text → nothing suggested, Unknown stays Unknown, home still adds",
     "ok": true,
-    "ms": 4762
+    "ms": 4446
   },
   {
     "step": "[ipad-820] lookup succeeds → optional paste offered; Home Facts suggested only for empty fields; Use / Undo / Skip; saved with evidence",
     "ok": true,
-    "ms": 8990
+    "ms": 10341
   },
   {
     "step": "[ipad-820] lookup fails → same optional paste; Use all fills empty fields; saved as pasted text",
     "ok": true,
-    "ms": 5032
+    "ms": 6028
   },
   {
     "step": "[ipad-820] hedged text → nothing suggested, Unknown stays Unknown, home still adds",
     "ok": true,
-    "ms": 4763
+    "ms": 5906
   },
   {
     "step": "[iphone-390] lookup succeeds → optional paste offered; Home Facts suggested only for empty fields; Use / Undo / Skip; saved with evidence",
     "ok": true,
-    "ms": 10161
+    "ms": 10406
   },
   {
     "step": "[iphone-390] lookup fails → same optional paste; Use all fills empty fields; saved as pasted text",
     "ok": true,
-    "ms": 5603
+    "ms": 5099
   },
   {
     "step": "[iphone-390] hedged text → nothing suggested, Unknown stays Unknown, home still adds",
     "ok": true,
-    "ms": 4816
+    "ms": 5074
   }
 ]
