@@ -7,7 +7,7 @@ import { StarInput } from '@/components/ui';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
   isArchivedStatus, isRentalType, TOUR_RATING_KEY, criterionDisplayLabel, TIER_ORDER, foldLegacyCheckAliases,
-  LAYOUT_DISPLAY_LABELS, CONDITION_DISPLAY_LABELS,
+  LAYOUT_DISPLAY_LABELS, CONDITION_DISPLAY_LABELS, isYesNoCriterion,
 } from '@/lib/constants';
 import { visibleOrderedItems, parseListingTextFindings, selectedSubjectiveCriteria, computeMatch, SHARED_BOOLEAN_FACT_FIELDS, sharedFactAnswer, sharedFactValue } from '@/lib/matching';
 import { extractAddressFromListingUrl, extractApartmentIdentityFromListingUrl, isLikelyListingUrl, findHomeByListingUrl } from '@/lib/listingUrl';
@@ -344,7 +344,7 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
     else setCheckItem(item.categoryKey, item.label, next);
   };
   const criteria = getItemlistCategories(priorities.searchType).flatMap((category) =>
-    visibleOrderedItems(category, priorities).filter((item) => item.kind === 'check').map((item) => ({
+    visibleOrderedItems(category, priorities).filter((item) => isYesNoCriterion(category.key, item)).map((item) => ({
       ...item,
       categoryKey: category.key,
       tier: priorities[category.key]?.tiers?.[item.label] || 'dontcare',

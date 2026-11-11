@@ -1,0 +1,102 @@
+[
+  {
+    "step": "[1440] Desirable Street (stored kind rating, Must-Have) shows Yes / No / Unknown, Unknown selected",
+    "ok": true,
+    "ms": 2943
+  },
+  {
+    "width": 1440,
+    "choice": "Yes",
+    "matchBefore": "97% Match",
+    "matchAfter": "98% Match"
+  },
+  {
+    "step": "[1440] Yes persists to the owner's own checks only",
+    "ok": true,
+    "ms": 706
+  },
+  {
+    "width": 1440,
+    "choice": "No",
+    "matchBefore": "98% Match",
+    "matchAfter": "78% Match"
+  },
+  {
+    "step": "[1440] No persists to the owner's own checks only",
+    "ok": true,
+    "ms": 740
+  },
+  {
+    "width": 1440,
+    "choice": "Unknown",
+    "matchBefore": "78% Match",
+    "matchAfter": "97% Match"
+  },
+  {
+    "step": "[1440] Unknown persists to the owner's own checks only",
+    "ok": true,
+    "ms": 670
+  },
+  {
+    "step": "[1440] keyboard: arrow keys move between options",
+    "ok": true,
+    "ms": 413
+  },
+  {
+    "step": "[1440] Realtor sees the buyer's row read-only, no controls",
+    "ok": true,
+    "ms": 2527
+  },
+  {
+    "step": "[390] Desirable Street (stored kind rating, Must-Have) shows Yes / No / Unknown, Unknown selected",
+    "ok": true,
+    "ms": 2625
+  },
+  {
+    "width": 390,
+    "choice": "Yes",
+    "matchBefore": "97% Match",
+    "matchAfter": "98% Match"
+  },
+  {
+    "step": "[390] Yes persists to the owner's own checks only",
+    "ok": true,
+    "ms": 604
+  },
+  {
+    "width": 390,
+    "choice": "No",
+    "matchBefore": "98% Match",
+    "matchAfter": "78% Match"
+  },
+  {
+    "step": "[390] No persists to the owner's own checks only",
+    "ok": true,
+    "ms": 596
+  },
+  {
+    "width": 390,
+    "choice": "Unknown",
+    "matchBefore": "78% Match",
+    "matchAfter": "97% Match"
+  },
+  {
+    "step": "[390] Unknown persists to the owner's own checks only",
+    "ok": true,
+    "ms": 569
+  },
+  {
+    "step": "[390] keyboard: arrow keys move between options",
+    "ok": true,
+    "ms": 562
+  },
+  {
+    "step": "[390] Realtor sees the buyer's row read-only, no controls",
+    "ok": true,
+    "ms": 2447
+  },
+  {
+    "step": "stored priority (label, category, kind, tier) unchanged",
+    "ok": true
+  }
+]

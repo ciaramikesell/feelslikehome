@@ -1,18 +1,19 @@
 // Which Match Criteria a buyer answers on the home workspace, and their current
 // answer. Pure: shared by the MatchCriteria component and tests.
-import { foldLegacyCheckAliases, getItemlistCategories, isExperientialCriterion, TOUR_RESPONSE } from './constants.js';
+import { foldLegacyCheckAliases, getItemlistCategories, isExperientialCriterion, isYesNoCriterion, TOUR_RESPONSE } from './constants.js';
 import { SHARED_BOOLEAN_FACT_FIELDS, sharedFactAnswer, sharedFactValue, visibleOrderedItems } from './matching.js';
 import { HOME_FACT_LINKS, homeFactConcept, resolveCriterionAnswer } from './homeFactCriteria.js';
 
-// The criteria a buyer can answer here: check-kind priorities whose Match state
-// comes from an answer. Garage is answered too: Home Facts' garage spaces
+// The criteria a buyer can answer here: Yes / No priorities (isYesNoCriterion:
+// check-kind, or the buyer's own typed priority) whose Match state comes from
+// an answer. Garage is answered too: Home Facts' garage spaces
 // answers it unless the buyer overrides it (homeFactCriteria.js). Commute comes
 // from saved places, so it stays read-only here.
 export function answerableCriteriaKeys(priorities) {
   const keys = new Set();
   getItemlistCategories(priorities.searchType).forEach((category) => {
     visibleOrderedItems(category, priorities).forEach((item) => {
-      if (item.kind !== 'check' || isExperientialCriterion(category.key, item.label)) return;
+      if (!isYesNoCriterion(category.key, item)) return;
       const key = `${category.key}:${item.label}`;
       if (key === 'location:Commute') return;
       keys.add(key);
@@ -57,7 +58,23 @@ export function criterionAnswerPatch(home, key, value, searchType) {
     delete checks[key];
     if (foldLegacyCheckAliases(checks, searchType)[key] !== undefined) checks[key] = false;
   } else checks[key] = value;
+  // A Yes or No replaces a 1–5 rating stored under the same key from before the
+  // priority could be answered Yes / No (both scorers read that rating first).
+  // Only that one key; Unknown keeps it.
+  if (value !== undefined && typeof home.ratings?.[key] === 'number') {
+    const ratings = { ...home.ratings };
+    delete ratings[key];
+    return { personal: { checks, ratings } };
+  }
   return { personal: { checks } };
+}
+
+// The 1–5 rating behind a Match row computeMatch scored from a rating the
+// buyer gave before the priority could be answered Yes / No (source
+// 'earlier_rating'), or null. It counts until the buyer answers Yes or No.
+export function legacyCriterionRating(home, key) {
+  const value = home?.ratings?.[key];
+  return typeof value === 'number' && value > 0 ? value : null;
 }
 
 // In-person Match criteria ("Things to check in person" in Tour Feedback): the

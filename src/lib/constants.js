@@ -481,6 +481,38 @@ export function isExperientialCriterion(categoryKey, label) {
   return criterionMetadata(categoryKey, label).evaluationMode === EVALUATION_MODE.TOUR;
 }
 
+// Every label FLH's own catalog has ever offered as a rating (1–5, later an
+// after-tour response), across Home to Buy, Rent and Investment, current and
+// retired. A rating-kind priority whose label is NOT here was typed by the
+// buyer: "Add your own" used to store Location priorities as `rating` (that
+// category's old default), which left them with no answer anywhere — not a
+// tour criterion, so not in Tour Feedback, and not `check`, so no Yes / No.
+const CATALOG_RATING_LABELS = new Set([
+  'Overall Location', 'Schools', 'Immediate Street / Surroundings', 'Walkability', 'Commute',
+  'Neighborhood', 'Parks Nearby', 'Proximity to Family / Friends', 'Dog Parks Nearby',
+  'Groceries Nearby', 'Restaurants / Coffee / Shopping Nearby', 'Tenant Appeal',
+  'Overall Condition', 'Layout / Flow', 'Natural Light', 'Character / Charm', 'Room Sizes',
+  'Openness / Ceiling Height', 'Privacy', 'Move-In Ready', 'Renovation Potential',
+  'Social Community', 'On-Site Management', 'Rental Income Potential', 'Property Condition',
+  'Owner-Occupancy Suitability', 'Yard', 'Exterior Condition', 'Landscaping', 'Curb Appeal',
+  'Outdoor Space', 'Noise Level', 'Storage', 'Lease Terms', 'Maintenance Responsibility',
+]);
+
+// Whether a selected item-list priority is answered Yes / No / Unknown (the
+// buyer's own checks[key]) rather than after a tour. Check-kind priorities
+// are, as always. So is a buyer's own typed priority stored as `rating` outside
+// Home Feel: it is not a tour criterion, and nothing else could ever answer it.
+// Catalog ratings, every tour criterion and Home Feel (judged in person) keep
+// their existing semantics. The stored kind is never rewritten; a historical
+// 1–5 rating under the key keeps counting until the buyer answers Yes or No
+// (computeMatch, and the SQL Compare scorer, which already reads ratings and
+// then checks for every item).
+export function isYesNoCriterion(categoryKey, item) {
+  if (!item || isExperientialCriterion(categoryKey, item.label)) return false;
+  if (item.kind !== 'rating') return true;
+  return categoryKey !== 'homeFeel' && !CATALOG_RATING_LABELS.has(item.label);
+}
+
 // Schools relevance gate (Phase 6). 'no' means the user explicitly said
 // schools don't factor into their decision. This deliberately does NOT touch
 // the underlying stored tier or preference note anywhere — it only
@@ -547,7 +579,9 @@ export function getItemlistCategories(searchType) {
       ...(isInvestment ? [{ label: 'Proximity to Family / Friends', kind: 'rating' }] : []),
       ...(isInvestment ? [{ label: 'Tenant Appeal', kind: 'rating' }] : []),
     ],
-    defaultCustomKind: 'rating',
+    // A buyer's own location priority ("Desirable Street") is something they
+    // can say Yes or No to before a tour, like every Location suggestion.
+    defaultCustomKind: 'check',
   };
 
   const features = isRental
