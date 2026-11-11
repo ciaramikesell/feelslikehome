@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ArrowUpRight, Check, ChevronDown, Minus, X } from 'lucide-react';
 import { TIER_META, criterionDisplayLabel, isExperientialCriterion } from '@/lib/constants';
-import { answerableCriteriaKeys, criterionAnswer, criterionResolution } from '@/lib/matchCriteria';
+import { answerableCriteriaKeys, criterionAnswer, criterionResolution, legacyCriterionRating } from '@/lib/matchCriteria';
 
 // Match Criteria: the buyer's own priorities from My Search, in three tiers.
 // Rows come from computeMatch's allSelected — the very list the Match % is
@@ -114,12 +114,16 @@ function Tier({ tier, rows, home, priorities, answerable, readOnly, onAnswer, on
         const resolved = canAnswer ? criterionResolution(home, item.key, priorities.searchType) : null;
         const value = resolved?.value;
         const tone = canAnswer ? (value === true ? 'met' : value === 'no' ? 'missed' : 'unknown') : criterionState(item).tone;
+        // A 1–5 rating from before this priority could be answered Yes / No
+        // still counts until the buyer answers (computeMatch); say so under
+        // the name, since the control itself shows no answer yet.
+        const earlier = canAnswer && item.source === 'earlier_rating' ? legacyCriterionRating(home, item.key) : null;
         // "Home Facts" replaces Unknown only when a fact actually answers it.
         const factBacked = !!resolved?.link && resolved.fact !== undefined;
         return <li key={item.key} className={`flh-mc2-row is-${tone}`}>
-          <span className="flh-mc2-name">{criterionName(item)}{factBacked && <FactNote resolved={resolved} onOpenFact={onOpenFact} />}</span>
+          <span className="flh-mc2-name">{criterionName(item)}{factBacked && <FactNote resolved={resolved} onOpenFact={onOpenFact} />}{earlier && <small className="flh-mc2-from">Earlier rating: {earlier}/5 · counts until you answer</small>}</span>
           {!canAnswer ? <FactResult item={item} onOpenFact={onOpenFact} tourHref={tourHref} />
-            : readOnly ? <span className={`flh-mc2-state is-${tone}`}>{value === true ? 'Yes' : value === 'no' ? 'No' : 'Unknown'}</span>
+            : readOnly ? <span className={`flh-mc2-state is-${tone}`}>{earlier ? `${earlier}/5` : value === true ? 'Yes' : value === 'no' ? 'No' : 'Unknown'}</span>
               : <AnswerControl item={item} value={own} factBacked={factBacked} onChange={(next) => onAnswer(item, next)} />}
         </li>;
       })}

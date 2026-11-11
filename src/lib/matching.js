@@ -1,4 +1,4 @@
-import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier, isExperientialCriterion, isRetiredPurchaseBuiltIn, foldLegacyCheckAliases, TOUR_RESPONSE, tourResponseLabel, criterionDisplayLabel } from './constants.js';
+import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlistCategories, effectiveTier, isExperientialCriterion, isYesNoCriterion, isRetiredPurchaseBuiltIn, foldLegacyCheckAliases, TOUR_RESPONSE, tourResponseLabel, criterionDisplayLabel } from './constants.js';
 import { normalizeSearchIntent } from './searchIntent.js';
 import { EVIDENCE_STRENGTH, findingsFromFields } from './importDomain.js';
 import { lotSizeAcres } from './lotSize.js';
@@ -468,7 +468,7 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
         return;
       }
 
-      if (item.kind === 'rating' || isExperientialCriterion(def.key, item.label)) {
+      if (!isYesNoCriterion(def.key, item)) {
         const val = home.ratings?.[ns] || 0;
         if (isExperientialCriterion(def.key, item.label) && typeof val === 'string') {
           if (val === TOUR_RESPONSE.POSITIVE) push(ns, item.label, tier, true, 1, true, tourResponseLabel(def.key, item.label, val), false);
@@ -507,6 +507,13 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
       // First-Floor Primary, No HOA). The buyer's own Yes / No always wins;
       // otherwise the fact answers; otherwise Unknown. The fact is read here,
       // never copied into anyone's checks.
+      //
+      // A buyer's own typed priority stored as `rating` (isYesNoCriterion) is
+      // answered here too. A 1–5 rating it may hold from before keeps its score
+      // until the buyer answers Yes or No (criterionAnswerPatch replaces it),
+      // in the same order the SQL Compare scorer reads ratings, then checks.
+      const legacyRating = item.kind === 'rating' ? home.ratings?.[ns] : undefined;
+      if (typeof legacyRating === 'number' && legacyRating > 0) { push(ns, item.label, tier, true, legacyRating / 5, legacyRating >= 3, `${legacyRating}/5`, true, 'earlier_rating'); return; }
       const answer = resolveCriterionAnswer(home, ns, checks);
       const source = answer.source === 'home_facts' ? 'home_facts' : undefined;
       if (answer.value === true) { push(ns, item.label, tier, true, 1, true, answerDetail(ns, true, answer.source, home), true, source); return; }
