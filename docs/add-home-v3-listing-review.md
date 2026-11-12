@@ -176,7 +176,16 @@ lookup already filled garage and HOA).
   `pasted-listing-answers-e2e` now drive the checklist and the Match-view
   pointers instead of per-row Use/Skip and on-card Confirm. Their guarantees
   are kept.
-- The full suite, build and regression results are in the PR.
+- **Full suite, real PostgreSQL 16:** 1359 / 1359 pass, 0 skipped.
+  `next build` passes.
+- **Regression QA on this branch:**
+
+  | Script | Result |
+  |---|---|
+  | `add-home-simple-save-e2e` | 20 / 20 |
+  | `rentcast-import-e2e` | 12 / 12 |
+  | `smart-listing-paste-e2e` | 12 / 12 |
+  | `pasted-listing-answers-e2e` | 11 / 11 |
 
 ## 6. Deferred decisions
 
