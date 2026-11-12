@@ -156,17 +156,24 @@ The core tap count to save is the same: 4. What changed:
 
 ## Tests and QA
 
-- `test/add-home-simple-save.test.js`: 15 pass.
+- `test/add-home-simple-save.test.js`: 20 pass.
   - Pure helpers.
   - The card contract: one action, address only, optional parts after Save
     and folded.
   - Photo reuse and failure handling.
+  - **Photo URL safety:** an image link in pasted text never becomes
+    `photoUrl` (nor the listing URL); `photoUrl` is refused by every import
+    gate; an uploaded, typed or saved photo survives pasting; nothing reaches
+    the snapshot.
+  - **Found-card copy:** "We found N details about this home." with
+    singular/plural, and never "saved".
   - The saved state, and Board landing and opening.
   - Entry paths: share intake, duplicate redirect, one lookup per Find.
   - **Real Postgres:** Save Home's exact payload as the owner (every
     looked-up value and the snapshot kept, no Match answer, duplicate found by
     the co-buyer) and as the co-buyer (the owner sees it, no personal answers
-    written).
+    written). Also: pasting image-link text keeps a saved photo, and gives a
+    photo-less home none.
 - Updated source pins for the new name and order in
   `home-facts-redesign`, `listing-text-home-facts`,
   `buyer-mobile-add-edit-account` and `rentcast-import-accuracy`. No behaviour
@@ -175,7 +182,7 @@ The core tap count to save is the same: 4. What changed:
   from the listing** open, so the results the buyer just asked for stay in
   view, still below Save Home.
 - **Full suite, real PostgreSQL 16:** 1341 / 1341 pass, 0 skipped.
-- **Browser QA, `add-home-simple-save-e2e.mjs`:** 18 / 18 (desktop 1440 and
+- **Browser QA, `add-home-simple-save-e2e.mjs`:** 20 / 20 (desktop 1440 and
   iPhone 390). It covers:
   - a successful lookup;
   - optional paste left unreviewed;
@@ -185,7 +192,11 @@ The core tap count to save is the same: 4. What changed:
   - photo added;
   - photo upload failed;
   - the co-buyer;
-  - Share Extension entry (`/homes?url=`), including a shared duplicate.
+  - Share Extension entry (`/homes?url=`), including a shared duplicate;
+  - pasted text with an image link: the placeholder stays and nothing is
+    saved as the photo, and a photo the buyer added survives two pastes;
+  - the "We found 18 details about this home." copy, and listing provenance
+    kept in the saved snapshot.
 - **Regression QA.** The existing scripts now save with Save Home and open the
   home with View home.
 
