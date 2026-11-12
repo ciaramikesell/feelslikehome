@@ -41,7 +41,7 @@ function psql(sql) {
 const q = (sql) => JSON.parse(psql(`select coalesce(json_agg(t), '[]'::json) from (${sql}) t`));
 const lit = (value) => `'${String(value).replace(/'/g, "''")}'`;
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
-const homeRow = (url) => q(`select h.id, h.basement_condition, h.basement_style, h.laundry_location, h.primary_bedroom_location, h.garage_type, h.hoa_fee_monthly, h.school_district, h.listing_import
+const homeRow = (url) => q(`select h.id, h.basement_condition, h.basement_style, h.laundry_location, h.primary_bedroom_location, h.garage_type, h.hoa_fee_monthly, h.school_district_name, h.listing_import
   from public.homes h where h.search_id = ${lit(info.search)} and h.listing_url = ${lit(url)}`)[0];
 const checksOf = (homeId, userId) => q(`select checks from public.home_member_state where home_id = ${lit(homeId)} and user_id = ${lit(userId)}`)[0]?.checks || {};
 
@@ -187,7 +187,7 @@ async function run() {
       assert(saved.basement_condition === 'finished' && saved.basement_style === 'walkout' && saved.laundry_location === 'first_floor', `facts: ${JSON.stringify(saved).slice(0, 200)}`);
       assert(saved.primary_bedroom_location === '' || saved.primary_bedroom_location === null, 'an unchecked fact was saved');
       assert(saved.garage_type === 'attached' && Number(saved.hoa_fee_monthly) === 0, 'a looked-up fact was overwritten');
-      assert(saved.school_district === null, 'the unchecked district was saved');
+      assert(saved.school_district_name === null, 'the unchecked district was saved');
       assert(saved.listing_import.source === 'rentcast' && saved.listing_import.pastedFacts.some((item) => item.field === 'laundryLocation' && /main level/.test(item.evidence)), 'provenance');
       assert(saved.listing_import.descriptionFeatures.some((item) => item.concept === 'fireplace'), 'deferred evidence not kept');
       // Offered but not added: kept for later, never a value.
@@ -233,7 +233,7 @@ async function run() {
       const id = homeRow(url).id;
       for (let i = 0; i < 20 && homeRow(url).primary_bedroom_location !== 'Main Floor'; i += 1) await owner.waitForTimeout(250);
       const after = homeRow(url);
-      assert(after.primary_bedroom_location === 'Main Floor' && after.school_district === null && after.laundry_location === 'first_floor', `after add: ${JSON.stringify(after).slice(0, 200)}`);
+      assert(after.primary_bedroom_location === 'Main Floor' && after.school_district_name === null && after.laundry_location === 'first_floor', `after add: ${JSON.stringify(after).slice(0, 200)}`);
       assert(!Object.keys(checksOf(id, info.users.owner.id)).length, 'adding a fact wrote a Match answer');
       await owner.locator('.flh-offered-row').filter({ hasText: '1 detail not added yet' }).waitFor({ timeout: 10000 });
     }, open);
@@ -273,8 +273,8 @@ async function run() {
       await coSheet.locator('.flh-fact-checklist-rows input').first().check();
       await coSheet.getByRole('button', { name: /Add 1 fact/ }).click();
       await coSheet.waitFor({ state: 'detached' });
-      for (let i = 0; i < 20 && homeRow(url).school_district !== 'Rochester Community Schools'; i += 1) await coBuyer.waitForTimeout(250);
-      assert(homeRow(url).school_district === 'Rochester Community Schools', 'co-buyer add not saved');
+      for (let i = 0; i < 20 && homeRow(url).school_district_name !== 'Rochester Community Schools'; i += 1) await coBuyer.waitForTimeout(250);
+      assert(homeRow(url).school_district_name === 'Rochester Community Schools', 'co-buyer add not saved');
       assert(!(await coBuyer.locator('.flh-offered-row').count()), 'the row stays after every offer was added');
       await fireRow.scrollIntoViewIfNeeded();
       await shot(coBuyer, `after-${label}-5-cobuyer-hint`);

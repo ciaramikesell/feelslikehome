@@ -260,8 +260,8 @@ dbTest('saved: checked facts shared with provenance; each buyer’s deferred ans
   const used = Object.fromEntries(chosen.map((item) => [item.id, item]));
   const listingImport = listingImportSnapshot(importResultWithHomeFacts({ source: 'raw-text', fields: {}, listingFacts: [], descriptionFeatures: listingTextEvidence(TEXT) }, used, form), 'x');
   const saved = await saveHomePersonalAndShared(db.clientFor(ids.owner), { ...form, listingImport }, ids.owner, ids.search);
-  const row = db.admin(`select basement_condition, laundry_location, hoa_fee_monthly, school_district, listing_import from public.homes where id = '${saved.id}'`)[0];
-  assert.deepEqual([row.basement_condition, row.laundry_location, row.hoa_fee_monthly, row.school_district], ['finished', 'first_floor', null, null]);
+  const row = db.admin(`select basement_condition, laundry_location, hoa_fee_monthly, school_district_name, listing_import from public.homes where id = '${saved.id}'`)[0];
+  assert.deepEqual([row.basement_condition, row.laundry_location, row.hoa_fee_monthly, row.school_district_name], ['finished', 'first_floor', null, null]);
   assert.ok(row.listing_import.pastedFacts.length === chosen.length && row.listing_import.descriptionFeatures.length > 0);
   // No personal answer was written for anyone.
   assert.equal(db.admin(`select count(*)::int as n from public.home_member_state where home_id = '${saved.id}' and checks <> '{}'::jsonb`)[0].n, 0);

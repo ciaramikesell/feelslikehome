@@ -144,8 +144,8 @@ after(() => db?.drop());
 dbTest('saved offers survive reload; the co-buyer reviews and adds one; nothing else changes', async () => {
   const { home } = pastedAndSaved();
   const saved = await saveHomePersonalAndShared(db.clientFor(ids.owner), home, ids.owner, ids.search);
-  const row = () => db.admin(`select laundry_location, hoa_fee_monthly, school_district, listing_import from public.homes where id = '${saved.id}'`)[0];
-  assert.deepEqual([row().laundry_location, row().hoa_fee_monthly, row().school_district], [null, null, null], 'offers are not values');
+  const row = () => db.admin(`select laundry_location, hoa_fee_monthly, school_district_name, listing_import from public.homes where id = '${saved.id}'`)[0];
+  assert.deepEqual([row().laundry_location, row().hoa_fee_monthly, row().school_district_name], [null, null, null], 'offers are not values');
   assert.deepEqual(row().listing_import.offeredFacts.map((item) => item.field), ['laundryLocation', 'hoaFeeMonthly', 'schoolDistrict']);
 
   // The co-buyer loads the same home and sees the same open offers.
