@@ -278,7 +278,50 @@ function isoDateOnly(value) {
   return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
 }
 
-function listingSnapshot(listing) {
+// Documented listing types (Property Listings Schema; 2024-09 changelog).
+// Anything else is not reported rather than guessed.
+const LISTING_TYPES = Object.freeze({ standard: 'Standard', 'new construction': 'New Construction', foreclosure: 'Foreclosure', 'short sale': 'Short Sale' });
+export function rentCastListingType(value) {
+  if (typeof value !== 'string') return null;
+  return LISTING_TYPES[value.trim().toLowerCase().replace(/[\s_-]+/g, ' ')] || null;
+}
+
+// The listing's `history`: documented as an object keyed by date (YYYY-MM-DD),
+// one entry per listing PERIOD ({ event: 'Sale Listing' | 'Rental Listing',
+// price, listingType, listedDate, removedDate, daysOnMarket }). An entry is a
+// period on the market, not a price change, so no price drop or increase is
+// ever derived from it. Only entries whose event matches this kind of listing
+// and whose dates are real and in order are kept; anything malformed is
+// dropped, never repaired. Each entry's price is kept as reported, but whether
+// it is the period's first or last price is not documented, so nothing shows it.
+const HISTORY_EVENTS = Object.freeze({ sale: 'Sale Listing', rental: 'Rental Listing' });
+export function rentCastListingHistory(history, kind = 'sale') {
+  if (!history || typeof history !== 'object' || Array.isArray(history)) return [];
+  const event = HISTORY_EVENTS[kind] || HISTORY_EVENTS.sale;
+  const seen = new Set();
+  const out = [];
+  for (const entry of Object.values(history)) {
+    if (!entry || typeof entry !== 'object' || entry.event !== event) continue;
+    const listedDate = isoDateOnly(entry.listedDate);
+    if (!listedDate || seen.has(listedDate)) continue;
+    const removedDate = entry.removedDate == null ? null : isoDateOnly(entry.removedDate);
+    if (entry.removedDate != null && !removedDate) continue;
+    if (removedDate && removedDate < listedDate) continue;
+    const days = num(entry.daysOnMarket);
+    const price = num(entry.price);
+    seen.add(listedDate);
+    out.push({
+      listedDate,
+      removedDate,
+      daysOnMarket: days !== null && days >= 0 && Number.isInteger(days) ? days : null,
+      price: price !== null && price > 0 ? price : null,
+      listingType: rentCastListingType(entry.listingType),
+    });
+  }
+  return out.sort((a, b) => (a.listedDate < b.listedDate ? 1 : -1)).slice(0, 10);
+}
+
+function listingSnapshot(listing, kind = 'sale') {
   if (!listing) return null;
   const status = rentCastListingStatus(listing);
   const price = num(listing.price);
@@ -292,6 +335,10 @@ function listingSnapshot(listing) {
     mlsName: descriptiveText(listing.mlsName),
     mlsNumber: listing.mlsNumber == null ? null : descriptiveText(String(listing.mlsNumber)),
   };
+  const listingType = rentCastListingType(listing.listingType);
+  if (listingType) snapshot.listingType = listingType;
+  const history = rentCastListingHistory(listing.history, kind);
+  if (history.length) snapshot.history = history;
   return snapshot;
 }
 
@@ -307,7 +354,7 @@ function formatUsd(value) {
  *   /v1/listings/rental/long-term, or null
  * @param {{ apartmentCommunity?: boolean, requestedAddress?: string }} options
  */
-export function normalizeRentCastFields(rawProperty, rawListing, { apartmentCommunity = false, requestedAddress = '' } = {}) {
+export function normalizeRentCastFields(rawProperty, rawListing, { apartmentCommunity = false, requestedAddress = '', listingKind = 'sale' } = {}) {
   // A result for a different address is dropped, never merged.
   const addressCheck = {
     property: rawProperty ? rentCastAddressMatch(requestedAddress, rawProperty.formattedAddress) : null,
@@ -416,10 +463,15 @@ export function normalizeRentCastFields(rawProperty, rawListing, { apartmentComm
     evidenceStrength: EVIDENCE_STRENGTH.AUTHORITATIVE,
   });
   const { resolutions, fieldPatch } = resolveImport(findings);
-  const listingMeta = listingSnapshot(optionListing);
+  const listingMeta = listingSnapshot(optionListing, listingKind);
   // A presence flag is shown only when it says the system exists and no type
   // was given. false is not shown: it is not documented as "has none".
   const systemFact = (type, flag) => descriptiveText(type) || (flag === true ? true : null);
+  // County-record features (Property Data Schema): only a flag that says the
+  // feature EXISTS is a fact. false or missing says nothing (county records are
+  // incomplete), so it is never reported, and never becomes a No.
+  const presentFeature = (flag, type) => (flag === true ? (descriptiveText(type) || true) : null);
+  const subdivision = apartmentCommunity ? null : descriptiveText(property?.subdivision);
   const listingFacts = [
     fact('stories', 'Stories / levels', features.floorCount, 'structure'),
     fact('architecture', 'Style', descriptiveText(features.architectureType), 'structure'),
@@ -427,9 +479,14 @@ export function normalizeRentCastFields(rawProperty, rawListing, { apartmentComm
     fact('roof', 'Roof', descriptiveText(features.roofType), 'structure'),
     fact('foundation', 'Foundation', descriptiveText(features.foundationType), 'structure'),
     fact('garageType', 'Garage', descriptiveText(features.garageType) || (features.garage === true ? true : null), 'parking'),
+    fact('subdivision', 'Subdivision', subdivision, 'structure'),
+    fact('fireplace', 'Fireplace', presentFeature(features.fireplace, features.fireplaceType), 'features'),
+    fact('pool', 'Pool', presentFeature(features.pool, features.poolType), 'features'),
+    fact('viewType', 'View', descriptiveText(features.viewType), 'features'),
     fact('heating', 'Heating', systemFact(features.heatingType, features.heating), 'utilities'),
     fact('cooling', 'Cooling', systemFact(features.coolingType, features.cooling), 'utilities'),
     listingMeta && fact('status', 'Listing status', LISTING_STATUS_LABELS[listingMeta.status], 'listing'),
+    listingMeta?.listingType && listingMeta.listingType !== 'Standard' && fact('listingType', 'Listing type', listingMeta.listingType, 'listing'),
     listingMeta && listingMeta.status !== 'active' && listingMeta.lastKnownPrice !== null
       && fact('lastKnownPrice', 'Last listed price', `${formatUsd(listingMeta.lastKnownPrice)} (not a current asking price)`, 'listing'),
     listingMeta && fact('listedDate', 'Listed', listingMeta.listedDate, 'listing'),

@@ -68,7 +68,7 @@ export async function lookupRentCast(address, mode, apiKey) {
   const { fields, findings, resolutions, listingFacts, descriptionFeatures, listing, addressCheck, foundAny } = normalizeRentCastFields(
     propertyResult.data,
     listingResult.data,
-    { apartmentCommunity: mode === 'apartment', requestedAddress: address },
+    { apartmentCommunity: mode === 'apartment', requestedAddress: address, listingKind: mode === 'rental' || mode === 'apartment' ? 'rental' : 'sale' },
   );
   // Whatever did come back didn't match this address, and the other lookup
   // failed: still "we don't know", not "nothing here".

@@ -91,7 +91,7 @@ export function countListingDetails(fields = {}, facts = [], features = []) {
 }
 
 export function groupListingFacts(facts = []) {
-  const order = ['basics', 'structure', 'parking', 'costs', 'utilities', 'listing'];
+  const order = ['basics', 'structure', 'features', 'parking', 'costs', 'utilities', 'listing'];
   const shown = facts.filter((item) => !isLegacyNoHoaFact(item));
   return order.map((key) => ({ key, facts: shown.filter((item) => item?.group === key) })).filter((section) => section.facts.length);
 }

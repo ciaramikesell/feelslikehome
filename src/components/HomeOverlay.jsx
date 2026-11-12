@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AlertCircle, ArrowLeft, Check, Loader2, NotebookText, X } from 'lucide-react';
 import HomeFacts from '@/components/HomeFacts';
 import MatchCriteria from '@/components/MatchCriteria';
-import { savedListingAnswers } from '@/lib/listingTextAnswers';
+import { recordListingAnswers, savedListingAnswers } from '@/lib/listingTextAnswers';
 import TourFeedback from '@/components/TourFeedback';
 import RealtorContributions from '@/components/RealtorContributions';
 import PostTourModal from '@/components/PostTourModal';
@@ -190,7 +190,9 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
   const homePath = `/homes/${encodeURIComponent(home.id)}`;
   // Possible answers from listing text pasted when the home was added, read back
   // from the saved snapshot for THIS buyer's own unanswered criteria. Never written.
-  const listingAnswers = savedListingAnswers(home.listingImport, priorities, home.checks);
+  // Pasted listing text speaks first; a county record (phase 3) only adds criteria it doesn't cover.
+  const pastedAnswers = savedListingAnswers(home.listingImport, priorities, home.checks);
+  const listingAnswers = [...pastedAnswers, ...recordListingAnswers(home.listingImport, priorities, home.checks).filter((item) => !pastedAnswers.some((pasted) => pasted.key === item.key))];
 
   // Any change that may touch both shared facts and this buyer's own state
   // (a post-tour verdict appends a shared note; archiving is personal).

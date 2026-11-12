@@ -228,11 +228,14 @@ test('the checklist: field and value, the sentence on demand, deselectable, one 
 });
 
 test('Match view: the hint shows only on this buyer’s unanswered, non-fact criteria, and never answers', () => {
-  assert.match(overlay, /const listingAnswers = savedListingAnswers\(home\.listingImport, priorities, home\.checks\);/);
+  // Pasted text first; county-record pointers (phase 3) only for criteria it doesn't cover.
+  assert.match(overlay, /const pastedAnswers = savedListingAnswers\(home\.listingImport, priorities, home\.checks\);/);
+  assert.match(overlay, /recordListingAnswers\(home\.listingImport, priorities, home\.checks\)\.filter\(\(item\) => !pastedAnswers\.some\(\(pasted\) => pasted\.key === item\.key\)\)/);
   assert.match(overlay, /listingAnswers=\{listingAnswers\}/);
   assert.match(criteria, /const hint = canAnswer && !readOnly && own === undefined && !factBacked \? listingHints\.get\(item\.key\) : null;/);
   const hint = criteria.match(/function ListingHint[\s\S]*?\n\}/)[0];
   assert.match(hint, /Listing suggests/);
+  assert.match(hint, /County records suggest/);
   assert.match(hint, /Choose Yes or No yourself\./);
   assert.doesNotMatch(hint, /onAnswer|onChange|checks/);
 });

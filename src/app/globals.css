@@ -2497,6 +2497,11 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-mc2-listing .flh-mc2-why > span { display: block; margin-top: 3px; color: var(--ink); overflow-wrap: anywhere; }
 .flh-mc2-listing .flh-mc2-why cite { display: block; color: var(--ink-soft); font-style: normal; }
 
+/* Home Facts: dated context from the lookup made when the home was added (phase 3). */
+.flh-hf2-context { display: grid; gap: 2px; margin-top: 6px; color: var(--ink-soft); font-size: 12.5px; line-height: 1.45; }
+.flh-hf2-context p { margin: 0; overflow-wrap: anywhere; }
+.flh-hf2-record { font-size: 12.5px; }
+
 /* Home Facts: listing facts offered at Add Home and not added yet. One quiet
    row; Review opens the shared checklist in a sheet (no inline fold-out). */
 .flh-offered-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; margin: 0 0 12px; padding: 8px 12px; border: 1px solid rgba(138,124,110,.2); border-radius: 12px; background: var(--paper); color: var(--ink-soft); font-size: 13px; }
@@ -2525,6 +2530,7 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-found-photo-btn { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 6px 11px; border: 1px solid rgba(46,38,33,.12); border-radius: 999px; background: rgba(255,255,255,.92); color: var(--ink); font: 700 12px var(--font-sans); cursor: pointer; box-shadow: 0 1px 3px rgba(46,38,33,.12); }
 .flh-found-photo-btn.is-quiet { color: var(--ink-soft); font-weight: 600; }
 .flh-found-photo-btn:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.flh-found-type { display: inline-flex; margin-left: 6px; padding: 4px 10px; border-radius: 999px; background: var(--peach); color: var(--brick-deep); font-size: 11.5px; font-weight: 700; }
 .flh-found-locality { display: flex; align-items: center; gap: 4px; }
 .flh-found-locality svg { flex: 0 0 auto; color: var(--brick); }
 .flh-found-count { display: flex; align-items: center; gap: 6px; margin-top: 10px !important; color: var(--positive) !important; font-size: 12px !important; }

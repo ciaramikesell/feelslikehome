@@ -48,3 +48,33 @@ export function documentedSaleListing(overrides = {}) {
 export function documentedRentalListing(overrides = {}) {
   return documentedSaleListing({ price: 2150, mlsNumber: '20260000002', ...overrides });
 }
+
+// Phase 3 (docs/add-home-v3-rentcast-context.md): the further documented fields
+// FLH now reads. Shapes follow RentCast's Property Data Schema (features.fireplace /
+// fireplaceType, features.pool / poolType, features.viewType, subdivision) and
+// Property Listings Schema (listingType; history keyed by YYYY-MM-DD, each entry
+// { event, price, listingType, listedDate, removedDate, daysOnMarket }), as seen
+// in the documentation's descriptions and sample records (search-confirmed; the
+// pages could not be fetched directly). Values are invented. The enum lists for
+// fireplace / pool / view types were not visible, so these use the documented
+// sample values ("Masonry", "Concrete", "City").
+export function documentedPropertyWithFeatures(overrides = {}) {
+  const base = documentedProperty();
+  return {
+    ...base,
+    subdivision: 'EXAMPLE HILLS',
+    features: { ...base.features, fireplace: true, fireplaceType: 'Masonry', pool: true, poolType: 'Concrete', viewType: 'City', ...(overrides.features || {}) },
+    ...Object.fromEntries(Object.entries(overrides).filter(([key]) => key !== 'features')),
+  };
+}
+
+export function documentedSaleListingWithHistory(overrides = {}) {
+  return documentedSaleListing({
+    listingType: 'Standard',
+    history: {
+      '2026-09-20': { event: 'Sale Listing', price: 289000, listingType: 'Standard', listedDate: '2026-09-20T00:00:00.000Z', removedDate: null, daysOnMarket: 29 },
+      '2025-03-02': { event: 'Sale Listing', price: 299000, listingType: 'Standard', listedDate: '2025-03-02T00:00:00.000Z', removedDate: '2025-04-30T00:00:00.000Z', daysOnMarket: 59 },
+    },
+    ...overrides,
+  });
+}

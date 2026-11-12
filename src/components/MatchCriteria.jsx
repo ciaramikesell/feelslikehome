@@ -104,10 +104,12 @@ function FactNote({ resolved, onOpenFact }) {
 }
 
 // "Listing suggests Yes · Why?" under an unanswered criterion. Never an answer.
+// From a county record (phase 3) it says so: "County records suggest Yes".
 function ListingHint({ hint }) {
+  const record = hint.sourceType === 'county_record';
   return <small className="flh-mc2-from flh-mc2-listing">
-    Listing suggests <b className={`is-${hint.answer === true ? 'met' : 'missed'}`}>{hint.answer === true ? 'Yes' : 'No'}</b>
-    <details className="flh-mc2-why"><summary>Why?</summary><span>“{hint.evidence}” <cite>From listing text pasted for this home. Choose Yes or No yourself.</cite></span></details>
+    {record ? 'County records suggest' : 'Listing suggests'} <b className={`is-${hint.answer === true ? 'met' : 'missed'}`}>{hint.answer === true ? 'Yes' : 'No'}</b>
+    <details className="flh-mc2-why"><summary>Why?</summary><span>{record ? hint.evidence : `“${hint.evidence}”`} <cite>{record ? 'From the property record found when this home was added. Records can be out of date. Choose Yes or No yourself.' : 'From listing text pasted for this home. Choose Yes or No yourself.'}</cite></span></details>
   </small>;
 }
 
