@@ -267,6 +267,12 @@ async function run() {
       assert(/Listing suggests\s*Yes/.test(await fireRow.innerText()), 'co-buyer pointer');
       // The co-buyer sees the same remaining shared offer (the district), unchecked.
       assert(/1 detail not added yet/.test(await coBuyer.locator('.flh-offered-row').innerText()), 'co-buyer offers');
+      await fireRow.scrollIntoViewIfNeeded();
+      await shot(coBuyer, `after-${label}-5-cobuyer-hint`);
+      await fireRow.locator('label.is-yes').click();
+      for (let i = 0; i < 20 && checksOf(id, info.users.coBuyer.id)['features:Fireplace'] !== true; i += 1) await coBuyer.waitForTimeout(250);
+      assert(checksOf(id, info.users.coBuyer.id)['features:Fireplace'] === true, 'co-buyer answer');
+      assert(checksOf(id, info.users.owner.id)['features:Fireplace'] === 'no', 'the owner’s answer changed');
       // The co-buyer can review and add it too (shared fact), through the same sheet.
       await coBuyer.locator('.flh-offered-row').getByRole('button', { name: 'Review' }).click();
       const coSheet = coBuyer.locator('.flh-offered-sheet[role="dialog"]');
@@ -276,12 +282,12 @@ async function run() {
       for (let i = 0; i < 20 && homeRow(url).school_district_name !== 'Rochester Community Schools'; i += 1) await coBuyer.waitForTimeout(250);
       assert(homeRow(url).school_district_name === 'Rochester Community Schools', 'co-buyer add not saved');
       assert(!(await coBuyer.locator('.flh-offered-row').count()), 'the row stays after every offer was added');
-      await fireRow.scrollIntoViewIfNeeded();
-      await shot(coBuyer, `after-${label}-5-cobuyer-hint`);
-      await fireRow.locator('label.is-yes').click();
-      for (let i = 0; i < 20 && checksOf(id, info.users.coBuyer.id)['features:Fireplace'] !== true; i += 1) await coBuyer.waitForTimeout(250);
-      assert(checksOf(id, info.users.coBuyer.id)['features:Fireplace'] === true, 'co-buyer answer');
-      assert(checksOf(id, info.users.owner.id)['features:Fireplace'] === 'no', 'the owner’s answer changed');
+      // Shared facts persisted for both; neither buyer's personal answers changed.
+      assert(checksOf(id, info.users.coBuyer.id)['features:Fireplace'] === true && checksOf(id, info.users.owner.id)['features:Fireplace'] === 'no', 'adding a shared fact changed a personal answer');
+      await owner.goto(`${base}/homes/${id}`, { waitUntil: 'networkidle' });
+      await owner.locator('.flh-overlay[role="dialog"]:not(.is-loading)').waitFor({ timeout: 30000 });
+      assert(!(await owner.locator('.flh-offered-row').count()), 'the owner still sees offers after all were added');
+      assert(await owner.locator('#hf-schoolDistrict').inputValue() === 'Rochester Community Schools', 'the owner does not see the co-buyer’s added fact');
       await coBuyer.context().close(); coBuyer = null;
     }, open);
 
