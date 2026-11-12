@@ -131,7 +131,9 @@ async function run() {
       await addFromListing(owner, LISTING);
       await owner.getByText('We found your home', { exact: false }).first().waitFor();
       assert(q(`select id from public.homes where listing_url = ${lit(LISTING)}`).length === 0, 'saved before Add');
-      await owner.getByRole('button', { name: 'Add to My Homes' }).dblclick();
+      await owner.getByRole('button', { name: 'Save Home' }).dblclick();
+      await owner.locator('.flh-saved').waitFor({ timeout: 60000 });
+      await owner.getByRole('button', { name: /^View home/ }).click();
       await owner.waitForURL(/\/homes\/[0-9a-f-]{36}$/, { timeout: 60000 });
       await overlayOpen(owner);
       homeId = owner.url().match(/homes\/([0-9a-f-]{36})/)[1];
@@ -285,9 +287,11 @@ async function run() {
       await owner.locator('#found-home-address').fill(address);
       let interrupt = true;
       await owner.route('**/rest/v1/home_member_state**', (route) => { if (interrupt && route.request().method() === 'POST') { interrupt = false; return route.abort('connectionreset'); } return route.continue(); });
-      await owner.getByRole('button', { name: 'Add to My Homes' }).click();
+      await owner.getByRole('button', { name: 'Save Home' }).click();
       await owner.getByText(/We couldn.t save this home/).waitFor({ timeout: 20000 });
-      await owner.getByRole('button', { name: 'Add to My Homes' }).click();
+      await owner.getByRole('button', { name: 'Save Home' }).click();
+      await owner.locator('.flh-saved').waitFor({ timeout: 60000 });
+      await owner.getByRole('button', { name: /^View home/ }).click();
       await owner.waitForURL(/\/homes\/[0-9a-f-]{36}$/, { timeout: 60000 });
       await overlayOpen(owner);
       await owner.unroute('**/rest/v1/home_member_state**');
@@ -297,8 +301,10 @@ async function run() {
       // iOS share intake of a new listing.
       const shared = `https://www.redfin.com/MI/New-Baltimore/42-Shared-Ct-${width}-48047/home/42`;
       await owner.goto(`${base}/homes?url=${encodeURIComponent(shared)}`, { waitUntil: 'networkidle' });
-      await owner.getByRole('button', { name: 'Add to My Homes' }).waitFor({ timeout: 30000 });
-      await owner.getByRole('button', { name: 'Add to My Homes' }).click();
+      await owner.getByRole('button', { name: 'Save Home' }).waitFor({ timeout: 30000 });
+      await owner.getByRole('button', { name: 'Save Home' }).click();
+      await owner.locator('.flh-saved').waitFor({ timeout: 60000 });
+      await owner.getByRole('button', { name: /^View home/ }).click();
       await owner.waitForURL(/\/homes\/[0-9a-f-]{36}$/, { timeout: 60000 });
       await overlayOpen(owner);
       assert(q(`select id from public.homes where listing_url = ${lit(shared)}`).length === 1, 'share intake did not save exactly once');

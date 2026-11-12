@@ -89,7 +89,10 @@ async function find(page, url) {
   await page.locator('.flh-found').waitFor({ timeout: 30000 });
 }
 async function add(page, url) {
-  await page.getByRole('button', { name: 'Add to My Homes' }).click();
+  await page.getByRole('button', { name: 'Save Home' }).click();
+  // Add Home V3: Save Home shows the saved state; View home opens the overlay.
+  await page.locator('.flh-saved').waitFor({ timeout: 60000 });
+  await page.getByRole('button', { name: /^View home/ }).click();
   await page.waitForURL(/\/homes\/[0-9a-f-]{36}$/, { timeout: 60000 });
   await page.locator('.flh-overlay[role="dialog"]:not(.is-loading)').waitFor({ timeout: 30000 });
   const rows = savedRow(url);

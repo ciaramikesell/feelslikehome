@@ -93,6 +93,9 @@ async function find(page, url) {
   await page.locator('.flh-found').waitFor({ timeout: 30000 });
 }
 async function paste(page, text) {
+  // Add Home V3: the paste area sits folded under "Add more from the listing".
+  const more = page.locator('details.flh-found-more:not([open]) > summary');
+  if (await more.count()) await more.click();
   const area = page.locator('.flh-listing-paste');
   await area.waitFor();
   await area.getByLabel('Listing description or features').fill(text);
@@ -100,7 +103,10 @@ async function paste(page, text) {
   await area.locator('.flh-listing-paste-status').waitFor();
 }
 async function add(page, url) {
-  await page.getByRole('button', { name: 'Add to My Homes' }).click();
+  await page.getByRole('button', { name: 'Save Home' }).click();
+  // Add Home V3: Save Home shows the saved state; View home opens the overlay.
+  await page.locator('.flh-saved').waitFor({ timeout: 60000 });
+  await page.getByRole('button', { name: /^View home/ }).click();
   await page.waitForURL(/\/homes\/[0-9a-f-]{36}$/, { timeout: 60000 });
   await page.locator('.flh-overlay[role="dialog"]:not(.is-loading)').waitFor({ timeout: 30000 });
   const rows = savedRow(url);

@@ -603,6 +603,9 @@ function ImportFoundCard({ form, set, importResult, lookupResult = null, importP
       : importPhase === 'empty' && form.listingUrl ? 'We couldn’t find listing details for that link. Add the address and save it — you can fill in the rest later.'
         : 'Add the address and save it. You can fill in everything else later.';
   const pending = (factReview?.suggestions.length || 0) + (answerReview?.suggestions.length || 0);
+  // Folded unless the buyer already pasted text (the "No link?" path, before a
+  // card existed): then what they just asked for stays in view, still below Save Home.
+  const [moreOpen, setMoreOpen] = useState(() => !!paste.text.trim());
   return <section className="flh-found" aria-labelledby="found-home-title">
     {found ? <>
       <div className="flh-found-card">
@@ -633,7 +636,7 @@ function ImportFoundCard({ form, set, importResult, lookupResult = null, importP
     {/* Optional, below Save Home and collapsed: the Smart Paste area with its
         reviews, then shared Notes / Pros / Cons. Neither is needed to save. */}
     <div className="flh-found-optional">
-      <details className="hh-details flh-found-more">
+      <details className="hh-details flh-found-more" open={moreOpen} onToggle={(event) => setMoreOpen(event.currentTarget.open)}>
         <summary><ClipboardPaste size={16} aria-hidden="true" /> Add more from the listing <span>Optional{pending ? ` · ${pending} to review` : ''}</span><ChevronDown className="hh-accordion-chevron" size={18} aria-hidden="true" /></summary>
         <ListingDetailsPaste paste={paste} />
         <HomeFactReview review={factReview} />

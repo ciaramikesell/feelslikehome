@@ -89,7 +89,10 @@ async function paste(page, address, path = '/homes', openLabel = /Add a Home/) {
 const review = (page) => page.locator('.flh-answer-review');
 const reviewItem = (page, label) => review(page).locator('li').filter({ has: page.locator('b', { hasText: new RegExp(`^${label}$`) }) });
 async function addToMyHomes(page) {
-  await page.getByRole('button', { name: 'Add to My Homes' }).click();
+  await page.getByRole('button', { name: 'Save Home' }).click();
+  // Add Home V3: Save Home shows the saved state; View home opens the overlay.
+  await page.locator('.flh-saved').waitFor({ timeout: 60000 });
+  await page.getByRole('button', { name: /^View home/ }).click();
   await page.waitForURL(/\/homes\/[0-9a-f-]{36}$/, { timeout: 60000 });
   await page.locator('.flh-overlay[role="dialog"]:not(.is-loading)').waitFor({ timeout: 30000 });
 }
@@ -129,7 +132,7 @@ async function run() {
       await reviewItem(owner, 'Finished Basement').getByRole('button', { name: /Confirm/ }).click();
       await reviewItem(owner, 'Fireplace').getByRole('button', { name: /Leave .* Unknown/ }).click();
       assert(await reviewItem(owner, 'Fireplace').count() === 0, 'Leave Unknown kept the suggestion on screen');
-      assert(homeByAddress(address).length === 0, 'confirming saved the home before Add to My Homes');
+      assert(homeByAddress(address).length === 0, 'confirming saved the home before Save Home');
       await shot(owner, `${label}-2-confirmed-one-left-one-unknown`, '.flh-found');
     }, open);
 

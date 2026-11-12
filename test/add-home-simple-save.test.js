@@ -77,10 +77,13 @@ test('Save Home is the one action and needs only an address: no paste, review, M
 
 test('everything optional sits below Save Home, folded, and the Smart Paste reviews live inside it', () => {
   const at = (needle) => card.indexOf(needle);
-  const order = ['className="hh-btn flh-found-add"', '<details className="hh-details flh-found-more">', '<ListingDetailsPaste paste={paste} />', '<HomeFactReview review={factReview} />', '<ListingAnswerReview review={answerReview} />', '<details className="hh-details flh-found-notes">'].map(at);
+  const order = ['className="hh-btn flh-found-add"', '<details className="hh-details flh-found-more"', '<ListingDetailsPaste paste={paste} />', '<HomeFactReview review={factReview} />', '<ListingAnswerReview review={answerReview} />', '<details className="hh-details flh-found-notes">'].map(at);
   assert.ok(order.every((index) => index > 0), `missing: ${order}`);
   assert.deepEqual([...order].sort((a, b) => a - b), order);
-  assert.doesNotMatch(card, /<details[^>]*\bopen\b/, 'nothing optional opens by default');
+  // Folded by default; open only when the buyer already pasted text before the card showed.
+  assert.match(card, /const \[moreOpen, setMoreOpen\] = useState\(\(\) => !!paste\.text\.trim\(\)\);/);
+  assert.match(card, /<details className="hh-details flh-found-more" open=\{moreOpen\} onToggle=\{\(event\) => setMoreOpen\(event\.currentTarget\.open\)\}>/);
+  assert.doesNotMatch(card, /<details className="hh-details flh-found-notes" open/, 'notes stay folded');
   // The folded paste says how many suggestions wait, so they are not lost.
   assert.match(card, /Optional\{pending \? ` · \$\{pending\} to review` : ''\}/);
   // The paste's own heading is not repeated under the disclosure's summary.
