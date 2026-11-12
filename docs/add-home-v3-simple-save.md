@@ -181,7 +181,7 @@ The core tap count to save is the same: 4. What changed:
 - Text pasted on the "No link?" path before a card exists keeps **Add more
   from the listing** open, so the results the buyer just asked for stay in
   view, still below Save Home.
-- **Full suite, real PostgreSQL 16:** 1341 / 1341 pass, 0 skipped.
+- **Full suite, real PostgreSQL 16:** 1346 / 1346 pass, 0 skipped. `next build` passes.
 - **Browser QA, `add-home-simple-save-e2e.mjs`:** 20 / 20 (desktop 1440 and
   iPhone 390). It covers:
   - a successful lookup;
