@@ -98,7 +98,7 @@ async function save(page) {
 
 async function run() {
   const browser = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } : {});
-  psql(`delete from public.homes where search_id = ${lit(info.search)} and (address like '5162_ Sass Rd%' or address like '5163_ Sass Rd%' or address like '5164_ Sass Rd%' or address like '5165_ Sass Rd%' or address like '51619 Sass Rd%' or address like '%Elm St%')`);
+  psql(`delete from public.homes where search_id = ${lit(info.search)} and (address ~ '^51(6[2-9]|7[0-9])[0-9] (Sass Rd|Elm St)' or address like '51619 Sass Rd%')`);
   for (const [label, device, offset] of VIEWPORTS) {
     let owner; let coBuyer;
     const open = () => [owner, coBuyer].filter(Boolean);
