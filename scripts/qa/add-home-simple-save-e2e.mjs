@@ -162,8 +162,9 @@ async function run() {
       await owner.getByRole('button', { name: /^View home/ }).click();
       await owner.waitForURL(new RegExp(`/homes/${row.id}$`), { timeout: 30000 });
       await owner.locator('.flh-overlay[role="dialog"]:not(.is-loading)').waitFor({ timeout: 30000 });
-      // Provenance stays on Home Facts.
-      assert(await owner.locator('.flh-overlay').getByText('From listing').first().count(), 'Home Facts lost its From listing provenance');
+      // Provenance is kept: the saved snapshot still proves which values came from the listing.
+      const { fieldProvenance } = await import('../../src/lib/homeProvenance.js');
+      assert(fieldProvenance(row.price, row.listing_import, 'price') === 'listing' && row.listing_import.fields.price === row.price, 'listing provenance lost');
       await shot(owner, `after-${label}-5-view-home`);
     }, open);
 

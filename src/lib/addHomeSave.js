@@ -31,8 +31,9 @@ export function foundHomePriceLine(form = {}, searchType, listingStatus = null) 
 }
 
 // The found card's count of what the lookup returned. It describes what FLH
-// found, not what is saved (nothing is saved until Save Home); where each
-// detail came from stays on Home Facts, marked From listing.
+// found, not what is saved (nothing is saved until Save Home). Where each
+// detail came from is kept unchanged in the saved listing snapshot
+// (homes.listing_import), which is what provenance reads.
 export function foundDetailsLine(count, noun = 'home') {
   const n = Number(count) || 0;
   if (n <= 0) return '';

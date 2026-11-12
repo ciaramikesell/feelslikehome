@@ -45,7 +45,8 @@ and the same entry paths:
   - beds · baths · sq ft · lot · year built;
   - one quiet line: "We found 18 details about this home." It is singular for
     one ("We found 1 detail…") and never implies the home is already saved.
-    Where each detail came from stays on Home Facts, marked From listing.
+    Where each detail came from is kept, unchanged, in the saved listing
+    snapshot (`homes.listing_import`) that provenance reads.
 
 **3. One Save Home**, directly under the card.
 - It needs only an address. Pasting, Home Facts review, Match answers, notes
