@@ -273,6 +273,17 @@ theirs, no longer tracked, and never reverted. `cleared` is always empty.
   saved home (simple-save QA).
 - **Simple Save:** unchanged; its browser QA passes.
 
+### Design exception to approve (Home Facts disclosure)
+
+The Home Facts redesign deliberately removed imported-facts panels and every
+`<details>` disclosure from Home Facts (pinned in `home-facts-redesign`). The
+later-offers section is one folded disclosure. It is an actionable offer of
+empty fields, not a panel of listing data. The pin now still forbids any
+listing-data panel and any other disclosure, and allows only
+`flh-offered-facts` (plus its per-row Why?). If you'd rather keep Home Facts
+disclosure-free, the alternative is a one-line "From the listing you pasted:
+N not added yet · Review" link that opens the same checklist in a sheet.
+
 ### Unresolved tradeoff (personal answers in the full editor)
 
 The full editor (apartments, Edit Home) still clears a personal answer the
