@@ -112,7 +112,7 @@ async function addFromListing(page, url) {
 }
 
 async function run() {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } : {});
   const legacyId = info.legacyHomeId;
   // Existing Tour Feedback on the older home: shared notes / pros / cons and
   // the owner's own reaction, survey answers and in-person criterion.
