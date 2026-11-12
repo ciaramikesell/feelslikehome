@@ -408,7 +408,7 @@ test('Add Home offers the optional paste after any lookup, never requires it, an
   assert.match(modal, /<ListingDetailsPaste paste=\{paste\} \/>\s*<HomeFactReview review=\{factReview\} \/>\s*<ListingAnswerReview review=\{answerReview\} \/>/);
   assert.match(modal, /<span className="flh-optional-tag">Optional<\/span>/);
   // Adding the home never depends on pasting.
-  assert.match(modal, /disabled=\{saving \|\| !form\.address\.trim\(\)\}><Plus size=\{16\} aria-hidden="true" \/> \{saving \? 'Adding…' : 'Add to My Homes'\}/);
+  assert.match(modal, /disabled=\{saving \|\| !form\.address\.trim\(\)\}><Check size=\{17\} aria-hidden="true" \/> \{saving \? 'Saving…' : 'Save Home'\}/);
   assert.doesNotMatch(modal, /Can.t find the home\?/, 'no longer framed as error recovery');
   // A lookup that succeeded is kept when text is pasted after it.
   assert.match(modal, /setImportResult\(combineImportResults\(providerResult, /);
@@ -473,11 +473,12 @@ test('pasting never writes Notes / Pros / Cons; seller concessions stay out (doc
   assert.doesNotMatch(autofill, /\.(?:notes|pros|cons)\b|\b(?:notes|pros|cons)\s*:|appendSuggestionToNotes|appendAllSuggestions/, 'pasting leaves Notes / Pros / Cons as typed');
 });
 
-test('the found card keeps one order: paste, Home Facts, personal answers, then the optional Notes / Pros / Cons', () => {
+test('the found card keeps one order: Save Home first, then the optional paste, Home Facts, personal answers and Notes / Pros / Cons', () => {
   const modal = read('src/components/HomeModal.jsx');
   const card = modal.match(/function ImportFoundCard[\s\S]*?\n\}/)[0];
   const at = (needle) => card.indexOf(needle);
-  const order = ['<ListingDetailsPaste', '<HomeFactReview', '<ListingAnswerReview', 'className="hh-details flh-found-notes"', '<NoteListFields form={form} set={set} idPrefix="add-home" />', 'Add to My Homes'].map(at);
+  // Add Home V3: the optional parts sit below Save Home, folded, so they never hide it.
+  const order = ["'Save Home'", 'className="hh-details flh-found-more"', '<ListingDetailsPaste', '<HomeFactReview', '<ListingAnswerReview', 'className="hh-details flh-found-notes"', '<NoteListFields form={form} set={set} idPrefix="add-home" />'].map(at);
   assert.ok(order.every((index) => index > 0), `missing: ${order}`);
   assert.deepEqual([...order].sort((a, b) => a - b), order);
   // Distinct ids: the paste box never collides with the Notes fields.

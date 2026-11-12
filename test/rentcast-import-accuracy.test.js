@@ -348,7 +348,9 @@ test('Add Home shows reason-specific, non-technical failure notes and the partia
   assert.match(modal, /LOOKUP_FAILURE_NOTES\[data\.reason\]/);
   assert.match(modal, /PARTIAL_NOTES\[importResult\.partial\]/);
   assert.match(modal, /importedCoordinatePatch\(form, importResult\)/);
-  assert.match(modal, /'No current asking price'/);
+  // The found card's price line (src/lib/addHomeSave.js) never shows an inactive listing's last price as asking.
+  assert.match(modal, /foundHomePriceLine\(form, priorities\.searchType, importResult\.listing\?\.status\)/);
+  assert.match(readFileSync(new URL('../src/lib/addHomeSave.js', import.meta.url), 'utf8'), /'No current asking price'/);
   const notes = modal.slice(modal.indexOf('const LOOKUP_FAILURE_NOTES'), modal.indexOf('function ImportFoundCard'));
   assert.doesNotMatch(notes, /RentCast|429|502|504|rate limit|API/i);
 });

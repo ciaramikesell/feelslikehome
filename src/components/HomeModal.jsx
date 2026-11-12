@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { X, Upload, Link2, Footprints, Archive as ArchiveIcon, ExternalLink, Check, Users, Search, ClipboardPaste, Camera, MessageSquareText, House, ChevronDown, ChevronLeft, Sparkles, ShieldCheck, Share, ArrowRight, Plus } from 'lucide-react';
+import { X, Upload, Link2, Footprints, Archive as ArchiveIcon, ExternalLink, Check, Users, Search, ClipboardPaste, Camera, MessageSquareText, House, ChevronDown, ChevronLeft, Sparkles, ShieldCheck, Share, ArrowRight, Plus, MapPin } from 'lucide-react';
 import { StarInput } from '@/components/ui';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
@@ -29,6 +29,7 @@ import { PROVENANCE_LABELS, fieldProvenance, hasImportSnapshot } from '@/lib/hom
 import { isNativeApp } from '@/lib/platform';
 import { importedDetailCount } from '@/lib/homeFacts';
 import { importedCoordinatePatch, listingImportSnapshot } from '@/lib/importSnapshot';
+import { findInputLabel, foundHomeEssentials, foundHomePriceLine, savedHomeSummary } from '@/lib/addHomeSave';
 import { ALLOWED_PHOTO_TYPES, MAX_PHOTO_BYTES, PHOTO_BUCKET, storagePathFromPublicUrl } from '@/lib/homePhoto';
 
 function LikeDislikeInput({ value, onChange }) {
@@ -545,13 +546,6 @@ function ListingDetailsPaste({ paste }) {
   </section>;
 }
 
-// The one Add Home step for a home (not an apartment): "We found your home."
-// There is exactly one action. Add to My Homes runs the single submit() (its
-// synchronous double-save guard and partial-write recovery included), and only
-// after the save resolves with a real id does My Homes open the saved home's
-// Home Facts. Closing first saves nothing. When the lookup found nothing (or
-// the buyer chose to enter it manually) the same card asks only for the
-// address; everything else is filled in on Home Facts.
 // What pasted listing text produced: details filled into empty fields, and
 // answers waiting for the buyer's review.
 // `cleared` names answers confirmed from earlier text that the new text no
@@ -578,56 +572,116 @@ const PARTIAL_NOTES = {
   property_unavailable: 'Property records weren’t available right now, so some details may be missing.',
 };
 
-function ImportFoundCard({ form, set, importResult, lookupResult = null, importPhase, importErrorMsg, priorities, vocabulary, saving, saveErrorMsg, onAdd, answerReview, factReview, paste }) {
+// The found-home photo: the photo the home already has, or a calm placeholder,
+// with an optional Add photo right on it. A chosen file is only staged (the
+// same staged-until-Save upload as the editor, same bucket and limits); FLH
+// never fetches or hotlinks a listing site's images.
+function FoundHomePhoto({ src, photo }) {
+  return <div className={`flh-found-photo ${src ? 'has-photo' : 'is-placeholder'}`}>
+    {src ? <img src={src} alt="" /> : <span className="flh-found-placeholder" aria-hidden="true"><House size={30} /></span>}
+    <div className="flh-found-photo-actions">
+      <input ref={photo.inputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={photo.onChange} hidden />
+      <button type="button" className="flh-found-photo-btn" onClick={() => photo.inputRef.current?.click()}><Camera size={14} aria-hidden="true" /> {src ? 'Change photo' : 'Add photo'}</button>
+      {photo.staged && <button type="button" className="flh-found-photo-btn is-quiet" onClick={photo.onRemove}>Remove</button>}
+    </div>
+  </div>;
+}
+
+// The one Add Home step for a home (not an apartment): the found home, one
+// Save Home action, then everything optional below it. Save Home runs the
+// single submit() (its synchronous double-save guard and partial-write
+// recovery included) and needs nothing but an address: no paste, no Home
+// Facts review, no Match answers, no notes, no photo. When the lookup found
+// nothing, the same card asks only for the address.
+function ImportFoundCard({ form, set, importResult, lookupResult = null, importPhase, importErrorMsg, priorities, vocabulary, saving, saveErrorMsg, onAdd, answerReview, factReview, paste, photo }) {
   const found = importPhase === 'success' && !!importResult;
   const { line1, line2 } = splitAddressLines(form.address);
   // "Came with it" counts what the lookup returned; pasted text is reviewed below.
   const count = found ? importedDetailCount(lookupResult || importResult) : 0;
-  const facts = [
-    form.beds && `${form.beds} bd`, form.baths && `${form.baths} ba`,
-    form.sqft && `${Number(String(form.sqft).replace(/[^0-9.]/g, '')).toLocaleString()} sq ft`,
-    form.lotSize && formatLotSizeDisplay(form.lotSize),
-  ].filter(Boolean);
+  const facts = foundHomeEssentials(form);
   const note = importPhase === 'error' ? importErrorMsg || LOOKUP_FAILURE_NOTES.unavailable
-      : importPhase === 'empty' && form.listingUrl ? 'We couldn’t find listing details for that link. Add the address and fill in the rest on Home Facts.'
-        : 'Add the address. You can fill in everything else on Home Facts.';
+      : importPhase === 'empty' && form.listingUrl ? 'We couldn’t find listing details for that link. Add the address and save it — you can fill in the rest later.'
+        : 'Add the address and save it. You can fill in everything else later.';
+  const pending = (factReview?.suggestions.length || 0) + (answerReview?.suggestions.length || 0);
   return <section className="flh-found" aria-labelledby="found-home-title">
     {found ? <>
       <div className="flh-found-card">
-        <div className="flh-found-photo">{form.photoUrl ? <img src={form.photoUrl} alt="" /> : <House size={30} aria-hidden="true" />}</div>
+        <FoundHomePhoto src={photo.src} photo={photo} />
         <div className="flh-found-copy">
           <span className="flh-found-badge"><Check size={13} aria-hidden="true" /> We found your {vocabulary.singularLower}</span>
           <h2 id="found-home-title" className="hh-serif">{line1 || form.address}</h2>
-          {line2 && <p>{line2}</p>}
-          <strong className="flh-found-price">{formatHomePrice(form.price, priorities.searchType) || (importResult.listing?.status === 'inactive' ? 'No current asking price' : 'Price unknown')}</strong>
+          {line2 && <p className="flh-found-locality"><MapPin size={13} aria-hidden="true" /> {line2}</p>}
+          <strong className="flh-found-price">{foundHomePriceLine(form, priorities.searchType, importResult.listing?.status)}</strong>
           {facts.length > 0 && <ul className="flh-found-facts">{facts.map((fact) => <li key={fact}>{fact}</li>)}</ul>}
+          {count > 0 && <p className="flh-found-count"><Sparkles size={13} aria-hidden="true" /> {count} listing detail{count === 1 ? '' : 's'} saved with it, marked From listing.</p>}
         </div>
       </div>
       {PARTIAL_NOTES[importResult.partial] && <p className="flh-found-status" role="status">{PARTIAL_NOTES[importResult.partial]}</p>}
-      {count > 0 && <div className="flh-found-note"><span aria-hidden="true"><Sparkles size={16} /></span><div><strong>{count} listing detail{count === 1 ? '' : 's'} came with it.</strong><p>You’ll see them on Home Facts, marked From listing, and can correct anything.</p></div></div>}
     </> : <div className="flh-found-address">
       <h2 id="found-home-title" className="hh-serif">Where is this {vocabulary.singularLower}?</h2>
       <p>{note}</p>
       <label className="hh-label" htmlFor="found-home-address">Address</label>
       <AddressAutocomplete id="found-home-address" value={form.address} onChange={(value) => set('address', value)} onSelect={(value) => set('address', value)} placeholder="123 Maple St, Ann Arbor, MI" />
+      <div className="flh-found-address-photo"><FoundHomePhoto src={photo.src} photo={photo} /></div>
     </div>}
-    <ListingDetailsPaste paste={paste} />
-    <HomeFactReview review={factReview} />
-    <ListingAnswerReview review={answerReview} />
-    {/* Optional and collapsed: shared Notes / Pros / Cons saved with the home. */}
-    <details className="hh-details flh-found-notes">
-      <summary>Add notes, pros, or cons <span>Optional · shared with this search</span><ChevronDown className="hh-accordion-chevron" size={18} aria-hidden="true" /></summary>
-      <NoteListFields form={form} set={set} idPrefix="add-home" />
-    </details>
+    {photo.error && <p className="hh-edit-error" role="alert">{photo.error}</p>}
     {saveErrorMsg && <div className="hh-edit-save-error" role="alert">{saveErrorMsg}</div>}
     <div className="flh-found-actions">
-      <button type="button" className="hh-btn flh-found-add" onClick={onAdd} disabled={saving || !form.address.trim()}><Plus size={16} aria-hidden="true" /> {saving ? 'Adding…' : 'Add to My Homes'}</button>
-      <p className="flh-found-status">Saves it to My Homes and opens its Home Facts.</p>
+      <button type="button" className="hh-btn flh-found-add" onClick={onAdd} disabled={saving || !form.address.trim()}><Check size={17} aria-hidden="true" /> {saving ? 'Saving…' : 'Save Home'}</button>
+      <p className="flh-found-status">Saves it to My Homes. Everything below is optional — now or later.</p>
+    </div>
+    {/* Optional, below Save Home and collapsed: the Smart Paste area with its
+        reviews, then shared Notes / Pros / Cons. Neither is needed to save. */}
+    <div className="flh-found-optional">
+      <details className="hh-details flh-found-more">
+        <summary><ClipboardPaste size={16} aria-hidden="true" /> Add more from the listing <span>Optional{pending ? ` · ${pending} to review` : ''}</span><ChevronDown className="hh-accordion-chevron" size={18} aria-hidden="true" /></summary>
+        <ListingDetailsPaste paste={paste} />
+        <HomeFactReview review={factReview} />
+        <ListingAnswerReview review={answerReview} />
+      </details>
+      <details className="hh-details flh-found-notes">
+        <summary>Add notes, pros, or cons <span>Optional · shared with this search</span><ChevronDown className="hh-accordion-chevron" size={18} aria-hidden="true" /></summary>
+        <NoteListFields form={form} set={set} idPrefix="add-home" />
+      </details>
     </div>
   </section>;
 }
 
-export default function HomeModal({ initial, priorities, sharedFactAwareness = {}, isCollaborative = false, onSave, onClose, userId, onWantToTour, onArchiveRequest, presentation = 'modal', autoFindOnMount = false, matchPerspectives = [], saveLabel = null, existingHomes = [], importLanding = false, personalAnswers = true }) {
+// After Save Home: an unmistakable "it's saved", then the buyer chooses where
+// to go — back to My Homes, or into the saved home's overview. Nothing else is
+// asked. A photo whose optional upload failed is reported here; the home and
+// everything else were saved.
+function SavedHomeView({ summary, vocabulary, isCollaborative, onBackToHomes, onOpenHome, dialogRef }) {
+  const headingRef = useRef(null);
+  useEffect(() => { headingRef.current?.focus(); }, []);
+  return <div className="hh-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onBackToHomes()}>
+    <div ref={dialogRef} className="hh-modal hh-corner hh-add-home-modal hh-add-home-discovery flh-saved" role="dialog" aria-modal="true" aria-labelledby="flh-saved-title">
+      <button type="button" className="hh-btn hh-btn-ghost hh-edit-home-close" onClick={onBackToHomes} aria-label="Close"><X size={18} /></button>
+      <div className="flh-saved-hero">
+        <span className="flh-saved-check" aria-hidden="true"><Check size={26} strokeWidth={2.6} /></span>
+        <h1 ref={headingRef} id="flh-saved-title" className="hh-serif" tabIndex={-1}>Saved to My Homes</h1>
+        <p role="status">{summary.line1} is now in My Homes{isCollaborative ? ', shared with everyone in this search' : ''}.</p>
+      </div>
+      <div className="flh-saved-card">
+        <div className="flh-saved-photo">{summary.photoUrl ? <img src={summary.photoUrl} alt="" /> : <House size={24} aria-hidden="true" />}</div>
+        <div className="flh-saved-copy">
+          <b>{summary.line1}</b>
+          {summary.line2 && <span>{summary.line2}</span>}
+          <strong>{summary.price}</strong>
+          {summary.facts.length > 0 && <small>{summary.facts.join(' · ')}</small>}
+        </div>
+      </div>
+      {summary.photoFailed && <p className="flh-saved-photo-note" role="alert">The photo didn’t upload, so the {vocabulary.singularLower} was saved without it. You can add a photo from its overview.</p>}
+      <div className="flh-saved-actions">
+        <button type="button" className="hh-btn flh-saved-back" onClick={onBackToHomes}>Back to My Homes</button>
+        <button type="button" className="hh-btn hh-btn-ghost flh-saved-open" onClick={onOpenHome}>View {vocabulary.singularLower} <ArrowRight size={15} aria-hidden="true" /></button>
+      </div>
+      <p className="flh-saved-hint">Home Facts, Match and notes are there whenever you’re ready. Nothing else is required.</p>
+    </div>
+  </div>;
+}
+
+export default function HomeModal({ initial, priorities, sharedFactAwareness = {}, isCollaborative = false, onSave, onClose, userId, onWantToTour, onArchiveRequest, presentation = 'modal', autoFindOnMount = false, matchPerspectives = [], saveLabel = null, existingHomes = [], importLanding = false, personalAnswers = true, onOpenSavedHome = null }) {
   const [form, setForm] = useState(initial);
   const vocabulary = homeVocabulary(priorities);
   const [pasteText, setPasteText] = useState('');
@@ -663,6 +717,11 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   const [apartmentIdentity, setApartmentIdentity] = useState(null);
   const [editDetailsOpen, setEditDetailsOpen] = useState(false);
   const [lastLookupAddress, setLastLookupAddress] = useState('');
+  // Once a home shows, the Find section folds to one line ("Change" reopens it),
+  // so the found home and Save Home are what the buyer sees first.
+  const [findOpen, setFindOpen] = useState(false);
+  // Set once Save Home has saved a new home: the saved state replaces the card.
+  const [savedHome, setSavedHome] = useState(null);
 
   // Secondary property details stay available without making the edit form feel
   // like homework. Stored answers remain untouched while this disclosure is closed.
@@ -758,7 +817,11 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   };
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-  const submit = async () => {
+  // `quickSave` is Save Home on the found card: the photo there is optional, so
+  // a failed upload saves the home without it (and says so) instead of
+  // stopping, and a new home lands on the saved state instead of its overlay.
+  const submit = async (options) => {
+    const quickSave = options?.quickSave === true;
     if (!form.address.trim() || savingRef.current) return;
     savingRef.current = true;
     setSaving(true);
@@ -766,21 +829,31 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     setSaveErrorMsg('');
     try {
       let finalPhotoUrl = form.photoUrl;
+      let photoFailed = false;
 
       if (photoFile) {
         const supabase = createClient();
         const ext = ALLOWED_PHOTO_TYPES[photoFile.type] || 'jpg';
         const path = `${userId}/${crypto.randomUUID()}.${ext}`;
-        const { error: uploadError } = await supabase.storage
-          .from(PHOTO_BUCKET)
-          .upload(path, photoFile, { contentType: photoFile.type, upsert: false });
-        if (uploadError) {
+        let uploadError = null;
+        try {
+          ({ error: uploadError } = await supabase.storage
+            .from(PHOTO_BUCKET)
+            .upload(path, photoFile, { contentType: photoFile.type, upsert: false }));
+        } catch (err) {
+          uploadError = err || new Error('upload failed');
+        }
+        if (uploadError && quickSave) {
+          // Optional photo: keep going and save the home without it.
+          photoFailed = true;
+        } else if (uploadError) {
           setPhotoError("We couldn't upload that photo — please try again, or save without it.");
           setSaving(false);
           return;
+        } else {
+          const { data: publicUrlData } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path);
+          finalPhotoUrl = publicUrlData?.publicUrl || '';
         }
-        const { data: publicUrlData } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path);
-        finalPhotoUrl = publicUrlData?.publicUrl || '';
       }
 
       try {
@@ -790,7 +863,10 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         const coordinates = importResult ? await importedCoordinatePatch(form, importResult) : {};
         // Home Facts used from pasted text join the snapshot with their sentences.
         const snapshotSource = importResultWithHomeFacts(importResult, usedFacts, form);
-        await onSave({ ...form, ...coordinates, lotSize, photoUrl: finalPhotoUrl, ...(snapshotSource ? { listingImport: listingImportSnapshot(snapshotSource) } : {}) });
+        const saved = await onSave({ ...form, ...coordinates, lotSize, photoUrl: finalPhotoUrl, ...(snapshotSource ? { listingImport: listingImportSnapshot(snapshotSource) } : {}) }, quickSave ? { landing: 'saved' } : undefined);
+        if (quickSave && saved?.id) {
+          setSavedHome(savedHomeSummary(form, { id: saved.id, photoUrl: finalPhotoUrl, photoFailed, searchType: priorities.searchType, listingStatus: providerResult?.listing?.status }));
+        }
       } catch (saveErr) {
         console.error('Save home failed', saveErr);
         // If the shared home row was already persisted before this failure
@@ -1016,6 +1092,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   const handleFind = () => {
     const raw = findInput.trim();
     if (!raw) return;
+    setFindOpen(false);
     const looksLikeUrl = isLikelyListingUrl(raw);
 
     if (looksLikeUrl) {
@@ -1082,7 +1159,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   const addImportedHome = () => {
     const existing = findHomeByListingUrl(existingHomes, form.listingUrl);
     if (existing) { setDuplicateHome(existing); return; }
-    submit();
+    submit({ quickSave: true });
   };
 
   if (workspaceReady) return <EditHomeEditor
@@ -1096,13 +1173,28 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     answerReview={answerReview} factReview={factReview}
   />;
 
+  if (savedHome) return <SavedHomeView summary={savedHome} vocabulary={vocabulary} isCollaborative={isCollaborative} dialogRef={dialogRef}
+    onBackToHomes={onClose} onOpenHome={() => (onOpenSavedHome ? onOpenSavedHome(savedHome.id) : onClose())} />;
+
+  // The found card's optional photo: the staged file's preview, or the photo
+  // the home already has. Same staged upload, bucket and limits as the editor.
+  const foundPhoto = {
+    src: photoFile ? photoPreviewUrl : (form.photoUrl || null), staged: !!photoFile, inputRef: photoInputRef,
+    onChange: handlePhotoFileChange, onRemove: handleRemovePhoto, error: photoError,
+  };
+  const findCompact = quickAdd && !findOpen;
+
   return <div className="hh-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-    <div ref={dialogRef} className="hh-modal hh-corner hh-add-home-modal hh-add-home-discovery" role="dialog" aria-modal="true" aria-labelledby="add-home-title">
+    <div ref={dialogRef} className={`hh-modal hh-corner hh-add-home-modal hh-add-home-discovery ${quickAdd ? 'has-found' : ''}`} role="dialog" aria-modal="true" aria-labelledby="add-home-title">
       <header className="hh-edit-home-header">
-        <div><p className="flh-eyebrow">Add a {vocabulary.singularLower}</p><h1 ref={titleRef} id="add-home-title" className="hh-serif" tabIndex={-1}>Bring in a {vocabulary.singularLower} you found.</h1><p>You found the {vocabulary.singularLower}. Feels Like Home helps you evaluate it.</p></div>
+        <div><p className="flh-eyebrow">Add a {vocabulary.singularLower}</p><h1 ref={titleRef} id="add-home-title" className="hh-serif" tabIndex={-1}>Bring in a {vocabulary.singularLower} you found.</h1>{!quickAdd && <p>You found the {vocabulary.singularLower}. Feels Like Home helps you evaluate it.</p>}</div>
         <button type="button" className="hh-btn hh-btn-ghost hh-edit-home-close" onClick={onClose} aria-label="Close add home"><X size={18} /></button>
       </header>
-      <section className="hh-import-listing">
+      {findCompact ? <div className="flh-find-compact">
+        <Search size={15} aria-hidden="true" />
+        <span className="flh-find-compact-value"><small>Searched</small> {findInputLabel(findInput) || 'Manual entry'}</span>
+        <button type="button" className="hh-btn hh-btn-ghost" onClick={() => setFindOpen(true)} aria-label="Change the listing link or address">Change</button>
+      </div> : <section className="hh-import-listing">
         <AddSectionHeading icon={Search} title="Listing URL">Paste a link from Zillow, Redfin, Realtor.com, or any listing site — or an address.</AddSectionHeading>
         <label className="hh-label" htmlFor="add-home-find">Listing link or address</label>
         <div className="hh-find-home-row">
@@ -1112,9 +1204,9 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         <p className="flh-source-note">The original listing stays the source of truth. FLH keeps its link and never invents details it didn’t find.</p>
         {importPhase === 'identity' && apartmentIdentity && <div className="hh-manual-address"><p>We found {apartmentIdentity.propertyName}. Add its street address to continue.</p><AddressAutocomplete value={fallbackAddressInput} onChange={setFallbackAddressInput} onSelect={setFallbackAddressInput} /><button type="button" className="hh-btn" onClick={handleFallbackAddressLookup}>Use address</button></div>}
         {urlFallbackMsg && <p className="hh-edit-error">{urlFallbackMsg}</p>}
-      </section>
-      {quickAdd && <ImportFoundCard form={form} set={set} importResult={importResult} lookupResult={providerResult} importPhase={importPhase} importErrorMsg={importErrorMsg} priorities={priorities} vocabulary={vocabulary} saving={saving} saveErrorMsg={saveErrorMsg} onAdd={addImportedHome} answerReview={answerReview} factReview={factReview} paste={{ text: pasteText, setText: setPasteText, onRun: runAutofill, message: parseMsg }} />}
-      {isNativeApp() && <aside className="flh-share-callout" aria-label="Add from the Share Sheet"><Share size={18} aria-hidden="true" /><div><strong>Faster from your listing app</strong><p>Tap Share on any listing, then choose Feels Like Home. It opens right here, ready to review.</p></div></aside>}
+      </section>}
+      {quickAdd && <ImportFoundCard form={form} set={set} importResult={importResult} lookupResult={providerResult} importPhase={importPhase} importErrorMsg={importErrorMsg} priorities={priorities} vocabulary={vocabulary} saving={saving} saveErrorMsg={saveErrorMsg} onAdd={addImportedHome} answerReview={answerReview} factReview={factReview} paste={{ text: pasteText, setText: setPasteText, onRun: runAutofill, message: parseMsg }} photo={foundPhoto} />}
+      {isNativeApp() && !quickAdd && <aside className="flh-share-callout" aria-label="Add from the Share Sheet"><Share size={18} aria-hidden="true" /><div><strong>Faster from your listing app</strong><p>Tap Share on any listing, then choose Feels Like Home. It opens right here, ready to review.</p></div></aside>}
       {!quickAdd && <details className="hh-details hh-manual-fallback">
         <summary><span className="hh-accordion-icon"><ClipboardPaste size={24} /></span><span>No link? Paste the listing details<small>Copy the listing description or property features and paste them here. We’ll fill in what we can. School details work too.</small></span><ChevronDown className="hh-accordion-chevron" size={20} /></summary>
         <textarea className="hh-textarea" value={pasteText} onChange={(event) => setPasteText(event.target.value)} placeholder="Paste listing details (optional)" />
