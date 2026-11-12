@@ -253,7 +253,7 @@ test('Add Home has exactly one action: Save Home (no competing Review details fi
   assert.match(modal, /const quickAdd = importLanding && isNewHome && !vocabulary\.apartment && \['success', 'text-success', 'empty', 'error'\]\.includes\(importPhase\)/);
   // Adding re-checks the exact listing URL, then reuses the one submit() (its
   // synchronous double-save guard and partial-write recovery included).
-  assert.match(modal, /const addImportedHome = \(\) => \{\s*const existing = findHomeByListingUrl\(existingHomes, form\.listingUrl\);\s*if \(existing\) \{ setDuplicateHome\(existing\); return; \}\s*submit\(\{ quickSave: true \}\);/);
+  assert.match(modal, /const addImportedHome = \(\) => \{\s*const existing = findHomeByListingUrl\(existingHomes, form\.listingUrl\);\s*if \(existing\) \{ setDuplicateReason\('listing'\); setDuplicateHome\(existing\); return; \}[\s\S]*?const sameProperty = findHomeByAddress\(existingHomes, form\.address\);\s*if \(sameProperty\) \{ setDuplicateReason\('address'\); setDuplicateHome\(sameProperty\); return; \}\s*submit\(\{ quickSave: true \}\);/);
   assert.match(modal, /if \(!form\.address\.trim\(\) \|\| savingRef\.current\) return;\s*savingRef\.current = true;/);
   assert.match(modal, /if \(saveErr\?\.partialHomeId && !form\.id\) set\('id', saveErr\.partialHomeId\)/);
   // The Realtor suggestion flow never gets the buyer quick-add; share intake still auto-finds.

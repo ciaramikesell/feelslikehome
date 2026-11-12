@@ -183,8 +183,11 @@ test('regression guard: importer failure/retry behavior in HomeModal is untouche
   assert.match(homeModal, /Intentionally do NOT set lastLookupAddress here/);
   // Failure wording now depends on why the lookup failed (rate limit, timeout,
   // outage) — see test/rentcast-import-accuracy.test.js — but is still shown.
-  assert.match(homeModal, /setImportErrorMsg\(LOOKUP_FAILURE_NOTES\[data\.reason\] \|\| LOOKUP_FAILURE_NOTES\.unavailable\)/);
-  assert.match(homeModal, /setImportErrorMsg\(LOOKUP_FAILURE_NOTES\.unavailable\)/);
+  // Phase 4: one failure path (lookupFailed) for every reason, including the new
+  // no-request safeguards; an unknown reason still falls back to "unavailable".
+  assert.match(homeModal, /setImportErrorMsg\(LOOKUP_FAILURE_NOTES\[reason\] \|\| LOOKUP_FAILURE_NOTES\.unavailable\)/);
+  assert.match(homeModal, /lookupFailed\(body\.reason\);/);
+  assert.match(homeModal, /lookupFailed\('unavailable'\);/);
 });
 
 /* ------------------------------ Part 9: mobile/native compatibility ------------------------------ */

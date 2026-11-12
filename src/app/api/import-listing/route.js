@@ -1,6 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { lookupRentCast } from '@/lib/rentcastLookup';
+import { createLookupLimiter } from '@/lib/lookupRateLimit';
+
+// Best-effort per-user limit (one serverless instance's memory; see
+// lookupRateLimit.js). Each allowed lookup is 2 RentCast requests.
+// IMPORT_LOOKUP_USER_LIMIT overrides the per-10-minute limit (default 20);
+// local QA raises it so scripted runs don't trip it.
+const configured = Number(process.env.IMPORT_LOOKUP_USER_LIMIT);
+const limiter = createLookupLimiter(Number.isInteger(configured) && configured > 0 ? { limit: configured } : {});
 
 // Server-only: this file runs in a Next.js Route Handler (a Vercel serverless
 // function), never in the browser, so RENTCAST_API_KEY is safe to read from
@@ -40,6 +48,17 @@ export async function POST(request) {
     }
     if (address.length > 200) {
       return NextResponse.json({ error: 'That address looks too long to be valid.' }, { status: 400 });
+    }
+
+    // Too many lookups from this user just now: no RentCast request. The buyer
+    // can still add the home by address (Add Home shows the manual path).
+    const allowance = limiter.take(user.id);
+    if (!allowance.allowed) {
+      console.warn('import-listing: per-user lookup limit reached');
+      return NextResponse.json(
+        { error: 'You’ve looked up a lot of addresses in a short time.', reason: 'user_limit' },
+        { status: 429, headers: { 'Retry-After': String(Math.ceil(allowance.retryAfterMs / 1000)) } },
+      );
     }
 
     const { status, body: payload } = await lookupRentCast(address, mode, apiKey);

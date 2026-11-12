@@ -30,6 +30,7 @@ import { PROVENANCE_LABELS, fieldProvenance, hasImportSnapshot } from '@/lib/hom
 import { isNativeApp } from '@/lib/platform';
 import { importedDetailCount } from '@/lib/homeFacts';
 import { importedCoordinatePatch, listingImportSnapshot } from '@/lib/importSnapshot';
+import { BUSY_COOLDOWN_MS, SESSION_LOOKUP_LIMIT, appliedImportFields, findHomeByAddress, lookupCacheKey, revertAppliedFields } from '@/lib/lookupSession';
 import { findInputLabel, foundDetailsLine, foundHomeEssentials, foundHomePriceLine, savedHomeSummary } from '@/lib/addHomeSave';
 import { ALLOWED_PHOTO_TYPES, MAX_PHOTO_BYTES, PHOTO_BUCKET, storagePathFromPublicUrl } from '@/lib/homePhoto';
 
@@ -277,14 +278,16 @@ function HomeSummaryCard({ form, priorities, previewSrc }) {
 // Shown when a pasted listing URL exactly matches a home this search already holds
 // (findHomeByListingUrl — the same rule as share intake). There is deliberately no
 // "Add anyway": a second row would split notes, tour state, and Match answers.
-function DuplicateHomeView({ home, priorities, userId, isCollaborative, vocabulary, dialogRef, titleRef, onClose, onBack }) {
+function DuplicateHomeView({ home, priorities, userId, isCollaborative, vocabulary, dialogRef, titleRef, onClose, onBack, reason = 'listing' }) {
   const identity = homeIdentity(home, priorities);
   const archived = isArchivedStatus(home.status);
   const addedByOther = isCollaborative && home.userId && userId && home.userId !== userId;
   return <div className="hh-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
     <div ref={dialogRef} className="hh-modal hh-corner hh-add-home-modal flh-duplicate-home" role="dialog" aria-modal="true" aria-labelledby="duplicate-home-title">
       <header className="hh-edit-home-header">
-        <div><p className="flh-eyebrow">Already saved</p><h1 ref={titleRef} id="duplicate-home-title" className="hh-serif" tabIndex={-1}>This {vocabulary.singularLower} is already here</h1><p>{addedByOther ? 'Someone in this search already added this listing.' : 'You’ve already added this listing to this search.'}</p></div>
+        <div><p className="flh-eyebrow">Already saved</p><h1 ref={titleRef} id="duplicate-home-title" className="hh-serif" tabIndex={-1}>This {vocabulary.singularLower} is already here</h1><p>{reason === 'address'
+          ? (addedByOther ? 'Someone in this search already added a home at this address.' : 'You’ve already added a home at this address to this search.')
+          : (addedByOther ? 'Someone in this search already added this listing.' : 'You’ve already added this listing to this search.')}</p></div>
         <button type="button" className="hh-btn hh-btn-ghost hh-edit-home-close" onClick={onClose} aria-label="Close add home"><X size={18} /></button>
       </header>
       <div className="flh-duplicate-card">
@@ -583,6 +586,10 @@ const LOOKUP_FAILURE_NOTES = {
   timeout: 'The property lookup took too long. Add the address and fill in the rest on Home Facts, or try again in a moment.',
   invalid_address: 'We couldn’t look up that address. Check it, or add it here and fill in the rest on Home Facts.',
   unavailable: 'We couldn’t reach the listing details right now. Add the address and fill in the rest on Home Facts.',
+  // Phase 4 safeguards: no request was made; the buyer can still add the home.
+  user_limit: 'You’ve looked up a lot of addresses in a short time. Add this home by its address now, and try a lookup again in a few minutes.',
+  session_limit: 'That’s a lot of lookups for one Add Home. Add this home by its address, or close Add Home and start again to look up more.',
+  cooldown: 'Property lookups are busy right now. Add the address and fill in the rest on Home Facts, or try again in a minute.',
 };
 // One half of the lookup failed; the other half is shown as found.
 const PARTIAL_NOTES = {
@@ -761,6 +768,16 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   const [apartmentIdentity, setApartmentIdentity] = useState(null);
   const [editDetailsOpen, setEditDetailsOpen] = useState(false);
   const [lastLookupAddress, setLastLookupAddress] = useState('');
+  // Phase 4 (docs/add-home-v3-lookup-efficiency.md). This Add Home session's
+  // lookup results by property (never shared beyond this modal), what the last
+  // lookup or paste wrote into the form (so another property's lookup can take
+  // it back), network lookups made, and a cooldown after "busy".
+  const lookupCache = useRef(new Map());
+  const importApplied = useRef({});
+  const networkLookups = useRef(0);
+  const cooldownUntil = useRef(0);
+  const [duplicateReason, setDuplicateReason] = useState('listing');
+  const [switchNote, setSwitchNote] = useState('');
   // Once a home shows, the Find section folds to one line ("Change" reopens it),
   // so the found home and Save Home are what the buyer sees first.
   const [findOpen, setFindOpen] = useState(false);
@@ -972,6 +989,8 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     const result = resolveImport(findings, facts.home);
     const canonicalAdditions = Object.keys(result.fieldPatch);
     const merged = mergeImportFields(facts.home, result.fieldPatch);
+    // What this paste wrote (basics), so a lookup for another property can take it back.
+    importApplied.current = { ...importApplied.current, ...appliedImportFields(facts.home, merged) };
     // Answers confirmed from earlier text stay confirmed whatever this text says;
     // a contrary sentence is shown on the row as information only.
     const rerun = personalAnswers
@@ -1095,53 +1114,100 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   // holds the RentCast key). Sets form.address to whatever was actually looked up,
   // and only ever fills fields that are still empty — it never overwrites anything
   // the user already entered or corrected. Never saves on its own.
+  const lookupMode = vocabulary.apartment ? 'apartment' : isRentalType(priorities.searchType) ? 'rental' : 'sale';
+  const lookupFailed = (reason) => {
+    setImportPhase('error');
+    setImportResult(null);
+    setImportErrorMsg(LOOKUP_FAILURE_NOTES[reason] || LOOKUP_FAILURE_NOTES.unavailable);
+  };
+  // Before another property's data arrives: take back everything the previous
+  // lookup or paste wrote that still holds its value (never what the buyer
+  // typed or changed), and drop that property's review state. Pasted text and
+  // the buyer's own notes, photo and confirmed answers are kept.
+  const clearPreviousProperty = (current) => {
+    let next = revertAppliedFields(current, importApplied.current).form;
+    for (const used of Object.values(usedFacts)) next = undoHomeFactSuggestion(next, used);
+    return next;
+  };
+
   const lookupAddress = async (rawAddress, opts = {}) => {
     const address = (rawAddress || '').trim();
     if (!address || importPhase === 'loading' || address === lastLookupAddress) return;
+    // A property this search already holds opens that home: no request, nothing re-imported.
+    const sameProperty = findHomeByAddress(existingHomes, address);
+    if (sameProperty) { setDuplicateReason('address'); setDuplicateHome(sameProperty); return; }
 
+    // Switching from a property shown earlier in this session: clear its data first.
+    const previous = { ...importApplied.current };
+    const hadPrevious = Object.keys(previous).length > 0 || Object.keys(usedFacts).length > 0 || !!lastLookupAddress;
+    let clearedCount = 0;
+    if (hadPrevious) {
+      const reverted = revertAppliedFields(form, previous);
+      clearedCount = reverted.cleared.filter((key) => !['latitude', 'longitude'].includes(key)).length + Object.keys(usedFacts).length;
+      setFactSuggestions([]); setFactDecisions({}); setUsedFacts({}); setReviewedText('');
+      setAnswerSuggestions((items) => items.filter((item) => answerDecisions[item.id] === 'confirmed'));
+      setParseMsg('');
+    }
+    importApplied.current = {};
+    setSwitchNote(hadPrevious && clearedCount ? `We cleared ${clearedCount} detail${clearedCount === 1 ? '' : 's'} from the previous address. Anything you typed is kept.` : '');
+    setLastLookupAddress('');
     setImportPhase('loading');
     setProviderResult(null);
     setImportErrorMsg('');
     setUrlFallbackMsg('');
-    setForm((f) => ({ ...f, address, ...(opts.listingUrl !== undefined ? { listingUrl: opts.listingUrl } : {}) }));
+    setForm((f) => ({ ...(hadPrevious ? clearPreviousProperty(f) : f), address, ...(opts.listingUrl !== undefined ? { listingUrl: opts.listingUrl } : {}) }));
 
-    try {
-      const res = await fetch('/api/import-listing', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ address, mode: vocabulary.apartment ? 'apartment' : isRentalType(priorities.searchType) ? 'rental' : 'sale' }),
-      });
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        // Intentionally do NOT set lastLookupAddress here — a failed lookup must
-        // always be retryable with the exact same address. The guard only exists
-        // to prevent redundant *successful* lookups.
-        setImportPhase('error');
-        setImportResult(null);
-        setImportErrorMsg(LOOKUP_FAILURE_NOTES[data.reason] || LOOKUP_FAILURE_NOTES.unavailable);
+    // Same property and kind already looked up in this session: reuse it, no request.
+    const cacheKey = lookupCacheKey(address, lookupMode);
+    let data = lookupCache.current.get(cacheKey) || null;
+    if (!data) {
+      if (Date.now() < cooldownUntil.current) { lookupFailed('cooldown'); return; }
+      if (networkLookups.current >= SESSION_LOOKUP_LIMIT) { lookupFailed('session_limit'); return; }
+      networkLookups.current += 1;
+      try {
+        const res = await fetch('/api/import-listing', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ address, mode: lookupMode }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          // Intentionally do NOT set lastLookupAddress here — a failed lookup must
+          // always be retryable with the exact same address. It is never cached,
+          // and only "busy" (429) waits out a short cooldown before the retry.
+          if (res.status === 429) {
+            const retryAfter = Number(res.headers.get('Retry-After'));
+            cooldownUntil.current = Date.now() + (Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter * 1000, 10 * 60 * 1000) : BUSY_COOLDOWN_MS);
+          }
+          lookupFailed(body.reason);
+          return;
+        }
+        data = body;
+        lookupCache.current.set(cacheKey, data);
+      } catch {
+        lookupFailed('unavailable');
         return;
       }
-
-      setLastLookupAddress(address);
-
-      if (!data.found) {
-        setImportPhase('empty');
-        setImportResult(null);
-        return;
-      }
-
-      const lookup = { fields: data.fields || {}, findings: data.findings || [], resolutions: data.resolutions || [], listingFacts: data.listingFacts || [], descriptionFeatures: data.descriptionFeatures || [], listing: data.listing || null, sources: data.sources || null, partial: data.partial || null, searchedAddress: address };
-      setProviderResult(lookup);
-      setImportResult(lookup);
-      setEditDetailsOpen(false);
-      setImportPhase('success');
-      setForm((f) => mergeImportFields(f, data.fields || {}));
-    } catch {
-      setImportPhase('error');
-      setImportResult(null);
-      setImportErrorMsg(LOOKUP_FAILURE_NOTES.unavailable);
     }
+
+    setLastLookupAddress(address);
+
+    if (!data.found) {
+      setImportPhase('empty');
+      setImportResult(null);
+      return;
+    }
+
+    const lookup = { fields: data.fields || {}, findings: data.findings || [], resolutions: data.resolutions || [], listingFacts: data.listingFacts || [], descriptionFeatures: data.descriptionFeatures || [], listing: data.listing || null, sources: data.sources || null, partial: data.partial || null, searchedAddress: address };
+    setProviderResult(lookup);
+    setImportResult(lookup);
+    setEditDetailsOpen(false);
+    setImportPhase('success');
+    setForm((f) => {
+      const merged = mergeImportFields(f, data.fields || {});
+      importApplied.current = appliedImportFields(f, merged);
+      return merged;
+    });
   };
 
   // Single Find-a-home entry point: figures out whether the pasted text is a
@@ -1157,7 +1223,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
       // The same exact-URL rule the share intake uses (HomesBoard): a listing this
       // search already holds is opened, never imported a second time.
       const existing = findHomeByListingUrl(existingHomes, raw);
-      if (existing) { setDuplicateHome(existing); return; }
+      if (existing) { setDuplicateReason('listing'); setDuplicateHome(existing); return; }
       const result = extractAddressFromListingUrl(raw);
       if (result?.address) {
         setApartmentIdentity(null);
@@ -1185,7 +1251,8 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
       setUrlFallbackMsg('');
     } else {
       setUrlFallbackMsg('');
-      lookupAddress(raw);
+      // A plain address is a new find: a listing link from an earlier find belongs to that property.
+      lookupAddress(raw, { listingUrl: '' });
     }
   };
 
@@ -1206,7 +1273,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   };
 
   const isNewHome = !initial.address;
-  if (isNewHome && duplicateHome) return <DuplicateHomeView home={duplicateHome} priorities={priorities} userId={userId} isCollaborative={isCollaborative} vocabulary={vocabulary} dialogRef={dialogRef} titleRef={titleRef} onClose={onClose} onBack={() => setDuplicateHome(null)} />;
+  if (isNewHome && duplicateHome) return <DuplicateHomeView reason={duplicateReason} home={duplicateHome} priorities={priorities} userId={userId} isCollaborative={isCollaborative} vocabulary={vocabulary} dialogRef={dialogRef} titleRef={titleRef} onClose={onClose} onBack={() => setDuplicateHome(null)} />;
   // Every buyer Add Home path for a home ends on the one confirm card; the full
   // editor stays only for apartments (property name / unit / floor plan) and the
   // Realtor suggestion flow (which never passes importLanding).
@@ -1216,7 +1283,10 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   // of saving: a listing this search already holds is opened, never added twice.
   const addImportedHome = () => {
     const existing = findHomeByListingUrl(existingHomes, form.listingUrl);
-    if (existing) { setDuplicateHome(existing); return; }
+    if (existing) { setDuplicateReason('listing'); setDuplicateHome(existing); return; }
+    // The same property under another link, or typed by hand (strict address identity).
+    const sameProperty = findHomeByAddress(existingHomes, form.address);
+    if (sameProperty) { setDuplicateReason('address'); setDuplicateHome(sameProperty); return; }
     submit({ quickSave: true });
   };
 
@@ -1263,6 +1333,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         {importPhase === 'identity' && apartmentIdentity && <div className="hh-manual-address"><p>We found {apartmentIdentity.propertyName}. Add its street address to continue.</p><AddressAutocomplete value={fallbackAddressInput} onChange={setFallbackAddressInput} onSelect={setFallbackAddressInput} /><button type="button" className="hh-btn" onClick={handleFallbackAddressLookup}>Use address</button></div>}
         {urlFallbackMsg && <p className="hh-edit-error">{urlFallbackMsg}</p>}
       </section>}
+      {switchNote && importPhase !== 'loading' && <p className="flh-switch-note" role="status">{switchNote}</p>}
       {quickAdd && <ImportFoundCard form={form} set={set} importResult={importResult} lookupResult={providerResult} importPhase={importPhase} importErrorMsg={importErrorMsg} priorities={priorities} vocabulary={vocabulary} saving={saving} saveErrorMsg={saveErrorMsg} onAdd={addImportedHome} factReview={factReview} deferredAnswers={deferredAnswers} paste={{ text: pasteText, setText: setPasteText, onRun: runAutofill, message: parseMsg }} photo={foundPhoto} />}
       {isNativeApp() && !quickAdd && <aside className="flh-share-callout" aria-label="Add from the Share Sheet"><Share size={18} aria-hidden="true" /><div><strong>Faster from your listing app</strong><p>Tap Share on any listing, then choose Feels Like Home. It opens right here, ready to review.</p></div></aside>}
       {!quickAdd && <details className="hh-details hh-manual-fallback">

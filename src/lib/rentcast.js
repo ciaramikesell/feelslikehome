@@ -221,6 +221,22 @@ function parseAddress(value) {
   return { number, name: rest.map(word).join(' '), suffix, directions: directions.sort().join(' '), unit, zip, state, city };
 }
 
+/**
+ * A strict identity for one property's address (Add Home V3, phase 4), or null
+ * when the address can't be read well enough to identify a property. Unlike
+ * rentCastAddressMatch (which tolerates a part missing on one side), every part
+ * must be present-or-absent the same way, so two units, two ZIPs or a missing
+ * house number never collapse into one key. Used only to recognize the same
+ * property again (duplicates, the session lookup cache), never to fill data.
+ */
+export function propertyAddressKey(address) {
+  const parsed = parseAddress(address);
+  if (!parsed?.number || !parsed.name) return null;
+  const place = parsed.zip || (parsed.city && parsed.state ? `${parsed.city}|${parsed.state}` : null);
+  if (!place) return null;
+  return [parsed.number, parsed.name, parsed.suffix || '', parsed.directions || '', parsed.unit || '', place].join('|');
+}
+
 /** @returns {'match'|'mismatch'|'unknown'} */
 export function rentCastAddressMatch(requested, returned) {
   const a = parseAddress(requested);

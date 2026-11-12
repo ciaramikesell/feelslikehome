@@ -124,7 +124,7 @@ test('pros, cons, and notes remain shared fields and are labeled truthfully', ()
 test('manual Add opens the existing home for an exact listing-URL match — no "Add anyway"', () => {
   const find = modal.slice(modal.indexOf('const handleFind = () => {'), modal.indexOf('const handleFallbackAddressLookup'));
   assert.ok(find.indexOf('findHomeByListingUrl(existingHomes, raw)') < find.indexOf('extractAddressFromListingUrl(raw)'), 'duplicate check runs before any lookup');
-  assert.match(find, /if \(existing\) \{ setDuplicateHome\(existing\); return; \}/);
+  assert.match(find, /if \(existing\) \{ setDuplicateReason\('listing'\); setDuplicateHome\(existing\); return; \}/);
   const view = modal.slice(modal.indexOf('function DuplicateHomeView'), modal.indexOf('function EditHomeEditor'));
   assert.match(view, /This \{vocabulary\.singularLower\} is already here/);
   assert.match(view, /Open existing \{vocabulary\.singularLower\}/);
