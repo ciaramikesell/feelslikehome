@@ -291,13 +291,7 @@ test('Home Facts keeps personal answers out and never offers edit controls to re
 });
 
 test('Home Facts: no imported-facts panel, no school disclaimer, no Edit or Save buttons', () => {
-  assert.doesNotMatch(facts, /All listing details|See imported details/);
-  // The one disclosure allowed: listing facts offered at Add Home and not added yet
-  // (Add Home V3 review). It is an actionable offer of empty fields, not a panel of
-  // imported data; every other <details> stays out of Home Facts.
-  const disclosures = [...facts.matchAll(/<details className="([^"]*)"/g)].map((match) => match[1]);
-  assert.deepEqual(disclosures.filter((name) => !/\bflh-offered-facts\b|\bflh-fact-why\b/.test(name)), []);
-  assert.equal((facts.match(/<details\b/g) || []).length, disclosures.length, 'every disclosure is one of the two named ones');
+  assert.doesNotMatch(facts, /All listing details|See imported details|<details/);
   assert.doesNotMatch(facts + factsLib, /FLH doesn’t pull school information|school rating|GreatSchools|assigned to/i);
   assert.doesNotMatch(facts, /flh-hf-edit|EditorShell|>Save |Next: Match Criteria|From listing/);
 });

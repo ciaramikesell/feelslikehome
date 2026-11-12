@@ -283,12 +283,12 @@ test('explicit answers and #165 stale-evidence protection are unchanged', () => 
   // Their explicit No still overrides a used fact in Match.
   const home = suggestHomeFacts(REAL_WORLD).reduce(applyHomeFactSuggestion, emptyHome());
   assert.equal(resolveCriterionAnswer(home, 'features:Finished basement', { 'features:Finished basement': 'no' }).value, 'no');
-  // A personal answer confirmed after Skip is re-checked by a rerun exactly as before.
+  // A personal answer confirmed after Skip survives a rerun that omits it (Add Home V3 review).
   const [confirmed] = suggestListingAnswers('Finished basement.', buyer).filter((item) => item.key === 'features:Finished basement');
   const checks = { [confirmed.key]: confirmed.answer };
-  const rerun = resuggestListingAnswers('No basement information here.', buyer, checks, { [confirmed.key]: confirmed.answer });
-  assert.deepEqual(rerun.cleared, ['features:Finished basement']);
-  assert.equal(rerun.checks['features:Finished basement'], undefined);
+  const rerun = resuggestListingAnswers('No basement information here.', buyer, checks, { [confirmed.key]: confirmed.answer }, [confirmed]);
+  assert.deepEqual(rerun.cleared, []);
+  assert.equal(rerun.checks['features:Finished basement'], true);
 });
 
 test('co-buyers: each buyer\'s Match and suggestions stay their own', () => {
@@ -422,7 +422,9 @@ test('Add Home offers the optional paste after any lookup, never requires it, an
   assert.match(modal, /personalSuggestionStatus\(suggestion, \{ home: form, factSuggestions, factDecisions: effectiveFactDecisions \}\) === 'show'/);
   assert.match(modal, /Also answers your Match: <b>\{answers\.join\(', '\)\}<\/b>\. Unchecked, it stays Unknown, and you can still answer/);
   assert.match(modal, /These are for your Match only/);
-  assert.match(modal, /FLH hasn’t verified it or checked school boundaries/);
+  // The checklist rows (with the school attribution) live in the shared FactChecklist (Add Home V3).
+  assert.match(read('src/components/FactChecklist.jsx'), /FLH hasn’t verified it or checked school boundaries/);
+  assert.match(modal, /<FactChecklistRows suggestions=\{pending\}/);
 });
 
 test('the reader is pure: no network, storage or model calls', () => {

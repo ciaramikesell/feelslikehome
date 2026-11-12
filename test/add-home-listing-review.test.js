@@ -206,13 +206,17 @@ test('the found card shows one shared checklist and defers personal answers; the
 });
 
 test('the checklist: field and value, the sentence on demand, deselectable, one Add N facts, Undo, not-changed notes', () => {
-  assert.match(checklist, /<input type="checkbox" checked=\{selected\} onChange=\{\(\) => onToggle\(suggestion\)\} \/>/);
-  assert.match(checklist, /<b>\{suggestion\.label\}<\/b><span className="flh-fact-check-value">\{suggestion\.display\}<\/span>/);
-  assert.match(checklist, /<details className="flh-fact-why"><summary>Why\?<\/summary><blockquote><span>“\{suggestion\.evidence\}”<\/span>/);
-  assert.match(checklist, /onClick=\{\(\) => onAddSelected\(chosen\)\} disabled=\{!chosen\.length\}/);
-  assert.match(checklist, /Add \{chosen\.length\} fact\{chosen\.length === 1 \? '' : 's'\}/);
+  // Rows and the Add button are the shared FactChecklist (one implementation for Add Home and the later review).
+  const shared = read('src/components/FactChecklist.jsx');
+  assert.match(checklist, /<FactChecklistRows suggestions=\{pending\} isSelected=\{isSelected\} onToggle=\{onToggle\}/);
+  assert.match(checklist, /<AddFactsButton chosen=\{chosen\} onAdd=\{onAddSelected\} \/>/);
+  assert.match(shared, /<input type="checkbox" checked=\{selected\} onChange=\{\(\) => onToggle\(suggestion\)\} \/>/);
+  assert.match(shared, /<b>\{suggestion\.label\}<\/b><span className="flh-fact-check-value">\{suggestion\.display \|\| String\(suggestion\.value\)\}<\/span>/);
+  assert.match(shared, /<details className="flh-fact-why"><summary>Why\?<\/summary><blockquote><span>“\{suggestion\.evidence\}”<\/span>/);
+  assert.match(shared, /onClick=\{\(\) => onAdd\(chosen\)\} disabled=\{!chosen\.length\}/);
+  assert.match(shared, /Add \{chosen\.length\} fact\{chosen\.length === 1 \? '' : 's'\}/);
   assert.match(checklist, /onClick=\{\(\) => onUndo\(suggestion\)\}/);
-  assert.match(checklist, /FLH hasn’t verified it or checked school boundaries\./);
+  assert.match(shared, /FLH hasn’t verified it or checked school boundaries\./);
   assert.match(checklist, /this home has <b>\{item\.current\}<\/b>\. Kept as is\./);
   // Selection: checked by the buyer, or by default when preselected; unchecking is the old Skip.
   assert.match(modal, /const isFactSelected = \(suggestion\) => factDecisions\[suggestion\.id\] === 'selected'\s*\|\| \(factDecisions\[suggestion\.id\] === undefined && isPreselectedHomeFact\(suggestion\)\);/);

@@ -21,6 +21,7 @@ const { emptyHome, normalizePriorities } = await import('../src/lib/constants.js
 const { applySearchChoice } = await import('../src/lib/onboarding.js');
 const { addCriterion } = await import('../src/lib/searchProfile.js');
 const { acceptInvitation, createInvitation, getHomesForUser, saveHomePersonalAndShared } = await import('../src/lib/supabase/collaboration.js');
+const { applyListingAnswer, resuggestListingAnswers, suggestListingAnswers, undoListingAnswer } = await import('../src/lib/listingTextAnswers.js');
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const modal = read('src/components/HomeModal.jsx');
@@ -90,19 +91,38 @@ test('provenance: a later-added offer reads From listing only while it holds the
   assert.equal(fieldProvenance(null, home.listingImport, 'laundryLocation'), 'unknown');
 });
 
-test('wiring: Save keeps the offers; Home Facts shows them folded and unchecked; Add uses the ordinary save, empty fields only', () => {
+test('wiring: Save keeps the offers; Home Facts shows one row and a sheet, unchecked; Add uses the ordinary save, empty fields only', () => {
   assert.match(modal, /importResultWithOfferedFacts\(importResultWithHomeFacts\(importResult, usedFacts, form\), offeredHomeFacts\(factSuggestions, usedFacts, form\)\)/);
-  const offered = facts.match(/function OfferedFacts[\s\S]*?\n\}/)[0];
-  assert.match(offered, /<details className="hh-details flh-offered-facts">/);
-  assert.doesNotMatch(offered, /<details className="hh-details flh-offered-facts" open/);
-  assert.match(offered, /const \[chosen, setChosen\] = useState\(\{\}\);/, 'nothing preselected');
-  assert.match(offered, /const after = applyHomeFactSuggestion\(next, item\);/);
-  assert.match(offered, /FLH hasn’t verified it or checked school boundaries\./);
-  assert.match(facts, /\{!isReadOnly && <OfferedFacts home=\{home\} onAdd=\{save\} \/>\}/, 'Realtors and read-only views never see it');
-  assert.doesNotMatch(offered, /checks|onAnswer/);
+  // Home Facts: one quiet row, no inline fold-out; Review opens the shared checklist in a sheet.
+  const entry = facts.match(/function OfferedFactsEntry[\s\S]*?\n\}/)[0];
+  assert.match(entry, /From the listing · \{count\} detail\{count === 1 \? '' : 's'\} not added yet/);
+  assert.match(entry, /<button type="button" className="flh-offered-review" onClick=\{\(\) => setOpen\(true\)\} aria-haspopup="dialog">Review<\/button>/);
+  assert.match(entry, /if \(!count\) return null;/);
+  assert.doesNotMatch(facts, /<details/, 'Home Facts has no inline fold-out');
+  assert.match(facts, /\{!isReadOnly && <OfferedFactsEntry home=\{home\} onAdd=\{save\} \/>\}/, 'Realtors and read-only views never see it');
+  const sheet = read('src/components/FactChecklist.jsx').match(/export function OfferedFactsSheet[\s\S]*?\n\}/)[0];
+  assert.match(sheet, /<Sheet open=\{open && offered\.length > 0\}/);
+  assert.match(sheet, /const \[chosen, setChosen\] = useState\(\{\}\);/, 'nothing preselected');
+  assert.match(sheet, /isSelected=\{\(item\) => !!chosen\[item\.id\]\}/);
+  assert.match(sheet, /const after = applyHomeFactSuggestion\(next, item\);/, 'empty fields only, values that fit');
+  assert.match(sheet, /<FactChecklistRows /, 'the same checklist as Add Home');
+  assert.doesNotMatch(sheet, /checks|onAnswer|listingImport/, 'no Match answers, no listing_import write');
   // A re-paste that only restates kept facts or personal mentions never claims the text said nothing.
   assert.match(modal, /if \(!details && !answers && !facts && mentioned\) return \[reset, 'Nothing new to add from that text\. What it mentions is noted below, and anything you already added is kept\.'\]/);
   assert.match(modal, /const mentioned = homeFactDisagreements\(pasteText, next\)\.length \+ \(personalDeferred/);
+});
+
+test('no migration or schema change: offers ride in the existing listing_import jsonb', async () => {
+  const { readdirSync } = await import('node:fs');
+  const schema = read('supabase/schema.sql');
+  assert.match(schema, /add column if not exists listing_import jsonb/);
+  assert.match(schema, /grant update \(listing_import\) on public\.homes to authenticated;/);
+  // Nothing in the database layer names the new keys: they are plain jsonb inside the snapshot.
+  const sql = [schema, ...readdirSync(new URL('../supabase/migrations/', import.meta.url)).map((file) => read(`supabase/migrations/${file}`))].join('\n');
+  assert.doesNotMatch(sql, /offeredFacts|offered_facts|pastedFacts/);
+  // And only the Add Home save writes them: Home Facts (and the later review) never write listing_import.
+  const code = (facts + read('src/components/FactChecklist.jsx')).replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.doesNotMatch(code, /listingImport\s*:|listing_import/);
 });
 
 /* --------------------------------- real Postgres --------------------------------- */
@@ -143,4 +163,29 @@ dbTest('saved offers survive reload; the co-buyer reviews and adds one; nothing 
   assert.equal(row().hoa_fee_monthly, null, 'other offers untouched');
   assert.deepEqual(row().listing_import, home.listingImport, 'the snapshot itself is unchanged');
   assert.equal(db.admin(`select count(*)::int as n from public.home_member_state where home_id = '${saved.id}' and checks <> '{}'::jsonb`)[0].n, 0, 'no Match answers');
+});
+
+dbTest('a confirmed personal answer survives a repeated paste and is saved for that buyer only; Undo and an explicit change still work', async () => {
+  let priorities = applySearchChoice(normalizePriorities({}), 'home_buy');
+  priorities = addCriterion(priorities, { categoryKey: 'features', label: 'Fireplace', kind: 'check' }, 'must');
+  const FIRE = 'features:Fireplace';
+  // Full editor session: confirm from the first text…
+  const [suggestion] = suggestListingAnswers('Gas fireplace in the den.', priorities, {}).filter((item) => item.key === FIRE);
+  let checks = applyListingAnswer({}, suggestion, 'home_buy');
+  let confirmed = { [FIRE]: true };
+  // …then paste text that omits it, then text that contradicts it: still Yes, the No is information only.
+  for (const text of ['Bright kitchen.', 'No fireplace.']) {
+    const rerun = resuggestListingAnswers(text, priorities, checks, confirmed, [suggestion]);
+    assert.deepEqual(rerun.checks, { [FIRE]: true }, text);
+    ({ checks, confirmed } = rerun);
+  }
+  const saved = await saveHomePersonalAndShared(db.clientFor(ids.owner), { ...emptyHome(), address: '9 Kept Answer Ln, Testville, MI 48000', checks }, ids.owner, ids.search);
+  const states = db.admin(`select user_id, checks from public.home_member_state where home_id = '${saved.id}' order by user_id`);
+  assert.deepEqual(states.find((row) => row.user_id === ids.owner).checks, { [FIRE]: true });
+  assert.ok(states.filter((row) => row.user_id !== ids.owner).every((row) => !Object.keys(row.checks || {}).length), 'the co-buyer gets none of it');
+  // Undo (still owned by the suggestion) goes back to Unknown; an explicit No is the buyer's own.
+  assert.deepEqual(undoListingAnswer(checks, suggestion), {});
+  const asOwner = (await getHomesForUser(db.clientFor(ids.owner), ids.owner, ids.search)).find((item) => item.id === saved.id);
+  await saveHomePersonalAndShared(db.clientFor(ids.owner), { ...asOwner, checks: { [FIRE]: 'no' } }, ids.owner, ids.search);
+  assert.deepEqual(db.admin(`select checks from public.home_member_state where home_id = '${saved.id}' and user_id = '${ids.owner}'`)[0].checks, { [FIRE]: 'no' });
 });

@@ -13,6 +13,7 @@ import { visibleOrderedItems, parseListingTextFindings, selectedSubjectiveCriter
 import { extractAddressFromListingUrl, extractApartmentIdentityFromListingUrl, isLikelyListingUrl, findHomeByListingUrl } from '@/lib/listingUrl';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import NoteListFields from '@/components/NoteListFields';
+import { AddFactsButton, FactChecklistRows } from '@/components/FactChecklist';
 import { mergeImportFields, resolveImport } from '@/lib/importDomain';
 import { appendAllSuggestions, appendSuggestionToNotes, extractEnrichmentSuggestions } from '@/lib/importReview';
 import { applyListingAnswer, hasRecordedAnswer, listingTextEvidence, resuggestListingAnswers, undoListingAnswer } from '@/lib/listingTextAnswers';
@@ -492,6 +493,8 @@ function ListingAnswerReview({ review }) {
       return <li key={suggestion.id} className={confirmed ? 'is-confirmed' : ''}>
         <div className="flh-answer-review-head"><b>{label}</b><span className={`flh-answer-chip is-${suggestion.answer === true ? 'yes' : 'no'}`}>Listing suggests {answer}</span></div>
         <blockquote><span>“{suggestion.evidence}”</span><cite>From the listing text you pasted</cite></blockquote>
+        {/* New text that says otherwise is information only: a confirmed answer stays the buyer's. */}
+        {confirmed && suggestion.newer && <p className="flh-answer-newer" role="note">The text you pasted since suggests <b>{suggestion.newer.answer === true ? 'Yes' : 'No'}</b>: “{suggestion.newer.evidence}” Your answer stays <b>{answer}</b> until you change it.</p>}
         <div className="flh-answer-review-actions">
           {confirmed
             ? <><span className="flh-answer-confirmed" role="status"><Check size={13} aria-hidden="true" /> Your answer: {answer}</span><button type="button" className="hh-btn hh-btn-ghost" onClick={() => onUndo(suggestion)}>Undo</button></>
@@ -523,22 +526,11 @@ function HomeFactReview({ review }) {
     </div>
     {pending.length > 0 && <>
       <p>{isCollaborative ? 'These describe the home for everyone in this search. ' : ''}Uncheck anything that isn’t right. Anything left unchecked stays Unknown, and you can change any of it later in Home Facts.</p>
-      <ul className="flh-fact-checklist-rows">{pending.map((suggestion) => {
-        const selected = isSelected(suggestion);
+      <FactChecklistRows suggestions={pending} isSelected={isSelected} onToggle={onToggle} note={(suggestion) => {
         const answers = alsoAnswers(suggestion);
-        return <li key={suggestion.id} className={selected ? 'is-selected' : ''}>
-          <label className="flh-fact-check">
-            <input type="checkbox" checked={selected} onChange={() => onToggle(suggestion)} />
-            <span className="flh-fact-check-text"><b>{suggestion.label}</b><span className="flh-fact-check-value">{suggestion.display}</span></span>
-          </label>
-          {suggestion.school && <small className="flh-fact-note">Named in the listing text you pasted. FLH hasn’t verified it or checked school boundaries.</small>}
-          {answers.length > 0 && <small className="flh-fact-note">Also answers your Match: <b>{answers.join(', ')}</b>. Unchecked, it stays Unknown, and you can still answer {answers.length === 1 ? 'it' : 'them'} for yourself.</small>}
-          <details className="flh-fact-why"><summary>Why?</summary><blockquote><span>“{suggestion.evidence}”</span><cite>From the listing text you pasted</cite></blockquote></details>
-        </li>;
-      })}</ul>
-      <button type="button" className="hh-btn flh-fact-add" onClick={() => onAddSelected(chosen)} disabled={!chosen.length}>
-        {chosen.length ? <><Check size={15} aria-hidden="true" /> Add {chosen.length} fact{chosen.length === 1 ? '' : 's'}</> : 'Check a fact to add it'}
-      </button>
+        return answers.length > 0 && <small className="flh-fact-note">Also answers your Match: <b>{answers.join(', ')}</b>. Unchecked, it stays Unknown, and you can still answer {answers.length === 1 ? 'it' : 'them'} for yourself.</small>;
+      }} />
+      <AddFactsButton chosen={chosen} onAdd={onAddSelected} />
     </>}
     {added.length > 0 && <div className="flh-fact-added" role="status">
       <strong><Check size={14} aria-hidden="true" /> {added.length} added to Home Facts</strong>
@@ -978,10 +970,10 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     const result = resolveImport(findings, facts.home);
     const canonicalAdditions = Object.keys(result.fieldPatch);
     const merged = mergeImportFields(facts.home, result.fieldPatch);
-    // Answers confirmed from earlier text are re-checked against this text:
-    // kept only when it still suggests the same answer, otherwise back to Unknown.
+    // Answers confirmed from earlier text stay confirmed whatever this text says;
+    // a contrary sentence is shown on the row as information only.
     const rerun = personalAnswers
-      ? resuggestListingAnswers(pasteText, priorities, form.checks, confirmedAnswers)
+      ? resuggestListingAnswers(pasteText, priorities, form.checks, confirmedAnswers, answerSuggestions)
       : { suggestions: [], checks: form.checks, confirmed: {}, decisions: {}, cleared: [] };
     const next = { ...merged, checks: rerun.checks };
     // Every personal suggestion is kept; which ones show depends on the shared

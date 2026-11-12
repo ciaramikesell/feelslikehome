@@ -14,7 +14,8 @@ import { homeIdentity } from '@/lib/homePresentation';
 import { isUnitlessLotSize } from '@/lib/lotSize';
 import { parseNum } from '@/lib/matching';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
-import { applyHomeFactSuggestion, pendingOfferedFacts } from '@/lib/listingTextHomeFacts';
+import { pendingOfferedFacts } from '@/lib/listingTextHomeFacts';
+import { OfferedFactsSheet } from '@/components/FactChecklist';
 import { createClient } from '@/lib/supabase/client';
 import { MultiSelectField, PhoneCollapse, QuietInput, SelectField } from '@/components/FactFields';
 import { NOTE_LIST_FIELDS, noteListHint } from '@/components/NoteListFields';
@@ -175,39 +176,20 @@ function ListingLink({ home, readOnly, editor }) {
 }
 
 // Facts the pasted listing offered when this home was added that nobody added
-// yet (homes.listing_import.offeredFacts). Folded and unchecked: the buyer
-// already passed on them once, so nothing is preselected and nothing is added
-// without Add. Add writes through the ordinary Home Facts save, only into
-// fields that are still empty and only values that fit the home; anything
-// filled since is never touched, and a filled field drops off this list.
-function OfferedFacts({ home, onAdd }) {
-  const offered = pendingOfferedFacts(home);
-  const [chosen, setChosen] = useState({});
-  if (!offered.length) return null;
-  const selected = offered.filter((item) => chosen[item.id]);
-  const add = () => {
-    const patch = {};
-    let next = home;
-    for (const item of selected) {
-      const after = applyHomeFactSuggestion(next, item);
-      if (after !== next) { patch[item.field] = item.value; next = after; }
-    }
-    if (Object.keys(patch).length) onAdd(patch);
-    setChosen({});
-  };
-  return <details className="hh-details flh-offered-facts">
-    <summary>From the listing you pasted <span>{offered.length} not added yet</span></summary>
-    <p>These were in the listing text pasted when this home was added. Check any that are right to add them to Home Facts for everyone in this search; the rest stay Unknown.</p>
-    <ul className="flh-fact-checklist-rows">{offered.map((item) => <li key={item.id} className={chosen[item.id] ? 'is-selected' : ''}>
-      <label className="flh-fact-check">
-        <input type="checkbox" checked={!!chosen[item.id]} onChange={() => setChosen((value) => ({ ...value, [item.id]: !value[item.id] }))} />
-        <span className="flh-fact-check-text"><b>{item.label}</b><span className="flh-fact-check-value">{item.display || String(item.value)}</span></span>
-      </label>
-      {item.school && <small className="flh-fact-note">Named in the listing text. FLH hasn’t verified it or checked school boundaries.</small>}
-      {item.evidence && <details className="flh-fact-why"><summary>Why?</summary><blockquote><span>“{item.evidence}”</span><cite>From the listing text pasted for this home</cite></blockquote></details>}
-    </li>)}</ul>
-    <button type="button" className="hh-btn flh-fact-add" onClick={add} disabled={!selected.length}>{selected.length ? `Add ${selected.length} fact${selected.length === 1 ? '' : 's'}` : 'Check a fact to add it'}</button>
-  </details>;
+// yet (homes.listing_import.offeredFacts): one quiet row, not an inline
+// fold-out (Home Facts has none). Review opens the shared checklist in a sheet
+// (OfferedFactsSheet). The row is gone once every offered field is filled.
+function OfferedFactsEntry({ home, onAdd }) {
+  const count = pendingOfferedFacts(home).length;
+  const [open, setOpen] = useState(false);
+  if (!count) return null;
+  return <>
+    <p className="flh-offered-row">
+      <span>From the listing · {count} detail{count === 1 ? '' : 's'} not added yet</span>
+      <button type="button" className="flh-offered-review" onClick={() => setOpen(true)} aria-haspopup="dialog">Review</button>
+    </p>
+    <OfferedFactsSheet home={home} open={open} onClose={() => setOpen(false)} onAdd={onAdd} />
+  </>;
 }
 
 export default function HomeFacts({ home, priorities, vocabulary, readOnly = false, editor = null, userId = null, onEditAll = null, showHeading = true, isCollaborative = false }) {
@@ -283,7 +265,7 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
           <h2 id="hf-title" className="flh-overlay-heading">Home Facts</h2>
           <span>{isReadOnly ? 'From the listing and the buyers' : 'All optional'}</span>
         </header>
-        {!isReadOnly && <OfferedFacts home={home} onAdd={save} />}
+        {!isReadOnly && <OfferedFactsEntry home={home} onAdd={save} />}
         <div className="flh-hf2-columns">
           <div className="flh-hf2-column">
             <Group id="hf-basic-title" title="Basic Details">
