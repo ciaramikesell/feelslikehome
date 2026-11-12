@@ -60,9 +60,12 @@ On the found card, one description produced up to **13 decision buttons**:
     Detached; this home has Attached. Kept as is.");
   - the value can't stand with the home's other basement field;
   - the text states the field more than one way ("Left Unknown").
-- **A repeated paste is a new review**, as Skip was before. Facts used from
-  earlier text that the new text no longer states go back to Unknown, and the
-  buyer is told. Typed values are never touched.
+- **A repeated paste keeps every accepted fact** (changed in the founder
+  review, §7). A fact the buyer added stays added, even when the new text
+  leaves it out or says otherwise. A different value is only named in "Not
+  changed". Only Undo (still on the card) or an edit in Home Facts removes it.
+  For what is still open, a repeated paste is a new review, as Skip was
+  before: the defaults apply again. Typed values are never touched.
 
 ### Personal answers wait for the buyer's own Match view
 
@@ -194,9 +197,87 @@ lookup already filled garage and HOA).
 - **Shared columns for fireplace, fence, pool and ensuite.** These would turn
   the most common personal pointers into one shared fact. That needs a
   migration and new #167 readings: its own reviewed PR.
-- **A pointer for facts after saving.** Shared facts the buyer left unchecked
-  are not offered again after saving. Their sentences are not in the snapshot
-  (only used facts are), so offering them would need storing unused
-  suggestions. Left out on purpose.
+- **Dismissing a later offer.** Offers in Home Facts disappear once their field
+  is filled by anyone. They can't be dismissed while still Unknown, because
+  that would need Home Facts to write `listing_import`, which it never does
+  today (§7).
 - **Notes suggestions** (roof year, financing, concessions) remain computed
   but not shown. This is unchanged and was flagged in phase 1.
+
+## 7. Founder review: data preservation (on head `25b25cb`)
+
+### 1. Unchecked shared facts disappeared after Save Home
+
+**Finding.** The snapshot kept:
+- the facts the buyer added (`pastedFacts`);
+- personal-concept evidence (`descriptionFeatures`).
+
+It did **not** keep shared suggestions the buyer left unchecked. Evidence for
+HOA, school and garage-count wording is not in `descriptionFeatures` at all,
+so it could not be rebuilt. The existing persisted evidence was
+**insufficient**.
+
+**Minimum safe change.** This needs no migration and no new write path.
+- **At Save Home,** the unchecked, still-addable suggestions are stored in the
+  same snapshot as an additive jsonb key, `listing_import.offeredFacts` (beside
+  `pastedFacts`). Each entry has field, value, display, sentence and source;
+  one per field.
+- **This is written once,** in the same insert as today. Nothing else writes
+  it.
+- **Offers are never values:**
+  - not counted as listing details;
+  - not read by Match (the Match result is identical with and without them);
+  - not shown as facts.
+- **Home Facts** (owner and co-buyer, never read-only or Realtor views) shows
+  "From the listing you pasted · N not added yet":
+  - folded, with every row unchecked, because the buyer already passed on
+    them once;
+  - each row with its sentence (Why?) and the school attribution;
+  - **Add N facts** writes through the ordinary Home Facts save, only into
+    fields still empty and only values that still fit the home.
+- **An offer drops off** for everyone once its field holds any value, from
+  anyone. It never overwrites.
+- **Provenance:** a field later filled with exactly the offered value reads
+  *From listing* (`fieldProvenance` also checks `offeredFacts`). A different
+  value reads *Added by you*.
+
+**Limitation.** An offer can't be dismissed while its field is still Unknown.
+Home Facts edits never write `listing_import`, and giving them that ability
+(a whole-jsonb write shared between co-buyers) is a bigger change than this
+review allows. Today an offer stays folded until someone fills the field.
+
+### 2. A later paste cleared accepted facts
+
+**Finding.** Confirmed. `resuggestHomeFacts` undid every accepted fact and
+re-applied only the ones the new text still stated. Laundry, accepted from
+the first text, went back to Unknown when the second text omitted it.
+
+**Correction.** `resuggestHomeFacts` now keeps every accepted fact that still
+holds its value. A different value in the new text appears only as a
+read-only "Not changed" note. A used fact the buyer edited afterwards is
+theirs, no longer tracked, and never reverted. `cleared` is always empty.
+
+### 3. Verified
+
+- **Owner and co-buyer:**
+  - offers are shared;
+  - the co-buyer sees and can add them;
+  - an added offer drops off for both;
+  - personal answers stay independent (real Postgres and browser).
+- **Provenance** is unchanged for added facts, and correct for later-added
+  offers.
+- **Unknown semantics:** offers and pointers never fill a field or a Match
+  answer. Unknown is never No.
+- **Duplicates:** one offer per field; malformed, foreign-source or
+  conflicting entries are ignored; an exact-URL duplicate still opens the
+  saved home (simple-save QA).
+- **Simple Save:** unchanged; its browser QA passes.
+
+### Unresolved tradeoff (personal answers in the full editor)
+
+The full editor (apartments, Edit Home) still clears a personal answer the
+buyer *confirmed* from earlier text when a later paste no longer supports it.
+This is `resuggestListingAnswers`, unchanged from #165. Your preference
+("preserve what the buyer explicitly accepted") argues for keeping those too.
+It is a one-function change, but it alters a separately tested personal-answer
+contract, so it is left for your call.

@@ -161,17 +161,21 @@ async function run() {
       await shotOf(owner, '.flh-found-more', `after-${label}-3-added`);
     }, open);
 
-    await step(`[${label}] repeated paste keeps what the new text still states and clears the rest; an empty paste suggests nothing`, async () => {
+    await step(`[${label}] repeated paste keeps every accepted fact (even ones the new text leaves out or contradicts); only Undo removes one`, async () => {
       await paste(owner, 'Finished walkout basement with rec room. Gas fireplace.');
       const status = await owner.locator('.flh-listing-paste-status').innerText();
-      assert(/Laundry is back to Unknown/.test(status), `rerun status: ${status}`);
-      assert(/2 added to Home Facts/.test(await checklist(owner).locator('.flh-fact-added').innerText()), 'kept facts');
-      // A new paste is a new review (as Skip was before): choose again.
+      assert(!/back to Unknown/.test(status), `rerun cleared an accepted fact: ${status}`);
+      assert(/3 added to Home Facts/.test(await checklist(owner).locator('.flh-fact-added').innerText()), 'accepted facts kept');
+      // New text that says otherwise: kept, and named read-only.
+      await paste(owner, 'Laundry in the basement. Gas fireplace.');
+      assert(/Laundry: the listing says Basement; this home has First floor\. Kept as is\./.test(await checklist(owner).locator('.flh-fact-disagree').innerText()), 'disagreement note');
+      assert(/3 added to Home Facts/.test(await checklist(owner).locator('.flh-fact-added').innerText()), 'still kept');
+      await shotOf(owner, '.flh-found-more', `after-${label}-3b-repaste-kept`);
+      // A new paste is a new review for what is still open (as Skip was before): choose again.
       await paste(owner, TEXT);
       assert(await checked(owner, 'Primary bedroom'), 'a new review starts from the defaults');
       await row(owner, 'Primary bedroom').locator('input[type=checkbox]').uncheck();
-      await checklist(owner).locator('.flh-fact-add').click();
-      assert(/added to Home Facts/.test(await checklist(owner).locator('.flh-fact-added').innerText()), 'added again');
+      assert(await checklist(owner).locator('.flh-fact-add').isDisabled(), 'nothing left checked');
     }, open);
 
     await step(`[${label}] Save Home: checked facts shared with provenance; no Match answer written for anyone`, async () => {
@@ -185,9 +189,34 @@ async function run() {
       assert(saved.school_district === null, 'the unchecked district was saved');
       assert(saved.listing_import.source === 'rentcast' && saved.listing_import.pastedFacts.some((item) => item.field === 'laundryLocation' && /main level/.test(item.evidence)), 'provenance');
       assert(saved.listing_import.descriptionFeatures.some((item) => item.concept === 'fireplace'), 'deferred evidence not kept');
+      // Offered but not added: kept for later, never a value.
+      const offered = (saved.listing_import.offeredFacts || []).map((item) => item.field).join();
+      assert(offered === 'primaryBedroomLocation,schoolDistrict', `offeredFacts: ${offered}`);
       assert(!Object.keys(checksOf(saved.id, info.users.owner.id)).length, 'owner checks written');
       await owner.getByRole('button', { name: /^View home/ }).click();
       await owner.locator('.flh-overlay[role="dialog"]:not(.is-loading)').waitFor({ timeout: 30000 });
+    }, open);
+
+    await step(`[${label}] Home Facts: the facts not added are offered again, folded and unchecked; adding one writes only that field`, async () => {
+      const offers = owner.locator('.flh-offered-facts');
+      await offers.waitFor({ timeout: 15000 });
+      assert(!(await offers.getAttribute('open')), 'offers open by default');
+      assert(/2 not added yet/.test(await offers.locator('summary').first().innerText()), 'offer count');
+      await offers.locator('summary').first().click();
+      const offerRow = (name) => offers.locator('.flh-fact-checklist-rows > li').filter({ has: owner.locator('.flh-fact-check-text b', { hasText: new RegExp(`^${name}$`) }) });
+      assert(!(await offerRow('Primary bedroom').locator('input').isChecked()) && !(await offerRow('School district').locator('input').isChecked()), 'an offer was preselected');
+      assert(/FLH hasn.t verified it/.test(await offerRow('School district').innerText()), 'school attribution');
+      await offers.evaluate((el) => el.scrollIntoView({ block: 'start' }));
+      await shot(owner, `after-${label}-4a-offered-later`);
+      await offerRow('Primary bedroom').locator('input').check();
+      await offers.getByRole('button', { name: /Add 1 fact/ }).click();
+      const id = homeRow(url).id;
+      for (let i = 0; i < 20 && homeRow(url).primary_bedroom_location !== 'Main Floor'; i += 1) await owner.waitForTimeout(250);
+      const after = homeRow(url);
+      assert(after.primary_bedroom_location === 'Main Floor' && after.school_district === null && after.laundry_location === 'first_floor', `after add: ${JSON.stringify(after).slice(0, 200)}`);
+      assert(!Object.keys(checksOf(id, info.users.owner.id)).length, 'adding a fact wrote a Match answer');
+      await owner.locator('.flh-offered-facts summary').first().waitFor();
+      assert(/1 not added yet/.test(await owner.locator('.flh-offered-facts summary').first().innerText()), 'the added offer should drop off');
     }, open);
 
     await step(`[${label}] owner's Match view: Fireplace shows "Listing suggests Yes" (unanswered); answering it is the owner's own and hides the pointer`, async () => {
@@ -217,6 +246,8 @@ async function run() {
       const fireRow = coBuyer.locator('.flh-mc2-row').filter({ hasText: 'Fireplace' });
       await fireRow.locator('.flh-mc2-listing').waitFor({ timeout: 15000 });
       assert(/Listing suggests\s*Yes/.test(await fireRow.innerText()), 'co-buyer pointer');
+      // The co-buyer sees the same remaining shared offer (the district), unchecked.
+      assert(/1 not added yet/.test(await coBuyer.locator('.flh-offered-facts summary').first().innerText()), 'co-buyer offers');
       await fireRow.scrollIntoViewIfNeeded();
       await shot(coBuyer, `after-${label}-5-cobuyer-hint`);
       await fireRow.locator('label.is-yes').click();
