@@ -485,25 +485,67 @@ export function undoHomeFactSuggestion(home, suggestion) {
 /**
  * Rerunning extraction on new text after some suggestions were used. `used`
  * maps a suggestion id to the suggestion that was applied in this session.
- * Each used fact still holding its value is re-read against the new text:
- * kept if the new text suggests the same value, otherwise cleared back to
- * Unknown and listed in `cleared` (field labels). Anything a person typed is
- * left alone.
- * @returns {{ home, suggestions, used, cleared: string[] }}
+ *
+ * A fact the buyer accepted stays accepted, whatever the new text says or
+ * leaves out: only the buyer removes it (Undo) or changes it (Home Facts). New
+ * text that states a different value is named as a read-only disagreement
+ * (homeFactDisagreements) and changes nothing. A used suggestion no longer
+ * holding its value (the buyer edited the field) is the buyer's own value now
+ * and is no longer tracked. Anything a person typed is left alone.
+ * @returns {{ home, suggestions, used, cleared: string[] }} `cleared` is always
+ *   empty; it is kept so callers need no change.
  */
 export function resuggestHomeFacts(text, home = {}, used = {}) {
   const live = Object.values(used || {}).filter((item) => comparable(home?.[item.field]) === comparable(item.value));
-  let base = { ...home };
-  for (const item of live) base = undoHomeFactSuggestion(base, item);
-  const suggestions = suggestHomeFacts(text, base);
-  let next = base;
-  const nextUsed = {};
-  const cleared = [];
-  for (const item of live) {
-    const same = suggestions.find((suggestion) => suggestion.id === item.id);
-    if (same) { next = applyHomeFactSuggestion(next, same); nextUsed[same.id] = same; } else cleared.push(item.label);
+  const fresh = suggestHomeFacts(text, home);
+  const suggestions = [...live, ...fresh.filter((item) => !live.some((kept) => kept.id === item.id))]
+    .sort((a, b) => HOME_FACT_SUGGESTION_FIELDS.indexOf(a.field) - HOME_FACT_SUGGESTION_FIELDS.indexOf(b.field));
+  return { home, suggestions, used: Object.fromEntries(live.map((item) => [item.id, item])), cleared: [] };
+}
+
+/* ------------------------- Offered, not added (for later) ------------------------- */
+
+// The facts a paste offered that the buyer didn't add before saving, kept on
+// the saved snapshot (homes.listing_import.offeredFacts, additive jsonb, no
+// migration) so they can be reviewed later in Home Facts. They are only an
+// offer: nothing reads them as a value, Match never sees them, and provenance
+// treats them as listing evidence only for a field that later holds the same
+// value. Each keeps its sentence, so the later review can show why.
+const OFFER_KEYS = ['field', 'value', 'label', 'display', 'evidence', 'school', 'converted', 'sourceType', 'sourceProvider'];
+
+/** The suggestions not used and still addable to this home, as plain records. */
+export function offeredHomeFacts(suggestions = [], used = {}, home = {}) {
+  const seen = new Set();
+  return (suggestions || [])
+    .filter((item) => !used?.[item.id] && HOME_FACT_SUGGESTION_FIELDS.includes(item.field) && applyHomeFactSuggestion(home, item) !== home)
+    .filter((item) => (seen.has(item.field) ? false : (seen.add(item.field), true)))
+    .map((item) => Object.fromEntries(OFFER_KEYS.filter((key) => item[key] !== undefined).map((key) => [key, item[key]])));
+}
+
+/** The import result to persist, with the offered-but-not-added facts beside it. */
+export function importResultWithOfferedFacts(importResult, offered = []) {
+  if (!importResult || !offered?.length) return importResult;
+  return { ...importResult, offeredFacts: offered };
+}
+
+/**
+ * The offered facts still open on a saved home: the field is still empty and
+ * the value still fits the home. One per field; anything malformed is ignored.
+ * Each comes back with the id a suggestion would have, so the same apply /
+ * contradiction rules hold.
+ */
+export function pendingOfferedFacts(home = {}) {
+  const offered = Array.isArray(home?.listingImport?.offeredFacts) ? home.listingImport.offeredFacts : [];
+  const seen = new Set();
+  const out = [];
+  for (const item of offered) {
+    if (!item || !HOME_FACT_SUGGESTION_FIELDS.includes(item.field) || item.sourceProvider !== 'user_paste' || isEmpty(item.value) || seen.has(item.field)) continue;
+    const suggestion = { ...item, id: stableId(item.field, item.value), label: HOME_FACT_SUGGESTION_LABELS[item.field], school: SCHOOL_FIELDS.has(item.field) };
+    if (applyHomeFactSuggestion(home, suggestion) === home) continue;
+    seen.add(item.field);
+    out.push(suggestion);
   }
-  return { home: next, suggestions, used: nextUsed, cleared };
+  return out.sort((a, b) => HOME_FACT_SUGGESTION_FIELDS.indexOf(a.field) - HOME_FACT_SUGGESTION_FIELDS.indexOf(b.field));
 }
 
 /* ------------------------- Shared vs personal suggestions ------------------------ */

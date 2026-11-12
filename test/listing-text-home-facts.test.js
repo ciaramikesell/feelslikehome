@@ -196,17 +196,17 @@ test('Use fills an empty field; Undo takes back only what Use wrote', () => {
   assert.equal(undoHomeFactSuggestion(applyHomeFactSuggestion(emptyHome(), spaces), spaces).garageSpaces, '', 'garage spaces is a text column: Unknown is empty');
 });
 
-test('rerunning on new text keeps a used fact it still supports and clears the rest', () => {
+test('rerunning on new text keeps every fact the buyer accepted, even ones the new text leaves out (Add Home V3 review)', () => {
   const first = suggestHomeFacts('Finished basement. Laundry on the main level.');
   let home = first.reduce(applyHomeFactSuggestion, emptyHome());
   const used = Object.fromEntries(first.map((item) => [item.id, item]));
   home = { ...home, primaryBedroomLocation: 'Main Floor' }; // typed by the buyer
   const rerun = resuggestHomeFacts('Finished basement. Attached garage.', home, used);
   assert.equal(rerun.home.basementCondition, 'finished');
-  assert.equal(rerun.home.laundryLocation, null);
+  assert.equal(rerun.home.laundryLocation, 'first_floor', 'accepted, so kept although the new text omits it');
   assert.equal(rerun.home.primaryBedroomLocation, 'Main Floor', 'a typed value is never touched');
-  assert.deepEqual(rerun.cleared, ['Laundry']);
-  assert.deepEqual(Object.values(rerun.used).map((item) => item.field), ['basementCondition']);
+  assert.deepEqual(rerun.cleared, []);
+  assert.deepEqual(Object.values(rerun.used).map((item) => item.field).sort(), ['basementCondition', 'laundryLocation']);
   assert.ok(rerun.suggestions.some((item) => item.field === 'garageType'));
 });
 

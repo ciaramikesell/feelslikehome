@@ -111,12 +111,20 @@ test('Undo and a repeated paste touch only what a suggestion wrote; a typed valu
   const applied = applyHomeFactSuggestion(emptyHome(), laundry);
   assert.equal(undoHomeFactSuggestion(applied, laundry).laundryLocation, null);
   assert.equal(undoHomeFactSuggestion({ ...applied, laundryLocation: 'second_floor' }, laundry).laundryLocation, 'second_floor');
-  // Re-pasting text that no longer says it clears only the suggested value.
+  // Re-pasting text that leaves it out keeps it: the buyer accepted it (still owned, so Undo works).
   const rerun = resuggestHomeFacts('Gas fireplace in the family room.', applied, used);
-  assert.equal(rerun.home.laundryLocation, null);
-  assert.deepEqual(rerun.cleared, ['Laundry']);
-  // Re-pasting the same text keeps it, still owned by the suggestion.
-  assert.equal(resuggestHomeFacts(TEXT, applied, used).home.laundryLocation, 'first_floor');
+  assert.equal(rerun.home.laundryLocation, 'first_floor');
+  assert.deepEqual(rerun.cleared, []);
+  assert.ok(rerun.used[laundry.id] && rerun.suggestions.some((item) => item.id === laundry.id));
+  // Text that says something else keeps it too, and names the disagreement read-only.
+  const other = resuggestHomeFacts('Laundry in the basement.', applied, used);
+  assert.equal(other.home.laundryLocation, 'first_floor');
+  assert.equal(other.suggestions.some((item) => item.field === 'laundryLocation' && item.value === 'basement'), false);
+  assert.deepEqual(homeFactDisagreements('Laundry in the basement.', applied).map((item) => [item.field, item.kind, item.listing]), [['laundryLocation', 'differs', 'Basement']]);
+  // A used fact the buyer then edited is theirs: no longer tracked, never reverted.
+  const edited = resuggestHomeFacts(TEXT, { ...applied, laundryLocation: 'second_floor' }, used);
+  assert.equal(edited.home.laundryLocation, 'second_floor');
+  assert.equal(edited.used[laundry.id], undefined);
 });
 
 test('provenance: added facts join the snapshot with their sentences; unchecked ones never do', () => {

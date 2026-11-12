@@ -16,7 +16,7 @@ import NoteListFields from '@/components/NoteListFields';
 import { mergeImportFields, resolveImport } from '@/lib/importDomain';
 import { appendAllSuggestions, appendSuggestionToNotes, extractEnrichmentSuggestions } from '@/lib/importReview';
 import { applyListingAnswer, hasRecordedAnswer, listingTextEvidence, resuggestListingAnswers, undoListingAnswer } from '@/lib/listingTextAnswers';
-import { applyHomeFactSuggestion, combineImportResults, homeFactDisagreements, importResultWithHomeFacts, isPreselectedHomeFact, personalSuggestionStatus, personalSuggestionsAnsweredBy, resuggestHomeFacts, undoHomeFactSuggestion, visiblePersonalSuggestions } from '@/lib/listingTextHomeFacts';
+import { applyHomeFactSuggestion, combineImportResults, homeFactDisagreements, importResultWithHomeFacts, importResultWithOfferedFacts, isPreselectedHomeFact, offeredHomeFacts, personalSuggestionStatus, personalSuggestionsAnsweredBy, resuggestHomeFacts, undoHomeFactSuggestion, visiblePersonalSuggestions } from '@/lib/listingTextHomeFacts';
 import { splitAddressLines, formatFoundCardFacts, formatCurrencyDisplay, digitsOnly, formatLotSizeDisplay, formatHomePrice } from '@/lib/homeDisplay';
 import { withAcresUnit } from '@/lib/lotSize';
 import { createClient } from '@/lib/supabase/client';
@@ -908,7 +908,8 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         const lotSize = form.lotSize === (initial?.lotSize ?? '') ? form.lotSize : withAcresUnit(form.lotSize);
         const coordinates = importResult ? await importedCoordinatePatch(form, importResult) : {};
         // Home Facts used from pasted text join the snapshot with their sentences.
-        const snapshotSource = importResultWithHomeFacts(importResult, usedFacts, form);
+        // Facts offered but not added stay on the snapshot for a later review in Home Facts.
+        const snapshotSource = importResultWithOfferedFacts(importResultWithHomeFacts(importResult, usedFacts, form), offeredHomeFacts(factSuggestions, usedFacts, form));
         const saved = await onSave({ ...form, ...coordinates, lotSize, photoUrl: finalPhotoUrl, ...(snapshotSource ? { listingImport: listingImportSnapshot(snapshotSource) } : {}) }, quickSave ? { landing: 'saved' } : undefined);
         if (quickSave && saved?.id) {
           setSavedHome(savedHomeSummary(form, { id: saved.id, photoUrl: finalPhotoUrl, photoFailed, searchType: priorities.searchType, listingStatus: providerResult?.listing?.status }));
