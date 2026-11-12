@@ -141,6 +141,10 @@ async function run() {
       await owner.getByText('Not proof of a basement’s style or condition.').waitFor({ state: 'detached', timeout: 10000 });
       for (let i = 0; i < 20 && homeRow(url).basement_condition !== 'finished'; i += 1) await owner.waitForTimeout(250);
       assert(homeRow(url).basement_condition === 'finished', 'buyer value not saved');
+      // Answering crosses the Match Reveal threshold (#170): that one-time reveal is expected; keep going.
+      const reveal = owner.locator('.flh-reveal-backdrop');
+      await reveal.waitFor({ timeout: 5000 }).catch(() => {});
+      if (await reveal.count()) { await owner.getByRole('button', { name: 'Keep going' }).click(); await reveal.waitFor({ state: 'detached' }); }
     }, open);
 
     await step(`[${label}] owner's Match view: "County records suggest Yes" on Fireplace (unanswered); the owner's own No wins`, async () => {
