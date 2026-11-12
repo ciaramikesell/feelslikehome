@@ -775,6 +775,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   const lookupCache = useRef(new Map());
   const importApplied = useRef({});
   const networkLookups = useRef(0);
+  const lookupInFlight = useRef(false);
   const cooldownUntil = useRef(0);
   const [duplicateReason, setDuplicateReason] = useState('listing');
   const [switchNote, setSwitchNote] = useState('');
@@ -1124,15 +1125,16 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   // lookup or paste wrote that still holds its value (never what the buyer
   // typed or changed), and drop that property's review state. Pasted text and
   // the buyer's own notes, photo and confirmed answers are kept.
-  const clearPreviousProperty = (current) => {
-    let next = revertAppliedFields(current, importApplied.current).form;
-    for (const used of Object.values(usedFacts)) next = undoHomeFactSuggestion(next, used);
+  // `applied` is captured before any reset: setForm updaters run later, at render.
+  const clearPreviousProperty = (current, applied = importApplied.current, used = usedFacts) => {
+    let next = revertAppliedFields(current, applied).form;
+    for (const fact of Object.values(used)) next = undoHomeFactSuggestion(next, fact);
     return next;
   };
 
   const lookupAddress = async (rawAddress, opts = {}) => {
     const address = (rawAddress || '').trim();
-    if (!address || importPhase === 'loading' || address === lastLookupAddress) return;
+    if (!address || importPhase === 'loading' || lookupInFlight.current || address === lastLookupAddress) return;
     // A property this search already holds opens that home: no request, nothing re-imported.
     const sameProperty = findHomeByAddress(existingHomes, address);
     if (sameProperty) { setDuplicateReason('address'); setDuplicateHome(sameProperty); return; }
@@ -1155,7 +1157,8 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     setProviderResult(null);
     setImportErrorMsg('');
     setUrlFallbackMsg('');
-    setForm((f) => ({ ...(hadPrevious ? clearPreviousProperty(f) : f), address, ...(opts.listingUrl !== undefined ? { listingUrl: opts.listingUrl } : {}) }));
+    const previousUsed = usedFacts;
+    setForm((f) => ({ ...(hadPrevious ? clearPreviousProperty(f, previous, previousUsed) : f), address, ...(opts.listingUrl !== undefined ? { listingUrl: opts.listingUrl } : {}) }));
 
     // Same property and kind already looked up in this session: reuse it, no request.
     const cacheKey = lookupCacheKey(address, lookupMode);
@@ -1164,6 +1167,9 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
       if (Date.now() < cooldownUntil.current) { lookupFailed('cooldown'); return; }
       if (networkLookups.current >= SESSION_LOOKUP_LIMIT) { lookupFailed('session_limit'); return; }
       networkLookups.current += 1;
+      // Set synchronously, before the first await: a second click in the same tick
+      // (before React re-renders the Finding… state) makes no second request.
+      lookupInFlight.current = true;
       try {
         const res = await fetch('/api/import-listing', {
           method: 'POST',
@@ -1187,6 +1193,8 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
       } catch {
         lookupFailed('unavailable');
         return;
+      } finally {
+        lookupInFlight.current = false;
       }
     }
 

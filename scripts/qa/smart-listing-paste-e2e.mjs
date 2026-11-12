@@ -140,6 +140,8 @@ async function run() {
     await step(`[${label}] lookup succeeds → optional paste offered; Home Facts suggested only for empty fields; one checklist, Add N facts; saved with evidence`, async () => {
       owner = await signedIn(browser, 'owner', device);
       n += 1;
+      // Phase 4: one search holds one home per address, so clear earlier runs of this address.
+      psql(`delete from public.homes where search_id = ${lit(info.search)} and address like '51613 Sass Rd%'`);
       const url = listingUrl(51613, label, n);
       await find(owner, url);
       await owner.getByText('We found your home').waitFor();
@@ -220,6 +222,8 @@ async function run() {
 
     await step(`[${label}] Uncheck a shared fact → it stays Unknown and the personal question waits in this buyer's Match view`, async () => {
       n += 1;
+      // Phase 4: one search holds one home per address, so clear earlier runs of this address.
+      psql(`delete from public.homes where search_id = ${lit(info.search)} and address like '51613 Sass Rd%'`);
       const url = listingUrl(51613, label, n);
       await find(owner, url);
       await paste(owner, DESCRIPTION);
@@ -247,6 +251,8 @@ async function run() {
 
     await step(`[${label}] lookup fails → same optional paste; checking every row and Add 8 facts fills empty fields; saved as pasted text`, async () => {
       n += 1;
+      // Phase 4: one search holds one home per address, so clear earlier runs of this address.
+      psql(`delete from public.homes where search_id = ${lit(info.search)} and address like '51619 Sass Rd%'`);
       const url = listingUrl(51619, label, n);
       await find(owner, url);
       const card = await owner.locator('.flh-found').innerText();
@@ -271,6 +277,8 @@ async function run() {
 
     await step(`[${label}] hedged text → nothing suggested, Unknown stays Unknown, home still adds`, async () => {
       n += 1;
+      // Phase 4: one search holds one home per address, so clear earlier runs of this address.
+      psql(`delete from public.homes where search_id = ${lit(info.search)} and address like '51613 Sass Rd%'`);
       const url = listingUrl(51613, label, n);
       await find(owner, url);
       await paste(owner, HEDGED);

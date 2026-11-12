@@ -122,9 +122,13 @@ test('Add Home: duplicates and the session cache come before any request; failur
   // Only a successful response is cached.
   assert.ok(at('lookupCache.current.set(cacheKey, data)') > at('if (!res.ok) {'));
   assert.match(lookup, /if \(res\.status === 429\) \{[\s\S]*?cooldownUntil\.current = Date\.now\(\)/);
-  assert.match(lookup, /if \(!address \|\| importPhase === 'loading' \|\| address === lastLookupAddress\) return;/, 'repeated clicks and the same address make no request');
+  assert.match(lookup, /if \(!address \|\| importPhase === 'loading' \|\| lookupInFlight\.current \|\| address === lastLookupAddress\) return;/, 'repeated clicks and the same address make no request');
+  assert.ok(at('lookupInFlight.current = true;') < at("fetch('/api/import-listing'"), 'set before the first await');
+  assert.match(lookup, /\} finally \{\s*lookupInFlight\.current = false;\s*\}/);
   // One property's data at a time.
-  assert.match(lookup, /setForm\(\(f\) => \(\{ \.\.\.\(hadPrevious \? clearPreviousProperty\(f\) : f\), address,/);
+  // What to clear is captured before importApplied is reset: the updater runs at render, later.
+  assert.match(lookup, /setForm\(\(f\) => \(\{ \.\.\.\(hadPrevious \? clearPreviousProperty\(f, previous, previousUsed\) : f\), address,/);
+  assert.ok(at('const previous = { ...importApplied.current };') < at('importApplied.current = {};'));
   assert.match(lookup, /importApplied\.current = appliedImportFields\(f, merged\);/);
   assert.match(modal, /lookupAddress\(raw, \{ listingUrl: '' \}\);/, 'a plain address drops an earlier find’s link');
   // The manual path stays: every no-request safeguard ends on the address card.
