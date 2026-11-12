@@ -29,7 +29,7 @@ import { PROVENANCE_LABELS, fieldProvenance, hasImportSnapshot } from '@/lib/hom
 import { isNativeApp } from '@/lib/platform';
 import { importedDetailCount } from '@/lib/homeFacts';
 import { importedCoordinatePatch, listingImportSnapshot } from '@/lib/importSnapshot';
-import { findInputLabel, foundHomeEssentials, foundHomePriceLine, savedHomeSummary } from '@/lib/addHomeSave';
+import { findInputLabel, foundDetailsLine, foundHomeEssentials, foundHomePriceLine, savedHomeSummary } from '@/lib/addHomeSave';
 import { ALLOWED_PHOTO_TYPES, MAX_PHOTO_BYTES, PHOTO_BUCKET, storagePathFromPublicUrl } from '@/lib/homePhoto';
 
 function LikeDislikeInput({ value, onChange }) {
@@ -616,7 +616,7 @@ function ImportFoundCard({ form, set, importResult, lookupResult = null, importP
           {line2 && <p className="flh-found-locality"><MapPin size={13} aria-hidden="true" /> {line2}</p>}
           <strong className="flh-found-price">{foundHomePriceLine(form, priorities.searchType, importResult.listing?.status)}</strong>
           {facts.length > 0 && <ul className="flh-found-facts">{facts.map((fact) => <li key={fact}>{fact}</li>)}</ul>}
-          {count > 0 && <p className="flh-found-count"><Sparkles size={13} aria-hidden="true" /> {count} listing detail{count === 1 ? '' : 's'} saved with it, marked From listing.</p>}
+          {count > 0 && <p className="flh-found-count"><Sparkles size={13} aria-hidden="true" /> {foundDetailsLine(count, vocabulary.singularLower)}</p>}
         </div>
       </div>
       {PARTIAL_NOTES[importResult.partial] && <p className="flh-found-status" role="status">{PARTIAL_NOTES[importResult.partial]}</p>}

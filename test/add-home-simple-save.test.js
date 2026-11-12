@@ -12,10 +12,12 @@ import { createTestDatabase, DB_TESTS_ENABLED, DB_SKIP_REASON } from './support/
 import { DOC_ADDRESS, documentedProperty, documentedSaleListing } from './support/rentcastDocumentedShapes.js';
 
 register('./support/aliasHooks.mjs', import.meta.url);
-const { findInputLabel, foundHomeEssentials, foundHomePriceLine, savedHomeSummary } = await import('../src/lib/addHomeSave.js');
+const { findInputLabel, foundDetailsLine, foundHomeEssentials, foundHomePriceLine, savedHomeSummary } = await import('../src/lib/addHomeSave.js');
 const { emptyHome } = await import('../src/lib/constants.js');
 const { normalizeRentCastFields } = await import('../src/lib/rentcast.js');
-const { mergeImportFields } = await import('../src/lib/importDomain.js');
+const { IMPORT_DESTINATIONS, EVIDENCE_STRENGTH, createFinding, mergeImportFields, resolveImport } = await import('../src/lib/importDomain.js');
+const { parseListingText, parseListingTextFindings } = await import('../src/lib/matching.js');
+const { combineImportResults } = await import('../src/lib/listingTextHomeFacts.js');
 const { listingImportSnapshot } = await import('../src/lib/importSnapshot.js');
 const { findHomeByListingUrl } = await import('../src/lib/listingUrl.js');
 const { acceptInvitation, createInvitation, getHomesForUser, saveHomePersonalAndShared } = await import('../src/lib/supabase/collaboration.js');
@@ -42,6 +44,18 @@ test('the price line never presents an inactive listing’s last price as an ask
   assert.equal(foundHomePriceLine({ price: '335000' }, 'home_buy'), '$335,000');
   assert.equal(foundHomePriceLine({ price: '' }, 'home_buy', 'inactive'), 'No current asking price');
   assert.equal(foundHomePriceLine({ price: '' }, 'home_buy', 'active'), 'Price unknown');
+});
+
+test('the found card counts what FLH found, with correct grammar, and never says it is saved', () => {
+  assert.equal(foundDetailsLine(1), 'We found 1 detail about this home.');
+  assert.equal(foundDetailsLine(18), 'We found 18 details about this home.');
+  assert.equal(foundDetailsLine(2, 'home'), 'We found 2 details about this home.');
+  assert.equal(foundDetailsLine(0), '');
+  assert.doesNotMatch(foundDetailsLine(18), /saved/i);
+  assert.match(card, /\{count > 0 && <p className="flh-found-count"><Sparkles size=\{13\} aria-hidden="true" \/> \{foundDetailsLine\(count, vocabulary\.singularLower\)\}<\/p>\}/);
+  assert.doesNotMatch(modal, /saved with it|marked From listing/);
+  // Where each detail came from stays on Home Facts (provenance), unchanged.
+  assert.match(read('src/lib/homeProvenance.js'), /listing/);
 });
 
 test('the compact Find line names the site for a link and keeps an address as typed', () => {
@@ -122,6 +136,51 @@ test('a failed optional photo upload saves the home without it; the full editor 
   assert.match(savedView, /summary\.photoFailed && <p className="flh-saved-photo-note" role="alert">The photo didn’t upload, so the \{vocabulary\.singularLower\} was saved without it\./);
 });
 
+/* ------------------------- photo URL safety (pasted text) ------------------------- */
+
+const IMAGE_TEXT = 'Charming colonial. https://photos.zillowstatic.com/fp/abc123-uncropped_scaled_within_1536_1152.jpg Finished basement. 3 beds 2 baths.';
+const IMAGE_AND_LISTING = 'See https://cdn.example-listings.com/photos/front.webp and https://www.zillow.com/homedetails/1-Main-St/1_zpid/ for more.';
+
+test('an image URL in pasted listing text never becomes the home photo (or the listing URL)', () => {
+  assert.equal('photoUrl' in parseListingText(IMAGE_TEXT), false);
+  assert.equal('listingUrl' in parseListingText(IMAGE_TEXT), false, 'an image link is not the listing page');
+  const both = parseListingText(IMAGE_AND_LISTING);
+  assert.equal('photoUrl' in both, false);
+  assert.equal(both.listingUrl, 'https://www.zillow.com/homedetails/1-Main-St/1_zpid/');
+  for (const ext of ['png', 'jpeg', 'avif', 'gif', 'heic', 'JPG']) {
+    assert.equal('photoUrl' in parseListingText(`Photo: https://img.example.com/a/b.${ext}?w=800 nice`), false, ext);
+  }
+  assert.equal(parseListingTextFindings(IMAGE_TEXT).some((finding) => finding.concept === 'photoUrl'), false);
+});
+
+test('no import can set or replace photoUrl: it is not an import destination', () => {
+  assert.equal(IMPORT_DESTINATIONS.includes('photoUrl'), false);
+  // Even a hand-made finding or patch for photoUrl is refused at every gate.
+  assert.equal(createFinding({ concept: 'photoUrl', value: 'https://img.example.com/a.jpg', sourceType: 'listing_prose', sourceProvider: 'user_paste', evidenceStrength: EVIDENCE_STRENGTH.EXPLICIT }), null);
+  assert.equal('photoUrl' in resolveImport([{ concept: 'photoUrl', value: 'https://img.example.com/a.jpg', evidenceStrength: EVIDENCE_STRENGTH.EXPLICIT }]).fieldPatch, false);
+  assert.equal(mergeImportFields({ ...emptyHome(), photoUrl: '' }, { photoUrl: 'https://img.example.com/a.jpg' }).photoUrl, '');
+});
+
+test('pasting text with an image URL keeps an uploaded or existing photo, and an empty photo stays empty', () => {
+  const uploaded = 'https://x.supabase.co/storage/v1/object/public/home-photos/u/mine.png';
+  const run = (home) => {
+    // runAutofill's merge, exactly: findings → resolveImport → mergeImportFields.
+    const result = resolveImport(parseListingTextFindings(IMAGE_TEXT).filter((finding) => finding.concept !== 'garageSpaces'), home);
+    return { home: mergeImportFields(home, result.fieldPatch), fields: result.fieldPatch };
+  };
+  assert.equal(run({ ...emptyHome(), photoUrl: uploaded }).home.photoUrl, uploaded);
+  assert.equal(run({ ...emptyHome(), photoUrl: 'https://example.com/typed-by-the-buyer.jpg' }).home.photoUrl, 'https://example.com/typed-by-the-buyer.jpg');
+  const empty = run(emptyHome());
+  assert.equal(empty.home.photoUrl, '');
+  assert.equal('photoUrl' in empty.fields, false);
+  // Nor does it reach the saved snapshot (so nothing claims a photo came "From listing").
+  const snapshot = listingImportSnapshot(combineImportResults(null, { fields: empty.fields, descriptionFeatures: [], suggestions: [], source: 'raw-text' }), 'x');
+  assert.equal('photoUrl' in snapshot.fields, false);
+  // The paste handler never touches the photo or the staged file.
+  const autofill = modal.match(/const runAutofill = \(\) => \{[\s\S]*?\n {2}\};/)[0];
+  assert.doesNotMatch(autofill, /photoUrl|photoFile|setPhotoFile|PHOTO_BUCKET|storage/);
+});
+
 /* ------------------------------ the saved state ------------------------------ */
 
 test('after Save Home: a clear saved state, then back to My Homes or into the home — no questionnaire', () => {
@@ -196,6 +255,18 @@ dbTest('Save Home with nothing optional: one home, every looked-up value and the
   assert.equal(loaded.photoUrl, '');
   // The same link again is a duplicate, for the co-buyer too.
   assert.equal(findHomeByListingUrl(await getHomesForUser(db.clientFor(ids.coBuyer), ids.coBuyer, ids.search), listingUrl)?.id, saved.id);
+});
+
+dbTest('pasting text with an image URL never changes a saved photo, or gives a photo-less home one', async () => {
+  const owner = db.clientFor(ids.owner);
+  const uploaded = 'https://example.supabase.co/storage/v1/object/public/home-photos/u/kept.png';
+  const paste = (home) => mergeImportFields(home, resolveImport(parseListingTextFindings(IMAGE_TEXT), home).fieldPatch);
+  const withPhoto = await saveHomePersonalAndShared(owner, { ...emptyHome(), address: '7 Photo Kept Ln, Testville, MI 48000', photoUrl: uploaded }, ids.owner, ids.search);
+  await saveHomePersonalAndShared(owner, paste(withPhoto), ids.owner, ids.search);
+  const noPhoto = await saveHomePersonalAndShared(owner, paste({ ...emptyHome(), address: '8 No Photo Ln, Testville, MI 48000' }), ids.owner, ids.search);
+  const rows = db.admin(`select id, photo_url from public.homes where id in ('${withPhoto.id}', '${noPhoto.id}')`);
+  assert.equal(rows.find((row) => row.id === withPhoto.id).photo_url, uploaded);
+  assert.equal(rows.find((row) => row.id === noPhoto.id).photo_url, '');
 });
 
 dbTest('a co-buyer saves with the same one action; the owner sees it; personal answers stay apart', async () => {

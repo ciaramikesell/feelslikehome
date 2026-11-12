@@ -20,7 +20,7 @@ Floor Plans and PR #166 are untouched.
 | Pure helpers (essentials, price line, saved summary) | `src/lib/addHomeSave.js` |
 | Stay on the saved state; open the home on request | `src/components/HomesBoard.jsx` (`saveEditedHome` `landing`, `openSavedHome`) |
 | Styles | `src/app/globals.css` (`.flh-find-compact`, `.flh-found-*`, `.flh-saved*`) |
-| Tests | `test/add-home-simple-save.test.js` (15, 2 on real Postgres) |
+| Tests | `test/add-home-simple-save.test.js` (20, 3 on real Postgres) |
 | Browser QA | `scripts/qa/add-home-simple-save-e2e.mjs` (18 steps, desktop 1440 and iPhone 390) |
 | Screenshots | `docs/add-home-v3-simple-save-screenshots/` (`before-*` = `main` at `7964384`) |
 
@@ -43,7 +43,9 @@ and the same entry paths:
   - the street, with a map pin and the city/state/ZIP;
   - the price (an inactive listing still says "No current asking price");
   - beds · baths · sq ft · lot · year built;
-  - one quiet line: "18 listing details saved with it, marked From listing."
+  - one quiet line: "We found 18 details about this home." It is singular for
+    one ("We found 1 detail…") and never implies the home is already saved.
+    Where each detail came from stays on Home Facts, marked From listing.
 
 **3. One Save Home**, directly under the card.
 - It needs only an address. Pasting, Home Facts review, Match answers, notes
@@ -85,9 +87,27 @@ unchanged. The quick card was never theirs.
   - nothing is uploaded until Save;
   - the same `home-photos` bucket and path.
 - **Change photo** / **Remove** work while the photo is staged.
-- **FLH never fetches or hotlinks a listing site's images.** Unchanged: an
-  image URL inside text the buyer pastes still becomes the photo URL, as
-  before. No new behaviour was added there.
+- **FLH never fetches, copies or hotlinks a listing site's images.**
+- **Pasted text can no longer set the photo** (final review correction).
+  - **Before:** `parseListingText` (`src/lib/matching.js`) turned the first
+    image link in pasted listing text into `photoUrl`. That filled an empty
+    photo silently, as a hotlink to the listing site.
+  - **The extractor no longer reads image links.** An image link is also
+    never taken as the listing URL.
+  - **`photoUrl` is no longer an import destination** (`IMPORT_DESTINATIONS`
+    in `src/lib/importDomain.js`). A finding, `resolveImport` patch or
+    `mergeImportFields` patch for it is refused from any source, lookup or
+    paste.
+  - **Not changed:**
+    - an explicit upload;
+    - a Photo URL the buyer types into Home Facts or the editor;
+    - any photo already saved on a home, including one previously set from
+      pasted text (no stored data is touched);
+    - storage policies.
+  - **Pasting or re-pasting text never removes or replaces** a photo the
+    buyer chose.
+  - Covered by unit tests, a real-Postgres test and a browser step on
+    desktop and iPhone.
 - **A failed upload never costs the home** (Save Home only).
   - Today Save Home carries on and saves the home and everything typed,
     without the photo.

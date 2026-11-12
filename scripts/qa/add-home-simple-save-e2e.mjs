@@ -30,6 +30,9 @@ const VIEWPORTS = [
   ['iphone-390', devices['iPhone 13'], 50],
 ];
 const listingUrl = (number) => `https://www.zillow.com/homedetails/${number}-Sass-Rd-New-Baltimore-MI-48047/${number}_zpid/`;
+// Listing text that carries an image link: it must never become the home's photo.
+const IMAGE_URL = 'https://photos.zillowstatic.com/fp/qa-front-uncropped_scaled_within_1536_1152.jpg';
+const PASTE_WITH_IMAGE = `Charming colonial. ${IMAGE_URL} Finished basement. Laundry on the main level.`;
 const PASTE = 'Finished walkout basement with rec room. Laundry on the main level. Primary suite on the first floor. Gas fireplace in the family room. HOA $85/month.';
 // A 1×1 PNG, as a buyer's own photo.
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
@@ -111,6 +114,8 @@ async function run() {
       const card = await owner.locator('.flh-found').innerText();
       assert(/We found your home/.test(card) && card.includes(`${n(1)} Sass Rd`) && card.includes('New Baltimore, MI 48047'), 'address/location missing');
       assert(card.includes('$335,000') && /5 bd/.test(card) && /2 ba/.test(card) && /2,080 sq ft/.test(card) && /Built 1993/.test(card), `essentials: ${card.slice(0, 300)}`);
+      // What FLH found, not what is saved (nothing is saved yet).
+      assert(/We found 18 details about this home\./.test(card) && !/saved with it|marked From listing/.test(card), `detail count copy: ${card.slice(0, 400)}`);
       assert(await owner.locator('.flh-found-photo.is-placeholder').isVisible(), 'no neutral placeholder');
       assert(await owner.getByRole('button', { name: 'Add photo' }).isVisible(), 'no Add photo on the card');
       assert(!(await owner.locator('.flh-found-more').getAttribute('open')), 'optional paste is open by default');
@@ -157,6 +162,8 @@ async function run() {
       await owner.getByRole('button', { name: /^View home/ }).click();
       await owner.waitForURL(new RegExp(`/homes/${row.id}$`), { timeout: 30000 });
       await owner.locator('.flh-overlay[role="dialog"]:not(.is-loading)').waitFor({ timeout: 30000 });
+      // Provenance stays on Home Facts.
+      assert(await owner.locator('.flh-overlay').getByText('From listing').first().count(), 'Home Facts lost its From listing provenance');
       await shot(owner, `after-${label}-5-view-home`);
     }, open);
 
@@ -209,6 +216,41 @@ async function run() {
       assert(!(await owner.locator('.flh-saved-photo-note').count()), 'photo reported as failed');
       const row = rowsWhere(`listing_url = ${lit(url)}`)[0];
       assert(/\/storage\/v1\/object\/public\/home-photos\//.test(row.photo_url), `photo_url: ${row.photo_url}`);
+      await owner.getByRole('button', { name: 'Back to My Homes' }).click();
+    }, open);
+
+    await step(`[${label}] pasted image URL: never sets the photo; a photo the buyer added is kept through a re-paste`, async () => {
+      const paste = async (text) => {
+        const more = owner.locator('details.flh-found-more:not([open]) > summary');
+        if (await more.count()) await more.click();
+        await owner.locator('#flh-listing-paste-text').fill(text);
+        await owner.getByRole('button', { name: 'Fill in details' }).click();
+        await owner.locator('.flh-listing-paste-status').waitFor();
+      };
+      // No photo: pasting text with an image link leaves the placeholder.
+      const bare = listingUrl(n(8));
+      await find(owner, bare);
+      await paste(PASTE_WITH_IMAGE);
+      assert(await owner.locator('.flh-found-photo.is-placeholder').isVisible(), 'a pasted image link became the photo');
+      assert(!(await owner.locator(`img[src="${IMAGE_URL}"]`).count()), 'the listing image is shown');
+      await owner.locator('.hh-modal').evaluate((el) => el.scrollTo(0, 0));
+      await shot(owner, `after-${label}-13-pasted-image-ignored`);
+      await saveButton(owner).scrollIntoViewIfNeeded();
+      await save(owner);
+      assert(rowsWhere(`listing_url = ${lit(bare)}`)[0]?.photo_url === '', 'saved with the pasted image');
+      await owner.getByRole('button', { name: 'Back to My Homes' }).click();
+      // A photo the buyer added survives pasting (and re-pasting) text with an image link.
+      const kept = listingUrl(n(9));
+      await find(owner, kept);
+      await owner.locator('.flh-found-photo input[type=file]').setInputFiles({ name: 'mine.png', mimeType: 'image/png', buffer: PNG });
+      await owner.locator('.flh-found-photo.has-photo img').waitFor();
+      await paste(PASTE_WITH_IMAGE);
+      await paste(`${PASTE_WITH_IMAGE} Two-car attached garage.`);
+      assert(/^blob:/.test(await owner.locator('.flh-found-photo.has-photo img').getAttribute('src')), 'the buyer\'s photo was replaced');
+      await saveButton(owner).scrollIntoViewIfNeeded();
+      await save(owner);
+      const row = rowsWhere(`listing_url = ${lit(kept)}`)[0];
+      assert(/\/storage\/v1\/object\/public\/home-photos\//.test(row.photo_url) && !row.photo_url.includes('zillowstatic'), `photo_url: ${row.photo_url}`);
       await owner.getByRole('button', { name: 'Back to My Homes' }).click();
     }, open);
 

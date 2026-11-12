@@ -16,12 +16,14 @@ export const EVIDENCE_STRENGTH = Object.freeze({
 });
 
 // Adding an extractor never grants permission to update a form field. In
-// particular, conditionNotes and all personal ratings/checks are absent here.
+// particular, conditionNotes and all personal ratings/checks are absent here,
+// and so is photoUrl: no import (lookup or pasted text) ever sets or replaces
+// the home's photo. Only an explicit upload or a typed Photo URL does.
 export const IMPORT_DESTINATIONS = Object.freeze([
   'listingUrl', 'address', 'price', 'beds', 'baths', 'sqft', 'lotSize',
   'yearBuilt', 'propertyType', 'garageSpaces', 'daysOnMarket', 'basementNotes', 'homeLayout',
   'primaryBedroomLocation', 'secondaryBedroomLocation', 'availableOn',
-  'petsAllowed', 'utilitiesIncluded', 'inUnitLaundry', 'photoUrl',
+  'petsAllowed', 'utilitiesIncluded', 'inUnitLaundry',
   'hoaFeeMonthly', 'propertyTaxAnnual', 'propertyTaxYear', 'latitude', 'longitude',
   // Home Facts details. Choice facts accept only their canonical tokens.
   'listingId', 'heating', 'cooling', 'exterior', 'roof', 'garageType', 'basementStyle', 'basementCondition',
@@ -64,7 +66,7 @@ export function normalizeImportValue(concept, value) {
     const token = trimmed.toLowerCase();
     return CANONICAL_CHOICE_FACTS[concept].includes(token) ? token : null;
   }
-  if (['listingUrl', 'photoUrl'].includes(concept)) {
+  if (concept === 'listingUrl') {
     try {
       const url = new URL(trimmed);
       return /^https?:$/.test(url.protocol) ? url.toString() : null;

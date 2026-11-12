@@ -30,6 +30,15 @@ export function foundHomePriceLine(form = {}, searchType, listingStatus = null) 
   return formatHomePrice(form.price, searchType) || (listingStatus === 'inactive' ? 'No current asking price' : 'Price unknown');
 }
 
+// The found card's count of what the lookup returned. It describes what FLH
+// found, not what is saved (nothing is saved until Save Home); where each
+// detail came from stays on Home Facts, marked From listing.
+export function foundDetailsLine(count, noun = 'home') {
+  const n = Number(count) || 0;
+  if (n <= 0) return '';
+  return `We found ${n} ${n === 1 ? 'detail' : 'details'} about this ${noun}.`;
+}
+
 // Where a link came from, for the compact "Searched" line once a home shows
 // ("zillow.com"). A plain address is shown as typed.
 export function findInputLabel(value) {
