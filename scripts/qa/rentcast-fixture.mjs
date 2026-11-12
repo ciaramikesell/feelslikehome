@@ -24,6 +24,19 @@ const LISTING = {
 // dev server covers them all: 51615 listing lookup down (503), 51617 listing
 // Inactive, 51619 both lookups rate-limited (429). Any other number is complete.
 const SCENARIOS = { 51615: { fail: 'listing', status: 503 }, 51617: { listingStatus: 'Inactive' }, 51619: { fail: 'both', status: 429 } };
+// Phase 3 (docs/add-home-v3-rentcast-context.md): 51690–51695 add the further
+// documented fields (county-record fireplace / pool / view / subdivision /
+// foundation, listing type, listing history); 51691 and 51695 are Inactive.
+// Values are invented; shapes follow the documented schemas.
+for (const number of [51690, 51691, 51692, 51693, 51694, 51695]) SCENARIOS[number] = { context: true, ...(number % 4 === 3 ? { listingStatus: 'Inactive' } : {}) };
+const CONTEXT_FEATURES = { fireplace: true, fireplaceType: 'Masonry', pool: true, poolType: 'Concrete', viewType: 'City', foundationType: 'Poured Concrete' };
+const CONTEXT_LISTING = {
+  listingType: 'New Construction',
+  history: {
+    '2026-09-26': { event: 'Sale Listing', price: 335000, listingType: 'New Construction', listedDate: '2026-09-26T00:00:00.000Z', removedDate: null, daysOnMarket: 23 },
+    '2025-03-02': { event: 'Sale Listing', price: 349000, listingType: 'Standard', listedDate: '2025-03-02T00:00:00.000Z', removedDate: '2025-04-30T00:00:00.000Z', daysOnMarket: 59 },
+  },
+};
 const realFetch = globalThis.fetch;
 globalThis.fetch = async (input, init) => {
   const url = typeof input === 'string' ? input : input?.url;
@@ -35,8 +48,10 @@ globalThis.fetch = async (input, init) => {
     const fail = scenario.fail || process.env.QA_RENTCAST_FAIL;
     if ([kind, 'both'].includes(fail)) return new Response('{}', { status: Number(scenario.status || process.env.QA_RENTCAST_FAIL_STATUS || 503) });
     const formattedAddress = PROPERTY.formattedAddress.replace(/^\d+/, number);
-    const body = kind === 'property' ? [{ ...PROPERTY, formattedAddress }]
-      : url.includes('/v1/listings') ? [{ ...LISTING, formattedAddress, ...(scenario.listingStatus ? { status: scenario.listingStatus } : {}) }] : [];
+    const property = scenario.context ? { ...PROPERTY, subdivision: 'SASS HILLS', features: { ...PROPERTY.features, ...CONTEXT_FEATURES } } : PROPERTY;
+    const listing = scenario.context ? { ...LISTING, ...CONTEXT_LISTING } : LISTING;
+    const body = kind === 'property' ? [{ ...property, formattedAddress }]
+      : url.includes('/v1/listings') ? [{ ...listing, formattedAddress, ...(scenario.listingStatus ? { status: scenario.listingStatus } : {}) }] : [];
     return new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
   }
   return realFetch(input, init);

@@ -15,6 +15,7 @@ import { isUnitlessLotSize } from '@/lib/lotSize';
 import { parseNum } from '@/lib/matching';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { pendingOfferedFacts } from '@/lib/listingTextHomeFacts';
+import { countyRecordContext, listingSnapshotContext, listingSnapshotLines } from '@/lib/listingContext';
 import { OfferedFactsSheet } from '@/components/FactChecklist';
 import { createClient } from '@/lib/supabase/client';
 import { MultiSelectField, PhoneCollapse, QuietInput, SelectField } from '@/components/FactFields';
@@ -38,6 +39,18 @@ const parseMoneyNumber = (text) => { const digits = digitsOnly(text); return dig
 const parseText = (text) => text.trim() || null;
 const parseLegacyText = (text) => text.trim();
 const plural = (value, one, many) => (Number(value) === 1 ? one : many);
+
+// Context from the RentCast lookup made when the home was added (phase 3,
+// listingContext.js): the listing as it was then, dated, and what the county
+// record says about features with no Home Facts field. Read-only; never a
+// value, never a Match answer.
+function ListingContext({ lines, features }) {
+  if (!lines.length && !features.length) return null;
+  return <div className="flh-hf2-context" aria-label="Found when this home was added">
+    {lines.map((line) => <p key={line}>{line}</p>)}
+    {features.length > 0 && <p>County records: {features.join(' · ')}</p>}
+  </div>;
+}
 
 function Row({ label, htmlFor, hint, children }) {
   return <div className="flh-hf-row">
@@ -200,6 +213,8 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
   const identity = homeIdentity(home, priorities);
   const failed = (field) => editor?.failed.includes(field) || false;
   const save = (patch) => editor.saveShared(patch);
+  const record = countyRecordContext(home.listingImport);
+  const listingType = listingSnapshotContext(home.listingImport)?.listingType || null;
   const text = (field, label, { parse = parseText, ...rest } = {}) => <QuietInput id={`hf-${field}`} label={label} value={home[field]} readOnly={isReadOnly} failed={failed(field)} registerDraft={editor?.registerDraft} parse={parse} onCommit={(value) => save({ [field]: value })} className="is-boxed" {...rest} />;
   const select = (field, label, choices, onCommit = (value) => save({ [field]: value })) => <SelectField id={`hf-${field}`} label={label} value={home[field]} choices={choices} readOnly={isReadOnly} failed={failed(field)} onCommit={onCommit} />;
   const { line2 } = splitAddressLines(home.address);
@@ -227,6 +242,7 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
             format={(value) => splitAddressLines(value).line1 || value} edit={(value) => value} parse={(value) => value.trim() || undefined} placeholder="Add address" multiline
             onCommit={(address) => save({ address })} className="flh-hf2-address" />
           {line2 && <p className="flh-hf2-locality">{line2}</p>}
+          {record.subdivision && <p className="flh-hf2-locality flh-hf2-record">Subdivision: {record.subdivision} · county records</p>}
           {!apartment && <p className="flh-hf2-specs">
             <QuietInput id="hf-beds" label="Beds" value={home.beds} readOnly={isReadOnly} failed={failed('beds')} registerDraft={editor?.registerDraft} parse={parseLegacyText} inputMode="decimal" size={3} placeholder="—" suffix={` ${plural(home.beds, 'bed', 'beds')}`} onCommit={(beds) => save({ beds })} />
             <span aria-hidden="true"> · </span>
@@ -239,6 +255,11 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
             <QuietInput id="hf-lotSize" label="Lot size in acres" value={home.lotSize} readOnly={isReadOnly} failed={failed('lotSize')} registerDraft={editor?.registerDraft} format={formatLotSizeDisplay} edit={(value) => (isUnitlessLotSize(value) ? String(value).trim() : formatLotSizeDisplay(value))} parse={normalizeLotSizeInput} size={9} placeholder="— acres" onCommit={(lotSize) => save({ lotSize })} />
           </p>}
           <ListingLink home={home} readOnly={isReadOnly} editor={editor} />
+          <ListingContext lines={listingSnapshotLines(listingSnapshotContext(home.listingImport))} features={[
+            record.fireplace && `fireplace${record.fireplace.type ? ` (${record.fireplace.type})` : ''}`,
+            record.pool && `pool${record.pool.type ? ` (${record.pool.type})` : ''}`,
+            record.view && `${record.view} view`,
+          ].filter(Boolean)} />
           {home.suggestedBy && <span className="hh-provenance">Suggested by {home.suggestedBy}</span>}
         </div>
 
@@ -271,8 +292,8 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
             <Group id="hf-basic-title" title="Basic Details">
               {!showsRentalFacts && <Row label="Estimated monthly payment" hint="your estimate" htmlFor="hf-estMonthly">{text('estMonthly', null, { parse: parseMoney, format: (value) => (value ? `${money(value)}/mo` : ''), edit: (value) => money(value), inputMode: 'numeric', placeholder: 'Add your estimate' })}</Row>}
               {available.propertyType && <Row label="Property type" htmlFor="hf-propertyType">{select('propertyType', null, PROPERTY_TYPE_CHOICES)}</Row>}
-              {available.layout && <Row label="Home layout" htmlFor="hf-layout"><MultiSelectField id="hf-layout" label="Home layout" values={layoutValues(home)} choices={LAYOUT_FACT_CHOICES} readOnly={isReadOnly} failed={failed('homeLayout') || failed('primaryBedroomLocation')} onCommit={(next) => { const patch = layoutPatch(home, next); if (Object.keys(patch).length) save(patch); }} /></Row>}
-              {available.condition && <Row label="Home condition" htmlFor="hf-homeCondition"><MultiSelectField id="hf-homeCondition" label="Home condition" values={home.homeCondition} choices={CONDITION_FACT_CHOICES} readOnly={isReadOnly} failed={failed('homeCondition')} onCommit={(homeCondition) => save({ homeCondition })} /></Row>}
+              {available.layout && <Row label="Home layout" htmlFor="hf-layout" hint={!layoutValues(home).length && record.stories ? `County records: ${record.stories} ${record.stories === 1 ? 'story' : 'stories'}` : null}><MultiSelectField id="hf-layout" label="Home layout" values={layoutValues(home)} choices={LAYOUT_FACT_CHOICES} readOnly={isReadOnly} failed={failed('homeLayout') || failed('primaryBedroomLocation')} onCommit={(next) => { const patch = layoutPatch(home, next); if (Object.keys(patch).length) save(patch); }} /></Row>}
+              {available.condition && <Row label="Home condition" htmlFor="hf-homeCondition" hint={!(home.homeCondition || []).length && listingType === 'New Construction' ? 'Listing type: New Construction' : null}><MultiSelectField id="hf-homeCondition" label="Home condition" values={home.homeCondition} choices={CONDITION_FACT_CHOICES} readOnly={isReadOnly} failed={failed('homeCondition')} onCommit={(homeCondition) => save({ homeCondition })} /></Row>}
               {/* An existing Match input with no other home here: shown when it's
                   part of this search or already has a value. */}
               {!apartment && (home.secondaryBedroomLocation || (priorities.secondaryBedroomLocation?.value && priorities.secondaryBedroomLocation.tier !== 'dontcare')) && <Row label="Secondary bedrooms" htmlFor="hf-secondaryBedroomLocation">{select('secondaryBedroomLocation', null, SECONDARY_BEDROOM_CHOICES, (value) => save({ secondaryBedroomLocation: value || '' }))}</Row>}
@@ -310,6 +331,8 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
                 <PairField label="Condition" htmlFor="hf-basementCondition">{select('basementCondition', null, BASEMENT_CONDITION_CHOICES, (value) => save(basementPatch(home, 'basementCondition', value)))}</PairField>
               </Pair>
               {home.basementNotes && !home.basementStyle && !home.basementCondition && <p className="flh-hf2-note">Earlier note: “{home.basementNotes}”</p>}
+              {/* Context only: a foundation type never says a basement's style or condition. */}
+              {!home.basementStyle && !home.basementCondition && record.foundation && <p className="flh-hf2-note">County records: {record.foundation} foundation. Not proof of a basement’s style or condition.</p>}
             </Group>}
             {/* The shared notes / pros / cons (the same fields as Tour Feedback and
                 the Home Card previews), saved like every other fact here. */}

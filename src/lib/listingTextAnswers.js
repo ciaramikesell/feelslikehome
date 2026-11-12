@@ -25,6 +25,7 @@
 
 import { foldLegacyCheckAliases, getItemlistCategories, isExperientialCriterion } from './constants.js';
 import { SHARED_BOOLEAN_FACT_FIELDS, visibleOrderedItems } from './matching.js';
+import { countyRecordContext } from './listingContext.js';
 
 const FLOOR1 = '(?:first|1st|main|ground|entry)[ -]?(?:floor|level)';
 const UPPER = '(?:second|2nd|upper)[ -]?(?:floor|level)';
@@ -376,6 +377,26 @@ export function savedListingAnswers(listingImport, priorities, checks = {}) {
   }
   for (const [concept, value] of evidence) if (!value) evidence.delete(concept);
   return suggestionsFromEvidence(evidence, priorities, checks).filter((item) => !(PARKING_KEYS.has(item.key) && item.answer === 'no'));
+}
+
+/**
+ * Possible answers for the viewing buyer from the county record the RentCast
+ * lookup returned when the home was added (Add Home V3, phase 3): only a
+ * fireplace or pool the record says EXISTS, and only Yes. false or missing in
+ * a county record says nothing, so it never suggests No. Same rules as the
+ * text readers: this buyer's selected, unanswered personal criteria only, and
+ * nothing is ever written.
+ */
+export function recordListingAnswers(listingImport, priorities, checks = {}) {
+  if (!priorities) return [];
+  const record = countyRecordContext(listingImport);
+  const evidence = new Map();
+  if (record.fireplace) evidence.set('fireplace', { answer: 'yes', evidence: [`County records list a fireplace${record.fireplace.type ? ` (${record.fireplace.type})` : ''}.`] });
+  if (record.pool) evidence.set('pool', { answer: 'yes', evidence: [`County records list a pool${record.pool.type ? ` (${record.pool.type})` : ''}.`] });
+  if (!evidence.size) return [];
+  return suggestionsFromEvidence(evidence, priorities, checks)
+    .filter((item) => item.answer === true)
+    .map((item) => ({ ...item, sourceType: 'county_record', sourceProvider: 'rentcast' }));
 }
 
 /**

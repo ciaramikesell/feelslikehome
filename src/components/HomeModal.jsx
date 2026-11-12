@@ -111,7 +111,7 @@ function TriStateField({ label, value, onChange }) {
   </div></div>;
 }
 
-const FOUND_GROUP_LABELS = { basics: 'Basics', structure: 'Home & structure', parking: 'Parking', costs: 'Costs & ownership', utilities: 'Utilities', listing: 'Listing details' };
+const FOUND_GROUP_LABELS = { basics: 'Basics', structure: 'Home & structure', features: 'Features (county records)', parking: 'Parking', costs: 'Costs & ownership', utilities: 'Utilities', listing: 'Listing details' };
 
 function WhatFlhFound({ result, listingUrl, mobile = false, panelRef }) {
   const fields = result?.fields || {};
@@ -644,6 +644,8 @@ function ImportFoundCard({ form, set, importResult, lookupResult = null, importP
         <FoundHomePhoto src={photo.src} photo={photo} />
         <div className="flh-found-copy">
           <span className="flh-found-badge"><Check size={13} aria-hidden="true" /> We found your {vocabulary.singularLower}</span>
+          {/* The current listing's type, when it is not a standard sale (phase 3). */}
+          {importResult.listing?.status === 'active' && ['New Construction', 'Foreclosure', 'Short Sale'].includes(importResult.listing?.listingType) && <span className="flh-found-type">{importResult.listing.listingType}</span>}
           <h2 id="found-home-title" className="hh-serif">{line1 || form.address}</h2>
           {line2 && <p className="flh-found-locality"><MapPin size={13} aria-hidden="true" /> {line2}</p>}
           <strong className="flh-found-price">{foundHomePriceLine(form, priorities.searchType, importResult.listing?.status)}</strong>
