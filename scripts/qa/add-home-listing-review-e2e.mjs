@@ -71,7 +71,11 @@ async function step(name, fn, pages) {
   } catch (error) { log.push({ step: name, ok: false, error: error.message }); console.error('FAIL', name, '—', error.message); }
 }
 const shot = (page, name) => page.screenshot({ path: join(outDir, `${name}.png`) });
-const shotOf = (page, selector, name) => page.locator(selector).screenshot({ path: join(outDir, `${name}.png`) });
+// The review sits in a scrolling dialog: bring it into view, then capture the screen.
+const shotOf = async (page, selector, name) => {
+  await page.locator(selector).evaluate((el) => el.scrollIntoView({ block: 'start' }));
+  await page.screenshot({ path: join(outDir, `${name}.png`) });
+};
 
 async function find(page, url) {
   await page.goto(`${base}/homes`, { waitUntil: 'networkidle' });

@@ -1073,9 +1073,9 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   };
   // Add Home's found card defers personal Match answers to the buyer's own Match
   // view after saving (rebuilt there from the saved snapshot, savedListingAnswers):
-  // the ones no Home Fact settles.
+  // the ones no Home Fact settles and no checked shared fact would answer.
   const deferredAnswers = personalDeferred ? answerSuggestions.filter((suggestion) => !hasRecordedAnswer(form.checks, suggestion.key, priorities.searchType)
-    && personalSuggestionStatus(suggestion, { home: form }) !== 'settled') : [];
+    && personalSuggestionStatus(suggestion, { home: form, factSuggestions, factDecisions: effectiveFactDecisions }) === 'show') : [];
 
   const addSuggestion = (suggestion) => {
     setForm((f) => ({ ...f, notes: appendSuggestionToNotes(f.notes, suggestion) }));

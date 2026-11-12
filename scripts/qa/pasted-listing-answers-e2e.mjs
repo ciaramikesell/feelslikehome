@@ -7,10 +7,12 @@
 //
 // Drives Add Home → "Paste listing details instead" on desktop, iPad and iPhone
 // as the owner, then once as the co-buyer and the Realtor, and checks the
-// database after each save: pasting writes no Match answer; only a confirmed
-// suggestion lands in that buyer's own home_member_state.checks; the shared
-// snapshot keeps the text evidence as pasted listing text. Any failed step,
-// horizontal overflow or console error fails the run.
+// database after each save: pasting writes no Match answer; the found card only
+// names the possible answers (Add Home V3 phase 2) and each buyer answers in
+// their own Match view, where "Listing suggests …" is rebuilt from the saved
+// snapshot; only the buyer's own Yes / No lands in their home_member_state.checks;
+// the shared snapshot keeps the text evidence as pasted listing text. Any failed
+// step, horizontal overflow or console error fails the run.
 import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
@@ -68,7 +70,7 @@ async function step(name, fn, pages) {
     log.push({ step: name, ok: true, ms: Date.now() - started }); console.log('ok  ', name);
   } catch (error) { log.push({ step: name, ok: false, error: error.message }); console.error('FAIL', name, '—', error.message); }
 }
-const shot = (page, name, element = null) => (element ? page.locator(element).screenshot({ path: join(outDir, `${name}.png`) }) : page.screenshot({ path: join(outDir, `${name}.png`), fullPage: true }));
+const shot = (page, name, element = null) => (element ? page.locator(element).screenshot({ path: join(outDir, `${name}.png`) }) : page.screenshot({ path: join(outDir, `${name}.png`) }));
 
 const listingText = (address) => [
   address,
@@ -87,7 +89,17 @@ async function paste(page, address, path = '/homes', openLabel = /Add a Home/) {
   await page.getByRole('button', { name: 'Fill in details' }).click();
 }
 const review = (page) => page.locator('.flh-answer-review');
-const reviewItem = (page, label) => review(page).locator('li').filter({ has: page.locator('b', { hasText: new RegExp(`^${label}$`) }) });
+const deferred = (page) => page.locator('.flh-deferred-answers');
+const matchRow = (page, label) => page.locator('.flh-mc2-row').filter({ has: page.locator('.flh-mc2-name', { hasText: new RegExp(`^${label}`, 'i') }) });
+const pointer = (page, label) => matchRow(page, label).locator('.flh-mc2-listing');
+async function openMatch(page) {
+  for (let i = 0; i < 4; i += 1) {
+    const toggle = page.locator('.flh-mc2-toggle[aria-expanded="false"]:visible').first();
+    if (!(await toggle.count())) break;
+    await toggle.click();
+    await page.waitForTimeout(100);
+  }
+}
 async function addToMyHomes(page) {
   await page.getByRole('button', { name: 'Save Home' }).click();
   // Add Home V3: Save Home shows the saved state; View home opens the overlay.
@@ -107,42 +119,28 @@ async function run() {
     const number = label === 'desktop-1440' ? 11 : label === 'ipad-820' ? 12 : 13;
     const address = `${number} Paste Ln, New Baltimore, MI 48047`;
 
-    await step(`[${label}] owner: pasted text shows suggestions with their sentences; nothing is answered yet`, async () => {
+    // Add Home V3 phase 2: on the found card personal answers are only named
+    // (they wait for the buyer's own Match view); after saving, each buyer's
+    // unanswered criteria show "Listing suggests …" there, rebuilt from the saved
+    // snapshot, and only the buyer's own Yes / No writes anything.
+    await step(`[${label}] owner: the card names the possible answers but answers nothing; Save Home writes no answer`, async () => {
       owner = await signedIn(browser, 'owner', device);
       await paste(owner, address);
-      await review(owner).waitFor();
-      const items = await review(owner).locator('li b').allTextContents();
+      await deferred(owner).waitFor();
+      assert(!(await owner.locator('.flh-found .flh-answer-review').count()), 'personal answers reviewed on the card');
+      const named = await deferred(owner).innerText();
       // The owner selected Finished basement and Fireplace (Garage is read from garage spaces).
-      assert(JSON.stringify(items) === JSON.stringify(['Finished Basement', 'Fireplace']), `review items: ${items}`);
-      const basement = await reviewItem(owner, 'Finished Basement').innerText();
-      assert(basement.includes('Listing suggests No') && basement.includes('Does not have a finished basement.'), `basement item: ${basement}`);
-      const fireplace = await reviewItem(owner, 'Fireplace').innerText();
-      assert(fireplace.includes('Listing suggests Yes') && fireplace.includes('Gas fireplace in the family room.'), `fireplace item: ${fireplace}`);
-      assert(!/pool/i.test(await review(owner).innerText()), 'Pool was suggested from a community pool / "room for a pool"');
+      assert(/Finished Basement/.test(named) && /Fireplace/.test(named) && !/pool/i.test(named), `deferred: ${named}`);
       const note = await owner.locator('.flh-listing-paste-status, .hh-manual-fallback .hh-edit-context').first().innerText();
-      assert(/2 possible answers to review below/.test(note), `note: ${note}`);
-      await shot(owner, `${label}-1-suggestions`, '.flh-found');
-    }, open);
-
-    await step(`[${label}] owner: confirm one, leave one Unknown; undo and redo works`, async () => {
-      await reviewItem(owner, 'Finished Basement').getByRole('button', { name: /Confirm/ }).click();
-      await reviewItem(owner, 'Finished Basement').getByText('Your answer: No').waitFor();
-      await reviewItem(owner, 'Finished Basement').getByRole('button', { name: 'Undo' }).click();
-      await reviewItem(owner, 'Finished Basement').getByRole('button', { name: /Confirm/ }).waitFor();
-      await reviewItem(owner, 'Finished Basement').getByRole('button', { name: /Confirm/ }).click();
-      await reviewItem(owner, 'Fireplace').getByRole('button', { name: /Leave .* Unknown/ }).click();
-      assert(await reviewItem(owner, 'Fireplace').count() === 0, 'Leave Unknown kept the suggestion on screen');
-      assert(homeByAddress(address).length === 0, 'confirming saved the home before Save Home');
-      await shot(owner, `${label}-2-confirmed-one-left-one-unknown`, '.flh-found');
-    }, open);
-
-    await step(`[${label}] owner: Add saves only the confirmed answer, only for the owner; evidence stays pasted listing text`, async () => {
+      assert(!/possible answer/.test(note), `note still asks for a review: ${note}`);
+      assert(homeByAddress(address).length === 0, 'pasting saved the home');
+      await owner.locator('.flh-deferred-answers').scrollIntoViewIfNeeded();
+      await shot(owner, `${label}-1-deferred-on-card`);
       await addToMyHomes(owner);
       const [home] = homeByAddress(address);
       assert(home && home.user_id === OWNER, 'home not saved by the owner');
-      assert(JSON.stringify(checksOf(home.id, OWNER)) === JSON.stringify({ 'features:Finished basement': 'no' }), `owner checks: ${JSON.stringify(checksOf(home.id, OWNER))}`);
-      const others = memberStates(home.id).filter((row) => row.user_id !== OWNER && Object.keys(row.checks || {}).length);
-      assert(!others.length, `another participant got answers: ${JSON.stringify(others)}`);
+      const states = memberStates(home.id);
+      assert(states.every((row) => Object.keys(row.checks || {}).length === 0), `answers written without the buyer: ${JSON.stringify(states)}`);
       const snapshot = home.listing_import;
       assert(snapshot.source === 'pasted_text', `snapshot source ${snapshot.source}`);
       assert(!JSON.stringify(snapshot).includes('rentcast'), 'snapshot mentions RentCast');
@@ -151,79 +149,61 @@ async function run() {
       assert(snapshot.descriptionFeatures.every((item) => item.sourceType === 'listing_text'), 'evidence not labelled listing text');
       assert(!JSON.stringify(snapshot).includes('features:'), 'the snapshot carries a criterion key');
       assert(home.beds === '4', `beds ${home.beds}`);
-      await owner.goto(`${base}/homes/${home.id}?section=match`, { waitUntil: 'networkidle' });
-      await owner.locator('.flh-overlay[role="dialog"]:not(.is-loading)').waitFor({ timeout: 30000 });
-      await shot(owner, `${label}-3-match-after-save`);
     }, open);
 
-    // Rerunning extraction after confirming: an answer confirmed from earlier text
-    // is kept only while the new text still says the same thing.
-    await step(`[${label}] owner: rerun after confirming keeps a still-supported answer and clears an outdated one`, async () => {
-      const rerunAddress = `${number + 4} Paste Ln, New Baltimore, MI 48047`;
-      const rerun = async (text) => {
-        await owner.getByPlaceholder('Paste listing details (optional)').fill(text);
-        await owner.getByRole('button', { name: 'Fill in details' }).click();
-      };
-      await paste(owner, rerunAddress);
-      await review(owner).waitFor();
-      await reviewItem(owner, 'Fireplace').getByRole('button', { name: /Confirm/ }).click();
-      await reviewItem(owner, 'Finished Basement').getByRole('button', { name: /Leave .* Unknown/ }).click();
-      // Identical text: Fireplace stays confirmed and undoable; Finished basement is offered again.
-      await rerun(listingText(rerunAddress));
-      await reviewItem(owner, 'Fireplace').getByText('Your answer: Yes').waitFor();
-      assert(await reviewItem(owner, 'Fireplace').getByRole('button', { name: 'Undo' }).isVisible(), 'Undo gone after an identical rerun');
-      assert(await reviewItem(owner, 'Finished Basement').getByRole('button', { name: /Confirm/ }).isVisible(), 'the Unknown suggestion was not offered again');
-      // "No fireplace": the confirmed Yes goes back to Unknown, the buyer is told, and No is only suggested.
-      await rerun(`${rerunAddress}\nNo fireplace. Does not have a finished basement.`);
-      await reviewItem(owner, 'Fireplace').getByText('Listing suggests No').waitFor();
-      assert(await reviewItem(owner, 'Fireplace').getByRole('button', { name: 'Confirm Fireplace: No' }).isVisible() && await reviewItem(owner, 'Fireplace').getByText('Your answer').count() === 0, 'the new No was applied instead of suggested');
-      const note = await owner.locator('.flh-listing-paste-status, .hh-manual-fallback .hh-edit-context').first().innerText();
-      assert(/Fireplace is back to Unknown/.test(note), `note: ${note}`);
-      await shot(owner, `${label}-6-rerun-conflicting-text`, '.flh-found');
-      // Confirm the basement No, then text that never mentions a fireplace and still says the basement isn't finished.
-      await reviewItem(owner, 'Finished Basement').getByRole('button', { name: /Confirm/ }).click();
-      await reviewItem(owner, 'Fireplace').getByRole('button', { name: /Confirm/ }).click();
-      await rerun(`${rerunAddress}\nBright kitchen. Does not have a finished basement.`);
-      await reviewItem(owner, 'Finished Basement').getByText('Your answer: No').waitFor();
-      assert(await reviewItem(owner, 'Fireplace').count() === 0, 'Fireplace still shown with no evidence');
-      assert(/Fireplace is back to Unknown/.test(await owner.locator('.flh-listing-paste-status, .hh-manual-fallback .hh-edit-context').first().innerText()), 'silent clear');
-      assert(homeByAddress(rerunAddress).length === 0, 'rerunning saved the home');
-      await addToMyHomes(owner);
-      const [home] = homeByAddress(rerunAddress);
+    await step(`[${label}] owner: Match view shows each pointer with its sentence; answering one writes only that answer, for the owner`, async () => {
+      await openMatch(owner);
+      const basement = pointer(owner, 'Finished basement');
+      const fireplace = pointer(owner, 'Fireplace');
+      assert(/Listing suggests\s*No/.test(await basement.innerText()), 'basement pointer');
+      assert(/Listing suggests\s*Yes/.test(await fireplace.innerText()), 'fireplace pointer');
+      await basement.locator('.flh-mc2-why > summary').click();
+      assert(/Does not have a finished basement\./.test(await basement.innerText()), 'basement sentence');
+      await matchRow(owner, 'Finished basement').scrollIntoViewIfNeeded();
+      await shot(owner, `${label}-2-match-pointers`);
+      const [home] = homeByAddress(address);
+      await matchRow(owner, 'Finished basement').locator('label.is-no').click();
+      for (let i = 0; i < 20 && checksOf(home.id, OWNER)['features:Finished basement'] !== 'no'; i += 1) await owner.waitForTimeout(250);
       assert(JSON.stringify(checksOf(home.id, OWNER)) === JSON.stringify({ 'features:Finished basement': 'no' }), `owner checks: ${JSON.stringify(checksOf(home.id, OWNER))}`);
+      assert(!(await pointer(owner, 'Finished basement').count()), 'pointer still shown after the owner answered');
+      assert(await pointer(owner, 'Fireplace').count(), 'the unanswered pointer disappeared');
       const others = memberStates(home.id).filter((row) => row.user_id !== OWNER && Object.keys(row.checks || {}).length);
       assert(!others.length, `another participant got answers: ${JSON.stringify(others)}`);
     }, open);
 
-    if (label === 'desktop-1440') {
-      await step(`[${label}] owner: pasting and adding without confirming writes no answer at all`, async () => {
-        const untouched = '14 Paste Ln, New Baltimore, MI 48047';
-        await paste(owner, untouched);
-        await review(owner).waitFor();
-        await addToMyHomes(owner);
-        const [home] = homeByAddress(untouched);
-        assert(home, 'home not saved');
-        const states = memberStates(home.id);
-        assert(states.every((row) => Object.keys(row.checks || {}).length === 0), `answers written without confirmation: ${JSON.stringify(states)}`);
-      }, open);
-    }
+    await step(`[${label}] owner: pasting again follows the latest text; still nothing is answered`, async () => {
+      const rerunAddress = `${number + 4} Paste Ln, New Baltimore, MI 48047`;
+      await paste(owner, rerunAddress);
+      await deferred(owner).waitFor();
+      await owner.getByPlaceholder('Paste listing details (optional)').fill(`${rerunAddress}\nNo fireplace. Does not have a finished basement.`);
+      await owner.getByRole('button', { name: 'Fill in details' }).click();
+      assert(/Fireplace/.test(await deferred(owner).innerText()), 'deferred note after rerun');
+      await addToMyHomes(owner);
+      const [home] = homeByAddress(rerunAddress);
+      assert(memberStates(home.id).every((row) => Object.keys(row.checks || {}).length === 0), 'rerun wrote answers');
+      await openMatch(owner);
+      assert(/Listing suggests\s*No/.test(await pointer(owner, 'Fireplace').innerText()), 'the latest text should say No fireplace');
+    }, open);
     await owner.context().close();
     owner = null;
   }
 
   let coBuyer;
-  await step('[desktop-1440] co-buyer: suggestions follow their own priorities; confirming writes only their checks', async () => {
+  await step('[desktop-1440] co-buyer: names follow their own priorities; their Match-view Yes writes only their checks', async () => {
     coBuyer = await signedIn(browser, 'coBuyer', VIEWPORTS[0][1]);
     const address = '21 Paste Ln, New Baltimore, MI 48047';
     await paste(coBuyer, address);
-    await review(coBuyer).waitFor();
-    const items = await review(coBuyer).locator('li b').allTextContents();
-    assert(JSON.stringify(items) === JSON.stringify(['Fireplace']), `co-buyer items: ${items}`);
-    assert((await review(coBuyer).innerText()).includes('Your answers stay your own.'), 'collaborative note missing');
-    await reviewItem(coBuyer, 'Fireplace').getByRole('button', { name: /Confirm/ }).click();
-    await shot(coBuyer, 'desktop-1440-4-cobuyer-confirmed', '.flh-found');
+    await deferred(coBuyer).waitFor();
+    const named = await deferred(coBuyer).innerText();
+    assert(/Fireplace/.test(named) && !/Finished Basement/i.test(named), `co-buyer deferred: ${named}`);
     await addToMyHomes(coBuyer);
+    await openMatch(coBuyer);
     const [home] = homeByAddress(address);
+    assert(/Listing suggests\s*Yes/.test(await pointer(coBuyer, 'Fireplace').innerText()), 'co-buyer pointer');
+    await matchRow(coBuyer, 'Fireplace').locator('label.is-yes').click();
+    for (let i = 0; i < 20 && checksOf(home.id, CO)['features:Fireplace'] !== true; i += 1) await coBuyer.waitForTimeout(250);
+    await matchRow(coBuyer, 'Fireplace').scrollIntoViewIfNeeded();
+    await shot(coBuyer, 'desktop-1440-4-cobuyer-answered');
     assert(JSON.stringify(checksOf(home.id, CO)) === JSON.stringify({ 'features:Fireplace': true }), `co-buyer checks: ${JSON.stringify(checksOf(home.id, CO))}`);
     assert(Object.keys(checksOf(home.id, OWNER)).length === 0, 'the owner got the co-buyer\'s answer');
   }, () => [coBuyer].filter(Boolean));
