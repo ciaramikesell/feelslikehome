@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { X, Upload, Link2, Footprints, Archive as ArchiveIcon, ExternalLink, Check, Users, Search, ClipboardPaste, Camera, MessageSquareText, House, ChevronDown, ChevronLeft, Sparkles, ShieldCheck, Share, ArrowRight, Plus, MapPin } from 'lucide-react';
+import { X, Upload, Link2, Footprints, Archive as ArchiveIcon, ExternalLink, Check, Users, Search, ClipboardPaste, Camera, MessageSquareText, House, ChevronDown, ChevronLeft, Sparkles, ShieldCheck, Share, ArrowRight, Plus, MapPin, ListChecks } from 'lucide-react';
 import { StarInput } from '@/components/ui';
 import {
   MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, terminology, getItemlistCategories,
@@ -13,10 +13,11 @@ import { visibleOrderedItems, parseListingTextFindings, selectedSubjectiveCriter
 import { extractAddressFromListingUrl, extractApartmentIdentityFromListingUrl, isLikelyListingUrl, findHomeByListingUrl } from '@/lib/listingUrl';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import NoteListFields from '@/components/NoteListFields';
+import { AddFactsButton, FactChecklistRows } from '@/components/FactChecklist';
 import { mergeImportFields, resolveImport } from '@/lib/importDomain';
 import { appendAllSuggestions, appendSuggestionToNotes, extractEnrichmentSuggestions } from '@/lib/importReview';
 import { applyListingAnswer, hasRecordedAnswer, listingTextEvidence, resuggestListingAnswers, undoListingAnswer } from '@/lib/listingTextAnswers';
-import { applyHomeFactSuggestion, combineImportResults, importResultWithHomeFacts, personalSuggestionStatus, personalSuggestionsAnsweredBy, resuggestHomeFacts, undoHomeFactSuggestion, visiblePersonalSuggestions } from '@/lib/listingTextHomeFacts';
+import { applyHomeFactSuggestion, combineImportResults, homeFactDisagreements, importResultWithHomeFacts, importResultWithOfferedFacts, isPreselectedHomeFact, offeredHomeFacts, personalSuggestionStatus, personalSuggestionsAnsweredBy, resuggestHomeFacts, undoHomeFactSuggestion, visiblePersonalSuggestions } from '@/lib/listingTextHomeFacts';
 import { splitAddressLines, formatFoundCardFacts, formatCurrencyDisplay, digitsOnly, formatLotSizeDisplay, formatHomePrice } from '@/lib/homeDisplay';
 import { withAcresUnit } from '@/lib/lotSize';
 import { createClient } from '@/lib/supabase/client';
@@ -492,6 +493,8 @@ function ListingAnswerReview({ review }) {
       return <li key={suggestion.id} className={confirmed ? 'is-confirmed' : ''}>
         <div className="flh-answer-review-head"><b>{label}</b><span className={`flh-answer-chip is-${suggestion.answer === true ? 'yes' : 'no'}`}>Listing suggests {answer}</span></div>
         <blockquote><span>“{suggestion.evidence}”</span><cite>From the listing text you pasted</cite></blockquote>
+        {/* New text that says otherwise is information only: a confirmed answer stays the buyer's. */}
+        {confirmed && suggestion.newer && <p className="flh-answer-newer" role="note">The text you pasted since suggests <b>{suggestion.newer.answer === true ? 'Yes' : 'No'}</b>: “{suggestion.newer.evidence}” Your answer stays <b>{answer}</b> until you change it.</p>}
         <div className="flh-answer-review-actions">
           {confirmed
             ? <><span className="flh-answer-confirmed" role="status"><Check size={13} aria-hidden="true" /> Your answer: {answer}</span><button type="button" className="hh-btn hh-btn-ghost" onClick={() => onUndo(suggestion)}>Undo</button></>
@@ -502,34 +505,45 @@ function ListingAnswerReview({ review }) {
   </section>;
 }
 
-// Shared Home Facts suggested from pasted listing text (listingTextHomeFacts.js).
-// Kept apart from the personal answers above: these describe the property for
-// everyone in the search. Use writes one into an empty field, Skip leaves it
-// Unknown, and Undo takes back only what Use wrote. Nothing saves until Save.
+// Shared Home Facts suggested from pasted listing text (listingTextHomeFacts.js),
+// as ONE checklist (Add Home V3, phase 2). Each row is a field and its proposed
+// value; the listing's own sentence is one tap away (Why?). Explicit facts start
+// checked; a named school and an HOA fee converted from a yearly or quarterly
+// amount start unchecked. Add N facts writes the checked ones into EMPTY fields
+// only (applyHomeFactSuggestion); unchecked ones stay Unknown. Added facts can
+// be undone one by one. Where the text disagrees with the home, or with itself,
+// a read-only note says so and nothing changes. Nothing saves until Save.
 function HomeFactReview({ review }) {
-  if (!review?.suggestions.length) return null;
-  const { suggestions, decisions, onUse, onSkip, onUndo, onUseAll, isCollaborative, alsoAnswers = () => [] } = review;
+  if (!review || (!review.suggestions.length && !review.disagreements?.length)) return null;
+  const { suggestions, decisions, isSelected, onToggle, onAddSelected, onUndo, isCollaborative, alsoAnswers = () => [], disagreements = [] } = review;
+  const added = suggestions.filter((suggestion) => decisions[suggestion.id] === 'used');
   const pending = suggestions.filter((suggestion) => decisions[suggestion.id] !== 'used');
-  return <section className="flh-fact-review" aria-labelledby="flh-fact-review-title">
+  const chosen = pending.filter(isSelected);
+  return <section className="flh-fact-review flh-fact-checklist" aria-labelledby="flh-fact-review-title">
     <div className="flh-fact-review-heading">
       <h3 id="flh-fact-review-title">Home Facts from the listing</h3>
-      {pending.length > 1 && <button type="button" className="hh-btn hh-btn-ghost" onClick={() => onUseAll(pending)}>Use all {pending.length}</button>}
+      {pending.length > 0 && <span className="flh-fact-count">{chosen.length} of {pending.length} selected</span>}
     </div>
-    <p>{isCollaborative ? 'These describe the home for everyone in this search. ' : ''}Use what’s right. Anything you skip stays Unknown, and you can change any of it later in Home Facts.</p>
-    <ul>{suggestions.map((suggestion) => {
-      const used = decisions[suggestion.id] === 'used';
-      const answers = used ? [] : alsoAnswers(suggestion);
-      return <li key={suggestion.id} className={used ? 'is-confirmed' : ''}>
-        <div className="flh-answer-review-head"><b>{suggestion.label}</b><span className="flh-answer-chip is-fact">{suggestion.display}</span></div>
-        {answers.length > 0 && <p className="flh-fact-review-also">Also answers your Match: <b>{answers.join(', ')}</b>. Skip keeps this fact Unknown, and you can still answer {answers.length === 1 ? 'it' : 'them'} for yourself.</p>}
-        <blockquote><span>“{suggestion.evidence}”</span><cite>{suggestion.school ? 'As named in the listing text you pasted. FLH hasn’t verified it or checked school boundaries.' : 'From the listing text you pasted'}</cite></blockquote>
-        <div className="flh-answer-review-actions">
-          {used
-            ? <><span className="flh-answer-confirmed" role="status"><Check size={13} aria-hidden="true" /> Added to Home Facts</span><button type="button" className="hh-btn hh-btn-ghost" onClick={() => onUndo(suggestion)} aria-label={`Undo ${suggestion.label}`}>Undo</button></>
-            : <><button type="button" className="hh-btn" onClick={() => onUse(suggestion)} aria-label={`Use ${suggestion.label}: ${suggestion.display}`}>Use</button><button type="button" className="hh-btn hh-btn-ghost" onClick={() => onSkip(suggestion)} aria-label={`Skip ${suggestion.label}`}>Skip</button></>}
-        </div>
-      </li>;
-    })}</ul>
+    {pending.length > 0 && <>
+      <p>{isCollaborative ? 'These describe the home for everyone in this search. ' : ''}Uncheck anything that isn’t right. Anything left unchecked stays Unknown, and you can change any of it later in Home Facts.</p>
+      <FactChecklistRows suggestions={pending} isSelected={isSelected} onToggle={onToggle} note={(suggestion) => {
+        const answers = alsoAnswers(suggestion);
+        return answers.length > 0 && <small className="flh-fact-note">Also answers your Match: <b>{answers.join(', ')}</b>. Unchecked, it stays Unknown, and you can still answer {answers.length === 1 ? 'it' : 'them'} for yourself.</small>;
+      }} />
+      <AddFactsButton chosen={chosen} onAdd={onAddSelected} />
+    </>}
+    {added.length > 0 && <div className="flh-fact-added" role="status">
+      <strong><Check size={14} aria-hidden="true" /> {added.length} added to Home Facts</strong>
+      <ul>{added.map((suggestion) => <li key={suggestion.id}><span>{suggestion.label}: <b>{suggestion.display}</b></span><button type="button" className="hh-btn hh-btn-ghost" onClick={() => onUndo(suggestion)} aria-label={`Undo ${suggestion.label}`}>Undo</button></li>)}</ul>
+    </div>}
+    {disagreements.length > 0 && <div className="flh-fact-disagree">
+      <strong>Not changed</strong>
+      <ul>{disagreements.map((item) => <li key={`${item.field}-${item.kind}`}>
+        {item.kind === 'differs' ? <>{item.label}: the listing says <b>{item.listing}</b>; this home has <b>{item.current}</b>. Kept as is.</>
+          : item.kind === 'contradicts' ? <>{item.label}: the listing says <b>{item.listing}</b>, which doesn’t fit the rest of this home’s basement details. Left Unknown.</>
+            : <>{item.label}: the listing text says this more than one way. Left Unknown.</>}
+      </li>)}</ul>
+    </div>}
   </section>;
 }
 
@@ -550,9 +564,13 @@ function ListingDetailsPaste({ paste }) {
 // answers waiting for the buyer's review.
 // `cleared` names answers confirmed from earlier text that the new text no
 // longer supports; they went back to Unknown and the buyer is told so.
-function pastedTextMessage(details, answers, cleared = [], facts = 0) {
+// `mentioned` counts what the text says that isn't new here (a fact this home
+// already has differently, a personal answer left for the Match view), so an
+// otherwise empty result never claims the text said nothing.
+function pastedTextMessage(details, answers, cleared = [], facts = 0, mentioned = 0) {
   const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
   const reset = cleared.length ? `${cleared.join(', ')} ${cleared.length === 1 ? 'is' : 'are'} back to Unknown — the new text doesn’t support what you used earlier.` : '';
+  if (!details && !answers && !facts && mentioned) return [reset, 'Nothing new to add from that text. What it mentions is noted below, and anything you already added is kept.'].filter(Boolean).join(' ');
   if (!details && !answers && !facts) return [reset, 'We didn’t find details we could use in that text. Anything not stated stays Unknown, and you can still add the home.'].filter(Boolean).join(' ');
   const filled = details ? `Filled in ${plural(details, 'detail')} from what you pasted — double-check before saving.` : '';
   const review = [facts && plural(facts, 'Home Fact'), answers && plural(answers, 'possible answer')].filter(Boolean).join(' and ');
@@ -571,6 +589,19 @@ const PARTIAL_NOTES = {
   listing_unavailable: 'Current listing details weren’t available right now, so price and listing status are left for you to add.',
   property_unavailable: 'Property records weren’t available right now, so some details may be missing.',
 };
+
+// Personal Match answers the pasted text points to, left for the buyer's own
+// Match view (Add Home V3, phase 2): nothing is answered here, and they come
+// back after saving from the saved listing snapshot (savedListingAnswers), so
+// the text never has to be pasted again. Each buyer sees only their own.
+function DeferredAnswersNote({ answers, vocabulary }) {
+  if (!answers.length) return null;
+  const names = answers.map((item) => criterionDisplayLabel(item.categoryKey, item.label));
+  return <p className="flh-deferred-answers" role="note">
+    <ListChecks size={15} aria-hidden="true" />
+    <span>The listing also mentions <b>{names.join(', ')}</b>. That’s for your own Match, so nothing is answered here: after you save, {answers.length === 1 ? 'it waits' : 'they wait'} in this {vocabulary.singularLower}’s Match view for your Yes or No.</span>
+  </p>;
+}
 
 // The found-home photo: the photo the home already has, or a calm placeholder,
 // with an optional Add photo right on it. A chosen file is only staged (the
@@ -593,7 +624,7 @@ function FoundHomePhoto({ src, photo }) {
 // recovery included) and needs nothing but an address: no paste, no Home
 // Facts review, no Match answers, no notes, no photo. When the lookup found
 // nothing, the same card asks only for the address.
-function ImportFoundCard({ form, set, importResult, lookupResult = null, importPhase, importErrorMsg, priorities, vocabulary, saving, saveErrorMsg, onAdd, answerReview, factReview, paste, photo }) {
+function ImportFoundCard({ form, set, importResult, lookupResult = null, importPhase, importErrorMsg, priorities, vocabulary, saving, saveErrorMsg, onAdd, factReview, deferredAnswers = [], paste, photo }) {
   const found = importPhase === 'success' && !!importResult;
   const { line1, line2 } = splitAddressLines(form.address);
   // "Came with it" counts what the lookup returned; pasted text is reviewed below.
@@ -602,7 +633,8 @@ function ImportFoundCard({ form, set, importResult, lookupResult = null, importP
   const note = importPhase === 'error' ? importErrorMsg || LOOKUP_FAILURE_NOTES.unavailable
       : importPhase === 'empty' && form.listingUrl ? 'We couldn’t find listing details for that link. Add the address and save it — you can fill in the rest later.'
         : 'Add the address and save it. You can fill in everything else later.';
-  const pending = (factReview?.suggestions.length || 0) + (answerReview?.suggestions.length || 0);
+  // Shared facts still waiting in the checklist (personal answers wait for the Match view).
+  const pending = factReview ? factReview.suggestions.filter((item) => factReview.decisions[item.id] !== 'used').length : 0;
   // Folded unless the buyer already pasted text (the "No link?" path, before a
   // card existed): then what they just asked for stays in view, still below Save Home.
   const [moreOpen, setMoreOpen] = useState(() => !!paste.text.trim());
@@ -640,7 +672,7 @@ function ImportFoundCard({ form, set, importResult, lookupResult = null, importP
         <summary><ClipboardPaste size={16} aria-hidden="true" /> Add more from the listing <span>Optional{pending ? ` · ${pending} to review` : ''}</span><ChevronDown className="hh-accordion-chevron" size={18} aria-hidden="true" /></summary>
         <ListingDetailsPaste paste={paste} />
         <HomeFactReview review={factReview} />
-        <ListingAnswerReview review={answerReview} />
+        <DeferredAnswersNote answers={deferredAnswers} vocabulary={vocabulary} />
       </details>
       <details className="hh-details flh-found-notes">
         <summary>Add notes, pros, or cons <span>Optional · shared with this search</span><ChevronDown className="hh-accordion-chevron" size={18} aria-hidden="true" /></summary>
@@ -711,6 +743,13 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   const [factSuggestions, setFactSuggestions] = useState([]);
   const [factDecisions, setFactDecisions] = useState({});
   const [usedFacts, setUsedFacts] = useState({});
+  // The text the current suggestions were read from, for the review's read-only
+  // "Not changed" notes (homeFactDisagreements).
+  const [reviewedText, setReviewedText] = useState('');
+  // The found card (a new home, not an apartment) leaves personal Match answers
+  // for the buyer's own Match view after saving; the full editor keeps its own
+  // Match step with them.
+  const personalDeferred = importLanding && !initial.address && !vocabulary.apartment;
   // The last successful property lookup, kept apart from pasted text so pasting
   // after a lookup adds to it instead of replacing it.
   const [providerResult, setProviderResult] = useState(null);
@@ -865,7 +904,8 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         const lotSize = form.lotSize === (initial?.lotSize ?? '') ? form.lotSize : withAcresUnit(form.lotSize);
         const coordinates = importResult ? await importedCoordinatePatch(form, importResult) : {};
         // Home Facts used from pasted text join the snapshot with their sentences.
-        const snapshotSource = importResultWithHomeFacts(importResult, usedFacts, form);
+        // Facts offered but not added stay on the snapshot for a later review in Home Facts.
+        const snapshotSource = importResultWithOfferedFacts(importResultWithHomeFacts(importResult, usedFacts, form), offeredHomeFacts(factSuggestions, usedFacts, form));
         const saved = await onSave({ ...form, ...coordinates, lotSize, photoUrl: finalPhotoUrl, ...(snapshotSource ? { listingImport: listingImportSnapshot(snapshotSource) } : {}) }, quickSave ? { landing: 'saved' } : undefined);
         if (quickSave && saved?.id) {
           setSavedHome(savedHomeSummary(form, { id: saved.id, photoUrl: finalPhotoUrl, photoFailed, searchType: priorities.searchType, listingStatus: providerResult?.listing?.status }));
@@ -930,10 +970,10 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     const result = resolveImport(findings, facts.home);
     const canonicalAdditions = Object.keys(result.fieldPatch);
     const merged = mergeImportFields(facts.home, result.fieldPatch);
-    // Answers confirmed from earlier text are re-checked against this text:
-    // kept only when it still suggests the same answer, otherwise back to Unknown.
+    // Answers confirmed from earlier text stay confirmed whatever this text says;
+    // a contrary sentence is shown on the row as information only.
     const rerun = personalAnswers
-      ? resuggestListingAnswers(pasteText, priorities, form.checks, confirmedAnswers)
+      ? resuggestListingAnswers(pasteText, priorities, form.checks, confirmedAnswers, answerSuggestions)
       : { suggestions: [], checks: form.checks, confirmed: {}, decisions: {}, cleared: [] };
     const next = { ...merged, checks: rerun.checks };
     // Every personal suggestion is kept; which ones show depends on the shared
@@ -948,6 +988,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     setAnswerDecisions(rerun.decisions);
     setConfirmedAnswers(rerun.confirmed);
     setFactSuggestions(facts.suggestions);
+    setReviewedText(pasteText);
     setUsedFacts(facts.used);
     setFactDecisions(Object.fromEntries(Object.keys(facts.used).map((id) => [id, 'used'])));
     // The evidence itself is listing material and is kept on the import snapshot,
@@ -957,10 +998,13 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     const found = canonicalAdditions.length + answers.length + facts.suggestions.length;
     setImportPhase(providerResult ? 'success' : found > 0 ? 'text-success' : importPhase === 'error' ? 'error' : 'empty');
     const usedDecisions = Object.fromEntries(Object.keys(facts.used).map((id) => [id, 'used']));
-    const pending = visiblePersonalSuggestions(answers, { home: next, factSuggestions: facts.suggestions, factDecisions: usedDecisions })
+    // On the found card personal answers wait for the Match view, so they are not counted as "to review below".
+    const pending = personalDeferred ? 0 : visiblePersonalSuggestions(answers, { home: next, factSuggestions: facts.suggestions, factDecisions: usedDecisions })
       .filter((item) => rerun.decisions[item.id] !== 'confirmed').length;
     const pendingFacts = facts.suggestions.filter((item) => !facts.used[item.id]).length;
-    setParseMsg(pastedTextMessage(canonicalAdditions.length, pending, clearedLabels, pendingFacts));
+    const mentioned = homeFactDisagreements(pasteText, next).length + (personalDeferred
+      ? answers.filter((item) => !hasRecordedAnswer(next.checks, item.key, priorities.searchType) && personalSuggestionStatus(item, { home: next }) !== 'settled').length : 0);
+    setParseMsg(pastedTextMessage(canonicalAdditions.length, pending, clearedLabels, pendingFacts, mentioned));
   };
 
   const confirmAnswer = (suggestion) => {
@@ -977,6 +1021,15 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     setForm((f) => ({ ...f, checks: undoListingAnswer(f.checks, suggestion) }));
     setAnswerDecisions((decisions) => { const next = { ...decisions }; delete next[suggestion.id]; return next; });
   };
+  // The checklist: a pending suggestion is checked when the buyer checked it,
+  // or by default when it is explicit enough to start checked (isPreselectedHomeFact).
+  // Unchecking it is the old Skip: the fact stays Unknown.
+  const isFactSelected = (suggestion) => factDecisions[suggestion.id] === 'selected'
+    || (factDecisions[suggestion.id] === undefined && isPreselectedHomeFact(suggestion));
+  const toggleFact = (suggestion) => setFactDecisions((decisions) => ({ ...decisions, [suggestion.id]: isFactSelected(suggestion) ? 'skipped' : 'selected' }));
+  // For which personal questions are held: a pending suggestion counts only while checked.
+  const effectiveFactDecisions = Object.fromEntries(factSuggestions.map((suggestion) => [suggestion.id,
+    factDecisions[suggestion.id] === 'used' ? 'used' : isFactSelected(suggestion) ? undefined : 'skipped']));
   // A suggestion stays on screen while it is pending (and the buyer hasn't
   // answered it some other way) or confirmed (so it can be undone).
   const answerReview = {
@@ -984,21 +1037,15 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
       ? form.checks?.[suggestion.key] === suggestion.answer && confirmedAnswers[suggestion.key] === suggestion.answer
       : answerDecisions[suggestion.id] !== 'dismissed' && !hasRecordedAnswer(form.checks, suggestion.key, priorities.searchType)
         // Not when a used or known Home Fact answers it, or a pending shared suggestion would (that row says so).
-        && personalSuggestionStatus(suggestion, { home: form, factSuggestions, factDecisions }) === 'show'),
+        && personalSuggestionStatus(suggestion, { home: form, factSuggestions, factDecisions: effectiveFactDecisions }) === 'show'),
     decisions: answerDecisions, onConfirm: confirmAnswer, onDismiss: dismissAnswer, onUndo: undoAnswer, isCollaborative,
   };
   // Personal suggestions still open to this buyer, for the "also answers" note on a shared row.
   const openPersonal = answerSuggestions.filter((suggestion) => answerDecisions[suggestion.id] !== 'confirmed' && answerDecisions[suggestion.id] !== 'dismissed'
     && !hasRecordedAnswer(form.checks, suggestion.key, priorities.searchType));
 
-  // Use writes one shared Home Fact into the form, only while that field is
-  // still empty; nothing is saved until the buyer saves the home.
-  const useFact = (suggestion) => {
-    if (applyHomeFactSuggestion(form, suggestion) === form) return;
-    setForm((f) => applyHomeFactSuggestion(f, suggestion));
-    setUsedFacts((used) => ({ ...used, [suggestion.id]: suggestion }));
-    setFactDecisions((decisions) => ({ ...decisions, [suggestion.id]: 'used' }));
-  };
+  // Add N facts: each checked suggestion is written into the form only while its
+  // field is still empty and the value fits the home; nothing is saved until Save.
   const useAllFacts = (pending) => {
     let next = form;
     const applied = pending.filter((suggestion) => { const after = applyHomeFactSuggestion(next, suggestion); if (after === next) return false; next = after; return true; });
@@ -1007,21 +1054,27 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     setUsedFacts((used) => ({ ...used, ...Object.fromEntries(applied.map((item) => [item.id, item])) }));
     setFactDecisions((decisions) => ({ ...decisions, ...Object.fromEntries(applied.map((item) => [item.id, 'used'])) }));
   };
-  const skipFact = (suggestion) => setFactDecisions((decisions) => ({ ...decisions, [suggestion.id]: 'skipped' }));
   // Undo only what the suggestion wrote: a later edit by the buyer is never reverted.
   const undoFact = (suggestion) => {
     setForm((f) => undoHomeFactSuggestion(f, suggestion));
     setUsedFacts((used) => { const next = { ...used }; delete next[suggestion.id]; return next; });
     setFactDecisions((decisions) => { const next = { ...decisions }; delete next[suggestion.id]; return next; });
   };
-  const isEmptyField = (value) => value === null || value === undefined || (typeof value === 'string' && value.trim() === '');
   const factReview = {
+    // Added (still holding its value, so Undo works), or still addable: the field
+    // is empty and the value fits the home. Unchecked ones stay listed so they can be checked again.
     suggestions: factSuggestions.filter((suggestion) => factDecisions[suggestion.id] === 'used'
       ? !!usedFacts[suggestion.id] && String(form[suggestion.field]) === String(suggestion.value)
-      : factDecisions[suggestion.id] !== 'skipped' && isEmptyField(form[suggestion.field])),
-    decisions: factDecisions, onUse: useFact, onSkip: skipFact, onUndo: undoFact, onUseAll: useAllFacts, isCollaborative,
-    alsoAnswers: (fact) => personalSuggestionsAnsweredBy(fact, openPersonal, form).map((item) => criterionDisplayLabel(item.categoryKey, item.label)),
+      : applyHomeFactSuggestion(form, suggestion) !== form),
+    decisions: factDecisions, isSelected: isFactSelected, onToggle: toggleFact, onAddSelected: useAllFacts, onUndo: undoFact, isCollaborative,
+    alsoAnswers: (fact) => (isFactSelected(fact) ? personalSuggestionsAnsweredBy(fact, openPersonal, form).map((item) => criterionDisplayLabel(item.categoryKey, item.label)) : []),
+    disagreements: reviewedText ? homeFactDisagreements(reviewedText, form) : [],
   };
+  // Add Home's found card defers personal Match answers to the buyer's own Match
+  // view after saving (rebuilt there from the saved snapshot, savedListingAnswers):
+  // the ones no Home Fact settles and no checked shared fact would answer.
+  const deferredAnswers = personalDeferred ? answerSuggestions.filter((suggestion) => !hasRecordedAnswer(form.checks, suggestion.key, priorities.searchType)
+    && personalSuggestionStatus(suggestion, { home: form, factSuggestions, factDecisions: effectiveFactDecisions }) === 'show') : [];
 
   const addSuggestion = (suggestion) => {
     setForm((f) => ({ ...f, notes: appendSuggestionToNotes(f.notes, suggestion) }));
@@ -1208,7 +1261,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
         {importPhase === 'identity' && apartmentIdentity && <div className="hh-manual-address"><p>We found {apartmentIdentity.propertyName}. Add its street address to continue.</p><AddressAutocomplete value={fallbackAddressInput} onChange={setFallbackAddressInput} onSelect={setFallbackAddressInput} /><button type="button" className="hh-btn" onClick={handleFallbackAddressLookup}>Use address</button></div>}
         {urlFallbackMsg && <p className="hh-edit-error">{urlFallbackMsg}</p>}
       </section>}
-      {quickAdd && <ImportFoundCard form={form} set={set} importResult={importResult} lookupResult={providerResult} importPhase={importPhase} importErrorMsg={importErrorMsg} priorities={priorities} vocabulary={vocabulary} saving={saving} saveErrorMsg={saveErrorMsg} onAdd={addImportedHome} answerReview={answerReview} factReview={factReview} paste={{ text: pasteText, setText: setPasteText, onRun: runAutofill, message: parseMsg }} photo={foundPhoto} />}
+      {quickAdd && <ImportFoundCard form={form} set={set} importResult={importResult} lookupResult={providerResult} importPhase={importPhase} importErrorMsg={importErrorMsg} priorities={priorities} vocabulary={vocabulary} saving={saving} saveErrorMsg={saveErrorMsg} onAdd={addImportedHome} factReview={factReview} deferredAnswers={deferredAnswers} paste={{ text: pasteText, setText: setPasteText, onRun: runAutofill, message: parseMsg }} photo={foundPhoto} />}
       {isNativeApp() && !quickAdd && <aside className="flh-share-callout" aria-label="Add from the Share Sheet"><Share size={18} aria-hidden="true" /><div><strong>Faster from your listing app</strong><p>Tap Share on any listing, then choose Feels Like Home. It opens right here, ready to review.</p></div></aside>}
       {!quickAdd && <details className="hh-details hh-manual-fallback">
         <summary><span className="hh-accordion-icon"><ClipboardPaste size={24} /></span><span>No link? Paste the listing details<small>Copy the listing description or property features and paste them here. We’ll fill in what we can. School details work too.</small></span><ChevronDown className="hh-accordion-chevron" size={20} /></summary>

@@ -31,6 +31,10 @@ export function fieldProvenance(value, importSnapshot, field) {
   if (!fields || typeof fields !== 'object') return null;
   const imported = fields[field];
   if (!isEmpty(imported) && normalize(imported) === normalize(value)) return 'listing';
+  // A fact the pasted listing offered and the buyer added later, from Home Facts,
+  // holding exactly that value (listing_import.offeredFacts).
+  const offered = Array.isArray(importSnapshot?.offeredFacts) ? importSnapshot.offeredFacts.find((item) => item?.field === field) : null;
+  if (offered && !isEmpty(offered.value) && normalize(offered.value) === normalize(value)) return 'listing';
   return 'you';
 }
 

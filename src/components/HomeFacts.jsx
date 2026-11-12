@@ -14,6 +14,8 @@ import { homeIdentity } from '@/lib/homePresentation';
 import { isUnitlessLotSize } from '@/lib/lotSize';
 import { parseNum } from '@/lib/matching';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
+import { pendingOfferedFacts } from '@/lib/listingTextHomeFacts';
+import { OfferedFactsSheet } from '@/components/FactChecklist';
 import { createClient } from '@/lib/supabase/client';
 import { MultiSelectField, PhoneCollapse, QuietInput, SelectField } from '@/components/FactFields';
 import { NOTE_LIST_FIELDS, noteListHint } from '@/components/NoteListFields';
@@ -173,6 +175,23 @@ function ListingLink({ home, readOnly, editor }) {
   </div>;
 }
 
+// Facts the pasted listing offered when this home was added that nobody added
+// yet (homes.listing_import.offeredFacts): one quiet row, not an inline
+// fold-out (Home Facts has none). Review opens the shared checklist in a sheet
+// (OfferedFactsSheet). The row is gone once every offered field is filled.
+function OfferedFactsEntry({ home, onAdd }) {
+  const count = pendingOfferedFacts(home).length;
+  const [open, setOpen] = useState(false);
+  if (!count) return null;
+  return <>
+    <p className="flh-offered-row">
+      <span>From the listing · {count} detail{count === 1 ? '' : 's'} not added yet</span>
+      <button type="button" className="flh-offered-review" onClick={() => setOpen(true)} aria-haspopup="dialog">Review</button>
+    </p>
+    <OfferedFactsSheet home={home} open={open} onClose={() => setOpen(false)} onAdd={onAdd} />
+  </>;
+}
+
 export default function HomeFacts({ home, priorities, vocabulary, readOnly = false, editor = null, userId = null, onEditAll = null, showHeading = true, isCollaborative = false }) {
   const isReadOnly = readOnly || !editor;
   const apartment = vocabulary.apartment;
@@ -246,6 +265,7 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
           <h2 id="hf-title" className="flh-overlay-heading">Home Facts</h2>
           <span>{isReadOnly ? 'From the listing and the buyers' : 'All optional'}</span>
         </header>
+        {!isReadOnly && <OfferedFactsEntry home={home} onAdd={save} />}
         <div className="flh-hf2-columns">
           <div className="flh-hf2-column">
             <Group id="hf-basic-title" title="Basic Details">

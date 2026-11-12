@@ -196,17 +196,17 @@ test('Use fills an empty field; Undo takes back only what Use wrote', () => {
   assert.equal(undoHomeFactSuggestion(applyHomeFactSuggestion(emptyHome(), spaces), spaces).garageSpaces, '', 'garage spaces is a text column: Unknown is empty');
 });
 
-test('rerunning on new text keeps a used fact it still supports and clears the rest', () => {
+test('rerunning on new text keeps every fact the buyer accepted, even ones the new text leaves out (Add Home V3 review)', () => {
   const first = suggestHomeFacts('Finished basement. Laundry on the main level.');
   let home = first.reduce(applyHomeFactSuggestion, emptyHome());
   const used = Object.fromEntries(first.map((item) => [item.id, item]));
   home = { ...home, primaryBedroomLocation: 'Main Floor' }; // typed by the buyer
   const rerun = resuggestHomeFacts('Finished basement. Attached garage.', home, used);
   assert.equal(rerun.home.basementCondition, 'finished');
-  assert.equal(rerun.home.laundryLocation, null);
+  assert.equal(rerun.home.laundryLocation, 'first_floor', 'accepted, so kept although the new text omits it');
   assert.equal(rerun.home.primaryBedroomLocation, 'Main Floor', 'a typed value is never touched');
-  assert.deepEqual(rerun.cleared, ['Laundry']);
-  assert.deepEqual(Object.values(rerun.used).map((item) => item.field), ['basementCondition']);
+  assert.deepEqual(rerun.cleared, []);
+  assert.deepEqual(Object.values(rerun.used).map((item) => item.field).sort(), ['basementCondition', 'laundryLocation']);
   assert.ok(rerun.suggestions.some((item) => item.field === 'garageType'));
 });
 
@@ -283,12 +283,12 @@ test('explicit answers and #165 stale-evidence protection are unchanged', () => 
   // Their explicit No still overrides a used fact in Match.
   const home = suggestHomeFacts(REAL_WORLD).reduce(applyHomeFactSuggestion, emptyHome());
   assert.equal(resolveCriterionAnswer(home, 'features:Finished basement', { 'features:Finished basement': 'no' }).value, 'no');
-  // A personal answer confirmed after Skip is re-checked by a rerun exactly as before.
+  // A personal answer confirmed after Skip survives a rerun that omits it (Add Home V3 review).
   const [confirmed] = suggestListingAnswers('Finished basement.', buyer).filter((item) => item.key === 'features:Finished basement');
   const checks = { [confirmed.key]: confirmed.answer };
-  const rerun = resuggestListingAnswers('No basement information here.', buyer, checks, { [confirmed.key]: confirmed.answer });
-  assert.deepEqual(rerun.cleared, ['features:Finished basement']);
-  assert.equal(rerun.checks['features:Finished basement'], undefined);
+  const rerun = resuggestListingAnswers('No basement information here.', buyer, checks, { [confirmed.key]: confirmed.answer }, [confirmed]);
+  assert.deepEqual(rerun.cleared, []);
+  assert.equal(rerun.checks['features:Finished basement'], true);
 });
 
 test('co-buyers: each buyer\'s Match and suggestions stay their own', () => {
@@ -405,23 +405,26 @@ test('Add Home offers the optional paste after any lookup, never requires it, an
   assert.match(modal, /Copy the listing description or property features and paste them here\. We’ll fill in what we can\. School details work too\./);
   // The found card (success, failed or empty lookup) carries the paste area.
   assert.match(modal, /const quickAdd = importLanding && isNewHome && !vocabulary\.apartment && \['success', 'text-success', 'empty', 'error'\]\.includes\(importPhase\)/);
-  assert.match(modal, /<ListingDetailsPaste paste=\{paste\} \/>\s*<HomeFactReview review=\{factReview\} \/>\s*<ListingAnswerReview review=\{answerReview\} \/>/);
+  // Add Home V3 phase 2: the card shows the shared checklist; personal answers wait for the Match view.
+  assert.match(modal, /<ListingDetailsPaste paste=\{paste\} \/>\s*<HomeFactReview review=\{factReview\} \/>\s*<DeferredAnswersNote answers=\{deferredAnswers\} vocabulary=\{vocabulary\} \/>/);
   assert.match(modal, /<span className="flh-optional-tag">Optional<\/span>/);
   // Adding the home never depends on pasting.
   assert.match(modal, /disabled=\{saving \|\| !form\.address\.trim\(\)\}><Check size=\{17\} aria-hidden="true" \/> \{saving \? 'Saving…' : 'Save Home'\}/);
   assert.doesNotMatch(modal, /Can.t find the home\?/, 'no longer framed as error recovery');
   // A lookup that succeeded is kept when text is pasted after it.
   assert.match(modal, /setImportResult\(combineImportResults\(providerResult, /);
-  // Shared facts are written only by Use, into empty fields.
-  const handlers = modal.match(/const useFact = [\s\S]*?const factReview = /)[0];
+  // Shared facts are written only by Add N facts (checked ones), into empty fields.
+  const handlers = modal.match(/const useAllFacts = [\s\S]*?const factReview = /)[0];
   assert.match(handlers, /applyHomeFactSuggestion/);
   assert.doesNotMatch(handlers, /onSave|createClient|fetch\(|submit\(|checks/);
   // Personal answers stay separate, and a shared fact removes the duplicate personal prompt.
   assert.match(modal, /const answers = rerun\.suggestions;/, 'every personal suggestion is kept; visibility follows the shared state');
-  assert.match(modal, /personalSuggestionStatus\(suggestion, \{ home: form, factSuggestions, factDecisions \}\) === 'show'/);
-  assert.match(modal, /Also answers your Match: <b>\{answers\.join\(', '\)\}<\/b>\. Skip keeps this fact Unknown, and you can still answer/);
+  assert.match(modal, /personalSuggestionStatus\(suggestion, \{ home: form, factSuggestions, factDecisions: effectiveFactDecisions \}\) === 'show'/);
+  assert.match(modal, /Also answers your Match: <b>\{answers\.join\(', '\)\}<\/b>\. Unchecked, it stays Unknown, and you can still answer/);
   assert.match(modal, /These are for your Match only/);
-  assert.match(modal, /FLH hasn’t verified it or checked school boundaries/);
+  // The checklist rows (with the school attribution) live in the shared FactChecklist (Add Home V3).
+  assert.match(read('src/components/FactChecklist.jsx'), /FLH hasn’t verified it or checked school boundaries/);
+  assert.match(modal, /<FactChecklistRows suggestions=\{pending\}/);
 });
 
 test('the reader is pure: no network, storage or model calls', () => {
@@ -478,7 +481,9 @@ test('the found card keeps one order: Save Home first, then the optional paste, 
   const card = modal.match(/function ImportFoundCard[\s\S]*?\n\}/)[0];
   const at = (needle) => card.indexOf(needle);
   // Add Home V3: the optional parts sit below Save Home, folded, so they never hide it.
-  const order = ["'Save Home'", 'className="hh-details flh-found-more"', '<ListingDetailsPaste', '<HomeFactReview', '<ListingAnswerReview', 'className="hh-details flh-found-notes"', '<NoteListFields form={form} set={set} idPrefix="add-home" />'].map(at);
+  const order = ["'Save Home'", 'className="hh-details flh-found-more"', '<ListingDetailsPaste', '<HomeFactReview', '<DeferredAnswersNote', 'className="hh-details flh-found-notes"', '<NoteListFields form={form} set={set} idPrefix="add-home" />'].map(at);
+  // Personal answers are never reviewed on the card (Add Home V3 phase 2).
+  assert.doesNotMatch(card, /<ListingAnswerReview/);
   assert.ok(order.every((index) => index > 0), `missing: ${order}`);
   assert.deepEqual([...order].sort((a, b) => a - b), order);
   // Distinct ids: the paste box never collides with the Notes fields.

@@ -113,8 +113,21 @@ async function add(page, url) {
   assert(rows.length === 1, `expected one saved home, found ${rows.length}`);
   return rows[0];
 }
+// Add Home V3 phase 2: shared facts are one checklist (checked by default when
+// explicit; a named school starts unchecked) with one Add N facts; personal
+// answers wait for the Match view (the card only names them).
 const review = (page) => page.locator('.flh-fact-review');
-const reviewFields = async (page) => (await review(page).count()) ? review(page).locator('li .flh-answer-review-head b').allInnerTexts() : [];
+const factRow = (page, label) => review(page).locator('.flh-fact-checklist-rows > li').filter({ has: page.locator('.flh-fact-check-text b', { hasText: new RegExp(`^${label}$`) }) });
+const reviewFields = async (page) => (await review(page).count()) ? review(page).locator('.flh-fact-checklist-rows > li .flh-fact-check-text b').allInnerTexts() : [];
+const deferredNote = async (page) => ((await page.locator('.flh-deferred-answers').count()) ? page.locator('.flh-deferred-answers').innerText() : '');
+const openMatch = async (page) => {
+  for (let i = 0; i < 4; i += 1) {
+    const toggle = page.locator('.flh-mc2-toggle[aria-expanded="false"]:visible').first();
+    if (!(await toggle.count())) break;
+    await toggle.click();
+    await page.waitForTimeout(100);
+  }
+};
 
 async function run() {
   const browser = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } : {});
@@ -124,7 +137,7 @@ async function run() {
     let owner;
     const open = () => [owner].filter(Boolean);
 
-    await step(`[${label}] lookup succeeds → optional paste offered; Home Facts suggested only for empty fields; Use / Undo / Skip; saved with evidence`, async () => {
+    await step(`[${label}] lookup succeeds → optional paste offered; Home Facts suggested only for empty fields; one checklist, Add N facts; saved with evidence`, async () => {
       owner = await signedIn(browser, 'owner', device);
       n += 1;
       const url = listingUrl(51613, label, n);
@@ -153,22 +166,24 @@ async function run() {
       const fields = await reviewFields(owner);
       // RentCast already filled garage type/spaces and a $0/mo HOA: never offered.
       assert(JSON.stringify(fields) === JSON.stringify(['Basement condition', 'Basement style', 'Laundry', 'Primary bedroom', 'School district']), `suggested: ${fields}`);
+      await factRow(owner, 'Basement condition').locator('.flh-fact-why > summary').click();
       const reviewText = await review(owner).innerText();
       assert(reviewText.includes('The finished walkout basement adds a rec room and full bath.'), 'evidence sentence missing');
       assert(reviewText.includes('FLH hasn’t verified it or checked school boundaries'), 'school caveat missing');
-      // One prompt per criterion: the pending Basement condition row names the personal
-      // criterion it would answer; that personal question is held, Fireplace is still asked.
-      const conditionRow = review(owner).locator('li').filter({ has: owner.locator('b', { hasText: /^Basement condition$/ }) });
-      assert(/Also answers your Match: Finished basement/i.test(await conditionRow.innerText()), 'shared row does not name the personal criterion');
-      const personal = owner.locator('.flh-answer-review');
-      const personalText = (await personal.count()) ? await personal.innerText() : '';
-      assert(personalText.includes('Fireplace') && !personalText.includes('Finished basement'), `personal suggestions: ${personalText.slice(0, 200)}`);
+      // One prompt per criterion: the checked Basement condition row names the personal
+      // criterion it would answer; the card defers only Fireplace to the Match view.
+      assert(/Also answers your Match: Finished basement/i.test(await factRow(owner, 'Basement condition').innerText()), 'shared row does not name the personal criterion');
+      assert(!(await owner.locator('.flh-found .flh-answer-review').count()), 'personal answers reviewed on the card');
+      const deferred = await deferredNote(owner);
+      assert(deferred.includes('Fireplace') && !/Finished basement/i.test(deferred), `deferred: ${deferred}`);
+      // Defaults: explicit facts checked, the named school unchecked.
+      assert(!(await factRow(owner, 'School district').locator('input').isChecked()), 'school preselected');
       await view(owner, `${label}-2-success-suggestions`, '.flh-fact-review');
-      await review(owner).getByRole('button', { name: /^Use all 5$/ }).click();
-      await review(owner).getByRole('button', { name: 'Undo Laundry' }).click();
-      await review(owner).getByRole('button', { name: 'Skip Laundry' }).click();
-      assert(!(await review(owner).getByText('Laundry', { exact: true }).count()), 'skipped laundry still shown');
-      await view(owner, `${label}-3-success-used`, '.flh-fact-review li.is-confirmed');
+      await factRow(owner, 'School district').locator('input').check();
+      await factRow(owner, 'Laundry').locator('input').uncheck();
+      await review(owner).getByRole('button', { name: /Add 4 facts/ }).click();
+      assert(await factRow(owner, 'Laundry').count() && !(await factRow(owner, 'Laundry').locator('input').isChecked()), 'unchecked laundry should stay offered, unchecked');
+      await view(owner, `${label}-3-success-used`, '.flh-fact-added');
       const row = await add(owner, url);
       assert(row.basement_condition === 'finished' && row.basement_style === 'walkout', `basement: ${row.basement_condition}/${row.basement_style}`);
       assert(row.primary_bedroom_location === 'Main Floor', `primary: ${row.primary_bedroom_location}`);
@@ -203,35 +218,34 @@ async function run() {
       await shot(owner, `${label}-4-success-home-facts`);
     }, open);
 
-    await step(`[${label}] Skip a shared fact → it stays Unknown and the personal question comes back for this buyer only`, async () => {
+    await step(`[${label}] Uncheck a shared fact → it stays Unknown and the personal question waits in this buyer's Match view`, async () => {
       n += 1;
       const url = listingUrl(51613, label, n);
       await find(owner, url);
       await paste(owner, DESCRIPTION);
-      const personal = owner.locator('.flh-answer-review');
-      assert(!/Finished basement/i.test((await personal.count()) ? await personal.innerText() : ''), 'personal basement shown while the shared fact is pending');
-      await review(owner).getByRole('button', { name: 'Skip Basement condition' }).click();
-      const question = personal.locator('li').filter({ has: owner.locator('b', { hasText: /^Finished basement$/i }) });
-      await question.waitFor();
-      assert((await question.innerText()).includes('Listing suggests Yes'), 'returned personal suggestion');
-      await view(owner, `${label}-8-skip-returns-personal`, '.flh-answer-review');
-      await question.getByRole('button', { name: /^Confirm Finished basement: Yes$/i }).click();
+      assert(!/Finished basement/i.test(await deferredNote(owner)), 'personal basement named while the shared fact is checked');
+      await factRow(owner, 'Basement condition').locator('input').uncheck();
+      assert(/Finished basement/i.test(await deferredNote(owner)), 'unchecking did not give the personal question back');
+      await view(owner, `${label}-8-skip-returns-personal`, '.flh-deferred-answers');
+      // Add the other checked facts, then save without answering anything.
+      await review(owner).getByRole('button', { name: /Add \d+ facts?/ }).click();
       const row = await add(owner, url);
-      assert(row.basement_condition === null, `Skip wrote basement condition: ${row.basement_condition}`);
+      assert(row.basement_condition === null, `an unchecked fact was written: ${row.basement_condition}`);
+      assert(!('features:Finished basement' in ownChecks(row.id)), 'answered before the buyer chose');
+      // The Match view points to the listing; the buyer answers Yes themselves.
+      await openMatch(owner);
+      const pointerRow = owner.locator('.flh-mc2-row').filter({ has: owner.locator('.flh-mc2-name', { hasText: /^Finished basement/i }) });
+      assert(/Listing suggests\s*Yes/.test(await pointerRow.locator('.flh-mc2-listing').innerText()), 'no Match-view pointer');
+      await pointerRow.locator('label.is-yes').click();
+      for (let i = 0; i < 20 && ownChecks(row.id)['features:Finished basement'] !== true; i += 1) await owner.waitForTimeout(250);
       assert(JSON.stringify(ownChecks(row.id)) === JSON.stringify({ 'features:Finished basement': true }), `owner checks: ${JSON.stringify(ownChecks(row.id))}`);
       const others = q(`select user_id, checks from public.home_member_state where home_id = ${lit(row.id)} and user_id <> ${lit(OWNER)}`);
       assert(others.every((state) => !('features:Finished basement' in (state.checks || {}))), 'another participant got the owner\'s answer');
-      for (let i = 0; i < 4; i += 1) {
-        const toggle = owner.locator('.flh-mc2-toggle[aria-expanded="false"]:visible').first();
-        if (!(await toggle.count())) break;
-        await toggle.click();
-        await owner.waitForTimeout(100);
-      }
       const matchRow = owner.locator('.flh-mc2-row').filter({ has: owner.locator('.flh-mc2-name', { hasText: /^Finished basement/i }) });
       assert(!(await matchRow.locator('.flh-mc2-from').count()) || !(await matchRow.locator('.flh-mc2-from').textContent()).startsWith('From Home Facts'), 'Match reads a Home Fact that was skipped');
     }, open);
 
-    await step(`[${label}] lookup fails → same optional paste; Use all fills empty fields; saved as pasted text`, async () => {
+    await step(`[${label}] lookup fails → same optional paste; checking every row and Add 8 facts fills empty fields; saved as pasted text`, async () => {
       n += 1;
       const url = listingUrl(51619, label, n);
       await find(owner, url);
@@ -243,7 +257,9 @@ async function run() {
       const fields = await reviewFields(owner);
       assert(JSON.stringify(fields) === JSON.stringify(['Basement condition', 'Basement style', 'Laundry', 'Primary bedroom', 'Garage type', 'Garage spaces', 'HOA fee', 'School district']), `suggested: ${fields}`);
       await view(owner, `${label}-6-failed-suggestions`, '.flh-fact-review');
-      await review(owner).getByRole('button', { name: /^Use all 8$/ }).click();
+      // Explicit facts start checked; the named district is checked by the buyer.
+      await factRow(owner, 'School district').locator('input').check();
+      await review(owner).getByRole('button', { name: /Add 8 facts/ }).click();
       // The address is still the buyer's to confirm; it was looked up from the link.
       const row = await add(owner, url);
       assert(row.garage_type === 'attached' && row.garage_spaces === '3', `garage: ${row.garage_type}/${row.garage_spaces}`);

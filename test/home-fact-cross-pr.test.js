@@ -93,7 +93,7 @@ test('#165: a fact-derived answer is not a personal answer — a suggestion is s
   assert.equal(suggestListingAnswers('Attached 2-car garage.', buyer, {}).some((entry) => entry.key === GARAGE), false);
 });
 
-test('#165: a confirmed suggestion is a personal answer that overrides a conflicting Home Fact; undo and a rerun return to the fact', () => {
+test('#165: a confirmed suggestion is a personal answer that overrides a conflicting Home Fact; undo returns to the fact, a rerun keeps it', () => {
   const facts = { basementCondition: 'unfinished' };
   const text = 'Beautiful finished basement with a wet bar.';
   const [suggestion] = suggestListingAnswers(text, buyer, {});
@@ -104,10 +104,10 @@ test('#165: a confirmed suggestion is a personal answer that overrides a conflic
   assert.deepEqual(computeMatch({ ...facts, checks }, buyer), computeMatch({ ...facts, checks: { [BASEMENT]: true } }, buyer));
   // Undo: back to the fact.
   assert.equal(state(item({ ...facts, checks: undoListingAnswer(checks, suggestion) }, BASEMENT)), 'no');
-  // Rerun with text that no longer supports it: cleared, so the fact answers again.
+  // Rerun with text that no longer supports it: the confirmed answer is the buyer's and stays (Add Home V3 review).
   const rerun = resuggestListingAnswers('Bright kitchen.', buyer, checks, { [BASEMENT]: true });
-  assert.deepEqual(rerun.checks, {});
-  assert.equal(state(item({ ...facts, checks: rerun.checks }, BASEMENT)), 'no');
+  assert.deepEqual(rerun.checks, { [BASEMENT]: true });
+  assert.equal(state(item({ ...facts, checks: rerun.checks }, BASEMENT)), true);
   // A manual answer is never touched by a rerun, whatever the fact says.
   const manual = resuggestListingAnswers('No finished basement.', buyer, { [BASEMENT]: true }, {});
   assert.deepEqual(manual.checks, { [BASEMENT]: true });

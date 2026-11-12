@@ -18,6 +18,9 @@ export function listingImportSnapshot(importResult, importedAt = new Date().toIS
     // sentence that stated it (listingTextHomeFacts.js). Their values are also in
     // `fields`, which is what makes Home Facts show them as From listing.
     ...(Array.isArray(importResult.pastedFacts) && importResult.pastedFacts.length ? { pastedFacts: importResult.pastedFacts } : {}),
+    // Home Facts the text offered that the buyer didn't add before saving, kept
+    // for a later review in Home Facts (listingTextHomeFacts.js). Never a value.
+    ...(Array.isArray(importResult.offeredFacts) && importResult.offeredFacts.length ? { offeredFacts: importResult.offeredFacts } : {}),
     // Basics pasted text filled beside a property lookup (which fields came from the text).
     ...(Array.isArray(importResult.pastedFields) && importResult.pastedFields.length ? { pastedFields: importResult.pastedFields } : {}),
   };

@@ -336,15 +336,9 @@ function personalCheckCriteria(priorities) {
     .filter(({ key }) => !SHARED_BOOLEAN_FACT_FIELDS[key] && key !== 'exterior:Garage'));
 }
 
-/**
- * Suggested answers for the viewing buyer. Never includes a criterion they
- * already answered, didn't select, or that Match reads from a shared fact.
- * @returns {{ id, key, categoryKey, label, concept, answer: true|'no', evidence: string,
- *   sourceType: 'listing_text', sourceProvider: 'user_paste' }[]}
- */
-export function suggestListingAnswers(text, priorities, checks = {}) {
-  if (!priorities || !String(text || '').trim()) return [];
-  const evidence = new Map(classifyListingText(text).filter((item) => item.answer !== 'conflict').map((item) => [item.concept, item]));
+// One suggestion per selected, unanswered personal criterion the evidence
+// speaks to. `evidence` maps a concept to { answer: 'yes'|'no', evidence: [sentence] }.
+function suggestionsFromEvidence(evidence, priorities, checks = {}) {
   const suggestions = [];
   for (const criterion of personalCheckCriteria(priorities)) {
     const mapping = criterionConcept(criterion.categoryKey, criterion.label);
@@ -358,6 +352,42 @@ export function suggestListingAnswers(text, priorities, checks = {}) {
       sourceType: 'listing_text', sourceProvider: 'user_paste',
     });
   }
+  return suggestions;
+}
+
+/**
+ * Possible answers for the viewing buyer from listing text pasted earlier,
+ * read back from the saved snapshot (homes.listing_import.descriptionFeatures)
+ * so nobody has to paste again after saving. Same rules as suggestListingAnswers:
+ * only this buyer's selected, unanswered personal criteria; nothing is written.
+ * The snapshot keeps one stated Yes / No per concept and never a conflict
+ * (listingTextEvidence). Without the full text the garage/driveway check below
+ * can't run, so a No is never offered for Parking from saved evidence.
+ */
+export function savedListingAnswers(listingImport, priorities, checks = {}) {
+  const features = Array.isArray(listingImport?.descriptionFeatures) ? listingImport.descriptionFeatures : [];
+  if (!priorities || !features.length) return [];
+  const evidence = new Map();
+  for (const item of features) {
+    if (item?.sourceProvider !== 'user_paste' || !LISTING_TEXT_CONCEPTS[item.concept]) continue;
+    if ((item.stated !== 'yes' && item.stated !== 'no') || typeof item.evidence !== 'string' || !item.evidence.trim()) continue;
+    if (evidence.has(item.concept) && evidence.get(item.concept).answer !== item.stated) { evidence.set(item.concept, null); continue; }
+    if (!evidence.has(item.concept)) evidence.set(item.concept, { answer: item.stated, evidence: [item.evidence] });
+  }
+  for (const [concept, value] of evidence) if (!value) evidence.delete(concept);
+  return suggestionsFromEvidence(evidence, priorities, checks).filter((item) => !(PARKING_KEYS.has(item.key) && item.answer === 'no'));
+}
+
+/**
+ * Suggested answers for the viewing buyer. Never includes a criterion they
+ * already answered, didn't select, or that Match reads from a shared fact.
+ * @returns {{ id, key, categoryKey, label, concept, answer: true|'no', evidence: string,
+ *   sourceType: 'listing_text', sourceProvider: 'user_paste' }[]}
+ */
+export function suggestListingAnswers(text, priorities, checks = {}) {
+  if (!priorities || !String(text || '').trim()) return [];
+  const evidence = new Map(classifyListingText(text).filter((item) => item.answer !== 'conflict').map((item) => [item.concept, item]));
+  const suggestions = suggestionsFromEvidence(evidence, priorities, checks);
   // A garage or driveway is parking: text that mentions one never suggests No
   // for Parking or Off-street parking ("2-car garage. Street parking only.").
   const hasParkingStructure = sentenceScopes(text).some((scope) => (/\bgarage\b/i.test(scope) && !/\b(?:no|without(?: a)?) garage\b/i.test(scope))
@@ -412,33 +442,41 @@ export function listingTextEvidence(text) {
  * `confirmed` maps a check key to the answer a Confirm wrote ({ key: true|'no' });
  * it holds only answers that came from a suggestion and that the buyer hasn't
  * since changed by hand (an entry whose current value differs is ignored).
+ * `previous` is the suggestion list shown before, so a kept answer keeps the
+ * row (and the sentence) it was confirmed from.
  *
- * Each confirmed answer is checked against the new text:
+ * A confirmed answer is the buyer's explicit choice, so new text never changes
+ * it (Add Home V3 review):
  *   - the new text suggests the same answer → kept, shown as confirmed (Undo works)
- *   - it suggests the other answer, a conflict, or says nothing → cleared back to
- *     Unknown and reported in `cleared`; any new suggestion is shown for review
+ *   - it says nothing about it → kept, shown as confirmed (Undo works)
+ *   - it suggests the other answer → kept; the confirmed row carries the new
+ *     sentence as information only (`newer`), and no competing Confirm is offered
+ * Only the buyer's own Undo, or their own Yes / No / Unknown, changes it.
  * Manual answers (anything not in `confirmed`) and every other check are left
  * exactly as they are, and still never receive a suggestion.
  * @returns {{ suggestions, checks, confirmed, decisions, cleared: string[] }}
+ *   `cleared` is always empty; it is kept so callers need no change.
  */
-export function resuggestListingAnswers(text, priorities, checks = {}, confirmed = {}) {
+export function resuggestListingAnswers(text, priorities, checks = {}, confirmed = {}, previous = []) {
   const current = checks || {};
   const live = Object.entries(confirmed || {}).filter(([key, answer]) => current[key] === answer);
-  // Re-read the text as if the suggestion-derived answers were still Unknown.
+  // Read the text as if the confirmed answers were still Unknown, only to learn what it now says about them.
   const base = { ...current };
   for (const [key] of live) delete base[key];
-  const suggestions = suggestListingAnswers(text, priorities, base);
-  const nextChecks = { ...base };
-  const nextConfirmed = {};
+  const fresh = suggestListingAnswers(text, priorities, base);
+  const keptKeys = new Set(live.map(([key]) => key));
+  const suggestions = fresh.filter((item) => !keptKeys.has(item.key));
   const decisions = {};
-  const cleared = [];
   for (const [key, answer] of live) {
-    const same = suggestions.find((item) => item.key === key && item.answer === answer);
-    if (same) {
-      nextChecks[key] = answer;
-      nextConfirmed[key] = answer;
-      decisions[same.id] = 'confirmed';
-    } else cleared.push(key);
+    const same = fresh.find((item) => item.key === key && item.answer === answer);
+    const other = fresh.find((item) => item.key === key && item.answer !== answer);
+    const before = (previous || []).find((item) => item.key === key && item.answer === answer);
+    const row = same || (before ? { ...before } : null);
+    if (!row) continue; // nothing to show it with; the answer itself is kept below either way
+    if (other) row.newer = { answer: other.answer, evidence: other.evidence };
+    else delete row.newer;
+    suggestions.push(row);
+    decisions[row.id] = 'confirmed';
   }
-  return { suggestions, checks: nextChecks, confirmed: nextConfirmed, decisions, cleared };
+  return { suggestions, checks: { ...current }, confirmed: Object.fromEntries(live), decisions, cleared: [] };
 }

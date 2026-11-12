@@ -1,0 +1,321 @@
+# Add Home V3, phase 2: one simple listing review
+
+**FLH does the homework. The buyer makes the decisions.**
+
+The journey stays the same:
+1. Find a home.
+2. **Save Home** explicitly.
+3. Optionally paste the listing description.
+4. Review suggested **shared** Home Facts in one compact checklist.
+5. Make **personal** Match decisions separately, in the buyer's own Match view.
+
+This builds on phase 1 (`docs/add-home-v3-simple-save.md`). Save Home still
+comes first and stays on screen. Everything here sits below it, folded, and is
+optional. The constraints:
+- no migration, RLS, storage-policy, scoring, provider or paid-API change;
+- no automatic save;
+- Floor Plans stays off, and #166 is untouched.
+
+## 1. Audit: where suggestions lived on `main` (`1d404b8`)
+
+| | Shared Home Facts (`listingTextHomeFacts.js`) | Personal Match answers (`listingTextAnswers.js`) |
+|---|---|---|
+| Read from | the pasted text (`suggestHomeFacts` / `resuggestHomeFacts`) | the pasted text (`resuggestListingAnswers`) |
+| Shown | `HomeFactReview`: one card per fact with Use / Skip, plus **Use all N** | `ListingAnswerReview`: one card per criterion with **Confirm** / **Leave Unknown**, and no bulk action |
+| Where | the found card (inside "Add more from the listing") and the full editor | the found card and the full editor's Match step |
+| Written | Use → the form (empty fields only) → Save → `homes` | Confirm → this buyer's `checks` → Save → `home_member_state` |
+| Persisted evidence | `listing_import.pastedFacts` (used facts only) | `listing_import.descriptionFeatures`: one stated Yes/No **per concept**, with its sentence, never a conflict. Shared, and holds no buyer's answers |
+| After saving | Home Facts | **Gone**: session state only. A buyer who saved without confirming had to paste again |
+
+On the found card, one description produced up to **13 decision buttons**:
+- **Use all 5**;
+- Use and Skip on each of 5 fact rows;
+- Confirm Yes and Leave Unknown on the personal row.
+
+"Use all 5" would also have applied an unverified school district.
+
+## 2. What changed
+
+### One shared-fact checklist (`HomeFactReview`, found card and full editor)
+
+- **One row per fact:** the field and the proposed value. **Why?** reveals the
+  listing's own sentence.
+- **Pre-selection** (`isPreselectedHomeFact`):
+  - Every suggestion is already explicit (the existing reader and guards are
+    unchanged), so these start **checked**.
+  - Two kinds start **unchecked**: a school or district the listing merely
+    names (it keeps the "FLH hasn't verified it or checked school boundaries"
+    attribution), and an HOA fee converted from a yearly or quarterly amount
+    (the math is shown: "$100/mo ($1,200 per year)").
+- **Selection controls:** "N of M selected", any row can be unchecked or
+  checked, and one **Add N facts** applies them.
+- **The writer is unchanged:** `applyHomeFactSuggestion`, into empty fields
+  only, never contradicting the home's other basement field. Unchecked facts
+  stay Unknown and stay listed, so they can be checked later.
+- **Added facts** show as "N added to Home Facts", each with **Undo**. Undo
+  takes back only what the suggestion wrote.
+- **Not changed** is a read-only note (`homeFactDisagreements`). Nothing is
+  written and nothing is guessed:
+  - the home already has a different value ("Garage type: the listing says
+    Detached; this home has Attached. Kept as is.");
+  - the value can't stand with the home's other basement field;
+  - the text states the field more than one way ("Left Unknown").
+- **A repeated paste keeps every accepted fact** (changed in the founder
+  review, §7). A fact the buyer added stays added, even when the new text
+  leaves it out or says otherwise. A different value is only named in "Not
+  changed". Only Undo (still on the card) or an edit in Home Facts removes it.
+  For what is still open, a repeated paste is a new review, as Skip was
+  before: the defaults apply again. Typed values are never touched.
+
+### Personal answers wait for the buyer's own Match view
+
+- **The found card no longer reviews personal answers.** It names them in one
+  line: "The listing also mentions **Fireplace**. That's for your own Match, so
+  nothing is answered here: after you save, it waits in this home's Match view
+  for your Yes or No."
+- **The line leaves out** a criterion that a known or checked shared fact will
+  answer. Unchecking that fact brings it back. This is the same "held" rule as
+  before.
+- **After saving, nothing needs re-pasting.** `savedListingAnswers` rebuilds
+  each viewer's possible answers from `listing_import.descriptionFeatures`,
+  which the snapshot already stored. It uses the same rules as the text
+  reader: only this buyer's selected, unanswered personal criteria.
+- **In the saved home's Match view,** such a criterion shows
+  "Listing suggests **Yes** · Why?" under its name. Why? shows the sentence and
+  "Choose Yes or No yourself."
+- **It is only a pointer:**
+  - nothing is answered;
+  - a Yes or No the buyer already gave always wins (no pointer);
+  - a criterion a Home Fact answers shows "From Home Facts" instead;
+  - Unknown stays Unknown (historical `false` reads as Unknown, as Match
+    reads it).
+- **Each buyer sees only their own criteria,** and answering writes only their
+  own `checks` through the existing control.
+- **Parking:** without the full text, a No for Parking is never offered from
+  saved evidence. The text reader suppresses it when the text mentions a
+  garage or driveway, and that check can't run from evidence alone.
+- **Two different stated answers** for one concept in a snapshot give no
+  pointer.
+- **The full editor** (apartments, Edit Home, Realtor suggestions) keeps its
+  existing personal review in its own Match step, unchanged. Realtors still
+  get none.
+
+### Why no architectural change was needed
+
+The deferred answers needed persistence across save. The snapshot already
+keeps exactly the needed evidence: per concept, the stated Yes/No and its
+sentence, shared, with no buyer's answers in it. It is written on every save
+that followed a paste. So persistence is a pure read of an existing column for
+the viewer.
+
+There is no new table, column, write path or permission. Co-buyers could
+already read the snapshot (it is part of the shared `homes` row).
+
+## 3. Product behaviour to confirm
+
+These change what buyers see. No permissions change.
+
+1. **Co-buyers now see pointers from text another buyer pasted.**
+   - The evidence was already shared data on the home. Before, nothing showed
+     it to them as a suggestion.
+   - Each buyer sees pointers only for their own criteria, and only they can
+     answer them.
+2. **Personal answers can no longer be confirmed on the found card.** The
+   buyer answers after saving, in the Match view. That is one tap per
+   criterion there, the same count as Confirm, but outside Add Home.
+3. **Two kinds of fact start unchecked:** a named school or district, and a
+   converted HOA fee. Everything else explicit starts checked.
+4. **Unchecked facts stay visible** (so they can be re-checked) instead of
+   disappearing like Skip did.
+
+## 4. Actual action counts
+
+These were measured in the browser on `main` (`1d404b8`) and on this branch,
+with the same data and the same pasted description (QA fixture; a RentCast
+lookup already filled garage and HOA).
+
+| On the found card, after pasting | Before | After |
+|---|---|---|
+| Decision buttons shown | **13** (Use all, 5 × Use/Skip, Confirm/Leave Unknown) | **1** (Add 4 facts) + 5 checkboxes |
+| Taps to accept everything suggested | 2 (Use all 5 + Confirm); Use all also applied the **unverified** school | **1** (Add 4 facts); the school needs its own tick |
+| Personal decisions demanded on the card | 1 | **0** (named; answered later in the Match view) |
+| Review height, iPhone 390 | 1,770 px | **1,346 px** |
+| Review height, desktop 1440 | 1,500 px | **1,111 px** |
+| Save Home scroll needed (from the top) | 0 px | **0 px** (unchanged) |
+| Possible answer still available after saving | **No** | **Yes** ("Listing suggests Yes" on Fireplace) |
+
+## 5. Tests
+
+- **`test/add-home-listing-review.test.js`:** 13 tests, 1 of them on real
+  Postgres. It covers:
+  - pre-selection rules;
+  - Add N facts writes only checked facts, only into empty fields ('0',
+    'none' and $0 are never replaced);
+  - conflicts named, never resolved;
+  - hedged, community and ambiguous wording gives no row;
+  - Undo and repeated paste;
+  - provenance (`pastedFacts` only for added facts; deferred evidence kept, with
+    no answers);
+  - saved evidence matching the text reader, per buyer;
+  - an existing answer wins, Unknown stays Unknown, Match is unchanged;
+  - defensive reading (conflicts, other sources, duplicates, parking No);
+  - wiring for the card, checklist, Match view and overlay;
+  - **real Postgres:** checked facts shared with provenance; nothing written
+    for anyone; the co-buyer's own pointer from the same snapshot; the owner's
+    No hides only the owner's pointer and leaves the co-buyer's answers
+    untouched.
+- **Updated existing pins** for the checklist wording and the card order in
+  `listing-text-home-facts` and `add-home-simple-save`.
+- **Browser QA, `scripts/qa/add-home-listing-review-e2e.mjs`:** 14 / 14 on
+  desktop 1440 and iPhone 390. It covers:
+  - checklist defaults, Why?, deselect, Add, Undo;
+  - Save Home still on screen;
+  - Not changed notes;
+  - repeated paste and an empty paste;
+  - provenance in Postgres;
+  - the owner's pointer and answer;
+  - the co-buyer's own pointer and answer, with the owner's untouched.
+- **Updated regression scripts:** `smart-listing-paste-e2e` and
+  `pasted-listing-answers-e2e` now drive the checklist and the Match-view
+  pointers instead of per-row Use/Skip and on-card Confirm. Their guarantees
+  are kept.
+- **Full suite, real PostgreSQL 16:** 1359 / 1359 pass, 0 skipped.
+  `next build` passes.
+- **Regression QA on this branch:**
+
+  | Script | Result |
+  |---|---|
+  | `add-home-simple-save-e2e` | 20 / 20 |
+  | `rentcast-import-e2e` | 12 / 12 |
+  | `smart-listing-paste-e2e` | 12 / 12 |
+  | `pasted-listing-answers-e2e` | 11 / 11 |
+
+## 6. Deferred decisions
+
+- **Show provenance in Home Facts.** A saved house's Home Facts still show no
+  "From listing" label (true on `main` too). The data is in the snapshot.
+- **Shared columns for fireplace, fence, pool and ensuite.** These would turn
+  the most common personal pointers into one shared fact. That needs a
+  migration and new #167 readings: its own reviewed PR.
+- **Dismissing a later offer** (founder decision: a separate PR). Offers
+  disappear once their field is filled by anyone. Dismissing one while it is
+  still Unknown would need a new `listing_import` write path, which this PR
+  deliberately doesn't add (§8).
+- **Notes suggestions** (roof year, financing, concessions) remain computed
+  but not shown. This is unchanged and was flagged in phase 1.
+
+## 7. Founder review: data preservation (on head `25b25cb`)
+
+### 1. Unchecked shared facts disappeared after Save Home
+
+**Finding.** The snapshot kept:
+- the facts the buyer added (`pastedFacts`);
+- personal-concept evidence (`descriptionFeatures`).
+
+It did **not** keep shared suggestions the buyer left unchecked. Evidence for
+HOA, school and garage-count wording is not in `descriptionFeatures` at all,
+so it could not be rebuilt. The existing persisted evidence was
+**insufficient**.
+
+**Minimum safe change.** This needs no migration and no new write path.
+- **At Save Home,** the unchecked, still-addable suggestions are stored in the
+  same snapshot as an additive jsonb key, `listing_import.offeredFacts` (beside
+  `pastedFacts`). Each entry has field, value, display, sentence and source;
+  one per field.
+- **This is written once,** in the same insert as today. Nothing else writes
+  it.
+- **Offers are never values:**
+  - not counted as listing details;
+  - not read by Match (the Match result is identical with and without them);
+  - not shown as facts.
+- **Home Facts** (owner and co-buyer, never read-only or Realtor views) shows
+  one quiet row: "From the listing · N details not added yet · **Review**". It
+  is not an inline fold-out (§8).
+  - **Review** opens the shared checklist in a sheet (a bottom sheet on
+    mobile, a dialog on desktop).
+  - Every row starts unchecked, because the buyer already passed on them once.
+  - Each row has its sentence (Why?) and the school attribution.
+  - **Add N facts** writes through the ordinary Home Facts save, only into
+    fields still empty and only values that still fit the home.
+- **An offer drops off** for everyone once its field holds any value, from
+  anyone. It never overwrites.
+- **Provenance:** a field later filled with exactly the offered value reads
+  *From listing* (`fieldProvenance` also checks `offeredFacts`). A different
+  value reads *Added by you*.
+
+**Limitation.** An offer can't be dismissed while its field is still Unknown.
+Home Facts edits never write `listing_import`, and giving them that ability
+(a whole-jsonb write shared between co-buyers) is a bigger change than this
+review allows. Today an offer stays on the quiet row until someone fills the field.
+
+### 2. A later paste cleared accepted facts
+
+**Finding.** Confirmed. `resuggestHomeFacts` undid every accepted fact and
+re-applied only the ones the new text still stated. Laundry, accepted from
+the first text, went back to Unknown when the second text omitted it.
+
+**Correction.** `resuggestHomeFacts` now keeps every accepted fact that still
+holds its value. A different value in the new text appears only as a
+read-only "Not changed" note. A used fact the buyer edited afterwards is
+theirs, no longer tracked, and never reverted. `cleared` is always empty.
+
+### 3. Verified
+
+- **Owner and co-buyer:**
+  - offers are shared;
+  - the co-buyer sees and can add them;
+  - an added offer drops off for both;
+  - personal answers stay independent (real Postgres and browser).
+- **Provenance** is unchanged for added facts, and correct for later-added
+  offers.
+- **Unknown semantics:** offers and pointers never fill a field or a Match
+  answer. Unknown is never No.
+- **Duplicates:** one offer per field; malformed, foreign-source or
+  conflicting entries are ignored; an exact-URL duplicate still opens the
+  saved home (simple-save QA).
+- **Simple Save:** unchanged; its browser QA passes.
+
+## 8. Founder decisions (on head `2b4e532`)
+
+### Home Facts stays free of inline fold-outs
+
+- The inline accordion is replaced by one compact row, "From the listing ·
+  N details not added yet · Review".
+- **Review** opens the checklist in the shared `Sheet` (a bottom sheet on
+  mobile, a dialog on desktop). Closing it, including with Escape, adds
+  nothing.
+- Every row starts unchecked. Why? evidence, the school attribution, Add N
+  facts, empty-field-only writes and owner/co-buyer access are unchanged.
+- **One checklist implementation.** The rows and the Add button are now
+  `src/components/FactChecklist.jsx` (`FactChecklistRows`, `AddFactsButton`,
+  `OfferedFactsSheet`), used by both Add Home's review and the Home Facts sheet.
+- **The original `home-facts-redesign` pin is restored unchanged** (no
+  `<details>` in Home Facts, byte-identical to `main`). The browser QA also
+  checks that the Home Facts overlay renders no `<details>`.
+
+### Dismissal is deferred to a separate PR
+
+No new `listing_import` write path was added. An offer stays available, on
+the quiet row only, until someone fills its field. The safety guards are
+unchanged.
+
+### Confirmed personal Match answers are preserved
+
+- `resuggestListingAnswers` now keeps every answer the buyer confirmed (still
+  holding its value), whatever later pasted text says or leaves out.
+- **New text that says the opposite** is information only. It shows on the
+  confirmed row: "The text you pasted since suggests No: '…' Your answer stays
+  Yes until you change it." No competing Confirm is offered.
+- **Explicit buyer actions still work:**
+  - Undo returns the answer to Unknown;
+  - the buyer's own Yes / No / Unknown makes it theirs, and later pastes never
+    touch it.
+- Match scoring and every other buyer-owned answer are unchanged.
+- **Reachability, to be precise.** In today's UI the full editor
+  (apartments, Edit Home, Realtor suggestions) has no paste box of its own.
+  Text is pasted once, before the editor opens. The found card no longer
+  confirms personal answers. So "confirm, then paste again" is not reachable
+  through any current screen. The rule is enforced at the single source,
+  `resuggestListingAnswers` (called by `runAutofill`), so every present and
+  future paste path keeps confirmed answers. It is covered by unit tests and a
+  real-Postgres test, not a browser step.

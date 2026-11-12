@@ -273,7 +273,7 @@ test('the silent answer writer is gone, and nothing here can reach a database', 
   const modal = read('src/components/HomeModal.jsx');
   const autofill = modal.match(/const runAutofill = \(\) => \{[\s\S]*?\n {2}\};/)[0];
   // The only checks a rerun hands back come from resuggestListingAnswers, which
-  // can keep or clear a suggestion-confirmed answer but never adds or changes one
+  // keeps every answer as it is: it never adds, changes or clears one
   // (see the "Rerunning extraction" tests below).
   assert.equal((autofill.match(/checks\s*:/g) || []).length, 2, 'checks come only from the rerun reconciliation');
   assert.match(autofill, /checks: rerun\.checks/);
@@ -281,7 +281,7 @@ test('the silent answer writer is gone, and nothing here can reach a database', 
   assert.doesNotMatch(autofill, /setCheckItem|applyListingAnswer/, 'pasting never writes checks');
   assert.equal(IMPORT_DESTINATIONS.includes('checks') || IMPORT_DESTINATIONS.includes('ratings'), false, 'the field merge cannot reach answers');
   assert.doesNotMatch(autofill, /onSave|createClient|fetch\(/);
-  assert.match(autofill, /personalAnswers\s*\? resuggestListingAnswers\(pasteText, priorities, form\.checks, confirmedAnswers\)/);
+  assert.match(autofill, /personalAnswers\s*\? resuggestListingAnswers\(pasteText, priorities, form\.checks, confirmedAnswers, answerSuggestions\)/);
   const handlers = modal.match(/const confirmAnswer = [\s\S]*?const answerReview = /)[0];
   assert.doesNotMatch(handlers, /onSave|createClient|fetch\(|submit\(/, 'confirming changes the form only; Save is still the buyer\'s action');
   assert.match(handlers, /hasRecordedAnswer\(form\.checks/);
@@ -301,28 +301,46 @@ function confirmFrom(text, key, checks = {}) {
   return { checks: applyListingAnswer(checks, suggestion, fireplaceBuyer.searchType), confirmed: { [key]: suggestion.answer }, suggestion };
 }
 
-test('rerun 1: a confirmed Yes, then "No fireplace", goes back to Unknown and suggests No for review', () => {
+// Add Home V3 review (founder decision): a confirmed answer is the buyer's
+// explicit choice, so a rerun never clears or changes it. Contrary new text is
+// shown on the confirmed row as information only; Undo and the buyer's own
+// Yes / No / Unknown still change it.
+test('rerun 1: a confirmed Yes, then "No fireplace": the Yes stays, the new No is information only', () => {
   const session = confirmFrom('Gas fireplace in the den.', FIRE, { 'exterior:Pool': 'no', 'ratings:x': 3 });
   assert.equal(session.checks[FIRE], true);
-  const rerun = resuggestListingAnswers('No fireplace.', fireplaceBuyer, session.checks, session.confirmed);
-  assert.equal(Object.hasOwn(rerun.checks, FIRE), false, 'the outdated Yes is not kept');
-  assert.deepEqual(rerun.cleared, [FIRE], 'and the buyer is told it was cleared');
-  assert.deepEqual(rerun.suggestions.map((item) => [item.key, item.answer, item.evidence]), [[FIRE, 'no', 'No fireplace.']]);
-  assert.deepEqual(rerun.decisions, {}, 'the new No waits for the buyer');
-  assert.deepEqual(rerun.confirmed, {});
-  assert.deepEqual(rerun.checks, { 'exterior:Pool': 'no', 'ratings:x': 3 }, 'unrelated answers are untouched');
+  const rerun = resuggestListingAnswers('No fireplace.', fireplaceBuyer, session.checks, session.confirmed, [session.suggestion]);
+  assert.equal(rerun.checks[FIRE], true, 'the confirmed Yes is kept');
+  assert.deepEqual(rerun.cleared, []);
+  assert.deepEqual(rerun.confirmed, { [FIRE]: true }, 'still owned by the suggestion, so Undo works');
+  assert.deepEqual(rerun.suggestions.map((item) => [item.key, item.answer, item.evidence, item.newer]), [[FIRE, true, 'Gas fireplace in the den.', { answer: 'no', evidence: 'No fireplace.' }]]);
+  assert.deepEqual(rerun.decisions, { [rerun.suggestions[0].id]: 'confirmed' });
+  assert.equal(rerun.suggestions.some((item) => item.key === FIRE && item.answer === 'no'), false, 'no competing Confirm No');
+  assert.deepEqual(rerun.checks, { [FIRE]: true, 'exterior:Pool': 'no', 'ratings:x': 3 }, 'unrelated answers are untouched');
+  // Undo is still the buyer's way back to Unknown.
+  assert.deepEqual(undoListingAnswer(rerun.checks, rerun.suggestions[0]), { 'exterior:Pool': 'no', 'ratings:x': 3 });
 });
 
-test('rerun 2: a confirmed Yes, then text that never mentions a fireplace, goes back to Unknown', () => {
+test('rerun 2: a confirmed Yes, then text that never mentions a fireplace (or contradicts itself): the Yes stays', () => {
   const session = confirmFrom('Wood-burning fireplace.', FIRE);
-  const rerun = resuggestListingAnswers('Bright kitchen with quartz counters. New roof in 2021.', fireplaceBuyer, session.checks, session.confirmed);
-  assert.deepEqual(rerun.checks, {});
-  assert.deepEqual(rerun.cleared, [FIRE]);
-  assert.deepEqual(rerun.suggestions, [], 'absence is never No');
-  // A conflict in the new text is not support either.
-  const conflict = resuggestListingAnswers('Gas fireplace. No fireplace.', fireplaceBuyer, session.checks, session.confirmed);
-  assert.deepEqual(conflict.checks, {});
-  assert.deepEqual(conflict.cleared, [FIRE]);
+  const rerun = resuggestListingAnswers('Bright kitchen with quartz counters. New roof in 2021.', fireplaceBuyer, session.checks, session.confirmed, [session.suggestion]);
+  assert.deepEqual(rerun.checks, { [FIRE]: true });
+  assert.deepEqual(rerun.cleared, []);
+  assert.deepEqual(rerun.suggestions.map((item) => [item.key, item.answer, item.newer]), [[FIRE, true, undefined]], 'shown as confirmed, no new evidence');
+  const conflict = resuggestListingAnswers('Gas fireplace. No fireplace.', fireplaceBuyer, session.checks, session.confirmed, [session.suggestion]);
+  assert.deepEqual(conflict.checks, { [FIRE]: true });
+  assert.deepEqual(conflict.cleared, []);
+  // Without the earlier row (nothing to show it with) the answer is still kept.
+  assert.deepEqual(resuggestListingAnswers('Bright kitchen.', fireplaceBuyer, session.checks, session.confirmed).checks, { [FIRE]: true });
+});
+
+test('rerun: a confirmed answer the buyer changed by hand is theirs, and a rerun never touches it', () => {
+  const session = confirmFrom('Gas fireplace in the den.', FIRE);
+  // The buyer switched it to No themselves: HomeModal drops it from `confirmed`.
+  const rerun = resuggestListingAnswers('Gas fireplace in the den.', fireplaceBuyer, { [FIRE]: 'no' }, {}, [session.suggestion]);
+  assert.deepEqual(rerun.checks, { [FIRE]: 'no' });
+  assert.deepEqual(rerun.suggestions, [], 'a recorded answer gets no suggestion');
+  // A stale `confirmed` entry whose value no longer matches is ignored the same way.
+  assert.deepEqual(resuggestListingAnswers('No fireplace.', fireplaceBuyer, { [FIRE]: 'no' }, { [FIRE]: true }).checks, { [FIRE]: 'no' });
 });
 
 test('rerun 3: identical text keeps the confirmed Yes, still confirmed and undoable', () => {
