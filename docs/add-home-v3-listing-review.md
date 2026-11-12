@@ -197,10 +197,10 @@ lookup already filled garage and HOA).
 - **Shared columns for fireplace, fence, pool and ensuite.** These would turn
   the most common personal pointers into one shared fact. That needs a
   migration and new #167 readings: its own reviewed PR.
-- **Dismissing a later offer.** Offers in Home Facts disappear once their field
-  is filled by anyone. They can't be dismissed while still Unknown, because
-  that would need Home Facts to write `listing_import`, which it never does
-  today (§7).
+- **Dismissing a later offer** (founder decision: a separate PR). Offers
+  disappear once their field is filled by anyone. Dismissing one while it is
+  still Unknown would need a new `listing_import` write path, which this PR
+  deliberately doesn't add (§8).
 - **Notes suggestions** (roof year, financing, concessions) remain computed
   but not shown. This is unchanged and was flagged in phase 1.
 
@@ -229,10 +229,12 @@ so it could not be rebuilt. The existing persisted evidence was
   - not read by Match (the Match result is identical with and without them);
   - not shown as facts.
 - **Home Facts** (owner and co-buyer, never read-only or Realtor views) shows
-  "From the listing you pasted · N not added yet":
-  - folded, with every row unchecked, because the buyer already passed on
-    them once;
-  - each row with its sentence (Why?) and the school attribution;
+  one quiet row: "From the listing · N details not added yet · **Review**". It
+  is not an inline fold-out (§8).
+  - **Review** opens the shared checklist in a sheet (a bottom sheet on
+    mobile, a dialog on desktop).
+  - Every row starts unchecked, because the buyer already passed on them once.
+  - Each row has its sentence (Why?) and the school attribution.
   - **Add N facts** writes through the ordinary Home Facts save, only into
     fields still empty and only values that still fit the home.
 - **An offer drops off** for everyone once its field holds any value, from
@@ -244,7 +246,7 @@ so it could not be rebuilt. The existing persisted evidence was
 **Limitation.** An offer can't be dismissed while its field is still Unknown.
 Home Facts edits never write `listing_import`, and giving them that ability
 (a whole-jsonb write shared between co-buyers) is a bigger change than this
-review allows. Today an offer stays folded until someone fills the field.
+review allows. Today an offer stays on the quiet row until someone fills the field.
 
 ### 2. A later paste cleared accepted facts
 
@@ -273,22 +275,47 @@ theirs, no longer tracked, and never reverted. `cleared` is always empty.
   saved home (simple-save QA).
 - **Simple Save:** unchanged; its browser QA passes.
 
-### Design exception to approve (Home Facts disclosure)
+## 8. Founder decisions (on head `2b4e532`)
 
-The Home Facts redesign deliberately removed imported-facts panels and every
-`<details>` disclosure from Home Facts (pinned in `home-facts-redesign`). The
-later-offers section is one folded disclosure. It is an actionable offer of
-empty fields, not a panel of listing data. The pin now still forbids any
-listing-data panel and any other disclosure, and allows only
-`flh-offered-facts` (plus its per-row Why?). If you'd rather keep Home Facts
-disclosure-free, the alternative is a one-line "From the listing you pasted:
-N not added yet · Review" link that opens the same checklist in a sheet.
+### Home Facts stays free of inline fold-outs
 
-### Unresolved tradeoff (personal answers in the full editor)
+- The inline accordion is replaced by one compact row, "From the listing ·
+  N details not added yet · Review".
+- **Review** opens the checklist in the shared `Sheet` (a bottom sheet on
+  mobile, a dialog on desktop). Closing it, including with Escape, adds
+  nothing.
+- Every row starts unchecked. Why? evidence, the school attribution, Add N
+  facts, empty-field-only writes and owner/co-buyer access are unchanged.
+- **One checklist implementation.** The rows and the Add button are now
+  `src/components/FactChecklist.jsx` (`FactChecklistRows`, `AddFactsButton`,
+  `OfferedFactsSheet`), used by both Add Home's review and the Home Facts sheet.
+- **The original `home-facts-redesign` pin is restored unchanged** (no
+  `<details>` in Home Facts, byte-identical to `main`). The browser QA also
+  checks that the Home Facts overlay renders no `<details>`.
 
-The full editor (apartments, Edit Home) still clears a personal answer the
-buyer *confirmed* from earlier text when a later paste no longer supports it.
-This is `resuggestListingAnswers`, unchanged from #165. Your preference
-("preserve what the buyer explicitly accepted") argues for keeping those too.
-It is a one-function change, but it alters a separately tested personal-answer
-contract, so it is left for your call.
+### Dismissal is deferred to a separate PR
+
+No new `listing_import` write path was added. An offer stays available, on
+the quiet row only, until someone fills its field. The safety guards are
+unchanged.
+
+### Confirmed personal Match answers are preserved
+
+- `resuggestListingAnswers` now keeps every answer the buyer confirmed (still
+  holding its value), whatever later pasted text says or leaves out.
+- **New text that says the opposite** is information only. It shows on the
+  confirmed row: "The text you pasted since suggests No: '…' Your answer stays
+  Yes until you change it." No competing Confirm is offered.
+- **Explicit buyer actions still work:**
+  - Undo returns the answer to Unknown;
+  - the buyer's own Yes / No / Unknown makes it theirs, and later pastes never
+    touch it.
+- Match scoring and every other buyer-owned answer are unchanged.
+- **Reachability, to be precise.** In today's UI the full editor
+  (apartments, Edit Home, Realtor suggestions) has no paste box of its own.
+  Text is pasted once, before the editor opens. The found card no longer
+  confirms personal answers. So "confirm, then paste again" is not reachable
+  through any current screen. The rule is enforced at the single source,
+  `resuggestListingAnswers` (called by `runAutofill`), so every present and
+  future paste path keeps confirmed answers. It is covered by unit tests and a
+  real-Postgres test, not a browser step.

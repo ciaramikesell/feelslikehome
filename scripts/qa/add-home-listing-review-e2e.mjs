@@ -198,26 +198,42 @@ async function run() {
       await owner.locator('.flh-overlay[role="dialog"]:not(.is-loading)').waitFor({ timeout: 30000 });
     }, open);
 
-    await step(`[${label}] Home Facts: the facts not added are offered again, folded and unchecked; adding one writes only that field`, async () => {
-      const offers = owner.locator('.flh-offered-facts');
-      await offers.waitFor({ timeout: 15000 });
-      assert(!(await offers.getAttribute('open')), 'offers open by default');
-      assert(/2 not added yet/.test(await offers.locator('summary').first().innerText()), 'offer count');
-      await offers.locator('summary').first().click();
-      const offerRow = (name) => offers.locator('.flh-fact-checklist-rows > li').filter({ has: owner.locator('.flh-fact-check-text b', { hasText: new RegExp(`^${name}$`) }) });
+    await step(`[${label}] Home Facts: one quiet row (no inline fold-out); Review opens the sheet, unchecked; adding one writes only that field`, async () => {
+      const entry = owner.locator('.flh-offered-row');
+      await entry.waitFor({ timeout: 15000 });
+      assert(/From the listing · 2 details not added yet/.test(await entry.innerText()), `entry: ${await entry.innerText()}`);
+      assert(!(await owner.locator('.flh-overlay details').count()), 'Home Facts has an inline fold-out');
+      await entry.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+      await shot(owner, `after-${label}-4a-offered-row`);
+      await entry.getByRole('button', { name: 'Review' }).click();
+      const sheet = owner.locator('.flh-offered-sheet[role="dialog"]');
+      await sheet.waitFor();
+      const box = await sheet.boundingBox();
+      const view = owner.viewportSize();
+      assert(box.x >= 0 && box.x + box.width <= view.width + 1, 'the sheet overflows the screen');
+      const offerRow = (name) => sheet.locator('.flh-fact-checklist-rows > li').filter({ has: owner.locator('.flh-fact-check-text b', { hasText: new RegExp(`^${name}$`) }) });
       assert(!(await offerRow('Primary bedroom').locator('input').isChecked()) && !(await offerRow('School district').locator('input').isChecked()), 'an offer was preselected');
       assert(/FLH hasn.t verified it/.test(await offerRow('School district').innerText()), 'school attribution');
-      await offers.evaluate((el) => el.scrollIntoView({ block: 'start' }));
-      await shot(owner, `after-${label}-4a-offered-later`);
+      await offerRow('Primary bedroom').locator('.flh-fact-why > summary').click();
+      assert(/Primary suite on the first floor\./.test(await offerRow('Primary bedroom').innerText()), 'Why? evidence');
+      assert(await sheet.getByRole('button', { name: /Check a fact to add it/ }).isDisabled(), 'Add enabled with nothing checked');
+      await shot(owner, `after-${label}-4b-offered-sheet`);
+      // Escape closes without adding anything.
+      await owner.keyboard.press('Escape');
+      await sheet.waitFor({ state: 'detached' });
+      assert(homeRow(url).primary_bedroom_location === '' || homeRow(url).primary_bedroom_location === null, 'closing the sheet added a fact');
+      await entry.getByRole('button', { name: 'Review' }).click();
+      await sheet.waitFor();
+      assert(!(await offerRow('Primary bedroom').locator('input').isChecked()), 'reopened with a fact checked');
       await offerRow('Primary bedroom').locator('input').check();
-      await offers.getByRole('button', { name: /Add 1 fact/ }).click();
+      await sheet.getByRole('button', { name: /Add 1 fact/ }).click();
+      await sheet.waitFor({ state: 'detached' });
       const id = homeRow(url).id;
       for (let i = 0; i < 20 && homeRow(url).primary_bedroom_location !== 'Main Floor'; i += 1) await owner.waitForTimeout(250);
       const after = homeRow(url);
       assert(after.primary_bedroom_location === 'Main Floor' && after.school_district === null && after.laundry_location === 'first_floor', `after add: ${JSON.stringify(after).slice(0, 200)}`);
       assert(!Object.keys(checksOf(id, info.users.owner.id)).length, 'adding a fact wrote a Match answer');
-      await owner.locator('.flh-offered-facts summary').first().waitFor();
-      assert(/1 not added yet/.test(await owner.locator('.flh-offered-facts summary').first().innerText()), 'the added offer should drop off');
+      await owner.locator('.flh-offered-row').filter({ hasText: '1 detail not added yet' }).waitFor({ timeout: 10000 });
     }, open);
 
     await step(`[${label}] owner's Match view: Fireplace shows "Listing suggests Yes" (unanswered); answering it is the owner's own and hides the pointer`, async () => {
@@ -248,7 +264,16 @@ async function run() {
       await fireRow.locator('.flh-mc2-listing').waitFor({ timeout: 15000 });
       assert(/Listing suggests\s*Yes/.test(await fireRow.innerText()), 'co-buyer pointer');
       // The co-buyer sees the same remaining shared offer (the district), unchecked.
-      assert(/1 not added yet/.test(await coBuyer.locator('.flh-offered-facts summary').first().innerText()), 'co-buyer offers');
+      assert(/1 detail not added yet/.test(await coBuyer.locator('.flh-offered-row').innerText()), 'co-buyer offers');
+      // The co-buyer can review and add it too (shared fact), through the same sheet.
+      await coBuyer.locator('.flh-offered-row').getByRole('button', { name: 'Review' }).click();
+      const coSheet = coBuyer.locator('.flh-offered-sheet[role="dialog"]');
+      await coSheet.locator('.flh-fact-checklist-rows input').first().check();
+      await coSheet.getByRole('button', { name: /Add 1 fact/ }).click();
+      await coSheet.waitFor({ state: 'detached' });
+      for (let i = 0; i < 20 && homeRow(url).school_district !== 'Rochester Community Schools'; i += 1) await coBuyer.waitForTimeout(250);
+      assert(homeRow(url).school_district === 'Rochester Community Schools', 'co-buyer add not saved');
+      assert(!(await coBuyer.locator('.flh-offered-row').count()), 'the row stays after every offer was added');
       await fireRow.scrollIntoViewIfNeeded();
       await shot(coBuyer, `after-${label}-5-cobuyer-hint`);
       await fireRow.locator('label.is-yes').click();
