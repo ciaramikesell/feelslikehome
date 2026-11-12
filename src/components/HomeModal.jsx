@@ -572,9 +572,13 @@ function ListingDetailsPaste({ paste }) {
 // answers waiting for the buyer's review.
 // `cleared` names answers confirmed from earlier text that the new text no
 // longer supports; they went back to Unknown and the buyer is told so.
-function pastedTextMessage(details, answers, cleared = [], facts = 0) {
+// `mentioned` counts what the text says that isn't new here (a fact this home
+// already has differently, a personal answer left for the Match view), so an
+// otherwise empty result never claims the text said nothing.
+function pastedTextMessage(details, answers, cleared = [], facts = 0, mentioned = 0) {
   const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
   const reset = cleared.length ? `${cleared.join(', ')} ${cleared.length === 1 ? 'is' : 'are'} back to Unknown — the new text doesn’t support what you used earlier.` : '';
+  if (!details && !answers && !facts && mentioned) return [reset, 'Nothing new to add from that text. What it mentions is noted below, and anything you already added is kept.'].filter(Boolean).join(' ');
   if (!details && !answers && !facts) return [reset, 'We didn’t find details we could use in that text. Anything not stated stays Unknown, and you can still add the home.'].filter(Boolean).join(' ');
   const filled = details ? `Filled in ${plural(details, 'detail')} from what you pasted — double-check before saving.` : '';
   const review = [facts && plural(facts, 'Home Fact'), answers && plural(answers, 'possible answer')].filter(Boolean).join(' and ');
@@ -1006,7 +1010,9 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     const pending = personalDeferred ? 0 : visiblePersonalSuggestions(answers, { home: next, factSuggestions: facts.suggestions, factDecisions: usedDecisions })
       .filter((item) => rerun.decisions[item.id] !== 'confirmed').length;
     const pendingFacts = facts.suggestions.filter((item) => !facts.used[item.id]).length;
-    setParseMsg(pastedTextMessage(canonicalAdditions.length, pending, clearedLabels, pendingFacts));
+    const mentioned = homeFactDisagreements(pasteText, next).length + (personalDeferred
+      ? answers.filter((item) => !hasRecordedAnswer(next.checks, item.key, priorities.searchType) && personalSuggestionStatus(item, { home: next }) !== 'settled').length : 0);
+    setParseMsg(pastedTextMessage(canonicalAdditions.length, pending, clearedLabels, pendingFacts, mentioned));
   };
 
   const confirmAnswer = (suggestion) => {

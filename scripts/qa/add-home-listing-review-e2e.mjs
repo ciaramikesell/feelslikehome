@@ -168,6 +168,7 @@ async function run() {
       assert(/3 added to Home Facts/.test(await checklist(owner).locator('.flh-fact-added').innerText()), 'accepted facts kept');
       // New text that says otherwise: kept, and named read-only.
       await paste(owner, 'Laundry in the basement. Gas fireplace.');
+      assert(/Nothing new to add from that text/.test(await owner.locator('.flh-listing-paste-status').innerText()), 'the message claims the text said nothing');
       assert(/Laundry: the listing says Basement; this home has First floor\. Kept as is\./.test(await checklist(owner).locator('.flh-fact-disagree').innerText()), 'disagreement note');
       assert(/3 added to Home Facts/.test(await checklist(owner).locator('.flh-fact-added').innerText()), 'still kept');
       await shotOf(owner, '.flh-found-more', `after-${label}-3b-repaste-kept`);

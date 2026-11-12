@@ -100,6 +100,9 @@ test('wiring: Save keeps the offers; Home Facts shows them folded and unchecked;
   assert.match(offered, /FLH hasn’t verified it or checked school boundaries\./);
   assert.match(facts, /\{!isReadOnly && <OfferedFacts home=\{home\} onAdd=\{save\} \/>\}/, 'Realtors and read-only views never see it');
   assert.doesNotMatch(offered, /checks|onAnswer/);
+  // A re-paste that only restates kept facts or personal mentions never claims the text said nothing.
+  assert.match(modal, /if \(!details && !answers && !facts && mentioned\) return \[reset, 'Nothing new to add from that text\. What it mentions is noted below, and anything you already added is kept\.'\]/);
+  assert.match(modal, /const mentioned = homeFactDisagreements\(pasteText, next\)\.length \+ \(personalDeferred/);
 });
 
 /* --------------------------------- real Postgres --------------------------------- */
