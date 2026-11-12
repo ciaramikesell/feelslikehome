@@ -1,0 +1,193 @@
+{
+  "fixtureId": "F02b-two-story-second",
+  "homeId": "home-02",
+  "searchProfile": "purchase",
+  "description": "Second floor of the F02 home as a separate image: owner's suite, Jack-and-Jill bath, second-floor laundry.",
+  "cases": [
+    "multi_image_home",
+    "floor_assignment",
+    "jack_and_jill",
+    "laundry_floor",
+    "abbreviation"
+  ],
+  "unlabeledOnly": false,
+  "injection": false,
+  "personalMetadata": false,
+  "floors": [
+    {
+      "caption": "SECOND FLOOR",
+      "level": "second"
+    }
+  ],
+  "rooms": [
+    {
+      "label": "BEDROOM 2",
+      "type": "bedroom",
+      "level": "second",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "BATH 2",
+      "type": "full_bath",
+      "level": "second",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "BEDROOM 3",
+      "type": "bedroom",
+      "level": "second",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "OWNER'S SUITE",
+      "type": "primary_bedroom",
+      "level": "second",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "OWNER'S BATH",
+      "type": "primary_bath",
+      "level": "second",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "W.I.C.",
+      "type": "walk_in_closet",
+      "level": "second",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "BEDROOM 4",
+      "type": "bedroom",
+      "level": "second",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "LAUNDRY",
+      "type": "laundry",
+      "level": "second",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "LIN.",
+      "type": "closet",
+      "level": "second",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "LOFT",
+      "type": "bonus_room",
+      "level": "second",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    }
+  ],
+  "unlabeledRooms": 1,
+  "otherText": [],
+  "sheetText": [
+    "THE BIRCH — PLAN 2-STORY",
+    "Sheet 2 of 2",
+    "SECOND FLOOR",
+    "BEDROOM 2",
+    "BATH 2",
+    "BEDROOM 3",
+    "OWNER'S SUITE",
+    "OWNER'S BATH",
+    "W.I.C.",
+    "BEDROOM 4",
+    "LAUNDRY",
+    "LIN.",
+    "LOFT"
+  ],
+  "doors": [
+    [
+      "BEDROOM 2",
+      "BATH 2"
+    ],
+    [
+      "BATH 2",
+      "BEDROOM 3"
+    ],
+    [
+      "BEDROOM 2",
+      "(unlabeled hall)"
+    ],
+    [
+      "BEDROOM 3",
+      "(unlabeled hall)"
+    ],
+    [
+      "OWNER'S SUITE",
+      "(unlabeled hall)"
+    ],
+    [
+      "OWNER'S SUITE",
+      "W.I.C."
+    ],
+    [
+      "OWNER'S SUITE",
+      "OWNER'S BATH"
+    ],
+    [
+      "BEDROOM 4",
+      "(unlabeled hall)"
+    ],
+    [
+      "LAUNDRY",
+      "(unlabeled hall)"
+    ],
+    [
+      "LIN.",
+      "(unlabeled hall)"
+    ],
+    [
+      "LOFT",
+      "(unlabeled hall)"
+    ]
+  ],
+  "expected": {
+    "asDrawn": [
+      "primary_ensuite",
+      "walk_in_closet",
+      "double_vanity",
+      "laundry",
+      "laundry_second_floor"
+    ],
+    "acceptable": [
+      "jack_and_jill_bath",
+      "bonus_room"
+    ],
+    "optional": [],
+    "ambiguous": [],
+    "notOfferable": [],
+    "forbidden": [],
+    "forbiddenDerived": [
+      "first_floor_primary",
+      "first_floor_bedroom",
+      "laundry_first_floor"
+    ]
+  },
+  "relationships": {
+    "ensuitePairs": [
+      [
+        "OWNER'S SUITE",
+        "OWNER'S BATH"
+      ]
+    ],
+    "forbiddenEnsuitePairs": [],
+    "forbiddenDoorPairs": []
+  },
+  "counts": {
+    "bedroomsLabeled": 3
+  },
+  "file": "images/F02b-two-story-second.png"
+}

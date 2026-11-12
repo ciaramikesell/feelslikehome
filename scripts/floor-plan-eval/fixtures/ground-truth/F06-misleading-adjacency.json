@@ -1,0 +1,191 @@
+{
+  "fixtureId": "F06-misleading-adjacency",
+  "homeId": "home-06",
+  "searchProfile": "purchase",
+  "description": "A bath shares a wall with the primary bedroom but opens only to the hall; laundry shares a wall with the mudroom but has no door to it.",
+  "cases": [
+    "misleading_adjacency",
+    "false_ensuite",
+    "laundry_floor"
+  ],
+  "unlabeledOnly": false,
+  "injection": false,
+  "personalMetadata": false,
+  "floors": [
+    {
+      "caption": "MAIN FLOOR",
+      "level": "main"
+    }
+  ],
+  "rooms": [
+    {
+      "label": "PRIMARY BEDROOM",
+      "type": "primary_bedroom",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "BATH",
+      "type": "full_bath",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "CL",
+      "type": "closet",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "BEDROOM 2",
+      "type": "bedroom",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "HALL",
+      "type": "hall",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "LIVING ROOM",
+      "type": "living",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "KITCHEN",
+      "type": "kitchen",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "LAUNDRY",
+      "type": "laundry",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "MUDROOM",
+      "type": "mudroom",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "GARAGE",
+      "type": "garage",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    }
+  ],
+  "unlabeledRooms": 0,
+  "otherText": [],
+  "sheetText": [
+    "THE HOLLY — TWO BEDROOM COTTAGE",
+    "MAIN FLOOR",
+    "PRIMARY BEDROOM",
+    "BATH",
+    "CL",
+    "BEDROOM 2",
+    "HALL",
+    "LIVING ROOM",
+    "KITCHEN",
+    "LAUNDRY",
+    "MUDROOM",
+    "GARAGE"
+  ],
+  "doors": [
+    [
+      "PRIMARY BEDROOM",
+      "HALL"
+    ],
+    [
+      "BATH",
+      "HALL"
+    ],
+    [
+      "CL",
+      "HALL"
+    ],
+    [
+      "BEDROOM 2",
+      "HALL"
+    ],
+    [
+      "LAUNDRY",
+      "HALL"
+    ],
+    [
+      "MUDROOM",
+      "HALL"
+    ],
+    [
+      "MUDROOM",
+      "GARAGE"
+    ],
+    [
+      "KITCHEN",
+      "HALL"
+    ],
+    [
+      "LIVING ROOM",
+      "KITCHEN"
+    ]
+  ],
+  "expected": {
+    "asDrawn": [
+      "laundry",
+      "mudroom",
+      "garage",
+      "first_floor_primary",
+      "first_floor_bedroom",
+      "laundry_first_floor"
+    ],
+    "acceptable": [
+      "attached_garage",
+      "eat_in_kitchen"
+    ],
+    "optional": [],
+    "ambiguous": [],
+    "notOfferable": [],
+    "forbidden": [
+      "primary_ensuite",
+      "walk_in_closet"
+    ],
+    "forbiddenDerived": []
+  },
+  "relationships": {
+    "ensuitePairs": [],
+    "forbiddenEnsuitePairs": [
+      [
+        "PRIMARY BEDROOM",
+        "BATH"
+      ]
+    ],
+    "forbiddenDoorPairs": [
+      [
+        "LAUNDRY",
+        "MUDROOM"
+      ],
+      [
+        "PRIMARY BEDROOM",
+        "BATH"
+      ]
+    ]
+  },
+  "counts": {
+    "bedroomsLabeled": 2
+  },
+  "file": "images/F06-misleading-adjacency.png"
+}

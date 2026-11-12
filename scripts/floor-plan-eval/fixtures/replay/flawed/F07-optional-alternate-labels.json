@@ -1,0 +1,375 @@
+{
+  "schemaVersion": "fpa-2",
+  "image": {
+    "isFloorPlan": true,
+    "legibility": "clear",
+    "multipleDrawings": false
+  },
+  "floors": [
+    {
+      "id": "f1",
+      "printedCaption": "FIRST FLOOR",
+      "level": "main"
+    }
+  ],
+  "rooms": [
+    {
+      "id": "d0-great",
+      "floorId": "f1",
+      "printedLabel": "GREAT ROOM",
+      "qualifierText": "",
+      "type": "great_room",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"GREAT ROOM\""
+    },
+    {
+      "id": "d0-kitchen",
+      "floorId": "f1",
+      "printedLabel": "KITCHEN",
+      "qualifierText": "",
+      "type": "kitchen",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"KITCHEN\""
+    },
+    {
+      "id": "d0-office",
+      "floorId": "f1",
+      "printedLabel": "OFFICE",
+      "qualifierText": "",
+      "type": "office",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"OPTIONAL OFFICE\""
+    },
+    {
+      "id": "d0-pantry",
+      "floorId": "f1",
+      "printedLabel": "UPGRADE: WALK-IN PANTRY",
+      "qualifierText": "UPGRADE",
+      "type": "walk_in_pantry",
+      "evidenceCategory": "printed_label",
+      "configuration": "optional_or_alternate",
+      "evidence": "Printed \"UPGRADE: WALK-IN PANTRY\""
+    },
+    {
+      "id": "d0-mud",
+      "floorId": "f1",
+      "printedLabel": "OPT. MUDROOM",
+      "qualifierText": "",
+      "type": "mudroom",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"OPT. MUDROOM\""
+    },
+    {
+      "id": "d0-flex",
+      "floorId": "f1",
+      "printedLabel": "FLEX",
+      "qualifierText": "",
+      "type": "den_flex",
+      "evidenceCategory": "printed_label",
+      "configuration": "unclear",
+      "evidence": "Printed \"FLEX\""
+    },
+    {
+      "id": "d0-pbr",
+      "floorId": "f1",
+      "printedLabel": "PRIMARY BEDROOM",
+      "qualifierText": "",
+      "type": "primary_bedroom",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"PRIMARY BEDROOM\""
+    },
+    {
+      "id": "d0-obath",
+      "floorId": "f1",
+      "printedLabel": "OWNER'S BATH",
+      "qualifierText": "",
+      "type": "primary_bath",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"OWNER'S BATH\""
+    },
+    {
+      "id": "d0-wic",
+      "floorId": "f1",
+      "printedLabel": "OPT. WALK-IN CLOSET",
+      "qualifierText": "OPT.",
+      "type": "walk_in_closet",
+      "evidenceCategory": "printed_label",
+      "configuration": "optional_or_alternate",
+      "evidence": "Printed \"OPT. WALK-IN CLOSET\""
+    },
+    {
+      "id": "d0-laundry",
+      "floorId": "f1",
+      "printedLabel": "LAUNDRY",
+      "qualifierText": "",
+      "type": "laundry",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"LAUNDRY\""
+    },
+    {
+      "id": "d0-garage",
+      "floorId": "f1",
+      "printedLabel": "2-CAR GARAGE",
+      "qualifierText": "",
+      "type": "garage",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"2-CAR GARAGE\""
+    },
+    {
+      "id": "d0-deck",
+      "floorId": "f1",
+      "printedLabel": "PROPOSED DECK",
+      "qualifierText": "PROPOSED",
+      "type": "deck_patio",
+      "evidenceCategory": "printed_label",
+      "configuration": "optional_or_alternate",
+      "evidence": "Printed \"PROPOSED DECK\""
+    }
+  ],
+  "relationships": [
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-great",
+      "toRoomId": "d0-kitchen",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-kitchen",
+      "toRoomId": "d0-office",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-kitchen",
+      "toRoomId": "d0-pantry",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-great",
+      "toRoomId": "d0-pbr",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-pbr",
+      "toRoomId": "d0-obath",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-obath",
+      "toRoomId": "d0-wic",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-kitchen",
+      "toRoomId": "d0-mud",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-mud",
+      "toRoomId": "d0-flex",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-flex",
+      "toRoomId": "d0-garage",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-laundry",
+      "toRoomId": "d0-obath",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-pbr",
+      "toRoomId": "d0-deck",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "ensuite_bath",
+      "fromRoomId": "d0-pbr",
+      "toRoomId": "d0-obath",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door drawn directly between the rooms"
+    }
+  ],
+  "features": [
+    {
+      "concept": "kitchen_island",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-kitchen"
+      ],
+      "evidenceCategory": "drawn_symbol",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"KITCHEN\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "primary_ensuite",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-pbr",
+        "d0-obath"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"PRIMARY BEDROOM\" / \"OWNER'S BATH\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "double_vanity",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-obath"
+      ],
+      "evidenceCategory": "drawn_symbol",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"OWNER'S BATH\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "laundry",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-laundry"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"LAUNDRY\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "garage",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-garage"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"2-CAR GARAGE\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "office",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-office"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"OFFICE\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "walk_in_pantry",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-pantry"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "optional_or_alternate",
+      "qualifierText": "UPGRADE",
+      "evidence": "Printed \"UPGRADE: WALK-IN PANTRY\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "mudroom",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-mud"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"OPT. MUDROOM\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "walk_in_closet",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-wic"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "optional_or_alternate",
+      "qualifierText": "OPT.",
+      "evidence": "Printed \"OPT. WALK-IN CLOSET\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "patio_deck",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-deck"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "optional_or_alternate",
+      "qualifierText": "PROPOSED",
+      "evidence": "Printed \"PROPOSED DECK\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "den_flex",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-flex"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "unclear",
+      "qualifierText": "",
+      "evidence": "Printed \"FLEX\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "bonus_room",
+      "floorId": "f1",
+      "roomIds": [],
+      "evidenceCategory": "printed_label",
+      "configuration": "optional_or_alternate",
+      "qualifierText": "FUTURE",
+      "evidence": "Printed sheet note",
+      "uncertainty": ""
+    }
+  ],
+  "counts": {
+    "bedroomsLabeled": 1,
+    "fullBathsBySymbol": 1,
+    "halfBathsBySymbol": 0,
+    "note": ""
+  },
+  "warnings": []
+}

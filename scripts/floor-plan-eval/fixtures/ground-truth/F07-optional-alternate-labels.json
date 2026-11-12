@@ -1,0 +1,221 @@
+{
+  "fixtureId": "F07-optional-alternate-labels",
+  "homeId": "home-07",
+  "searchProfile": "purchase",
+  "description": "Builder plan with Optional / Opt. / Upgrade / Future / Proposed rooms and a Flex room beside as-built rooms.",
+  "cases": [
+    "optional_language",
+    "ambiguity",
+    "first_floor_primary",
+    "primary_ensuite"
+  ],
+  "unlabeledOnly": false,
+  "injection": false,
+  "personalMetadata": false,
+  "floors": [
+    {
+      "caption": "FIRST FLOOR",
+      "level": "main"
+    }
+  ],
+  "rooms": [
+    {
+      "label": "GREAT ROOM",
+      "type": "great_room",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "KITCHEN",
+      "type": "kitchen",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "OPTIONAL OFFICE",
+      "type": "office",
+      "level": "main",
+      "configuration": "optional_or_alternate",
+      "qualifier": "OPTIONAL"
+    },
+    {
+      "label": "UPGRADE: WALK-IN PANTRY",
+      "type": "walk_in_pantry",
+      "level": "main",
+      "configuration": "optional_or_alternate",
+      "qualifier": "UPGRADE"
+    },
+    {
+      "label": "OPT. MUDROOM",
+      "type": "mudroom",
+      "level": "main",
+      "configuration": "optional_or_alternate",
+      "qualifier": "OPT."
+    },
+    {
+      "label": "FLEX",
+      "type": "den_flex",
+      "level": "main",
+      "configuration": "unclear",
+      "qualifier": ""
+    },
+    {
+      "label": "PRIMARY BEDROOM",
+      "type": "primary_bedroom",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "OWNER'S BATH",
+      "type": "primary_bath",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "OPT. WALK-IN CLOSET",
+      "type": "walk_in_closet",
+      "level": "main",
+      "configuration": "optional_or_alternate",
+      "qualifier": "OPT."
+    },
+    {
+      "label": "LAUNDRY",
+      "type": "laundry",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "2-CAR GARAGE",
+      "type": "garage",
+      "level": "main",
+      "configuration": "as_drawn",
+      "qualifier": ""
+    },
+    {
+      "label": "PROPOSED DECK",
+      "type": "deck_patio",
+      "level": "main",
+      "configuration": "optional_or_alternate",
+      "qualifier": "PROPOSED"
+    }
+  ],
+  "unlabeledRooms": 0,
+  "otherText": [],
+  "sheetText": [
+    "THE ASPEN — PLAN 2140",
+    "Shown with available options. Options at additional cost; see sales consultant.",
+    "FUTURE BONUS ROOM AVAILABLE OVER GARAGE — SEE OPTION SHEET B.",
+    "FIRST FLOOR",
+    "GREAT ROOM",
+    "KITCHEN",
+    "OPTIONAL",
+    "OFFICE",
+    "UPGRADE:",
+    "WALK-IN",
+    "PANTRY",
+    "OPT.",
+    "MUDROOM",
+    "FLEX",
+    "PRIMARY BEDROOM",
+    "OWNER'S BATH",
+    "OPT. WALK-IN",
+    "CLOSET",
+    "LAUNDRY",
+    "2-CAR GARAGE",
+    "PROPOSED DECK"
+  ],
+  "doors": [
+    [
+      "GREAT ROOM",
+      "KITCHEN"
+    ],
+    [
+      "KITCHEN",
+      "OPTIONAL OFFICE"
+    ],
+    [
+      "KITCHEN",
+      "UPGRADE: WALK-IN PANTRY"
+    ],
+    [
+      "GREAT ROOM",
+      "PRIMARY BEDROOM"
+    ],
+    [
+      "PRIMARY BEDROOM",
+      "OWNER'S BATH"
+    ],
+    [
+      "OWNER'S BATH",
+      "OPT. WALK-IN CLOSET"
+    ],
+    [
+      "KITCHEN",
+      "OPT. MUDROOM"
+    ],
+    [
+      "OPT. MUDROOM",
+      "FLEX"
+    ],
+    [
+      "FLEX",
+      "2-CAR GARAGE"
+    ],
+    [
+      "LAUNDRY",
+      "OWNER'S BATH"
+    ],
+    [
+      "PRIMARY BEDROOM",
+      "PROPOSED DECK"
+    ]
+  ],
+  "expected": {
+    "asDrawn": [
+      "kitchen_island",
+      "primary_ensuite",
+      "double_vanity",
+      "laundry",
+      "garage",
+      "first_floor_primary",
+      "first_floor_bedroom",
+      "laundry_first_floor"
+    ],
+    "acceptable": [
+      "attached_garage"
+    ],
+    "optional": [
+      "office",
+      "walk_in_pantry",
+      "mudroom",
+      "walk_in_closet",
+      "patio_deck",
+      "bonus_room"
+    ],
+    "ambiguous": [
+      "den_flex"
+    ],
+    "notOfferable": [],
+    "forbidden": [],
+    "forbiddenDerived": []
+  },
+  "relationships": {
+    "ensuitePairs": [
+      [
+        "PRIMARY BEDROOM",
+        "OWNER'S BATH"
+      ]
+    ],
+    "forbiddenEnsuitePairs": [],
+    "forbiddenDoorPairs": []
+  },
+  "counts": {
+    "bedroomsLabeled": 1
+  },
+  "file": "images/F07-optional-alternate-labels.png"
+}

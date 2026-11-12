@@ -499,3 +499,17 @@ Open questions for Phase E: actual contracted data fields/rights, exact provider
 - changing Match semantics, weighting, or Unknown behavior.
 
 This boundary delivers real usefulness using the repository's established Add Home, storage, fallback parser, and Match contracts while keeping the costliest failure—an unsupported claim becoming a decision-driving fact—out of V1.
+
+---
+
+## 13. AI Floor Plan Analysis — Feasibility Study (added 2026-10-31)
+
+AI-powered floor plan analysis is now a planned future investment, so the "computer vision" item in §12 and the "V1 performs no computer vision" line in §5 get a dedicated, read-only feasibility study: [`docs/ai-floor-plan-analysis-feasibility.md`](ai-floor-plan-analysis-feasibility.md). Nothing in it has been built, enabled or applied, and draft PR #159 is untouched.
+
+In brief:
+
+- **Approach:** one server-side, criterion-agnostic extraction per floor-plan image (the provider sees only the normalized, EXIF-stripped image), cached by `(floor_plan_id, storage_path, pipeline_version)`. A deterministic per-person mapping then links the extraction to that person's own selected criteria, and a review list lets them choose **Yes**, **Mark No**, **Not right** or **Leave Unknown**. Nothing is answered automatically, nothing is pre-set to No, and existing answers are never overwritten.
+- **Contract amendment proposed for §5:** a narrow exception allowing objective, *printed-label* layout facts from a buyer's own floor plan, always confirmed by a person. All image-derived quality judgments stay forbidden, and omission still never means No.
+- **Provider for the proof of concept:** Claude Sonnet 5.5 via the synchronous Messages API, benchmarked against Opus 5.5, Haiku 5.5, Gemini 3 Flash and GPT-5.5 on a 14-point rubric. Batch, provider file stores, URL-fetched images and 30-day-retention models are excluded.
+- **Estimated cost:** about $0.06 per analysis (budget $0.12), i.e. $6–12 / $56–120 / $560–1,200 for 100 / 1,000 / 10,000 analyses a month. Anthropic prices were verified from official docs; OpenAI and Google figures are unverified because their docs were network-blocked.
+- **Guardrails:** two default-off flags, a provider-side spend limit, an app-side monthly budget enforced in a database reservation RPC, per-user and per-search quotas, image-version caching, and no automatic or background runs.

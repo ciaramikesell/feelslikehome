@@ -1,0 +1,399 @@
+{
+  "schemaVersion": "fpa-2",
+  "image": {
+    "isFloorPlan": true,
+    "legibility": "clear",
+    "multipleDrawings": true
+  },
+  "floors": [
+    {
+      "id": "f1",
+      "printedCaption": "LOWER LEVEL (FINISHED)",
+      "level": "basement"
+    },
+    {
+      "id": "f2",
+      "printedCaption": "MAIN LEVEL",
+      "level": "main"
+    },
+    {
+      "id": "f3",
+      "printedCaption": "UPPER LEVEL",
+      "level": "second"
+    }
+  ],
+  "rooms": [
+    {
+      "id": "d0-rec",
+      "floorId": "f1",
+      "printedLabel": "REC ROOM",
+      "qualifierText": "",
+      "type": "rec_room",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"REC ROOM\""
+    },
+    {
+      "id": "d0-br4",
+      "floorId": "f1",
+      "printedLabel": "BEDROOM 4",
+      "qualifierText": "",
+      "type": "bedroom",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"BEDROOM 4\""
+    },
+    {
+      "id": "d0-bath3",
+      "floorId": "f1",
+      "printedLabel": "BATH 3",
+      "qualifierText": "",
+      "type": "full_bath",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"BATH 3\""
+    },
+    {
+      "id": "d0-storage",
+      "floorId": "f1",
+      "printedLabel": "STOR.",
+      "qualifierText": "",
+      "type": "storage",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"STOR.\""
+    },
+    {
+      "id": "d0-mech",
+      "floorId": "f1",
+      "printedLabel": "UNFINISHED MECH.",
+      "qualifierText": "",
+      "type": "unfinished",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"UNFINISHED MECH.\""
+    },
+    {
+      "id": "d1-great",
+      "floorId": "f2",
+      "printedLabel": "GREAT ROOM",
+      "qualifierText": "",
+      "type": "great_room",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"GREAT ROOM\""
+    },
+    {
+      "id": "d1-kitchen",
+      "floorId": "f2",
+      "printedLabel": "KITCHEN",
+      "qualifierText": "",
+      "type": "kitchen",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"KITCHEN\""
+    },
+    {
+      "id": "d1-pbr",
+      "floorId": "f2",
+      "printedLabel": "PRIMARY BEDROOM",
+      "qualifierText": "",
+      "type": "primary_bedroom",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"PRIMARY BEDROOM\""
+    },
+    {
+      "id": "d1-pbath",
+      "floorId": "f2",
+      "printedLabel": "PRIMARY BATH",
+      "qualifierText": "",
+      "type": "primary_bath",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"PRIMARY BATH\""
+    },
+    {
+      "id": "d1-wic",
+      "floorId": "f2",
+      "printedLabel": "WIC",
+      "qualifierText": "",
+      "type": "walk_in_closet",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"WIC\""
+    },
+    {
+      "id": "d1-laundry",
+      "floorId": "f2",
+      "printedLabel": "LAUNDRY",
+      "qualifierText": "",
+      "type": "laundry",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"LAUNDRY\""
+    },
+    {
+      "id": "d2-br2",
+      "floorId": "f3",
+      "printedLabel": "BEDROOM 2",
+      "qualifierText": "",
+      "type": "bedroom",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"BEDROOM 2\""
+    },
+    {
+      "id": "d2-br3",
+      "floorId": "f3",
+      "printedLabel": "BEDROOM 3",
+      "qualifierText": "",
+      "type": "bedroom",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"BEDROOM 3\""
+    },
+    {
+      "id": "d2-bath2",
+      "floorId": "f3",
+      "printedLabel": "BATH 2",
+      "qualifierText": "",
+      "type": "full_bath",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"BATH 2\""
+    },
+    {
+      "id": "d2-bonus",
+      "floorId": "f3",
+      "printedLabel": "BONUS ROOM",
+      "qualifierText": "",
+      "type": "bonus_room",
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "evidence": "Printed \"BONUS ROOM\""
+    },
+    {
+      "id": "d2-hall",
+      "floorId": "f3",
+      "printedLabel": "",
+      "qualifierText": "",
+      "type": "hall",
+      "evidenceCategory": "layout_inferred",
+      "configuration": "as_drawn",
+      "evidence": "Walls and fixture symbols only"
+    }
+  ],
+  "relationships": [
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-rec",
+      "toRoomId": "d0-br4",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-rec",
+      "toRoomId": "d0-mech",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d0-br4",
+      "toRoomId": "d0-bath3",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d1-great",
+      "toRoomId": "d1-kitchen",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d1-great",
+      "toRoomId": "d1-pbr",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d1-pbr",
+      "toRoomId": "d1-pbath",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d1-pbath",
+      "toRoomId": "d1-wic",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d1-pbath",
+      "toRoomId": "d1-laundry",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d2-br2",
+      "toRoomId": "d2-bonus",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d2-br3",
+      "toRoomId": "d2-hall",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d2-bath2",
+      "toRoomId": "d2-hall",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "door_between",
+      "fromRoomId": "d2-bonus",
+      "toRoomId": "d2-hall",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door swing drawn between the rooms"
+    },
+    {
+      "type": "ensuite_bath",
+      "fromRoomId": "d1-pbr",
+      "toRoomId": "d1-pbath",
+      "evidenceCategory": "drawn_symbol",
+      "evidence": "Door drawn directly between the rooms"
+    }
+  ],
+  "features": [
+    {
+      "concept": "rec_room",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-rec"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"REC ROOM\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "finished_basement",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-rec",
+        "d0-br4"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"REC ROOM\" / \"BEDROOM 4\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "basement",
+      "floorId": "f1",
+      "roomIds": [
+        "d0-rec"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"REC ROOM\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "kitchen_island",
+      "floorId": "f2",
+      "roomIds": [
+        "d1-kitchen"
+      ],
+      "evidenceCategory": "drawn_symbol",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"KITCHEN\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "primary_ensuite",
+      "floorId": "f2",
+      "roomIds": [
+        "d1-pbr",
+        "d1-pbath"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"PRIMARY BEDROOM\" / \"PRIMARY BATH\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "walk_in_closet",
+      "floorId": "f2",
+      "roomIds": [
+        "d1-wic"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"WIC\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "double_vanity",
+      "floorId": "f2",
+      "roomIds": [
+        "d1-pbath"
+      ],
+      "evidenceCategory": "drawn_symbol",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"PRIMARY BATH\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "laundry",
+      "floorId": "f2",
+      "roomIds": [
+        "d1-laundry"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"LAUNDRY\"",
+      "uncertainty": ""
+    },
+    {
+      "concept": "bonus_room",
+      "floorId": "f3",
+      "roomIds": [
+        "d2-bonus"
+      ],
+      "evidenceCategory": "printed_label",
+      "configuration": "as_drawn",
+      "qualifierText": "",
+      "evidence": "Printed \"BONUS ROOM\"",
+      "uncertainty": ""
+    }
+  ],
+  "counts": {
+    "bedroomsLabeled": 4,
+    "fullBathsBySymbol": 3,
+    "halfBathsBySymbol": 0,
+    "note": ""
+  },
+  "warnings": []
+}
