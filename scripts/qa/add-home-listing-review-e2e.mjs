@@ -202,7 +202,9 @@ async function run() {
       const entry = owner.locator('.flh-offered-row');
       await entry.waitFor({ timeout: 15000 });
       assert(/From the listing · 2 details not added yet/.test(await entry.innerText()), `entry: ${await entry.innerText()}`);
-      assert(!(await owner.locator('.flh-overlay details').count()), 'Home Facts has an inline fold-out');
+      // Home Facts itself (not the Match view below it) renders no inline fold-out.
+      assert(await owner.locator('.flh-overlay .flh-hf2').count() === 1, 'Home Facts not found');
+      assert(!(await owner.locator('.flh-overlay .flh-hf2 details').count()), 'Home Facts has an inline fold-out');
       await entry.evaluate((el) => el.scrollIntoView({ block: 'center' }));
       await shot(owner, `after-${label}-4a-offered-row`);
       await entry.getByRole('button', { name: 'Review' }).click();
