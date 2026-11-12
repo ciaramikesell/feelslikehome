@@ -93,6 +93,9 @@ async function find(page, url) {
   await page.locator('.flh-found').waitFor({ timeout: 30000 });
 }
 async function paste(page, text) {
+  // Add Home V3: the paste area sits folded under "Add more from the listing".
+  const more = page.locator('details.flh-found-more:not([open]) > summary');
+  if (await more.count()) await more.click();
   const area = page.locator('.flh-listing-paste');
   await area.waitFor();
   await area.getByLabel('Listing description or features').fill(text);
@@ -100,7 +103,10 @@ async function paste(page, text) {
   await area.locator('.flh-listing-paste-status').waitFor();
 }
 async function add(page, url) {
-  await page.getByRole('button', { name: 'Add to My Homes' }).click();
+  await page.getByRole('button', { name: 'Save Home' }).click();
+  // Add Home V3: Save Home shows the saved state; View home opens the overlay.
+  await page.locator('.flh-saved').waitFor({ timeout: 60000 });
+  await page.getByRole('button', { name: /^View home/ }).click();
   await page.waitForURL(/\/homes\/[0-9a-f-]{36}$/, { timeout: 60000 });
   await page.locator('.flh-overlay[role="dialog"]:not(.is-loading)').waitFor({ timeout: 30000 });
   const rows = savedRow(url);
@@ -125,11 +131,13 @@ async function run() {
       await find(owner, url);
       await owner.getByText('We found your home').waitFor();
       const area = owner.locator('.flh-listing-paste');
-      assert(await area.isVisible(), 'paste area not offered after a successful lookup');
+      // Add Home V3: offered folded below Save Home ("Add more from the listing").
+      assert(await owner.locator('.flh-found-more > summary').isVisible(), 'paste area not offered after a successful lookup');
+      assert(/Optional/.test(await owner.locator('.flh-found-more > summary').innerText()), 'not marked optional');
+      await owner.locator('.flh-found-more > summary').click();
       assert((await area.innerText()).includes('Copy the listing description or property features and paste them here. We’ll fill in what we can.'), 'paste copy');
-      assert(await area.getByText('Optional').isVisible(), 'not marked optional');
       assert(!(await owner.locator('.hh-manual-fallback').count()), 'a second paste box is shown');
-      const countBefore = (await owner.locator('.flh-found-note strong').innerText()).trim();
+      const countBefore = (await owner.locator('.flh-found-count').innerText()).trim();
       await view(owner, `${label}-1-success-paste-offered`, '.flh-listing-paste');
       // #171's optional Notes / Pros / Cons beside the paste area: typed first, never touched by pasting.
       await owner.locator('.flh-found-notes summary').click();
@@ -141,7 +149,7 @@ async function run() {
       assert(await owner.locator('#add-home-cons').inputValue() === '', 'pasting wrote Cons');
       // Still the found card for the RentCast home (the lookup is kept).
       assert(await owner.getByText('We found your home').isVisible(), 'the found card was replaced by pasting');
-      assert((await owner.locator('.flh-found-note').innerText()).startsWith(countBefore), 'the lookup\'s detail count changed after pasting');
+      assert((await owner.locator('.flh-found-count').innerText()).trim() === countBefore, 'the lookup\'s detail count changed after pasting');
       const fields = await reviewFields(owner);
       // RentCast already filled garage type/spaces and a $0/mo HOA: never offered.
       assert(JSON.stringify(fields) === JSON.stringify(['Basement condition', 'Basement style', 'Laundry', 'Primary bedroom', 'School district']), `suggested: ${fields}`);
@@ -229,7 +237,7 @@ async function run() {
       await find(owner, url);
       const card = await owner.locator('.flh-found').innerText();
       assert(/busy right now/.test(card), 'rate-limit note missing');
-      assert(await owner.locator('.flh-listing-paste').isVisible(), 'paste area not offered after a failed lookup');
+      assert(await owner.locator('.flh-found-more > summary').isVisible(), 'paste area not offered after a failed lookup');
       await view(owner, `${label}-5-failed-paste-offered`, '.flh-listing-paste');
       await paste(owner, DESCRIPTION);
       const fields = await reviewFields(owner);

@@ -561,7 +561,11 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   // A brand-new home lands on its Home Facts once it is actually saved — never
   // before. "New" comes from the home the modal was opened with, so a retry
   // that adopted a partially-saved row's id (partialHomeId) still lands there.
-  const saveEditedHome = useCallback(async (home) => {
+  //
+  // Save Home on Add Home's found card asks for `landing: 'saved'`: the Router
+  // Cache is rebuilt the same way, but the modal stays open on its saved state
+  // and the buyer chooses where to go (openSavedHome, or back to My Homes).
+  const saveEditedHome = useCallback(async (home, { landing = 'overlay' } = {}) => {
     const isNew = !modalHome?.id;
     const shared = !home.id || hasSharedHomeChanges(home, modalHome);
     const saved = await saveHome(home, { shared, keepModalOpen: isNew });
@@ -577,6 +581,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
       // navigation starts, so nothing pending can be discarded.
       await refreshMyHomes().catch(() => {});
       await new Promise((resolve) => setTimeout(resolve, 0));
+      if (landing === 'saved') return saved;
       // The new home opens in the overlay over this board (which stays
       // mounted), so Close steps back to exactly this view.
       if (workspace) workspace.openedFromBoard.current = true;
@@ -585,6 +590,14 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     }
     return saved;
   }, [modalHome, saveHome, router, workspace]);
+
+  // The saved state's "View home": the new home's overlay over this board, so
+  // Close steps back to My Homes.
+  const openSavedHome = useCallback((id) => {
+    if (workspace) workspace.openedFromBoard.current = true;
+    router.push(`/homes/${encodeURIComponent(id)}`, { scroll: false });
+    setModalHome(null);
+  }, [router, workspace]);
 
   // Opening a home (card, Edit): the overlay route. On My Homes the board stays
   // underneath, so Close can step Back to it.
@@ -884,7 +897,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
         <HomeModal
           initial={modalHome} priorities={priorities} sharedFactAwareness={sharedFactAwareness} isCollaborative={isCollaborative} userId={userId}
           onSave={saveEditedHome} onClose={() => setModalHome(null)} onWantToTour={wantToTour} onArchiveRequest={setArchiveTarget}
-          autoFindOnMount={modalAutoFind} existingHomes={homes} importLanding
+          autoFindOnMount={modalAutoFind} existingHomes={homes} importLanding onOpenSavedHome={openSavedHome}
         />
       )}
 

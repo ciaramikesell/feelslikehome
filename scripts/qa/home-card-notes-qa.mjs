@@ -250,7 +250,9 @@ async function main() {
         assert((await page.locator('#add-home-pros-hint').textContent()).startsWith('2'), 'live entry count');
         await page.locator('.flh-found').screenshot({ path: join(outDir, 'iphone-add-home-notes.png'), style: hideChrome });
         await noPageOverflow(page);
-        await page.getByRole('button', { name: 'Add to My Homes' }).tap();
+        await page.getByRole('button', { name: 'Save Home' }).tap();
+        await page.locator('.flh-saved').waitFor({ timeout: 20000 });
+        await page.getByRole('button', { name: /^View home/ }).tap();
         await page.waitForURL(/\/homes\/[^/?]+/, { timeout: 20000 });
         const stored = exec(`select pros || '|' || cons from public.homes where address like '500 Added Notes Rd%'`);
         assert(stored === 'Walk to downtown\nBig garage|Small yard', `stored ${JSON.stringify(stored)}`);

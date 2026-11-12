@@ -51,7 +51,8 @@ test('approved Add/Edit copy: intake, import review, Match review, Edit', () => 
   assert.match(modal, /Bring in a \{vocabulary\.singularLower\} you found\./);
   assert.match(modal, /You found the \{vocabulary\.singularLower\}\. Feels Like Home helps you evaluate it\./);
   assert.match(modal, /`Find \$\{vocabulary\.singularLower\}`/);
-  assert.match(modal, /isNativeApp\(\) && <aside className="flh-share-callout"/);
+  // Shown while finding a home; once a home shows, it gives way to the card (Add Home V3).
+  assert.match(modal, /isNativeApp\(\) && !quickAdd && <aside className="flh-share-callout"/);
   assert.match(editor, /'Check what came through\.'/);
   assert.match(editor, /'How this home fits you\.'/);
   assert.match(editor, /'Refine what FLH knows\.'/);

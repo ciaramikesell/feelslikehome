@@ -274,10 +274,14 @@ export function parseListingText(text, searchType = null) {
   const addrLine = lines.find((l) => /^\d+\s+\S+/.test(l) && l.length < 100);
   if (addrLine) out.address = addrLine;
 
+  // A link in the text can be the listing's own page. An image link never
+  // becomes the home's photo: listing photos belong to the listing site, and
+  // FLH never fetches, copies or hotlinks them. A photo is only ever one the
+  // buyer uploads or deliberately enters. Image links are also never taken as
+  // the listing URL.
   const urls = t.match(/https?:\/\/\S+/g) || [];
-  const imgUrl = urls.find((u) => /\.(jpg|jpeg|png|webp|avif)(\?|#|$)/i.test(u));
-  const otherUrl = urls.find((u) => u !== imgUrl);
-  if (imgUrl) out.photoUrl = imgUrl.replace(/[),.]+$/, '');
+  const isImage = (u) => /\.(jpg|jpeg|png|webp|avif|gif|heic)(\?|#|$)/i.test(u.replace(/[),.]+$/, ''));
+  const otherUrl = urls.find((u) => !isImage(u));
   if (otherUrl) out.listingUrl = otherUrl.replace(/[),.]+$/, '');
 
   return out;

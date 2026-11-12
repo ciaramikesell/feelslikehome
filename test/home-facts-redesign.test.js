@@ -246,14 +246,14 @@ test('Commute and after-tour criteria are never answered in Match Criteria; Gara
 
 /* ------------------------------- flow guarantees ------------------------------- */
 
-test('Add Home has exactly one action: Add to My Homes (no competing Review details first)', () => {
+test('Add Home has exactly one action: Save Home (no competing Review details first)', () => {
   assert.doesNotMatch(modal, /Review details first|setReviewing|onReview/);
-  assert.equal((modal.match(/'Add to My Homes'\}/g) || []).length, 1);
+  assert.equal((modal.match(/'Save Home'\}/g) || []).length, 1);
   // Found, pasted text, nothing found, lookup error and manual entry all end on the one card.
   assert.match(modal, /const quickAdd = importLanding && isNewHome && !vocabulary\.apartment && \['success', 'text-success', 'empty', 'error'\]\.includes\(importPhase\)/);
   // Adding re-checks the exact listing URL, then reuses the one submit() (its
   // synchronous double-save guard and partial-write recovery included).
-  assert.match(modal, /const addImportedHome = \(\) => \{\s*const existing = findHomeByListingUrl\(existingHomes, form\.listingUrl\);\s*if \(existing\) \{ setDuplicateHome\(existing\); return; \}\s*submit\(\);/);
+  assert.match(modal, /const addImportedHome = \(\) => \{\s*const existing = findHomeByListingUrl\(existingHomes, form\.listingUrl\);\s*if \(existing\) \{ setDuplicateHome\(existing\); return; \}\s*submit\(\{ quickSave: true \}\);/);
   assert.match(modal, /if \(!form\.address\.trim\(\) \|\| savingRef\.current\) return;\s*savingRef\.current = true;/);
   assert.match(modal, /if \(saveErr\?\.partialHomeId && !form\.id\) set\('id', saveErr\.partialHomeId\)/);
   // The Realtor suggestion flow never gets the buyer quick-add; share intake still auto-finds.
@@ -267,7 +267,9 @@ test('Add Home has exactly one action: Add to My Homes (no competing Review deta
 // banner, per-group Edit / Save and Next: Match Criteria are gone. The same
 // guarantees for the overlay live in test/home-overlay.test.js.
 test('the disappearing home is fixed at the source: the Router Cache is rebuilt before the new home opens', () => {
-  const fn = board.match(/const saveEditedHome = useCallback\(async \(home\) => \{[\s\S]*?\n  \}, \[modalHome, saveHome, router, workspace\]\);/)?.[0] || '';
+  const fn = board.match(/const saveEditedHome = useCallback\(async \(home, \{ landing = 'overlay' \} = \{\}\) => \{[\s\S]*?\n  \}, \[modalHome, saveHome, router, workspace\]\);/)?.[0] || '';
+  // Save Home (Add Home V3) rebuilds the cache the same way, then stays on its saved state.
+  assert.match(fn, /await new Promise\(\(resolve\) => setTimeout\(resolve, 0\)\);\s*if \(landing === 'saved'\) return saved;/);
   assert.match(fn, /const isNew = !modalHome\?\.id;/);
   assert.match(fn, /const saved = await saveHome\(home, \{ shared, keepModalOpen: isNew \}\);\s*if \(isNew && saved\?\.id\) \{[\s\S]*?await refreshMyHomes\(\)\.catch\(\(\) => \{\}\);\s*await new Promise\(\(resolve\) => setTimeout\(resolve, 0\)\);[\s\S]*?router\.push\(`\/homes\/\$\{encodeURIComponent\(saved\.id\)\}`, \{ scroll: false \}\);/);
   assert.doesNotMatch(fn.replace(/\/\/[^\n]*/g, ''), /router\.refresh\(\)/);

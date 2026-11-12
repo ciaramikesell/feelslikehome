@@ -2456,6 +2456,61 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
   .flh-found-actions { grid-template-columns: minmax(0,1fr); }
 }
 
+/* Add Home V3, phase 1 (docs/add-home-v3-simple-save.md): the found home first,
+   one Save Home, everything optional folded below it, then a clear saved state. */
+.hh-add-home-discovery.has-found .hh-edit-home-header h1 { font-size: clamp(22px, 4.6vw, 28px); }
+.flh-find-compact { display: flex; align-items: center; gap: 10px; margin: 12px 0 0; padding: 10px 12px 10px 14px; border: 1px solid rgba(193,89,47,.22); border-radius: 14px; background: rgba(193,89,47,.06); color: var(--brick); }
+.flh-find-compact-value { flex: 1 1 auto; min-width: 0; overflow: hidden; color: var(--ink); font-size: 13.5px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+.flh-find-compact-value small { margin-right: 4px; color: var(--ink-soft); font-size: 12px; font-weight: 500; }
+.flh-find-compact .hh-btn { flex: 0 0 auto; min-height: 36px; padding: 6px 12px; }
+.flh-found-photo { position: relative; }
+.flh-found-photo.is-placeholder { background: linear-gradient(150deg, #f3ebe0 0%, #eadfd0 55%, #e3d4c1 100%); }
+.flh-found-placeholder { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 999px; background: rgba(255,255,255,.55); color: rgba(120,92,70,.55); }
+.flh-found-photo-actions { position: absolute; left: 8px; bottom: 8px; display: flex; gap: 6px; }
+.flh-found-photo-btn { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 6px 11px; border: 1px solid rgba(46,38,33,.12); border-radius: 999px; background: rgba(255,255,255,.92); color: var(--ink); font: 700 12px var(--font-sans); cursor: pointer; box-shadow: 0 1px 3px rgba(46,38,33,.12); }
+.flh-found-photo-btn.is-quiet { color: var(--ink-soft); font-weight: 600; }
+.flh-found-photo-btn:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.flh-found-locality { display: flex; align-items: center; gap: 4px; }
+.flh-found-locality svg { flex: 0 0 auto; color: var(--brick); }
+.flh-found-count { display: flex; align-items: center; gap: 6px; margin-top: 10px !important; color: var(--positive) !important; font-size: 12px !important; }
+.flh-found-count svg { flex: 0 0 auto; }
+.flh-found-address-photo .flh-found-photo { height: 110px; margin-top: 4px; }
+.flh-found-add { width: 100%; min-height: 52px !important; font-size: 16px; }
+.flh-found-optional { display: grid; gap: 10px; }
+.flh-found-more { margin: 0; }
+.flh-found-more > summary { list-style: none; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 28px; }
+.flh-found-more > summary::-webkit-details-marker { display: none; }
+.flh-found-more > summary > svg:first-child { color: var(--brick); }
+.flh-found-more > summary > span { flex: 1 1 auto; color: var(--ink-soft); font-size: 12px; font-weight: 500; }
+.flh-found-more[open] > summary { margin-bottom: 12px; }
+.flh-found-more > section + section { margin-top: 12px; }
+/* Inside the disclosure the summary already names it: no second heading. */
+.flh-found-more .flh-listing-paste-heading { display: none; }
+.flh-saved { position: relative; display: grid; gap: 16px; padding: 32px 28px 26px; }
+.flh-saved .hh-edit-home-close { position: absolute; top: 14px; right: 14px; }
+.flh-saved-hero { display: grid; justify-items: center; gap: 6px; text-align: center; }
+.flh-saved-check { display: grid; place-items: center; width: 60px; height: 60px; margin-bottom: 6px; border-radius: 999px; background: var(--sage); color: var(--positive); box-shadow: 0 0 0 8px rgba(86,114,77,.08); }
+.flh-saved-hero h1 { margin: 0; color: var(--ink); font-size: 28px; }
+.flh-saved-hero h1:focus { outline: none; }
+.flh-saved-hero p { margin: 0; color: var(--ink-soft); font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.flh-saved-card { display: grid; grid-template-columns: 96px minmax(0,1fr); gap: 14px; align-items: center; padding: 12px; border: 1px solid rgba(138,124,110,.2); border-radius: 16px; background: var(--paper-raised); }
+.flh-saved-photo { display: grid; place-items: center; height: 76px; overflow: hidden; border-radius: 10px; background: linear-gradient(150deg, #f3ebe0, #e3d4c1); color: rgba(120,92,70,.55); }
+.flh-saved-photo img { width: 100%; height: 100%; object-fit: cover; }
+.flh-saved-copy { display: grid; gap: 2px; min-width: 0; }
+.flh-saved-copy b { color: var(--ink); font-size: 16px; overflow-wrap: anywhere; }
+.flh-saved-copy span, .flh-saved-copy small { color: var(--ink-soft); font-size: 12.5px; }
+.flh-saved-copy strong { color: var(--ink); font-family: 'Source Serif 4', serif; font-size: 16px; }
+.flh-saved-photo-note { margin: 0; padding: 10px 12px; border-radius: 12px; background: var(--peach); color: var(--brick-deep); font-size: 13px; line-height: 1.45; }
+.flh-saved-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.flh-saved-actions .hh-btn { justify-content: center; min-height: 50px; }
+.flh-saved-open { color: var(--brick); border-color: rgba(185,83,50,.4); }
+.flh-saved-hint { margin: 0; color: var(--ink-soft); font-size: 12.5px; text-align: center; }
+@media (max-width: 560px) {
+  .flh-found-photo { height: 168px; }
+  .flh-saved { padding: 28px 18px 22px; }
+  .flh-saved-actions { grid-template-columns: minmax(0,1fr); }
+}
+
 /* ------------------------------- Tour Feedback -------------------------------
    Carried over from the #151 evaluation redesign (its Check the Match styles were
    not: Match Criteria above is the approved design). Same type, spacing and
