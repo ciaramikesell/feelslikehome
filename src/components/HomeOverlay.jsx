@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AlertCircle, ArrowLeft, Check, Loader2, NotebookText, X } from 'lucide-react';
 import HomeFacts from '@/components/HomeFacts';
 import MatchCriteria from '@/components/MatchCriteria';
+import { savedListingAnswers } from '@/lib/listingTextAnswers';
 import TourFeedback from '@/components/TourFeedback';
 import RealtorContributions from '@/components/RealtorContributions';
 import PostTourModal from '@/components/PostTourModal';
@@ -187,6 +188,9 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
   const vocabulary = homeVocabulary(priorities);
   const usesFullEditor = vocabulary.apartment || searchIntentCapabilities(priorities.searchType).showsRentalFacts;
   const homePath = `/homes/${encodeURIComponent(home.id)}`;
+  // Possible answers from listing text pasted when the home was added, read back
+  // from the saved snapshot for THIS buyer's own unanswered criteria. Never written.
+  const listingAnswers = savedListingAnswers(home.listingImport, priorities, home.checks);
 
   // Any change that may touch both shared facts and this buyer's own state
   // (a post-tour verdict appends a shared note; archiving is personal).
@@ -334,7 +338,7 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
             <p className="flh-overlay-match-lead">Unknown isn’t No. Fact-based results update from Home Facts.</p>
             {summary?.mustClause && <p className="flh-overlay-match-context">{summary.mustClause}.{summary.importantSentence ? ` ${summary.importantSentence}` : ''}</p>}
             {coBuyerPerspective?.match?.pct != null && <p className="flh-overlay-match-context">Your co-buyer’s Match: <strong>{coBuyerPerspective.match.pct}%</strong>, from their own priorities and answers.</p>}
-            {match ? <MatchCriteria home={home} priorities={priorities} match={match} onAnswer={answerCriterion} onOpenFact={openFact} tourHref={tourHref} />
+            {match ? <MatchCriteria home={home} priorities={priorities} match={match} onAnswer={answerCriterion} onOpenFact={openFact} tourHref={tourHref} listingAnswers={listingAnswers} />
               : <p className="flh-overlay-match-context">No priorities are set for this search yet. <a href="/search">Set them in My Search</a>.</p>}
           </section>
 

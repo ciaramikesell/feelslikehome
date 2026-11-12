@@ -368,7 +368,14 @@ function contradicts(field, value, home) {
  * @returns {{ field, value, evidence }[]}
  */
 export function readHomeFactsFromText(text) {
-  if (!String(text || '').trim()) return [];
+  return readWithConflicts(text).facts;
+}
+
+// The readings and, separately, the fields the text states more than one way
+// (two values, contrary wording, or "no basement" beside a basement
+// description). Conflicting fields are never suggested; they are only named.
+function readWithConflicts(text) {
+  if (!String(text || '').trim()) return { facts: [], conflicts: [] };
   const all = [...conceptCandidates(text), ...garageSpaceCandidates(text), ...hoaCandidates(text), ...schoolCandidates(text)];
   const byField = new Map();
   for (const item of all) {
@@ -377,18 +384,68 @@ export function readHomeFactsFromText(text) {
     byField.set(item.field, list);
   }
   const facts = [];
+  const conflicts = [];
   for (const [field, list] of byField) {
     const values = new Set(list.map((item) => comparable(item.value)));
-    if (values.size !== 1 || saysOtherwise(String(text), field, list[0].value)) continue;
+    if (values.size !== 1 || saysOtherwise(String(text), field, list[0].value)) { conflicts.push(field); continue; }
     facts.push(list[0]);
   }
   // "No basement" beside any basement description answers nothing.
   const condition = facts.find((item) => item.field === 'basementCondition');
   const style = facts.find((item) => item.field === 'basementStyle');
   if (condition && style && contradicts('basementCondition', condition.value, { basementStyle: style.value })) {
-    return facts.filter((item) => item !== condition && item !== style);
+    return { facts: facts.filter((item) => item !== condition && item !== style), conflicts: [...conflicts, 'basementCondition', 'basementStyle'] };
   }
-  return facts;
+  return { facts, conflicts };
+}
+
+// What a field already holds, in the words Home Facts uses.
+const CURRENT_LABELS = Object.freeze({
+  basementCondition: { none: 'No basement' }, basementStyle: { none: 'No basement', traditional: 'Traditional', gardenview: 'Gardenview' },
+  garageType: { none: 'No garage' },
+});
+function currentDisplay(field, value) {
+  return CURRENT_LABELS[field]?.[value] || displayValue(field, value);
+}
+
+/**
+ * Where the pasted text and the home disagree, for a read-only note in the
+ * review. Nothing here writes anything, and nothing is guessed:
+ *   - 'differs'   the home already has a different value (kept as is);
+ *   - 'contradicts' the field is empty but the text's value can't stand with
+ *                 the home's other basement field (kept Unknown);
+ *   - 'unclear'   the text states the field more than one way (kept Unknown).
+ * @returns {{ field, label, kind: 'differs'|'contradicts'|'unclear', listing?: string, current?: string, evidence?: string }[]}
+ */
+export function homeFactDisagreements(text, home = {}) {
+  const { facts, conflicts } = readWithConflicts(text);
+  const out = [];
+  for (const item of facts) {
+    const current = home?.[item.field];
+    if (!isEmpty(current) && comparable(current) !== comparable(item.value)) {
+      out.push({ field: item.field, label: HOME_FACT_SUGGESTION_LABELS[item.field], kind: 'differs', listing: displayValue(item.field, item.value, item.stated), current: currentDisplay(item.field, current), evidence: item.evidence });
+    } else if (isEmpty(current) && contradicts(item.field, item.value, home)) {
+      out.push({ field: item.field, label: HOME_FACT_SUGGESTION_LABELS[item.field], kind: 'contradicts', listing: displayValue(item.field, item.value, item.stated), evidence: item.evidence });
+    }
+  }
+  for (const field of new Set(conflicts)) {
+    if (isEmpty(home?.[field])) out.push({ field, label: HOME_FACT_SUGGESTION_LABELS[field], kind: 'unclear' });
+  }
+  return out.sort((a, b) => HOME_FACT_SUGGESTION_FIELDS.indexOf(a.field) - HOME_FACT_SUGGESTION_FIELDS.indexOf(b.field));
+}
+
+/**
+ * Whether a suggestion starts checked in the review. Every suggestion is
+ * already explicit; these two still deserve the buyer's own look first, so
+ * they start unchecked: a school or district the listing merely names (FLH
+ * hasn't verified it), and an HOA fee converted from a yearly or quarterly
+ * amount (the math is shown).
+ */
+export function isPreselectedHomeFact(suggestion) {
+  if (!suggestion) return false;
+  if (suggestion.school) return false;
+  if (suggestion.field === 'hoaFeeMonthly' && suggestion.converted) return false;
+  return true;
 }
 
 /**
@@ -407,6 +464,7 @@ export function suggestHomeFacts(text, home = {}) {
       field: item.field, value: item.value, label: HOME_FACT_SUGGESTION_LABELS[item.field],
       display: displayValue(item.field, item.value, item.stated), evidence: item.evidence,
       school: SCHOOL_FIELDS.has(item.field),
+      converted: item.field === 'hoaFeeMonthly' && !!item.stated && item.stated.per !== 'month',
       sourceType: 'listing_text', sourceProvider: 'user_paste',
     }));
 }

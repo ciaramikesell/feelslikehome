@@ -2456,6 +2456,45 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
   .flh-found-actions { grid-template-columns: minmax(0,1fr); }
 }
 
+/* Add Home V3, phase 2 (docs/add-home-v3-listing-review.md): one compact
+   checklist of shared Home Facts, the listing's sentence on demand, one Add. */
+.flh-fact-checklist { gap: 12px; }
+.flh-fact-count { color: var(--ink-soft); font-size: 12px; font-weight: 600; }
+.flh-fact-checklist .flh-fact-checklist-rows { gap: 0; border: 1px solid rgba(138,124,110,.18); border-radius: 12px; background: var(--paper); overflow: hidden; }
+.flh-fact-checklist .flh-fact-checklist-rows > li { gap: 4px; padding: 10px 12px; border: 0; border-radius: 0; background: transparent; }
+.flh-fact-checklist .flh-fact-checklist-rows > li + li { border-top: 1px solid rgba(138,124,110,.16); }
+.flh-fact-check { display: grid; grid-template-columns: 22px minmax(0,1fr); gap: 10px; align-items: center; min-height: 32px; cursor: pointer; }
+.flh-fact-check input { width: 20px; height: 20px; margin: 0; accent-color: var(--brick); cursor: pointer; }
+.flh-fact-check-text { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 10px; min-width: 0; }
+.flh-fact-check-text b { color: var(--ink); font-size: 14px; }
+.flh-fact-check-value { color: var(--ink); font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.flh-fact-checklist li:not(.is-selected) .flh-fact-check-value { color: var(--ink-soft); font-weight: 500; }
+.flh-fact-note { display: block; margin-left: 32px; color: var(--ink-soft); font-size: 12px; line-height: 1.4; }
+.flh-fact-note b { color: var(--ink); }
+.flh-fact-why { margin-left: 32px; }
+.flh-fact-why > summary { display: inline-flex; min-height: 24px; align-items: center; color: var(--brick); font-size: 12px; font-weight: 700; cursor: pointer; list-style: none; }
+.flh-fact-why > summary::-webkit-details-marker { display: none; }
+.flh-fact-why[open] > summary { margin-bottom: 4px; }
+.flh-fact-add { justify-content: center; min-height: 46px; }
+.flh-fact-added { display: grid; gap: 6px; padding: 10px 12px; border-radius: 12px; background: var(--sage); }
+.flh-fact-added strong { display: flex; align-items: center; gap: 6px; color: var(--positive); font-size: 13.5px; }
+.flh-fact-checklist .flh-fact-added ul { gap: 2px; }
+.flh-fact-checklist .flh-fact-added li { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0; border: 0; background: transparent; color: #3f4b39; font-size: 13px; }
+.flh-fact-added .hh-btn { min-height: 32px; padding: 4px 10px; }
+.flh-fact-disagree { display: grid; gap: 4px; padding: 10px 12px; border: 1px dashed rgba(138,124,110,.35); border-radius: 12px; }
+.flh-fact-disagree strong { color: var(--ink); font-size: 13px; }
+.flh-fact-checklist .flh-fact-disagree ul { gap: 4px; }
+.flh-fact-checklist .flh-fact-disagree li { display: block; padding: 0; border: 0; background: transparent; color: var(--ink-soft); font-size: 12.5px; line-height: 1.45; }
+.flh-fact-disagree b { color: var(--ink); }
+.flh-deferred-answers { display: grid; grid-template-columns: 18px minmax(0,1fr); gap: 8px; margin: 12px 0 0; padding: 10px 12px; border-radius: 12px; background: var(--paper); color: var(--ink-soft); font-size: 12.5px; line-height: 1.45; }
+.flh-deferred-answers svg { margin-top: 2px; color: var(--brick); }
+.flh-deferred-answers b { color: var(--ink); }
+.flh-mc2-listing .flh-mc2-why { display: inline; }
+.flh-mc2-listing .flh-mc2-why > summary { display: inline; color: var(--brick); font-weight: 700; cursor: pointer; list-style: none; margin-left: 4px; }
+.flh-mc2-listing .flh-mc2-why > summary::-webkit-details-marker { display: none; }
+.flh-mc2-listing .flh-mc2-why > span { display: block; margin-top: 3px; color: var(--ink); overflow-wrap: anywhere; }
+.flh-mc2-listing .flh-mc2-why cite { display: block; color: var(--ink-soft); font-style: normal; }
+
 /* Add Home V3, phase 1 (docs/add-home-v3-simple-save.md): the found home first,
    one Save Home, everything optional folded below it, then a clear saved state. */
 .hh-add-home-discovery.has-found .hh-edit-home-header h1 { font-size: clamp(22px, 4.6vw, 28px); }

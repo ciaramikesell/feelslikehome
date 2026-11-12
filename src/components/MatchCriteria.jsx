@@ -20,6 +20,14 @@ import { answerableCriteriaKeys, criterionAnswer, criterionResolution, legacyCri
 //     name. Yes / No is the buyer's own override; Home Facts removes it.
 //   - After-tour criteria show their state and point to Tour Feedback.
 //
+//   - Where listing text pasted for this home mentions one of the buyer's own
+//     unanswered criteria (Add Home V3, phase 2), a quiet "Listing suggests Yes"
+//     line shows under the name, with the listing's sentence on demand. It is
+//     only a pointer: nothing is answered until the buyer picks Yes or No, an
+//     answer they already gave always wins, and a criterion a Home Fact answers
+//     shows that fact instead. Suggestions come from savedListingAnswers, per
+//     viewer: each buyer sees only their own criteria.
+//
 // Green matches, terracotta doesn't, neutral is Unknown. Unknown never counts.
 
 export const MATCH_TIERS = Object.freeze([
@@ -95,7 +103,15 @@ function FactNote({ resolved, onOpenFact }) {
   return null;
 }
 
-function Tier({ tier, rows, home, priorities, answerable, readOnly, onAnswer, onOpenFact, tourHref, collapsible }) {
+// "Listing suggests Yes · Why?" under an unanswered criterion. Never an answer.
+function ListingHint({ hint }) {
+  return <small className="flh-mc2-from flh-mc2-listing">
+    Listing suggests <b className={`is-${hint.answer === true ? 'met' : 'missed'}`}>{hint.answer === true ? 'Yes' : 'No'}</b>
+    <details className="flh-mc2-why"><summary>Why?</summary><span>“{hint.evidence}” <cite>From listing text pasted for this home. Choose Yes or No yourself.</cite></span></details>
+  </small>;
+}
+
+function Tier({ tier, rows, home, priorities, answerable, readOnly, onAnswer, onOpenFact, tourHref, collapsible, listingHints }) {
   const [open, setOpen] = useState(!collapsible);
   const headingId = `mc-${tier.key}-title`;
   const bodyId = `mc-${tier.key}-rows`;
@@ -120,8 +136,10 @@ function Tier({ tier, rows, home, priorities, answerable, readOnly, onAnswer, on
         const earlier = canAnswer && item.source === 'earlier_rating' ? legacyCriterionRating(home, item.key) : null;
         // "Home Facts" replaces Unknown only when a fact actually answers it.
         const factBacked = !!resolved?.link && resolved.fact !== undefined;
+        // Only while the buyer hasn't answered and no Home Fact answers it.
+        const hint = canAnswer && !readOnly && own === undefined && !factBacked ? listingHints.get(item.key) : null;
         return <li key={item.key} className={`flh-mc2-row is-${tone}`}>
-          <span className="flh-mc2-name">{criterionName(item)}{factBacked && <FactNote resolved={resolved} onOpenFact={onOpenFact} />}{earlier && <small className="flh-mc2-from">Earlier rating: {earlier}/5 · counts until you answer</small>}</span>
+          <span className="flh-mc2-name">{criterionName(item)}{factBacked && <FactNote resolved={resolved} onOpenFact={onOpenFact} />}{earlier && <small className="flh-mc2-from">Earlier rating: {earlier}/5 · counts until you answer</small>}{hint && <ListingHint hint={hint} />}</span>
           {!canAnswer ? <FactResult item={item} onOpenFact={onOpenFact} tourHref={tourHref} />
             : readOnly ? <span className={`flh-mc2-state is-${tone}`}>{earlier ? `${earlier}/5` : value === true ? 'Yes' : value === 'no' ? 'No' : 'Unknown'}</span>
               : <AnswerControl item={item} value={own} factBacked={factBacked} onChange={(next) => onAnswer(item, next)} />}
@@ -131,14 +149,15 @@ function Tier({ tier, rows, home, priorities, answerable, readOnly, onAnswer, on
   </section>;
 }
 
-export default function MatchCriteria({ home, priorities, match, readOnly = false, onAnswer, onOpenFact = null, tourHref = null }) {
+export default function MatchCriteria({ home, priorities, match, readOnly = false, onAnswer, onOpenFact = null, tourHref = null, listingAnswers = [] }) {
   const answerable = answerableCriteriaKeys(priorities);
+  const listingHints = new Map((listingAnswers || []).map((item) => [item.key, item]));
   const rows = match?.allSelected || [];
   return <div className="flh-mc2" aria-label="Match criteria">
     <div className="flh-mc2-columns" aria-hidden="true">
       <span>Your criterion</span><span>Result | your answer</span><span>Your criterion</span><span>Result | your answer</span>
     </div>
     {MATCH_TIERS.map((tier) => <Tier key={tier.key} tier={tier} rows={rows.filter((item) => item.tier === tier.key)} home={home} priorities={priorities} answerable={answerable}
-      readOnly={readOnly} onAnswer={onAnswer} onOpenFact={onOpenFact} tourHref={tourHref} collapsible={tier.key !== 'must'} />)}
+      readOnly={readOnly} onAnswer={onAnswer} onOpenFact={onOpenFact} tourHref={tourHref} collapsible={tier.key !== 'must'} listingHints={listingHints} />)}
   </div>;
 }

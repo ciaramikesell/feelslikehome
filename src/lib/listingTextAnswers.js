@@ -336,15 +336,9 @@ function personalCheckCriteria(priorities) {
     .filter(({ key }) => !SHARED_BOOLEAN_FACT_FIELDS[key] && key !== 'exterior:Garage'));
 }
 
-/**
- * Suggested answers for the viewing buyer. Never includes a criterion they
- * already answered, didn't select, or that Match reads from a shared fact.
- * @returns {{ id, key, categoryKey, label, concept, answer: true|'no', evidence: string,
- *   sourceType: 'listing_text', sourceProvider: 'user_paste' }[]}
- */
-export function suggestListingAnswers(text, priorities, checks = {}) {
-  if (!priorities || !String(text || '').trim()) return [];
-  const evidence = new Map(classifyListingText(text).filter((item) => item.answer !== 'conflict').map((item) => [item.concept, item]));
+// One suggestion per selected, unanswered personal criterion the evidence
+// speaks to. `evidence` maps a concept to { answer: 'yes'|'no', evidence: [sentence] }.
+function suggestionsFromEvidence(evidence, priorities, checks = {}) {
   const suggestions = [];
   for (const criterion of personalCheckCriteria(priorities)) {
     const mapping = criterionConcept(criterion.categoryKey, criterion.label);
@@ -358,6 +352,42 @@ export function suggestListingAnswers(text, priorities, checks = {}) {
       sourceType: 'listing_text', sourceProvider: 'user_paste',
     });
   }
+  return suggestions;
+}
+
+/**
+ * Possible answers for the viewing buyer from listing text pasted earlier,
+ * read back from the saved snapshot (homes.listing_import.descriptionFeatures)
+ * so nobody has to paste again after saving. Same rules as suggestListingAnswers:
+ * only this buyer's selected, unanswered personal criteria; nothing is written.
+ * The snapshot keeps one stated Yes / No per concept and never a conflict
+ * (listingTextEvidence). Without the full text the garage/driveway check below
+ * can't run, so a No is never offered for Parking from saved evidence.
+ */
+export function savedListingAnswers(listingImport, priorities, checks = {}) {
+  const features = Array.isArray(listingImport?.descriptionFeatures) ? listingImport.descriptionFeatures : [];
+  if (!priorities || !features.length) return [];
+  const evidence = new Map();
+  for (const item of features) {
+    if (item?.sourceProvider !== 'user_paste' || !LISTING_TEXT_CONCEPTS[item.concept]) continue;
+    if ((item.stated !== 'yes' && item.stated !== 'no') || typeof item.evidence !== 'string' || !item.evidence.trim()) continue;
+    if (evidence.has(item.concept) && evidence.get(item.concept).answer !== item.stated) { evidence.set(item.concept, null); continue; }
+    if (!evidence.has(item.concept)) evidence.set(item.concept, { answer: item.stated, evidence: [item.evidence] });
+  }
+  for (const [concept, value] of evidence) if (!value) evidence.delete(concept);
+  return suggestionsFromEvidence(evidence, priorities, checks).filter((item) => !(PARKING_KEYS.has(item.key) && item.answer === 'no'));
+}
+
+/**
+ * Suggested answers for the viewing buyer. Never includes a criterion they
+ * already answered, didn't select, or that Match reads from a shared fact.
+ * @returns {{ id, key, categoryKey, label, concept, answer: true|'no', evidence: string,
+ *   sourceType: 'listing_text', sourceProvider: 'user_paste' }[]}
+ */
+export function suggestListingAnswers(text, priorities, checks = {}) {
+  if (!priorities || !String(text || '').trim()) return [];
+  const evidence = new Map(classifyListingText(text).filter((item) => item.answer !== 'conflict').map((item) => [item.concept, item]));
+  const suggestions = suggestionsFromEvidence(evidence, priorities, checks);
   // A garage or driveway is parking: text that mentions one never suggests No
   // for Parking or Off-street parking ("2-car garage. Street parking only.").
   const hasParkingStructure = sentenceScopes(text).some((scope) => (/\bgarage\b/i.test(scope) && !/\b(?:no|without(?: a)?) garage\b/i.test(scope))
