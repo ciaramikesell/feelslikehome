@@ -2502,6 +2502,29 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-hf2-context p { margin: 0; overflow-wrap: anywhere; }
 .flh-hf2-record { font-size: 12.5px; }
 
+/* Add Home V3, phase 6 (docs/add-home-v3-phase6-ux-audit.md): after Save Home.
+   The listing context is one dated row (Details opens the sheet); a quiet
+   "Your Match" shortcut under the property; open counts and one next step in
+   Your Match. */
+.flh-hf2-context-row { margin: 6px 0 0; color: var(--ink-soft); font-size: 12.5px; line-height: 1.45; overflow-wrap: anywhere; }
+.flh-hf2-context-row .flh-offered-review { display: inline-block; min-height: 28px; margin-left: 2px; padding: 2px 4px; font-size: 12.5px; }
+.flh-hf2-legend { margin: -4px 0 12px; color: var(--ink-soft); font-size: 12.5px; line-height: 1.45; }
+.flh-context-sheet .hh-sheet-body { display: grid; gap: 12px; }
+.flh-context-sheet .flh-hf2-context { gap: 6px; margin: 0; padding: 10px 12px; border: 1px solid rgba(138,124,110,.18); border-radius: 12px; background: var(--paper); color: var(--ink); font-size: 13.5px; }
+.flh-match-jump { display: inline-flex; align-items: center; gap: 8px; align-self: flex-start; min-height: 36px; margin-top: 10px; padding: 6px 12px; border: 1px solid rgba(138,124,110,.28); border-radius: 999px; background: var(--paper); color: var(--ink); font: 600 13px var(--font-ui); cursor: pointer; }
+.flh-match-jump b { color: var(--positive); font-weight: 700; }
+.flh-match-jump small { color: var(--ink-soft); font-size: 12px; font-weight: 600; }
+.flh-match-jump:hover { border-color: var(--brick); }
+.flh-match-jump:focus-visible, .flh-match-next:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.flh-match-next { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; margin: 4px 0 6px; padding: 4px 0; border: 0; background: none; color: var(--brick); font: 600 13px var(--font-ui); cursor: pointer; text-align: left; }
+.flh-match-next b { font-weight: 700; }
+.flh-match-next:hover { text-decoration: underline; }
+.flh-mc2-open { padding: 1px 8px; border-radius: 999px; background: #fff; color: var(--ink-soft); font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+@media (max-width: 640px) {
+  .flh-match-jump { min-height: 40px; }
+  .flh-match-next { min-height: 44px; }
+}
+
 /* Home Facts: listing facts offered at Add Home and not added yet. One quiet
    row; Review opens the shared checklist in a sheet (no inline fold-out). */
 .flh-offered-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; margin: 0 0 12px; padding: 8px 12px; border: 1px solid rgba(138,124,110,.2); border-radius: 12px; background: var(--paper); color: var(--ink-soft); font-size: 13px; }

@@ -739,7 +739,7 @@ function SavedHomeView({ summary, vocabulary, isCollaborative, onBackToHomes, on
         <button type="button" className="hh-btn flh-saved-back" onClick={onBackToHomes}>Back to My Homes</button>
         <button type="button" className="hh-btn hh-btn-ghost flh-saved-open" onClick={onOpenHome}>View {vocabulary.singularLower} <ArrowRight size={15} aria-hidden="true" /></button>
       </div>
-      <p className="flh-saved-hint">Home Facts, Match and notes are there whenever you’re ready. Nothing else is required.</p>
+      <p className="flh-saved-hint">Next, when you’re ready: View {vocabulary.singularLower} shows what FLH found and how it fits your priorities. Nothing else is required.</p>
     </div>
   </div>;
 }

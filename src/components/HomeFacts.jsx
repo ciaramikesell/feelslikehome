@@ -15,7 +15,8 @@ import { isUnitlessLotSize } from '@/lib/lotSize';
 import { parseNum } from '@/lib/matching';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { pendingOfferedFacts } from '@/lib/listingTextHomeFacts';
-import { countyRecordContext, listingSnapshotContext, listingSnapshotLines } from '@/lib/listingContext';
+import { countyRecordContext, formatShortDate, listingContextSummary, listingSnapshotContext, listingSnapshotLines } from '@/lib/listingContext';
+import Sheet from '@/components/Sheet';
 import { OfferedFactsSheet } from '@/components/FactChecklist';
 import { createClient } from '@/lib/supabase/client';
 import { MultiSelectField, PhoneCollapse, QuietInput, SelectField } from '@/components/FactFields';
@@ -44,12 +45,28 @@ const plural = (value, one, many) => (Number(value) === 1 ? one : many);
 // listingContext.js): the listing as it was then, dated, and what the county
 // record says about features with no Home Facts field. Read-only; never a
 // value, never a Match answer.
-function ListingContext({ lines, features }) {
+//
+// Phase 6: one dated summary line near the top, with Details opening the full
+// context in a sheet (Home Facts has no inline fold-outs), so the listing's
+// history no longer crowds the price, address and size.
+function ListingContext({ context, features }) {
+  const [open, setOpen] = useState(false);
+  const lines = listingSnapshotLines(context);
   if (!lines.length && !features.length) return null;
-  return <div className="flh-hf2-context" aria-label="Found when this home was added">
-    {lines.map((line) => <p key={line}>{line}</p>)}
-    {features.length > 0 && <p>County records: {features.join(' · ')}</p>}
-  </div>;
+  const asOf = formatShortDate(context?.asOf);
+  return <>
+    <p className="flh-hf2-context-row">
+      <span>{listingContextSummary(context, features.length > 0)}</span>
+      <button type="button" className="flh-offered-review" onClick={() => setOpen(true)} aria-haspopup="dialog">Details<span className="sr-only"> about the listing and county records</span></button>
+    </p>
+    <Sheet open={open} onClose={() => setOpen(false)} title="Found when this home was added" size="compact" className="flh-context-sheet">
+      <p className="flh-offered-intro">From the listing and the county property record FLH looked up when this home was added{asOf ? ` on ${asOf}` : ''}. It isn’t refreshed after that and can be out of date. None of it changes Home Facts or your Match.</p>
+      <div className="flh-hf2-context" aria-label="Found when this home was added">
+        {lines.map((line) => <p key={line}>{line}</p>)}
+        {features.length > 0 && <p>County records: {features.join(' · ')}</p>}
+      </div>
+    </Sheet>
+  </>;
 }
 
 function Row({ label, htmlFor, hint, children }) {
@@ -205,7 +222,7 @@ function OfferedFactsEntry({ home, onAdd }) {
   </>;
 }
 
-export default function HomeFacts({ home, priorities, vocabulary, readOnly = false, editor = null, userId = null, onEditAll = null, showHeading = true, isCollaborative = false }) {
+export default function HomeFacts({ home, priorities, vocabulary, readOnly = false, editor = null, userId = null, onEditAll = null, showHeading = true, isCollaborative = false, matchShortcut = null }) {
   const isReadOnly = readOnly || !editor;
   const apartment = vocabulary.apartment;
   const available = homeFactsAvailability(priorities, { apartment });
@@ -255,12 +272,14 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
             <QuietInput id="hf-lotSize" label="Lot size in acres" value={home.lotSize} readOnly={isReadOnly} failed={failed('lotSize')} registerDraft={editor?.registerDraft} format={formatLotSizeDisplay} edit={(value) => (isUnitlessLotSize(value) ? String(value).trim() : formatLotSizeDisplay(value))} parse={normalizeLotSizeInput} size={9} placeholder="— acres" onCommit={(lotSize) => save({ lotSize })} />
           </p>}
           <ListingLink home={home} readOnly={isReadOnly} editor={editor} />
-          <ListingContext lines={listingSnapshotLines(listingSnapshotContext(home.listingImport))} features={[
+          <ListingContext context={listingSnapshotContext(home.listingImport)} features={[
             record.fireplace && `fireplace${record.fireplace.type ? ` (${record.fireplace.type})` : ''}`,
             record.pool && `pool${record.pool.type ? ` (${record.pool.type})` : ''}`,
             record.view && `${record.view} view`,
           ].filter(Boolean)} />
           {home.suggestedBy && <span className="hh-provenance">Suggested by {home.suggestedBy}</span>}
+          {/* Phase 6: a quiet way down to Your Match (HomeOverlay). */}
+          {!isReadOnly && matchShortcut}
         </div>
 
         <PhoneCollapse id={`hf-utilities-${home.id}`} title="Year, taxes & utilities" summary={utilitiesSummary || 'Unknown'} className="flh-hf2-secondary">
@@ -286,6 +305,8 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
           <h2 id="hf-title" className="flh-overlay-heading">Home Facts</h2>
           <span>{isReadOnly ? 'From the listing and the buyers' : 'All optional'}</span>
         </header>
+        {/* Phase 6: what the warm Unknown fields mean, said once. */}
+        {!isReadOnly && <p className="flh-hf2-legend">Unknown means FLH hasn’t found it yet. It never counts as No in your Match.</p>}
         {!isReadOnly && <OfferedFactsEntry home={home} onAdd={save} />}
         <div className="flh-hf2-columns">
           <div className="flh-hf2-column">

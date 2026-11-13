@@ -104,3 +104,19 @@ export function listingSnapshotLines(context) {
   }
   return lines;
 }
+
+/**
+ * Phase 6 (docs/add-home-v3-phase6-ux-audit.md): the one-line summary Home
+ * Facts shows in place of the full context, which opens in a sheet. Same
+ * facts, fewer of them, still dated; nothing inferred.
+ */
+export function listingContextSummary(context, hasRecords = false) {
+  const parts = [];
+  if (context?.status) parts.push(context.status === 'active' ? 'Active' : 'No longer listed');
+  if (context?.listingType) parts.push(context.listingType);
+  if (context?.daysOnMarket !== null && context?.daysOnMarket !== undefined) parts.push(`${context.daysOnMarket} day${context.daysOnMarket === 1 ? '' : 's'} on market`);
+  else if (context?.earlier?.length) parts.push('listed before');
+  if (!parts.length) return hasRecords ? 'County records for this home' : '';
+  const asOf = formatShortDate(context.asOf);
+  return `${asOf ? `When added (${asOf})` : 'When added'}: ${parts.join(' · ')}`;
+}

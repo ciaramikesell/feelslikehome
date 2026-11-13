@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, ArrowLeft, Check, Loader2, NotebookText, X } from 'lucide-react';
+import { AlertCircle, ArrowDown, ArrowLeft, ArrowRight, Check, Loader2, NotebookText, X } from 'lucide-react';
 import HomeFacts from '@/components/HomeFacts';
-import MatchCriteria from '@/components/MatchCriteria';
+import MatchCriteria, { FACT_LINKS, criterionName } from '@/components/MatchCriteria';
 import { recordListingAnswers, savedListingAnswers } from '@/lib/listingTextAnswers';
 import TourFeedback from '@/components/TourFeedback';
 import RealtorContributions from '@/components/RealtorContributions';
@@ -16,7 +16,8 @@ import { useHomesWorkspace } from '@/components/HomesWorkspace';
 import { isArchivedStatus } from '@/lib/constants';
 import { computeMatch, matchFactualSummary } from '@/lib/matching';
 import { crossedRevealThreshold, matchCompleteness } from '@/lib/matchReveal';
-import { criterionAnswerPatch, inPersonAnswerPatch } from '@/lib/matchCriteria';
+import { answerableCriteriaKeys, criterionAnswerPatch, inPersonAnswerPatch } from '@/lib/matchCriteria';
+import { matchProgress, matchProgressLine, openCountByTier } from '@/lib/matchProgress';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { evaluateCommute } from '@/lib/commute';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
@@ -83,6 +84,8 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
   const [archiveTarget, setArchiveTarget] = useState(null);
   const [fullEditor, setFullEditor] = useState(false);
   const [revealOpen, setRevealOpen] = useState(false);
+  // "Answer next" (phase 6): which open criterion Match Criteria should bring into view.
+  const [revealRequest, setRevealRequest] = useState(null);
   const dialogRef = useRef(null);
   const scrollRef = useRef(null);
   const titleRef = useRef(null);
@@ -184,6 +187,9 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
   const { setRef, getState } = useCommuteObserver(home, commuteDestinations);
   const match = computeMatch(home, priorities, evaluateCommute(commuteDestinations, getState));
   const summary = matchFactualSummary(match);
+  // Which of THIS buyer's priorities are still open (display only; docs/add-home-v3-phase6-ux-audit.md).
+  const progress = match ? matchProgress(match, { answerable: answerableCriteriaKeys(priorities), factKeys: Object.keys(FACT_LINKS) }) : null;
+  const progressLine = matchProgressLine(progress);
   const identity = homeIdentity(home, priorities);
   const vocabulary = homeVocabulary(priorities);
   const usesFullEditor = vocabulary.apartment || searchIntentCapabilities(priorities.searchType).showsRentalFacts;
@@ -305,6 +311,26 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
 
   const tourHref = `${homePath}?section=tour`;
 
+  // One quiet way from the top of the home to Your Match (on a phone it starts
+  // well below the first screen), and one next step inside it. Neither answers
+  // anything: they only bring the buyer to the control.
+  const goToMatch = () => {
+    matchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    matchRef.current?.focus({ preventScroll: true });
+  };
+  const answerNext = () => {
+    const next = progress?.next;
+    if (!next) return;
+    if (next.how === 'fact') openFact(FACT_LINKS[next.key][0]);
+    else setRevealRequest({ key: next.key, at: Date.now() });
+  };
+  const matchShortcut = match ? <button type="button" className="flh-match-jump" onClick={goToMatch}>
+    <span>Your Match</span>
+    {match.pct != null && <b>{match.pct}%</b>}
+    <small>{progress?.open.length ? `${progress.open.length} open` : 'See breakdown'}</small>
+    <ArrowDown size={13} aria-hidden="true" />
+  </button> : null;
+
   return <div className="flh-overlay-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !nestedOpen) close(); }}>
     <div ref={(node) => { dialogRef.current = node; setRef(node); }} className="flh-overlay" role="dialog" aria-modal="true" aria-labelledby="flh-overlay-title">
       <header className="flh-overlay-bar">
@@ -330,17 +356,21 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
 
       <div className="flh-overlay-scroll" ref={scrollRef}>
         {view === 'research' ? <>
-          <HomeFacts home={home} priorities={priorities} vocabulary={vocabulary} editor={editor} userId={userId} isCollaborative={isCollaborative} onEditAll={usesFullEditor ? () => setFullEditor(true) : null} />
+          <HomeFacts home={home} priorities={priorities} vocabulary={vocabulary} editor={editor} userId={userId} isCollaborative={isCollaborative} onEditAll={usesFullEditor ? () => setFullEditor(true) : null} matchShortcut={matchShortcut} />
 
           <section className="flh-overlay-match" aria-labelledby="flh-match-title" ref={matchRef} tabIndex={-1}>
             <header className="flh-hf2-section-head">
               <h2 id="flh-match-title" className="flh-overlay-heading">Your Match</h2>
               {match?.pct != null && <span className={`flh-match-pill is-${match.pct >= 80 ? 'high' : match.pct >= 60 ? 'mid' : 'low'}`}>{match.pct}% Match</span>}
             </header>
-            <p className="flh-overlay-match-lead">Unknown isn’t No. Fact-based results update from Home Facts.</p>
+            <p className="flh-overlay-match-lead">{progressLine || 'Unknown isn’t No. Fact-based results update from Home Facts.'}</p>
+            {progress?.next && <button type="button" className="flh-match-next" onClick={answerNext}>
+              {progress.next.how === 'fact' ? 'Fill in next' : 'Answer next'}: <b>{criterionName(progress.next)}</b> <ArrowRight size={14} aria-hidden="true" />
+            </button>}
             {summary?.mustClause && <p className="flh-overlay-match-context">{summary.mustClause}.{summary.importantSentence ? ` ${summary.importantSentence}` : ''}</p>}
             {coBuyerPerspective?.match?.pct != null && <p className="flh-overlay-match-context">Your co-buyer’s Match: <strong>{coBuyerPerspective.match.pct}%</strong>, from their own priorities and answers.</p>}
-            {match ? <MatchCriteria home={home} priorities={priorities} match={match} onAnswer={answerCriterion} onOpenFact={openFact} tourHref={tourHref} listingAnswers={listingAnswers} />
+            {isCollaborative && <p className="flh-overlay-match-lead">Your answers here are yours alone. Home Facts are shared with everyone in this search.</p>}
+            {match ? <MatchCriteria home={home} priorities={priorities} match={match} onAnswer={answerCriterion} onOpenFact={openFact} tourHref={tourHref} listingAnswers={listingAnswers} openByTier={openCountByTier(progress)} revealRequest={revealRequest} />
               : <p className="flh-overlay-match-context">No priorities are set for this search yet. <a href="/search">Set them in My Search</a>.</p>}
           </section>
 

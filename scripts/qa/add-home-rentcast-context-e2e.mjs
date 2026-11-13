@@ -96,6 +96,21 @@ async function expandHomeFacts(page) {
   }
 }
 
+// Phase 6 (docs/add-home-v3-phase6-ux-audit.md): the full context opens in a
+// sheet from one dated row (Details). Reads Home Facts plus that sheet.
+async function homeFactsWithContext(page) {
+  const facts = await page.locator('.flh-hf2').innerText();
+  const details = page.locator('.flh-hf2-context-row .flh-offered-review');
+  if (!(await details.count())) return facts;
+  await details.click();
+  const sheet = page.locator('.flh-context-sheet');
+  await sheet.waitFor({ timeout: 10000 });
+  const text = await sheet.innerText();
+  await page.keyboard.press('Escape');
+  await sheet.waitFor({ state: 'detached', timeout: 10000 });
+  return `${facts}\n${text}`;
+}
+
 async function run() {
   const browser = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } : {});
   psql(`delete from public.homes where search_id = ${lit(info.search)} and address ~ '^5169[0-9] Sass Rd'`);
@@ -122,7 +137,7 @@ async function run() {
       assert(JSON.stringify(row.home_condition) === '[]' && JSON.stringify(row.home_layout) === '[]' && row.basement_condition === null && row.basement_style === null, `context was written as a value: ${JSON.stringify(row).slice(0, 200)}`);
       assert(row.listing_import.listing.listingType === 'New Construction' && row.listing_import.listing.history.length === 2, 'snapshot listing context');
       await expandHomeFacts(owner);
-      const facts = await owner.locator('.flh-hf2').innerText();
+      const facts = await homeFactsWithContext(owner);
       for (const expected of [
         'Subdivision: SASS HILLS · county records',
         /When added \([A-Z][a-z]{2} \d{1,2}, \d{4}\): Active · listed Sep 26, 2026 · 23 days on market/,
@@ -134,7 +149,7 @@ async function run() {
       ]) assert(typeof expected === 'string' ? facts.includes(expected) : expected.test(facts), `missing: ${expected}`);
       assert(!/\$349,000|price drop|reduced/i.test(facts), 'a history price or an inferred change is shown');
       assert(!(await owner.locator('.flh-overlay .flh-hf2 details').count()), 'Home Facts has an inline fold-out');
-      await owner.locator('.flh-hf2-context').evaluate((el) => el.scrollIntoView({ block: 'center' }));
+      await owner.locator('.flh-hf2-context-row').evaluate((el) => el.scrollIntoView({ block: 'center' }));
       await shot(owner, `after-${label}-2-home-facts-context`);
       // A value the buyer sets wins: the hint goes away.
       await owner.locator('#hf-basementCondition').selectOption('finished');
@@ -170,7 +185,7 @@ async function run() {
       await coBuyer.goto(`${base}/homes/${id}`, { waitUntil: 'networkidle' });
       await coBuyer.locator('.flh-overlay[role="dialog"]:not(.is-loading)').waitFor({ timeout: 30000 });
       await expandHomeFacts(coBuyer);
-      assert((await coBuyer.locator('.flh-hf2').innerText()).includes('Listing type: New Construction'), 'co-buyer context');
+      assert((await homeFactsWithContext(coBuyer)).includes('Listing type: New Construction'), 'co-buyer context');
       await openMatchTiers(coBuyer);
       const fireRow = coBuyer.locator('.flh-mc2-row').filter({ hasText: 'Fireplace' });
       await fireRow.locator('.flh-mc2-listing').waitFor({ timeout: 15000 });
@@ -188,9 +203,9 @@ async function run() {
       assert(/No current asking price/.test(await owner.locator('.flh-found').innerText()), 'inactive price note');
       await saveAndOpen(owner);
       await expandHomeFacts(owner);
-      const facts = await owner.locator('.flh-hf2').innerText();
+      const facts = await homeFactsWithContext(owner);
       assert(/When added \([^)]*\): No longer listed · listed Sep 26, 2026/.test(facts) && !/days on market/.test(facts.split('Listing type')[0]), `inactive context: ${facts.slice(0, 600)}`);
-      await owner.locator('.flh-hf2-context').evaluate((el) => el.scrollIntoView({ block: 'center' }));
+      await owner.locator('.flh-hf2-context-row').evaluate((el) => el.scrollIntoView({ block: 'center' }));
       await shot(owner, `after-${label}-5-inactive-context`);
     }, open);
 
