@@ -41,20 +41,80 @@ export function appliedImportFields(before = {}, after = {}) {
   return Object.fromEntries(Object.keys(after || {}).filter((key) => !same(before?.[key], after[key])).map((key) => [key, after[key]]));
 }
 
+const plainText = (address) => String(address || '').trim().replace(/[.,#]/g, ' ').replace(/\s+/g, ' ').toLowerCase();
+
 /**
- * Take back what an earlier lookup or paste wrote, before another property's
- * data arrives: each field still holding exactly the value it was given goes
- * back to its empty default. A field the buyer changed since is theirs and is
- * kept. Returns the new form and the fields cleared.
+ * Whether two addresses name the same property: equal strict identities, or
+ * (when either can't be identified strictly) the same text. An unknown target
+ * (a link FLH can't read an address from) is never the same property.
  */
-export function revertAppliedFields(form = {}, applied = {}) {
+export function sameProperty(a, b) {
+  if (!plainText(a) || !plainText(b)) return false;
+  const [ka, kb] = [propertyAddressKey(a), propertyAddressKey(b)];
+  if (ka && kb) return ka === kb;
+  return plainText(a) === plainText(b);
+}
+
+// Fields that identify the draft or belong to the search, not the property's
+// details; never counted as something the buyer entered for a property.
+const IDENTITY_FIELDS = new Set(['id', 'address', 'listingUrl', 'status', 'propertyType', 'latitude', 'longitude', 'coordinateAddressFingerprint', 'coordinateStatus', 'coordinateSource']);
+const OWN_GROUPS = new Set(['notes', 'pros', 'cons', 'photoUrl', 'checks', 'ratings']);
+
+/**
+ * What the buyer put into this unsaved draft for its property, by kind, in
+ * display order: 'notes' (notes, pros, cons), 'photo', 'answers' (Match
+ * answers or ratings), 'listing' (pasted listing text, or shared facts added
+ * from it) and 'details' (any other field the buyer typed or changed). A
+ * field still holding what a lookup or paste wrote (`applied`), or what an
+ * added fact wrote, is not the buyer's.
+ */
+export function draftBuyerContent({ form = {}, applied = {}, usedFacts = {}, photoStaged = false, pasteText = '' } = {}) {
   const blank = emptyHome();
-  const next = { ...form };
-  const cleared = [];
-  for (const [key, value] of Object.entries(applied || {})) {
-    if (!same(form?.[key], value)) continue;
-    next[key] = key in blank ? blank[key] : null;
-    cleared.push(key);
-  }
-  return { form: next, cleared };
+  const kinds = [];
+  if (['notes', 'pros', 'cons'].some((key) => String(form?.[key] || '').trim())) kinds.push('notes');
+  if (photoStaged || String(form?.photoUrl || '').trim()) kinds.push('photo');
+  if (Object.keys(form?.checks || {}).length || Object.values(form?.ratings || {}).some(Boolean)) kinds.push('answers');
+  const factFields = new Set(Object.values(usedFacts || {}).map((fact) => fact?.field).filter(Boolean));
+  if (String(pasteText || '').trim() || factFields.size) kinds.push('listing');
+  const edited = Object.keys(form || {}).some((key) => !IDENTITY_FIELDS.has(key) && !OWN_GROUPS.has(key) && !factFields.has(key)
+    && !same(form[key], key in (applied || {}) ? applied[key] : (key in blank ? blank[key] : undefined)));
+  if (edited) kinds.push('details');
+  return kinds;
+}
+
+const CONTENT_LABELS = { notes: 'notes', photo: 'photo', answers: 'Match answers', listing: 'pasted listing details', details: 'details you edited' };
+/** "notes, photo and Match answers" */
+export function draftContentPhrase(kinds = []) {
+  const labels = kinds.map((kind) => CONTENT_LABELS[kind]).filter(Boolean);
+  return labels.length <= 1 ? (labels[0] || '') : `${labels.slice(0, -1).join(', ')} and ${labels.at(-1)}`;
+}
+
+/**
+ * What a Find does to the unsaved draft:
+ * - 'keep': no property yet, or the same property (another link or spelling
+ *   for it). Everything, including the buyer's answers, stays.
+ * - 'fresh': a different property and nothing the buyer entered; start a
+ *   fresh draft (nothing from the previous property can be saved on this one).
+ * - 'confirm': a different property and the draft holds the buyer's own
+ *   content; ask before starting fresh.
+ * `target` is null when the new input names no address FLH can read.
+ */
+export function findSwitchPlan(currentAddress, target, content = []) {
+  if (!String(currentAddress || '').trim()) return 'keep';
+  if (target && sameProperty(currentAddress, target)) return 'keep';
+  return content.length ? 'confirm' : 'fresh';
+}
+
+/**
+ * A fresh new-home draft: nothing from the previous property, not even its
+ * partial-save id (that row stays the previous property's own home). Only
+ * what belongs to the search carries over: the stage and, for an apartment
+ * search, the apartment property type.
+ */
+export function freshDraft(previous = {}, { apartment = false } = {}) {
+  return {
+    ...emptyHome(),
+    status: previous?.status || emptyHome().status,
+    propertyType: apartment && previous?.propertyType === 'apartment' ? 'apartment' : null,
+  };
 }

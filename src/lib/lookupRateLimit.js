@@ -1,8 +1,10 @@
 // A per-user limit on property lookups for the import route (Add Home V3,
 // phase 4). BEST EFFORT: it lives in the memory of one serverless instance, so
-// it stops a runaway loop or rapid clicking that reaches a warm instance, but
-// it is not a durable, deployment-wide quota (that needs shared storage, a
-// founder decision: docs/add-home-v3-lookup-efficiency.md). Keyed by the
+// it slows a runaway loop or rapid clicking that reaches a warm instance. It
+// is NOT an account-wide limit: parallel instances count separately and a cold
+// start resets the count, so it guarantees no ceiling on one account's usage
+// (that needs shared storage, a founder decision:
+// docs/add-home-v3-lookup-efficiency.md). Keyed by the
 // signed-in user's id only; nothing is logged or returned about the user.
 
 export const USER_LOOKUP_LIMIT = 20;

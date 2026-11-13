@@ -26,11 +26,13 @@ const info = JSON.parse(readFileSync(infoPath, 'utf8').split('\n')[0]);
 const outDir = resolve(outArg);
 mkdirSync(outDir, { recursive: true });
 const IGNORED_CONSOLE = /Download the React DevTools|favicon|maps\.googleapis|Google Maps|places|Failed to load resource/i;
-// [label, device, A (active), B (inactive), double-click, manual-after-busy, user-limit]
+// [label, device, A (active), B (inactive), double-click, manual-after-busy, user-limit, P (buyer content), Q]
 const VIEWPORTS = [
-  ['desktop-1440', { viewport: { width: 1440, height: 900 } }, 51692, 51691, 51690, 51680, 51682],
-  ['iphone-390', devices['iPhone 13'], 51694, 51695, 51693, 51681, 51683],
+  ['desktop-1440', { viewport: { width: 1440, height: 900 } }, 51692, 51691, 51690, 51680, 51682, 51684, 51686],
+  ['iphone-390', devices['iPhone 13'], 51694, 51695, 51693, 51681, 51683, 51685, 51687],
 ];
+// A 1×1 PNG for the staged photo (never uploaded unless the home is saved with it).
+const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
 const addr = (number, street = 'Sass Rd') => `${number} ${street}, New Baltimore, MI 48047`;
 
 function psql(sql) {
@@ -41,7 +43,7 @@ function psql(sql) {
 const q = (sql) => JSON.parse(psql(`select coalesce(json_agg(t), '[]'::json) from (${sql}) t`));
 const lit = (value) => `'${String(value).replace(/'/g, "''")}'`;
 const assert = (condition, message) => { if (!condition) throw new Error(message); };
-const rowsAt = (number) => q(`select id, address, price, days_on_market, listing_url, listing_import from public.homes where search_id = ${lit(info.search)} and address like ${lit(`${number} Sass%`)}`);
+const rowsAt = (number) => q(`select id, address, price, days_on_market, listing_url, listing_import, notes, photo_url, basement_style from public.homes where search_id = ${lit(info.search)} and address like ${lit(`${number} Sass%`)}`);
 
 async function signedIn(browser, who, device) {
   const context = await browser.newContext({ ...device });
@@ -98,7 +100,7 @@ async function save(page) {
 async function run() {
   const browser = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } : {});
   psql(`delete from public.homes where search_id = ${lit(info.search)} and address ~ '^516(19|8[0-9]|9[0-9]) Sass'`);
-  for (const [label, device, A, B, dbl, manual, limited] of VIEWPORTS) {
+  for (const [label, device, A, B, dbl, manual, limited, P, Q] of VIEWPORTS) {
     let owner;
     const open = () => [owner].filter(Boolean);
 
@@ -115,7 +117,8 @@ async function run() {
       const card = await owner.locator('.flh-found').innerText();
       assert(!/335,000/.test(card), 'A’s price must not appear on B');
       const note = await owner.locator('.flh-switch-note').innerText();
-      assert(/^We cleared \d+ details? from the previous address\. Anything you typed is kept\.$/.test(note), `switch note: ${note}`);
+      assert(note === `Started fresh. Nothing from ${A} Sass Rd carries over to this one.`, `switch note: ${note}`);
+      assert(!(await owner.locator('.flh-switch-confirm').count()), 'nothing the buyer entered: no question');
       assert(owner.lookups === 2, `B: ${owner.lookups} requests`);
       await shot(owner, `after-${label}-2-switched-to-B`);
     }, open);
@@ -140,6 +143,61 @@ async function run() {
       assert(!JSON.stringify(row.listing_import).includes(String(A)), 'A in B’s snapshot');
       assert(rowsAt(A).length === 0, 'A was not saved');
       await shot(owner, `after-${label}-3-saved-B`);
+    }, open);
+
+    await step(`[${label}] P with a note, photo, pasted text and an added fact → Q: asked first; Keep changes nothing; Start fresh carries nothing over`, async () => {
+      await openAdd(owner);
+      await search(owner, addr(P));
+      await waitFound(owner, P);
+      await owner.locator('.flh-found-notes summary').click();
+      await owner.locator('#add-home-notes').fill('Loved the yard at P');
+      await owner.locator('.flh-found-card input[type=file]').setInputFiles({ name: 'p.png', mimeType: 'image/png', buffer: PNG });
+      await owner.locator('.flh-found-card img').waitFor();
+      await owner.locator('.flh-found-more summary').click();
+      await owner.locator('#flh-listing-paste-text').fill('Walkout basement with a wet bar. Gas fireplace in the den.');
+      await owner.getByRole('button', { name: /Fill in details/ }).click();
+      const add = owner.getByRole('button', { name: /^Add \d+ facts?$/ });
+      await add.waitFor({ timeout: 10000 });
+      await add.click();
+      await owner.getByRole('button', { name: /^Undo/ }).first().waitFor({ timeout: 10000 });
+      const before = owner.lookups;
+      await search(owner, addr(Q));
+      const confirm = owner.locator('.flh-switch-confirm');
+      await confirm.waitFor();
+      const copy = await confirm.innerText();
+      assert(/Start fresh for a different home\?/.test(copy) && copy.includes(`${Q} Sass Rd is a different home from ${P} Sass Rd.`), `question: ${copy}`);
+      assert(/Your notes, photo and pasted listing details for/.test(copy), `kinds: ${copy}`);
+      assert(owner.lookups === before, 'no request before the buyer answers');
+      assert(await owner.evaluate(() => document.activeElement?.id) === 'flh-switch-title', 'focus moves to the question');
+      await shot(owner, `after-${label}-7-switch-question`);
+      // Keep: nothing changes.
+      await owner.getByRole('button', { name: `Keep ${P} Sass Rd` }).click();
+      assert(!(await confirm.count()), 'question closed');
+      await waitFound(owner, P);
+      assert(await owner.locator('#add-home-notes').inputValue() === 'Loved the yard at P', 'note kept');
+      assert(await owner.locator('.flh-found-card img').count() === 1, 'photo kept');
+      assert(await owner.locator('#flh-listing-paste-text').inputValue() !== '', 'pasted text kept');
+      // Again, and Start fresh.
+      await search(owner, addr(Q));
+      await confirm.waitFor();
+      await owner.getByRole('button', { name: 'Start fresh' }).click();
+      await waitFound(owner, Q);
+      assert(owner.lookups === before + 1, `one request for Q (${owner.lookups - before})`);
+      assert(await owner.locator('.flh-found-card img').count() === 0, 'no photo on Q');
+      await owner.locator('.flh-found-notes summary').click().catch(() => {});
+      const notesOpen = await owner.locator('#add-home-notes').count();
+      if (notesOpen) assert(await owner.locator('#add-home-notes').inputValue() === '', 'no note on Q');
+      const more = owner.locator('.flh-found-more');
+      if (!(await more.getAttribute('open').then((v) => v !== null))) await more.locator('summary').click();
+      assert(await owner.locator('#flh-listing-paste-text').inputValue() === '', 'no pasted text on Q');
+      assert(/Started fresh\. Nothing from .* carries over to this one\./.test(await owner.locator('.flh-switch-note').innerText()), 'fresh note');
+      await shot(owner, `after-${label}-8-started-fresh`);
+      await save(owner);
+      const [row] = rowsAt(Q);
+      assert(row && !row.notes && !row.photo_url && !row.basement_style, `Q row: ${JSON.stringify({ ...row, listing_import: undefined })}`);
+      assert(!JSON.stringify(row.listing_import).includes('Walkout') && !JSON.stringify(row.listing_import).includes('fireplace'), 'no P evidence in Q’s snapshot');
+      assert(!(row.listing_import?.descriptionFeatures || []).length || !JSON.stringify(row.listing_import.descriptionFeatures).includes('wet bar'), 'no pasted features');
+      assert(rowsAt(P).length === 0, 'P not saved');
     }, open);
 
     await step(`[${label}] a saved address (typed another way) opens that home with no request`, async () => {

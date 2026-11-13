@@ -49,7 +49,7 @@ FLH; RentCast's dashboard is the only meter.
 |---|---|---|
 | 1 | No cache anywhere | A → B → A in one Add Home cost 6 requests. Re-opening Add Home for the same address cost 2 more |
 | 2 | Duplicates matched by exact link only | The same house via another site's link, or typed as an address, cost 2 requests and could be saved twice |
-| 3 | No per-user limit | One account, or a stuck script, could use the whole monthly quota |
+| 3 | No per-user limit | One account, or a stuck script, could use the whole monthly quota (still possible across instances: see §2) |
 | 4 | No backoff on RentCast 429 | The buyer could click straight back into the rate limit |
 | 5 | A double-click raced the loading guard | The guard read React state, so two clicks in one tick could both send |
 | 6 | **Stale fields on a second lookup** | `mergeImportFields` only fills *empty* fields. A's price, days on market, beds and so on survived into B. If B's lookup failed, the home was saved with B's address, A's details and no snapshot to say where they came from |
@@ -92,41 +92,98 @@ FLH; RentCast's dashboard is the only meter.
 | In-flight guard (a ref, set before the first `await`) | Add Home | 1 request at a time | Nothing; the second click is ignored |
 | Busy cooldown after any 429 | Add Home | `Retry-After`, capped at 10 minutes; otherwise 60 s | "Property lookups are busy right now. Add the address and fill in the rest on Home Facts, or try again in a minute." |
 | Session cap | Add Home | 8 network lookups per Add Home (cache hits are free) | "That's a lot of lookups for one Add Home. Add this home by its address, or close Add Home and start again to look up more." |
-| Per-user limit | `/api/import-listing`, after auth and before RentCast | 20 lookups (40 requests) per user per 10 minutes, per warm instance. `IMPORT_LOOKUP_USER_LIMIT` overrides it | "You've looked up a lot of addresses in a short time. Add this home by its address now, and try a lookup again in a few minutes." (429 + `Retry-After`) |
+| Per-user limit (**best-effort**, see below) | `/api/import-listing`, after auth and before RentCast | 20 lookups (40 requests) per user per 10 minutes **within one warm serverless instance**. `IMPORT_LOOKUP_USER_LIMIT` overrides it | "You've looked up a lot of addresses in a short time. Add this home by its address now, and try a lookup again in a few minutes." (429 + `Retry-After`) |
 
 - Every safeguard ends on the address card with **Save Home** working. Manual
   save never needs a lookup.
 - The server log line is `import-listing: per-user lookup limit reached`. It
   carries no user id, address or key.
-- **The per-user limit is best-effort.** It is held in memory per serverless
-  instance (bounded to 5,000 users, least-recently-active evicted). Parallel
-  instances each count separately, and a cold start resets the count. It stops
-  a runaway loop on a warm instance; it is not a quota. §4 has the durable
-  version.
+- **The per-user limit is best-effort. It is not an account-wide quota and
+  guarantees no ceiling.**
+  - It is held in memory per serverless instance (bounded to 5,000 users,
+    least-recently-active evicted).
+  - Vercel can run several instances at once, each with its own count, and a
+    cold start or redeploy resets the count to zero. So one account can make
+    more than 20 lookups in 10 minutes. In the worst case that is 20 per
+    instance per window, with no fixed bound on the number of instances.
+  - It slows a runaway loop or a stuck client that keeps hitting one warm
+    instance, which is the common case. It cannot protect the monthly RentCast
+    quota.
+  - The client-side safeguards above (in-flight guard, cooldown, session cap)
+    only apply to the FLH app. A script calling the route directly bypasses
+    them; only the route's auth and this best-effort limit apply to it.
+  - An enforceable per-account limit needs shared state: option A in §4.
 - Share Extension intake runs the same Find, so it inherits all of this.
   Co-buyers each have their own Add Home session and their own server count.
 
-### One property's data at a time
-- **Recording:** Add Home records exactly what the lookup (and the "Fill in
-  details" basics) wrote into the form, in `importApplied`.
-- **Clearing:** on a lookup for another address, *before* the request,
-  `revertAppliedFields` clears every field that **still holds** the value the
-  lookup wrote:
-  - a field the buyer changed since is kept;
-  - fields the buyer typed are never touched;
-  - accepted Home Fact suggestions from pasted text are undone the same way.
-- **Also cleared:** pending fact suggestions, unconfirmed answer suggestions
-  and the paste message. Confirmed personal answers are kept (phase 2 rule).
-- **The buyer is told:** "We cleared N details from the previous address.
-  Anything you typed is kept."
-- **If B's lookup then fails,** the address card holds B's address and
-  nothing of A's. Saving stores no snapshot.
-- **Saved homes are never modified.** This only touches the unsaved Add Home
-  form.
-- **The bug found by browser QA, and fixed:** the clear ran inside a
-  `setForm` updater, which React runs at render, *after* the record had been
-  reset. What to clear is now captured before the reset. A unit pin and the
-  QA cover it.
+### One property per draft (isolation)
+Every Find first decides whether it names **the property already in this
+unsaved draft** (`findSwitchPlan` in `src/lib/lookupSession.js`):
+
+| Find | What happens |
+|---|---|
+| No property yet in the draft (first find, or text pasted before any address) | **Keep.** Whatever the buyer already typed belongs to the home they are now finding |
+| The same property: same strict identity, another spelling or another site's link | **Keep.** Everything stays, including answers confirmed from pasted text, notes, photo and facts. A re-paste for the same property keeps accepted answers (phase 2 rule) |
+| A different property, and the draft holds only what lookups and pastes wrote | **Fresh draft**, straight away |
+| A different property, and the draft holds the buyer's own content | **One question first.** Nothing is cleared and no request is made until the buyer answers |
+| A link FLH can't read an address from (with a property in the draft) | Treated as a different property: fresh draft, or the question |
+
+**The question.** It is the smallest UX change that avoids silently keeping
+or silently discarding the buyer's work: one inline card above the found
+home, with focus moved to it.
+
+> **Start fresh for a different home?**
+> 51687 Sass Rd is a different home from 51685 Sass Rd. Your notes, photo and
+> pasted listing details for 51685 Sass Rd won't carry over.
+> [Start fresh] [Keep 51685 Sass Rd]
+
+- It names only the kinds of content actually present (`draftBuyerContent`):
+  - notes, pros or cons;
+  - photo;
+  - Match answers or ratings;
+  - pasted listing details, or facts added from them;
+  - details you edited (any other field the buyer typed or corrected).
+- What a lookup or paste wrote and the buyer left alone is not counted as the
+  buyer's.
+- **Keep** changes nothing. The search box shows the draft's own link or
+  address again.
+- **Start fresh** replays the same Find on a fresh draft.
+
+**A fresh draft resets every property-specific state path** (`startFresh` +
+`freshDraft`):
+
+| State | Reset |
+|---|---|
+| Form: provider details, buyer edits, notes / pros / cons, Match checks and ratings, accepted shared facts, link, address, coordinates | `freshDraft` = `emptyHome()`. Only the stage and an apartment search's property type carry over |
+| **Partial-save id** (adopted after a half-failed save) | Dropped. Before this, saving B would have upserted over A's row. A's row stays A's home |
+| Staged photo and preview, photo error, photo-URL input | Cleared, preview revoked |
+| Pasted text, parse message, reviewed text | Cleared |
+| Answer suggestions, decisions and confirmed answers | Cleared |
+| Fact suggestions, decisions, used facts, accepted note suggestions | Cleared |
+| Import result (snapshot source: `listingFacts`, `descriptionFeatures`, pasted facts, offered facts), provider result, last looked-up address, what lookups wrote (`importApplied`) | Cleared |
+| Session cache, request count, cooldown | **Kept.** They belong to the session, not the property |
+
+- The buyer is told: "Started fresh. Nothing from 51684 Sass Rd carries over
+  to this one."
+- A Find is ignored while a lookup is in flight, so an earlier answer can never
+  land on a later draft.
+- **Saved homes are never modified.** Duplicates are checked before the plan,
+  so opening an existing home never touches the draft.
+- **If B's lookup fails,** the address card holds the fresh draft with B's
+  address. Manual Save stores B's address only, with no snapshot.
+- **In today's UI** the switch is reachable only from the found card, where
+  personal Match answers are deferred to the Match view. Checks and ratings
+  are still reset, in case another path ever reaches it.
+
+**History of this section.**
+- The first version (`9fd729f`) took back only what lookups wrote and kept
+  everything else.
+- The isolation audit for #178 (`a551cbc`) found that this kept A's notes,
+  pros and cons, staged photo, pasted text, Match answers, ratings, corrected
+  details and partial-save id. They would be saved on B. It also found that an
+  unreadable link kept all of A's data under the new link.
+- This design replaces it. Browser QA had caught one earlier bug: the clear ran
+  in a React updater after its record was reset.
 
 ## 3. Estimated effect on RentCast usage
 
@@ -140,14 +197,17 @@ Per Add Home session, in requests:
 | The same house under another site's link, already saved | 2 | 0 |
 | Double-click / Enter + click | 4 | 2 |
 | Retrying while RentCast says busy | 2 per click | 0 until the cooldown ends |
-| A stuck loop or a script, one account | unbounded | ≤ 16 per Add Home; ≤ 40 per 10 minutes per warm instance |
+| A stuck loop in the FLH app, one account | unbounded | ≤ 16 per Add Home (client cap). The server adds a best-effort ≤ 40 per 10 minutes **per warm instance**: not an account-wide ceiling |
 
 - For the expected pattern (one lookup per home, with occasional re-shares and
   re-checks), this is roughly **10–25% fewer requests**. The exact figure
   depends on how often buyers re-add homes they already have, which FLH
   doesn't measure.
-- The larger win is the **ceiling**: no single account or bug can drain the
-  monthly quota from a warm instance.
+- These safeguards **reduce** runaway usage in the FLH app. They **cannot
+  guarantee** that one account, or a script calling the route directly, won't
+  use up the monthly RentCast quota. The server limit is per instance and
+  resets on a cold start. An enforceable account-wide limit needs option A in
+  §4 (a migration, which needs approval).
 - The durable options in §4 would add cross-session savings, for example two
   co-buyers looking up the same house.
 
@@ -205,15 +265,26 @@ approve.
 - **`test/lookup-efficiency.test.js`:**
   - strict identity and cache keys;
   - address duplicates;
-  - recording, clearing, and A→B with no mixing (with buyer edits kept);
+  - same property or different (`sameProperty`, `findSwitchPlan`, including
+    unreadable links);
+  - the buyer's own content by kind (`draftBuyerContent`);
+  - A with answers, notes, photo, facts, evidence and a partial-save id → B:
+    the fresh draft and B's save hold none of A;
+  - a same-property re-paste keeps accepted answers;
   - the limiter: limit, window, per-user, eviction, missing user;
   - route ordering: auth → limit → RentCast, with no personal data logged;
   - Add Home ordering: duplicate and cache before any request; failures not
-    cached; cooldown; cap; the in-flight ref; capture before reset;
+    cached; cooldown; cap; the in-flight ref;
+  - Find ordering: duplicates → plan → fresh draft → link handling or lookup.
+    Every state path is reset; the session cache, count and cooldown are kept;
   - still 2 RentCast requests per lookup;
-  - **real Postgres:** after a switch, the saved row holds only the second
-    property, and the existing saved home is unchanged and found as a
-    duplicate.
+  - **real Postgres:**
+    - A (with everything, partly saved) → B → Save: B's row and every buyer's
+      state hold none of A, and A's row is unchanged (no upsert over it);
+    - A → B → back to A: neither is contaminated;
+    - A → B fails → manual Save: B's address only, no snapshot;
+    - owner and co-buyer: separate drafts and switches, answers per buyer, the
+      owner's home and answers unchanged.
 - **`scripts/qa/add-home-lookup-efficiency-e2e.mjs`** (1440 and 390, counting
   every POST to `/api/import-listing`):
   - A→B clears and tells the buyer;
@@ -223,7 +294,11 @@ approve.
   - a double-click makes 1 request;
   - 429 → cooldown → 0 requests → manual save with nothing of the earlier
     property;
-  - the per-user limit message → manual save.
+  - the per-user limit message → manual save;
+  - P with a note, staged photo, pasted text and an added fact → Find Q: the
+    question first, with no request and focus on it. Keep changes nothing.
+    Start fresh makes 1 request, and Q shows no photo, note or pasted text.
+    Q's row has no note, photo, fact or P evidence, and P is not saved.
   - Run the dev server with `IMPORT_LOOKUP_USER_LIMIT=1000
     QA_RENTCAST_DELAY_MS=400`.
 - Two older QA scripts saved the same address twice under different links.
@@ -234,7 +309,7 @@ approve.
 - `src/lib/rentcast.js`: `propertyAddressKey` (strict identity).
 - `src/lib/lookupSession.js` (new):
   - `lookupCacheKey`, `findHomeByAddress`;
-  - `appliedImportFields`, `revertAppliedFields`;
+  - `appliedImportFields`, `sameProperty`, `draftBuyerContent`, `draftContentPhrase`, `findSwitchPlan`, `freshDraft`;
   - `SESSION_LOOKUP_LIMIT`, `BUSY_COOLDOWN_MS`.
 - `src/lib/lookupRateLimit.js` (new): `createLookupLimiter`, the best-effort
   per-user limiter.
@@ -243,6 +318,8 @@ approve.
 - `src/components/HomeModal.jsx`:
   - the session cache, cooldown, cap and in-flight guard;
   - the address duplicate at Find and at Save;
-  - clearing the previous property, with the switch note;
+  - property isolation at Find: same property kept; a different property a
+    fresh draft (`startFresh`), asked first (`SwitchPropertyConfirm`) when the
+    draft holds the buyer's own content; no Find while a lookup is in flight;
   - the new failure notes.
-- `src/app/globals.css`: `.flh-switch-note`.
+- `src/app/globals.css`: `.flh-switch-note`, `.flh-switch-confirm`.
