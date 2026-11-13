@@ -42,6 +42,10 @@ function fail(message, problems = []) {
   process.exit(1);
 }
 
+// Founder-run only: never in CI, a Vercel build or any automated environment.
+const AUTOMATED = ['CI', 'GITHUB_ACTIONS', 'VERCEL', 'VERCEL_ENV', 'NOW_BUILDER', 'BUILDKITE', 'CIRCLECI', 'GITLAB_CI'];
+if (AUTOMATED.some((name) => process.env[name])) fail('refusing to run in CI or a deployment environment; this capture is founder-run only');
+
 // The working folder must be git-ignored before anything is written to it.
 const gitignore = readFileSync(join(ROOT, '.gitignore'), 'utf8');
 if (!/^\/\.rentcast-capture\/$/m.test(gitignore)) fail('.rentcast-capture/ is not in .gitignore; refusing to write raw responses');

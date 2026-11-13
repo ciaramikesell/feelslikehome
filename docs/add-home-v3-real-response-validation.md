@@ -72,6 +72,10 @@ dashboard (step 2).
 
 ### What the script guarantees
 
+- **Never automated.** It refuses to run when `CI`, `GITHUB_ACTIONS`,
+  `VERCEL` or another CI/deploy variable is set. No npm script, workflow,
+  build step or app module references it (pinned by test). `npm test` imports
+  only the pure budget, redaction and coverage modules.
 - **At most 10 requests in total**, across runs. Every request is recorded in
   `.rentcast-capture/ledger.json` **before** it is sent. Failures, timeouts and
   404s all count. The 11th is refused.
@@ -180,6 +184,8 @@ semantics are documented and deferred.
 - **Capture script (static):** no print line references the key, address or
   URL; the git-ignore guard is present; the ledger is saved before sending; no
   retry loop.
+- **CI / deploy:** no npm script, workflow or app file references the
+  capture; the script refuses under `CI=true`.
 - **Git:** nothing under `.rentcast-capture/` is tracked.
 - **Redaction:**
   - structure, nulls, booleans, number types and enums are preserved;

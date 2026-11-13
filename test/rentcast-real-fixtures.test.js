@@ -110,6 +110,22 @@ test('capture script: key, URLs and addresses are never printed; raw output only
   assert.match(read('.gitignore'), /^\/\.rentcast-capture\/$/m);
 });
 
+test('CI and deployment never run the capture: no npm script, workflow, build hook or app import; the script refuses there', () => {
+  const pkg = JSON.parse(read('package.json'));
+  for (const [name, command] of Object.entries(pkg.scripts || {})) assert.doesNotMatch(command, /rentcast-capture/, name);
+  const files = execFileSync('git', ['ls-files'], { encoding: 'utf8' }).split('\n').filter(Boolean);
+  const outside = files.filter((f) => !f.startsWith('scripts/ops/rentcast-capture/') && f !== 'test/rentcast-real-fixtures.test.js'
+    && f !== 'docs/add-home-v3-real-response-validation.md' && f !== '.gitignore' && /\.(?:m?js|jsx|ts|tsx|json|ya?ml|toml|sh)$/.test(f));
+  for (const file of outside) assert.doesNotMatch(read(file), /rentcast-capture/, file);
+  // The tests import only the pure modules; the capture CLI is read as text, never run.
+  assert.doesNotMatch(read('test/rentcast-real-fixtures.test.js'), /import\([^)]*capture\.mjs/);
+  for (const file of ['redact.mjs', 'coverage.mjs']) assert.match(read(`scripts/ops/rentcast-capture/${file}`), /if \(import\.meta\.url === `file:\/\/\$\{process\.argv\[1\]\}`\)/, file);
+  const out = (() => {
+    try { execFileSync(process.execPath, ['scripts/ops/rentcast-capture/capture.mjs', '--dry-run'], { encoding: 'utf8', env: { ...process.env, CI: 'true', RENTCAST_API_KEY: '' }, stdio: 'pipe' }); return 'ran'; } catch (err) { return String(err.stderr); }
+  })();
+  assert.match(out, /refusing to run in CI or a deployment environment/);
+});
+
 test('git: nothing under the raw capture folder is tracked', () => {
   const tracked = execFileSync('git', ['ls-files', '.rentcast-capture', 'scripts/ops/rentcast-capture/targets.json'], { encoding: 'utf8' });
   assert.equal(tracked.trim(), '');
