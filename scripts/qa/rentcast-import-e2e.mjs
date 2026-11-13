@@ -109,6 +109,8 @@ async function run() {
 
     await step(`[${label}] complete: listing + property record → asking price, documented facts, $0/mo HOA, taxes with year, trusted map point`, async () => {
       owner = await signedIn(browser, 'owner', device);
+      // Phase 4: one search holds one home per address, so clear the other viewport's run of it.
+      psql(`delete from public.homes where search_id = ${lit(info.search)} and address like '${SCENARIOS.complete} Sass Rd%'`);
       const url = listingUrl(SCENARIOS.complete, label);
       await find(owner, url);
       await owner.getByText('We found your home').waitFor();
@@ -137,6 +139,8 @@ async function run() {
     }, open);
 
     await step(`[${label}] partial: listing lookup down → property facts kept, calm note, price left for the buyer`, async () => {
+      // Phase 4: one search holds one home per address, so clear the other viewport's run of it.
+      psql(`delete from public.homes where search_id = ${lit(info.search)} and address like '${SCENARIOS.partial} Sass Rd%'`);
       const url = listingUrl(SCENARIOS.partial, label);
       await find(owner, url);
       await owner.getByText('We found your home').waitFor();
@@ -150,6 +154,8 @@ async function run() {
     }, open);
 
     await step(`[${label}] inactive: last listed price is never the asking price`, async () => {
+      // Phase 4: one search holds one home per address, so clear the other viewport's run of it.
+      psql(`delete from public.homes where search_id = ${lit(info.search)} and address like '${SCENARIOS.inactive} Sass Rd%'`);
       const url = listingUrl(SCENARIOS.inactive, label);
       await find(owner, url);
       await owner.getByText('We found your home').waitFor();
@@ -163,6 +169,8 @@ async function run() {
     }, open);
 
     await step(`[${label}] rate-limited: specific, non-technical note; the buyer can still add the home`, async () => {
+      // Phase 4: one search holds one home per address, so clear the other viewport's run of it.
+      psql(`delete from public.homes where search_id = ${lit(info.search)} and address like '${SCENARIOS.limited} Sass Rd%'`);
       const url = listingUrl(SCENARIOS.limited, label);
       await find(owner, url);
       const card = await owner.locator('.flh-found').innerText();

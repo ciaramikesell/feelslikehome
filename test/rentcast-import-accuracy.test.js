@@ -345,7 +345,7 @@ test('lookup: genuinely nothing found, or only another address, says so calmly',
 
 test('Add Home shows reason-specific, non-technical failure notes and the partial note', () => {
   const modal = readFileSync(new URL('../src/components/HomeModal.jsx', import.meta.url), 'utf8');
-  assert.match(modal, /LOOKUP_FAILURE_NOTES\[data\.reason\]/);
+  assert.match(modal, /LOOKUP_FAILURE_NOTES\[reason\]/);
   assert.match(modal, /PARTIAL_NOTES\[importResult\.partial\]/);
   assert.match(modal, /importedCoordinatePatch\(form, importResult\)/);
   // The found card's price line (src/lib/addHomeSave.js) never shows an inactive listing's last price as asking.

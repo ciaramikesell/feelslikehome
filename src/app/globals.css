@@ -2519,6 +2519,12 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 /* Add Home V3, phase 1 (docs/add-home-v3-simple-save.md): the found home first,
    one Save Home, everything optional folded below it, then a clear saved state. */
 .hh-add-home-discovery.has-found .hh-edit-home-header h1 { font-size: clamp(22px, 4.6vw, 28px); }
+.flh-switch-note { margin: 8px 0 0; padding: 8px 12px; border-radius: 10px; background: var(--paper-raised); color: var(--ink-soft); font-size: 12.5px; line-height: 1.45; }
+.flh-switch-confirm { margin: 10px 0 0; padding: 14px 16px; border: 1px solid var(--brick); border-radius: 14px; background: var(--paper-raised); }
+.flh-switch-confirm h2 { margin: 0 0 4px; font-size: 16px; line-height: 1.3; color: var(--ink); outline: none; }
+.flh-switch-confirm p { margin: 0 0 12px; color: var(--ink-soft); font-size: 13.5px; line-height: 1.45; overflow-wrap: anywhere; }
+.flh-switch-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.flh-switch-actions .hh-btn { flex: 1 1 140px; min-width: 0; overflow-wrap: anywhere; }
 .flh-find-compact { display: flex; align-items: center; gap: 10px; margin: 12px 0 0; padding: 10px 12px 10px 14px; border: 1px solid rgba(193,89,47,.22); border-radius: 14px; background: rgba(193,89,47,.06); color: var(--brick); }
 .flh-find-compact-value { flex: 1 1 auto; min-width: 0; overflow: hidden; color: var(--ink); font-size: 13.5px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
 .flh-find-compact-value small { margin-right: 4px; color: var(--ink-soft); font-size: 12px; font-weight: 500; }

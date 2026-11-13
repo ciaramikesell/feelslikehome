@@ -84,7 +84,7 @@ test('Save Home is the one action and needs only an address: no paste, review, M
   assert.match(card, /<button type="button" className="hh-btn flh-found-add" onClick=\{onAdd\} disabled=\{saving \|\| !form\.address\.trim\(\)\}>/);
   assert.equal((card.match(/className="hh-btn flh-found-add"/g) || []).length, 1);
   // Saving re-checks the exact listing URL first, then the one submit().
-  assert.match(modal, /const addImportedHome = \(\) => \{\s*const existing = findHomeByListingUrl\(existingHomes, form\.listingUrl\);\s*if \(existing\) \{ setDuplicateHome\(existing\); return; \}\s*submit\(\{ quickSave: true \}\);/);
+  assert.match(modal, /const addImportedHome = \(\) => \{\s*const existing = findHomeByListingUrl\(existingHomes, form\.listingUrl\);\s*if \(existing\) \{ setDuplicateReason\('listing'\); setDuplicateHome\(existing\); return; \}[\s\S]*?const sameProperty = findHomeByAddress\(existingHomes, form\.address\);\s*if \(sameProperty\) \{ setDuplicateReason\('address'\); setDuplicateHome\(sameProperty\); return; \}\s*submit\(\{ quickSave: true \}\);/);
   // Nothing in the save path depends on the reviews: pending suggestions are simply not written.
   assert.doesNotMatch(submit, /factDecisions|answerDecisions|confirmAnswer|useFact|pasteText/);
 });
