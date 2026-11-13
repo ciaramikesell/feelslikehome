@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, House, Link2, Pencil, Upload } from 'lucide-react';
 import {
   BASEMENT_CONDITION_CHOICES, BASEMENT_STYLE_CHOICES, CONDITION_FACT_CHOICES, COOLING_SUGGESTIONS, GARAGE_SPACE_CHOICES,
@@ -15,7 +15,7 @@ import { isUnitlessLotSize } from '@/lib/lotSize';
 import { parseNum } from '@/lib/matching';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { pendingOfferedFacts } from '@/lib/listingTextHomeFacts';
-import { countyRecordContext, formatShortDate, listingContextSummary, listingSnapshotContext, listingSnapshotLines } from '@/lib/listingContext';
+import { countyRecordContext, formatShortDate, listingContextSummary, listingSnapshotContext, listingSnapshotLines, listingTypeYearNote } from '@/lib/listingContext';
 import Sheet from '@/components/Sheet';
 import { OfferedFactsSheet } from '@/components/FactChecklist';
 import { createClient } from '@/lib/supabase/client';
@@ -49,14 +49,15 @@ const plural = (value, one, many) => (Number(value) === 1 ? one : many);
 // Phase 6: one dated summary line near the top, with Details opening the full
 // context in a sheet (Home Facts has no inline fold-outs), so the listing's
 // history no longer crowds the price, address and size.
-function ListingContext({ context, features }) {
+function ListingContext({ context, features, yearBuilt }) {
   const [open, setOpen] = useState(false);
   const lines = listingSnapshotLines(context);
   if (!lines.length && !features.length) return null;
   const asOf = formatShortDate(context?.asOf);
   return <>
     <p className="flh-hf2-context-row">
-      <span>{listingContextSummary(context, features.length > 0)}</span>
+      {/* Each segment stays whole ("listed as New Construction" never splits mid-phrase). */}
+      <span>{listingContextSummary(context, features.length > 0).split(' · ').map((part, i) => <Fragment key={part}>{i ? ' · ' : ''}<span className="flh-hf2-context-part">{part}</span></Fragment>)}</span>
       <button type="button" className="flh-offered-review" onClick={() => setOpen(true)} aria-haspopup="dialog">Details<span className="sr-only"> about the listing and county records</span></button>
     </p>
     <Sheet open={open} onClose={() => setOpen(false)} title="Found when this home was added" size="compact" className="flh-context-sheet">
@@ -65,6 +66,7 @@ function ListingContext({ context, features }) {
         {lines.map((line) => <p key={line}>{line}</p>)}
         {features.length > 0 && <p>County records: {features.join(' · ')}</p>}
       </div>
+      {listingTypeYearNote(context, yearBuilt) && <p className="flh-offered-intro">{listingTypeYearNote(context, yearBuilt)}</p>}
     </Sheet>
   </>;
 }
@@ -239,6 +241,17 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
   const laundryKnownToDatabase = home.laundryLocation !== undefined;
   const utilitiesSummary = [home.yearBuilt, !showsRentalFacts && home.propertyTaxAnnual ? `${money(home.propertyTaxAnnual)}/yr` : null, home.heating || home.cooling ? 'Heating & cooling' : null].filter(Boolean).join(' · ');
   const schoolCount = ['schoolDistrict', 'elementarySchool', 'middleSchool', 'highSchool'].filter((field) => home[field]).length;
+  // Phase 6: the dated listing summary (Details opens the sheet) and a quiet way
+  // down to Your Match (HomeOverlay). Rendered in the identity column on wider
+  // screens and full width on phones (CSS shows one of the two).
+  const aside = <>
+    <ListingContext context={listingSnapshotContext(home.listingImport)} yearBuilt={home.yearBuilt} features={[
+      record.fireplace && `fireplace${record.fireplace.type ? ` (${record.fireplace.type})` : ''}`,
+      record.pool && `pool${record.pool.type ? ` (${record.pool.type})` : ''}`,
+      record.view && `${record.view} view`,
+    ].filter(Boolean)} />
+    {!isReadOnly && matchShortcut}
+  </>;
   // Read-only viewers (a Realtor) see the section only when something is written.
   const showNotes = !isReadOnly || NOTE_LIST_FIELDS.some(({ key }) => noteEntries(home[key]).length > 0);
 
@@ -272,15 +285,12 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
             <QuietInput id="hf-lotSize" label="Lot size in acres" value={home.lotSize} readOnly={isReadOnly} failed={failed('lotSize')} registerDraft={editor?.registerDraft} format={formatLotSizeDisplay} edit={(value) => (isUnitlessLotSize(value) ? String(value).trim() : formatLotSizeDisplay(value))} parse={normalizeLotSizeInput} size={9} placeholder="— acres" onCommit={(lotSize) => save({ lotSize })} />
           </p>}
           <ListingLink home={home} readOnly={isReadOnly} editor={editor} />
-          <ListingContext context={listingSnapshotContext(home.listingImport)} features={[
-            record.fireplace && `fireplace${record.fireplace.type ? ` (${record.fireplace.type})` : ''}`,
-            record.pool && `pool${record.pool.type ? ` (${record.pool.type})` : ''}`,
-            record.view && `${record.view} view`,
-          ].filter(Boolean)} />
+          <div className="flh-hf2-aside is-wide">{aside}</div>
           {home.suggestedBy && <span className="hh-provenance">Suggested by {home.suggestedBy}</span>}
-          {/* Phase 6: a quiet way down to Your Match (HomeOverlay). */}
-          {!isReadOnly && matchShortcut}
         </div>
+        {/* Phones: the same aside spans the full width under the photo and identity,
+            so the summary, Details and the shortcut never squeeze into the narrow column. */}
+        <div className="flh-hf2-aside is-phone">{aside}</div>
 
         <PhoneCollapse id={`hf-utilities-${home.id}`} title="Year, taxes & utilities" summary={utilitiesSummary || 'Unknown'} className="flh-hf2-secondary">
           <div className="flh-hf2-secondary-grid">
@@ -314,7 +324,7 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
               {!showsRentalFacts && <Row label="Estimated monthly payment" hint="your estimate" htmlFor="hf-estMonthly">{text('estMonthly', null, { parse: parseMoney, format: (value) => (value ? `${money(value)}/mo` : ''), edit: (value) => money(value), inputMode: 'numeric', placeholder: 'Add your estimate' })}</Row>}
               {available.propertyType && <Row label="Property type" htmlFor="hf-propertyType">{select('propertyType', null, PROPERTY_TYPE_CHOICES)}</Row>}
               {available.layout && <Row label="Home layout" htmlFor="hf-layout" hint={!layoutValues(home).length && record.stories ? `County records: ${record.stories} ${record.stories === 1 ? 'story' : 'stories'}` : null}><MultiSelectField id="hf-layout" label="Home layout" values={layoutValues(home)} choices={LAYOUT_FACT_CHOICES} readOnly={isReadOnly} failed={failed('homeLayout') || failed('primaryBedroomLocation')} onCommit={(next) => { const patch = layoutPatch(home, next); if (Object.keys(patch).length) save(patch); }} /></Row>}
-              {available.condition && <Row label="Home condition" htmlFor="hf-homeCondition" hint={!(home.homeCondition || []).length && listingType === 'New Construction' ? 'Listing type: New Construction' : null}><MultiSelectField id="hf-homeCondition" label="Home condition" values={home.homeCondition} choices={CONDITION_FACT_CHOICES} readOnly={isReadOnly} failed={failed('homeCondition')} onCommit={(homeCondition) => save({ homeCondition })} /></Row>}
+              {available.condition && <Row label="Home condition" htmlFor="hf-homeCondition" hint={!(home.homeCondition || []).length && listingType === 'New Construction' ? 'The listing called it New Construction' : null}><MultiSelectField id="hf-homeCondition" label="Home condition" values={home.homeCondition} choices={CONDITION_FACT_CHOICES} readOnly={isReadOnly} failed={failed('homeCondition')} onCommit={(homeCondition) => save({ homeCondition })} /></Row>}
               {/* An existing Match input with no other home here: shown when it's
                   part of this search or already has a value. */}
               {!apartment && (home.secondaryBedroomLocation || (priorities.secondaryBedroomLocation?.value && priorities.secondaryBedroomLocation.tier !== 'dontcare')) && <Row label="Secondary bedrooms" htmlFor="hf-secondaryBedroomLocation">{select('secondaryBedroomLocation', null, SECONDARY_BEDROOM_CHOICES, (value) => save({ secondaryBedroomLocation: value || '' }))}</Row>}

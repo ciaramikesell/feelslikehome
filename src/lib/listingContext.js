@@ -97,7 +97,10 @@ export function listingSnapshotLines(context) {
     context.daysOnMarket !== null && context.daysOnMarket !== undefined && `${context.daysOnMarket} day${context.daysOnMarket === 1 ? '' : 's'} on market`,
   ].filter(Boolean);
   if (parts.length) lines.push(`${asOf ? `When added (${asOf}): ` : 'When added: '}${parts.join(' · ')}`);
-  if (context.listingType) lines.push(`Listing type: ${context.listingType}`);
+  // Attributed to the listing (phase 6): a listing type is how the listing
+  // classified the home, not a fact FLH checked. "New Construction" can sit
+  // beside an older year built from county records; neither is taken as right.
+  if (context.listingType) lines.push(`The listing called it ${context.listingType}`);
   for (const item of context.earlier) {
     const range = item.removedDate ? `${formatShortDate(item.listedDate)} – ${formatShortDate(item.removedDate)}` : `from ${formatShortDate(item.listedDate)}`;
     lines.push(`Listed before: ${range}${item.daysOnMarket !== null ? ` (${item.daysOnMarket} day${item.daysOnMarket === 1 ? '' : 's'})` : ''}`);
@@ -113,10 +116,23 @@ export function listingSnapshotLines(context) {
 export function listingContextSummary(context, hasRecords = false) {
   const parts = [];
   if (context?.status) parts.push(context.status === 'active' ? 'Active' : 'No longer listed');
-  if (context?.listingType) parts.push(context.listingType);
+  if (context?.listingType) parts.push(`listed as ${context.listingType}`);
   if (context?.daysOnMarket !== null && context?.daysOnMarket !== undefined) parts.push(`${context.daysOnMarket} day${context.daysOnMarket === 1 ? '' : 's'} on market`);
   else if (context?.earlier?.length) parts.push('listed before');
   if (!parts.length) return hasRecords ? 'County records for this home' : '';
   const asOf = formatShortDate(context.asOf);
   return `${asOf ? `When added (${asOf})` : 'When added'}: ${parts.join(' · ')}`;
+}
+
+/**
+ * Phase 6: when the listing called a home New Construction but Home Facts hold
+ * a year built well before the snapshot, say both, side by side, without
+ * deciding which is right. Null when there is nothing to reconcile.
+ */
+export function listingTypeYearNote(context, yearBuilt) {
+  if (context?.listingType !== 'New Construction') return null;
+  const year = /^\d{4}$/.test(String(yearBuilt ?? '').trim()) ? Number(String(yearBuilt).trim()) : null;
+  const asOfYear = context.asOf ? Number(context.asOf.slice(0, 4)) : null;
+  if (!year || !asOfYear || year >= asOfYear - 1) return null;
+  return `Home Facts list the year built as ${year}. Records and listings can disagree, and FLH doesn’t decide which is right. The listing agent can confirm.`;
 }

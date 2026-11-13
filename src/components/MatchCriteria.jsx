@@ -20,7 +20,7 @@ import { answerableCriteriaKeys, criterionAnswer, criterionResolution, legacyCri
 //     name. Yes / No is the buyer's own override; Home Facts removes it.
 //   - After-tour criteria show their state and point to Tour Feedback.
 //
-//   - Each tier header counts its open criteria ("1 open": Unknown, settleable
+//   - Each tier header counts its open criteria ("1 unanswered": Unknown, settleable
 //     before a tour). Your Match's "Answer next" step (phase 6,
 //     matchProgress.js) passes `revealRequest`: the tier holding that
 //     criterion opens (phones collapse Important / Nice to Have) and the row is
@@ -144,7 +144,7 @@ function Tier({ tier, rows, home, priorities, answerable, readOnly, onAnswer, on
   return <section className={`flh-mc2-tier is-${tier.key} ${open ? 'is-open' : ''}`} aria-labelledby={headingId}>
     <header className="flh-mc2-tier-head">
       <h3 id={headingId}>{tier.title} <span>{rows.length}</span></h3>
-      {openCount > 0 && <span className="flh-mc2-open">{openCount} open</span>}
+      {openCount > 0 && <span className="flh-mc2-open">{openCount} unanswered</span>}
       <span className="flh-mc2-weight">{weight}× weight</span>
       {/* Phones collapse Important and Nice to Have; wider screens always show them. */}
       {collapsible && rows.length > 0 && <button type="button" className="flh-mc2-toggle" aria-expanded={open} aria-controls={bodyId} onClick={() => setOpen((value) => !value)}>{open ? 'Hide' : 'Show'}<span className="sr-only"> {tier.title}</span> <ChevronDown size={14} aria-hidden="true" /></button>}

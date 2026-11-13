@@ -17,7 +17,7 @@ import { isArchivedStatus } from '@/lib/constants';
 import { computeMatch, matchFactualSummary } from '@/lib/matching';
 import { crossedRevealThreshold, matchCompleteness } from '@/lib/matchReveal';
 import { answerableCriteriaKeys, criterionAnswerPatch, inPersonAnswerPatch } from '@/lib/matchCriteria';
-import { matchProgress, matchProgressLine, openCountByTier } from '@/lib/matchProgress';
+import { matchProgress, matchProgressLine, matchShortcutLines, openCountByTier } from '@/lib/matchProgress';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { evaluateCommute } from '@/lib/commute';
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
@@ -189,7 +189,8 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
   const summary = matchFactualSummary(match);
   // Which of THIS buyer's priorities are still open (display only; docs/add-home-v3-phase6-ux-audit.md).
   const progress = match ? matchProgress(match, { answerable: answerableCriteriaKeys(priorities), factKeys: Object.keys(FACT_LINKS) }) : null;
-  const progressLine = matchProgressLine(progress);
+  const progressLine = matchProgressLine(progress, match?.pct ?? null);
+  const shortcutLines = matchShortcutLines(progress, match?.pct ?? null);
   const identity = homeIdentity(home, priorities);
   const vocabulary = homeVocabulary(priorities);
   const usesFullEditor = vocabulary.apartment || searchIntentCapabilities(priorities.searchType).showsRentalFacts;
@@ -324,11 +325,14 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
     if (next.how === 'fact') openFact(FACT_LINKS[next.key][0]);
     else setRevealRequest({ key: next.key, at: Date.now() });
   };
+  // Score and completeness are said apart: "100% on 4 known priorities", then
+  // "3 unanswered". The % is computeMatch's own, unchanged.
   const matchShortcut = match ? <button type="button" className="flh-match-jump" onClick={goToMatch}>
-    <span>Your Match</span>
-    {match.pct != null && <b>{match.pct}%</b>}
-    <small>{progress?.open.length ? `${progress.open.length} open` : 'See breakdown'}</small>
-    <ArrowDown size={13} aria-hidden="true" />
+    <span className="flh-match-jump-text">
+      <span className="flh-match-jump-main">Your Match · <b>{shortcutLines.main}</b></span>
+      <small>{shortcutLines.sub}</small>
+    </span>
+    <ArrowDown size={14} aria-hidden="true" />
   </button> : null;
 
   return <div className="flh-overlay-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !nestedOpen) close(); }}>

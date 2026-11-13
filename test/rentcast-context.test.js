@@ -112,7 +112,7 @@ test('the saved-home view: dated, source-attributed, no prices, no inferred pric
   const context = listingSnapshotContext(snapshotOf(null, documentedSaleListingWithHistory({ listingType: 'New Construction' })));
   assert.deepEqual(listingSnapshotLines(context), [
     'When added (Oct 18, 2026): Active · listed Sep 20, 2026 · 29 days on market',
-    'Listing type: New Construction',
+    'The listing called it New Construction',
     'Listed before: Mar 2, 2025 – Apr 30, 2025 (59 days)',
   ]);
   assert.doesNotMatch(listingSnapshotLines(context).join(' '), /\$|drop|reduc|cut|increase/i);
@@ -179,7 +179,7 @@ test('existing and buyer values are never overwritten: context adds no field', (
 test('wiring: Home Facts shows dated context and hints only for Unknown fields; the found card shows a non-standard type', () => {
   const facts = read('src/components/HomeFacts.jsx');
   assert.match(facts, /hint=\{!layoutValues\(home\)\.length && record\.stories \?/);
-  assert.match(facts, /hint=\{!\(home\.homeCondition \|\| \[\]\)\.length && listingType === 'New Construction' \? 'Listing type: New Construction' : null\}/);
+  assert.match(facts, /hint=\{!\(home\.homeCondition \|\| \[\]\)\.length && listingType === 'New Construction' \? 'The listing called it New Construction' : null\}/);
   assert.match(facts, /\{!home\.basementStyle && !home\.basementCondition && record\.foundation && <p className="flh-hf2-note">County records: \{record\.foundation\} foundation\. Not proof of a basement’s style or condition\.<\/p>\}/);
   assert.match(facts, /Subdivision: \{record\.subdivision\} · county records/);
   assert.doesNotMatch(facts, /<details/, 'still no inline fold-out');

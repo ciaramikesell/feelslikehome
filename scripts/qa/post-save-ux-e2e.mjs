@@ -116,21 +116,21 @@ async function run() {
     await step(`[${label}] first screen: Your Match shortcut visible with the open count; Unknown legend; listing context is one dated row`, async () => {
       await owner.getByRole('button', { name: /^View home/ }).click();
       await openOverlay(owner);
-      assert(await inViewport(owner, '.flh-match-jump'), 'shortcut not on the first screen');
-      assert(/Your Match\s*100%\s*3 open/.test(await owner.locator('.flh-match-jump').innerText()), `shortcut: ${await owner.locator('.flh-match-jump').innerText()}`);
+      assert(await inViewport(owner, '.flh-match-jump:visible'), 'shortcut not on the first screen');
+      assert(/Your Match · 100% on 5 known priorities\s*3 unanswered/.test(await owner.locator('.flh-match-jump:visible').innerText()), `shortcut: ${await owner.locator('.flh-match-jump:visible').innerText()}`);
       assert((await owner.locator('.flh-hf2-legend').innerText()) === 'Unknown means FLH hasn’t found it yet. It never counts as No in your Match.', 'legend');
-      assert(/When added \([A-Z][a-z]{2} \d{1,2}, \d{4}\): Active · New Construction · 23 days on market/.test(await owner.locator('.flh-hf2-context-row').innerText()), 'summary row');
+      assert(/When added \([A-Z][a-z]{2} \d{1,2}, \d{4}\): Active · listed as New Construction · 23 days on market/.test(await owner.locator('.flh-hf2-context-row:visible').innerText()), 'summary row');
       assert(!(await owner.locator('.flh-hf2 .flh-hf2-context').count()), 'full context still inline');
       assert(!(await owner.locator('.flh-overlay .flh-hf2 details').count()), 'Home Facts has an inline fold-out');
       await shot(owner, `${label}-2-first-screen`);
     }, open);
 
     await step(`[${label}] Details sheet: every dated line, county records and provenance; Escape closes it; nothing written`, async () => {
-      await owner.locator('.flh-hf2-context-row .flh-offered-review').click();
+      await owner.locator('.flh-hf2-context-row:visible .flh-offered-review').click();
       const sheet = owner.locator('.flh-context-sheet');
       await sheet.waitFor();
       const text = await sheet.innerText();
-      for (const expected of ['Found when this home was added', 'It isn’t refreshed after that and can be out of date. None of it changes Home Facts or your Match.', 'Listing type: New Construction', 'Listed before: Mar 2, 2025 – Apr 30, 2025 (59 days)', 'County records: fireplace (Masonry) · pool (Concrete) · City view'])
+      for (const expected of ['Found when this home was added', 'It isn’t refreshed after that and can be out of date. None of it changes Home Facts or your Match.', 'The listing called it New Construction', 'Listed before: Mar 2, 2025 – Apr 30, 2025 (59 days)', 'County records: fireplace (Masonry) · pool (Concrete) · City view', 'Home Facts list the year built as 1993. Records and listings can disagree, and FLH doesn’t decide which is right. The listing agent can confirm.'])
         assert(text.includes(expected), `sheet missing: ${expected}`);
       assert(/When added \([^)]*\): Active · listed Sep 26, 2026 · 23 days on market/.test(text), 'dated line');
       await shot(owner, `${label}-3-context-sheet`);
@@ -141,13 +141,13 @@ async function run() {
     }, open);
 
     await step(`[${label}] shortcut lands on Your Match: open line, tier counts, county pointer stays a pointer`, async () => {
-      await owner.locator('.flh-match-jump').click();
+      await owner.locator('.flh-match-jump:visible').click();
       await owner.waitForTimeout(700);
       assert(await inViewport(owner, '#flh-match-title'), 'Your Match not in view');
       const lead = await owner.locator('.flh-overlay-match-lead').first().innerText();
-      assert(lead === '3 priorities are still open. Your % counts only what’s known.', `lead: ${lead}`);
-      assert((await owner.locator('.flh-mc2-tier.is-important .flh-mc2-open').innerText()) === '2 open', 'important open count');
-      assert((await owner.locator('.flh-mc2-tier.is-nice .flh-mc2-open').innerText()) === '1 open', 'nice open count');
+      assert(lead === 'Your 100% is based on 5 known priorities. 3 are still unanswered.', `lead: ${lead}`);
+      assert((await owner.locator('.flh-mc2-tier.is-important .flh-mc2-open').innerText()) === '2 unanswered', 'important open count');
+      assert((await owner.locator('.flh-mc2-tier.is-nice .flh-mc2-open').innerText()) === '1 unanswered', 'nice open count');
       assert(!(await owner.locator('.flh-mc2-tier.is-must .flh-mc2-open').count()), 'must-have open count');
       assert(/Your answers here are yours alone\. Home Facts are shared with everyone in this search\./.test(await owner.locator('.flh-overlay-match').innerText()), 'personal answers note');
       assert(/Fill in next:\s*Home Condition/.test(await owner.locator('.flh-match-next').innerText()), 'fact next step first (Important before Nice)');
@@ -163,7 +163,7 @@ async function run() {
       await waitFor(owner, () => (homeRow(url).home_condition || []).length === 1, 'home condition not saved');
       await owner.keyboard.press('Escape');
       await dismissReveal(owner);
-      await owner.locator('.flh-match-jump').click();
+      await owner.locator('.flh-match-jump:visible').click();
       await owner.waitForTimeout(600);
       assert(/Answer next:\s*Finished Basement/i.test(await owner.locator('.flh-match-next').innerText()), `next: ${await owner.locator('.flh-match-next').innerText()}`);
       assert(Object.keys(checksOf(homeRow(url).id, info.users.owner.id)).length === 0, 'answered for the buyer');
@@ -187,7 +187,7 @@ async function run() {
     await step(`[${label}] reload: the answer and the fact persist; progress reflects them`, async () => {
       await owner.reload({ waitUntil: 'networkidle' });
       await openOverlay(owner);
-      assert(/1 open/.test(await owner.locator('.flh-match-jump').innerText()), 'shortcut count after reload');
+      assert(/1 unanswered/.test(await owner.locator('.flh-match-jump:visible').innerText()), 'shortcut count after reload');
       assert(await owner.locator('[data-criterion="features:Finished basement"] label.is-no.is-checked').count(), 'answer lost');
       assert(checksOf(homeRow(url).id, info.users.owner.id)['features:Fireplace'] === undefined, 'Fireplace answered from county records');
     }, open);
@@ -197,20 +197,20 @@ async function run() {
       const id = homeRow(url).id;
       await coBuyer.goto(`${base}/homes/${id}`, { waitUntil: 'networkidle' });
       await openOverlay(coBuyer);
-      assert(/Your Match\s*\d+%?\s*1 open|Your Match\s*1 open/.test(await coBuyer.locator('.flh-match-jump').innerText()), `co-buyer shortcut: ${await coBuyer.locator('.flh-match-jump').innerText()}`);
-      assert(/When added/.test(await coBuyer.locator('.flh-hf2-context-row').innerText()), 'co-buyer context row');
-      await coBuyer.locator('.flh-match-jump').click();
+      assert(/Your Match · 100% on 1 known priority\s*1 unanswered/.test(await coBuyer.locator('.flh-match-jump:visible').innerText()), `co-buyer shortcut: ${await coBuyer.locator('.flh-match-jump:visible').innerText()}`);
+      assert(/When added/.test(await coBuyer.locator('.flh-hf2-context-row:visible').innerText()), 'co-buyer context row');
+      await coBuyer.locator('.flh-match-jump:visible').click();
       await coBuyer.waitForTimeout(600);
-      assert(/1 priority is still open/.test(await coBuyer.locator('.flh-overlay-match-lead').first().innerText()), 'co-buyer lead');
+      assert(/^Your 100% is based on 1 known priority\. 1 is still unanswered\.$/.test(await coBuyer.locator('.flh-overlay-match-lead').first().innerText()), 'co-buyer lead');
       await coBuyer.locator('.flh-match-next').click();
       await coBuyer.waitForTimeout(600);
       assert(await coBuyer.evaluate(() => document.activeElement?.closest('[data-criterion]')?.getAttribute('data-criterion') === 'features:Fireplace'), 'co-buyer focus');
       await coBuyer.locator('[data-criterion="features:Fireplace"] label.is-yes').click();
       await waitFor(coBuyer, () => checksOf(id, info.users.coBuyer.id)['features:Fireplace'] === true, 'co-buyer answer not saved');
       await dismissReveal(coBuyer);
-      assert(/Everything you can check before a tour is settled\./.test(await coBuyer.locator('.flh-overlay-match-lead').first().innerText()), 'co-buyer settled line');
+      assert(/^Your 100% is based on 2 known priorities\. Everything you can check before a tour is answered\.$/.test(await coBuyer.locator('.flh-overlay-match-lead').first().innerText()), 'co-buyer settled line');
       assert(!(await coBuyer.locator('.flh-match-next').count()), 'next step shown when nothing is open');
-      assert(/See breakdown/.test(await coBuyer.locator('.flh-match-jump').innerText()), 'shortcut when settled');
+      assert(/See breakdown/.test(await coBuyer.locator('.flh-match-jump:visible').innerText()), 'shortcut when settled');
       const ownerChecks = checksOf(id, info.users.owner.id);
       assert(ownerChecks['features:Fireplace'] === undefined && ownerChecks['features:Finished basement'] === 'no', `owner answers changed: ${JSON.stringify(ownerChecks)}`);
       await shot(coBuyer, `${label}-6-cobuyer-settled`);
@@ -221,9 +221,9 @@ async function run() {
       await findAndSave(owner, listingUrl(sparseNumber));
       await owner.getByRole('button', { name: /^View home/ }).click();
       await openOverlay(owner);
-      assert(!(await owner.locator('.flh-hf2-context-row').count()), 'context row without context');
+      assert(!(await owner.locator('.flh-hf2-context-row:visible').count()), 'context row without context');
       assert(await owner.locator('.flh-hf2-legend').count(), 'legend');
-      assert(await inViewport(owner, '.flh-match-jump'), 'shortcut on first screen');
+      assert(await inViewport(owner, '.flh-match-jump:visible'), 'shortcut on first screen');
       const id = q(`select id from public.homes where search_id = ${lit(info.search)} and address ~ ${lit(`^${sparseNumber} `)}`)[0]?.id;
       assert(id && Object.keys(checksOf(id, info.users.owner.id)).length === 0, 'answers on a sparse home');
       await shot(owner, `${label}-7-sparse-first-screen`);

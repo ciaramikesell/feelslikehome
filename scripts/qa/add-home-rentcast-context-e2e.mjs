@@ -100,7 +100,7 @@ async function expandHomeFacts(page) {
 // sheet from one dated row (Details). Reads Home Facts plus that sheet.
 async function homeFactsWithContext(page) {
   const facts = await page.locator('.flh-hf2').innerText();
-  const details = page.locator('.flh-hf2-context-row .flh-offered-review');
+  const details = page.locator('.flh-hf2-context-row:visible .flh-offered-review');
   if (!(await details.count())) return facts;
   await details.click();
   const sheet = page.locator('.flh-context-sheet');
@@ -123,7 +123,7 @@ async function run() {
     await step(`[${label}] found card: a non-standard listing type shows as a quiet chip; Save Home still on screen; nothing is filled from context`, async () => {
       owner = await signedIn(browser, 'owner', device);
       await find(owner, url);
-      assert(await owner.locator('.flh-found-type').innerText() === 'New Construction', 'listing type chip');
+      assert(await owner.locator('.flh-found-type').innerText() === 'Listed as New Construction', 'listing type chip');
       const card = await owner.locator('.flh-found').innerText();
       assert(/We found \d+ details about this home\./.test(card), 'detail count');
       const box = await owner.getByRole('button', { name: /^Save Home$/ }).boundingBox();
@@ -141,7 +141,7 @@ async function run() {
       for (const expected of [
         'Subdivision: SASS HILLS · county records',
         /When added \([A-Z][a-z]{2} \d{1,2}, \d{4}\): Active · listed Sep 26, 2026 · 23 days on market/,
-        'Listing type: New Construction',
+        'The listing called it New Construction',
         'Listed before: Mar 2, 2025 – Apr 30, 2025 (59 days)',
         'County records: fireplace (Masonry) · pool (Concrete) · City view',
         'County records: 2 stories',
@@ -149,7 +149,7 @@ async function run() {
       ]) assert(typeof expected === 'string' ? facts.includes(expected) : expected.test(facts), `missing: ${expected}`);
       assert(!/\$349,000|price drop|reduced/i.test(facts), 'a history price or an inferred change is shown');
       assert(!(await owner.locator('.flh-overlay .flh-hf2 details').count()), 'Home Facts has an inline fold-out');
-      await owner.locator('.flh-hf2-context-row').evaluate((el) => el.scrollIntoView({ block: 'center' }));
+      await owner.locator('.flh-hf2-context-row:visible').evaluate((el) => el.scrollIntoView({ block: 'center' }));
       await shot(owner, `after-${label}-2-home-facts-context`);
       // A value the buyer sets wins: the hint goes away.
       await owner.locator('#hf-basementCondition').selectOption('finished');
@@ -185,7 +185,7 @@ async function run() {
       await coBuyer.goto(`${base}/homes/${id}`, { waitUntil: 'networkidle' });
       await coBuyer.locator('.flh-overlay[role="dialog"]:not(.is-loading)').waitFor({ timeout: 30000 });
       await expandHomeFacts(coBuyer);
-      assert((await homeFactsWithContext(coBuyer)).includes('Listing type: New Construction'), 'co-buyer context');
+      assert((await homeFactsWithContext(coBuyer)).includes('The listing called it New Construction'), 'co-buyer context');
       await openMatchTiers(coBuyer);
       const fireRow = coBuyer.locator('.flh-mc2-row').filter({ hasText: 'Fireplace' });
       await fireRow.locator('.flh-mc2-listing').waitFor({ timeout: 15000 });
@@ -204,8 +204,8 @@ async function run() {
       await saveAndOpen(owner);
       await expandHomeFacts(owner);
       const facts = await homeFactsWithContext(owner);
-      assert(/When added \([^)]*\): No longer listed · listed Sep 26, 2026/.test(facts) && !/days on market/.test(facts.split('Listing type')[0]), `inactive context: ${facts.slice(0, 600)}`);
-      await owner.locator('.flh-hf2-context-row').evaluate((el) => el.scrollIntoView({ block: 'center' }));
+      assert(/When added \([^)]*\): No longer listed · listed Sep 26, 2026/.test(facts) && !/days on market/.test(facts.split('The listing called it')[0]), `inactive context: ${facts.slice(0, 600)}`);
+      await owner.locator('.flh-hf2-context-row:visible').evaluate((el) => el.scrollIntoView({ block: 'center' }));
       await shot(owner, `after-${label}-5-inactive-context`);
     }, open);
 

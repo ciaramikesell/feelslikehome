@@ -13,8 +13,8 @@ import { createTestDatabase, DB_TESTS_ENABLED, DB_SKIP_REASON } from './support/
 import { DOC_ADDRESS, documentedPropertyWithFeatures, documentedSaleListingWithHistory } from './support/rentcastDocumentedShapes.js';
 
 register('./support/aliasHooks.mjs', import.meta.url);
-const { matchProgress, matchProgressLine, openCountByTier } = await import('../src/lib/matchProgress.js');
-const { listingContextSummary, listingSnapshotContext } = await import('../src/lib/listingContext.js');
+const { matchProgress, matchProgressLine, matchShortcutLines, openCountByTier } = await import('../src/lib/matchProgress.js');
+const { listingContextSummary, listingSnapshotContext, listingSnapshotLines, listingTypeYearNote } = await import('../src/lib/listingContext.js');
 const { REVEAL_THRESHOLD, MIN_ELIGIBLE, matchCompleteness } = await import('../src/lib/matchReveal.js');
 const { computeMatch } = await import('../src/lib/matching.js');
 const { answerableCriteriaKeys } = await import('../src/lib/matchCriteria.js');
@@ -24,12 +24,12 @@ const { addCriterion } = await import('../src/lib/searchProfile.js');
 const { normalizeRentCastFields } = await import('../src/lib/rentcast.js');
 const { listingImportSnapshot } = await import('../src/lib/importSnapshot.js');
 const { mergeImportFields } = await import('../src/lib/importDomain.js');
-const { acceptInvitation, createInvitation, getHomesForUser, saveHomePersonalAndShared, saveHomePersonalState } = await import('../src/lib/supabase/collaboration.js');
+const { acceptInvitation, createInvitation, getHomesForUser, saveHomePersonalAndShared, saveHomePersonalState, saveHomeSharedFields } = await import('../src/lib/supabase/collaboration.js');
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 // The same fact links Match Criteria uses (FACT_LINKS keys), without importing JSX.
 const FACT_KEYS = ['budget', 'sqft', 'lotSize', 'beds', 'baths', 'preferredPropertyTypes', 'homeLayout', 'homeCondition', 'primaryBedroomLocation', 'secondaryBedroomLocation'];
-const c = (key, { tier = 'important', objective = true, evaluated = false, met = null } = {}) => ({ key, label: key.split(':').pop(), tier, objective, evaluated, met });
+const c = (key, { tier = 'important', objective = true, evaluated = false, met = null, score = evaluated && met !== null ? (met ? 1 : 0) : null } = {}) => ({ key, label: key.split(':').pop(), tier, objective, evaluated, met, score });
 
 function ownerPriorities() {
   let p = applySearchChoice(normalizePriorities({}), 'home_buy');
@@ -78,15 +78,23 @@ test('settled uses exactly Match Reveal’s rule, so the two never disagree', ()
   assert.deepEqual(progress.open.map((item) => item.key), ['a:3', 'a:4']);
 });
 
-test('copy: open count, "counts only what’s known", after-tour note, settled state, nothing selected', () => {
-  const p = (open, afterTour = 0, eligible = 5) => ({ eligible, open: Array.from({ length: open }, (_, i) => ({ key: `k${i}` })), afterTour });
-  assert.equal(matchProgressLine(p(3)), '3 priorities are still open. Your % counts only what’s known.');
-  assert.equal(matchProgressLine(p(1, 2)), '1 priority is still open. Your % counts only what’s known. 2 more are for after a tour.');
-  assert.equal(matchProgressLine(p(0)), 'Everything you can check before a tour is settled.');
-  assert.equal(matchProgressLine(p(0, 1)), 'Everything you can check before a tour is settled. 1 more is for after a tour.');
-  assert.equal(matchProgressLine(p(0, 0, 0)), '');
+test('copy: the SCORE and its basis are said apart from what is unanswered; no completeness %', () => {
+  const p = (open, { known = 4, afterTour = 0, eligible = 5 } = {}) => ({ eligible, known, open: Array.from({ length: open }, (_, i) => ({ key: `k${i}` })), afterTour });
+  assert.equal(matchProgressLine(p(3), 100), 'Your 100% is based on 4 known priorities. 3 are still unanswered.');
+  assert.equal(matchProgressLine(p(1, { known: 1, afterTour: 2 }), 67), 'Your 67% is based on 1 known priority. 1 is still unanswered. 2 more are for after a tour.');
+  assert.equal(matchProgressLine(p(0, { known: 5 }), 80), 'Your 80% is based on 5 known priorities. Everything you can check before a tour is answered.');
+  assert.equal(matchProgressLine(p(3, { known: 0 }), null), 'Nothing is known yet for your priorities, so there’s no % yet. 3 are still unanswered.');
+  assert.equal(matchProgressLine(p(0, { eligible: 0 }), 100), '');
   assert.equal(matchProgressLine(null), '');
-  assert.doesNotMatch(matchProgressLine(p(2)), /%\s*complete|\d+%/, 'never a completeness percentage');
+  assert.deepEqual(matchShortcutLines(p(3), 100), { main: '100% on 4 known priorities', sub: '3 unanswered' });
+  assert.deepEqual(matchShortcutLines(p(0, { known: 1 }), 100), { main: '100% on 1 known priority', sub: 'See breakdown' });
+  assert.deepEqual(matchShortcutLines(p(2, { known: 0 }), null), { main: 'No % yet', sub: '2 unanswered' });
+  for (const text of [matchProgressLine(p(2), 90), matchShortcutLines(p(2), 90).main]) assert.doesNotMatch(text, /complete|open\b/i);
+});
+
+test('known = exactly the rows the Match % is computed from (scorable), tour and Commute included', () => {
+  const rows = [c('a:1', { evaluated: true, met: true }), c('a:2'), c('location:Commute', { evaluated: true, met: true }), c('homeFeel:X', { objective: false, evaluated: true, met: true }), c('homeFeel:Neutral', { objective: false, evaluated: true, met: null })];
+  assert.equal(matchProgress({ allSelected: rows }, { answerable: new Set(['a:1', 'a:2']) }).known, 3, 'a neutral response is evaluated but unscored, like computeMatch');
 });
 
 test('on real computeMatch: progress reads Match and changes nothing (same %, same rows, inputs untouched)', () => {
@@ -112,11 +120,25 @@ const snapshot = (overrides = {}) => listingImportSnapshot({ ...normalizeRentCas
 
 test('one dated summary row: status, listing type, days on market; never a price; county-only fallback', () => {
   const summary = listingContextSummary(listingSnapshotContext(snapshot()), true);
-  assert.match(summary, /^When added \(Oct 18, 2026\): Active · New Construction · \d+ days? on market$/);
+  assert.match(summary, /^When added \(Oct 18, 2026\): Active · listed as New Construction · \d+ days? on market$/);
   assert.doesNotMatch(summary, /\$|drop|reduc|cut/i);
   assert.equal(listingContextSummary(null, true), 'County records for this home');
   assert.equal(listingContextSummary(null, false), '');
   assert.equal(listingContextSummary({ asOf: '2026-10-18', status: 'inactive', listingType: null, daysOnMarket: null, earlier: [{ listedDate: '2025-03-02' }] }), 'When added (Oct 18, 2026): No longer listed · listed before');
+});
+
+test('a listing type is attributed to the listing; a conflicting year built is shown beside it, neither taken as right', () => {
+  const context = listingSnapshotContext(snapshot());
+  assert.ok(listingSnapshotLines(context).includes('The listing called it New Construction'));
+  assert.ok(!listingSnapshotLines(context).some((line) => /^Listing type:/.test(line)));
+  assert.equal(listingTypeYearNote(context, '1993'), 'Home Facts list the year built as 1993. Records and listings can disagree, and FLH doesn’t decide which is right. The listing agent can confirm.');
+  // Nothing to reconcile: a recent year, no year, an odd value, or another listing type.
+  for (const year of ['2026', '2025', '', null, 'c. 1990']) assert.equal(listingTypeYearNote(context, year), null, String(year));
+  assert.equal(listingTypeYearNote({ ...context, listingType: 'Foreclosure' }, '1993'), null);
+  assert.equal(listingTypeYearNote(null, '1993'), null);
+  // The note never changes Home Facts: it is a pure reader of what is already there.
+  const facts = read('src/components/HomeFacts.jsx');
+  assert.doesNotMatch(facts.slice(facts.indexOf('function ListingContext('), facts.indexOf('function Row(')), /saveShared|onCommit|save\(/);
 });
 
 /* ------------------------------------ wiring ------------------------------------ */
@@ -152,6 +174,8 @@ test('wiring: the saved state names one next step and keeps the same two actions
   assert.match(modal, /Next, when you’re ready: View \{vocabulary\.singularLower\} shows what FLH found and how it fits your priorities\. Nothing else is required\./);
   assert.match(modal, />Back to My Homes<\/button>/);
   assert.match(modal, />View \{vocabulary\.singularLower\} <ArrowRight/);
+  // The found card attributes a non-standard listing type to the listing.
+  assert.match(modal, /<span className="flh-found-type">Listed as \{importResult\.listing\.listingType\}<\/span>/);
 });
 
 test('scope: no scoring, threshold, schema, migration, dependency or Floor Plans change in this phase', () => {
@@ -202,4 +226,41 @@ dbTest('saved and reloaded: shared facts are common, each buyer’s progress is 
   assert.equal((asOwner.checks || {})['features:Fireplace'], undefined);
   // The shared snapshot is untouched by reading or answering.
   assert.deepEqual(asOwner.listingImport, listingImport);
+});
+
+dbTest('shared search: a shared Home Fact settles that priority for BOTH buyers; personal answers settle only the buyer who gave them; counts are per viewer', async () => {
+  const lookup = normalizeRentCastFields(documentedPropertyWithFeatures(), documentedSaleListingWithHistory({ listingType: 'New Construction' }), { requestedAddress: DOC_ADDRESS });
+  const form = mergeImportFields({ ...emptyHome(), address: `2 ${DOC_ADDRESS}` }, lookup.fields);
+  const saved = await saveHomePersonalAndShared(db.clientFor(ids.owner), { ...form, homeCondition: [] }, ids.owner, ids.search);
+  const load = async (user) => (await getHomesForUser(db.clientFor(user), user, ids.search)).find((item) => item.id === saved.id);
+  // The co-buyer's own list: Fireplace (their answer) and Home Condition (a Home Fact), both Must-Haves.
+  const coPriorities = { ...coBuyerPriorities(), homeCondition: { values: ['Move-In Ready'], tier: 'must' } };
+  const openKeys = (home, priorities) => progressFor(home, priorities).open.map((item) => `${item.key}:${item.how}`);
+
+  let asOwner = await load(ids.owner);
+  let asCoBuyer = await load(ids.coBuyer);
+  assert.ok(openKeys(asOwner, ownerPriorities()).includes('homeCondition:fact'));
+  assert.ok(openKeys(asOwner, ownerPriorities()).includes('features:Finished basement:answer'));
+  assert.deepEqual(openKeys(asCoBuyer, coPriorities).sort(), ['features:Fireplace:answer', 'homeCondition:fact']);
+  // A priority the viewer never selected is never counted for them.
+  assert.ok(!openKeys(asCoBuyer, coPriorities).some((key) => key.startsWith('features:Finished basement')));
+
+  // The owner answers Fireplace and Finished basement: settled for the owner only.
+  await saveHomePersonalState(db.clientFor(ids.owner), { ...asOwner, checks: { 'features:Fireplace': true, 'features:Finished basement': 'no' } }, ids.owner, ids.search);
+  asOwner = await load(ids.owner);
+  asCoBuyer = await load(ids.coBuyer);
+  assert.ok(!openKeys(asOwner, ownerPriorities()).some((key) => key.startsWith('features:')));
+  assert.ok(openKeys(asCoBuyer, coPriorities).includes('features:Fireplace:answer'), 'the owner’s answer settled the co-buyer’s');
+  assert.deepEqual(asCoBuyer.checks || {}, {});
+
+  // The co-buyer fills the shared Home Condition: settled for both, nobody's answers touched.
+  await saveHomeSharedFields(db.clientFor(ids.coBuyer), saved.id, { homeCondition: ['Move-In Ready'] });
+  asOwner = await load(ids.owner);
+  asCoBuyer = await load(ids.coBuyer);
+  assert.ok(!openKeys(asOwner, ownerPriorities()).includes('homeCondition:fact'));
+  assert.deepEqual(openKeys(asCoBuyer, coPriorities), ['features:Fireplace:answer']);
+  assert.deepEqual(asOwner.checks, { 'features:Fireplace': true, 'features:Finished basement': 'no' });
+  assert.deepEqual(asCoBuyer.checks || {}, {});
+  // The score basis is per viewer too, and the % is computeMatch's own.
+  assert.equal(progressFor(asOwner, ownerPriorities()).known, computeMatch(asOwner, ownerPriorities()).allSelected.filter((item) => item.evaluated && typeof item.score === 'number').length);
 });
