@@ -1,0 +1,7 @@
+[
+  { "id": "new-construction", "mode": "sale", "address": "<active new-construction listing, full address with ZIP>" },
+  { "id": "fireplace-pool", "mode": "sale", "address": "<older single-family home with fireplace and pool, Sun Belt county>" },
+  { "id": "condo-hoa-unit", "mode": "sale", "address": "<condo with HOA, including the unit, e.g. 'Unit 4B'>" },
+  { "id": "midwest-older", "mode": "sale", "address": "<older 2-story Midwest home with basement, ideally relisted>" },
+  { "id": "long-term-rental", "mode": "rental", "address": "<single-family or condo long-term rental>" }
+]
