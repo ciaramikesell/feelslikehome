@@ -281,7 +281,21 @@ live RentCast call was made.
 - **Regression browser QA:** see the table below. It was re-run on this
   branch, same stand-in.
 
-REGRESSION_TABLE
+| Script | Covers | Result |
+|---|---|---|
+| `post-save-ux-e2e` (new) | This phase | **18 / 18** |
+| `add-home-rentcast-context-e2e` | Phase 3 context (now read through the Details sheet), county pointers, owner/co-buyer | **10 / 10** |
+| `add-home-lookup-efficiency-e2e` | Phase 4: one lookup per Find, **A-to-B draft isolation**, duplicate at Find | **16 / 16** |
+| `add-home-simple-save-e2e` | Phase 1: Save Home, **duplicate detection**, share intake, failed lookup, photo | **20 / 20** (see note) |
+| `pasted-listing-answers-e2e` | Personal answer suggestions; **answers kept across same-property re-pastes** | **11 / 11** |
+| `match-reveal-qa` | Reveal trigger, 75% threshold, once per buyer, co-buyer, Realtor | **21 / 21** |
+
+**Note.** The first `add-home-simple-save-e2e` run, back to back with the
+others, went 10 / 20. The dev log showed 18 "per-user lookup limit reached":
+the stand-in owner had used up phase 4's 20-lookups-per-10-minutes limit.
+On a dev server restarted with `IMPORT_LOOKUP_USER_LIMIT=500` (an override
+the route already supports), the same script passed 20 / 20. No code was
+changed between the two runs.
 
 ## 6. Remaining friction for future phases
 
