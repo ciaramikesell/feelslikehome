@@ -50,11 +50,12 @@ test('flow 4: one category per screen, ten question screens for a buyer, then Re
   const buy = onboardingStepsFor(4, { answers: { searchType: 'home_buy' } });
   assert.deepEqual(buy, ['search_type', 'basics', 'locations', 'cat_layout', 'cat_kitchen', 'cat_living', 'cat_bath', 'cat_garage', 'cat_exterior', 'cat_neighborhood', 'review']);
   assert.deepEqual(onboardingStepsFor(4, {}), buy, 'before the type is chosen, the buyer screens are shown');
+  // Rentals: docs/rental-foundations-onboarding-spec.md §1 (exact order in test/rental-foundations-onboarding.test.js).
   const rent = onboardingStepsFor(4, { answers: { searchType: 'home_rent' } });
-  assert.ok(rent.includes('cat_essentials') && rent.includes('cat_garage'));
+  assert.ok(rent.includes('cat_essentials') && !rent.includes('cat_garage') && !rent.includes('cat_kitchen'));
   const apartment = onboardingStepsFor(4, { answers: { searchType: 'apartment_rent' } });
-  assert.ok(apartment.includes('cat_essentials') && !apartment.includes('cat_garage'));
-  for (const step of PRIORITY_CATEGORY_STEPS) assert.ok(rent.includes(step) || step === 'cat_garage', step);
+  assert.ok(apartment.includes('cat_essentials') && !apartment.includes('cat_garage') && !apartment.includes('cat_exterior'));
+  for (const step of PRIORITY_CATEGORY_STEPS) assert.ok(rent.includes(step) || buy.includes(step) || apartment.includes(step), step);
 });
 
 test('state keeps the search type and skipped screens, and drops anything invalid', () => {
@@ -131,7 +132,8 @@ test('every non-custom feature is an existing identity Match already counts; eve
 test('branching: rentals get Rental Essentials; an apartment gets no garage, lot size, fenced yard or HOA, and keeps its existing identities', () => {
   const apartment = fresh('apartment_rent');
   const keys = priorityCategoriesFor(apartment).map((category) => category.key);
-  assert.deepEqual(keys, ['essentials', 'layout', 'kitchen', 'living', 'bath', 'exterior', 'neighborhood']);
+  assert.deepEqual(keys, ['essentials', 'apt_unit', 'apt_property']);
+  assert.deepEqual(priorityCategoriesFor(fresh('home_rent')).map((category) => category.key), ['essentials', 'rent_layout', 'rent_features', 'exterior', 'neighborhood']);
   const ids = priorityCategoriesFor(apartment).flatMap((category) => [...category.features, ...category.suggestions].map((feature) => feature.id));
   assert.ok(ids.includes('features:Home Office') && !ids.includes('features:Home office'), 'the rental catalog identity is reused');
   assert.ok(ids.includes('exterior:Patio / Deck / Outdoor Living'));
@@ -226,12 +228,21 @@ test('changing the kind of search keeps what still applies and says what it remo
   p = setFeatureLevel(p, { categoryKey: 'features', label: 'Kitchen Island', custom: false }, 'must');
   p = setGarageImportance(p, 'important');
   p = setFeatureLevel(p, { categoryKey: 'features', label: 'Countertop Seating', custom: true, group: 'kitchen' }, 'nice');
+  // Home to Rent offers all three (Rental Features), so all three are kept.
+  const rent = switchPrioritySearchType(p, 'home_rent');
+  assert.equal(featureLevel(rent.priorities, { categoryKey: 'features', label: 'Kitchen Island' }), 'must');
+  assert.equal(featureLevel(rent.priorities, { categoryKey: 'features', label: 'Countertop Seating' }), 'nice');
+  assert.equal(featureLevel(rent.priorities, { categoryKey: 'exterior', label: 'Garage' }), 'important');
+  assert.deepEqual(rent.removed, []);
+  // An apartment has no kitchen screen: Kitchen Island is removed (and said
+  // so); the buyer's own Countertop Seating is kept; Garage is kept as the
+  // same identity, shown as Garage Parking.
   const { priorities, removed } = switchPrioritySearchType(p, 'apartment_rent');
-  assert.equal(featureLevel(priorities, { categoryKey: 'features', label: 'Kitchen Island' }), 'must');
+  assert.equal(featureLevel(priorities, { categoryKey: 'features', label: 'Kitchen Island' }), null);
+  assert.ok(removed.includes('Kitchen Island'));
   assert.equal(featureLevel(priorities, { categoryKey: 'features', label: 'Countertop Seating' }), 'nice');
-  assert.equal(isCriterionSelected(priorities, 'exterior', 'Garage'), false);
-  assert.ok(removed.includes('Garage'));
-  assert.ok(!removed.includes('Kitchen Island'));
+  assert.equal(featureLevel(priorities, { categoryKey: 'exterior', label: 'Garage' }), 'important');
+  assert.ok(!removed.includes('Garage'));
 });
 
 /* --------------------------------- review --------------------------------- */
@@ -272,7 +283,7 @@ test('cards: text label always, decorative local images with lazy loading, respo
 });
 
 test('photos: an explicit manifest maps every card to the founder’s upload; derivatives are card-sized; originals are kept', () => {
-  const features = [...PRIORITY_CATEGORIES.flatMap((category) => [...category.features, ...category.suggestions]), ...GARAGE_TYPES];
+  const features = [...PRIORITY_CATEGORIES.flatMap((category) => [...category.features, ...category.suggestions, ...(category.question ? [category.question] : [])]), ...GARAGE_TYPES];
   const arts = new Set(features.map((feature) => feature.art).filter(Boolean));
   for (const art of arts) {
     const image = cardImage(art);
@@ -300,8 +311,9 @@ test('photos: an explicit manifest maps every card to the founder’s upload; de
   assert.equal(ONBOARDING_PHOTOS['garage-attached'].file, 'attached-garage.webp');
   assert.equal(ONBOARDING_PHOTOS['garage-yard-door'].file, 'garage-backyard-door.webp');
   // Photos win over illustrations; illustrations remain only where no photo exists.
-  assert.deepEqual([...ONBOARDING_ILLUSTRATIONS].sort(), ['dishwasher', 'garage-either', 'in-unit-laundry', 'pet-friendly']);
-  assert.deepEqual(readdirSync(new URL('../public/images/features/', import.meta.url)).sort(), ['dishwasher.svg', 'garage-either.svg', 'in-unit-laundry.svg', 'pet-friendly.svg']);
+  // Dishwasher and Pet-Friendly now use the founder's rental photography (PR #182).
+  assert.deepEqual([...ONBOARDING_ILLUSTRATIONS].sort(), ['garage-either', 'in-unit-laundry']);
+  assert.deepEqual(readdirSync(new URL('../public/images/features/', import.meta.url)).sort(), ['garage-either.svg', 'in-unit-laundry.svg']);
   // Every pictured feature also has an icon to fall back to; No HOA is icon-only.
   for (const feature of features.filter((entry) => entry.art)) assert.ok(feature.icon, `${feature.label || feature.key} has a fallback icon`);
   const neighborhood = PRIORITY_CATEGORIES.find((category) => category.key === 'neighborhood');

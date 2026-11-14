@@ -141,16 +141,21 @@ function GarageQuestions({ priorities, patch, onNotImportant }) {
 export function CategoryStep({ categoryKey, priorities, patch, header, footer, picker, onAutoAdvance = null }) {
   const view = categoryView(priorities, categoryKey);
   const [notice, setNotice] = useState('');
+  const [addError, setAddError] = useState('');
   if (!view) return null;
   const { category } = view;
   const garage = category.key === 'garage';
   const importance = garage ? garageImportance(priorities) : null;
   // Garage details only once a garage matters; anything already chosen stays visible.
-  const showFeatures = !garage || PRIORITY_LEVELS.includes(importance) || view.chosenCount > 0;
+  // A question screen (Rental Essentials) has no cards and no Add your own;
+  // its question is built separately (spec Stage 3).
+  const showFeatures = !category.question && (!garage || PRIORITY_LEVELS.includes(importance) || view.chosenCount > 0);
   const lotSize = category.key === 'exterior' && basicsFieldsFor(priorities.onboardingSearchType || 'home_buy').lotSize;
   const add = (value) => {
     const result = addOwnFeature(priorities, category.key, value?.label ?? value);
     if (!result) return;
+    setAddError(result.feature ? '' : (result.error || ''));
+    if (!result.feature) return;
     if (result.priorities !== priorities) patch(() => result.priorities);
     const elsewhere = result.homeCategory ? priorityCategory(priorities, result.homeCategory)?.title : null;
     const note = elsewhere ? `You’ll find this under ${elsewhere}.` : null;
@@ -173,6 +178,7 @@ export function CategoryStep({ categoryKey, priorities, patch, header, footer, p
           <FeatureGrid cards={view.cards} onOpen={(feature) => picker.open(feature)} label={category.title} />
           <AddOwnFeature title={category.title} suggestions={view.suggestions} onAdd={add} />
           {notice && <p className="sr-only" role="status">{notice}</p>}
+          {addError && <p className="flh-ob-help" role="alert">{addError}</p>}
         </>
       )}
       {footer}

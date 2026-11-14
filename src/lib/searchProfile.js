@@ -15,6 +15,7 @@ import {
 import { normalizeSearchIntent, PROPERTY_TYPE_LABELS } from './searchIntent.js';
 import { splitCategoryItems, selectPriorityItem, parseNum } from './matching.js';
 import { ONBOARDING_SUGGESTIONS } from './onboarding.js';
+import { clearPetsAuto } from './rentalPets.js';
 
 /* ---------------------------------- levels ---------------------------------- */
 
@@ -74,23 +75,27 @@ function categoryDef(priorities, categoryKey) {
 
 // Moves one criterion to another level ('dontcare' removes it from the board). The
 // stored identity, kind, and custom-ness are never rewritten — only its tier.
+// A manual edit to Pet-Friendly ends FLH's automatic ownership of it
+// (clearPetsAuto, src/lib/rentalPets.js); every other key is untouched.
 export function moveCriterion(raw, categoryKey, label, tier) {
   const priorities = normalizePriorities(raw);
   const catState = priorities[categoryKey] || { customItems: [], tiers: {} };
-  return { ...priorities, [categoryKey]: { ...catState, tiers: { ...(catState.tiers || {}), [label]: tier } } };
+  return { ...priorities, [categoryKey]: clearPetsAuto({ ...catState, tiers: { ...(catState.tiers || {}), [label]: tier } }, categoryKey, label) };
 }
 
 // Selects an offered criterion at a level (Important by default), promoting a
 // suggestion into the participant's own customItems exactly as the existing
-// selectPriorityItem does everywhere else.
+// selectPriorityItem does everywhere else. Like moveCriterion, a manual edit to
+// Pet-Friendly clears FLH's automatic ownership (selectPriorityItem itself is
+// unchanged: Match imports it).
 export function addCriterion(raw, criterion, tier = DEFAULT_SELECTED_TIER) {
   const priorities = normalizePriorities(raw);
   const def = categoryDef(priorities, criterion.categoryKey);
   return {
     ...priorities,
-    [criterion.categoryKey]: selectPriorityItem(priorities[criterion.categoryKey], def, {
+    [criterion.categoryKey]: clearPetsAuto(selectPriorityItem(priorities[criterion.categoryKey], def, {
       label: criterion.label, kind: criterion.kind, ...(criterion.source === 'custom' ? { source: 'custom' } : {}),
-    }, tier),
+    }, tier), criterion.categoryKey, criterion.label),
   };
 }
 

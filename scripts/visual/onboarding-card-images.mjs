@@ -8,7 +8,9 @@
 // deleted) and writes 4:3 centre-cropped WebP derivatives to
 // public/images/onboarding/cards/<key>-400.webp and -800.webp.
 // 400w covers 1x/2x phones (cards are ~170–195 CSS px wide); 800w covers 3x
-// phones and desktop retina. Quality 74, metadata stripped. Requires
+// phones and desktop retina. Quality 74, metadata stripped. A manifest entry
+// may set `targetKB: { <width>: <KB> }` to keep an unusually detailed photo
+// within the card budget (60 KB at 400w, 120 KB at 800w). Requires
 // ImageMagick 6.9+ with WebP (`convert`). Deterministic; safe to re-run.
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, statSync } from 'node:fs';
@@ -27,7 +29,9 @@ for (const [key, photo] of Object.entries(ONBOARDING_PHOTOS)) {
     execFileSync('convert', [
       `${join(SRC, photo.file)}[0]`, '-auto-orient', '-strip',
       '-resize', `${width}x${height}^`, '-gravity', photo.gravity || 'center', '-extent', `${width}x${height}`,
-      '-quality', '74', '-define', 'webp:method=6', out,
+      '-quality', '74', '-define', 'webp:method=6',
+      ...(photo.targetKB?.[width] ? ['-define', `webp:target-size=${photo.targetKB[width] * 1024}`] : []),
+      out,
     ]);
     const size = statSync(out).size;
     total += size;
