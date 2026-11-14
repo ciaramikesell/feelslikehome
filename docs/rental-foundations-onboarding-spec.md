@@ -1,10 +1,11 @@
 # Rental Foundations: Mobile Rental Onboarding Spec and Compatibility Audit
 
-**Status: documentation only. Architecture approved by the founder with
-decisions D1–D8 (§10). Implementation has not started.** Nothing in `src/`,
-`supabase/`, `public/`, the database, Match scoring, Floor Plans or PR #166 is
-changed by this document. Implementation follows the staged plan in §9, and
-each stage stops for founder review where marked. Do not merge or deploy.
+**Status: architecture approved by the founder with decisions D1–D8 (§10).
+Stages 1–2 are implemented behind `FLH_ONBOARDING_V3` (off in Production); see
+§13 for what was built, the Stage 0 result and what Stage 3 needs.** Stages 3–5
+have not started. No database change, SQL, Match scoring, Floor Plans or PR #166
+change is part of any stage so far. Each stage stops for founder review where
+marked. Do not merge or deploy.
 
 Baseline audited: `main` at `c18f837`. This is PR #181 (Mobile Priority
 Onboarding V3, flow version 4, behind `FLH_ONBOARDING_V3`, off in Production)
@@ -398,6 +399,15 @@ because you set it yourself."
   so a later return to renting shows the question unanswered. Undo restores all
   three together.
 - **Home to Buy → rental.** Nothing pet-related is written. The question is unanswered.
+- **Garage (founder correction on PR #183).** A house Garage (Home to Buy or
+  Home to Rent) is never reinterpreted as apartment Garage Parking, although
+  both use `exterior:Garage`. Switching into Apartment to Rent deactivates it as
+  the existing switch already did, lists it as removed (with Undo), and keeps its
+  level in the additive `exterior.heldGarage = { tier, from }`. Garage Parking
+  becomes active only when the renter chooses it. Switching back to Home to Buy
+  or Home to Rent restores the held level (even if Garage Parking was chosen in
+  between) and removes the key. `garagePreference` (attached/detached) and the
+  stored identity are never deleted. Home to Buy ↔ Home to Rent is unchanged.
 
 ### Co-buyers
 
@@ -606,3 +616,125 @@ stays off in Production until the founder decides otherwise.
 - Edits this document only. PR #182 stays documentation-only.
 - No change to live onboarding, V3 code, the database, Match scoring, images,
   flags, Floor Plans or PR #166. Draft PR for founder review. Not merged or deployed.
+
+---
+
+## 13. Implementation status: Stages 0–2
+
+### Stage 0: read-only data count (not run against Production)
+
+**The real-data count was not run.** The implementation session had no
+authorized read access to the Production (or any hosted) database: no
+credentials were configured, and none were requested or substituted. No write-capable
+operation was used, and no automatic cleanup is proposed.
+
+What was verified instead:
+- The §9 query runs unchanged against a **local** Postgres 16 database built
+  from this repository's `schema.sql` plus migrations (the real-Postgres test
+  harness), inside a `read only` transaction with
+  `default_transaction_read_only = on`. A write attempted in the same session
+  was refused (`cannot execute UPDATE in a read-only transaction`).
+- On synthetic rows it returned the expected counts: 1 rental document, 1
+  case-variant pair (`Central Air` / `Central air`; a `dontcare` variant and a
+  purchase document with the same pair were correctly excluded), 1 Parks Nearby
+  rating, 1 Outdoor Space rating, 2 unanswerable rental ratings, 1 Pets Allowed.
+
+**Still to do by the founder or an operator with read access:** run the §9
+query and record the counts here. Until then the number of existing
+case-variant duplicates and selected unanswerable ratings in real documents is
+unknown. Stages 1–2 do not depend on it: nothing they do rewrites saved rows,
+and the A1 guard prevents new duplicates whatever already exists.
+
+### Stage 1: catalog, identities and images (built)
+
+- `src/lib/priorityCategories.js`: Home to Rent screens `rent_layout`,
+  `rent_features`, `exterior`, `neighborhood`; Apartment to Rent screens
+  `apt_unit`, `apt_property`; Rental Essentials is a question screen
+  (`question: PETS_QUESTION`, no cards, no suggestions). Identities exactly as
+  §3. Home to Buy categories are now `only: ['home_buy']`; their rendered
+  content is byte-identical (snapshot test against `main`).
+- New custom items: `features:Extra Bedroom` (hint as D3) and
+  `exterior:Private Garage` (hint as D1). Landscaping has its hint (A6). Cards
+  can carry `hint` and `aliases` (additive, only where defined).
+- **A1 guard** (`storedFeatureLabel`, rentals only): a card reads and writes
+  the case variant already stored (selected first, then any stored tier),
+  never adding the other. Rating-kind variants are not treated as the same
+  criterion (the rental "Parks Nearby" rating stays separate from
+  `location:Parks nearby`). Home to Buy keeps its own labels.
+- **A8 filter**: for rental searches, Add your own never selects a catalog item
+  that is neither Yes/No nor a tour criterion; the text becomes the renter's own
+  Yes/No item, or matches an offered card. Tour criteria (e.g. Noise Level) are
+  still found. An unanswerable item the renter **already** chose is reused, not
+  duplicated. One case cannot become a custom item without sharing the stored key
+  of an existing unanswerable core item (Home to Rent, typing "Neighborhood" on
+  the Location screen): nothing is created and the screen says
+  "“Neighborhood” is too broad to check on a home. Try something more specific."
+- A4: typing "Outdoor Space" on an apartment screen finds the Private Outdoor
+  Space card (`aliases`), not the after-tour rating.
+- `src/lib/onboardingFlow.js`: flow 4 steps per search type as §9. Sessions on
+  a screen their search no longer shows resume at the first unfinished screen.
+- Images: the 11 manifest entries (§5) and 22 card derivatives from the
+  existing script. Originals untouched; all existing derivatives regenerate
+  byte-identical. `dishwasher` and `pet-friendly` left
+  `ONBOARDING_ILLUSTRATIONS`; their SVGs were removed from
+  `public/images/features/` and `scripts/visual/feature-art.mjs`.
+  `pet-friendly` is referenced only by the question, never a ranked card.
+  Contact sheet checked; the `apartment-balcony` 4:3 crop keeps the railing
+  and the room.
+- **Pipeline note:** the ImageMagick 6.9 WebP writer in this environment
+  ignores `-quality` (identical output at 10 and 95). `landscaping-800`
+  came out at 128 KB, over the 120 KB card budget. The script now accepts an
+  optional per-photo `targetKB` (passed as `-define webp:target-size`), set
+  only for `landscaping` at 800w (108 KB). No other derivative changed.
+- `PriorityFlow.jsx`: a question screen renders no cards and no Add your own
+  (the question UI is Stage 3); a refused Add your own shows its message.
+  `FeatureVisual.jsx` gains the `Store` and `Flower2` icons.
+
+### Stage 2: pets state and provenance (built, pure logic)
+
+- `src/lib/rentalPets.js`: `PETS_ANSWERS`, `petsMovingAnswer`, `petsAutoMarker`,
+  `petsTier`, `setPetsMoving` (returns `{ priorities, change, undo }`),
+  `restorePets` (exact Undo), `clearPetsAuto`, `petsChangeMessage`,
+  `petsProvenance`, and the switch helpers `snapshotPets`,
+  `restorePetsAfterSwitch`, `clearPetsState`.
+- `clearPetsAuto` is wired into `moveCriterion` and `addCriterion`
+  (`searchProfile.js`) and into the live flow's `applyOnboardingSelections`
+  (`onboarding.js`; a no-op for every live document, which never has
+  `petsAuto`). `selectPriorityItem` and Match are unchanged.
+- `switchPrioritySearchType`: rental ↔ rental keeps the answer, the level and
+  the marker; rental → Home to Buy clears all three (the flow's existing Undo
+  restores the whole earlier document); buy → rental writes nothing pet-related.
+- **Garage across switches (founder correction):** `switchPrioritySearchType`
+  no longer re-activates a house Garage as apartment Garage Parking. The level
+  is held in `exterior.heldGarage` and restored on returning to a house search
+  (§7, "Search-type switches"). Neither scorer reads the key (real-Postgres
+  test). Apartment → Home to Buy with a Garage Parking the renter chose and no
+  held level keeps the pre-existing behavior (it carries as Garage).
+- `otherChosenPriorities` does **not** yet exclude `features:Pets Allowed`:
+  doing so before the Stage 3 Review row exists would hide Pet-Friendly from
+  Review. Stage 3 adds the exclusion together with the Review row.
+
+### Tests
+
+- `test/rental-foundations-onboarding.test.js` (Stage 1, 25 tests including the
+  five garage-switch regressions),
+  `test/rental-pets-onboarding.test.js` (Stage 2, 16 tests), and one new
+  real-Postgres test in `test/mobile-priority-onboarding-v3-db.test.js`
+  (co-renters, JS = SQL with `pets_allowed` null / true / false, additive keys
+  invisible to Match, B's row byte-identical after A's edits).
+- `test/fixtures/v3-home-buy-screens.json`: the Home to Buy V3 screens captured
+  from `main` before this change.
+
+### What Stage 3 needs
+
+| File | Change |
+|---|---|
+| `src/components/onboarding/priority/PriorityFlow.jsx` | A `PetsQuestion` on the `essentials` screen when `category.question` is set (three choices, `pet-friendly` photo via `FeatureVisual`/`cardImage`, status line from `petsChangeMessage`, Undo via `restorePets(…, undo)`), same frame. Lot-size importance control on Home to Rent Exterior (D4) writing `lotSizeTarget.tier`. Show `feature.hint` on cards or in the sheet. |
+| `src/components/onboarding/priority/PetsQuestion.jsx` (new) | The question component. |
+| `src/components/onboarding/priority/FeatureCard.jsx`, `ImportanceSheet.jsx` | Render `hint` (Extra Bedroom, Private Garage, Landscaping). |
+| `src/components/onboarding/priority/PriorityReview.jsx` | Pets answer with provenance (`petsProvenance`); lot size with its importance. |
+| `src/lib/priorityCategories.js` | `otherChosenPriorities` excludes `features:Pets Allowed` for rentals, alongside the Review row. Optionally a review helper for the pets row. |
+| `src/components/onboarding/Onboarding.jsx`, `OnboardingPreview.jsx` | Pass `setPetsMoving` writes through the existing `patch`; preview fixtures with rental picks and a pets answer. |
+| `scripts/qa/mobile-priority-onboarding-v3-qa.mjs` | Already lists the new rental screens; add the pets question, Undo and the lot-size control. |
+| Stage 4: `src/components/RankPrioritiesEditor.jsx` / My Search | Rental Essentials row calling `setPetsMoving`; the D8 note while `petsProvenance(…).automatic`. |
+

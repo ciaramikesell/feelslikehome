@@ -47,7 +47,12 @@ const SCREENS = [
   ['neighborhood', 'step=cat_neighborhood&state=populated'],
   ['review', 'step=review&state=legacy'],
   ['rent-essentials', 'step=cat_essentials&state=populated&search=home_rent'],
-  ['apartment-exterior', 'step=cat_exterior&state=populated&search=apartment_rent'],
+  ['rent-layout', 'step=cat_rent_layout&state=populated&search=home_rent'],
+  ['rent-features', 'step=cat_rent_features&state=populated&search=home_rent'],
+  ['rent-exterior', 'step=cat_exterior&state=populated&search=home_rent'],
+  ['rent-neighborhood', 'step=cat_neighborhood&state=populated&search=home_rent'],
+  ['apartment-unit', 'step=cat_apt_unit&state=populated&search=apartment_rent'],
+  ['apartment-property', 'step=cat_apt_property&state=populated&search=apartment_rent'],
 ];
 
 async function layoutChecks(page, label) {
@@ -273,12 +278,17 @@ for (const zoom of [1.5, 2]) {
   await page.close();
 }
 {
-  // Illustration fallback where no photo exists (renter essentials).
+  // Illustration fallback where no photo exists (In-Unit Laundry, The Unit),
+  // and apartment amenities never use house photography (rental spec §5).
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
-  await page.goto(url('step=cat_essentials&state=populated&search=home_rent'), { waitUntil: 'networkidle' });
+  await page.goto(url('step=cat_apt_unit&state=populated&search=apartment_rent'), { waitUntil: 'networkidle' });
   await ready(page);
   const srcs = await page.evaluate(() => [...document.querySelectorAll('.flh-ob-pf-media img')].map((img) => [img.currentSrc.split('/').pop(), img.naturalWidth > 0]));
-  check('renters: Rental Essentials uses illustrations where no photo exists', srcs.some(([src, ok]) => src === 'pet-friendly.svg' && ok), JSON.stringify(srcs));
+  check('renters: The Unit uses the illustration where no photo exists', srcs.some(([src, ok]) => src === 'in-unit-laundry.svg' && ok), JSON.stringify(srcs));
+  await page.goto(url('step=cat_apt_property&state=populated&search=apartment_rent'), { waitUntil: 'networkidle' });
+  await ready(page);
+  const property = await page.evaluate(() => [...document.querySelectorAll('.flh-ob-pf-media img')].map((img) => img.currentSrc.split('/').pop()));
+  check('apartments: no house Pool or Deck photo', !property.some((src) => /^(pool|deck-patio)-/.test(src)), JSON.stringify(property));
   await page.close();
 }
 {

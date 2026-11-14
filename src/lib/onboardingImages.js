@@ -12,7 +12,8 @@
 //      whenever an image is unavailable or fails to load.
 //
 // Provenance: photos supplied by the FLH founder (uploaded to main,
-// public/images/onboarding/, commits 7e3e5fa and f7fd834). They illustrate an
+// public/images/onboarding/, commits 7e3e5fa and f7fd834, and the rental set
+// merged with PR #182). They illustrate an
 // example of a feature, never a promise about any particular home.
 
 export const CARD_WIDTHS = Object.freeze([400, 800]);
@@ -59,10 +60,24 @@ export const ONBOARDING_PHOTOS = Object.freeze({
   'tree-lined-street': photo('tree-lined-street.webp'),
   'cul-de-sac': photo('cul-de-sac.webp'),
   'walkable-schools': photo('walkable-to-schools.webp'),
+  // Rental photography (founder uploads, PR #182; docs/rental-foundations-onboarding-spec.md §5).
+  'extra-bedroom': photo('extra-bedroom.webp'),
+  // Dense foliage: capped so the 800w derivative stays within the card budget.
+  landscaping: photo('landscaping.webp', { targetKB: { 800: 110 } }),
+  'parks-nearby': photo('parks-nearby.webp'),
+  'fitness-center': photo('fitness-center.webp'),
+  elevator: photo('elevator.webp'),
+  'secure-entry': photo('secure-entry.webp'),
+  'sufficient-parking': photo('sufficient-parking.webp'),
+  dishwasher: photo('dishwasher.webp'),
+  'apartment-balcony': photo('apartment-balcony.webp'),
+  'apartment-parking-garage': photo('apartment-parking-garage.webp'),
+  // Shown with the Rental Essentials pets question, never on a ranked card.
+  'pet-friendly': photo('pet-friendly.webp'),
 });
 
 // Features with no photo yet keep an FLH-authored illustration.
-export const ONBOARDING_ILLUSTRATIONS = Object.freeze(['pet-friendly', 'in-unit-laundry', 'dishwasher', 'garage-either']);
+export const ONBOARDING_ILLUSTRATIONS = Object.freeze(['in-unit-laundry', 'garage-either']);
 
 // The card picture for a feature: { kind: 'photo', src, srcSet } |
 // { kind: 'illustration', src } | null (icon only).
