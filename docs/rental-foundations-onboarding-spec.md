@@ -399,6 +399,15 @@ because you set it yourself."
   so a later return to renting shows the question unanswered. Undo restores all
   three together.
 - **Home to Buy → rental.** Nothing pet-related is written. The question is unanswered.
+- **Garage (founder correction on PR #183).** A house Garage (Home to Buy or
+  Home to Rent) is never reinterpreted as apartment Garage Parking, although
+  both use `exterior:Garage`. Switching into Apartment to Rent deactivates it as
+  the existing switch already did, lists it as removed (with Undo), and keeps its
+  level in the additive `exterior.heldGarage = { tier, from }`. Garage Parking
+  becomes active only when the renter chooses it. Switching back to Home to Buy
+  or Home to Rent restores the held level (even if Garage Parking was chosen in
+  between) and removes the key. `garagePreference` (attached/detached) and the
+  stored identity are never deleted. Home to Buy ↔ Home to Rent is unchanged.
 
 ### Co-buyers
 
@@ -695,13 +704,20 @@ and the A1 guard prevents new duplicates whatever already exists.
 - `switchPrioritySearchType`: rental ↔ rental keeps the answer, the level and
   the marker; rental → Home to Buy clears all three (the flow's existing Undo
   restores the whole earlier document); buy → rental writes nothing pet-related.
+- **Garage across switches (founder correction):** `switchPrioritySearchType`
+  no longer re-activates a house Garage as apartment Garage Parking. The level
+  is held in `exterior.heldGarage` and restored on returning to a house search
+  (§7, "Search-type switches"). Neither scorer reads the key (real-Postgres
+  test). Apartment → Home to Buy with a Garage Parking the renter chose and no
+  held level keeps the pre-existing behavior (it carries as Garage).
 - `otherChosenPriorities` does **not** yet exclude `features:Pets Allowed`:
   doing so before the Stage 3 Review row exists would hide Pet-Friendly from
   Review. Stage 3 adds the exclusion together with the Review row.
 
 ### Tests
 
-- `test/rental-foundations-onboarding.test.js` (Stage 1, 20 tests),
+- `test/rental-foundations-onboarding.test.js` (Stage 1, 25 tests including the
+  five garage-switch regressions),
   `test/rental-pets-onboarding.test.js` (Stage 2, 16 tests), and one new
   real-Postgres test in `test/mobile-priority-onboarding-v3-db.test.js`
   (co-renters, JS = SQL with `pets_allowed` null / true / false, additive keys

@@ -597,16 +597,29 @@ export const setGarageType = (raw, value) => setGaragePreference(raw, value);
 // keeps the answer, Pet-Friendly's level and FLH's automatic ownership of it;
 // a switch to Home to Buy clears the answer and the marker along with
 // Pet-Friendly (the caller's Undo restores the whole earlier document).
+//
+// Garage: a house's garage (Home to Buy, Home to Rent) and an apartment
+// building's Garage Parking share the identity exterior:Garage, but they are
+// not the same wish. Moving into Apartment to Rent therefore never turns a
+// house Garage priority into Garage Parking: the existing switch deactivates
+// it (and says so), and its level is set aside in `exterior.heldGarage`
+// (additive, never read by Match). Garage Parking counts only once the renter
+// chooses it. Moving back to a house search restores the held level.
+const HOUSE_GARAGE = Object.freeze({ categoryKey: 'exterior', label: 'Garage', kind: 'check' });
 export function switchPrioritySearchType(raw, choiceKey) {
   const before = normalizePriorities(raw);
   if (before.onboardingSearchType === choiceKey) return { priorities: before, removed: [] };
   const beforeItems = priorityLevels(before).flatMap((level) => level.items);
   const pets = snapshotPets(before);
+  const fromApartment = searchExperienceKey(before) === 'apartment_rent';
+  const toApartment = choiceKey === 'apartment_rent' && !fromApartment;
+  const garageTier = beforeItems.find((item) => item.key === 'exterior:Garage')?.tier || null;
   const result = switchSearchType(before, choiceKey);
   let next = result.priorities;
   const offered = new Map(allOffered(next).map((feature) => [normalizeFeatureKey(feature.id), feature]));
   const restored = new Set();
   for (const item of beforeItems) {
+    if (toApartment && item.key === 'exterior:Garage') continue;
     const feature = offered.get(normalizeFeatureKey(item.key));
     if (!feature || featureLevel(next, feature)) continue;
     next = setFeatureLevel(next, feature, item.tier);
@@ -618,6 +631,16 @@ export function switchPrioritySearchType(raw, choiceKey) {
     if (kept.restoredLabel) restored.add(kept.restoredLabel);
   } else {
     next = clearPetsState(next);
+  }
+  if (toApartment && garageTier) {
+    next = { ...next, exterior: { ...next.exterior, heldGarage: { tier: garageTier, from: searchExperienceKey(before) } } };
+  } else if (fromApartment && choiceKey !== 'apartment_rent' && next.exterior?.heldGarage) {
+    const { heldGarage, ...exterior } = next.exterior;
+    next = { ...next, exterior };
+    if (PRIORITY_LEVELS.includes(heldGarage.tier)) {
+      next = addCriterion(next, HOUSE_GARAGE, heldGarage.tier);
+      restored.add('Garage');
+    }
   }
   return { priorities: next, removed: result.removed.filter((label) => !restored.has(label)) };
 }

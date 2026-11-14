@@ -235,14 +235,15 @@ test('changing the kind of search keeps what still applies and says what it remo
   assert.equal(featureLevel(rent.priorities, { categoryKey: 'exterior', label: 'Garage' }), 'important');
   assert.deepEqual(rent.removed, []);
   // An apartment has no kitchen screen: Kitchen Island is removed (and said
-  // so); the buyer's own Countertop Seating is kept; Garage is kept as the
-  // same identity, shown as Garage Parking.
+  // so); the buyer's own Countertop Seating is kept. A house Garage is never
+  // turned into apartment Garage Parking: it is set aside, not counted.
   const { priorities, removed } = switchPrioritySearchType(p, 'apartment_rent');
   assert.equal(featureLevel(priorities, { categoryKey: 'features', label: 'Kitchen Island' }), null);
   assert.ok(removed.includes('Kitchen Island'));
   assert.equal(featureLevel(priorities, { categoryKey: 'features', label: 'Countertop Seating' }), 'nice');
-  assert.equal(featureLevel(priorities, { categoryKey: 'exterior', label: 'Garage' }), 'important');
-  assert.ok(!removed.includes('Garage'));
+  assert.equal(featureLevel(priorities, { categoryKey: 'exterior', label: 'Garage' }), null);
+  assert.ok(removed.includes('Garage'));
+  assert.deepEqual(priorities.exterior.heldGarage, { tier: 'important', from: 'home_buy' });
 });
 
 /* --------------------------------- review --------------------------------- */

@@ -175,6 +175,10 @@ dbTest('rental pets answer: JS = SQL for co-renters with pets_allowed null / tru
   await savePriorities(db.clientFor(a), { id: search }, a, bare(aStored));
   const aBare = await both(a, b);
   for (const name of Object.keys(homeIds)) assert.deepEqual([aBare[name].pct, aBare[name].evaluatedCount], [aMatch[name].pct, aMatch[name].evaluatedCount], name);
+  // A held house Garage (set aside when switching into an apartment) is equally invisible to both scorers.
+  await savePriorities(db.clientFor(a), { id: search }, a, { ...aStored, exterior: { ...aStored.exterior, heldGarage: { tier: 'must', from: 'home_buy' } } });
+  const aHeld = await both(a, b);
+  for (const name of Object.keys(homeIds)) assert.deepEqual([aHeld[name].pct, aHeld[name].selectedCount, aHeld[name].evaluatedCount], [aMatch[name].pct, aMatch[name].selectedCount, aMatch[name].evaluatedCount], name);
   await savePriorities(db.clientFor(a), { id: search }, a, aStored);
 
   // A answers No: FLH restores A's level. B's stored row is byte-identical.
