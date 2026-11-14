@@ -2502,6 +2502,32 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-hf2-context p { margin: 0; overflow-wrap: anywhere; }
 .flh-hf2-record { font-size: 12.5px; }
 
+/* Add Home V3, phase 6 (docs/add-home-v3-phase6-ux-audit.md): after Save Home.
+   The listing context is one dated row (Details opens the sheet); a quiet
+   "Your Match" shortcut under the property; open counts and one next step in
+   Your Match. */
+.flh-hf2-context-row { margin: 6px 0 0; color: var(--ink-soft); font-size: 12.5px; line-height: 1.45; overflow-wrap: anywhere; }
+.flh-hf2-context-row .flh-offered-review { display: inline-block; min-height: 28px; margin-left: 2px; padding: 2px 4px; font-size: 12.5px; }
+.flh-hf2-context-part { white-space: nowrap; }
+.flh-hf2-legend { margin: -4px 0 12px; color: var(--ink-soft); font-size: 12.5px; line-height: 1.45; }
+.flh-context-sheet .hh-sheet-body { display: grid; gap: 12px; }
+.flh-context-sheet .flh-hf2-context { gap: 6px; margin: 0; padding: 10px 12px; border: 1px solid rgba(138,124,110,.18); border-radius: 12px; background: var(--paper); color: var(--ink); font-size: 13.5px; }
+.flh-hf2-aside.is-phone { display: none; }
+.flh-match-jump { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: fit-content; max-width: 100%; min-height: 44px; margin-top: 10px; padding: 7px 14px; border: 1px solid rgba(138,124,110,.28); border-radius: 14px; background: var(--paper); color: var(--ink); font: 600 13px var(--font-ui); text-align: left; cursor: pointer; }
+.flh-match-jump-text { display: grid; gap: 1px; min-width: 0; }
+.flh-match-jump-main b { color: var(--positive); font-weight: 700; }
+.flh-match-jump small { color: var(--ink-soft); font-size: 12px; font-weight: 600; }
+.flh-match-jump > svg { flex-shrink: 0; color: var(--ink-soft); }
+.flh-match-jump:hover { border-color: var(--brick); }
+.flh-match-jump:focus-visible, .flh-match-next:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.flh-match-next { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; margin: 4px 0 6px; padding: 4px 0; border: 0; background: none; color: var(--brick); font: 600 13px var(--font-ui); cursor: pointer; text-align: left; }
+.flh-match-next b { font-weight: 700; }
+.flh-match-next:hover { text-decoration: underline; }
+.flh-mc2-open { padding: 1px 8px; border-radius: 999px; background: #fff; color: var(--ink-soft); font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+@media (max-width: 640px) {
+  .flh-match-next { min-height: 44px; }
+}
+
 /* Home Facts: listing facts offered at Add Home and not added yet. One quiet
    row; Review opens the shared checklist in a sheet (no inline fold-out). */
 .flh-offered-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; margin: 0 0 12px; padding: 8px 12px; border: 1px solid rgba(138,124,110,.2); border-radius: 12px; background: var(--paper); color: var(--ink-soft); font-size: 13px; }
@@ -2536,7 +2562,9 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-found-photo-btn { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 6px 11px; border: 1px solid rgba(46,38,33,.12); border-radius: 999px; background: rgba(255,255,255,.92); color: var(--ink); font: 700 12px var(--font-sans); cursor: pointer; box-shadow: 0 1px 3px rgba(46,38,33,.12); }
 .flh-found-photo-btn.is-quiet { color: var(--ink-soft); font-weight: 600; }
 .flh-found-photo-btn:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
-.flh-found-type { display: inline-flex; margin-left: 6px; padding: 4px 10px; border-radius: 999px; background: var(--peach); color: var(--brick-deep); font-size: 11.5px; font-weight: 700; }
+.flh-found-price-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 10px; }
+.flh-found-price-row .flh-found-price { margin-top: 0; }
+.flh-found-type { display: inline-flex; padding: 3px 10px; border-radius: 999px; background: var(--peach); color: var(--brick-deep); font-size: 11.5px; font-weight: 700; }
 .flh-found-locality { display: flex; align-items: center; gap: 4px; }
 .flh-found-locality svg { flex: 0 0 auto; color: var(--brick); }
 .flh-found-count { display: flex; align-items: center; gap: 6px; margin-top: 10px !important; color: var(--positive) !important; font-size: 12px !important; }
@@ -3225,9 +3253,15 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
   .flh-hf2-header { grid-template-columns: 112px minmax(0, 1fr); gap: 12px 14px; padding-bottom: 18px; }
   .flh-hf2-photo-wrap { display: contents; }
   .flh-hf2-photo { grid-column: 1; grid-row: 1; aspect-ratio: 1; }
-  .flh-hf2-photo-wrap > .flh-phone-collapse { grid-column: 1 / -1; grid-row: 2; }
+  .flh-hf2-photo-wrap > .flh-phone-collapse { grid-column: 1 / -1; grid-row: 3; }
   .flh-hf2-identity { grid-column: 2; grid-row: 1; padding-top: 0; }
-  .flh-hf2-secondary { grid-column: 1 / -1; grid-row: 3; }
+  .flh-hf2-secondary { grid-column: 1 / -1; grid-row: 4; }
+  /* Phase 6: the listing summary and Your Match shortcut span the full width under the photo. */
+  .flh-hf2-aside.is-wide { display: none; }
+  .flh-hf2-aside.is-phone { display: grid; gap: 8px; grid-column: 1 / -1; grid-row: 2; }
+  .flh-hf2-aside.is-phone:empty { display: none; }
+  .flh-hf2-aside .flh-hf2-context-row { margin: 0; }
+  .flh-hf2-aside .flh-match-jump { width: 100%; margin-top: 0; }
   .flh-hf2-price { font-size: 22px; }
   .flh-hf2-address { font-size: 17px; margin-top: 2px; }
   .flh-hf2-locality { font-size: 12px; margin-bottom: 6px; }

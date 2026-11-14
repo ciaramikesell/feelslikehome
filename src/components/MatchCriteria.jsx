@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowUpRight, Check, ChevronDown, Minus, X } from 'lucide-react';
 import { TIER_META, criterionDisplayLabel, isExperientialCriterion } from '@/lib/constants';
 import { answerableCriteriaKeys, criterionAnswer, criterionResolution, legacyCriterionRating } from '@/lib/matchCriteria';
@@ -19,6 +19,12 @@ import { answerableCriteriaKeys, criterionAnswer, criterionResolution, legacyCri
 //     option is "Home Facts": the answer follows the fact, shown under the
 //     name. Yes / No is the buyer's own override; Home Facts removes it.
 //   - After-tour criteria show their state and point to Tour Feedback.
+//
+//   - Each tier header counts its open criteria ("1 unanswered": Unknown, settleable
+//     before a tour). Your Match's "Answer next" step (phase 6,
+//     matchProgress.js) passes `revealRequest`: the tier holding that
+//     criterion opens (phones collapse Important / Nice to Have) and the row is
+//     scrolled to and focused. Nothing is answered for the buyer.
 //
 //   - Where listing text pasted for this home mentions one of the buyer's own
 //     unanswered criteria (Add Home V3, phase 2), a quiet "Listing suggests Yes"
@@ -52,7 +58,7 @@ export const FACT_LINKS = Object.freeze({
   secondaryBedroomLocation: ['hf-secondaryBedroomLocation', 'Bedrooms'],
 });
 
-const criterionName = (item) => (item.key.includes(':') ? criterionDisplayLabel(item.key.split(':')[0], item.label) : item.label);
+export const criterionName = (item) => (item.key.includes(':') ? criterionDisplayLabel(item.key.split(':')[0], item.label) : item.label);
 const isAfterTour = (item) => item.key.includes(':') && isExperientialCriterion(item.key.split(':')[0], item.label);
 
 export function criterionState(item) {
@@ -113,14 +119,32 @@ function ListingHint({ hint }) {
   </small>;
 }
 
-function Tier({ tier, rows, home, priorities, answerable, readOnly, onAnswer, onOpenFact, tourHref, collapsible, listingHints }) {
+function Tier({ tier, rows, home, priorities, answerable, readOnly, onAnswer, onOpenFact, tourHref, collapsible, listingHints, openCount = 0, revealRequest = null }) {
   const [open, setOpen] = useState(!collapsible);
   const headingId = `mc-${tier.key}-title`;
   const bodyId = `mc-${tier.key}-rows`;
   const weight = TIER_META[tier.key].weight;
+  // "Answer next": open this tier if it holds the criterion, then bring the
+  // row into view and focus its first answer (or its fact link).
+  // Focus runs only once the tier is open (committed), never on a hidden row.
+  const [focusKey, setFocusKey] = useState(null);
+  useEffect(() => {
+    if (!revealRequest || !rows.some((item) => item.key === revealRequest.key)) return;
+    setOpen(true);
+    setFocusKey({ key: revealRequest.key });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [revealRequest]);
+  useEffect(() => {
+    if (!focusKey || !open) return;
+    const row = document.querySelector(`[data-criterion="${CSS.escape(focusKey.key)}"]`);
+    if (!row) return;
+    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    row.querySelector('input, button')?.focus({ preventScroll: true });
+  }, [focusKey, open]);
   return <section className={`flh-mc2-tier is-${tier.key} ${open ? 'is-open' : ''}`} aria-labelledby={headingId}>
     <header className="flh-mc2-tier-head">
       <h3 id={headingId}>{tier.title} <span>{rows.length}</span></h3>
+      {openCount > 0 && <span className="flh-mc2-open">{openCount} unanswered</span>}
       <span className="flh-mc2-weight">{weight}× weight</span>
       {/* Phones collapse Important and Nice to Have; wider screens always show them. */}
       {collapsible && rows.length > 0 && <button type="button" className="flh-mc2-toggle" aria-expanded={open} aria-controls={bodyId} onClick={() => setOpen((value) => !value)}>{open ? 'Hide' : 'Show'}<span className="sr-only"> {tier.title}</span> <ChevronDown size={14} aria-hidden="true" /></button>}
@@ -140,7 +164,7 @@ function Tier({ tier, rows, home, priorities, answerable, readOnly, onAnswer, on
         const factBacked = !!resolved?.link && resolved.fact !== undefined;
         // Only while the buyer hasn't answered and no Home Fact answers it.
         const hint = canAnswer && !readOnly && own === undefined && !factBacked ? listingHints.get(item.key) : null;
-        return <li key={item.key} className={`flh-mc2-row is-${tone}`}>
+        return <li key={item.key} className={`flh-mc2-row is-${tone}`} data-criterion={item.key}>
           <span className="flh-mc2-name">{criterionName(item)}{factBacked && <FactNote resolved={resolved} onOpenFact={onOpenFact} />}{earlier && <small className="flh-mc2-from">Earlier rating: {earlier}/5 · counts until you answer</small>}{hint && <ListingHint hint={hint} />}</span>
           {!canAnswer ? <FactResult item={item} onOpenFact={onOpenFact} tourHref={tourHref} />
             : readOnly ? <span className={`flh-mc2-state is-${tone}`}>{earlier ? `${earlier}/5` : value === true ? 'Yes' : value === 'no' ? 'No' : 'Unknown'}</span>
@@ -151,7 +175,7 @@ function Tier({ tier, rows, home, priorities, answerable, readOnly, onAnswer, on
   </section>;
 }
 
-export default function MatchCriteria({ home, priorities, match, readOnly = false, onAnswer, onOpenFact = null, tourHref = null, listingAnswers = [] }) {
+export default function MatchCriteria({ home, priorities, match, readOnly = false, onAnswer, onOpenFact = null, tourHref = null, listingAnswers = [], openByTier = null, revealRequest = null }) {
   const answerable = answerableCriteriaKeys(priorities);
   const listingHints = new Map((listingAnswers || []).map((item) => [item.key, item]));
   const rows = match?.allSelected || [];
@@ -160,6 +184,7 @@ export default function MatchCriteria({ home, priorities, match, readOnly = fals
       <span>Your criterion</span><span>Result | your answer</span><span>Your criterion</span><span>Result | your answer</span>
     </div>
     {MATCH_TIERS.map((tier) => <Tier key={tier.key} tier={tier} rows={rows.filter((item) => item.tier === tier.key)} home={home} priorities={priorities} answerable={answerable}
-      readOnly={readOnly} onAnswer={onAnswer} onOpenFact={onOpenFact} tourHref={tourHref} collapsible={tier.key !== 'must'} listingHints={listingHints} />)}
+      readOnly={readOnly} onAnswer={onAnswer} onOpenFact={onOpenFact} tourHref={tourHref} collapsible={tier.key !== 'must'} listingHints={listingHints}
+      openCount={readOnly ? 0 : openByTier?.[tier.key] || 0} revealRequest={revealRequest} />)}
   </div>;
 }

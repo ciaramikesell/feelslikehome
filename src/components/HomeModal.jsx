@@ -651,11 +651,15 @@ function ImportFoundCard({ form, set, importResult, lookupResult = null, importP
         <FoundHomePhoto src={photo.src} photo={photo} />
         <div className="flh-found-copy">
           <span className="flh-found-badge"><Check size={13} aria-hidden="true" /> We found your {vocabulary.singularLower}</span>
-          {/* The current listing's type, when it is not a standard sale (phase 3). */}
-          {importResult.listing?.status === 'active' && ['New Construction', 'Foreclosure', 'Short Sale'].includes(importResult.listing?.listingType) && <span className="flh-found-type">{importResult.listing.listingType}</span>}
           <h2 id="found-home-title" className="hh-serif">{line1 || form.address}</h2>
           {line2 && <p className="flh-found-locality"><MapPin size={13} aria-hidden="true" /> {line2}</p>}
-          <strong className="flh-found-price">{foundHomePriceLine(form, priorities.searchType, importResult.listing?.status)}</strong>
+          {/* The current listing's type, when it is not a standard sale (phase 3), beside the
+              listing's price and attributed to the listing (phase 6): "Listed as New
+              Construction" says what the listing claims, not what FLH checked. */}
+          <div className="flh-found-price-row">
+            <strong className="flh-found-price">{foundHomePriceLine(form, priorities.searchType, importResult.listing?.status)}</strong>
+            {importResult.listing?.status === 'active' && ['New Construction', 'Foreclosure', 'Short Sale'].includes(importResult.listing?.listingType) && <span className="flh-found-type">Listed as {importResult.listing.listingType}</span>}
+          </div>
           {facts.length > 0 && <ul className="flh-found-facts">{facts.map((fact) => <li key={fact}>{fact}</li>)}</ul>}
           {count > 0 && <p className="flh-found-count"><Sparkles size={13} aria-hidden="true" /> {foundDetailsLine(count, vocabulary.singularLower)}</p>}
         </div>
@@ -739,7 +743,7 @@ function SavedHomeView({ summary, vocabulary, isCollaborative, onBackToHomes, on
         <button type="button" className="hh-btn flh-saved-back" onClick={onBackToHomes}>Back to My Homes</button>
         <button type="button" className="hh-btn hh-btn-ghost flh-saved-open" onClick={onOpenHome}>View {vocabulary.singularLower} <ArrowRight size={15} aria-hidden="true" /></button>
       </div>
-      <p className="flh-saved-hint">Home Facts, Match and notes are there whenever you’re ready. Nothing else is required.</p>
+      <p className="flh-saved-hint">Next, when you’re ready: View {vocabulary.singularLower} shows what FLH found and how it fits your priorities. Nothing else is required.</p>
     </div>
   </div>;
 }
