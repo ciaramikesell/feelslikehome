@@ -16,3 +16,11 @@ export function isFlagOn(value) {
 export function floorPlansEnabled(env = process.env) {
   return isFlagOn(env.FLH_FLOOR_PLANS);
 }
+
+//   FLH_ONBOARDING_V3=on Mobile Priority Onboarding V3 (flow version 4,
+//                        docs/mobile-priority-onboarding-v3.md) for NEW and
+//                        in-progress onboarding sessions. Off: the live flow is
+//                        unchanged. Completed accounts are never re-routed.
+export function onboardingV3Enabled(env = process.env) {
+  return isFlagOn(env.FLH_ONBOARDING_V3);
+}

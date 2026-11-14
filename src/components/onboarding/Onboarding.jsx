@@ -18,7 +18,7 @@ import { moveGroup, priorityLevelsWithGroups } from '@/lib/whatMattersGroups';
 import { createClient } from '@/lib/supabase/client';
 import { useReliableOptimisticState } from '@/lib/useReliableOptimisticState';
 import { completeOnboarding, saveOnboardingProgress } from '@/lib/supabase/data';
-import { advanceOnboarding, completeOnboardingState, onboardingProgress, retreatOnboarding, setOnboardingAnswer } from '@/lib/onboardingFlow';
+import { advanceOnboarding, completeOnboardingState, onboardingProgress, retreatOnboarding, setOnboardingAnswer, setOnboardingSearchType, skipOnboardingStep } from '@/lib/onboardingFlow';
 import { ANALYTICS_EVENTS, track } from '@/lib/analytics';
 import { createCommuteDestination, deleteCommuteDestination, savePriorities, setActiveSearch } from '@/lib/supabase/collaboration';
 import { choiceFromSelection, normalizePeople } from '@/lib/onboardingPeople';
@@ -31,13 +31,19 @@ import CollaborationStep from '@/components/onboarding/CollaborationStep';
 import WhatMattersStepV2 from '@/components/onboarding/WhatMattersStepV2';
 import RankStepV2 from '@/components/onboarding/RankStepV2';
 import ReviewStep from '@/components/onboarding/ReviewStep';
+import PriorityFlow from '@/components/onboarding/priority/PriorityFlow';
 
 // Screen labels for the flow-1 steps (src/lib/onboardingFlow.js owns order and branching).
 // Flow 1 is live; the approved six-step flow (3) is built and previewed step by step.
 const STEP_LABELS = {
   basics: 'The Basics', what_matters: 'What Matters', rank: 'Rank Priorities',
   locations: 'Location', collaboration: 'Your People', priorities: 'What Matters', review: 'Review',
+  // Flow 4 (Mobile Priority Onboarding V3).
+  search_type: 'Search Type', cat_essentials: 'Rental Essentials', cat_layout: 'Layout & Living', cat_kitchen: 'Kitchen',
+  cat_living: 'Living Room', cat_bath: 'Bathroom', cat_garage: 'Garage', cat_exterior: 'Exterior & Property',
+  cat_neighborhood: 'Neighborhood',
 };
+const LOCATION_LABEL_V4 = 'Where You’re Looking';
 
 const BUILT_STEPS = new Set(['basics', 'locations', 'collaboration', 'priorities', 'what_matters', 'rank', 'review']);
 
@@ -232,7 +238,15 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
   const step = progressState.step;
   // The approved six-step flow (3, not live).
   const sixStep = version === 3;
-  const progress = onboardingProgress(version, progressState, step);
+  // Mobile Priority Onboarding V3 (flow 4): category screens and an editable review.
+  const priorityFlow = version === 4;
+  const fullProgress = onboardingProgress(version, progressState, step);
+  // Flow 4 counts the question screens; Review is the finish line, not a step.
+  const progress = priorityFlow ? (() => {
+    const steps = fullProgress.steps.filter((key) => key !== 'review');
+    const index = step === 'review' ? steps.length - 1 : Math.max(0, steps.indexOf(step));
+    return { index, position: step === 'review' ? steps.length : index + 1, total: steps.length, steps };
+  })() : fullProgress;
   const [ready, setReady] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [finishError, setFinishError] = useState('');
@@ -276,7 +290,15 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
     return () => document.removeEventListener('visibilitychange', onHidden);
   }, [flush, saveProgress]);
 
-  // Editing from Review (six-step flow): the edited step's Continue returns to Review.
+  // Flow 4 branches on the kind of search: keep the onboarding-only copy of it
+  // in step with the saved preference (e.g. resuming from an older flow).
+  useEffect(() => {
+    if (!priorityFlow) return;
+    const type = priorities.onboardingSearchType;
+    if (type && progressRef.current.answers?.searchType !== type) persistProgress(setOnboardingSearchType(progressRef.current, type));
+  }, [priorityFlow, priorities.onboardingSearchType, persistProgress]);
+
+  // Editing from Review (six-step flow and flow 4): the edited step's Continue returns to Review.
   const [returnToReview, setReturnToReview] = useState(false);
   const goTo = async (fromStep) => {
     await flush();
@@ -288,6 +310,20 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
       persistProgress(next);
     }
     if (!sharedSetup) track(ANALYTICS_EVENTS.ONBOARDING_STEP_COMPLETED, { ...eventContext, step: fromStep });
+    window.scrollTo?.({ top: 0 });
+  };
+  // Flow 4's Continue and Skip. Separate from goTo so the live flow is
+  // untouched. Skip changes no answer; it only records the screen as skipped.
+  const moveOn = async (fromStep, { skip = false } = {}) => {
+    await flush();
+    const { state: next } = (skip ? skipOnboardingStep : advanceOnboarding)(version, progressRef.current, fromStep);
+    if (returnToReview) {
+      setReturnToReview(false);
+      persistProgress({ ...next, step: 'review' });
+    } else {
+      persistProgress(next);
+    }
+    if (!sharedSetup) track(ANALYTICS_EVENTS.ONBOARDING_STEP_COMPLETED, { ...eventContext, step: fromStep, ...(skip ? { reason: 'skipped' } : {}) });
     window.scrollTo?.({ top: 0 });
   };
   // Going back never clears an answer: priorities stay saved, and the
@@ -374,17 +410,42 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
   return (
     <div className="hh-root flh-onboarding-root">
       <div className="flh-ob-layout">
-        <OnboardingRail progress={progress} labels={STEP_LABELS} complete={ready} sharedFor={sharedFor} />
+        <OnboardingRail progress={progress} labels={priorityFlow ? { ...STEP_LABELS, locations: LOCATION_LABEL_V4 } : STEP_LABELS} complete={ready} sharedFor={sharedFor} />
         <main className="flh-onboarding">
           {/* Back returns to the previous step; nothing precedes the first one yet. */}
-          <OnboardingTopBar progress={progress} showProgress={!ready} onBack={!ready && progress.index > 0 ? () => goBack(step) : null} />
+          {/* Flow 4 puts Back in its Back · Skip · Continue footer (Review keeps the top Back). */}
+          {priorityFlow
+            ? <OnboardingTopBar progress={progress} showProgress={!ready} onBack={step === 'review' ? () => goBack(step) : null} />
+            : <OnboardingTopBar progress={progress} showProgress={!ready} onBack={!ready && progress.index > 0 ? () => goBack(step) : null} />}
           {sharedSetup && ownedSearchId && (
             <p className="flh-shared-setup-exit">
               <button type="button" className="flh-text-action" onClick={backToOwnSearch} disabled={leavingSetup}>{leavingSetup ? 'Switching…' : 'Not now—go to your own search'}</button>
             </p>
           )}
           {(saveError || (finishError && step !== 'review')) && <p className="hh-save-error" role="alert">{saveError || finishError} <button type="button" onClick={saveError ? retry : () => setFinishError('')}>{saveError ? 'Retry' : 'Dismiss'}</button></p>}
-          {!ready && step === 'basics' && (
+          {!ready && priorityFlow && (
+            <PriorityFlow
+              step={step}
+              progress={progress}
+              sharedFor={sharedFor}
+              priorities={priorities}
+              patch={patch}
+              busy={finishing}
+              editingFromReview={returnToReview}
+              onContinue={(from) => moveOn(from)}
+              onSkip={(from) => moveOn(from, { skip: true })}
+              onBack={(from) => goBack(from)}
+              onSearchType={(type) => persistProgress(setOnboardingSearchType(progressRef.current, type))}
+              searchAreas={services.searchAreas}
+              AddressField={services.AddressField}
+              places={places}
+              placesError={placesError}
+              onCreatePlace={createPlace}
+              onDeletePlace={deletePlace}
+              review={{ skipped: progressState.skipped || [], onEdit: editFromReview, onFinish: finishToDestination, finishing, finishError }}
+            />
+          )}
+          {!ready && !priorityFlow && step === 'basics' && (
             <BasicsStep
               priorities={priorities}
               patch={patch}
@@ -423,7 +484,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
               header={<StepHeader step="rank" progress={progress} sharedFor={sharedFor} searchType={priorities.onboardingSearchType} title={<>Let’s put things <em>in order.</em></>} lead="Everything you picked starts as Important. Move each priority into Must-Have, Important, or Nice-to-Have." />}
             />
           )}
-          {!ready && step === 'locations' && (
+          {!ready && !priorityFlow && step === 'locations' && (
             <LocationsStep
               priorities={priorities}
               patch={patch}
@@ -468,7 +529,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
             />
           )}
           {/* Approved-flow steps not built yet (only reachable in the development preview). */}
-          {!ready && !BUILT_STEPS.has(step) && <p className="flh-ob-unbuilt" role="status">This step isn’t built yet.</p>}
+          {!ready && !priorityFlow && !BUILT_STEPS.has(step) && <p className="flh-ob-unbuilt" role="status">This step isn’t built yet.</p>}
           {ready && <ReadyStep onAddHome={() => leave('/homes?add=1')} onViewSearch={() => leave('/search?welcome=1')} />}
         </main>
       </div>

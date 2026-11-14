@@ -325,7 +325,7 @@ function PlacesThatMatter({ places, placesError, onCreate, onDelete, AddressFiel
   );
 }
 
-export default function LocationsStep({ header, priorities, patch, searchAreas, places, placesError, onCreatePlace, onDeletePlace, onNext, AddressField = AddressAutocomplete }) {
+export default function LocationsStep({ header, priorities, patch, searchAreas, places, placesError, onCreatePlace, onDeletePlace, onNext, AddressField = AddressAutocomplete, footer = null }) {
   const areas = searchAreasOf(priorities);
   const cardRef = useRef(null);
   // After a chip is removed, keep keyboard focus in place: the next chip's
@@ -354,9 +354,12 @@ export default function LocationsStep({ header, priorities, patch, searchAreas, 
         </div>
       </section>
       <PlacesThatMatter AddressField={AddressField} places={places} placesError={placesError} onCreate={onCreatePlace} onDelete={onDeletePlace} />
-      <nav className="flh-onboarding-actions">
-        <OnboardingAction onClick={onNext}>Continue</OnboardingAction>
-      </nav>
+      {/* Flow 4 supplies its own Back · Skip · Continue footer. */}
+      {footer || (
+        <nav className="flh-onboarding-actions">
+          <OnboardingAction onClick={onNext}>Continue</OnboardingAction>
+        </nav>
+      )}
     </div>
   );
 }

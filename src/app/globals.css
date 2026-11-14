@@ -3931,3 +3931,106 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 }
 
 
+
+/* ── Mobile Priority Onboarding V3 (flow 4) ──────────────────────────────────
+   One category per screen: a two-column visual card grid on phones (three
+   columns from 560px), the shared importance sheet, "Add your own", and one
+   Back · Skip · Continue footer. Level colours are TIER_META's; every level is
+   also written in words. Scoped to the onboarding root and the flh-ob-pf- prefix. */
+.flh-onboarding-root .flh-ob-layout {
+  --pf-must: #B95332; --pf-must-bg: #FBE9E0;
+  --pf-important: #8A5F1C; --pf-important-bg: #F8EBD3;
+  --pf-nice: #2F5A5E; --pf-nice-bg: #DDEBEB;
+}
+.flh-onboarding-root .flh-ob-pf-step .flh-card.flh-ob-pf-question { display: grid; gap: 12px; }
+.flh-onboarding-root .flh-ob-pf-section-label { margin: 4px 0 10px; }
+
+.flh-onboarding-root .flh-ob-pf-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; }
+@media (min-width: 560px) { .flh-onboarding-root .flh-ob-pf-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.flh-onboarding-root .flh-ob-pf-grid-three { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.flh-onboarding-root .flh-ob-pf-cell { display: flex; min-width: 0; }
+.flh-onboarding-root .flh-ob-pf-card { position: relative; display: flex; flex-direction: column; width: 100%; min-width: 0; padding: 0; overflow: hidden; border: 1px solid var(--ob-line); border-radius: 16px; background: #fff; color: var(--ink); text-align: left; cursor: pointer; font: inherit; transition: box-shadow .15s ease, border-color .15s ease; }
+.flh-onboarding-root .flh-ob-pf-card:hover { border-color: #CDBFAE; }
+.flh-onboarding-root .flh-ob-pf-card.is-selected { border-color: var(--brick); box-shadow: inset 0 0 0 1px var(--brick); }
+.flh-onboarding-root .flh-ob-pf-media { display: grid; place-items: center; width: 100%; aspect-ratio: 4 / 3; overflow: hidden; background: var(--ob-warm); color: var(--brick); }
+.flh-onboarding-root .flh-ob-pf-media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.flh-onboarding-root .flh-ob-pf-media.is-icon { background: #F3E7DC; }
+.flh-onboarding-root .flh-ob-pf-media.is-placeholder { background: #EEEAE5; color: #8C8178; }
+.flh-onboarding-root .flh-ob-pf-card-body { display: grid; gap: 4px; padding: 10px 12px 12px; min-width: 0; }
+.flh-onboarding-root .flh-ob-pf-card-title { font: 600 14px/1.25 var(--font-sans); overflow-wrap: break-word; hyphens: auto; }
+.flh-onboarding-root .flh-ob-pf-card-level { justify-self: start; color: var(--ink-soft); font: 600 11.5px/1.3 var(--font-sans); }
+.flh-onboarding-root .flh-ob-pf-card-level.is-must, .flh-onboarding-root .flh-ob-pf-card-level.is-important, .flh-onboarding-root .flh-ob-pf-card-level.is-nice { padding: 2px 8px; border-radius: 999px; }
+.flh-onboarding-root .flh-ob-pf-card-level.is-must { background: var(--pf-must-bg); color: var(--pf-must); }
+.flh-onboarding-root .flh-ob-pf-card-level.is-important { background: var(--pf-important-bg); color: var(--pf-important); }
+.flh-onboarding-root .flh-ob-pf-card-level.is-nice { background: var(--pf-nice-bg); color: var(--pf-nice); }
+.flh-onboarding-root .flh-ob-pf-card-check { position: absolute; top: 8px; right: 8px; display: grid; place-items: center; width: 26px; aspect-ratio: 1; border: 2px solid #fff; border-radius: 50%; background: var(--brick); color: #fff; box-shadow: 0 2px 6px rgba(46,38,33,.25); }
+.flh-onboarding-root .flh-ob-pf-grid-three .flh-ob-pf-card-body { padding: 8px 10px 10px; }
+.flh-onboarding-root .flh-ob-pf-grid-three .flh-ob-pf-card-title { font-size: 13px; }
+
+/* Garage importance: four full-width choices. */
+.flh-onboarding-root .flh-ob-pf-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.flh-onboarding-root .flh-ob-pf-option { display: grid; gap: 2px; min-height: 56px; padding: 10px 12px; border: 1px solid var(--ob-line); border-radius: 12px; background: #fff; color: var(--ink); text-align: left; cursor: pointer; font: inherit; }
+.flh-onboarding-root .flh-ob-pf-option.is-current { border-color: var(--brick); background: #FDF1EA; box-shadow: inset 0 0 0 1px var(--brick); }
+.flh-onboarding-root .flh-ob-pf-option-title { font: 600 14px/1.25 var(--font-sans); }
+.flh-onboarding-root .flh-ob-pf-option-hint { color: var(--ink-soft); font: 500 11.5px/1.3 var(--font-sans); }
+
+/* Add your own. */
+.flh-onboarding-root .flh-ob-pf-add { display: grid; gap: 8px; padding: 16px; border: 1px dashed #CDBFAE; border-radius: 16px; background: var(--ob-warm-row); }
+.flh-onboarding-root .flh-ob-pf-add-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.flh-onboarding-root .flh-ob-pf-add-button { min-height: 48px; padding: 0 16px; border-radius: 12px; display: inline-flex; align-items: center; gap: 6px; }
+.flh-onboarding-root .flh-ob-pf-suggestions { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.flh-onboarding-root .flh-ob-pf-chip { gap: 6px; min-height: 44px; border-style: dashed; color: var(--ink); font-weight: 600; }
+.flh-onboarding-root .flh-ob-pf-chip:hover { border-color: var(--brick); color: var(--brick-deep); }
+
+/* Footer: Back · Skip · Continue, the same on every screen. */
+.flh-onboarding-root .flh-ob-pf-footer { display: grid; grid-template-columns: auto auto minmax(0, 1fr); align-items: center; gap: 8px; }
+.flh-onboarding-root .flh-ob-pf-back { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 56px; min-height: 56px; padding: 0 14px; border: 1px solid var(--ob-line); border-radius: 14px; background: var(--flh-card, #fff); color: var(--ink); font: 600 14px var(--font-sans); cursor: pointer; }
+.flh-onboarding-root .flh-ob-pf-skip { min-height: 56px; padding: 0 12px; }
+.flh-onboarding-root .flh-ob-pf-footer .flh-ob-cta { min-width: 0; }
+@media (max-width: 400px) { .flh-onboarding-root .flh-ob-pf-back span { display: none; } }
+/* Very narrow (large text / zoom): Continue gets its own full-width row. */
+@media (max-width: 320px) {
+  .flh-onboarding-root .flh-ob-pf-footer { grid-template-columns: auto minmax(0, 1fr); }
+  .flh-onboarding-root .flh-ob-pf-footer .flh-ob-cta { grid-column: 1 / -1; grid-row: 1; }
+  .flh-onboarding-root .flh-ob-pf-skip { justify-self: end; }
+  /* 390px phones at 200% text: one card per row so labels never break mid-word. */
+  .flh-onboarding-root .flh-ob-pf-grid:not(.flh-ob-pf-grid-three) { grid-template-columns: minmax(0, 1fr); }
+  .flh-onboarding-root .flh-ob-pf-grid-three { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .flh-onboarding-root .flh-ob-pf-add-row { grid-template-columns: minmax(0, 1fr); }
+  .flh-onboarding-root .flh-ob-pf-options { grid-template-columns: minmax(0, 1fr); }
+}
+@media (min-width: 960px) {
+  .flh-onboarding-root .flh-ob-pf-footer { display: grid; grid-template-columns: auto auto minmax(0, 1fr); }
+  .flh-onboarding-root .flh-ob-pf-footer .flh-ob-cta { justify-self: end; min-width: 240px; }
+}
+
+/* The importance sheet. */
+.flh-onboarding-root .flh-ob-pf-sheet .hh-sheet-title { font: 600 22px/1.2 var(--font-serif); letter-spacing: -.01em; }
+.flh-onboarding-root .flh-ob-pf-sheet-question { margin: 0 0 4px; color: var(--ink-soft); font: 600 13px/1.3 var(--font-sans); }
+.flh-onboarding-root .flh-ob-pf-sheet-note { margin: 0 0 12px; padding: 10px 12px; border-radius: 10px; background: var(--ob-warm-row); color: var(--ink-soft); font: 500 13px/1.4 var(--font-sans); }
+.flh-onboarding-root .flh-ob-pf-levels { display: grid; gap: 8px; }
+.flh-onboarding-root .flh-ob-pf-level { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%; min-height: 60px; padding: 10px 14px; border: 1px solid var(--ob-line); border-radius: 14px; background: #fff; color: var(--ink); text-align: left; cursor: pointer; font: inherit; }
+.flh-onboarding-root .flh-ob-pf-level.is-none { grid-template-columns: minmax(0, 1fr); margin-top: 4px; background: var(--ob-warm-row); }
+.flh-onboarding-root .flh-ob-pf-level-dot { width: 12px; aspect-ratio: 1; border-radius: 50%; }
+.flh-onboarding-root .flh-ob-pf-level.is-must .flh-ob-pf-level-dot { background: var(--pf-must); }
+.flh-onboarding-root .flh-ob-pf-level.is-important .flh-ob-pf-level-dot { background: #C69245; }
+.flh-onboarding-root .flh-ob-pf-level.is-nice .flh-ob-pf-level-dot { background: var(--pf-nice); }
+.flh-onboarding-root .flh-ob-pf-level.is-current { border-color: var(--brick); background: #FDF1EA; box-shadow: inset 0 0 0 1px var(--brick); color: var(--brick-deep); }
+.flh-onboarding-root .flh-ob-pf-level-copy { display: grid; gap: 2px; min-width: 0; }
+.flh-onboarding-root .flh-ob-pf-level-title { font: 600 15px/1.25 var(--font-sans); }
+.flh-onboarding-root .flh-ob-pf-level-hint { color: var(--ink-soft); font: 500 12.5px/1.35 var(--font-sans); }
+.flh-onboarding-root .flh-ob-pf-rename { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--ob-line); }
+.flh-onboarding-root .flh-ob-pf-rename form { display: grid; gap: 8px; }
+.flh-onboarding-root .flh-ob-pf-error { margin: 0; color: var(--negative); font: 600 12.5px/1.4 var(--font-sans); }
+.flh-onboarding-root .flh-ob-pf-sheet-fine { margin: 14px 0 0; color: var(--ink-soft); font: 500 11.5px/1.4 var(--font-sans); }
+
+/* Review. */
+.flh-onboarding-root .flh-ob-pf-review-total { margin: 0; padding: 12px 14px; border-radius: 14px; background: var(--sage); color: var(--positive); font: 600 13.5px/1.45 var(--font-sans); }
+.flh-onboarding-root .flh-ob-pf-review-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.flh-onboarding-root .flh-ob-pf-review-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 8px 10px 8px 12px; border: 1px solid var(--ob-line); border-radius: 12px; background: #fff; color: var(--ink); text-align: left; cursor: pointer; font: inherit; }
+.flh-onboarding-root .flh-ob-pf-review-name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; min-width: 0; font: 600 14px/1.3 var(--font-sans); overflow-wrap: anywhere; }
+.flh-onboarding-root .flh-ob-pf-own { color: var(--ink-soft); font: 600 10px/1.2 var(--font-sans); letter-spacing: .06em; text-transform: uppercase; }
+.flh-onboarding-root .flh-ob-pf-review-line { margin: 0 0 8px; color: var(--ink-soft); font: 500 13.5px/1.45 var(--font-sans); }
+.flh-onboarding-root .flh-ob-pf-review-line strong { color: var(--ink); }
+.flh-onboarding-root .flh-ob-pf-review-empty, .flh-onboarding-root .flh-ob-pf-review-note { margin: 0; color: var(--ink-soft); font: 500 13px/1.45 var(--font-sans); }
+.flh-onboarding-root .flh-ob-pf-review-note { margin-bottom: 8px; }

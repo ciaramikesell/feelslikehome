@@ -29,7 +29,7 @@ function OptionalTag() {
 // The one required answer, shown as three visible choices (a radio group, so
 // arrow keys move between them). Nothing is preselected for a new search; a
 // saved choice is shown as chosen. Continuing without one explains why inline.
-function SearchTypeControl({ choice, onChoose, invalid, groupRef }) {
+export function SearchTypeControl({ choice, onChoose, invalid, groupRef }) {
   const id = useId();
   return (
     <fieldset className={`flh-ob-searchtype${choice ? '' : ' is-unset'}${invalid ? ' is-invalid' : ''}`} aria-describedby={invalid ? `${id}-error` : `${id}-hint`} aria-invalid={invalid || undefined}>
@@ -84,7 +84,7 @@ function FormattedNumberInput({ id, value, onChange, placeholder, describedBy })
   );
 }
 
-function BudgetField({ label, rent, value, onChange }) {
+export function BudgetField({ label, rent, value, onChange }) {
   const id = useId();
   return (
     <div className="flh-ob-field">
@@ -100,7 +100,7 @@ function BudgetField({ label, rent, value, onChange }) {
 
 // A genuine unset state: "—  not set" until the first +, and − at the minimum
 // clears the answer instead of inventing a smaller number.
-function Stepper({ label, noun, value, onChange, rule }) {
+export function Stepper({ label, noun, value, onChange, rule }) {
   const id = useId();
   const unset = isUnset(value);
   const atMax = !unset && Number(value) >= rule.max;
@@ -125,7 +125,7 @@ function Stepper({ label, noun, value, onChange, rule }) {
   );
 }
 
-function UnitField({ label, unit, value, onChange, decimal = false }) {
+export function UnitField({ label, unit, value, onChange, decimal = false }) {
   const id = useId();
   return (
     <div className="flh-ob-field">

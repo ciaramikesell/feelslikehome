@@ -10,6 +10,7 @@ import { chooseSearchType } from '@/lib/onboardingBasics';
 import { toggleGroupValue } from '@/lib/whatMattersGroups';
 import { homePreferenceRows, toggleHomePreference } from '@/lib/homePreferences';
 import { addCriterion, isCriterionSelected, moveCriterion, setGaragePreference, toggleCriterion } from '@/lib/searchProfile';
+import { setFeatureLevel, setGarageImportance, setGarageType } from '@/lib/priorityCategories';
 
 // Fixtures for the development-only preview (src/app/dev/onboarding). Fixed ids
 // and timestamps keep every render, and every screenshot, identical.
@@ -110,12 +111,55 @@ function withPreviewAreas(priorities) {
   return [PREVIEW_AREAS[0], PREVIEW_AREAS[2]].reduce((next, area) => addSearchArea(next, area), priorities);
 }
 
+// Flow 4 (Mobile Priority Onboarding V3) fixtures: a few features at each
+// level, one own feature, a garage answer, a lot size, and an earlier home
+// type kept from an older flow (shown read-only on Review).
+function priorityFlowPriorities(state, searchType = 'home_buy') {
+  let next = chooseSearchType(normalizePriorities({}), searchType, { presetPropertyType: false });
+  if (state === 'empty') return next;
+  next.budget = { ...next.budget, value: searchType === 'home_buy' ? '650000' : '2400' };
+  next.bedsMin = { ...next.bedsMin, value: '3' };
+  next.bathsMin = { ...next.bathsMin, value: '2' };
+  next.sqftTarget = { ...next.sqftTarget, value: '1800' };
+  if (searchType !== 'apartment_rent') next.lotSizeTarget = { ...next.lotSizeTarget, value: '0.25' };
+  const pick = (categoryKey, label, tier, custom = false, group = null) => setFeatureLevel(next, { categoryKey, label, custom, group }, tier);
+  next = pick('features', 'Kitchen Island', 'must');
+  next = pick('features', 'Countertop Seating', 'nice', true, 'kitchen');
+  next = pick('features', 'Walk-in Pantry', 'important');
+  next = pick('features', searchType === 'apartment_rent' ? 'Home Office' : 'Home office', 'important');
+  next = pick('features', 'Soaking Tub', 'nice');
+  next = pick('location', 'Sidewalks', 'important');
+  next = pick('features', 'Pot Filler', 'nice', true, 'kitchen');
+  if (searchType !== 'apartment_rent') { next = setGarageImportance(next, 'important'); next = setGarageType(next, 'attached'); }
+  if (state === 'legacy') next = { ...next, preferredPropertyTypes: { values: ['house'], tier: 'important' }, homeLayout: { values: ['Ranch / Single Story'], tier: 'important' } };
+  return withPreviewAreas(next);
+}
+
 // flow=v2 previews the approved six-step sequence (flow 3), which is not live.
-export default function OnboardingPreview({ step = 'basics', state = 'empty', mode = 'account', flow = 'live' }) {
+// flow=v3 previews Mobile Priority Onboarding V3 (flow 4, behind FLH_ONBOARDING_V3);
+// search=home_rent|apartment_rent picks the kind of search for its fixtures.
+export default function OnboardingPreview({ step = 'basics', state = 'empty', mode = 'account', flow = 'live', search = 'home_buy' }) {
   const shared = mode === 'shared';
-  const version = flow === 'v2' ? 3 : CURRENT_ONBOARDING_VERSION;
+  const version = flow === 'v3' ? 4 : flow === 'v2' ? 3 : CURRENT_ONBOARDING_VERSION;
+  const searchType = ['home_buy', 'home_rent', 'apartment_rent'].includes(search) ? search : 'home_buy';
   const fixture = useMemo(() => {
     const context = { searchId: SEARCH_ID, role: shared ? 'co_buyer' : 'owner' };
+    if (version === 4) {
+      const answers = state === 'empty' && step === 'search_type' ? {} : { searchType };
+      const steps = onboardingStepsFor(version, { context, answers });
+      const target = steps.includes(step) ? step : steps[0];
+      const progress = beginOnboarding({
+        storedState: { step: target, completed: steps.slice(0, steps.indexOf(target)), skipped: state === 'populated' && target === 'review' ? ['cat_living'] : [], startedAt: NOW, context, answers },
+        storedVersion: version, context, now: NOW, targetVersion: version,
+      });
+      const priorities = state === 'empty' && target === 'search_type' ? normalizePriorities({}) : priorityFlowPriorities(state, searchType);
+      return {
+        progress,
+        priorities,
+        places: state !== 'empty' && ['locations', 'review'].includes(target) ? PREVIEW_PLACES : [],
+        people: shared ? { coBuyers: [], realtors: 0, ownerName: 'Ciara' } : null,
+      };
+    }
     const steps = onboardingStepsFor(version, { context });
     const target = steps.includes(step) ? step : steps[0];
     const returningToPeople = ['collaboration', 'review'].includes(target) && state === 'populated' && !shared;
@@ -158,12 +202,12 @@ export default function OnboardingPreview({ step = 'basics', state = 'empty', mo
       places: ['locations', 'review'].includes(target) && state === 'populated' ? PREVIEW_PLACES : [],
       people: shared ? { coBuyers: [], realtors: 0, ownerName: 'Ciara' } : returningToPeople ? PREVIEW_PEOPLE : null,
     };
-  }, [step, state, shared, version]);
+  }, [step, state, shared, version, searchType]);
   const services = useMemo(() => previewServices(state === 'error'), [state]);
 
   return (
     <Onboarding
-      key={`${step}:${state}:${mode}:${flow}`}
+      key={`${step}:${state}:${mode}:${flow}:${searchType}`}
       initialPlaces={fixture.places}
       initialPeople={fixture.people}
       userId={USER_ID}
