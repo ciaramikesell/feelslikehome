@@ -42,6 +42,15 @@ export function isCollaborativeChoice(choice) {
 const step = (key, scope, options = {}) => Object.freeze({ key, scope, ...options });
 const invitedCoBuyer = (state) => state.context?.role === 'co_buyer';
 
+// Flow 4 branches on the kind of search, recorded as an onboarding-only answer
+// when Screen 1 is answered (the stored preference itself stays
+// priorities.onboardingSearchType). Before it is answered, the Home to Buy
+// screens are shown, so the step count never shrinks to nothing.
+export const PRIORITY_SEARCH_TYPES = Object.freeze(['home_buy', 'home_rent', 'apartment_rent']);
+const searchTypeOf = (state) => state.answers?.searchType || 'home_buy';
+const renting = (state) => searchTypeOf(state) !== 'home_buy';
+const apartment = (state) => searchTypeOf(state) === 'apartment_rent';
+
 export const ONBOARDING_FLOWS = Object.freeze({
   // The shipped three-screen flow (Basics → What Matters → Rank).
   1: Object.freeze({
@@ -86,6 +95,27 @@ export const ONBOARDING_FLOWS = Object.freeze({
       step('review', SCOPE.SEARCH),
     ]),
   }),
+  // Mobile Priority Onboarding V3 (docs/mobile-priority-onboarding-v3.md):
+  // one category per screen, every screen skippable, an editable review at
+  // the end. Released behind FLH_ONBOARDING_V3 (src/lib/featureFlags.js);
+  // CURRENT_ONBOARDING_VERSION is unchanged. Rentals get Rental Essentials;
+  // an apartment has no garage screen.
+  4: Object.freeze({
+    steps: Object.freeze([
+      step('search_type', SCOPE.SEARCH),
+      step('basics', SCOPE.SEARCH, { legacyKeys: ['basics'] }),
+      step('locations', SCOPE.SEARCH, { legacyKeys: ['locations'] }),
+      step('cat_essentials', SCOPE.SEARCH, { when: renting }),
+      step('cat_layout', SCOPE.SEARCH),
+      step('cat_kitchen', SCOPE.SEARCH),
+      step('cat_living', SCOPE.SEARCH),
+      step('cat_bath', SCOPE.SEARCH),
+      step('cat_garage', SCOPE.SEARCH, { when: (state) => !apartment(state) }),
+      step('cat_exterior', SCOPE.SEARCH),
+      step('cat_neighborhood', SCOPE.SEARCH),
+      step('review', SCOPE.SEARCH, { legacyKeys: ['review'] }),
+    ]),
+  }),
 });
 
 // The flow new onboarding sessions start in. Phase 2 moves this to 2 once its
@@ -114,7 +144,11 @@ export function normalizeOnboardingState(raw) {
     completed: Array.isArray(input.completed) ? [...new Set(input.completed.filter((key) => knownKeys.has(key)))] : [],
     answers: {
       ...(COLLABORATION_CHOICES.includes(answers.collaboration) ? { collaboration: answers.collaboration } : {}),
+      ...(PRIORITY_SEARCH_TYPES.includes(answers.searchType) ? { searchType: answers.searchType } : {}),
     },
+    // Screens left with Skip (flow 4). Also in `completed`, so resuming never
+    // sends someone back to a screen they chose to skip; Review lists them.
+    skipped: Array.isArray(input.skipped) ? [...new Set(input.skipped.filter((key) => knownKeys.has(key)))] : [],
     context: context && isUuidish(context.searchId) && ONBOARDING_ROLES.includes(context.role)
       ? { searchId: context.searchId, role: context.role }
       : null,
@@ -190,6 +224,7 @@ export function beginOnboarding({ storedVersion = null, storedState = null, cont
   const state = {
     ...stored,
     completed,
+    skipped: stored.skipped.filter((key) => completed.includes(key)),
     step: currentStep,
     answers: { ...stored.answers },
     context: { searchId: context.searchId, role: context.role },
@@ -217,6 +252,23 @@ export function setOnboardingAnswer(rawState, key, value, now = new Date().toISO
   return { ...state, answers: { ...state.answers, [key]: value }, updatedAt: now };
 }
 
+// Flow 4: records the kind of search so the screens that follow branch on it.
+export function setOnboardingSearchType(rawState, searchType, now = new Date().toISOString()) {
+  const state = normalizeOnboardingState(rawState);
+  if (!PRIORITY_SEARCH_TYPES.includes(searchType)) return state;
+  if (state.answers.searchType === searchType) return state;
+  return { ...state, answers: { ...state.answers, searchType }, updatedAt: now };
+}
+
+// Skip: moves on exactly like Continue but changes no answer, and remembers
+// the screen was skipped (Review offers it again). Continue on a screen later
+// clears the mark.
+export function skipOnboardingStep(version, rawState, fromStep, now = new Date().toISOString()) {
+  const result = advanceOnboarding(version, rawState, fromStep, now);
+  const skipped = result.state.skipped.includes(fromStep) ? result.state.skipped : [...result.state.skipped, fromStep];
+  return { ...result, state: { ...result.state, skipped } };
+}
+
 // Marks `fromStep` finished and moves to the next screen this person sees.
 // `done` is true when there is no next screen (completion is then recorded
 // by completeOnboardingState once onboarding_complete has been saved).
@@ -226,8 +278,9 @@ export function advanceOnboarding(version, rawState, fromStep, now = new Date().
   const index = steps.indexOf(fromStep);
   if (index === -1) return { state: { ...state, step: resumeOnboardingStep(version, state) }, done: false };
   const completed = state.completed.includes(fromStep) ? state.completed : [...state.completed, fromStep];
+  const skipped = state.skipped.filter((key) => key !== fromStep);
   const next = steps[index + 1] || null;
-  return { state: { ...state, completed, step: next || fromStep, updatedAt: now }, done: !next };
+  return { state: { ...state, completed, skipped, step: next || fromStep, updatedAt: now }, done: !next };
 }
 
 // Moves to the previous screen. Answers are never cleared by going back.

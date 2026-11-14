@@ -10,6 +10,8 @@ import OnboardingPreview from '@/components/onboarding/OnboardingPreview';
 //
 //   /dev/onboarding?step=basics|what_matters|rank&state=empty|populated|error&mode=account|shared
 //   /dev/onboarding?flow=v2&step=basics|locations|collaboration&…   (the approved six-step flow, not live)
+//   /dev/onboarding?flow=v3&step=search_type|basics|locations|cat_kitchen|…|review&state=empty|populated|legacy&search=home_buy|home_rent|apartment_rent
+//                                                                    (Mobile Priority Onboarding V3, flow 4)
 export const dynamic = 'force-dynamic';
 export const metadata = { robots: { index: false, follow: false } };
 
@@ -18,7 +20,7 @@ export default async function OnboardingPreviewPage({ searchParams }) {
   const params = await searchParams;
   return (
     <Suspense>
-      <OnboardingPreview step={params.step} state={params.state} mode={params.mode} flow={params.flow} />
+      <OnboardingPreview step={params.step} state={params.state} mode={params.mode} flow={params.flow} search={params.search} />
     </Suspense>
   );
 }

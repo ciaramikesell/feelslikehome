@@ -4,7 +4,8 @@ import { getProfile } from '@/lib/supabase/data';
 import { normalizePriorities } from '@/lib/constants';
 import { getCommuteDestinations, getSearchPeopleRows, needsSharedSearchSetup, resolveCollaboratorSearchContext, resolveOnboardingSearch, resolvePriorities } from '@/lib/supabase/collaboration';
 import { emptyPeople, peopleFromRows } from '@/lib/onboardingPeople';
-import { beginOnboarding, onboardingStepsFor } from '@/lib/onboardingFlow';
+import { CURRENT_ONBOARDING_VERSION, beginOnboarding, onboardingStepsFor } from '@/lib/onboardingFlow';
+import { onboardingV3Enabled } from '@/lib/featureFlags';
 import Onboarding from '@/components/onboarding/Onboarding';
 
 // Places That Matter (Step 2) are this person's own commute destinations on
@@ -56,6 +57,10 @@ export default async function OnboardingPage() {
   if (sharedSetup && !(await needsSharedSearchSetup(supabase, user.id, search, role === 'owner'))) redirect('/homes');
   const priorities = await resolvePriorities(supabase, search, user.id);
 
+  // Mobile Priority Onboarding V3 (flow 4) only when FLH_ONBOARDING_V3 is on;
+  // otherwise exactly the live flow. Completed accounts never reach this point.
+  const targetVersion = onboardingV3Enabled() ? 4 : CURRENT_ONBOARDING_VERSION;
+
   const appVersion = process.env.VERCEL_GIT_COMMIT_SHA || process.env.VERCEL_DEPLOYMENT_ID || null;
 
   if (sharedSetup) {
@@ -67,7 +72,7 @@ export default async function OnboardingPage() {
       supabase.from('searches').select('id').eq('user_id', user.id).maybeSingle(),
     ]);
     // Ephemeral: shared-search setup never reads or writes account onboarding progress.
-    const progress = beginOnboarding({ context: { searchId: search.id, role } });
+    const progress = beginOnboarding({ context: { searchId: search.id, role }, targetVersion });
     const [places, people] = await Promise.all([initialPlacesFor(supabase, progress, search.id, user.id), initialPeopleFor(supabase, progress, search, role)]);
     return (
       <Onboarding
@@ -91,6 +96,7 @@ export default async function OnboardingPage() {
     storedVersion: profile?.onboarding_version ?? null,
     storedState: profile?.onboarding_state ?? null,
     context: { searchId: search.id, role },
+    targetVersion,
   });
 
   const [places, people] = await Promise.all([initialPlacesFor(supabase, progress, search.id, user.id), initialPeopleFor(supabase, progress, search, role)]);
