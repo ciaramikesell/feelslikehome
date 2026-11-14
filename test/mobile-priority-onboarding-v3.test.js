@@ -2,7 +2,8 @@
 // priority document. See docs/mobile-priority-onboarding-v3.md.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
+import { CARD_WIDTHS, ONBOARDING_ILLUSTRATIONS, ONBOARDING_PHOTOS, cardImage } from '../src/lib/onboardingImages.js';
 import {
   CURRENT_ONBOARDING_VERSION, advanceOnboarding, beginOnboarding, isLegacyOnboardedProfile, normalizeOnboardingState,
   onboardingStepsFor, resumeOnboardingStep, retreatOnboarding, setOnboardingSearchType, skipOnboardingStep,
@@ -13,7 +14,7 @@ import { chooseSearchType } from '../src/lib/onboardingBasics.js';
 import { computeMatch } from '../src/lib/matching.js';
 import { addCriterion, isCriterionSelected, priorityLevels } from '../src/lib/searchProfile.js';
 import {
-  PRIORITY_CATEGORIES, PRIORITY_CATEGORY_STEPS, addOwnFeature, categoryView, cleanFeatureLabel, earlierPreferences, featureLevel,
+  GARAGE_TYPES, PRIORITY_CATEGORIES, PRIORITY_CATEGORY_STEPS, addOwnFeature, categoryView, cleanFeatureLabel, earlierPreferences, featureLevel,
   garageImportance, garageType, normalizeFeatureKey, otherChosenPriorities, priorityCategoriesFor, renameOwnFeature, reviewCategories,
   setFeatureLevel, setGarageImportance, setGarageType, switchPrioritySearchType,
 } from '../src/lib/priorityCategories.js';
@@ -105,7 +106,7 @@ test('screens offer exactly the approved features and suggestions (Home to Buy)'
   assert.deepEqual(texts(p, 'exterior'), ['Deck / Patio', 'Fenced Yard']);
   assert.deepEqual(texts(p, 'exterior', 'suggestions'), ['Mature Trees', 'Garden Space', 'Pool']);
   assert.deepEqual(texts(p, 'neighborhood'), ['Low-Traffic Street', 'Sidewalks', 'Tree-Lined Street', 'No HOA']);
-  assert.deepEqual(texts(p, 'neighborhood', 'suggestions'), ['Cul-de-Sac', 'Dead-End Street', 'Walkable to Schools']);
+  assert.deepEqual(texts(p, 'neighborhood', 'suggestions'), ['Cul-de-Sac', 'Walkable to Schools']);
   const all = priorityCategoriesFor(p).flatMap((category) => [...category.features, ...category.suggestions].map((feature) => feature.text.toLowerCase()));
   for (const omitted of ['second-floor laundry', 'basement storage', 'fire pit', 'room for entertaining', 'walkable neighborhood', 'near water']) {
     assert.ok(!all.includes(omitted), `${omitted} is not offered in onboarding`);
@@ -259,24 +260,76 @@ test('one category component drives every category screen; Home type, layout and
   assert.match(read('src/components/HomeFacts.jsx') + read('src/components/FactFields.jsx'), /homeLayout|Layout/);
 });
 
-test('cards: text label always, decorative local images with lazy loading and a fallback; no remote images', () => {
+test('cards: text label always, decorative local images with lazy loading, responsive sizes and a fallback; no remote images', () => {
   const visual = read('src/components/onboarding/priority/FeatureVisual.jsx');
   assert.match(visual, /alt=""/);
   assert.match(visual, /loading=\{eager \? 'eager' : 'lazy'\}/);
+  assert.match(visual, /srcSet=\{image\.srcSet\}/);
+  assert.match(visual, /sizes=\{image\.srcSet \? CARD_SIZES : undefined\}/);
   assert.match(visual, /onError=\{\(\) => setFailed\(true\)\}/);
   assert.doesNotMatch(visual, /https?:\/\//);
   assert.match(read('src/components/onboarding/priority/FeatureCard.jsx'), /aria-label=\{`\$\{feature\.text\}/);
-  const arts = PRIORITY_CATEGORIES.flatMap((category) => [...category.features, ...category.suggestions]).map((feature) => feature.art).filter(Boolean);
-  for (const art of new Set([...arts, 'garage-attached', 'garage-detached', 'garage-either'])) {
-    const path = `public/images/features/${art}.svg`;
-    assert.ok(existsSync(new URL(`../${path}`, import.meta.url)), path);
-    const svg = read(path);
-    assert.ok(svg.length < 4096, `${path} stays small`);
-    assert.doesNotMatch(svg, /<image|href=/, `${path} embeds nothing external`);
+});
+
+test('photos: an explicit manifest maps every card to the founder’s upload; derivatives are card-sized; originals are kept', () => {
+  const features = [...PRIORITY_CATEGORIES.flatMap((category) => [...category.features, ...category.suggestions]), ...GARAGE_TYPES];
+  const arts = new Set(features.map((feature) => feature.art).filter(Boolean));
+  for (const art of arts) {
+    const image = cardImage(art);
+    assert.ok(image, `${art} has a photo or an illustration`);
+    if (image.kind === 'photo') {
+      const original = `public/images/onboarding/${ONBOARDING_PHOTOS[art].file}`;
+      assert.ok(existsSync(new URL(`../${original}`, import.meta.url)), `${original} (founder upload) is present`);
+      for (const width of CARD_WIDTHS) {
+        const path = `public/images/onboarding/cards/${art}-${width}.webp`;
+        assert.ok(existsSync(new URL(`../${path}`, import.meta.url)), path);
+        const size = statSync(new URL(`../${path}`, import.meta.url)).size;
+        assert.ok(size <= (width === 400 ? 60 : 120) * 1024, `${path} is ${Math.round(size / 1024)} KB`);
+      }
+    } else {
+      const svg = read(image.src.replace(/^\//, 'public/'));
+      assert.ok(svg.length < 4096);
+      assert.doesNotMatch(svg, /<image|href=/);
+    }
   }
-  // Abstract criteria use icons, not pictures.
+  // Every uploaded photo is used, and every manifest entry is used by a card.
+  const uploads = readdirSync(new URL('../public/images/onboarding/', import.meta.url)).filter((file) => file.endsWith('.webp'));
+  assert.deepEqual([...uploads].sort(), Object.values(ONBOARDING_PHOTOS).map((photo) => photo.file).sort());
+  assert.deepEqual([...Object.keys(ONBOARDING_PHOTOS)].filter((key) => !arts.has(key)), []);
+  // Names that differ between upload and card are mapped explicitly.
+  assert.equal(ONBOARDING_PHOTOS['garage-attached'].file, 'attached-garage.webp');
+  assert.equal(ONBOARDING_PHOTOS['garage-yard-door'].file, 'garage-backyard-door.webp');
+  // Photos win over illustrations; illustrations remain only where no photo exists.
+  assert.deepEqual([...ONBOARDING_ILLUSTRATIONS].sort(), ['dishwasher', 'garage-either', 'in-unit-laundry', 'pet-friendly']);
+  assert.deepEqual(readdirSync(new URL('../public/images/features/', import.meta.url)).sort(), ['dishwasher.svg', 'garage-either.svg', 'in-unit-laundry.svg', 'pet-friendly.svg']);
+  // Every pictured feature also has an icon to fall back to; No HOA is icon-only.
+  for (const feature of features.filter((entry) => entry.art)) assert.ok(feature.icon, `${feature.label || feature.key} has a fallback icon`);
   const neighborhood = PRIORITY_CATEGORIES.find((category) => category.key === 'neighborhood');
-  for (const label of ['No HOA', 'Low-Traffic Street']) assert.equal(neighborhood.features.find((feature) => feature.label === label).art, undefined);
+  assert.equal(neighborhood.features.find((feature) => feature.label === 'No HOA').art, undefined);
+  assert.equal(neighborhood.suggestions.find((feature) => feature.label === 'Cul-de-Sac').art, 'cul-de-sac');
+});
+
+test('Dead-End Street is no longer offered, but a buyer who already added it keeps it, on its screen and on Review', () => {
+  const all = priorityCategoriesFor(fresh()).flatMap((category) => [...category.features, ...category.suggestions]);
+  assert.ok(!all.some((feature) => /dead.?end/i.test(feature.text)));
+  let p = fresh();
+  p = { ...p, location: { ...p.location, customItems: [{ label: 'Dead-End Street', kind: 'check', source: 'custom', group: 'neighborhood' }], tiers: { 'Dead-End Street': 'important' } } };
+  const card = categoryView(p, 'neighborhood').cards.find((entry) => entry.label === 'Dead-End Street');
+  assert.deepEqual([card.custom, card.level], [true, 'important']);
+  assert.ok(reviewCategories(p).find((category) => category.key === 'neighborhood').chosen.some((item) => item.label === 'Dead-End Street'));
+  assert.ok(isCriterionSelected(p, 'location', 'Dead-End Street'));
+  // Saved before the group field existed: kept under More of your priorities.
+  const older = { ...p, location: { ...p.location, customItems: [{ label: 'Dead-End Street', kind: 'check', source: 'custom' }] } };
+  assert.deepEqual(otherChosenPriorities(older).map((item) => item.text), ['Dead-End Street']);
+});
+
+test('garage Not important moves straight on; coming back shows it chosen and changeable', () => {
+  const flow = read('src/components/onboarding/priority/PriorityFlow.jsx');
+  assert.match(flow, /patch\(\(next\) => setGarageImportance\(next, choice\.key\)\);\n\s+if \(choice\.key === 'not_important' && onNotImportant\) onNotImportant\(\);/);
+  assert.match(flow, /onAutoAdvance=\{category\.key === 'garage' \? \(\) => onContinue\(step\) : null\}/);
+  assert.match(flow, /aria-pressed=\{importance === choice\.key\}/);
+  // Continue (not Skip): the answer is recorded and Back returns to it.
+  assert.match(read('src/components/onboarding/Onboarding.jsx'), /onContinue=\{\(from\) => moveOn\(from\)\}/);
 });
 
 test('the importance picker offers the three levels and Not important as buttons, and closing changes nothing', () => {

@@ -97,7 +97,9 @@ function FeatureGrid({ cards, onOpen, label }) {
 
 const GARAGE_CHOICES = [...PRIORITY_LEVELS.map((tier) => ({ key: tier, label: LEVEL_COPY[tier].heading, hint: LEVEL_COPY[tier].hint })), { key: 'not_important', label: 'Not important', hint: 'Skip the garage questions' }];
 
-function GarageQuestions({ priorities, patch }) {
+// Not important moves straight on (onNotImportant); coming back shows it
+// chosen and lets the person change it.
+function GarageQuestions({ priorities, patch, onNotImportant }) {
   const importance = garageImportance(priorities);
   const type = garageType(priorities);
   return (
@@ -106,7 +108,10 @@ function GarageQuestions({ priorities, patch }) {
         <h2 id="flh-ob-pf-garage-q" className="flh-ob-label">How important is a garage?</h2>
         <div className="flh-ob-pf-options" role="group" aria-labelledby="flh-ob-pf-garage-q">
           {GARAGE_CHOICES.map((choice) => (
-            <button key={choice.key} type="button" className={`flh-ob-pf-option${importance === choice.key ? ' is-current' : ''}`} aria-pressed={importance === choice.key} onClick={() => patch((next) => setGarageImportance(next, choice.key))}>
+            <button key={choice.key} type="button" className={`flh-ob-pf-option${importance === choice.key ? ' is-current' : ''}`} aria-pressed={importance === choice.key} onClick={() => {
+              patch((next) => setGarageImportance(next, choice.key));
+              if (choice.key === 'not_important' && onNotImportant) onNotImportant();
+            }}>
               <span className="flh-ob-pf-option-title">{choice.label}</span>
               <span className="flh-ob-pf-option-hint">{choice.hint}</span>
             </button>
@@ -121,7 +126,7 @@ function GarageQuestions({ priorities, patch }) {
             {GARAGE_TYPES.map((choice) => (
               <li key={choice.key} className="flh-ob-pf-cell">
                 <button type="button" className={`flh-ob-pf-card${type === choice.key ? ' is-selected is-important' : ''}`} aria-pressed={type === choice.key} onClick={() => patch((next) => setGarageType(next, choice.key))}>
-                  <FeatureVisual feature={{ art: choice.art }} eager />
+                  <FeatureVisual feature={{ art: choice.art, icon: choice.icon }} eager />
                   <span className="flh-ob-pf-card-body"><span className="flh-ob-pf-card-title">{choice.label}</span></span>
                 </button>
               </li>
@@ -133,7 +138,7 @@ function GarageQuestions({ priorities, patch }) {
   );
 }
 
-export function CategoryStep({ categoryKey, priorities, patch, header, footer, picker }) {
+export function CategoryStep({ categoryKey, priorities, patch, header, footer, picker, onAutoAdvance = null }) {
   const view = categoryView(priorities, categoryKey);
   const [notice, setNotice] = useState('');
   if (!view) return null;
@@ -156,7 +161,7 @@ export function CategoryStep({ categoryKey, priorities, patch, header, footer, p
   return (
     <div className={`flh-onboarding-step flh-ob-pf-step flh-ob-pf-${category.key}`}>
       {header}
-      {garage && <GarageQuestions priorities={priorities} patch={patch} />}
+      {garage && <GarageQuestions priorities={priorities} patch={patch} onNotImportant={onAutoAdvance} />}
       {lotSize && (
         <section className="flh-card flh-ob-pf-question">
           <UnitField label="Ideal lot size" unit="acres" decimal value={priorities.lotSizeTarget.value} onChange={(value) => patch((next) => { next.lotSizeTarget = { ...next.lotSizeTarget, value }; return next; })} />
@@ -325,6 +330,7 @@ export default function PriorityFlow({
         picker={picker}
         header={<Header eyebrow={eyebrow(category.title)} heading={category.heading} lead={category.lead} />}
         footer={footer()}
+        onAutoAdvance={category.key === 'garage' ? () => onContinue(step) : null}
       />
       {picker.element}
     </>

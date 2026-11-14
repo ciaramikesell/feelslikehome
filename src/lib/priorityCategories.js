@@ -52,12 +52,12 @@ export const PRIORITY_CATEGORIES = Object.freeze([
     title: 'Rental Essentials', heading: ['The rental ', 'essentials'],
     lead: 'The everyday basics of renting. Tap any that matter and choose how much.',
     features: Object.freeze([
-      f('features', 'Pets Allowed', { text: 'Pet-Friendly', art: 'pet-friendly' }),
-      f('features', 'In-Unit Laundry', { text: 'In-Unit Laundry', art: 'laundry' }),
+      f('features', 'Pets Allowed', { text: 'Pet-Friendly', art: 'pet-friendly', icon: 'PawPrint' }),
+      f('features', 'In-Unit Laundry', { text: 'In-Unit Laundry', art: 'in-unit-laundry', icon: 'WashingMachine' }),
       f('features', 'Utilities Included', { text: 'Utilities Included', icon: 'PlugZap' }),
       f('exterior', 'Parking', { text: 'Parking', icon: 'SquareParking' }),
       f('features', 'Central Air', { text: 'Central Air', icon: 'AirVent' }),
-      f('features', 'Dishwasher', { text: 'Dishwasher', art: 'dishwasher' }),
+      f('features', 'Dishwasher', { text: 'Dishwasher', art: 'dishwasher', icon: 'Utensils' }),
     ]),
     suggestions: Object.freeze([
       f('exterior', 'Driveway / Off-Street Parking', { text: 'Off-Street Parking', icon: 'Car' }),
@@ -70,15 +70,15 @@ export const PRIORITY_CATEGORIES = Object.freeze([
     title: 'Layout & Living Spaces', heading: ['Layout & ', 'living spaces'],
     lead: 'How the rooms come together. Choose only what you’d weigh.',
     features: Object.freeze([
-      f('features', 'First-Floor Bedroom', { art: 'first-floor-bedroom', only: HOMES }),
-      f('features', 'Home office', { art: 'home-office' }),
-      f('features', 'Finished basement', { art: 'finished-basement', only: HOMES }),
-      f('features', 'Primary ensuite', { art: 'primary-ensuite' }),
+      f('features', 'First-Floor Bedroom', { art: 'first-floor-bedroom', icon: 'BedSingle', only: HOMES }),
+      f('features', 'Home office', { art: 'home-office', icon: 'Laptop' }),
+      f('features', 'Finished basement', { art: 'finished-basement', icon: 'Sofa', only: HOMES }),
+      f('features', 'Primary ensuite', { art: 'primary-ensuite', icon: 'BedDouble' }),
     ]),
     suggestions: Object.freeze([
-      f('features', 'First-floor laundry', { art: 'laundry', only: HOMES }),
-      f('features', 'Walkout basement', { art: 'walkout-basement', only: HOMES }),
-      f('exterior', 'Front porch', { art: 'front-porch', only: HOMES }),
+      f('features', 'First-floor laundry', { art: 'first-floor-laundry', icon: 'WashingMachine', only: HOMES }),
+      f('features', 'Walkout basement', { art: 'walkout-basement', icon: 'DoorOpen', only: HOMES }),
+      f('exterior', 'Front porch', { art: 'front-porch', icon: 'Armchair', only: HOMES }),
       f('features', 'Walk-In Closet', { icon: 'Shirt', only: APARTMENT }),
     ]),
   }),
@@ -87,14 +87,14 @@ export const PRIORITY_CATEGORIES = Object.freeze([
     title: 'Kitchen', heading: ['The ', 'kitchen'],
     lead: 'Where the day starts and ends. Tap what matters.',
     features: Object.freeze([
-      f('features', 'Countertop Seating', { custom: true, art: 'countertop-seating' }),
-      f('features', 'Stainless Steel Appliances', { art: 'stainless-appliances' }),
-      f('features', 'Walk-in Pantry', { art: 'walk-in-pantry' }),
+      f('features', 'Countertop Seating', { custom: true, art: 'countertop-seating', icon: 'Coffee' }),
+      f('features', 'Stainless Steel Appliances', { art: 'stainless-appliances', icon: 'Refrigerator' }),
+      f('features', 'Walk-in Pantry', { art: 'walk-in-pantry', icon: 'Package' }),
     ]),
     suggestions: Object.freeze([
-      f('features', 'Eat-in Kitchen', { art: 'eat-in-kitchen' }),
-      f('features', 'Kitchen Island', { art: 'kitchen-island' }),
-      f('features', 'Formal Dining Room', { art: 'formal-dining' }),
+      f('features', 'Eat-in Kitchen', { art: 'eat-in-kitchen', icon: 'Utensils' }),
+      f('features', 'Kitchen Island', { art: 'kitchen-island', icon: 'ChefHat' }),
+      f('features', 'Formal Dining Room', { art: 'formal-dining', icon: 'UtensilsCrossed' }),
     ]),
   }),
   Object.freeze({
@@ -102,12 +102,12 @@ export const PRIORITY_CATEGORIES = Object.freeze([
     title: 'Living Room', heading: ['The ', 'living room'],
     lead: 'The room you’ll spend evenings in.',
     features: Object.freeze([
-      f('features', 'Fireplace', { art: 'fireplace' }),
-      f('features', 'High Ceilings', { art: 'high-ceilings' }),
+      f('features', 'Fireplace', { art: 'fireplace', icon: 'Flame' }),
+      f('features', 'High Ceilings', { art: 'high-ceilings', icon: 'ArrowUpToLine' }),
     ]),
     suggestions: Object.freeze([
-      f('features', 'Built-in Shelving', { custom: true, art: 'built-in-shelving' }),
-      f('features', 'Large Windows', { custom: true, art: 'large-windows' }),
+      f('features', 'Built-in Shelving', { custom: true, art: 'built-in-shelving', icon: 'Library' }),
+      f('features', 'Large Windows', { custom: true, art: 'large-windows', icon: 'AppWindow' }),
     ]),
   }),
   Object.freeze({
@@ -115,13 +115,13 @@ export const PRIORITY_CATEGORIES = Object.freeze([
     title: 'Bathroom', heading: ['The ', 'bathroom'],
     lead: 'Small details you’ll notice every day.',
     features: Object.freeze([
-      f('features', 'Double Vanity', { art: 'double-vanity' }),
-      f('features', 'Soaking Tub', { art: 'soaking-tub' }),
+      f('features', 'Double Vanity', { art: 'double-vanity', icon: 'Droplets' }),
+      f('features', 'Soaking Tub', { art: 'soaking-tub', icon: 'Bath' }),
     ]),
     suggestions: Object.freeze([
-      f('features', 'Separate Shower / Tub', { custom: true, art: 'separate-shower' }),
-      f('features', 'Private Toilet', { custom: true, art: 'private-toilet' }),
-      f('features', 'Linen Closet', { custom: true, art: 'linen-closet' }),
+      f('features', 'Separate Shower / Tub', { custom: true, art: 'separate-shower', icon: 'ShowerHead' }),
+      f('features', 'Private Toilet', { custom: true, art: 'private-toilet', icon: 'DoorClosed' }),
+      f('features', 'Linen Closet', { custom: true, art: 'linen-closet', icon: 'Layers' }),
     ]),
   }),
   // Overall importance first (the existing exterior:Garage criterion), then the
@@ -132,9 +132,9 @@ export const PRIORITY_CATEGORIES = Object.freeze([
     lead: 'First, how much does a garage matter to you?',
     features: Object.freeze([]),
     suggestions: Object.freeze([
-      f('exterior', 'Workbench', { custom: true, art: 'workbench' }),
-      f('exterior', 'Garage Extension', { custom: true, art: 'garage-extension' }),
-      f('exterior', 'Door to Backyard', { custom: true, art: 'garage-yard-door' }),
+      f('exterior', 'Workbench', { custom: true, art: 'workbench', icon: 'Wrench' }),
+      f('exterior', 'Garage Extension', { custom: true, art: 'garage-extension', icon: 'Warehouse' }),
+      f('exterior', 'Door to Backyard', { custom: true, art: 'garage-yard-door', icon: 'DoorOpen' }),
     ]),
   }),
   Object.freeze({
@@ -142,33 +142,33 @@ export const PRIORITY_CATEGORIES = Object.freeze([
     title: 'Exterior & Property', heading: ['Exterior & ', 'property'],
     lead: 'The outdoor space that comes with it.',
     features: Object.freeze([
-      f('exterior', 'Patio / deck', { art: 'deck-patio', apartment: { label: 'Patio / Deck / Outdoor Living', text: 'Balcony / Patio' } }),
-      f('exterior', 'Fenced yard', { art: 'fenced-yard', only: HOMES }),
+      f('exterior', 'Patio / deck', { art: 'deck-patio', icon: 'Sun', apartment: { label: 'Patio / Deck / Outdoor Living', text: 'Balcony / Patio' } }),
+      f('exterior', 'Fenced yard', { art: 'fenced-yard', icon: 'Fence', only: HOMES }),
     ]),
     suggestions: Object.freeze([
-      f('location', 'Mature Trees', { art: 'mature-trees', only: HOMES }),
-      f('exterior', 'Garden Space', { art: 'garden', only: HOMES }),
-      f('exterior', 'Pool', { art: 'pool' }),
+      f('location', 'Mature Trees', { art: 'mature-trees', icon: 'TreeDeciduous', only: HOMES }),
+      f('exterior', 'Garden Space', { art: 'garden', icon: 'Sprout', only: HOMES }),
+      f('exterior', 'Pool', { art: 'pool', icon: 'Waves' }),
       f('exterior', 'Fitness Center', { icon: 'Dumbbell', only: APARTMENT }),
       f('exterior', 'Secure Entry', { icon: 'ShieldCheck', only: APARTMENT }),
       f('exterior', 'Elevator', { icon: 'ArrowUpDown', only: APARTMENT }),
     ]),
   }),
-  // Abstract neighborhood criteria use icons, never photography.
+  // Street and neighborhood photos where the founder supplied one; abstract
+  // preferences (No HOA) stay icon-only.
   Object.freeze({
     key: 'neighborhood', step: 'cat_neighborhood', storage: 'location',
     title: 'Location & Neighborhood', heading: ['Location & ', 'neighborhood'],
     lead: 'The street and the neighborhood around it.',
     features: Object.freeze([
-      f('location', 'Low-Traffic Street', { icon: 'Route' }),
-      f('location', 'Sidewalks', { art: 'sidewalks' }),
-      f('location', 'Tree-lined street', { text: 'Tree-Lined Street', art: 'tree-lined-street' }),
+      f('location', 'Low-Traffic Street', { art: 'low-traffic-street', icon: 'Route' }),
+      f('location', 'Sidewalks', { art: 'sidewalks', icon: 'Footprints' }),
+      f('location', 'Tree-lined street', { text: 'Tree-Lined Street', art: 'tree-lined-street', icon: 'Trees' }),
       f('location', 'No HOA', { icon: 'Ban', only: BUY }),
     ]),
     suggestions: Object.freeze([
-      f('location', 'Cul-de-Sac', { icon: 'Milestone' }),
-      f('location', 'Dead-End Street', { custom: true, icon: 'Signpost' }),
-      f('location', 'Walkable schools', { text: 'Walkable to Schools', icon: 'School' }),
+      f('location', 'Cul-de-Sac', { art: 'cul-de-sac', icon: 'Milestone' }),
+      f('location', 'Walkable schools', { text: 'Walkable to Schools', art: 'walkable-schools', icon: 'School' }),
     ]),
   }),
 ]);
@@ -422,9 +422,9 @@ export function renameOwnFeature(raw, feature, typed) {
 
 export const GARAGE_IMPORTANCE = Object.freeze(['must', 'important', 'nice', 'not_important']);
 export const GARAGE_TYPES = Object.freeze([
-  Object.freeze({ key: 'attached', label: 'Attached', art: 'garage-attached' }),
-  Object.freeze({ key: 'detached', label: 'Detached', art: 'garage-detached' }),
-  Object.freeze({ key: 'any', label: 'Either is fine', art: 'garage-either' }),
+  Object.freeze({ key: 'attached', label: 'Attached', art: 'garage-attached', icon: 'Warehouse' }),
+  Object.freeze({ key: 'detached', label: 'Detached', art: 'garage-detached', icon: 'Warehouse' }),
+  Object.freeze({ key: 'any', label: 'Either is fine', art: 'garage-either', icon: 'Warehouse' }),
 ]);
 
 // The existing exterior:Garage criterion's level; 'not_important' when the

@@ -11,7 +11,9 @@
 // phones, Back · Skip · Continue visible with full tap targets, labels never
 // clipped. Then walks the whole flow with the mouse and the keyboard: the
 // importance sheet, suggestions, duplicate-proof Add your own, Back keeping
-// answers, garage Not important, Skip, the editable Review, and a missing image.
+// answers, garage Not important (auto-advance and Back), Skip, the editable
+// Review; the founder's photos (derivatives only, lazy, per screen, 400w/800w);
+// Dead-End Street not offered; and missing, broken and corrupt images.
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
@@ -195,9 +197,18 @@ for (const zoom of [1.5, 2]) {
   await page.getByRole('button', { name: /^Important/ }).click();
   check('garage subtype appears once a garage matters', await page.getByRole('heading', { name: 'Attached or detached?' }).isVisible());
   await page.getByRole('button', { name: /^Not important/ }).click();
-  check('Not important skips the garage subtype and details', !(await page.getByRole('heading', { name: 'Attached or detached?' }).isVisible()) && !(await page.getByRole('textbox', { name: 'Add your own' }).isVisible()));
-  await shot(page, 'flow-garage-not-important-390');
-  await page.getByRole('button', { name: /Continue/ }).click();
+  await page.getByRole('heading', { name: /Exterior & property/i, level: 1 }).waitFor();
+  check('garage Not important advances to the next screen automatically', await page.getByRole('heading', { name: /Exterior & property/i, level: 1 }).isVisible());
+  // Back: the earlier answer is shown and can be changed.
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await page.getByRole('heading', { name: 'The garage', level: 1 }).waitFor();
+  check('Back to the garage shows Not important chosen, with no subtype', await page.getByRole('button', { name: /^Not important/ }).getAttribute('aria-pressed') === 'true'
+    && !(await page.getByRole('heading', { name: 'Attached or detached?' }).isVisible()));
+  await shot(page, 'flow-garage-not-important-back-390');
+  await page.getByRole('button', { name: /^Nice to Have/ }).click();
+  check('changing it back brings the subtype back', await page.getByRole('heading', { name: 'Attached or detached?' }).isVisible() && await page.getByRole('heading', { name: 'The garage', level: 1 }).isVisible());
+  await page.getByRole('button', { name: /^Not important/ }).click();
+  await page.getByRole('heading', { name: /Exterior & property/i, level: 1 }).waitFor();
   await page.getByRole('textbox', { name: /Ideal lot size/ }).fill('0.5');
   await page.getByRole('button', { name: /Continue/ }).click();
   await page.getByRole('button', { name: 'Skip' }).click(); // neighborhood
@@ -222,16 +233,74 @@ for (const zoom of [1.5, 2]) {
   await page.close();
 }
 
-// 3. Images missing: every card still has its label and a neutral tile.
+// 3. Photos: shown on the cards, card-sized, lazy, one screen at a time.
 {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3 });
+  const requested = [];
+  page.on('response', async (response) => {
+    if (!/\/images\/(onboarding|features)\//.test(response.url())) return;
+    const body = await response.body().catch(() => Buffer.alloc(0));
+    requested.push({ url: new URL(response.url()).pathname, bytes: body.length });
+  });
+  await page.goto(url('step=cat_kitchen&state=populated'), { waitUntil: 'networkidle' });
+  await ready(page);
+  const shown = await page.evaluate(() => [...document.querySelectorAll('.flh-ob-pf-media img')].map((img) => ({ src: img.currentSrc, ok: img.complete && img.naturalWidth > 0, loading: img.loading })));
+  check('kitchen cards show the founder’s photos', shown.length >= 4 && shown.every((img) => img.ok && /\/images\/onboarding\/cards\//.test(img.src)), JSON.stringify(shown.map((img) => img.src.split('/').pop())));
+  check('only card derivatives are fetched — never an original upload', requested.length > 0 && requested.every((entry) => /\/cards\/|\/features\//.test(entry.url)), JSON.stringify(requested));
+  check('a 3x phone gets the 800w derivative', shown.some((img) => /-800\.webp$/.test(img.src)));
+  check('each fetched card image is ≤ 120 KB', requested.every((entry) => entry.bytes <= 120 * 1024), JSON.stringify(requested.map((entry) => [entry.url.split('/').pop(), Math.round(entry.bytes / 1024)])));
+  check('no other screen’s photos are loaded', requested.every((entry) => !/garage|pool|sidewalk|bath|tub|vanity/.test(entry.url)), JSON.stringify(requested.map((entry) => entry.url)));
+  check('cards below the first row load lazily', shown.slice(4).every((img) => img.loading === 'lazy') && shown.slice(0, 4).every((img) => img.loading === 'eager'));
+  await page.close();
+}
+{
+  // A 1x screen gets the 400w derivative; the cul-de-sac photo is on Neighborhood.
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 });
+  await page.goto(url('step=cat_neighborhood&state=populated'), { waitUntil: 'networkidle' });
+  await ready(page);
+  const facts = await page.evaluate(() => ({
+    imgs: [...document.querySelectorAll('.flh-ob-pf-media img')].map((img) => img.currentSrc.split('/').pop()),
+    chips: [...document.querySelectorAll('.flh-ob-pf-chip')].map((chip) => chip.textContent.trim()),
+    icons: [...document.querySelectorAll('.flh-ob-pf-media.is-icon')].length,
+  }));
+  check('1x phones get the 400w derivative', facts.imgs.length > 0 && facts.imgs.every((name) => /-400\.webp$/.test(name)), JSON.stringify(facts.imgs));
+  check('Dead-End Street is not suggested; Cul-de-Sac is', !facts.chips.some((chip) => /Dead-End/i.test(chip)) && facts.chips.some((chip) => /Cul-de-Sac/.test(chip)), JSON.stringify(facts.chips));
+  check('No HOA stays an icon', facts.icons >= 1);
+  await page.getByRole('button', { name: 'Cul-de-Sac' }).click();
+  await page.getByRole('dialog', { name: 'Cul-de-Sac' }).getByRole('button', { name: /^Important/ }).click();
+  check('Cul-de-Sac card uses the uploaded photo', await page.locator('.flh-ob-pf-card', { hasText: 'Cul-de-Sac' }).locator('img').evaluate((img) => /cul-de-sac-400\.webp$/.test(img.currentSrc) && img.naturalWidth > 0));
+  await shot(page, 'neighborhood-photos-390');
+  await page.close();
+}
+{
+  // Illustration fallback where no photo exists (renter essentials).
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
-  await page.route('**/images/features/**', (route) => route.abort());
+  await page.goto(url('step=cat_essentials&state=populated&search=home_rent'), { waitUntil: 'networkidle' });
+  await ready(page);
+  const srcs = await page.evaluate(() => [...document.querySelectorAll('.flh-ob-pf-media img')].map((img) => [img.currentSrc.split('/').pop(), img.naturalWidth > 0]));
+  check('renters: Rental Essentials uses illustrations where no photo exists', srcs.some(([src, ok]) => src === 'pet-friendly.svg' && ok), JSON.stringify(srcs));
+  await page.close();
+}
+{
+  // Buyers never see Rental Essentials.
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await page.goto(url('step=cat_layout&state=populated&search=home_buy'), { waitUntil: 'networkidle' });
+  await ready(page);
+  check('buyers never see Rental Essentials', !(await page.locator('.flh-ob-rail, .flh-ob-topbar').first().textContent()).includes('Rental Essentials') && (await page.locator('.flh-ob-count').textContent()) === '4/10');
+  await page.close();
+}
+
+// 4. Images missing or broken: every card still has its label and an icon tile.
+for (const [label, handler] of [['missing (network error)', (route) => route.abort()], ['broken (404)', (route) => route.fulfill({ status: 404, body: '' })], ['corrupt bytes', (route) => route.fulfill({ status: 200, contentType: 'image/webp', body: 'not an image' })]]) {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await page.route(/\/images\/(onboarding|features)\//, handler);
   await page.goto(url('step=cat_kitchen&state=populated'), { waitUntil: 'networkidle' });
   await ready(page);
   await page.waitForTimeout(300);
   const facts = await page.evaluate(() => ({ imgs: document.querySelectorAll('.flh-ob-pf-media img').length, titles: [...document.querySelectorAll('.flh-ob-pf-card-title')].map((el) => el.textContent) }));
-  check('missing images fall back to the icon tile; labels remain', facts.imgs === 0 && facts.titles.includes('Kitchen Island'), JSON.stringify(facts));
-  await shot(page, 'kitchen-images-unavailable-390');
+  const icons = await page.locator('.flh-ob-pf-media.is-icon').count();
+  check(`images ${label}: icon tiles replace them, labels remain`, facts.imgs === 0 && icons >= 4 && facts.titles.includes('Kitchen Island'), JSON.stringify({ ...facts, icons }));
+  if (label.startsWith('missing')) await shot(page, 'kitchen-images-unavailable-390');
   await page.close();
 }
 
