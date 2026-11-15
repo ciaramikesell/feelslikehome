@@ -34,7 +34,7 @@ const T0 = '2026-11-15T12:00:00.000Z';
 const TYPES = ['home_buy', 'home_rent', 'apartment_rent'];
 const fresh = (type = 'home_buy') => chooseSearchType(normalizePriorities({}), type, { presetPropertyType: false });
 const stateFor = (type, step) => ({ ...beginOnboarding({ context: OWN, now: T0, targetVersion: 4 }).state, step, answers: { searchType: type } });
-const allFeatures = (board) => [...board.groups.flatMap((group) => group.features), ...Object.values(board.columns).flat()];
+const allFeatures = (board) => [...board.groups.flatMap((group) => [...group.features, ...(group.lotChip ? [group.lotChip] : [])]), ...Object.values(board.columns).flat()];
 const find = (board, text) => allFeatures(board).find((feature) => feature.text === text);
 const column = (board, tier) => board.columns[tier].map((feature) => feature.text);
 
@@ -98,14 +98,14 @@ test('Continue completes every category at once; Skip marks each skipped; Back l
 /* ------------------------------- board model ------------------------------- */
 
 test('the library is the phone catalog for each kind of search, grouped by the same categories', () => {
-  const titles = (type) => priorityBoard(fresh(type)).groups.map((group) => group.title);
+  const titles = (type) => priorityBoard(fresh(type)).groups.filter((group) => !group.own).map((group) => group.title);
   assert.deepEqual(titles('home_buy'), ['Layout & Living Spaces', 'Kitchen', 'Living Room', 'Bathroom', 'Garage', 'Exterior & Property', 'Location & Neighborhood']);
   assert.deepEqual(titles('home_rent'), ['Layout & Living Spaces', 'Rental Features', 'Exterior & Property', 'Location & Neighborhood']);
   assert.deepEqual(titles('apartment_rent'), ['The Unit', 'The Property']);
   for (const type of TYPES) {
     const priorities = fresh(type);
     const board = priorityBoard(priorities);
-    for (const group of board.groups) {
+    for (const group of board.groups.filter((entry) => !entry.own)) {
       const category = PRIORITY_CATEGORIES.find((entry) => entry.key === group.key);
       const phone = (category ? [...category.features, ...category.suggestions] : []);
       assert.ok(group.features.length > 0, `${type} ${group.title}`);
@@ -310,7 +310,7 @@ test('board UI: drag, click and keyboard all use the canonical writes; previews 
   const code = board.split('\n').filter((line) => !line.trim().startsWith('//')).join('\n');
   assert.match(board, /placeOnBoard\(next, feature, target\)/, 'every move goes through placeOnBoard');
   assert.doesNotMatch(code, /setFeatureLevel|moveCriterion|addCriterion|savePriorities|supabase/, 'no second write path, no direct storage');
-  assert.match(board, /addOwnFeature\(priorities, category, text\)/);
+  assert.match(board, /addBoardOwnFeature\(priorities, text\)/);
   assert.match(board, /draggable/);
   assert.match(board, /aria-haspopup="dialog"/);
   assert.match(board, /role="dialog"/);
@@ -436,8 +436,91 @@ test('layout: full-width library on top, three equal columns below, nothing scro
   assert.match(block, /\.flh-onboarding-root \.flh-ob-board-columns \{ display: grid; grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/, 'three equal columns');
   assert.doesNotMatch(block, /flh-ob-board-library \{[^}]*(max-height|overflow-y)/, 'the library grows; no inner scroll');
   assert.doesNotMatch(block, /flh-ob-board-columns \{[^}]*position: sticky/);
-  assert.match(block, /\.flh-onboarding-root \.flh-ob-board-groups \{ display: grid; grid-template-columns: repeat\(auto-fill, minmax\(min\(100%, 300px\), 1fr\)\);/);
+  assert.match(block, /\.flh-onboarding-root \.flh-ob-board-groups \{ column-count: 2;/, 'categories flow into balanced columns');
+  assert.match(block, /@media \(min-width: 1200px\) \{[^}]*\}[^@]*\.flh-onboarding-root \.flh-ob-board-groups \{ column-count: 3; \}/, 'three category columns on wide boards');
+  assert.match(block, /\.flh-onboarding-root \.flh-ob-board-group \{[^}]*break-inside: avoid;/, 'a category never splits across columns');
   const board = read('src/components/onboarding/priority/PriorityBoard.jsx');
   assert.ok(board.indexOf('<AddYourOwn') < board.indexOf('className="flh-ob-board-groups"'), 'Add your own first, then the categories');
   assert.ok(board.indexOf('className="flh-ob-board-library') < board.indexOf('className="flh-ob-board-columns"'), 'library before the columns (reading and tab order)');
+});
+
+test('Garage qualifier lives with the ranked Garage (chip and chooser), not in the library', () => {
+  const board = read('src/components/onboarding/priority/PriorityBoard.jsx');
+  const library = board.slice(board.indexOf('function LibraryGroup('), board.indexOf('function AddYourOwn('));
+  assert.doesNotMatch(library, /GarageType/, 'no Attached / Detached in the unranked library');
+  assert.match(board, /\{garage && level && <GarageType priorities=\{garage\.priorities\} patch=\{garage\.patch\} \/>\}/, 'in the chooser, once a garage matters');
+  assert.match(board, /garage=\{isHouseGarage\(chooser\.feature\) \? \{ priorities, patch \} : null\}/, 'house Garage only (not Home to Rent Garage or apartment Garage Parking)');
+  assert.match(board, /onClick=\{\(\) => patch\(\(next\) => setGarageType\(next, choice\.key\)\)\}/, 'the existing garagePreference write');
+  assert.match(board, /if \(!level \|\| !isHouseGarage\(feature\)\) return null;/, 'qualifier only on the ranked house Garage');
+  // Same storage: the qualifier is exterior.garagePreference, held across switches by heldGarage.
+  let p = placeOnBoard(fresh('home_buy'), BOARD_HOUSE_GARAGE, 'important');
+  p = setGarageType(p, 'detached');
+  const apt = switchPrioritySearchType(p, 'apartment_rent').priorities;
+  assert.deepEqual(heldGaragePreferences(apt), { house: { tier: 'important', garagePreference: 'detached' } });
+  assert.equal(garageType(switchPrioritySearchType(apt, 'home_buy').priorities), 'detached');
+});
+
+test('columns are the centerpiece: tinted per level, with heading, explanation and count; a counts summary above them', () => {
+  const css = read('src/app/globals.css');
+  for (const tier of ['must', 'important', 'nice']) assert.match(css, new RegExp(`\\.flh-ob-board-column\\.is-${tier} \\{ --pf-col-bg: #[0-9A-F]{6}; --pf-col-line: #[0-9A-F]{6};`));
+  const board = read('src/components/onboarding/priority/PriorityBoard.jsx');
+  assert.match(board, /className="flh-ob-board-column-title"/);
+  assert.match(board, /className="flh-ob-board-column-hint"/);
+  assert.match(board, /className="flh-ob-board-count"/);
+  assert.match(board, /className="flh-ob-board-summary"/);
+  assert.doesNotMatch(css.slice(css.indexOf('.flh-ob-board-summary {')).split('\n')[0], /sticky/, 'the summary is not sticky');
+});
+
+test('Add your own on the board asks no category: new features go to “Your own features”; existing ones are reused', async () => {
+  const { BOARD_OWN_GROUP, addBoardOwnFeature } = await import('../src/lib/priorityBoard.js');
+  for (const type of TYPES) {
+    let p = fresh(type);
+    const own = () => priorityBoard(p).groups.find((group) => group.key === BOARD_OWN_GROUP);
+    assert.deepEqual([own().title, own().features], ['Your own features', []], `${type}: the section is always there`);
+    const added = addBoardOwnFeature(p, 'Wine fridge');
+    assert.deepEqual([added.feature.group, added.feature.custom, added.homeCategory], [BOARD_OWN_GROUP, true, null]);
+    p = added.priorities;
+    assert.deepEqual(p.features.customItems.find((item) => item.label === 'Wine fridge'), { label: 'Wine fridge', kind: 'check', source: 'custom', group: BOARD_OWN_GROUP });
+    assert.deepEqual(own().features.map((feature) => feature.text), ['Wine fridge'], `${type}: unranked, in its own section`);
+    // Ranked like any feature; back to its own section when removed.
+    p = placeOnBoard(p, own().features[0], 'must');
+    assert.deepEqual(column(priorityBoard(p), 'must'), ['Wine fridge']);
+    assert.equal(priorityBoard(p).columns.must[0].role, 'own');
+    p = placeOnBoard(p, priorityBoard(p).columns.must[0], 'none');
+    assert.deepEqual(own().features.map((feature) => feature.text), ['Wine fridge']);
+    // Duplicates (any case or punctuation) reuse it; nothing is added twice.
+    const again = addBoardOwnFeature(p, '  WINE-fridge ');
+    assert.equal(again.feature.label, 'Wine fridge');
+    assert.deepEqual(normalizePriorities(again.priorities), normalizePriorities(p));
+  }
+  // Offered features and catalog criteria are reused where they live, never copied into the own section.
+  const p = fresh('home_buy');
+  const island = addBoardOwnFeature(p, 'kitchen island');
+  assert.deepEqual([island.feature.id, island.feature.group, island.homeCategory], ['features:Kitchen Island', 'kitchen', 'kitchen']);
+  assert.equal(island.priorities.features.customItems.length, 0);
+  const shelving = addBoardOwnFeature(p, 'Built-in shelving');
+  assert.equal(shelving.feature.group, 'living', 'FLH’s own suggestion stays on its category');
+  // Unknown never counts: an own feature is Yes / No and unanswered is not evaluated.
+  let ranked = addBoardOwnFeature(p, 'Wine fridge').priorities;
+  ranked = placeOnBoard(ranked, { id: 'features:Wine fridge', categoryKey: 'features', label: 'Wine fridge', custom: true, group: 'own' }, 'must');
+  assert.equal(computeMatch({ price: '1', checks: {} }, ranked).allSelected.find((item) => item.key === 'features:Wine fridge').evaluated, false);
+  const board = read('src/components/onboarding/priority/PriorityBoard.jsx');
+  assert.match(board, /addBoardOwnFeature\(priorities, text\)/);
+  assert.doesNotMatch(board, /<select/, 'no category dropdown');
+});
+
+test('Ideal lot size is its own threshold panel; the Home to Rent chip lives in it until ranked', async () => {
+  const { setLotSizeValue } = await import('../src/lib/priorityCategories.js');
+  let p = setLotSizeValue(fresh('home_rent'), '0.5');
+  let exterior = priorityBoard(p).groups.find((group) => group.key === 'exterior');
+  assert.equal(exterior.features.some((feature) => feature.target), false, 'not mixed in with the feature chips');
+  assert.equal(exterior.lotChip.text, 'Ideal lot size · 0.5+ acres');
+  p = placeOnBoard(p, exterior.lotChip, 'nice');
+  exterior = priorityBoard(p).groups.find((group) => group.key === 'exterior');
+  assert.equal(exterior.lotChip, null);
+  assert.deepEqual(column(priorityBoard(p), 'nice'), ['Ideal lot size · 0.5+ acres']);
+  assert.equal(priorityBoard(setLotSizeValue(fresh('home_buy'), '0.5')).groups.find((group) => group.key === 'exterior').lotChip, null, 'Home to Buy: no chip');
+  const board = read('src/components/onboarding/priority/PriorityBoard.jsx');
+  assert.match(board, /function LotSizePanel\(/);
+  assert.match(board, /\{group\.lotSize && <LotSizePanel /);
 });

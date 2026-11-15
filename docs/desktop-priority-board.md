@@ -68,6 +68,14 @@ scrolls inside itself. When the columns are below the fold, dragging toward
 the window edge auto-scrolls (QA drags this way at 1440 × 900); click-to-rank
 never needs scrolling.
 
+**Visual hierarchy.** The library is a substantial panel (1.5px border, soft
+shadow): its title and Add your own share the first row, then the categories
+flow into three balanced columns (Your own features first, under the field),
+with light chips and a subtle hover lift. The three importance columns are the
+centerpiece: tinted per level (TIER_META colours), each with its heading, short
+explanation and count, and a small, non-sticky "Your priorities" summary of
+counts above them.
+
 ### One catalog, one write path
 
 - The library is `priorityCategoriesFor` / `categoryView` — the phone
@@ -85,14 +93,14 @@ never needs scrolling.
 
 | | |
 |---|---|
-| Drag | library → column, column → column, column → library. Drop targets are marked while dragging; the library shows "Drop here to remove it from your priorities". Dropping where it already is changes nothing. |
+| Drag | library → column, column → column, column → library. Drop targets are marked while dragging; when a ranked chip is dragged the library shows "Drop here to remove it from your priorities" as an overlay (it never moves the columns mid-drag). When the columns are below the fold, dragging toward the window edge auto-scrolls. Dropping where it already is changes nothing. |
 | Click / Enter / Space | opens a small importance chooser beside the chip: Must Have, Important, Nice to Have, and Remove (if ranked) or Not now. Focus moves in, Tab wraps inside it, Escape closes without change and returns focus; after a choice focus follows the chip to its new column. |
 | Undo | every board move announces itself (`role="status"`) with one-step Undo. |
-| Add your own | typing first lists canonical library features (any category) that match; Add / Enter uses `addOwnFeature` (dedupe ignoring case, spacing and punctuation, across every category, the person's document and the catalog), then the chooser opens immediately. A match on another category says where it lives. |
-| Garage (Home to Buy) | one **Garage** chip with the existing `exterior:Garage` identity (same write as the phone's garage question; removal = Not important). Attached / Detached / Either and the garage details appear once it matters, as on the phone. |
+| Add your own | one field, no category to choose. Typing first lists matching library features (any category). Add / Enter uses `addBoardOwnFeature`: anything that already exists (an offered feature, something in the person's document, a catalog criterion) is reused through the phone's `addOwnFeature` dedupe (case, spacing and punctuation ignored) and the chooser says where it lives; only a genuinely new feature is created, as an ordinary custom Yes / No priority (Home Features) with the additive `group: 'own'`, shown in the library's **Your own features** section. The chooser opens immediately; it then drags like any feature and returns to that section when removed. (On phones such an item appears on Review under "More of your priorities".) |
+| Garage (Home to Buy) | one **Garage** chip with the existing `exterior:Garage` identity (same write as the phone's garage question; removal = Not important). Once it is ranked, the chip shows its attached / detached answer (or "Attached or detached?") and its chooser holds Attached / Detached / Either (the existing `garagePreference`); ranking it from the chooser reopens the chooser on the chip so this can be answered at once. The garage details (Workbench …) appear in the library once it matters, as on the phone. Home to Rent Garage and apartment Garage Parking have no qualifier. |
 | Garage (rentals) | Home to Rent **Garage** and apartment **Garage Parking** are the phone's cards. `heldGarage` switching logic is untouched; tests cover house ↔ apartment round trips through the board. |
-| Ideal lot size (Home to Rent) | the acreage field sits in the Exterior group and writes through #184's `setLotSizeValue`. Once acreage is entered it becomes an **"Ideal lot size · n+ acres"** chip in the library, unranked and not part of Match until the renter drags or clicks it into a column (`setLotSizeImportance`, the phone sheet's write). Clearing the acreage removes the chip and resets the importance; re-entered acreage starts unranked. Moving the chip back to the library unranks it and keeps the acreage. |
-| Ideal lot size (Home to Buy) | unchanged: a plain acreage field (value only, no chip, no importance). |
+| Ideal lot size (Home to Rent) | a threshold, so it has its own panel in the Exterior group ("Ideal lot size · A minimum you can rank"). The acreage writes through #184's `setLotSizeValue`; once entered, the panel holds an **"Ideal lot size · n+ acres"** chip with "Drag to a column, or click to rank". It is not part of Match until ranked (`setLotSizeImportance`, the phone sheet's write); ranked, the panel takes that level's tint and says so. Clearing the acreage removes the chip and resets the importance; re-entered acreage starts unranked. |
+| Ideal lot size (Home to Buy) | the same panel with a plain acreage field: value only, no chip, no importance (unchanged behaviour). |
 | Legacy priorities | chosen earlier but not offered: shown in their column, movable; removed ones stay in a "From earlier" library group for the visit. Never deleted. |
 | Co-buyers | the board edits only the document it is given (the caller's own row). |
 

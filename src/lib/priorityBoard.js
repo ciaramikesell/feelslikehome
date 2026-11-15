@@ -23,7 +23,7 @@
 import { normalizePriorities } from './constants.js';
 import { PRIORITY_LEVELS, basicsFieldsFor, priorityLevels } from './searchProfile.js';
 import {
-  LOT_SIZE_FEATURE, PETS_FEATURE, PRIORITY_CATEGORIES, categoryView, featureLevel, garageImportance, lotSizeImportance, lotSizeRankable,
+  LOT_SIZE_FEATURE, PETS_FEATURE, PRIORITY_CATEGORIES, addOwnFeature, categoryView, featureLevel, garageImportance, lotSizeImportance, lotSizeRankable,
   lotSizeValue, normalizeFeatureKey, priorityCategoriesFor, setFeatureLevel, setLotSizeImportance,
 } from './priorityCategories.js';
 import { PETS_CRITERION_KEY } from './rentalPets.js';
@@ -119,8 +119,56 @@ function lotSizeChip(raw) {
 
 // Every feature the board offers for this kind of search, by category, in the
 // phone screens' order: features, then suggestions, then the person's own.
+// The board's own section: features the person typed into the board's Add
+// your own, which asks no category. They are ordinary custom priorities
+// ({ label, kind: 'check', source: 'custom' }) stored under Home Features,
+// with the additive `group` 'own' (the same field the phone screens use for
+// their category). Everything else — Yes / No answers, Match, My Search —
+// treats them exactly like any other custom priority.
+export const BOARD_OWN_GROUP = 'own';
+export const BOARD_OWN_TITLE = 'Your own features';
+const OWN_CATEGORY = Object.freeze({ key: BOARD_OWN_GROUP, step: null, title: BOARD_OWN_TITLE, storage: 'features' });
+
+function ownBoardFeatures(priorities) {
+  return ['features', 'location', 'exterior'].flatMap((categoryKey) => (priorities[categoryKey]?.customItems || [])
+    .filter((item) => item.source === 'custom' && item.group === BOARD_OWN_GROUP)
+    .map((item) => ({
+      id: `${categoryKey}:${item.label}`, categoryKey, label: item.label, text: item.label, kind: item.kind || 'check',
+      custom: true, art: null, icon: null, group: BOARD_OWN_GROUP, role: 'own',
+    })));
+}
+
+// Add your own on the board: no category to choose. Anything that already
+// exists — an offered feature on any screen, something in the person's
+// document, a catalog criterion — is reused exactly as the phone's Add your
+// own does (addOwnFeature, same dedupe). Only a genuinely new feature is
+// created, in the board's own section.
+//   → the addOwnFeature result ({ priorities, feature, homeCategory } |
+//     { feature: null, error } | null), with a new feature in group 'own'.
+export function addBoardOwnFeature(input, typed) {
+  const raw = normalizePriorities(input);
+  const first = priorityCategoriesFor(raw).find((category) => !category.question);
+  if (!first) return null;
+  const before = new Set(['features', 'location', 'exterior'].flatMap((key) => (raw[key]?.customItems || []).map((item) => `${key}:${item.label}`)));
+  const result = addOwnFeature(raw, first.key, typed);
+  if (!result?.feature) return result;
+  const created = result.feature.role === 'own' && !before.has(`${result.feature.categoryKey}:${result.feature.label}`);
+  // Reused: there was no category to compare with, so always say where it lives.
+  if (!created) return { ...result, homeCategory: result.feature.group || result.homeCategory || null };
+  const { categoryKey, label } = result.feature;
+  const catState = result.priorities[categoryKey];
+  const customItems = catState.customItems.map((item) => (item.label === label && item.source === 'custom' ? { ...item, group: BOARD_OWN_GROUP } : item));
+  return {
+    ...result,
+    priorities: { ...result.priorities, [categoryKey]: { ...catState, customItems } },
+    feature: { ...result.feature, group: BOARD_OWN_GROUP },
+    homeCategory: null,
+  };
+}
+
 function boardCategories(priorities) {
-  return priorityCategoriesFor(priorities).filter((category) => !category.question).map((category) => {
+  const own = { category: OWN_CATEGORY, features: ownBoardFeatures(priorities) };
+  return [...priorityCategoriesFor(priorities).filter((category) => !category.question).map((category) => {
     const view = categoryView(priorities, category.key);
     const own = view.cards.filter((card) => card.role === 'own');
     const offered = [...view.category.features, ...view.category.suggestions, ...own];
@@ -130,7 +178,7 @@ function boardCategories(priorities) {
       category,
       features: features.filter((feature) => { const key = norm(feature.id); if (seen.has(key)) return false; seen.add(key); return true; }),
     };
-  });
+  }), own];
 }
 
 // The person's chosen priorities, by column. Read from priorityLevels — the
@@ -195,11 +243,17 @@ export function priorityBoard(input, { earlierRemoved = [] } = {}) {
     if (garageDetailsHidden) library = library.filter((feature) => feature.id === BOARD_HOUSE_GARAGE.id);
     return {
       key: category.key, step: category.step, title: category.title, storage: category.storage,
-      features: [...library.map((feature) => ({ ...feature, level: null })), ...(lotInLibrary ? [lotInLibrary] : [])], rankedCount: rankedCount + (lotRanked ? 1 : 0), garageDetailsHidden,
+      features: library.map((feature) => ({ ...feature, level: null })), rankedCount: rankedCount + (lotRanked ? 1 : 0), garageDetailsHidden,
       lotSize: lotField,
       lotRankable: lotField && lotSizeRankable(raw),
+      // Home to Rent: the entered acreage, unranked, shown in the lot-size panel.
+      lotChip: lotInLibrary,
+      own: category.key === BOARD_OWN_GROUP,
     };
   });
+  // Your own features first in the library: right under Add your own, where
+  // a new one appears. (Columns keep catalog order, own features last.)
+  groups.sort((a, b) => Number(b.own) - Number(a.own));
   // Earlier priorities the board doesn't offer, removed during this visit:
   // kept in the library so they can be put back (they are never deleted).
   const earlier = earlierRemoved.filter((feature) => !ranked.has(norm(feature.id)) && !groups.some((group) => group.features.some((entry) => norm(entry.id) === norm(feature.id))));

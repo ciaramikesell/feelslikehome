@@ -209,6 +209,10 @@ await page.waitForSelector('.flh-ob-board-chooser');
 await page.locator('.flh-ob-board-chooser .flh-ob-board-level.is-important').click();
 await page.waitForTimeout(150);
 check('own feature added and ranked', (await columnTexts(page, 'important')).some((text) => text === 'Wine fridge'));
+await dragTo(page, chip('features:Wine fridge', COL('important')), '.flh-ob-board-library');
+check('own feature returns to Your own features', (await page.locator(chip('features:Wine fridge', '.flh-ob-board-group[data-group="own"]')).count()) === 1);
+await dragTo(page, chip('features:Wine fridge', '.flh-ob-board-group[data-group="own"]'), COL('important'));
+check('… and drags back into a column like any feature', (await columnTexts(page, 'important')).includes('Wine fridge'));
 const grown = await page.evaluate(() => [...document.querySelectorAll('.flh-ob-board-column')].map((column) => [column.querySelectorAll('.flh-ob-board-chip').length, Math.round(column.getBoundingClientRect().height)]));
 check('columns grow with their priorities (no inner scrolling)', grown.every(([, height]) => height >= 200) && await page.evaluate(() => [...document.querySelectorAll('.flh-ob-board-column')].every((column) => column.scrollHeight <= column.clientHeight + 1)), JSON.stringify(grown));
 await page.fill('.flh-ob-board-add input', '  WINE-fridge ');
@@ -217,8 +221,9 @@ await page.waitForSelector('.flh-ob-board-chooser');
 check('duplicate typed differently opens the existing one', /Important/.test(await page.locator('.flh-ob-board-chooser [aria-pressed="true"]').textContent()));
 await page.keyboard.press('Escape');
 check('no duplicate created', (await page.locator('.flh-ob-board-chip-text', { hasText: /^wine.?fridge$/i }).count()) === 1);
+check('Add your own asks no category', await page.locator('.flh-ob-board-add select').count() === 0);
+check('own features have their own library section', /Your own features/.test(await page.locator('.flh-ob-board-group[data-group="own"]').textContent()));
 await page.fill('.flh-ob-board-add input', 'front porch');
-await page.locator('.flh-ob-board-add select').selectOption('kitchen');
 await page.keyboard.press('Enter');
 await page.waitForSelector('.flh-ob-board-chooser');
 check('typed text matching another category reuses it and says where', /under Layout & Living Spaces/.test(await page.locator('.flh-ob-board-chooser-note').textContent()));
@@ -266,7 +271,7 @@ const previewInView = () => page.evaluate(() => {
   return { inWindow: rect.top >= 0 && rect.bottom <= innerHeight && rect.left >= 0 && rect.right <= innerWidth, clipped };
 });
 await page.mouse.move(5, 5);
-const firstRow = page.locator('.flh-ob-board-group').first().locator('.flh-ob-board-chip').first();
+const firstRow = page.locator('.flh-ob-board-group:not([data-group="own"])').first().locator('.flh-ob-board-chip').first();
 await firstRow.evaluate((element) => window.scrollTo(0, window.scrollY + element.getBoundingClientRect().top - 20));
 await firstRow.hover();
 await page.waitForTimeout(650);
@@ -370,12 +375,12 @@ await open(page, 'step=cat_essentials&state=populated&search=home_rent');
 check('Rental Essentials stays its own screen on desktop', await page.locator('.flh-ob-board').count() === 0 && /rental/i.test(await page.locator('h1').textContent()));
 await open(page, 'step=cat_rent_layout&state=populated&search=home_rent');
 const rentGroups = await texts(page, '.flh-ob-board-group-title');
-check('Home to Rent board: its categories', rentGroups.map((text) => text.replace(/\d+ ranked/, '').trim()).join('|') === 'Layout & Living Spaces|Rental Features|Exterior & Property|Location & Neighborhood', rentGroups.join('|'));
+check('Home to Rent board: its categories', rentGroups.map((text) => text.replace(/\d+ ranked/, '').trim()).join('|') === 'Your own features|Layout & Living Spaces|Rental Features|Exterior & Property|Location & Neighborhood', rentGroups.join('|'));
 check('Home to Rent: Garage is a chip; lot size field shown', await page.locator(chip('exterior:Garage')).count() === 1 && await page.locator('.flh-ob-board-lot input').count() === 1);
 await shot(page, 'desktop-1440-home-to-rent', false);
 await open(page, 'step=cat_apt_unit&state=populated&search=apartment_rent');
 const aptGroups = await texts(page, '.flh-ob-board-group-title');
-check('Apartment board: The Unit · The Property; Garage Parking; no lot size', aptGroups.map((text) => text.replace(/\d+ ranked/, '').trim()).join('|') === 'The Unit|The Property' && /Garage Parking/.test(await page.locator(chip('exterior:Garage')).textContent()) && await page.locator('.flh-ob-board-lot').count() === 0, aptGroups.join('|'));
+check('Apartment board: The Unit · The Property; Garage Parking; no lot size', aptGroups.map((text) => text.replace(/\d+ ranked/, '').trim()).join('|') === 'Your own features|The Unit|The Property' && /Garage Parking/.test(await page.locator(chip('exterior:Garage')).textContent()) && await page.locator('.flh-ob-board-lot').count() === 0, aptGroups.join('|'));
 await shot(page, 'desktop-1440-apartment-to-rent', false);
 
 /* ------------------- #184 on desktop: pets and lot size --------------------- */
@@ -396,12 +401,12 @@ for (const search of ['home_rent', 'apartment_rent']) {
 
 const LOT = '.flh-ob-board-library [data-chip-id="lotSizeTarget"]';
 await open(page, 'step=cat_exterior&state=empty&search=home_rent');
-check('Home to Rent: no lot chip before acreage', await page.locator('[data-chip-id="lotSizeTarget"]').count() === 0 && /Enter acreage to choose/.test(await page.locator('.flh-ob-board-lot-help').textContent()));
+check('Home to Rent: no lot chip before acreage', await page.locator('[data-chip-id="lotSizeTarget"]').count() === 0 && /Enter acreage to make it a priority you can rank/.test(await page.locator('.flh-ob-board-lot-help').textContent()));
 await page.locator('.flh-ob-board-lot input').fill('0.5');
 await page.waitForTimeout(150);
-check('acreage entered → an unranked “Ideal lot size” chip', /Ideal lot size · 0\.5\+ acres/.test(await page.locator(LOT).textContent()) && /Not part of your Match/.test(await page.locator('.flh-ob-board-lot-help').textContent()));
+check('acreage entered → an unranked “Ideal lot size” chip', /Ideal lot size · 0\.5\+ acres/.test(await page.locator(LOT).textContent()) && /Not part of your Match until you rank it/.test(await page.locator('.flh-ob-board-lot-help').textContent()) && /Drag to a column, or click to rank/.test(await page.locator('.flh-ob-board-lot').textContent()));
 await dragTo(page, LOT, COL('important'));
-check('drag ranks the acreage', (await columnTexts(page, 'important')).includes('Ideal lot size · 0.5+ acres') && /as Important/.test(await page.locator('.flh-ob-board-lot-help').textContent()));
+check('drag ranks the acreage', (await columnTexts(page, 'important')).includes('Ideal lot size · 0.5+ acres') && /Ranked Important/.test(await page.locator('.flh-ob-board-lot-help').textContent()) && await page.locator('.flh-ob-board-lot.is-important').count() === 1);
 await page.locator(`${COL('important')} [data-chip-id="lotSizeTarget"]`).click();
 await page.locator('.flh-ob-board-chooser .flh-ob-board-level.is-must').click();
 await page.waitForTimeout(150);
@@ -422,7 +427,7 @@ check('Review shows the ranked acreage', /1 acres/.test(await page.locator('.flh
 await open(page, 'step=cat_exterior&state=empty&search=home_buy');
 await page.locator('.flh-ob-board-lot input').fill('0.3');
 await page.waitForTimeout(150);
-check('Home to Buy: acreage is a plain field, no chip, no importance text', (await page.locator('[data-chip-id="lotSizeTarget"]').count()) === 0 && (await page.locator('.flh-ob-board-lot-help').count()) === 0);
+check('Home to Buy: acreage is a plain field, no chip, no importance', (await page.locator('[data-chip-id="lotSizeTarget"]').count()) === 0 && !/rank/i.test(await page.locator('.flh-ob-board-lot').textContent()));
 // Phone ↔ desktop parity for Home to Rent lot size, in one session.
 await open(page, 'step=cat_exterior&state=empty&search=home_rent');
 await page.locator('.flh-ob-board-lot input').fill('0.75');
@@ -510,9 +515,33 @@ for (const [width, zoom] of [[320, 1], [390, 1], [320, 1.5], [375, 1.5], [390, 1
 await open(page, 'step=cat_garage&state=empty&search=home_buy');
 check('garage details hidden until a garage matters', await page.locator('.flh-ob-board-group[data-group="garage"] .flh-ob-board-chip').count() === 1);
 await dragTo(page, chip('exterior:Garage', '.flh-ob-board-library'), COL('important'));
-check('ranking Garage shows details and Attached / Detached', await page.locator('.flh-ob-board-group[data-group="garage"] .flh-ob-board-chip').count() === 3 && await page.locator('.flh-ob-board-segment').count() === 3);
-await page.locator('.flh-ob-board-segment', { hasText: 'Detached' }).click();
-check('garage type chosen', await page.locator('.flh-ob-board-segment[aria-pressed="true"]').textContent().then((text) => /Detached/.test(text)));
+check('ranking Garage shows its details in the library, but no Attached / Detached there', await page.locator('.flh-ob-board-group[data-group="garage"] .flh-ob-board-chip').count() === 3 && await page.locator('.flh-ob-board-library .flh-ob-board-segment').count() === 0);
+const rankedGarage = page.locator(`${COL('important')} [data-chip-id="exterior:Garage"]`);
+check('ranked Garage asks “Attached or detached?” on the chip', /Attached or detached\?/.test(await rankedGarage.textContent()));
+await rankedGarage.click();
+check('Garage chooser holds the qualifier', await page.locator('.flh-ob-board-chooser .flh-ob-board-segment').count() === 3);
+await page.locator('.flh-ob-board-chooser .flh-ob-board-segment', { hasText: 'Detached' }).click();
+await page.waitForTimeout(150);
+check('choosing Detached keeps the chooser open and marks it', await page.locator('.flh-ob-board-chooser .flh-ob-board-segment[aria-pressed="true"]').textContent().then((text) => /Detached/.test(text)));
+await shot(page, 'desktop-1440-garage-expanded', false);
+await page.keyboard.press('Escape');
+await page.waitForTimeout(100);
+check('the ranked chip now reads Garage · Detached', /Detached/.test(await rankedGarage.textContent()) && (await page.locator(`${COL('important')} .flh-ob-board-chip-text`).allTextContents()).includes('Garage'));
+// Ranking from the chooser reopens it on the chip so the qualifier can be answered at once.
+await open(page, 'step=cat_garage&state=empty&search=home_buy');
+await page.locator(chip('exterior:Garage', '.flh-ob-board-library')).click();
+await page.locator('.flh-ob-board-chooser .flh-ob-board-level.is-must').click();
+await page.waitForTimeout(300);
+check('ranking Garage from the chooser reopens it with Attached / Detached', await page.locator('.flh-ob-board-chooser .flh-ob-board-segment').count() === 3 && (await columnTexts(page, 'must')).includes('Garage'));
+await page.keyboard.press('Escape');
+// Not for rentals: Home to Rent Garage and apartment Garage Parking have no qualifier.
+await open(page, 'step=cat_rent_features&state=empty&search=home_rent');
+await page.locator(chip('exterior:Garage', '.flh-ob-board-library')).click();
+await page.locator('.flh-ob-board-chooser .flh-ob-board-level.is-nice').click();
+await page.waitForTimeout(200);
+await page.locator(`${COL('nice')} [data-chip-id="exterior:Garage"]`).click();
+check('Home to Rent Garage has no Attached / Detached (as on the phone)', await page.locator('.flh-ob-board-chooser .flh-ob-board-segment').count() === 0 && await page.locator('.flh-ob-board-chip-qualifier').count() === 0);
+await page.keyboard.press('Escape');
 
 /* ------------------------- widths, tablets and zoom ------------------------ */
 

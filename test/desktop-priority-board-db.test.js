@@ -25,7 +25,7 @@ const { saveOnboardingProgress } = await import('../src/lib/supabase/data.js');
 const dbTest = (name, fn) => test(name, { skip: DB_TESTS_ENABLED ? false : DB_SKIP_REASON }, fn);
 const feature = (doc, text) => {
   const board = priorityBoard(doc);
-  return [...board.groups.flatMap((group) => group.features), ...Object.values(board.columns).flat()].find((entry) => entry.text === text);
+  return [...board.groups.flatMap((group) => [...group.features, ...(group.lotChip ? [group.lotChip] : [])]), ...Object.values(board.columns).flat()].find((entry) => entry.text === text);
 };
 const insertHome = async (client, row) => {
   const { data, error } = await client.from('homes').insert(row).select('id').single();
