@@ -27,6 +27,7 @@ export default function ImportanceSheet({ feature, level, open, onClose, onChoos
   return (
     <Sheet open={open} onClose={onClose} title={feature.text} size="compact" className="flh-ob-pf-sheet">
       {note && <p className="flh-ob-pf-sheet-note" role="status">{note}</p>}
+      {feature.hint && <p className="flh-ob-pf-sheet-hint">{feature.hint}</p>}
       <div role="group" aria-labelledby={`${id}-q`} className="flh-ob-pf-levels">
         <p id={`${id}-q`} className="flh-ob-pf-sheet-question">How important is it to you?</p>
         {PRIORITY_LEVELS.map((tier) => (

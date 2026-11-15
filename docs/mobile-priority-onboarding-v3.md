@@ -60,6 +60,14 @@ already the first thing renters were asked. **Approved**: it stays renter-only
 (never shown to buyers), with the Home to Rent / Apartment to Rent differences
 above.
 
+> **Superseded for renters** by the Rental Foundations redesign
+> (`docs/rental-foundations-onboarding-spec.md`, Stages 1–3): Home to Rent is
+> now 8 screens (Type, Rental Basics, Where, Rental Essentials, Layout,
+> Rental Features, Exterior, Neighborhood) and Apartment to Rent 6 (Type,
+> Apartment Basics, Where, Rental Essentials, The Unit, The Property), each
+> followed by Review. Rental Essentials is a single optional pets question.
+> Home to Buy is unchanged.
+
 ## 2. Implementation plan (as built)
 
 1. `src/lib/priorityCategories.js` — the category catalog, identity

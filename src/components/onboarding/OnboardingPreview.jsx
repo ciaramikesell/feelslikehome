@@ -10,7 +10,8 @@ import { chooseSearchType } from '@/lib/onboardingBasics';
 import { toggleGroupValue } from '@/lib/whatMattersGroups';
 import { homePreferenceRows, toggleHomePreference } from '@/lib/homePreferences';
 import { addCriterion, isCriterionSelected, moveCriterion, setGaragePreference, toggleCriterion } from '@/lib/searchProfile';
-import { setFeatureLevel, setGarageImportance, setGarageType } from '@/lib/priorityCategories';
+import { setFeatureLevel, setGarageImportance, setGarageType, setLotSizeImportance } from '@/lib/priorityCategories';
+import { setPetsMoving } from '@/lib/rentalPets';
 
 // Fixtures for the development-only preview (src/app/dev/onboarding). Fixed ids
 // and timestamps keep every render, and every screenshot, identical.
@@ -117,6 +118,7 @@ function withPreviewAreas(priorities) {
 function priorityFlowPriorities(state, searchType = 'home_buy') {
   let next = chooseSearchType(normalizePriorities({}), searchType, { presetPropertyType: false });
   if (state === 'empty') return next;
+  if (searchType !== 'home_buy') return rentalFlowPriorities(next, state, searchType);
   next.budget = { ...next.budget, value: searchType === 'home_buy' ? '650000' : '2400' };
   next.bedsMin = { ...next.bedsMin, value: '3' };
   next.bathsMin = { ...next.bathsMin, value: '2' };
@@ -132,6 +134,47 @@ function priorityFlowPriorities(state, searchType = 'home_buy') {
   next = pick('features', 'Pot Filler', 'nice', true, 'kitchen');
   if (searchType !== 'apartment_rent') { next = setGarageImportance(next, 'important'); next = setGarageType(next, 'attached'); }
   if (state === 'legacy') next = { ...next, preferredPropertyTypes: { values: ['house'], tier: 'important' }, homeLayout: { values: ['Ranch / Single Story'], tier: 'important' } };
+  return withPreviewAreas(next);
+}
+
+// Rental fixtures (docs/rental-foundations-onboarding-spec.md): picks from the
+// rental screens at each level, one own feature, the pets answer Yes (so FLH
+// made Pet-Friendly a Must Have), and for Home to Rent a ranked lot size.
+// state=legacy adds items earlier flows offered (kept, under "More of your
+// priorities") and an earlier home type; state=manual makes Pet-Friendly the
+// renter's own Important before Yes; state=unanswered leaves the question open.
+function rentalFlowPriorities(start, state, searchType) {
+  let next = start;
+  next.budget = { ...next.budget, value: searchType === 'home_rent' ? '2800' : '2400' };
+  next.bedsMin = { ...next.bedsMin, value: searchType === 'home_rent' ? '3' : '2' };
+  next.bathsMin = { ...next.bathsMin, value: '2' };
+  next.sqftTarget = { ...next.sqftTarget, value: searchType === 'home_rent' ? '1600' : '950' };
+  const pick = (categoryKey, label, tier, custom = false, group = null) => { next = setFeatureLevel(next, { categoryKey, label, custom, group }, tier); };
+  if (searchType === 'home_rent') {
+    next.lotSizeTarget = { ...next.lotSizeTarget, value: '0.25' };
+    next = setLotSizeImportance(next, 'nice');
+    pick('features', 'Home office', 'important');
+    pick('features', 'Extra Bedroom', 'nice', true, 'rent_layout');
+    pick('features', 'Central Air', 'must');
+    pick('exterior', 'Garage', 'important');
+    pick('features', 'In-Unit Laundry', 'important');
+    pick('exterior', 'Fenced yard', 'nice');
+    pick('location', 'Walkable Neighborhood', 'important');
+    pick('features', 'Wine Fridge', 'nice', true, 'rent_features');
+  } else {
+    pick('features', 'In-Unit Laundry', 'must');
+    pick('features', 'Home Office', 'important');
+    pick('exterior', 'Private Garage', 'nice', true, 'apt_unit');
+    pick('exterior', 'Fitness Center', 'nice');
+    pick('exterior', 'Garage', 'important');
+    pick('exterior', 'Rooftop Deck', 'nice', true, 'apt_property');
+  }
+  if (state === 'legacy') {
+    pick('features', searchType === 'home_rent' ? 'Guest Bedroom' : 'Updated Interior', 'important');
+    if (searchType === 'home_rent') next = { ...next, preferredPropertyTypes: { values: ['house'], tier: 'important' } };
+  }
+  if (state === 'manual') pick('features', 'Pets Allowed', 'important');
+  if (state !== 'unanswered') next = setPetsMoving(next, 'yes', NOW).priorities;
   return withPreviewAreas(next);
 }
 

@@ -42,8 +42,12 @@ const STEP_LABELS = {
   search_type: 'Search Type', cat_essentials: 'Rental Essentials', cat_layout: 'Layout & Living', cat_kitchen: 'Kitchen',
   cat_living: 'Living Room', cat_bath: 'Bathroom', cat_garage: 'Garage', cat_exterior: 'Exterior & Property',
   cat_neighborhood: 'Neighborhood',
+  // Rentals (docs/rental-foundations-onboarding-spec.md).
+  cat_rent_layout: 'Layout & Living', cat_rent_features: 'Rental Features', cat_apt_unit: 'The Unit', cat_apt_property: 'The Property',
 };
 const LOCATION_LABEL_V4 = 'Where You’re Looking';
+// Flow 4 names Basics after the kind of search (Home to Buy keeps The Basics).
+const BASICS_LABEL_V4 = { home_rent: 'Rental Basics', apartment_rent: 'Apartment Basics' };
 
 const BUILT_STEPS = new Set(['basics', 'locations', 'collaboration', 'priorities', 'what_matters', 'rank', 'review']);
 
@@ -410,7 +414,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
   return (
     <div className="hh-root flh-onboarding-root">
       <div className="flh-ob-layout">
-        <OnboardingRail progress={progress} labels={priorityFlow ? { ...STEP_LABELS, locations: LOCATION_LABEL_V4 } : STEP_LABELS} complete={ready} sharedFor={sharedFor} />
+        <OnboardingRail progress={progress} labels={priorityFlow ? { ...STEP_LABELS, locations: LOCATION_LABEL_V4, basics: BASICS_LABEL_V4[priorities.onboardingSearchType] || STEP_LABELS.basics } : STEP_LABELS} complete={ready} sharedFor={sharedFor} />
         <main className="flh-onboarding">
           {/* Back returns to the previous step; nothing precedes the first one yet. */}
           {/* Flow 4 puts Back in its Back · Skip · Continue footer (Review keeps the top Back). */}

@@ -14,7 +14,7 @@ const { normalizePriorities } = await import('../src/lib/constants.js');
 const { chooseSearchType } = await import('../src/lib/onboardingBasics.js');
 const { criterionAnswerPatch } = await import('../src/lib/matchCriteria.js');
 const { priorityLevels } = await import('../src/lib/searchProfile.js');
-const { addOwnFeature, categoryView, featureLevel, garageImportance, garageType, setFeatureLevel, setGarageImportance, setGarageType, switchPrioritySearchType } = await import('../src/lib/priorityCategories.js');
+const { PETS_FEATURE, addOwnFeature, categoryView, featureLevel, garageImportance, garageType, setFeatureLevel, setGarageImportance, setGarageType, setLotSizeImportance, switchPrioritySearchType } = await import('../src/lib/priorityCategories.js');
 const {
   acceptInvitation, createInvitation, getHomesForUser, resolveCoBuyerComparePerspectives, resolvePriorities, savePriorities,
   saveHomePersonalAndShared, saveHomePersonalState,
@@ -255,4 +255,69 @@ dbTest('garage switching: held preferences are invisible to Match; JS = SQL for 
   bSide = await both(b, a);
   assert.deepEqual([featureLevel(bSide.priorities, GARAGE), bSide.priorities.exterior.heldGarage], ['important', undefined]);
   for (const match of Object.values(bSide.out)) assert.deepEqual(garageItems(match).map((item) => item.tier), ['important']);
+});
+
+// Stage 3 (rental onboarding UI). Home to Rent's Ideal lot size with its
+// optional importance (D4) writes the existing lotSizeTarget.tier, and both
+// scorers read it identically: unranked acreage is never scored; ranked
+// acreage is a threshold, with an unknown lot size Unknown (never a miss).
+// Changing Pet-Friendly on Review is a manual edit (ends FLH's ownership).
+// Co-renters stay independent throughout.
+dbTest('Home to Rent lot-size importance and Review edits: JS = SQL for co-renters; unranked acreage and unknown lots never count', async () => {
+  const a = db.createUser({ email: 'renter.a.lot@example.com', firstName: 'Acre' });
+  const b = db.createUser({ email: 'renter.b.lot@example.com', firstName: 'Other' });
+  const search = db.admin(`select id from public.searches where user_id = '${a}'`)[0].id;
+  const invitation = await createInvitation(db.clientFor(a), search, a, 'renter.b.lot@example.com', 'co_buyer');
+  assert.equal((await acceptInvitation(db.clientFor(b), invitation.token)).success, true);
+  const T = '2026-11-14T12:00:00.000Z';
+  const rent = () => {
+    const p = chooseSearchType(normalizePriorities({}), 'home_rent', { presetPropertyType: false });
+    return { ...p, budget: { ...p.budget, value: '3000', tier: 'important' }, lotSizeTarget: { ...p.lotSizeTarget, value: '0.5' } };
+  };
+  // A: 0.5 acres ranked Must Have; pets Yes, then Pet-Friendly changed by hand on Review.
+  let aDoc = setLotSizeImportance(rent(), 'must');
+  aDoc = setPetsMoving(aDoc, 'yes', T).priorities;
+  aDoc = setFeatureLevel(aDoc, PETS_FEATURE, 'important');
+  assert.deepEqual([aDoc.features.tiers['Pets Allowed'], petsAutoMarker(aDoc), petsMovingAnswer(aDoc)], ['important', null, 'yes'], 'Review edit is manual');
+  // B: the same acreage, never ranked.
+  const bDoc = rent();
+  await savePriorities(db.clientFor(a), { id: search }, a, aDoc);
+  await savePriorities(db.clientFor(b), { id: search }, b, bDoc);
+  const bRow = JSON.stringify(db.admin(`select priorities from public.search_member_priorities where search_id = '${search}' and user_id = '${b}'`)[0].priorities);
+
+  const homeIds = {};
+  for (const [name, lot] of [['big', '0.75 acres'], ['small', '0.25 acres'], ['unknown', '']]) {
+    const inserted = await db.clientFor(a).from('homes').insert({ user_id: a, search_id: search, address: `${name} Acre Ln, Royal Oak, MI 48073`, price: '2400', lot_size: lot, pets_allowed: true }).select('id').single();
+    assert.equal(inserted.error, null, inserted.error?.message);
+    homeIds[name] = inserted.data.id;
+  }
+  const both = async (subject, viewer) => {
+    const priorities = normalizePriorities(await resolvePriorities(db.clientFor(subject), { id: search }, subject));
+    const homes = await getHomesForUser(db.clientFor(subject), subject, search);
+    const projected = await resolveCoBuyerComparePerspectives(db.clientFor(viewer), { id: search }, Object.values(homeIds));
+    const out = {};
+    for (const [name, id] of Object.entries(homeIds)) {
+      const own = computeMatch(homes.find((home) => home.id === id), priorities);
+      const other = projected.get(id).match;
+      assert.deepEqual([other.pct, other.selectedCount, other.evaluatedCount], [own.pct, own.selectedCount, own.evaluatedCount], `JS = SQL on ${name}`);
+      out[name] = own;
+    }
+    return out;
+  };
+  const lot = (match) => match.allSelected.find((item) => item.key === 'lotSize');
+  const aMatch = await both(a, b);
+  assert.deepEqual([lot(aMatch.big).met, lot(aMatch.big).tier], [true, 'must']);
+  assert.equal(lot(aMatch.small).met, false);
+  assert.equal(lot(aMatch.unknown).evaluated, false, 'unknown lot size: Unknown, never a miss');
+  assert.equal(aMatch.unknown.pct, 100);
+  const bMatch = await both(b, a);
+  for (const name of Object.keys(homeIds)) assert.equal(lot(bMatch[name]), undefined, `B’s unranked acreage is not scored (${name})`);
+  assert.equal(JSON.stringify(db.admin(`select priorities from public.search_member_priorities where search_id = '${search}' and user_id = '${b}'`)[0].priorities), bRow, 'B’s row is untouched by A’s edits');
+
+  // Not important returns the tier to dontcare: the acreage stays, unscored, in both scorers.
+  await savePriorities(db.clientFor(a), { id: search }, a, setLotSizeImportance(aDoc, 'none'));
+  const aStored = normalizePriorities(await resolvePriorities(db.clientFor(a), { id: search }, a));
+  assert.deepEqual(aStored.lotSizeTarget, { value: '0.5', tier: 'dontcare' });
+  const aUnranked = await both(a, b);
+  for (const name of Object.keys(homeIds)) assert.equal(lot(aUnranked[name]), undefined, name);
 });

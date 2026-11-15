@@ -1,9 +1,9 @@
 # Rental Foundations: Mobile Rental Onboarding Spec and Compatibility Audit
 
 **Status: architecture approved by the founder with decisions D1–D8 (§10).
-Stages 1–2 are implemented behind `FLH_ONBOARDING_V3` (off in Production); see
-§13 for what was built, the Stage 0 result and what Stage 3 needs.** Stages 3–5
-have not started. No database change, SQL, Match scoring, Floor Plans or PR #166
+Stages 1–3 are implemented behind `FLH_ONBOARDING_V3` (off in Production); see
+§13 for Stages 0–2 and §14 for Stage 3 (the mobile UI).** Stages 4–5 have not
+started. No database change, SQL, Match scoring, Floor Plans or PR #166
 change is part of any stage so far. Each stage stops for founder review where
 marked. Do not merge or deploy.
 
@@ -750,3 +750,140 @@ and the A1 guard prevents new duplicates whatever already exists.
 | `scripts/qa/mobile-priority-onboarding-v3-qa.mjs` | Already lists the new rental screens; add the pets question, Undo and the lot-size control. |
 | Stage 4: `src/components/RankPrioritiesEditor.jsx` / My Search | Rental Essentials row calling `setPetsMoving`; the D8 note while `petsProvenance(…).automatic`. |
 
+
+---
+
+## 14. Implementation status: Stage 3 (mobile UI, behind the flag)
+
+Built on `main` at `ef77c3e` (PR #183 merged). No change to Match scoring,
+`matching.js`, `homeFactCriteria.js`, any SQL or migration, `constants.js`
+catalogs, the flag default, `CURRENT_ONBOARDING_VERSION` (still 1), Floor
+Plans or PR #166. Home to Buy is unchanged (pixel comparison below).
+
+### Screens (exact)
+
+| Search | Counted screens (progress `n/total`) | Then |
+|---|---|---|
+| Home to Buy | 10, unchanged | Review |
+| Home to Rent | 8: Search Type · **Rental Basics** · Where · **Rental Essentials** · Layout & Living Spaces · Rental Features · Exterior & Property · Location & Neighborhood | Review |
+| Apartment to Rent | 6: Search Type · **Apartment Basics** · Where · **Rental Essentials** · The Unit · The Property | Review |
+
+Basics keeps the shared fields (monthly maximum rent with `$` and thousands
+separators, bedrooms, bathrooms, ideal square footage). Only the rental
+eyebrow ("Rental Basics" / "Apartment Basics") and heading ("…your rental
+search" / "…your apartment search") differ; Home to Buy's text is unchanged.
+
+### Rental Essentials: `PetsQuestion.jsx`
+
+- The `pet-friendly` photo (card derivative, wide crop anchored on the pet),
+  the question "Will pets be moving with you?", and three native radio
+  buttons in a `fieldset`: **Yes** / **No** / **Not sure yet**. Nothing is
+  preselected; Skip writes nothing. No other field exists (no pet type, breed,
+  size, weight, count or name).
+- Every answer goes through `setPetsMoving` (computed from the latest saved
+  document inside the `patch` updater). The status line (`role="status"`) uses
+  `petsChangeMessage`: "Pet-Friendly is now a Must Have.", "…is back to
+  Important.", "…stays a Must Have because you set it yourself.", etc.
+- **Undo** calls `restorePets` with the snapshot `setPetsMoving` returned,
+  restoring the tier, `customItems`, `petsMoving` and `petsAuto` exactly.
+- A quiet resting line explains the saved state on return ("Pet-Friendly is a
+  Must Have because pets are moving with you.").
+- No Pet-Friendly card exists on any screen; Add your own is not offered on
+  the question screen.
+
+### Exterior lot size (Home to Rent only, D4)
+
+Below the acreage field, once acreage is entered, a button "How important is
+lot size?" opens the **same importance sheet** (Must Have / Important / Nice
+to Have / Not important). It writes only `lotSizeTarget.tier`
+(`setLotSizeImportance`), the field My Search's Basics editor and both scorers
+already read. With no importance the tier stays `dontcare` and Match ignores
+the acreage; "Not important" returns it to `dontcare`; the acreage itself is
+never changed. Before acreage is entered the screen says "Enter acreage to
+choose how much it matters. Optional." Home to Buy keeps today's unranked
+field (`lotSizeRankable` is Home to Rent only).
+
+### Hints
+
+`feature.hint` is shown on the card (under the title, and in the card's
+accessible name) and in the importance sheet: Extra Bedroom, Private Garage,
+Landscaping. No Home to Buy card has a hint, so buyer cards are unchanged.
+
+### Review
+
+- **Rental Essentials** section: "Pets moving with you: Yes / No / Not sure
+  yet / Not answered", then Pet-Friendly **once**, as an editable row with its
+  provenance ("Because pets are moving with you" or "You set this yourself").
+  Changing its level there is a manual edit (ends `petsAuto`, D2). Edit returns
+  to the question; when unanswered the action reads "Answer".
+- `otherChosenPriorities` now excludes `features:Pets Allowed` for rental
+  searches, so it is never listed twice (Home to Buy unchanged).
+- **Exterior & Property** (Home to Rent): "Ideal lot size: 0.5 acres" with its
+  importance, or "Not ranked · Not part of your Match"; tapping opens the
+  same sheet. Home to Buy keeps its plain line.
+- The "N priorities shape your Match" total counts Pet-Friendly and a ranked
+  lot size once each.
+- Historical priorities (Guest Bedroom, Updated Interior, earlier home type…)
+  stay under "More of your priorities" / "Saved from earlier".
+
+### Preview fixtures
+
+`/dev/onboarding?flow=v3&search=home_rent|apartment_rent` now uses rental
+picks: `state=populated` (pets Yes, FLH-owned Must Have; Home to Rent lot
+0.25 acres ranked Nice to Have), `state=legacy` (+ removed items and an
+earlier home type), `state=manual` (Pet-Friendly the renter's own Important
+before Yes), `state=unanswered` (question open). Home to Buy fixtures are
+unchanged.
+
+### Tests and QA
+
+- `test/rental-onboarding-stage3.test.js` (15 tests, including the desktop rail naming every rental screen): screen counts, headings,
+  the pets component contract (only `setPetsMoving` / `restorePets`, no pet
+  details), no Pet-Friendly card, exact Undo sequences, Review provenance and
+  single listing, Review manual edit, lot-size importance and Match (unranked
+  never scored, unknown lot Unknown), hints.
+- `test/rental-pets-onboarding.test.js`: the Stage 2 assertion that
+  Pet-Friendly stays under "More of your priorities" is replaced by the Stage 3
+  rule (never listed there for rentals).
+- Real Postgres (`test/mobile-priority-onboarding-v3-db.test.js`): co-renters,
+  A's lot size ranked Must Have and Pet-Friendly changed by hand on Review, B's
+  acreage unranked: JS = SQL on a big, small and unknown lot; unranked and
+  "Not important" acreage never scored; B's row byte-identical.
+- Browser QA (`scripts/qa/mobile-priority-onboarding-v3-qa.mjs`): every rental
+  screen at 375 / 390 / 430 px, 1440 px and 150% / 200% zoom; both rental flows
+  end to end (progress counts, Skip, Back, Continue, pets Yes / Undo / Not sure /
+  No, keyboard arrows, hints, a ranked custom addition, acreage ranking,
+  Review edits of acreage, Pet-Friendly and the pets answer); resumed sessions.
+
+### Verification (this change)
+
+| Check | Result |
+|---|---|
+| `npm test` with real Postgres (`FLH_TEST_PGHOST`, Postgres 16) | 1,512 pass, 0 fail, 2 skipped (pre-existing: no sanitized RentCast fixtures) |
+| Browser QA, `scripts/qa/mobile-priority-onboarding-v3-qa.mjs` | 474 / 474 |
+| Home to Buy V3 at rest: 20 scenarios × 390 / 768 / 1024 / 1440 × top / end / full, `main` vs this branch | 240 screenshots, **0 pixels changed** |
+| Live flow 1 and the six-step preview (`scripts/visual/onboarding-screens.mjs`), `main` vs this branch | 480 screenshots, **0 pixels changed** |
+| `npm run build` | passes |
+
+Also fixed: the desktop step rail showed raw keys (`cat_rent_layout`,
+`cat_apt_unit`…) for the Stage 1 rental screens; it now names them, and calls
+Basics "Rental Basics" / "Apartment Basics" for renters.
+
+Contact sheets: `docs/rental-onboarding-stage3-screenshots/`.
+
+### For founder review
+
+- **Pre-existing, not changed here:** at 390 px with 200% zoom, the V3 Review
+  screen (Home to Buy as well as rentals) clips the right edge of some rows
+  inside its cards; the page itself does not scroll sideways. Fixing it changes
+  Home to Buy pixels, so it is left for a separate change.
+- Lot size: clearing the acreage keeps a chosen importance stored (inert:
+  Match needs an acreage), as My Search's Basics editor does; re-entering
+  acreage shows it again.
+- The Yes hint reads "Pet-Friendly becomes a Must Have" even when the renter
+  already set it to Must Have themselves (the status line then says it already
+  is).
+
+### Still for Stage 4
+
+The My Search Rental Essentials row and the D8 note on the ranking board.
