@@ -32,10 +32,14 @@ import WhatMattersStepV2 from '@/components/onboarding/WhatMattersStepV2';
 import RankStepV2 from '@/components/onboarding/RankStepV2';
 import ReviewStep from '@/components/onboarding/ReviewStep';
 import PriorityFlow from '@/components/onboarding/priority/PriorityFlow';
+import useDesktopBoard from '@/components/onboarding/priority/useDesktopBoard';
+import { BOARD_STEP, BOARD_STEP_LABEL, advanceBoard, desktopProgress, isBoardStep, retreatBoard } from '@/lib/priorityBoard';
 
 // Screen labels for the flow-1 steps (src/lib/onboardingFlow.js owns order and branching).
 // Flow 1 is live; the approved six-step flow (3) is built and previewed step by step.
 const STEP_LABELS = {
+  // Flow 4 on desktop: the card categories shown as one board (src/lib/priorityBoard.js).
+  [BOARD_STEP]: BOARD_STEP_LABEL,
   basics: 'The Basics', what_matters: 'What Matters', rank: 'Rank Priorities',
   locations: 'Location', collaboration: 'Your People', priorities: 'What Matters', review: 'Review',
   // Flow 4 (Mobile Priority Onboarding V3).
@@ -241,8 +245,12 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
   // Mobile Priority Onboarding V3 (flow 4): category screens and an editable review.
   const priorityFlow = version === 4;
   const fullProgress = onboardingProgress(version, progressState, step);
+  // Flow 4 on desktop: the card categories are one board (src/lib/priorityBoard.js).
+  // Same document and same stored steps; only how they are presented differs.
+  const desktopBoard = useDesktopBoard() && priorityFlow;
+  const onBoard = desktopBoard && isBoardStep(step);
   // Flow 4 counts the question screens; Review is the finish line, not a step.
-  const progress = priorityFlow ? (() => {
+  const progress = desktopBoard ? desktopProgress(fullProgress.steps, step) : priorityFlow ? (() => {
     const steps = fullProgress.steps.filter((key) => key !== 'review');
     const index = step === 'review' ? steps.length - 1 : Math.max(0, steps.indexOf(step));
     return { index, position: step === 'review' ? steps.length : index + 1, total: steps.length, steps };
@@ -316,19 +324,26 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
   // untouched. Skip changes no answer; it only records the screen as skipped.
   const moveOn = async (fromStep, { skip = false } = {}) => {
     await flush();
-    const { state: next } = (skip ? skipOnboardingStep : advanceOnboarding)(version, progressRef.current, fromStep);
+    const boardMove = desktopBoard && isBoardStep(fromStep);
+    const { state: next } = boardMove
+      ? advanceBoard(version, progressRef.current, { skip })
+      : (skip ? skipOnboardingStep : advanceOnboarding)(version, progressRef.current, fromStep);
     if (returnToReview) {
       setReturnToReview(false);
       persistProgress({ ...next, step: 'review' });
     } else {
       persistProgress(next);
     }
-    if (!sharedSetup) track(ANALYTICS_EVENTS.ONBOARDING_STEP_COMPLETED, { ...eventContext, step: fromStep, ...(skip ? { reason: 'skipped' } : {}) });
+    if (!sharedSetup) track(ANALYTICS_EVENTS.ONBOARDING_STEP_COMPLETED, { ...eventContext, step: boardMove ? BOARD_STEP : fromStep, ...(skip ? { reason: 'skipped' } : {}) });
     window.scrollTo?.({ top: 0 });
   };
   // Going back never clears an answer: priorities stay saved, and the
   // screen re-renders from them.
-  const goBack = (fromStep) => { persistProgress(retreatOnboarding(version, progressRef.current, fromStep)); window.scrollTo?.({ top: 0 }); };
+  const goBack = (fromStep) => {
+    const back = desktopBoard && isBoardStep(fromStep) ? retreatBoard(version, progressRef.current) : retreatOnboarding(version, progressRef.current, fromStep);
+    persistProgress(back);
+    window.scrollTo?.({ top: 0 });
+  };
   // Step 3's cards are the onboarding answer only: saved with progress, never
   // an invitation or a membership.
   const chooseCollaboration = (selection) => {
@@ -408,7 +423,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
   };
 
   return (
-    <div className="hh-root flh-onboarding-root">
+    <div className={`hh-root flh-onboarding-root${onBoard && !ready ? ' flh-ob-board-wide' : ''}`}>
       <div className="flh-ob-layout">
         <OnboardingRail progress={progress} labels={priorityFlow ? { ...STEP_LABELS, locations: LOCATION_LABEL_V4 } : STEP_LABELS} complete={ready} sharedFor={sharedFor} />
         <main className="flh-onboarding">
@@ -443,6 +458,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
               onCreatePlace={createPlace}
               onDeletePlace={deletePlace}
               review={{ skipped: progressState.skipped || [], onEdit: editFromReview, onFinish: finishToDestination, finishing, finishError }}
+              board={desktopBoard}
             />
           )}
           {!ready && !priorityFlow && step === 'basics' && (

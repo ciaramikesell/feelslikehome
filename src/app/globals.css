@@ -3932,6 +3932,124 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 
 
 
+/* ── Desktop priority board (flow 4, ≥ 1024px) ───────────────────────────────
+   docs/desktop-priority-board.md. One screen replaces the category screens on
+   desktop: a feature library and three importance columns of compact text
+   chips. Only rendered at DESKTOP_BOARD_QUERY (src/lib/priorityBoard.js), so
+   nothing here can reach a phone. Every rule is scoped to the onboarding root.
+     1024–1199  library above the columns (library scrolls inside itself, ≤ 560px)
+     ≥ 1200     library left, columns right and sticky                       */
+@media (min-width: 960px) {
+  .flh-onboarding-root.flh-ob-board-wide { --ob-measure: 1180px; }
+  .flh-onboarding-root.flh-ob-board-wide .flh-ob-layout { grid-template-columns: 200px minmax(0, var(--ob-measure)); column-gap: clamp(32px, 3.5vw, 72px); }
+}
+@media (min-width: 1440px) {
+  .flh-onboarding-root.flh-ob-board-wide .flh-ob-layout { grid-template-columns: minmax(220px, 260px) minmax(0, var(--ob-measure)); }
+}
+.flh-onboarding-root .flh-ob-board-step { min-width: 0; }
+.flh-onboarding-root .flh-ob-board-status { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; min-height: 36px; margin: -6px 0 0; color: var(--ink-soft); font: 500 13.5px/1.45 var(--font-sans); }
+.flh-onboarding-root .flh-ob-board-status > span:first-child:not(.flh-ob-board-status-idle) { color: var(--ink); font-weight: 600; }
+.flh-onboarding-root .flh-ob-board-undo { display: inline-flex; align-items: center; gap: 4px; min-height: 32px; }
+.flh-onboarding-root .flh-ob-board { position: relative; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; min-width: 0; }
+
+/* Library */
+.flh-onboarding-root .flh-ob-board-library { position: relative; display: grid; gap: 18px; min-width: 0; max-height: 560px; overflow-y: auto; padding: 18px; border: 1px solid var(--ob-line); border-radius: 20px; background: var(--flh-card, #fff); transition: border-color .15s ease, background-color .15s ease; }
+.flh-onboarding-root .flh-ob-board-library-head { display: grid; gap: 2px; }
+.flh-onboarding-root .flh-ob-board-library-title { margin: 0; font: 600 18px/1.2 var(--font-serif); color: var(--ink); }
+.flh-onboarding-root .flh-ob-board-library-hint { margin: 0; color: var(--ink-soft); font: 500 12.5px/1.4 var(--font-sans); }
+.flh-onboarding-root .flh-ob-board-library.is-target { border-style: dashed; border-color: #CDBFAE; }
+.flh-onboarding-root .flh-ob-board-library.is-over { border-color: var(--brick); background: #FDF6F1; }
+.flh-onboarding-root .flh-ob-board-drop-hint { position: sticky; top: -18px; z-index: 2; margin: -18px -18px 0; padding: 10px 18px; border-bottom: 1px dashed #CDBFAE; background: #FDF6F1; color: var(--brick-deep); font: 600 12.5px/1.3 var(--font-sans); }
+.flh-onboarding-root .flh-ob-board-group { display: grid; gap: 8px; min-width: 0; }
+.flh-onboarding-root .flh-ob-board-group-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; margin: 0; color: var(--ink); font: 700 11.5px/1.3 var(--font-sans); letter-spacing: .08em; text-transform: uppercase; }
+.flh-onboarding-root .flh-ob-board-ranked { color: var(--flh-sage-ink, #4A6B4F); font-weight: 600; letter-spacing: .02em; text-transform: none; }
+.flh-onboarding-root .flh-ob-board-all-ranked, .flh-onboarding-root .flh-ob-board-note { margin: 0; color: var(--ink-soft); font: 500 12.5px/1.4 var(--font-sans); }
+.flh-onboarding-root .flh-ob-board-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; min-width: 0; }
+.flh-onboarding-root .flh-ob-board-cell { display: flex; min-width: 0; max-width: 100%; }
+.flh-onboarding-root .flh-ob-board-sublabel { margin: 4px 0 6px; color: var(--ink-soft); font: 600 12.5px/1.3 var(--font-sans); }
+.flh-onboarding-root .flh-ob-board-segments { display: flex; flex-wrap: wrap; gap: 6px; }
+.flh-onboarding-root .flh-ob-board-segment { display: inline-flex; align-items: center; gap: 4px; min-height: 36px; padding: 0 12px; border: 1px solid var(--ob-line); border-radius: 10px; background: #fff; color: var(--ink); font: 600 12.5px/1.2 var(--font-sans); cursor: pointer; }
+.flh-onboarding-root .flh-ob-board-segment.is-current { border-color: var(--brick); background: #FDF1EA; color: var(--brick-deep); box-shadow: inset 0 0 0 1px var(--brick); }
+.flh-onboarding-root .flh-ob-board-lot .flh-ob-field { gap: 6px; }
+.flh-onboarding-root .flh-ob-board-lot .flh-ob-input { max-width: 220px; }
+
+/* Chips: compact, text only, draggable; the level is in words for AT and as a colour edge */
+.flh-onboarding-root .flh-ob-board-chip { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; min-height: 36px; padding: 6px 12px 6px 7px; border: 1px solid var(--ob-line); border-radius: 999px; background: #fff; color: var(--ink); font: 600 13px/1.25 var(--font-sans); text-align: left; cursor: grab; transition: border-color .12s ease, box-shadow .12s ease, opacity .12s ease, transform .12s ease; }
+.flh-onboarding-root .flh-ob-board-chip:hover { border-color: #CDBFAE; box-shadow: 0 2px 8px -4px rgba(46,38,33,.35); }
+.flh-onboarding-root .flh-ob-board-chip:focus-visible { outline: 2px solid var(--brick); outline-offset: 2px; }
+.flh-onboarding-root .flh-ob-board-chip.is-dragging { opacity: .4; }
+.flh-onboarding-root .flh-ob-board.is-dragging .flh-ob-board-chip { cursor: grabbing; }
+.flh-onboarding-root .flh-ob-board-chip-text { min-width: 0; overflow-wrap: anywhere; }
+.flh-onboarding-root .flh-ob-board-grip { flex-shrink: 0; color: #B3A797; }
+.flh-onboarding-root .flh-ob-board-chip .flh-ob-pf-own { flex-shrink: 0; }
+
+/* Columns */
+.flh-onboarding-root .flh-ob-board-columns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; min-width: 0; }
+.flh-onboarding-root .flh-ob-board-column { display: flex; flex-direction: column; gap: 10px; min-width: 0; min-height: 240px; padding: 14px 12px; border: 1px solid var(--ob-line); border-radius: 18px; background: var(--ob-warm-row); transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease; }
+.flh-onboarding-root .flh-ob-board-column.is-target { border-style: dashed; border-color: #CDBFAE; }
+.flh-onboarding-root .flh-ob-board-column.is-over { border-style: solid; border-color: var(--brick); background: #FDF6F1; box-shadow: inset 0 0 0 1px var(--brick); }
+.flh-onboarding-root .flh-ob-board-column-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 8px; }
+.flh-onboarding-root .flh-ob-board-column-title { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--ink); font: 700 14.5px/1.25 var(--font-sans); }
+.flh-onboarding-root .flh-ob-board-column.is-must .flh-ob-pf-level-dot { background: var(--pf-must); }
+.flh-onboarding-root .flh-ob-board-column.is-important .flh-ob-pf-level-dot { background: #C69245; }
+.flh-onboarding-root .flh-ob-board-column.is-nice .flh-ob-pf-level-dot { background: var(--pf-nice); }
+.flh-onboarding-root .flh-ob-board-count { min-width: 24px; padding: 2px 8px; border-radius: 999px; background: #fff; color: var(--ink-soft); font: 700 12px/1.3 var(--font-sans); font-variant-numeric: tabular-nums; text-align: center; }
+.flh-onboarding-root .flh-ob-board-column-hint { grid-column: 1 / -1; margin: 0; color: var(--ink-soft); font: 500 12px/1.35 var(--font-sans); }
+.flh-onboarding-root .flh-ob-board-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.flh-onboarding-root .flh-ob-board-list .flh-ob-board-chip { width: 100%; border-radius: 10px; border-left-width: 4px; }
+.flh-onboarding-root .flh-ob-board-chip.is-must { border-left-color: var(--pf-must); }
+.flh-onboarding-root .flh-ob-board-chip.is-important { border-left-color: #C69245; }
+.flh-onboarding-root .flh-ob-board-chip.is-nice { border-left-color: var(--pf-nice); }
+.flh-onboarding-root .flh-ob-board-empty { display: grid; gap: 4px; flex: 1; align-content: center; margin: 0; padding: 18px 12px; border: 1px dashed #D8CEC1; border-radius: 12px; color: var(--ink-soft); font: 600 12.5px/1.4 var(--font-sans); text-align: center; }
+.flh-onboarding-root .flh-ob-board-empty span { font-weight: 500; font-size: 12px; }
+
+/* Add your own */
+.flh-onboarding-root .flh-ob-board-add { display: grid; gap: 8px; padding: 12px; border: 1px dashed #CDBFAE; border-radius: 14px; background: var(--ob-warm-row); }
+.flh-onboarding-root .flh-ob-board-add-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.flh-onboarding-root .flh-ob-board-add-row .flh-ob-input { flex: 1 1 150px; min-width: 0; }
+.flh-onboarding-root .flh-ob-board-select { flex: 1 1 130px; min-width: 0; min-height: 44px; padding: 0 10px; border: 1px solid var(--ob-line); border-radius: 12px; background: #fff; color: var(--ink); font: 500 13px/1.2 var(--font-sans); }
+.flh-onboarding-root .flh-ob-board-add-button { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border-radius: 12px; }
+.flh-onboarding-root .flh-ob-board-add .flh-ob-help { margin: 0; }
+.flh-onboarding-root .flh-ob-board-matches { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.flh-onboarding-root .flh-ob-board-match { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; width: 100%; min-height: 36px; padding: 6px 10px; border: 1px solid var(--ob-line); border-radius: 10px; background: #fff; color: var(--ink); font: 600 13px/1.3 var(--font-sans); text-align: left; cursor: pointer; }
+.flh-onboarding-root .flh-ob-board-match:hover { border-color: var(--brick); }
+.flh-onboarding-root .flh-ob-board-match-group { color: var(--ink-soft); font-weight: 500; font-size: 12px; }
+
+/* Importance chooser (click / keyboard) */
+.flh-onboarding-root .flh-ob-board-chooser { position: absolute; z-index: 30; display: grid; gap: 6px; width: 272px; max-width: 100%; padding: 12px; border: 1px solid var(--ob-line); border-radius: 16px; background: #fff; box-shadow: 0 18px 40px -16px rgba(46,38,33,.45); }
+.flh-onboarding-root .flh-ob-board-chooser-title { margin: 0; color: var(--ink); font: 600 16px/1.25 var(--font-serif); overflow-wrap: anywhere; }
+.flh-onboarding-root .flh-ob-board-chooser-note { margin: 0; padding: 6px 8px; border-radius: 8px; background: var(--ob-warm-row); color: var(--ink-soft); font: 500 12px/1.4 var(--font-sans); }
+.flh-onboarding-root .flh-ob-board-chooser-question { margin: 0; color: var(--ink-soft); font: 600 12px/1.3 var(--font-sans); }
+.flh-onboarding-root .flh-ob-board-chooser-levels { display: grid; gap: 6px; }
+.flh-onboarding-root .flh-ob-board-level { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 6px 10px; border: 1px solid var(--ob-line); border-radius: 10px; background: #fff; color: var(--ink); text-align: left; cursor: pointer; font: inherit; }
+.flh-onboarding-root .flh-ob-board-level:hover { border-color: #CDBFAE; }
+.flh-onboarding-root .flh-ob-board-level.is-current { border-color: var(--brick); background: #FDF1EA; box-shadow: inset 0 0 0 1px var(--brick); color: var(--brick-deep); }
+.flh-onboarding-root .flh-ob-board-level.is-must .flh-ob-pf-level-dot { background: var(--pf-must); }
+.flh-onboarding-root .flh-ob-board-level.is-important .flh-ob-pf-level-dot { background: #C69245; }
+.flh-onboarding-root .flh-ob-board-level.is-nice .flh-ob-pf-level-dot { background: var(--pf-nice); }
+.flh-onboarding-root .flh-ob-board-level-copy { display: grid; min-width: 0; }
+.flh-onboarding-root .flh-ob-board-level-title { font: 600 13.5px/1.25 var(--font-sans); }
+.flh-onboarding-root .flh-ob-board-level-hint { color: var(--ink-soft); font: 500 11.5px/1.3 var(--font-sans); }
+.flh-onboarding-root .flh-ob-board-remove { display: grid; gap: 2px; width: 100%; min-height: 44px; margin-top: 2px; padding: 6px 10px; border: 0; border-radius: 10px; background: var(--ob-warm-row); color: var(--ink); text-align: left; cursor: pointer; font: 600 13px/1.3 var(--font-sans); }
+.flh-onboarding-root .flh-ob-board-remove span { color: var(--ink-soft); font-weight: 500; font-size: 11.5px; }
+.flh-onboarding-root .flh-ob-board-cancel { justify-self: start; min-height: 36px; }
+
+/* Hover / focus preview: decorative, never covers the pointer, gone while dragging */
+.flh-onboarding-root .flh-ob-board-preview { position: absolute; z-index: 25; width: 232px; overflow: hidden; border: 1px solid var(--ob-line); border-radius: 14px; background: #fff; box-shadow: 0 16px 36px -14px rgba(46,38,33,.45); pointer-events: none; }
+.flh-onboarding-root .flh-ob-board-preview .flh-ob-pf-media { border-radius: 0; }
+.flh-onboarding-root .flh-ob-board-preview-name { margin: 0; padding: 10px 12px 0; color: var(--ink); font: 600 14px/1.25 var(--font-sans); }
+.flh-onboarding-root .flh-ob-board-preview-text { margin: 0; padding: 4px 12px 12px; color: var(--ink-soft); font: 500 12.5px/1.4 var(--font-sans); }
+@media (prefers-reduced-motion: reduce) {
+  .flh-onboarding-root .flh-ob-board-chip, .flh-onboarding-root .flh-ob-board-column, .flh-onboarding-root .flh-ob-board-library { transition: none; }
+}
+
+@media (min-width: 1200px) {
+  .flh-onboarding-root .flh-ob-board { grid-template-columns: minmax(300px, 1.1fr) minmax(0, 2fr); }
+  .flh-onboarding-root .flh-ob-board-library { max-height: none; overflow: visible; }
+  .flh-onboarding-root .flh-ob-board-drop-hint { top: 0; }
+  .flh-onboarding-root .flh-ob-board-columns { position: sticky; top: calc(var(--flh-safe-top, 0px) + 16px); }
+}
+
 /* ── Mobile Priority Onboarding V3 (flow 4) ──────────────────────────────────
    One category per screen: a two-column visual card grid on phones (three
    columns from 560px), the shared importance sheet, "Add your own", and one

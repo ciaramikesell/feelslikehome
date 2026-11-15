@@ -5,6 +5,8 @@ import { ArrowLeft } from 'lucide-react';
 import { OnboardingAction } from '@/components/onboarding/OnboardingShell';
 import { BudgetField, SearchTypeControl, Stepper, UnitField } from '@/components/onboarding/BasicsStep';
 import LocationsStep from '@/components/onboarding/LocationsStep';
+import PriorityBoard from '@/components/onboarding/priority/PriorityBoard';
+import { isBoardStep } from '@/lib/priorityBoard';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { STEPPERS } from '@/lib/onboardingBasics';
 import { basicsFieldsFor, LEVEL_COPY, PRIORITY_LEVELS } from '@/lib/searchProfile';
@@ -255,7 +257,7 @@ export default function PriorityFlow({
   step, progress, sharedFor = null, priorities, patch, editingFromReview = false, busy = false,
   onContinue, onSkip, onBack, onSearchType,
   searchAreas, AddressField = AddressAutocomplete, places, placesError, onCreatePlace, onDeletePlace,
-  review,
+  review, board = false,
 }) {
   const picker = useImportancePicker(priorities, patch);
   const choice = priorities.onboardingSearchType || 'home_buy';
@@ -325,6 +327,17 @@ export default function PriorityFlow({
         />
         {picker.element}
       </>
+    );
+  }
+  // Desktop (docs/desktop-priority-board.md): every card category is one board.
+  if (board && isBoardStep(step)) {
+    return (
+      <PriorityBoard
+        priorities={priorities}
+        patch={patch}
+        header={<Header eyebrow={eyebrow('What matters most')} heading={['What matters ', 'most to you?']} lead="Drag the features that matter into the importance column that fits you." />}
+        footer={footer()}
+      />
     );
   }
   const category = priorityCategory(priorities, step);
