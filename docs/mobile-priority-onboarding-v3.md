@@ -68,6 +68,19 @@ above.
 > followed by Review. Rental Essentials is a single optional pets question.
 > Home to Buy is unchanged.
 
+> **No geography screen** (founder decision, PR #185): FLH is a decision tool
+> for homes people have already found, not a listing search, so flow 4 no
+> longer asks "Where are you looking?" for any kind of search, on phones or
+> desktop. Screens are now Home to Buy 9 (Type, Basics, Layout, Kitchen,
+> Living, Bath, Garage, Exterior, Neighborhood), Home to Rent 7 and Apartment
+> to Rent 5, each followed by Review, which no longer has a "Where you're
+> looking" section. Nothing is deleted: saved `searchAreas` and places stay in
+> the document and the database, home records keep their addresses, and
+> **Places That Matter** (with commute distances) stays an optional My Search
+> setting (`/search/places`). An in-progress session stored on the former
+> screen resumes at the next unfinished screen. The live flow (1), the
+> six-step preview (3) and finished accounts are unchanged.
+
 ## 2. Implementation plan (as built)
 
 1. `src/lib/priorityCategories.js` — the category catalog, identity
@@ -111,7 +124,7 @@ above.
 - **Back/forward and resume** preserve every answer (answers live in the
   priorities document, saved as they change; position and skipped screens in
   `onboarding_state`, saved on every move and when the app is backgrounded).
-- **Review**: Basics, Where you're looking, every category (chosen features by
+- **Review**: Basics, every category (chosen features by
   level, skipped screens marked), "More of your priorities" (chosen earlier,
   not on any screen), "Saved from earlier" (home type/layout/condition,
   read-only). Every priority opens the same sheet in place; Edit/Add opens the
@@ -131,9 +144,13 @@ above.
   a flow-4 session restarts flow 1's screens with all answers kept.
 - **Additive fields**: `customItems[].group` (screen key) and
   `onboarding_state.answers.searchType` / `skipped`. Older code ignores them.
-- **Desktop board**: works from the same document. `group` gives a future
-  desktop board the same categories; My Search already shows every V3 item
-  (its existing category lists, custom items included).
+- **Desktop board** (PR #185, `docs/desktop-priority-board.md`): at ≥ 1024
+  CSS px the card-category screens are shown as one board — a feature library
+  grouped by these same categories (via `group`) and three importance columns
+  of draggable text chips, with hover/focus photo previews. It is a
+  presentation of the same flow-4 steps over the same document and write path
+  (`setFeatureLevel`, `setLotSizeValue` / `setLotSizeImportance`), so phone and
+  desktop share answers and progress. Phones are unchanged.
 - **Renaming a custom feature** changes its key (`category:label`). It is
   offered while setting up, before homes are evaluated; answers already given
   on homes under the old name would not follow. (Onboarding accounts and
@@ -177,6 +194,24 @@ for 3× phones and desktop. Examples: `attached-garage.webp` 3.4 MB → 18 KB /
 cover` in a 4:3 tile, `loading="lazy"` after the first row, `decoding="async"`.
 Only the screen being shown renders images, so other categories' photos are
 never fetched (QA checks this with the network log).
+
+**Reserved uploads (not yet assigned).** Three founder uploads arrived on
+`main` in `3326b47` for features that are not yet fully in the approved
+onboarding catalog. They are listed by name in `PENDING_ONBOARDING_PHOTOS`
+(`src/lib/onboardingImages.js`), are never shown (no manifest entry, no
+derivatives), and the photo test accepts exactly these three as reserved:
+every other upload must still be an active, card-used mapping with both
+derivatives.
+
+| Upload | Intended home in the upcoming catalog update |
+|---|---|
+| `apartment-pool.webp` | Apartment to Rent · The Property · **Pool** (icon-only today) |
+| `private-garage.webp` | Apartment to Rent · The Unit · **Private Garage** suggestion (icon-only today) |
+| `privacy-fence.webp` | A **Privacy Fence** feature for Exterior & Property, not yet in the approved catalog |
+
+To activate one: add it to `ONBOARDING_PHOTOS` under its card's `art` key,
+remove it from `PENDING_ONBOARDING_PHOTOS`, set the card's `art`, and run
+`scripts/visual/onboarding-card-images.mjs` for its derivatives.
 
 **Fallbacks** (in order): photo → FLH illustration (only `pet-friendly`,
 `in-unit-laundry`, `dishwasher`, `garage-either` — the four cards with no
@@ -228,14 +263,17 @@ by photos were removed.
   manifest entry plus re-running the derivative script.
 - Some uploads are smaller than 800 px wide; their 800w derivative is an
   upscale (no worse than the browser scaling the 400w).
-- At 200% zoom the phone grid drops to one column and the footer stacks;
-  the shared top bar's step count overlaps the wordmark at that size — a
-  pre-existing shell issue, also in the live flow, left unchanged.
+- At 200% zoom the phone grid drops to one column and the footer stacks.
+  The shared top bar's step count used to overlap the wordmark at 150–200%;
+  since PR #185 the wordmark wraps at ≤ 300 CSS px (the mark alone when Back
+  also needs the room), with no change at 100%.
 - "Large text" was tested as browser zoom; the app sets type in px, so iOS
   Dynamic Type does not scale it (true of the whole app today).
 - Your People (co-buyer/Realtor intent) is not in V3, matching the live flow;
   invitations remain in My Search.
-- No desktop priority board yet (separate future UI); the schema supports it.
+- Desktop: the category screens are one board at ≥ 1024 CSS px (PR #185,
+  `docs/desktop-priority-board.md`); below that, and at 200% zoom on a
+  desktop, these phone screens are used.
 - The dev preview's in-memory services were used for browser QA; real
   persistence is covered by the Postgres tests, not by an end-to-end browser
   run against Supabase.
@@ -243,7 +281,7 @@ by photos were removed.
 ## 8. Founder decisions
 
 Approved (PR #181 refinement): Dead-End Street removed; founder photos used;
-Rental Essentials renter-only; geography stays third; garage Not important
+Rental Essentials renter-only; geography stays third (superseded by PR #185: no geography screen); garage Not important
 auto-advances; `FLH_ONBOARDING_V3` stays off in Production.
 
 Still open: photos (or an icon) for the four illustrated cards.
@@ -258,8 +296,8 @@ The flag is read on the server per request; no code change is needed to try it.
 2. Redeploy the latest Preview deployment of this branch (env changes apply on
    the next deployment).
 3. On that Preview URL, sign up with a **new test account** (completed
-   accounts never re-enter onboarding). Walk: Home to Buy → Basics → Where are
-   you looking? (third) → each category → Review → Add my first home.
+   accounts never re-enter onboarding). Walk: Home to Buy → Basics → each
+   category → Review → Add my first home.
 4. Things to try: tap a photo card and choose a level; add a suggestion and
    your own feature (try typing it twice in different case); garage → Not
    important (moves on) → Back (still chosen); Skip a screen and see it on
@@ -270,5 +308,5 @@ The flag is read on the server per request; no code change is needed to try it.
    mid-way continue in the live flow with their answers kept.
 
 Development preview (no sign-in, nothing saved):
-`/dev/onboarding?flow=v3&step=search_type|basics|locations|cat_kitchen|…|review&state=empty|populated|legacy&search=home_buy|home_rent|apartment_rent`
+`/dev/onboarding?flow=v3&step=search_type|basics|cat_kitchen|…|review&state=empty|populated|legacy&search=home_buy|home_rent|apartment_rent`
 (development builds only; Preview and Production answer 404).

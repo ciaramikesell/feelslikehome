@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { CARD_WIDTHS, ONBOARDING_ILLUSTRATIONS, ONBOARDING_PHOTOS, cardImage } from '../src/lib/onboardingImages.js';
+import { CARD_WIDTHS, ONBOARDING_ILLUSTRATIONS, ONBOARDING_PHOTOS, PENDING_ONBOARDING_PHOTOS, cardImage } from '../src/lib/onboardingImages.js';
 import {
   CURRENT_ONBOARDING_VERSION, advanceOnboarding, beginOnboarding, isLegacyOnboardedProfile, normalizeOnboardingState,
   onboardingStepsFor, resumeOnboardingStep, retreatOnboarding, setOnboardingSearchType, skipOnboardingStep,
@@ -46,9 +46,9 @@ test('completed accounts are never re-routed (gate and legacy rule untouched)', 
 
 /* ---------------------------------- flow 4 ---------------------------------- */
 
-test('flow 4: one category per screen, ten question screens for a buyer, then Review', () => {
+test('flow 4: one category per screen, nine question screens for a buyer (no geography screen), then Review', () => {
   const buy = onboardingStepsFor(4, { answers: { searchType: 'home_buy' } });
-  assert.deepEqual(buy, ['search_type', 'basics', 'locations', 'cat_layout', 'cat_kitchen', 'cat_living', 'cat_bath', 'cat_garage', 'cat_exterior', 'cat_neighborhood', 'review']);
+  assert.deepEqual(buy, ['search_type', 'basics', 'cat_layout', 'cat_kitchen', 'cat_living', 'cat_bath', 'cat_garage', 'cat_exterior', 'cat_neighborhood', 'review']);
   assert.deepEqual(onboardingStepsFor(4, {}), buy, 'before the type is chosen, the buyer screens are shown');
   // Rentals: docs/rental-foundations-onboarding-spec.md §1 (exact order in test/rental-foundations-onboarding.test.js).
   const rent = onboardingStepsFor(4, { answers: { searchType: 'home_rent' } });
@@ -71,13 +71,13 @@ test('Skip moves on without touching answers; Continue later clears the mark; re
   assert.equal(state.step, 'search_type');
   state = advanceOnboarding(4, state, 'search_type', T0).state;
   state = skipOnboardingStep(4, state, 'basics', T0).state;
-  assert.equal(state.step, 'locations');
+  assert.equal(state.step, 'cat_layout');
   assert.deepEqual(state.skipped, ['basics']);
   assert.ok(state.completed.includes('basics'));
   const resumed = beginOnboarding({ storedVersion: 4, storedState: { ...state, step: null }, context: OWN, now: T0, targetVersion: 4 });
-  assert.equal(resumed.state.step, 'locations');
+  assert.equal(resumed.state.step, 'cat_layout');
   assert.deepEqual(resumed.state.skipped, ['basics']);
-  state = retreatOnboarding(4, state, 'locations', T0);
+  state = retreatOnboarding(4, state, 'cat_layout', T0);
   assert.equal(state.step, 'basics');
   state = advanceOnboarding(4, state, 'basics', T0).state;
   assert.deepEqual(state.skipped, []);
@@ -304,9 +304,23 @@ test('photos: an explicit manifest maps every card to the founder’s upload; de
       assert.doesNotMatch(svg, /<image|href=/);
     }
   }
-  // Every uploaded photo is used, and every manifest entry is used by a card.
+  // Every uploaded photo is either used by a card (an active manifest entry)
+  // or one of the explicitly reserved, not-yet-assigned uploads — never both,
+  // never neither. A new unassigned upload still fails here until it is mapped
+  // or reserved by name.
   const uploads = readdirSync(new URL('../public/images/onboarding/', import.meta.url)).filter((file) => file.endsWith('.webp'));
-  assert.deepEqual([...uploads].sort(), Object.values(ONBOARDING_PHOTOS).map((photo) => photo.file).sort());
+  const active = Object.values(ONBOARDING_PHOTOS).map((photo) => photo.file);
+  const pending = Object.keys(PENDING_ONBOARDING_PHOTOS);
+  assert.deepEqual([...pending].sort(), ['apartment-pool.webp', 'privacy-fence.webp', 'private-garage.webp'], 'only these three are reserved');
+  assert.deepEqual(pending.filter((file) => active.includes(file)), [], 'a reserved upload is not also an active mapping');
+  assert.deepEqual([...uploads].sort(), [...active, ...pending].sort(), 'every upload is active or reserved by name');
+  for (const file of pending) {
+    const key = file.replace(/\.webp$/, '');
+    assert.equal(cardImage(key), null, `${file} is never shown`);
+    assert.equal(arts.has(key), false, `${file} is not referenced by any card`);
+    for (const width of CARD_WIDTHS) assert.equal(existsSync(new URL(`../public/images/onboarding/cards/${key}-${width}.webp`, import.meta.url)), false, `${file} has no derivative yet`);
+    assert.ok(PENDING_ONBOARDING_PHOTOS[file].intended.length > 10, `${file} says where it will be used`);
+  }
   assert.deepEqual([...Object.keys(ONBOARDING_PHOTOS)].filter((key) => !arts.has(key)), []);
   // Names that differ between upload and card are mapped explicitly.
   assert.equal(ONBOARDING_PHOTOS['garage-attached'].file, 'attached-garage.webp');

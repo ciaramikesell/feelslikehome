@@ -44,7 +44,11 @@ export function OnboardingTopBar({ progress, onBack = null, showProgress = true 
 
 // Desktop only (hidden below 960px): brand, the steps of this flow, and the
 // reassurance the product already makes elsewhere in onboarding.
-export function OnboardingRail({ progress, labels, complete = false, sharedFor = null }) {
+// boardSteps / boardLabel (flow 4 only): the category steps the desktop board
+// stands for. They are marked so that, while the phone markup is still on a
+// desktop screen before hydration, CSS can show them as the board's one step
+// (docs/desktop-priority-board.md). They change nothing once the board renders.
+export function OnboardingRail({ progress, labels, complete = false, sharedFor = null, boardSteps = null, boardLabel = null }) {
   return (
     <aside className="flh-ob-rail" aria-label="Onboarding progress">
       <div className="flh-ob-rail-head">
@@ -55,10 +59,15 @@ export function OnboardingRail({ progress, labels, complete = false, sharedFor =
         {progress.steps.map((key, index) => {
           const done = complete || index < progress.index;
           const current = !complete && index === progress.index;
+          const board = boardSteps?.includes(key) ? (progress.steps.find((step) => boardSteps.includes(step)) === key ? 'first' : 'rest') : undefined;
           return (
-            <li key={key} className={done ? 'is-done' : current ? 'is-current' : ''} aria-current={current ? 'step' : undefined}>
-              <span className="flh-ob-step-marker" aria-hidden="true">{done ? <Check size={13} strokeWidth={3} /> : index + 1}</span>
+            <li key={key} className={done ? 'is-done' : current ? 'is-current' : ''} aria-current={current ? 'step' : undefined} data-board={board}>
+              <span className="flh-ob-step-marker" aria-hidden="true">
+                {done ? <Check size={13} strokeWidth={3} /> : index + 1}
+                {board === 'first' && done && <span className="flh-ob-step-board-number">{index + 1}</span>}
+              </span>
               <span>{labels[key] || key}</span>
+              {board === 'first' && boardLabel && <span className="flh-ob-step-board-label" aria-hidden="true">{boardLabel}</span>}
             </li>
           );
         })}

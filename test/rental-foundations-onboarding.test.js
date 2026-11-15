@@ -31,13 +31,13 @@ const RENT_HOME = { price: '2400', checks: {}, ratings: {} };
 
 test('screen order per search type (spec §1); Home to Buy unchanged', () => {
   assert.deepEqual(onboardingStepsFor(4, { answers: { searchType: 'home_rent' } }), [
-    'search_type', 'basics', 'locations', 'cat_essentials', 'cat_rent_layout', 'cat_rent_features', 'cat_exterior', 'cat_neighborhood', 'review',
+    'search_type', 'basics', 'cat_essentials', 'cat_rent_layout', 'cat_rent_features', 'cat_exterior', 'cat_neighborhood', 'review',
   ]);
   assert.deepEqual(onboardingStepsFor(4, { answers: { searchType: 'apartment_rent' } }), [
-    'search_type', 'basics', 'locations', 'cat_essentials', 'cat_apt_unit', 'cat_apt_property', 'review',
+    'search_type', 'basics', 'cat_essentials', 'cat_apt_unit', 'cat_apt_property', 'review',
   ]);
   assert.deepEqual(onboardingStepsFor(4, { answers: { searchType: 'home_buy' } }), [
-    'search_type', 'basics', 'locations', 'cat_layout', 'cat_kitchen', 'cat_living', 'cat_bath', 'cat_garage', 'cat_exterior', 'cat_neighborhood', 'review',
+    'search_type', 'basics', 'cat_layout', 'cat_kitchen', 'cat_living', 'cat_bath', 'cat_garage', 'cat_exterior', 'cat_neighborhood', 'review',
   ]);
   // Live flow 1 and the six-step preview (flow 3) are untouched.
   assert.deepEqual(onboardingStepsFor(1, {}), ['basics', 'what_matters', 'rank']);

@@ -4,8 +4,8 @@ import { useRef, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { OnboardingAction } from '@/components/onboarding/OnboardingShell';
 import { BudgetField, SearchTypeControl, Stepper, UnitField } from '@/components/onboarding/BasicsStep';
-import LocationsStep from '@/components/onboarding/LocationsStep';
-import AddressAutocomplete from '@/components/AddressAutocomplete';
+import PriorityBoard from '@/components/onboarding/priority/PriorityBoard';
+import { desktopProgress, isBoardStep } from '@/lib/priorityBoard';
 import { STEPPERS } from '@/lib/onboardingBasics';
 import { basicsFieldsFor, LEVEL_COPY, PRIORITY_LEVELS } from '@/lib/searchProfile';
 import {
@@ -286,8 +286,7 @@ const SHARED_LABEL = (sharedFor, title) => `Your preferences for ${sharedFor} ·
 export default function PriorityFlow({
   step, progress, sharedFor = null, priorities, patch, editingFromReview = false, busy = false,
   onContinue, onSkip, onBack, onSearchType,
-  searchAreas, AddressField = AddressAutocomplete, places, placesError, onCreatePlace, onDeletePlace,
-  review,
+  review, board = false,
 }) {
   const picker = useImportancePicker(priorities, patch);
   const choice = priorities.onboardingSearchType || 'home_buy';
@@ -324,30 +323,12 @@ export default function PriorityFlow({
       />
     );
   }
-  if (step === 'locations') {
-    return (
-      <LocationsStep
-        priorities={priorities}
-        patch={patch}
-        AddressField={AddressField}
-        searchAreas={searchAreas}
-        places={places}
-        placesError={placesError}
-        onCreatePlace={onCreatePlace}
-        onDeletePlace={onDeletePlace}
-        onNext={() => onContinue(step)}
-        header={<Header eyebrow={eyebrow('Where you’re looking')} heading={['Where are you ', 'looking?']} lead="Add the cities, neighborhoods or school districts you’re drawn to. Each is an alternative, never a requirement." />}
-        footer={footer()}
-      />
-    );
-  }
   if (step === 'review') {
     return (
       <>
         <PriorityReview
           {...review}
           priorities={priorities}
-          places={places}
           sharedFor={sharedFor}
           onOpenFeature={picker.open}
           header={sharedFor
@@ -358,20 +339,57 @@ export default function PriorityFlow({
       </>
     );
   }
-  const category = priorityCategory(priorities, step);
-  if (!category) return <p className="flh-ob-unbuilt" role="status">This step isn’t available for this search.</p>;
-  return (
-    <>
-      <CategoryStep
-        categoryKey={category.key}
+  // Desktop (docs/desktop-priority-board.md): every card category is one board.
+  if (board && isBoardStep(step)) {
+    return (
+      <PriorityBoard
         priorities={priorities}
         patch={patch}
-        picker={picker}
-        header={<Header eyebrow={eyebrow(category.title)} heading={category.heading} lead={category.lead} />}
+        header={<Header eyebrow={eyebrow('What matters most')} heading={['What matters ', 'most to you?']} lead="Drag the features that matter into the importance column that fits you." />}
         footer={footer()}
-        onAutoAdvance={category.key === 'garage' ? () => onContinue(step) : null}
       />
+    );
+  }
+  const category = priorityCategory(priorities, step);
+  if (!category) return <p className="flh-ob-unbuilt" role="status">This step isn’t available for this search.</p>;
+  const categoryStep = (
+    <CategoryStep
+      categoryKey={category.key}
+      priorities={priorities}
+      patch={patch}
+      picker={picker}
+      header={<Header eyebrow={eyebrow(category.title)} heading={category.heading} lead={category.lead} />}
+      footer={footer()}
+      onAutoAdvance={category.key === 'garage' ? () => onContinue(step) : null}
+    />
+  );
+  const boardProgress = desktopProgress([...progress.steps, 'review'], step);
+  return (
+    <>
+      {isBoardStep(step)
+        ? <BoardGate pendingEyebrow={sharedFor ? SHARED_LABEL(sharedFor, 'What matters most') : `Step ${boardProgress.position} of ${boardProgress.total} · What matters most`}>{categoryStep}</BoardGate>
+        : categoryStep}
       {picker.element}
     </>
+  );
+}
+
+// Before hydration a desktop browser shows server HTML, which is always the
+// phone screen (the server can't know the width). For a board step that HTML
+// also carries a board-shaped placeholder; at ≥ 1024px, and only while this
+// gate is on screen (the board replaces it as soon as JavaScript runs), CSS
+// shows the placeholder instead of the photo cards, so the cards never flash.
+// Below 1024px the wrapper is display: contents and the placeholder is not
+// displayed: the phone screen is unchanged. Server and first client render are
+// identical, so there is no hydration mismatch. docs/desktop-priority-board.md.
+function BoardGate({ pendingEyebrow, children }) {
+  return (
+    <div className="flh-ob-board-gate">
+      {children}
+      <div className="flh-onboarding-step flh-ob-board-pending" aria-hidden="true">
+        <Header eyebrow={pendingEyebrow} heading={['What matters ', 'most to you?']} lead="Drag the features that matter into the importance column that fits you." />
+        <div className="flh-ob-board-pending-frame"><span /><span /><span /><span /></div>
+      </div>
+    </div>
   );
 }
