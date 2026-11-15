@@ -4142,7 +4142,41 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-onboarding-root .flh-ob-pf-error { margin: 0; color: var(--negative); font: 600 12.5px/1.4 var(--font-sans); }
 .flh-onboarding-root .flh-ob-pf-sheet-fine { margin: 14px 0 0; color: var(--ink-soft); font: 500 11.5px/1.4 var(--font-sans); }
 
-/* Review. */
+/* Review. The single column never grows past the screen: without
+   minmax(0, 1fr) the implicit track took its widest child's min-content and
+   was clipped by the root at large text / zoom (390px at 200%). */
+.flh-onboarding-root .flh-ob-pf-review,
+.flh-onboarding-root .flh-ob-pf-review .flh-ob-review-card { grid-template-columns: minmax(0, 1fr); }
+.flh-onboarding-root .flh-ob-pf-review .flh-ob-review-title { min-width: 0; overflow-wrap: break-word; hyphens: auto; }
+.flh-onboarding-root .flh-ob-pf-review .flh-ob-pf-card-level { max-width: 100%; }
+/* Large text / zoom (any phone at 150–200%, at most 287 CSS px wide):
+   headings, rows and priorities wrap instead of overrunning their card.
+   Every phone at 100% (320px and up) keeps the one-line layout. */
+@media (max-width: 300px) {
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-head { flex-wrap: wrap; row-gap: 0; }
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-head .flh-ob-review-edit { margin-left: -4px; }
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-card { padding: 16px; }
+  /* Block (not flex) so a long title wraps, and hyphenates a word wider than the card. */
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-title { display: block; }
+  .flh-onboarding-root .flh-ob-pf-review .flh-page-title { overflow-wrap: break-word; hyphens: auto; }
+  .flh-onboarding-root .flh-ob-pf-review-item { padding: 8px 8px 8px 10px; }
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-row { flex-wrap: wrap; row-gap: 2px; }
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-row dt { min-width: 0; }
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-row dd { margin-left: auto; }
+  /* Name and arrow on the first line; the level gets the full width below. */
+  .flh-onboarding-root .flh-ob-pf-review-item { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name go" "level level"; row-gap: 6px; }
+  .flh-onboarding-root .flh-ob-pf-review-name { grid-area: name; }
+  .flh-onboarding-root .flh-ob-pf-review-item > svg { grid-area: go; }
+  .flh-onboarding-root .flh-ob-pf-review-item .flh-ob-pf-card-level { grid-area: level; justify-self: start; }
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-chips li { flex-wrap: wrap; row-gap: 2px; border-radius: 14px; }
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-chips strong { min-width: 0; overflow-wrap: break-word; }
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-actions .flh-ob-cta { gap: 10px; padding-block: 7px; white-space: normal; text-align: left; line-height: 1.25; }
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-actions .flh-ob-cta > span:first-child { min-width: 0; white-space: normal; overflow-wrap: break-word; }
+}
+/* 320px phones at 200%: a little more room inside each card. */
+@media (max-width: 200px) {
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-card { padding: 12px; }
+}
 .flh-onboarding-root .flh-ob-pf-review-total { margin: 0; padding: 12px 14px; border-radius: 14px; background: var(--sage); color: var(--positive); font: 600 13.5px/1.45 var(--font-sans); }
 .flh-onboarding-root .flh-ob-pf-review-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .flh-onboarding-root .flh-ob-pf-review-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 8px 10px 8px 12px; border: 1px solid var(--ob-line); border-radius: 12px; background: #fff; color: var(--ink); text-align: left; cursor: pointer; font: inherit; }
@@ -4152,3 +4186,38 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-onboarding-root .flh-ob-pf-review-line strong { color: var(--ink); }
 .flh-onboarding-root .flh-ob-pf-review-empty, .flh-onboarding-root .flh-ob-pf-review-note { margin: 0; color: var(--ink-soft); font: 500 13px/1.45 var(--font-sans); }
 .flh-onboarding-root .flh-ob-pf-review-note { margin-bottom: 8px; }
+
+/* Rentals (docs/rental-foundations-onboarding-spec.md, Stage 3). Rendered only
+   on rental screens: a card hint where one is defined, the pets question,
+   Home to Rent's lot-size importance, and their Review rows. */
+.flh-onboarding-root .flh-ob-pf-card-hint { color: var(--ink-soft); font: 500 11.5px/1.35 var(--font-sans); overflow-wrap: break-word; }
+.flh-onboarding-root .flh-ob-pf-sheet-hint { margin: -4px 0 12px; color: var(--ink-soft); font: 500 13px/1.45 var(--font-sans); }
+
+.flh-onboarding-root .flh-ob-pf-pets { display: grid; gap: 16px; padding: 0; overflow: hidden; }
+.flh-onboarding-root .flh-ob-pf-pets-media .flh-ob-pf-media { aspect-ratio: 16 / 9; }
+/* The pet rests at the bottom of the photo: keep it in the wide crop. */
+.flh-onboarding-root .flh-ob-pf-pets-media .flh-ob-pf-media { position: relative; }
+.flh-onboarding-root .flh-ob-pf-pets-media .flh-ob-pf-media img { position: absolute; inset: 0; object-position: 50% 85%; }
+.flh-onboarding-root .flh-ob-pf-pets-fieldset { display: grid; gap: 10px; min-width: 0; margin: 0; padding: 0 16px; border: 0; }
+.flh-onboarding-root .flh-ob-pf-pets-question { margin-bottom: 4px; padding: 0; color: var(--ink); font: 600 22px/1.2 var(--font-serif); letter-spacing: -.01em; }
+.flh-onboarding-root .flh-ob-pf-pets-fieldset .flh-ob-help { margin: 0 0 2px; }
+.flh-onboarding-root .flh-ob-pf-pets-choices { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.flh-onboarding-root .flh-ob-pf-pets-choice { position: relative; align-content: center; padding-left: 46px; }
+.flh-onboarding-root .flh-ob-pf-pets-choice input { position: absolute; top: 50%; left: 14px; width: 20px; aspect-ratio: 1; margin: -10px 0 0; accent-color: var(--brick); cursor: pointer; }
+.flh-onboarding-root .flh-ob-pf-pets-choice:has(input:focus-visible) { outline: 2px solid var(--brick); outline-offset: 2px; }
+.flh-onboarding-root .flh-ob-pf-pets-status { padding: 0 16px 16px; }
+.flh-onboarding-root .flh-ob-pf-pets-status:empty { display: none; }
+.flh-onboarding-root .flh-ob-pf-pets-status .flh-ob-switch-note { margin: 0; }
+.flh-onboarding-root .flh-ob-pf-pets-resting { margin: 0; }
+@media (min-width: 560px) { .flh-onboarding-root .flh-ob-pf-pets-choices { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 960px) { .flh-onboarding-root .flh-ob-pf-pets-media .flh-ob-pf-media { aspect-ratio: 21 / 9; } }
+
+.flh-onboarding-root .flh-ob-pf-lot { display: grid; gap: 6px; }
+.flh-onboarding-root .flh-ob-pf-lot-button { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; width: 100%; min-height: 52px; padding: 10px 14px; border: 1px solid var(--ob-line); border-radius: 12px; background: #fff; color: var(--ink); text-align: left; cursor: pointer; font: inherit; }
+.flh-onboarding-root .flh-ob-pf-lot-button:hover { border-color: #CDBFAE; }
+.flh-onboarding-root .flh-ob-pf-lot-button.is-selected { border-color: var(--brick); box-shadow: inset 0 0 0 1px var(--brick); }
+.flh-onboarding-root .flh-ob-pf-lot-title { font: 600 14px/1.3 var(--font-sans); }
+.flh-onboarding-root .flh-ob-pf-lot-help { margin: 0; }
+
+.flh-onboarding-root .flh-ob-pf-review-source { flex-basis: 100%; color: var(--ink-soft); font: 500 12px/1.35 var(--font-sans); }
+.flh-onboarding-root .flh-ob-pf-review-lot { margin-top: 2px; }

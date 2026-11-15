@@ -33,7 +33,7 @@ import {
   PRIORITY_LEVELS, addCriterion, isCriterionSelected, moveCriterion, priorityLevels, searchExperienceKey, setGaragePreference,
 } from './searchProfile.js';
 import { switchSearchType } from './whatMattersCatalog.js';
-import { clearPetsState, restorePetsAfterSwitch, snapshotPets } from './rentalPets.js';
+import { PETS_CRITERION, PETS_TEXT, clearPetsState, petsAutoMarker, petsProvenance, restorePetsAfterSwitch, snapshotPets } from './rentalPets.js';
 import { groupValueLabel, whatMattersGroups } from './whatMattersGroups.js';
 
 const HOMES = Object.freeze(['home_buy', 'home_rent']);
@@ -720,28 +720,156 @@ export function switchMessage(phrase, { removed = [], garage = null } = {}) {
 
 const LEVEL_ORDER = Object.freeze({ must: 0, important: 1, nice: 2 });
 
-// Review: every category with its chosen features (Must Have first).
+// Review: every category with its chosen features (Must Have first). The
+// Rental Essentials screen has no cards; it reports the pets answer and the
+// one Pet-Friendly priority it drives instead (shown once, here only). Home
+// to Rent's Exterior reports the lot size with its optional importance.
 export function reviewCategories(raw) {
   const priorities = normalizePriorities(raw);
   return priorityCategoriesFor(priorities).map((category) => {
     const view = categoryView(priorities, category.key);
     const chosen = view.cards.filter((card) => card.level).sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level]);
-    return { key: category.key, step: category.step, title: category.title, chosen, garage: category.key === 'garage' ? { importance: garageImportance(priorities), type: garageType(priorities) } : null };
+    return {
+      key: category.key,
+      step: category.step,
+      title: category.title,
+      chosen,
+      garage: category.key === 'garage' ? { importance: garageImportance(priorities), type: garageType(priorities) } : null,
+      ...(category.question ? { pets: petsReview(priorities) } : {}),
+      ...(category.key === 'exterior' && lotSizeRankable(priorities) ? { lot: lotSizeReview(priorities) } : {}),
+    };
   });
+}
+
+// The pets answer on Review (spec §7, D8): the answer, and Pet-Friendly as one
+// editable row with where its level came from. `item` is null while
+// Pet-Friendly is not one of the renter's priorities.
+export function petsReview(raw) {
+  const priorities = normalizePriorities(raw);
+  const { answer, tier, automatic } = petsProvenance(priorities);
+  const feature = { ...PETS_FEATURE, level: tier };
+  return {
+    answer,
+    answerText: answer ? PETS_ANSWER_TEXT[answer] : null,
+    item: tier ? feature : null,
+    automatic,
+    source: tier ? (automatic ? 'Because pets are moving with you' : 'You set this yourself') : null,
+  };
+}
+
+// Pet-Friendly as the importance picker edits it on Review. Choosing a level
+// here is a manual edit (setFeatureLevel → addCriterion / moveCriterion), so
+// FLH's automatic ownership ends, as D2 requires.
+export const PETS_FEATURE = Object.freeze({
+  id: `${PETS_CRITERION.categoryKey}:${PETS_CRITERION.label}`, categoryKey: PETS_CRITERION.categoryKey, label: PETS_CRITERION.label,
+  text: PETS_TEXT, kind: 'check', custom: false, art: null, icon: 'PawPrint', group: 'essentials', role: 'question',
+});
+export const PETS_ANSWER_TEXT = Object.freeze({ yes: 'Yes', no: 'No', not_sure: 'Not sure yet' });
+
+// The line under each pets answer, describing what choosing it would do to
+// Pet-Friendly given the document as it is now. Presentation only: it mirrors
+// setPetsMoving (src/lib/rentalPets.js), which is unchanged, so the copy never
+// promises a change FLH won't make.
+//   no priority          Yes: becomes a Must Have
+//   automatic Must Have  Yes: a Must Have because of this answer; No / Not sure: goes back
+//   manual Must Have     Yes: already a Must Have, as you set it
+//   manual other level   Yes: goes from <level> to Must Have (or, already
+//                        answered Yes, stays as you set it); No / Not sure: stays
+const LEVEL_NAME = Object.freeze({ must: 'Must Have', important: 'Important', nice: 'Nice to Have' });
+export function petsAnswerHints(raw) {
+  const priorities = normalizePriorities(raw);
+  const { answer, tier, automatic } = petsProvenance(priorities);
+  const marker = petsAutoMarker(priorities);
+  if (marker) {
+    const previous = LEVEL_NAME[marker.previousTier];
+    return {
+      yes: automatic ? 'Pet-Friendly is a Must Have because of this answer' : 'Pet-Friendly becomes a Must Have',
+      no: previous ? `Pet-Friendly goes back to ${previous}` : 'No pet requirement',
+      not_sure: previous ? `Decide later—Pet-Friendly goes back to ${previous}` : 'Decide later—no pet requirement',
+    };
+  }
+  if (tier) {
+    const level = LEVEL_NAME[tier];
+    return {
+      yes: tier === 'must'
+        ? 'Pet-Friendly is already a Must Have, as you set it'
+        : (answer === 'yes' ? `Pet-Friendly stays ${level}, as you set it` : `Pet-Friendly goes from ${level} to Must Have`),
+      no: `Pet-Friendly stays ${level}, as you set it`,
+      not_sure: `Decide later—Pet-Friendly stays ${level}`,
+    };
+  }
+  return { yes: 'Pet-Friendly becomes a Must Have', no: 'No pet requirement', not_sure: 'Decide later—nothing changes' };
 }
 
 // Chosen priorities that no category screen shows (earlier My Search picks,
 // an old flow's choices, Home Preferences). Kept, counted, editable on Review.
+// Rentals: Pet-Friendly is left out because the Rental Essentials row shows
+// it (spec §7: never listed twice). The garage is shown on its own screen.
 export function otherChosenPriorities(raw) {
   const priorities = normalizePriorities(raw);
+  const rental = isRentalType(priorities.searchType);
   const onScreens = new Set(priorityCategoriesFor(priorities).flatMap((category) => categoryView(priorities, category.key).cards.map((card) => card.id.toLowerCase())));
   const groupedCustom = new Set(storedItems(priorities).filter((item) => item.source === 'custom' && item.group && priorityCategory(priorities, item.group) && !priorityCategory(priorities, item.group).question).map((item) => idOf(item.categoryKey, item.label).toLowerCase()));
   return priorityLevels(priorities).flatMap((level) => level.items)
     .filter((item) => !onScreens.has(item.key.toLowerCase()) && !groupedCustom.has(item.key.toLowerCase()) && !(item.categoryKey === 'exterior' && item.label === 'Garage'))
+    .filter((item) => !(rental && item.categoryKey === PETS_CRITERION.categoryKey && item.label === PETS_CRITERION.label))
     .map((item) => {
       const storedItem = (priorities[item.categoryKey]?.customItems || []).find((entry) => entry.label === item.label);
       return { id: item.key, categoryKey: item.categoryKey, label: item.label, text: item.displayLabel, kind: item.kind, custom: storedItem?.source === 'custom', art: null, icon: null, group: null, role: 'other', level: item.tier, legacy: item.legacy };
     });
+}
+
+/* ------------------------ Ideal lot size importance ------------------------ */
+// Home to Rent only (D4): the acreage on Exterior can be given an optional
+// importance, written to the existing lotSizeTarget.tier that My Search's
+// Basics editor and Match already use (no new scoring path). With no
+// importance chosen the tier stays 'dontcare' and Match ignores the acreage,
+// exactly as before. Home to Buy keeps its unranked field.
+
+export const LOT_SIZE_FEATURE = Object.freeze({
+  id: 'lotSizeTarget', target: 'lotSizeTarget', categoryKey: null, label: 'Ideal lot size', text: 'Ideal lot size',
+  kind: 'target', custom: false, art: null, icon: null, group: 'exterior', role: 'target',
+  hint: 'Homes on at least this much land count toward your Match. A lot size that isn’t known never counts against a home.',
+});
+
+export function lotSizeRankable(raw) {
+  return searchExperienceKey(normalizePriorities(raw)) === 'home_rent';
+}
+
+// The entered acreage ('' when none), as typed.
+export const lotSizeValue = (raw) => String(normalizePriorities(raw).lotSizeTarget?.value ?? '').trim();
+
+// 'must' | 'important' | 'nice', or null (not chosen: not in Match).
+export function lotSizeImportance(raw) {
+  const tier = normalizePriorities(raw).lotSizeTarget?.tier;
+  return PRIORITY_LEVELS.includes(tier) ? tier : null;
+}
+
+// The acreage as typed. Home to Rent: clearing it also clears its importance
+// (tier back to 'dontcare'), so typing a new acreage never silently brings
+// back an old ranking; the renter chooses again. Home to Buy (and any search
+// without ranked acreage) only ever changes the value, as before.
+export function setLotSizeValue(raw, value) {
+  const priorities = normalizePriorities(raw);
+  const lotSizeTarget = { ...priorities.lotSizeTarget, value };
+  if (lotSizeRankable(priorities) && !String(value ?? '').trim()) lotSizeTarget.tier = 'dontcare';
+  return { ...priorities, lotSizeTarget };
+}
+
+// A level ranks the acreage; anything else ('none', Not important) returns it
+// to 'dontcare'. The acreage itself is never changed.
+export function setLotSizeImportance(raw, level) {
+  const priorities = normalizePriorities(raw);
+  const tier = PRIORITY_LEVELS.includes(level) ? level : 'dontcare';
+  if ((priorities.lotSizeTarget?.tier || 'dontcare') === tier) return priorities;
+  return { ...priorities, lotSizeTarget: { ...priorities.lotSizeTarget, tier } };
+}
+
+// Review: the acreage with its importance; `scored` says whether Match uses it.
+export function lotSizeReview(raw) {
+  const value = lotSizeValue(raw);
+  const level = lotSizeImportance(raw);
+  return { value, level, scored: Boolean(value && level), feature: { ...LOT_SIZE_FEATURE, level } };
 }
 
 // Home type, layout and condition saved earlier (they are no longer asked

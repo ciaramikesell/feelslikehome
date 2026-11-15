@@ -259,9 +259,11 @@ test('existing renters keep Pet-Friendly exactly; it stays one ordinary priority
   assert.equal(featureLevel(saved, PETS), 'important');
   const items = priorityLevels(yes(saved).priorities).flatMap((level) => level.items).filter((item) => item.label === 'Pets Allowed');
   assert.deepEqual(items.map((item) => [item.displayLabel, item.tier]), [['Pet-Friendly', 'must']], 'one Pet-Friendly, no duplicate');
-  // Not offered again while chosen; still under More of your priorities until the Stage 3 Review row exists.
+  // Not offered again while chosen. Review shows it once, in the Rental
+  // Essentials row (Stage 3), never again under More of your priorities.
   assert.ok(!availableCriteriaGroups(yes(saved).priorities).some((group) => group.items.some((item) => item.key === 'features:Pets Allowed')));
-  assert.ok(otherChosenPriorities(yes(saved).priorities).some((item) => item.id === 'features:Pets Allowed'));
+  assert.ok(!otherChosenPriorities(yes(saved).priorities).some((item) => item.id === 'features:Pets Allowed'));
+  assert.ok(!otherChosenPriorities(saved).some((item) => item.id === 'features:Pets Allowed'), 'also while unanswered');
 });
 
 test('Match code, scoring weights and SQL are untouched by the pets helper', () => {

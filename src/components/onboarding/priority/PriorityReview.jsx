@@ -30,13 +30,42 @@ function PriorityList({ items, onOpen }) {
     <ul className="flh-ob-pf-review-list">
       {items.map((item) => (
         <li key={item.id}>
-          <button type="button" className="flh-ob-pf-review-item" aria-haspopup="dialog" onClick={() => onOpen(item)} aria-label={`${item.text}: ${LEVEL_COPY[item.level].heading}. Change importance`}>
-            <span className="flh-ob-pf-review-name">{item.text}{item.custom && <span className="flh-ob-pf-own">Your own</span>}</span>
+          <button type="button" className="flh-ob-pf-review-item" aria-haspopup="dialog" onClick={() => onOpen(item)} aria-label={`${item.text}: ${LEVEL_COPY[item.level].heading}${item.source ? ` (${item.source.toLowerCase()})` : ''}. Change importance`}>
+            <span className="flh-ob-pf-review-name">{item.text}{item.custom && <span className="flh-ob-pf-own">Your own</span>}{item.source && <span className="flh-ob-pf-review-source">{item.source}</span>}</span>
             <span className={`flh-ob-pf-card-level is-${item.level}`}>{LEVEL_COPY[item.level].heading}</span>
             <ChevronRight size={16} aria-hidden="true" />
           </button>
         </li>
       ))}
+    </ul>
+  );
+}
+
+// Rental Essentials (spec §7, D8): the pets answer, then Pet-Friendly once,
+// with where its level came from. Tapping it changes the level by hand.
+function PetsLines({ pets, onOpen }) {
+  return (
+    <>
+      <p className="flh-ob-pf-review-line">Pets moving with you: <strong>{pets.answerText || 'Not answered'}</strong></p>
+      {pets.item && <PriorityList items={[{ ...pets.item, source: pets.source }]} onOpen={onOpen} />}
+      {!pets.item && pets.answer && <p className="flh-ob-pf-review-note">No pet requirement. A home is never marked down for its pet policy.</p>}
+    </>
+  );
+}
+
+// Home to Rent (D4): the acreage with its optional importance, editable here.
+function LotLine({ lot, onOpen }) {
+  const text = `${lot.value} acres`;
+  return (
+    <ul className="flh-ob-pf-review-list flh-ob-pf-review-lot">
+      <li>
+        <button type="button" className="flh-ob-pf-review-item" aria-haspopup="dialog" onClick={() => onOpen(lot.feature)}
+          aria-label={`Ideal lot size, ${text}: ${lot.level ? LEVEL_COPY[lot.level].heading : 'not ranked, not part of your Match'}. Choose importance`}>
+          <span className="flh-ob-pf-review-name">Ideal lot size: {text}{!lot.level && <span className="flh-ob-pf-review-source">Not part of your Match</span>}</span>
+          <span className={`flh-ob-pf-card-level${lot.level ? ` is-${lot.level}` : ''}`}>{lot.level ? LEVEL_COPY[lot.level].heading : 'Not ranked'}</span>
+          <ChevronRight size={16} aria-hidden="true" />
+        </button>
+      </li>
     </ul>
   );
 }
@@ -49,7 +78,8 @@ export default function PriorityReview({ header, priorities, places = [], shared
   const others = otherChosenPriorities(priorities);
   const earlier = earlierPreferences(priorities);
   const lot = String(priorities.lotSizeTarget?.value ?? '').trim();
-  const total = categories.reduce((sum, category) => sum + category.chosen.length, 0) + others.length;
+  // Pet-Friendly (one row, Rental Essentials) and a ranked lot size count too.
+  const total = categories.reduce((sum, category) => sum + category.chosen.length + (category.pets?.item ? 1 : 0) + (category.lot?.scored ? 1 : 0), 0) + others.length;
   const firstPlace = priorities.onboardingSearchType === 'apartment_rent' ? 'Add my first apartment' : 'Add my first home';
   const open = (item) => onOpenFeature({ ...item });
 
@@ -92,15 +122,19 @@ export default function PriorityReview({ header, priorities, places = [], shared
             {category.garage.importance !== 'not_important' && category.garage.type && <> · {GARAGE_TYPES.find((type) => type.key === category.garage.type)?.label}</>}
           </p>
         );
-        const lotLine = category.key === 'exterior' && lot && <p className="flh-ob-pf-review-line">Ideal lot size: <strong>{lot} acres</strong></p>;
-        const empty = !category.chosen.length && !garageLine && !lotLine;
+        const lotLine = category.key === 'exterior' && lot && (category.lot
+          ? <LotLine lot={category.lot} onOpen={open} />
+          : <p className="flh-ob-pf-review-line">Ideal lot size: <strong>{lot} acres</strong></p>);
+        const petsLines = category.pets && (category.pets.answer || category.pets.item) && <PetsLines pets={category.pets} onOpen={open} />;
+        const empty = !category.chosen.length && !garageLine && !lotLine && !petsLines;
         return (
-          <Section key={category.key} title={category.title} onEdit={() => onEdit(category.step)} editLabel={empty ? 'Add' : 'Edit'}
+          <Section key={category.key} title={category.title} onEdit={() => onEdit(category.step)} editLabel={empty ? (category.pets ? 'Answer' : 'Add') : 'Edit'}
             status={wasSkipped && empty ? <p className="flh-ob-pf-review-empty">Skipped—add anytime.</p> : null}>
             {garageLine}
+            {petsLines}
             {lotLine}
             {category.chosen.length > 0 && <PriorityList items={category.chosen} onOpen={open} />}
-            {empty && !wasSkipped && <p className="flh-ob-pf-review-empty">Nothing chosen.</p>}
+            {empty && !wasSkipped && <p className="flh-ob-pf-review-empty">{category.pets ? 'Not answered yet.' : 'Nothing chosen.'}</p>}
           </Section>
         );
       })}

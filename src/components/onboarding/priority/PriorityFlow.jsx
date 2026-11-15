@@ -11,14 +11,16 @@ import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { STEPPERS } from '@/lib/onboardingBasics';
 import { basicsFieldsFor, LEVEL_COPY, PRIORITY_LEVELS } from '@/lib/searchProfile';
 import {
-  GARAGE_TYPES, addOwnFeature, categoryView, featureLevel, garageImportance, garageType, priorityCategory,
-  renameOwnFeature, setFeatureLevel, setGarageImportance, setGarageType, switchMessage, switchPrioritySearchType,
+  GARAGE_TYPES, LOT_SIZE_FEATURE, addOwnFeature, categoryView, featureLevel, garageImportance, garageType, lotSizeImportance,
+  lotSizeRankable, lotSizeValue, priorityCategory, renameOwnFeature, setFeatureLevel, setGarageImportance, setGarageType,
+  setLotSizeImportance, setLotSizeValue, switchMessage, switchPrioritySearchType,
 } from '@/lib/priorityCategories';
 import FeatureCard from './FeatureCard';
 import FeatureVisual from './FeatureVisual';
 import ImportanceSheet from './ImportanceSheet';
 import AddOwnFeature from './AddOwnFeature';
 import PriorityReview from './PriorityReview';
+import PetsQuestion from './PetsQuestion';
 
 // Mobile Priority Onboarding V3 (flow 4). Every screen has the same frame:
 // eyebrow (step and category), heading, lead, content, then one footer with
@@ -51,6 +53,11 @@ export function PriorityFooter({ onBack, onSkip, onContinue, continueLabel = 'Co
   );
 }
 
+// A numeric target ranked with the same sheet (Home to Rent's Ideal lot size,
+// D4) writes its existing tier; every other feature is a priority.
+const levelOf = (priorities, feature) => (feature.target === 'lotSizeTarget' ? lotSizeImportance(priorities) : featureLevel(priorities, feature));
+const writeLevel = (priorities, feature, tier) => (feature.target === 'lotSizeTarget' ? setLotSizeImportance(priorities, tier) : setFeatureLevel(priorities, feature, tier));
+
 // The importance picker, shared by every category screen and by Review.
 export function useImportancePicker(priorities, patch) {
   const [sheet, setSheet] = useState(null);
@@ -59,7 +66,7 @@ export function useImportancePicker(priorities, patch) {
   const close = () => setSheet(null);
   const choose = (tier) => {
     const { feature } = sheet;
-    patch((next) => setFeatureLevel(next, feature, tier));
+    patch((next) => writeLevel(next, feature, tier));
     setAnnouncement(PRIORITY_LEVELS.includes(tier) ? `${feature.text}: ${LEVEL_COPY[tier].heading}.` : `${feature.text}: not important.`);
     close();
   };
@@ -78,7 +85,7 @@ export function useImportancePicker(priorities, patch) {
         open={Boolean(sheet)}
         feature={sheet?.feature || null}
         note={sheet?.note || null}
-        level={sheet ? featureLevel(priorities, sheet.feature) : null}
+        level={sheet ? levelOf(priorities, sheet.feature) : null}
         onClose={close}
         onChoose={choose}
         onRename={rename}
@@ -140,6 +147,26 @@ function GarageQuestions({ priorities, patch, onNotImportant }) {
   );
 }
 
+// Home to Rent (D4): once acreage is entered, an optional importance from the
+// shared sheet. Until one is chosen the acreage is not part of Match.
+function LotSizeImportance({ priorities, onOpen }) {
+  const value = lotSizeValue(priorities);
+  const level = lotSizeImportance(priorities);
+  if (!value) return <p className="flh-ob-help flh-ob-pf-lot-help">Enter acreage to choose how much it matters. Optional.</p>;
+  return (
+    <div className="flh-ob-pf-lot">
+      <button type="button" className={`flh-ob-pf-lot-button${level ? ` is-selected is-${level}` : ''}`} aria-haspopup="dialog" onClick={onOpen}
+        aria-label={`Lot size importance: ${level ? LEVEL_COPY[level].heading : 'not chosen'}. Choose importance`}>
+        <span className="flh-ob-pf-lot-title" aria-hidden="true">How important is lot size?</span>
+        <span className={`flh-ob-pf-card-level${level ? ` is-${level}` : ''}`} aria-hidden="true">{level ? LEVEL_COPY[level].heading : 'Optional · Tap to choose'}</span>
+      </button>
+      <p className="flh-ob-help flh-ob-pf-lot-help">{level
+        ? `Homes on at least ${value} acres count toward your Match. An unknown lot size never counts against a home.`
+        : 'Not part of your Match until you choose how much it matters.'}</p>
+    </div>
+  );
+}
+
 export function CategoryStep({ categoryKey, priorities, patch, header, footer, picker, onAutoAdvance = null }) {
   const view = categoryView(priorities, categoryKey);
   const [notice, setNotice] = useState('');
@@ -153,6 +180,7 @@ export function CategoryStep({ categoryKey, priorities, patch, header, footer, p
   // its question is built separately (spec Stage 3).
   const showFeatures = !category.question && (!garage || PRIORITY_LEVELS.includes(importance) || view.chosenCount > 0);
   const lotSize = category.key === 'exterior' && basicsFieldsFor(priorities.onboardingSearchType || 'home_buy').lotSize;
+  const rankLot = lotSize && lotSizeRankable(priorities);
   const add = (value) => {
     const result = addOwnFeature(priorities, category.key, value?.label ?? value);
     if (!result) return;
@@ -169,9 +197,11 @@ export function CategoryStep({ categoryKey, priorities, patch, header, footer, p
     <div className={`flh-onboarding-step flh-ob-pf-step flh-ob-pf-${category.key}`}>
       {header}
       {garage && <GarageQuestions priorities={priorities} patch={patch} onNotImportant={onAutoAdvance} />}
+      {category.question && <PetsQuestion priorities={priorities} patch={patch} />}
       {lotSize && (
         <section className="flh-card flh-ob-pf-question">
-          <UnitField label="Ideal lot size" unit="acres" decimal value={priorities.lotSizeTarget.value} onChange={(value) => patch((next) => { next.lotSizeTarget = { ...next.lotSizeTarget, value }; return next; })} />
+          <UnitField label="Ideal lot size" unit="acres" decimal value={priorities.lotSizeTarget.value} onChange={(value) => patch((next) => (rankLot ? setLotSizeValue(next, value) : { ...next, lotSizeTarget: { ...next.lotSizeTarget, value } }))} />
+          {rankLot && <LotSizeImportance priorities={priorities} onOpen={() => picker.open({ ...LOT_SIZE_FEATURE, level: lotSizeImportance(priorities) })} />}
         </section>
       )}
       {showFeatures && (
@@ -251,6 +281,8 @@ function BasicsQuestions({ priorities, patch, header, footer }) {
   );
 }
 
+const BASICS_TITLE = { home_buy: 'The Basics', home_rent: 'Rental Basics', apartment_rent: 'Apartment Basics' };
+const BASICS_NOUN = { home_buy: 'home search', home_rent: 'rental search', apartment_rent: 'apartment search' };
 const SHARED_LABEL = (sharedFor, title) => `Your preferences for ${sharedFor} · ${title}`;
 
 export default function PriorityFlow({
@@ -261,7 +293,6 @@ export default function PriorityFlow({
 }) {
   const picker = useImportancePicker(priorities, patch);
   const choice = priorities.onboardingSearchType || 'home_buy';
-  const apartment = choice === 'apartment_rent';
   const eyebrow = (title) => (sharedFor ? SHARED_LABEL(sharedFor, title) : `Step ${progress.position} of ${progress.total} · ${title}`);
   const first = progress.index === 0;
   const footer = ({ skip = true, validate = null, label } = {}) => (
@@ -290,7 +321,7 @@ export default function PriorityFlow({
       <BasicsQuestions
         priorities={priorities}
         patch={patch}
-        header={<Header eyebrow={eyebrow('The Basics')} heading={['The basics of your ', apartment ? 'apartment search' : 'home search']} lead={choice === 'home_buy' ? 'Your budget and the space you need. Skip anything you haven’t decided.' : 'Your monthly rent and the space you need. Skip anything you haven’t decided.'} />}
+        header={<Header eyebrow={eyebrow(BASICS_TITLE[choice] || 'The Basics')} heading={['The basics of your ', BASICS_NOUN[choice] || 'home search']} lead={choice === 'home_buy' ? 'Your budget and the space you need. Skip anything you haven’t decided.' : 'Your monthly rent and the space you need. Skip anything you haven’t decided.'} />}
         footer={footer()}
       />
     );

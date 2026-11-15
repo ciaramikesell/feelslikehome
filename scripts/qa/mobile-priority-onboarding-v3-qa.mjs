@@ -14,6 +14,10 @@
 // answers, garage Not important (auto-advance and Back), Skip, the editable
 // Review; the founder's photos (derivatives only, lazy, per screen, 400w/800w);
 // Dead-End Street not offered; and missing, broken and corrupt images.
+// Rentals (docs/rental-foundations-onboarding-spec.md, Stage 3): both rental
+// flows end to end with exact screen counts, the pets question (Yes / No /
+// Not sure, status line, exact Undo, a renter's own level respected), Home
+// to Rent's lot-size importance, card hints, and the editable Review.
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
@@ -46,13 +50,26 @@ const SCREENS = [
   ['exterior', 'step=cat_exterior&state=populated'],
   ['neighborhood', 'step=cat_neighborhood&state=populated'],
   ['review', 'step=review&state=legacy'],
-  ['rent-essentials', 'step=cat_essentials&state=populated&search=home_rent'],
+  ['rent-basics', 'step=basics&state=populated&search=home_rent'],
+  ['rent-essentials', 'step=cat_essentials&state=unanswered&search=home_rent'],
+  ['rent-essentials-yes', 'step=cat_essentials&state=populated&search=home_rent'],
   ['rent-layout', 'step=cat_rent_layout&state=populated&search=home_rent'],
   ['rent-features', 'step=cat_rent_features&state=populated&search=home_rent'],
   ['rent-exterior', 'step=cat_exterior&state=populated&search=home_rent'],
   ['rent-neighborhood', 'step=cat_neighborhood&state=populated&search=home_rent'],
+  ['rent-review', 'step=review&state=legacy&search=home_rent'],
+  ['apartment-basics', 'step=basics&state=populated&search=apartment_rent'],
+  ['apartment-essentials', 'step=cat_essentials&state=unanswered&search=apartment_rent'],
   ['apartment-unit', 'step=cat_apt_unit&state=populated&search=apartment_rent'],
   ['apartment-property', 'step=cat_apt_property&state=populated&search=apartment_rent'],
+  ['apartment-review', 'step=review&state=populated&search=apartment_rent'],
+];
+const RENTAL_WIDE = [
+  ['rent-essentials', 'step=cat_essentials&state=populated&search=home_rent'],
+  ['rent-exterior', 'step=cat_exterior&state=populated&search=home_rent'],
+  ['rent-review', 'step=review&state=legacy&search=home_rent'],
+  ['apartment-unit', 'step=cat_apt_unit&state=populated&search=apartment_rent'],
+  ['apartment-review', 'step=review&state=populated&search=apartment_rent'],
 ];
 
 async function layoutChecks(page, label) {
@@ -82,22 +99,23 @@ for (const width of [375, 390, 430]) {
     await ready(page);
     const facts = await layoutChecks(page, `${name} @${width}`);
     if (facts.cardCount > 1) check(`${name} @${width}: two-column card grid`, facts.columns === 2, `${facts.columns} columns`);
-    if (name !== 'search-type' && name !== 'review') {
+    if (name !== 'search-type' && !name.endsWith('review')) {
       const labels = facts.buttons.map((button) => button.text);
       check(`${name} @${width}: Back · Skip · Continue`, labels.some((t) => /Back/.test(t)) && labels.includes('Skip') && labels.some((t) => /Continue/.test(t)), labels.join(' | '));
     }
-    if (width === 390 || ['kitchen', 'garage', 'review'].includes(name)) await shot(page, `${name}-${width}`);
+    if (width === 390 || ['kitchen', 'garage', 'review'].includes(name) || /^(rent|apartment)-/.test(name)) await shot(page, `${name}-${width}`);
   }
   await page.close();
 }
 {
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-  for (const [name, query] of [['kitchen', 'step=cat_kitchen&state=populated'], ['review', 'step=review&state=legacy'], ['garage', 'step=cat_garage&state=populated']]) {
+  for (const [name, query] of [['kitchen', 'step=cat_kitchen&state=populated'], ['review', 'step=review&state=legacy'], ['garage', 'step=cat_garage&state=populated'], ...RENTAL_WIDE]) {
     await page.goto(url(query), { waitUntil: 'networkidle' });
     await ready(page);
     const facts = await layoutChecks(page, `${name} @1440`);
     if (facts.cardCount > 2) check(`${name} @1440: wider grid on desktop`, facts.columns === 3, `${facts.columns} columns`);
     check(`${name} @1440: desktop step rail shown`, await page.locator('.flh-ob-rail').isVisible());
+    check(`${name} @1440: rail names every screen (no raw step keys)`, !/cat_|search_type/.test(await page.locator('.flh-ob-rail').textContent()));
     await shot(page, `${name}-desktop-1440`);
   }
   await page.close();
@@ -105,7 +123,7 @@ for (const width of [375, 390, 430]) {
 for (const zoom of [1.5, 2]) {
   // A 390px phone with text and layout zoomed: the CSS viewport shrinks.
   const page = await browser.newPage({ viewport: { width: Math.round(390 / zoom), height: Math.round(844 / zoom) }, deviceScaleFactor: 2 * zoom });
-  for (const [name, query] of [['kitchen', 'step=cat_kitchen&state=populated'], ['garage', 'step=cat_garage&state=populated'], ['review', 'step=review&state=legacy']]) {
+  for (const [name, query] of [['kitchen', 'step=cat_kitchen&state=populated'], ['garage', 'step=cat_garage&state=populated'], ['review', 'step=review&state=legacy'], ...RENTAL_WIDE]) {
     await page.goto(url(query), { waitUntil: 'networkidle' });
     await ready(page);
     await layoutChecks(page, `${name} @390 large text ${zoom * 100}%`);
@@ -236,6 +254,229 @@ for (const zoom of [1.5, 2]) {
   await page.waitForFunction(() => window.__flhPreviewCompletions === 1, null, { timeout: 5000 }).then(() => check('finishing completes onboarding once', true)).catch(() => check('finishing completes onboarding once', false));
   check('no page errors during the flow', errors.length === 0, errors.join(' | '));
   await page.close();
+}
+
+// 2b. Home to Rent, start to finish: 8 counted screens, the pets question,
+// lot-size importance, hints and the editable Review.
+{
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  const count = () => page.locator('.flh-ob-count').textContent();
+  const cont = () => page.getByRole('button', { name: /Continue/ }).click();
+  const radio = (name) => page.getByRole('radio', { name, exact: true });
+  const status = () => page.locator('.flh-ob-pf-pets-status').textContent();
+  await page.goto(url('step=search_type&state=empty'), { waitUntil: 'networkidle' });
+  await ready(page);
+  await page.getByRole('radio', { name: /Home to Rent/ }).check();
+  check('rent: search type screen is 1/8', (await count()) === '1/8', await count());
+  await cont();
+  await page.getByRole('heading', { name: /basics of your rental search/i }).waitFor();
+  check('rent: Rental Basics eyebrow and 2/8', (await page.locator('.flh-eyebrow').first().textContent()).includes('Rental Basics') && (await count()) === '2/8');
+  const rent = page.getByLabel('Maximum monthly rent');
+  await rent.fill('2800');
+  check('rent: monthly rent shows $ and thousands separators', (await rent.inputValue()) === '2,800' && await page.locator('.flh-ob-currency').first().isVisible());
+  await page.getByRole('button', { name: 'More bedrooms' }).click();
+  await cont();
+  await page.getByRole('heading', { name: /Where are you/ }).waitFor();
+  check('rent: Geography is 3/8', (await count()) === '3/8');
+  await page.getByRole('button', { name: 'Skip' }).click();
+  await page.getByRole('heading', { name: /rental essentials/i }).waitFor();
+  check('rent: Rental Essentials is 4/8 with Back · Skip · Continue', (await count()) === '4/8');
+  check('rent: no ranking cards and no Add your own on Rental Essentials', (await page.locator('.flh-ob-pf-card').count()) === 0 && (await page.locator('.flh-ob-pf-add').count()) === 0);
+  check('rent: the pets question uses the pet-friendly photo', await page.locator('.flh-ob-pf-pets-media img').evaluate((img) => /pet-friendly-(400|800)\.webp$/.test(img.currentSrc) && img.naturalWidth > 0));
+  check('rent: nothing is preselected', !(await radio('Yes').isChecked()) && !(await radio('No').isChecked()) && !(await radio('Not sure yet').isChecked()));
+  const describedBy = async (name) => page.getByRole('radio', { name, exact: true }).evaluate((input) => document.getElementById(input.getAttribute('aria-describedby'))?.textContent);
+  check('rent: with no priority, Yes says Pet-Friendly becomes a Must Have', (await describedBy('Yes')) === 'Pet-Friendly becomes a Must Have');
+  await radio('Yes').check();
+  check('rent: after Yes, its hint says the Must Have is because of this answer', (await describedBy('Yes')) === 'Pet-Friendly is a Must Have because of this answer' && (await describedBy('No')) === 'No pet requirement');
+  check('rent: Yes says Pet-Friendly is now a Must Have, with Undo', /Pet-Friendly is now a Must Have\./.test(await status()) && await page.getByRole('button', { name: 'Undo' }).isVisible());
+  await shot(page, 'rent-flow-pets-yes-390');
+  await page.getByRole('button', { name: 'Undo' }).click();
+  check('rent: Undo returns to unanswered', !(await radio('Yes').isChecked()) && /Undone/.test(await status()));
+  await radio('Yes').check();
+  await radio('Not sure yet').check();
+  check('rent: Not sure puts the earlier level back', /Pet-Friendly is no longer one of your priorities\./.test(await status()));
+  await radio('No').check();
+  check('rent: No after Not sure writes no requirement', (await radio('No').isChecked()) && /no pet requirement|never marked down|Saved: No/i.test(await status()), await status());
+  await radio('Yes').check();
+  await shot(page, 'rent-flow-pets-final-390');
+  // Keyboard: the radios are one tab stop, arrows move within the group.
+  await radio('Yes').focus();
+  await page.keyboard.press('ArrowDown');
+  check('keyboard: arrows move between the three answers', await radio('No').isChecked());
+  await page.keyboard.press('ArrowUp');
+  check('keyboard: and back to Yes', await radio('Yes').isChecked() && /Must Have/.test(await status()));
+  await cont();
+  await page.getByRole('heading', { name: /living spaces/i }).waitFor();
+  check('rent: Layout is 5/8', (await count()) === '5/8');
+  await page.getByRole('button', { name: 'Extra Bedroom' }).click();
+  const sheet = page.getByRole('dialog', { name: 'Extra Bedroom' });
+  check('rent: Extra Bedroom hint shows in the sheet', await sheet.getByText('An extra bedroom beyond the minimum you entered in Basics.').isVisible());
+  await sheet.getByRole('button', { name: /^Nice to Have/ }).click();
+  check('rent: Extra Bedroom card carries its hint', await page.locator('.flh-ob-pf-card', { hasText: 'Extra Bedroom' }).locator('.flh-ob-pf-card-hint').isVisible());
+  // Back keeps the pets answer.
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await page.getByRole('heading', { name: /rental essentials/i }).waitFor();
+  check('rent: Back keeps the pets answer', await radio('Yes').isChecked() && /because pets are moving with you/.test(await status()));
+  await cont();
+  await cont();
+  await page.getByRole('heading', { name: /Rental features/i, level: 1 }).waitFor();
+  check('rent: Rental Features is 6/8; Garage is one card', (await count()) === '6/8' && (await page.locator('.flh-ob-pf-card-title', { hasText: /^Garage$/ }).count()) === 1);
+  await page.getByRole('textbox', { name: 'Add your own' }).fill('Wine fridge');
+  await page.getByRole('button', { name: 'Add', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Wine fridge' }).getByRole('button', { name: /^Important/ }).click();
+  check('rent: a custom addition is ranked immediately', await page.getByRole('button', { name: /^Wine fridge \(your own\): Important/ }).isVisible());
+  await cont();
+  await page.getByRole('heading', { name: /Exterior & property/i, level: 1 }).waitFor();
+  check('rent: Exterior is 7/8', (await count()) === '7/8');
+  check('rent: lot-size importance waits for acreage', (await page.getByRole('button', { name: /Lot size importance/ }).count()) === 0);
+  await page.getByRole('textbox', { name: /Ideal lot size/ }).fill('0.5');
+  const lotButton = page.getByRole('button', { name: /^Lot size importance: not chosen/ });
+  check('rent: after acreage, importance is optional and unranked', await lotButton.isVisible() && await page.getByText('Not part of your Match until you choose how much it matters.').isVisible());
+  await lotButton.click();
+  const lotSheet = page.getByRole('dialog', { name: 'Ideal lot size' });
+  check('rent: lot size uses the same four choices', (await lotSheet.getByRole('button', { name: /^(Must Have|Important|Nice to Have|Not important)/ }).count()) === 4);
+  await lotSheet.getByRole('button', { name: /^Important/ }).click();
+  check('rent: lot size ranked Important', await page.getByRole('button', { name: /^Lot size importance: Important/ }).isVisible() && await page.getByText(/at least 0\.5 acres count toward your Match/).isVisible());
+  await shot(page, 'rent-flow-lot-ranked-390');
+  // Clear → re-enter: the old importance is not silently reactivated.
+  await page.getByRole('textbox', { name: /Ideal lot size/ }).fill('');
+  check('rent: clearing the acreage hides and resets its importance', (await page.getByRole('button', { name: /Lot size importance/ }).count()) === 0);
+  await page.getByRole('textbox', { name: /Ideal lot size/ }).fill('0.5');
+  check('rent: re-entered acreage starts unranked', await page.getByRole('button', { name: /^Lot size importance: not chosen/ }).isVisible());
+  await page.getByRole('button', { name: /^Lot size importance: not chosen/ }).click();
+  await page.getByRole('dialog', { name: 'Ideal lot size' }).getByRole('button', { name: /^Important/ }).click();
+  check('rent: ranked again only when chosen explicitly', await page.getByRole('button', { name: /^Lot size importance: Important/ }).isVisible());
+  await page.getByRole('button', { name: 'Landscaping' }).click();
+  check('rent: Landscaping hint', await page.getByRole('dialog', { name: 'Landscaping' }).getByText('A well-kept, landscaped yard.').isVisible());
+  await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
+  await cont();
+  await page.getByRole('heading', { name: /neighborhood/i, level: 1 }).waitFor();
+  check('rent: Neighborhood is 8/8', (await count()) === '8/8');
+  await page.getByRole('button', { name: 'Skip' }).click();
+  await page.getByRole('heading', { name: /Your search is/ }).waitFor();
+  const essentials = page.getByRole('region', { name: 'Rental Essentials' });
+  check('review: pets answer and its provenance', await essentials.getByText('Pets moving with you:').isVisible() && await essentials.getByText('Because pets are moving with you').isVisible());
+  check('review: Pet-Friendly listed once', (await page.getByRole('button', { name: /^Pet-Friendly:/ }).count()) === 1 && (await page.getByRole('region', { name: 'More of your priorities' }).count()) === 0);
+  check('review: ranked acreage shows accurately', await page.getByRole('button', { name: /^Ideal lot size, 0\.5 acres: Important/ }).isVisible());
+  check('review: skipped Neighborhood says so', await page.getByRole('region', { name: 'Location & Neighborhood' }).getByText('Skipped—add anytime.').isVisible());
+  await shot(page, 'rent-flow-review-390');
+  // Change the acreage importance on Review.
+  await page.getByRole('button', { name: /^Ideal lot size, 0\.5 acres/ }).click();
+  await page.getByRole('dialog', { name: 'Ideal lot size' }).getByRole('button', { name: /Not important/ }).click();
+  check('review: acreage unranked again, not part of Match', await page.getByRole('button', { name: /^Ideal lot size, 0\.5 acres: not ranked/ }).isVisible());
+  // Pet-Friendly changed by hand on Review: provenance becomes the renter's own.
+  await page.getByRole('button', { name: /^Pet-Friendly:/ }).click();
+  await page.getByRole('dialog', { name: 'Pet-Friendly' }).getByRole('button', { name: /^Important/ }).click();
+  check('review: a manual Pet-Friendly edit reads “You set this yourself”', await essentials.getByText('You set this yourself').isVisible());
+  // Edit the pets answer from Review: No keeps the renter's own level.
+  await page.getByRole('button', { name: 'Edit: Rental Essentials' }).click();
+  await page.getByRole('heading', { name: /rental essentials/i }).waitFor();
+  await radio('No').check();
+  check('edit from Review: No keeps a level the renter set', /Pet-Friendly stays Important because you set it yourself\./.test(await status()));
+  await page.getByRole('button', { name: 'Back to review' }).click();
+  check('review: answer updated, own level kept', await essentials.getByText('No', { exact: true }).isVisible() && await page.getByRole('button', { name: /^Pet-Friendly: Important/ }).isVisible());
+  await shot(page, 'rent-flow-review-edited-390');
+  check('rent: no page errors', errors.length === 0, errors.join(' | '));
+  await page.close();
+}
+// 2c. Apartment to Rent: 6 counted screens; pets; hints; Review.
+{
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 });
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  const count = () => page.locator('.flh-ob-count').textContent();
+  await page.goto(url('step=search_type&state=empty'), { waitUntil: 'networkidle' });
+  await ready(page);
+  await page.getByRole('radio', { name: /Apartment to Rent/ }).check();
+  check('apartment: 1/6', (await count()) === '1/6');
+  await page.getByRole('button', { name: /Continue/ }).click();
+  await page.getByRole('heading', { name: /basics of your apartment search/i }).waitFor();
+  check('apartment: Apartment Basics 2/6', (await page.locator('.flh-eyebrow').first().textContent()).includes('Apartment Basics') && (await count()) === '2/6');
+  await page.getByRole('button', { name: 'Skip' }).click();
+  await page.getByRole('button', { name: 'Skip' }).click();
+  await page.getByRole('heading', { name: /rental essentials/i }).waitFor();
+  check('apartment: Rental Essentials 4/6', (await count()) === '4/6');
+  await page.getByRole('button', { name: 'Skip' }).click();
+  await page.getByRole('heading', { name: 'The unit', level: 1 }).waitFor();
+  check('apartment: The Unit 5/6', (await count()) === '5/6');
+  await page.getByRole('button', { name: 'Private Garage' }).click();
+  check('apartment: Private Garage hint', await page.getByRole('dialog', { name: 'Private Garage' }).getByText('A garage for your unit only.').isVisible());
+  await page.getByRole('dialog').getByRole('button', { name: /^Must Have/ }).click();
+  await page.getByRole('button', { name: /Continue/ }).click();
+  await page.getByRole('heading', { name: 'The property', level: 1 }).waitFor();
+  check('apartment: The Property 6/6, Garage Parking card', (await count()) === '6/6' && await page.getByRole('button', { name: /^Garage Parking: not chosen/ }).isVisible());
+  await page.getByRole('button', { name: /Continue/ }).click();
+  await page.getByRole('heading', { name: /Your search is/ }).waitFor();
+  check('apartment review: skipped pets question says so', await page.getByRole('region', { name: 'Rental Essentials' }).getByText('Skipped—add anytime.').isVisible());
+  check('apartment review: no lot size anywhere', (await page.getByText(/lot size/i).count()) === 0);
+  await page.getByRole('button', { name: /^Answer: Rental Essentials/ }).click();
+  await page.getByRole('radio', { name: 'Yes', exact: true }).check();
+  await page.getByRole('button', { name: 'Back to review' }).click();
+  check('apartment review: Yes → Pet-Friendly Must Have because of the answer', await page.getByRole('button', { name: /^Pet-Friendly: Must Have \(because pets are moving with you\)/ }).isVisible());
+  await shot(page, 'apartment-flow-review-390');
+  await page.getByRole('button', { name: /Add my first apartment/ }).click();
+  await page.waitForFunction(() => window.__flhPreviewCompletions === 1, null, { timeout: 5000 }).then(() => check('apartment: finishing completes once', true)).catch(() => check('apartment: finishing completes once', false));
+  check('apartment: no page errors', errors.length === 0, errors.join(' | '));
+  await page.close();
+}
+// 2d. A resumed rental session lands where it left off, with progress intact.
+{
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+  await page.goto(url('step=cat_rent_features&state=populated&search=home_rent'), { waitUntil: 'networkidle' });
+  await ready(page);
+  check('resume: Home to Rent resumes on Rental Features at 6/8 with saved choices', (await page.locator('.flh-ob-count').textContent()) === '6/8' && await page.getByRole('button', { name: /^Central Air: Must Have/ }).isVisible());
+  await page.goto(url('step=cat_kitchen&state=populated&search=apartment_rent'), { waitUntil: 'networkidle' });
+  await ready(page);
+  check('resume: a step the apartment flow lacks falls back to a real screen', !(await page.getByText('This step isn’t available').count()));
+  await page.goto(url('step=cat_essentials&state=manual&search=home_rent'), { waitUntil: 'networkidle' });
+  await ready(page);
+  const describedBy = async (name) => page.getByRole('radio', { name, exact: true }).evaluate((input) => document.getElementById(input.getAttribute('aria-describedby'))?.textContent);
+  check('resume: FLH’s Must Have over an earlier own Important — No says it goes back to Important', (await describedBy('No')) === 'Pet-Friendly goes back to Important');
+  await page.getByRole('radio', { name: 'No', exact: true }).check();
+  check('resume: FLH’s Must Have over an earlier own Important — No restores Important', /Pet-Friendly is back to Important\./.test(await page.locator('.flh-ob-pf-pets-status').textContent()));
+  check('a renter’s own Important: Yes says it goes from Important to Must Have, No says it stays', (await describedBy('Yes')) === 'Pet-Friendly goes from Important to Must Have' && (await describedBy('No')) === 'Pet-Friendly stays Important, as you set it');
+  await page.goto(url('step=review&state=legacy&search=home_rent'), { waitUntil: 'networkidle' });
+  await ready(page);
+  await page.getByRole('button', { name: /^Pet-Friendly:/ }).click();
+  await page.getByRole('dialog', { name: 'Pet-Friendly' }).getByRole('button', { name: /^Must Have/ }).click();
+  await page.getByRole('button', { name: 'Edit: Rental Essentials' }).click();
+  await page.getByRole('heading', { name: /rental essentials/i }).waitFor();
+  check('a renter’s own Must Have (set on Review): Yes says it already is, never that FLH will make it one', (await describedBy('Yes')) === 'Pet-Friendly is already a Must Have, as you set it');
+  await shot(page, 'pets-manual-must-hint-390');
+  await page.close();
+}
+
+// 2e. Review at every phone width and zoom: nothing overruns its card or the
+// screen, and no text is wider than its own box (labels, priorities, badges,
+// buttons). Home to Buy, both rental flows and shared setup.
+for (const width of [320, 375, 390, 430]) {
+  for (const zoom of [1, 1.5, 2]) {
+    const page = await browser.newPage({ viewport: { width: Math.round(width / zoom), height: Math.round(844 / zoom) }, deviceScaleFactor: 2 * zoom });
+    for (const [name, query] of [['review', 'step=review&state=legacy'], ['rent-review', 'step=review&state=legacy&search=home_rent'], ['apartment-review', 'step=review&state=populated&search=apartment_rent'], ['shared-review', 'step=review&state=populated&mode=shared']]) {
+      await page.goto(url(query), { waitUntil: 'networkidle' });
+      await ready(page);
+      const bad = await page.evaluate(() => {
+        const vw = document.documentElement.clientWidth;
+        const out = [];
+        for (const el of document.querySelectorAll('.flh-ob-review *')) {
+          if (el.closest('.flh-ob-review-mark') || el instanceof SVGElement) continue; // the brand mark's badge overlaps by design
+          const r = el.getBoundingClientRect();
+          if (!r.width) continue;
+          const card = el.closest('.flh-ob-review-card, .flh-ob-review-actions, .flh-onboarding-header, .flh-ob-pf-review-total');
+          const cr = card?.getBoundingClientRect();
+          if (r.right > vw + 0.5 || r.left < -0.5 || (card && card !== el && r.right > cr.right + 0.5) || (el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 1)) out.push(`${el.className || el.tagName}: "${(el.textContent || '').trim().slice(0, 24)}"`);
+        }
+        return [...new Set(out)];
+      });
+      check(`${name} @${width} ${zoom * 100}%: nothing clipped or overrunning`, bad.length === 0, bad.slice(0, 4).join(' | '));
+      const targets = await page.evaluate(() => [...document.querySelectorAll('.flh-ob-review button')].filter((b) => b.getBoundingClientRect().height < 44).map((b) => b.textContent.trim().slice(0, 20)));
+      check(`${name} @${width} ${zoom * 100}%: Review buttons stay ≥ 44px tall`, targets.length === 0, targets.join(' | '));
+      if (zoom === 2 && ['review', 'rent-review'].includes(name)) await shot(page, `${name}-${width}-zoom-200`);
+    }
+    await page.close();
+  }
 }
 
 // 3. Photos: shown on the cards, card-sized, lazy, one screen at a time.
