@@ -59,7 +59,6 @@ export const ONBOARDING_PHOTOS = Object.freeze({
   sidewalks: photo('sidewalks.webp'),
   'tree-lined-street': photo('tree-lined-street.webp'),
   'cul-de-sac': photo('cul-de-sac.webp'),
-  'walkable-schools': photo('walkable-to-schools.webp'),
   // Rental photography (founder uploads, PR #182; docs/rental-foundations-onboarding-spec.md §5).
   'extra-bedroom': photo('extra-bedroom.webp'),
   // Dense foliage: capped so the 800w derivative stays within the card budget.
@@ -72,6 +71,9 @@ export const ONBOARDING_PHOTOS = Object.freeze({
   dishwasher: photo('dishwasher.webp'),
   'apartment-balcony': photo('apartment-balcony.webp'),
   'apartment-parking-garage': photo('apartment-parking-garage.webp'),
+  // Home to Buy catalog refinement (PR #186): the founder's privacy-fence upload,
+  // reserved in #185, now pictures Privacy Fence (exterior:Privacy Fencing).
+  'privacy-fence': photo('privacy-fence.webp'),
   // Shown with the Rental Essentials pets question, never on a ranked card.
   'pet-friendly': photo('pet-friendly.webp'),
 });
@@ -88,7 +90,13 @@ export const ONBOARDING_PHOTOS = Object.freeze({
 export const PENDING_ONBOARDING_PHOTOS = Object.freeze({
   'apartment-pool.webp': Object.freeze({ intended: 'Apartment to Rent · The Property · Pool (icon-only today)' }),
   'private-garage.webp': Object.freeze({ intended: 'Apartment to Rent · The Unit · Private Garage suggestion (icon-only today)' }),
-  'privacy-fence.webp': Object.freeze({ intended: 'A Privacy Fence feature (Exterior & Property), not yet in the approved catalog' }),
+});
+
+// Founder uploads whose card was retired from onboarding. The original is
+// kept untouched (never deleted) and no card derivative is shown. Anyone who
+// chose the feature keeps it; it simply has no card any more.
+export const RETIRED_ONBOARDING_PHOTOS = Object.freeze({
+  'walkable-to-schools.webp': Object.freeze({ reason: 'Walkable to Schools is no longer offered to Home to Buy (PR #186)' }),
 });
 
 // Features with no photo yet keep an FLH-authored illustration.

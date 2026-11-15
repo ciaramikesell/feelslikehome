@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 // Card-sized derivatives of the founder's onboarding photography.
 //
-//   node scripts/visual/onboarding-card-images.mjs
+//   node scripts/visual/onboarding-card-images.mjs [key …]
 //
+// With keys (e.g. `privacy-fence`), only those cards are written, so adding a
+// photo never re-encodes the others.
 // Reads every photo listed in src/lib/onboardingImages.js from
 // public/images/onboarding/<file> (the founder's originals — never modified or
 // deleted) and writes 4:3 centre-cropped WebP derivatives to
@@ -22,7 +24,9 @@ const OUT = join(SRC, 'cards');
 mkdirSync(OUT, { recursive: true });
 
 let total = 0;
-for (const [key, photo] of Object.entries(ONBOARDING_PHOTOS)) {
+const only = process.argv.slice(2);
+for (const key of only) if (!ONBOARDING_PHOTOS[key]) throw new Error(`No manifest entry: ${key}`);
+for (const [key, photo] of Object.entries(ONBOARDING_PHOTOS).filter(([key]) => !only.length || only.includes(key))) {
   for (const width of CARD_WIDTHS) {
     const height = Math.round((width * 3) / 4);
     const out = join(OUT, `${key}-${width}.webp`);

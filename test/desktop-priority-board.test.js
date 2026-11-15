@@ -177,12 +177,22 @@ test('a feature removed to the library never counts against a home; Unknown is n
   assert.equal(Boolean(removed?.allSelected?.some((item) => item.key === 'features:Countertop Seating')), false, 'removed: not part of Match at all');
 });
 
-test('Home to Buy Garage is one chip with the existing identity; details appear once it matters; Not important on removal', () => {
+test('Home to Buy Garage: three chips, one priority (exterior:Garage + qualifier); details once it matters; Not important on removal', async () => {
+  const { BOARD_GARAGE_CHOICES } = await import('../src/lib/priorityBoard.js');
   let p = fresh('home_buy');
   let board = priorityBoard(p);
   const garage = board.groups.find((group) => group.key === 'garage');
-  assert.deepEqual(garage.features.map((feature) => feature.text), ['Garage'], 'details hidden until a garage matters');
+  assert.deepEqual(garage.features.map((feature) => feature.text), ['Any Garage', 'Attached Garage', 'Detached Garage'], 'details hidden until a garage matters');
   assert.equal(garage.garageDetailsHidden, true);
+  // Each chip is the one Garage priority plus its qualifier: the phone's two writes.
+  for (const choice of BOARD_GARAGE_CHOICES) {
+    const viaBoard = placeOnBoard(fresh('home_buy'), choice, 'nice');
+    assert.deepEqual(viaBoard, setGarageType(setGarageImportance(fresh('home_buy'), 'nice'), choice.variant), choice.text);
+    const ranked = priorityBoard(viaBoard);
+    assert.deepEqual(column(ranked, 'nice'), [choice.text], `${choice.text}: shown once, by its own name`);
+    assert.equal(ranked.groups.find((group) => group.key === 'garage').features.some((feature) => feature.variant), false, 'the other two leave the library: no contradictory second garage');
+    assert.equal(priorityLevels(viaBoard).flatMap((level) => level.items).filter((item) => item.key === 'exterior:Garage').length, 1, 'counted once');
+  }
   p = placeOnBoard(p, BOARD_HOUSE_GARAGE, 'important');
   assert.deepEqual([garageImportance(p), featureLevel(p, BOARD_HOUSE_GARAGE)], ['important', 'important']);
   assert.deepEqual(p, setGarageImportance(fresh('home_buy'), 'important'), 'the same write as the phone’s garage question');
@@ -210,7 +220,7 @@ test('house Garage and apartment Garage Parking stay separate across switches; h
   assert.deepEqual(heldGaragePreferences(p), { house: { tier: 'must', garagePreference: 'detached' } }, 'the held house garage is not rewritten');
   p = switchPrioritySearchType(p, 'home_buy').priorities;
   board = priorityBoard(p);
-  assert.deepEqual(column(board, 'must'), ['Garage'], 'the house garage comes back');
+  assert.deepEqual(column(board, 'must'), ['Detached Garage'], 'the house garage comes back, with its qualifier');
   assert.equal(garageType(p), 'detached');
   assert.deepEqual(heldGaragePreferences(p), { apartment: { tier: 'nice' } });
 });
@@ -226,7 +236,7 @@ test('Add your own: canonical suggestions first, duplicate-proof across case and
   // Typed text that is already offered reuses that feature (any category).
   const porch = addOwnFeature(p, 'kitchen', 'front   PORCH!');
   assert.equal(porch.feature.id, 'exterior:Front porch');
-  assert.equal(porch.homeCategory, 'layout');
+  assert.equal(porch.homeCategory, 'exterior');
   // A new feature is created once, on the chosen category, then ranked.
   const wine = addOwnFeature(p, 'kitchen', 'Wine fridge');
   p = placeOnBoard(wine.priorities, wine.feature, 'nice');
@@ -444,14 +454,14 @@ test('layout: full-width library on top, three equal columns below, nothing scro
   assert.ok(board.indexOf('className="flh-ob-board-library') < board.indexOf('className="flh-ob-board-columns"'), 'library before the columns (reading and tab order)');
 });
 
-test('Garage qualifier lives with the ranked Garage (chip and chooser), not in the library', () => {
+test('Garage qualifier: chosen with the chip (Any / Attached / Detached) and changeable in the ranked chooser; never a second criterion', () => {
   const board = read('src/components/onboarding/priority/PriorityBoard.jsx');
   const library = board.slice(board.indexOf('function LibraryGroup('), board.indexOf('function AddYourOwn('));
   assert.doesNotMatch(library, /GarageType/, 'no Attached / Detached in the unranked library');
   assert.match(board, /\{garage && level && <GarageType priorities=\{garage\.priorities\} patch=\{garage\.patch\} \/>\}/, 'in the chooser, once a garage matters');
   assert.match(board, /garage=\{isHouseGarage\(chooser\.feature\) \? \{ priorities, patch \} : null\}/, 'house Garage only (not Home to Rent Garage or apartment Garage Parking)');
   assert.match(board, /onClick=\{\(\) => patch\(\(next\) => setGarageType\(next, choice\.key\)\)\}/, 'the existing garagePreference write');
-  assert.match(board, /if \(!level \|\| !isHouseGarage\(feature\)\) return null;/, 'qualifier only on the ranked house Garage');
+  assert.match(board, /<p id=\{id\} className="flh-ob-board-chooser-question">Which garage\?<\/p>/);
   // Same storage: the qualifier is exterior.garagePreference, held across switches by heldGarage.
   let p = placeOnBoard(fresh('home_buy'), BOARD_HOUSE_GARAGE, 'important');
   p = setGarageType(p, 'detached');

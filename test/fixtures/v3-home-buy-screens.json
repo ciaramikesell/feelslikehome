@@ -16,6 +16,9 @@
    "key": "layout",
    "step": "cat_layout",
    "storage": "features",
+   "only": [
+    "home_buy"
+   ],
    "title": "Layout & Living Spaces",
    "heading": [
     "Layout & ",
@@ -48,6 +51,18 @@
      "role": "feature"
     },
     {
+     "id": "features:Primary ensuite",
+     "categoryKey": "features",
+     "label": "Primary ensuite",
+     "text": "Primary Ensuite",
+     "kind": "check",
+     "custom": false,
+     "art": "primary-ensuite",
+     "icon": "BedDouble",
+     "group": "layout",
+     "role": "feature"
+    },
+    {
      "id": "features:Finished basement",
      "categoryKey": "features",
      "label": "Finished basement",
@@ -60,32 +75,6 @@
      "role": "feature"
     },
     {
-     "id": "features:Primary ensuite",
-     "categoryKey": "features",
-     "label": "Primary ensuite",
-     "text": "Primary Ensuite",
-     "kind": "check",
-     "custom": false,
-     "art": "primary-ensuite",
-     "icon": "BedDouble",
-     "group": "layout",
-     "role": "feature"
-    }
-   ],
-   "suggestions": [
-    {
-     "id": "features:First-floor laundry",
-     "categoryKey": "features",
-     "label": "First-floor laundry",
-     "text": "First-Floor Laundry",
-     "kind": "check",
-     "custom": false,
-     "art": "first-floor-laundry",
-     "icon": "WashingMachine",
-     "group": "layout",
-     "role": "suggestion"
-    },
-    {
      "id": "features:Walkout basement",
      "categoryKey": "features",
      "label": "Walkout basement",
@@ -95,26 +84,34 @@
      "art": "walkout-basement",
      "icon": "DoorOpen",
      "group": "layout",
-     "role": "suggestion"
+     "role": "feature"
     },
     {
-     "id": "exterior:Front porch",
-     "categoryKey": "exterior",
-     "label": "Front porch",
-     "text": "Front Porch",
+     "id": "features:First-floor laundry",
+     "categoryKey": "features",
+     "label": "First-floor laundry",
+     "text": "Main Floor Laundry",
      "kind": "check",
      "custom": false,
-     "art": "front-porch",
-     "icon": "Armchair",
+     "art": "first-floor-laundry",
+     "icon": "WashingMachine",
      "group": "layout",
-     "role": "suggestion"
+     "role": "feature",
+     "aliases": [
+      "First-Floor Laundry",
+      "First floor laundry"
+     ]
     }
-   ]
+   ],
+   "suggestions": []
   },
   {
    "key": "kitchen",
    "step": "cat_kitchen",
    "storage": "features",
+   "only": [
+    "home_buy"
+   ],
    "title": "Kitchen",
    "heading": [
     "The ",
@@ -202,6 +199,9 @@
    "key": "living",
    "step": "cat_living",
    "storage": "features",
+   "only": [
+    "home_buy"
+   ],
    "title": "Living Room",
    "heading": [
     "The ",
@@ -265,6 +265,9 @@
    "key": "bath",
    "step": "cat_bath",
    "storage": "features",
+   "only": [
+    "home_buy"
+   ],
    "title": "Bathroom",
    "heading": [
     "The ",
@@ -341,8 +344,7 @@
    "step": "cat_garage",
    "storage": "exterior",
    "only": [
-    "home_buy",
-    "home_rent"
+    "home_buy"
    ],
    "title": "Garage",
    "heading": [
@@ -394,6 +396,10 @@
    "key": "exterior",
    "step": "cat_exterior",
    "storage": "exterior",
+   "only": [
+    "home_buy",
+    "home_rent"
+   ],
    "title": "Exterior & Property",
    "heading": [
     "Exterior & ",
@@ -424,6 +430,21 @@
      "icon": "Fence",
      "group": "exterior",
      "role": "feature"
+    },
+    {
+     "id": "exterior:Privacy Fencing",
+     "categoryKey": "exterior",
+     "label": "Privacy Fencing",
+     "text": "Privacy Fence",
+     "kind": "check",
+     "custom": false,
+     "art": "privacy-fence",
+     "icon": "Fence",
+     "group": "exterior",
+     "role": "feature",
+     "aliases": [
+      "Privacy Fence"
+     ]
     }
    ],
    "suggestions": [
@@ -462,6 +483,18 @@
      "icon": "Waves",
      "group": "exterior",
      "role": "suggestion"
+    },
+    {
+     "id": "exterior:Front porch",
+     "categoryKey": "exterior",
+     "label": "Front porch",
+     "text": "Front Porch",
+     "kind": "check",
+     "custom": false,
+     "art": "front-porch",
+     "icon": "Armchair",
+     "group": "exterior",
+     "role": "suggestion"
     }
    ]
   },
@@ -469,6 +502,10 @@
    "key": "neighborhood",
    "step": "cat_neighborhood",
    "storage": "location",
+   "only": [
+    "home_buy",
+    "home_rent"
+   ],
    "title": "Location & Neighborhood",
    "heading": [
     "Location & ",
@@ -537,18 +574,6 @@
      "icon": "Milestone",
      "group": "neighborhood",
      "role": "suggestion"
-    },
-    {
-     "id": "location:Walkable schools",
-     "categoryKey": "location",
-     "label": "Walkable schools",
-     "text": "Walkable to Schools",
-     "kind": "check",
-     "custom": false,
-     "art": "walkable-schools",
-     "icon": "School",
-     "group": "neighborhood",
-     "role": "suggestion"
     }
    ]
   }
@@ -584,6 +609,19 @@
      "level": null
     },
     {
+     "id": "features:Primary ensuite",
+     "categoryKey": "features",
+     "label": "Primary ensuite",
+     "text": "Primary Ensuite",
+     "kind": "check",
+     "custom": false,
+     "art": "primary-ensuite",
+     "icon": "BedDouble",
+     "group": "layout",
+     "role": "feature",
+     "level": null
+    },
+    {
      "id": "features:Finished basement",
      "categoryKey": "features",
      "label": "Finished basement",
@@ -597,33 +635,6 @@
      "level": null
     },
     {
-     "id": "features:Primary ensuite",
-     "categoryKey": "features",
-     "label": "Primary ensuite",
-     "text": "Primary Ensuite",
-     "kind": "check",
-     "custom": false,
-     "art": "primary-ensuite",
-     "icon": "BedDouble",
-     "group": "layout",
-     "role": "feature",
-     "level": null
-    }
-   ],
-   "suggestions": [
-    {
-     "id": "features:First-floor laundry",
-     "categoryKey": "features",
-     "label": "First-floor laundry",
-     "text": "First-Floor Laundry",
-     "kind": "check",
-     "custom": false,
-     "art": "first-floor-laundry",
-     "icon": "WashingMachine",
-     "group": "layout",
-     "role": "suggestion"
-    },
-    {
      "id": "features:Walkout basement",
      "categoryKey": "features",
      "label": "Walkout basement",
@@ -633,21 +644,28 @@
      "art": "walkout-basement",
      "icon": "DoorOpen",
      "group": "layout",
-     "role": "suggestion"
+     "role": "feature",
+     "level": null
     },
     {
-     "id": "exterior:Front porch",
-     "categoryKey": "exterior",
-     "label": "Front porch",
-     "text": "Front Porch",
+     "id": "features:First-floor laundry",
+     "categoryKey": "features",
+     "label": "First-floor laundry",
+     "text": "Main Floor Laundry",
      "kind": "check",
      "custom": false,
-     "art": "front-porch",
-     "icon": "Armchair",
+     "art": "first-floor-laundry",
+     "icon": "WashingMachine",
      "group": "layout",
-     "role": "suggestion"
+     "role": "feature",
+     "aliases": [
+      "First-Floor Laundry",
+      "First floor laundry"
+     ],
+     "level": null
     }
-   ]
+   ],
+   "suggestions": []
   },
   {
    "key": "kitchen",
@@ -927,6 +945,22 @@
      "group": "exterior",
      "role": "feature",
      "level": null
+    },
+    {
+     "id": "exterior:Privacy Fencing",
+     "categoryKey": "exterior",
+     "label": "Privacy Fencing",
+     "text": "Privacy Fence",
+     "kind": "check",
+     "custom": false,
+     "art": "privacy-fence",
+     "icon": "Fence",
+     "group": "exterior",
+     "role": "feature",
+     "aliases": [
+      "Privacy Fence"
+     ],
+     "level": null
     }
    ],
    "suggestions": [
@@ -963,6 +997,18 @@
      "custom": false,
      "art": "pool",
      "icon": "Waves",
+     "group": "exterior",
+     "role": "suggestion"
+    },
+    {
+     "id": "exterior:Front porch",
+     "categoryKey": "exterior",
+     "label": "Front porch",
+     "text": "Front Porch",
+     "kind": "check",
+     "custom": false,
+     "art": "front-porch",
+     "icon": "Armchair",
      "group": "exterior",
      "role": "suggestion"
     }
@@ -1036,18 +1082,6 @@
      "icon": "Milestone",
      "group": "neighborhood",
      "role": "suggestion"
-    },
-    {
-     "id": "location:Walkable schools",
-     "categoryKey": "location",
-     "label": "Walkable schools",
-     "text": "Walkable to Schools",
-     "kind": "check",
-     "custom": false,
-     "art": "walkable-schools",
-     "icon": "School",
-     "group": "neighborhood",
-     "role": "suggestion"
     }
    ]
   }
@@ -1063,30 +1097,25 @@
    "src": "/images/onboarding/cards/home-office-400.webp",
    "srcSet": "/images/onboarding/cards/home-office-400.webp 400w, /images/onboarding/cards/home-office-800.webp 800w"
   },
-  "features:Finished basement": {
-   "kind": "photo",
-   "src": "/images/onboarding/cards/finished-basement-400.webp",
-   "srcSet": "/images/onboarding/cards/finished-basement-400.webp 400w, /images/onboarding/cards/finished-basement-800.webp 800w"
-  },
   "features:Primary ensuite": {
    "kind": "photo",
    "src": "/images/onboarding/cards/primary-ensuite-400.webp",
    "srcSet": "/images/onboarding/cards/primary-ensuite-400.webp 400w, /images/onboarding/cards/primary-ensuite-800.webp 800w"
   },
-  "features:First-floor laundry": {
+  "features:Finished basement": {
    "kind": "photo",
-   "src": "/images/onboarding/cards/first-floor-laundry-400.webp",
-   "srcSet": "/images/onboarding/cards/first-floor-laundry-400.webp 400w, /images/onboarding/cards/first-floor-laundry-800.webp 800w"
+   "src": "/images/onboarding/cards/finished-basement-400.webp",
+   "srcSet": "/images/onboarding/cards/finished-basement-400.webp 400w, /images/onboarding/cards/finished-basement-800.webp 800w"
   },
   "features:Walkout basement": {
    "kind": "photo",
    "src": "/images/onboarding/cards/walkout-basement-400.webp",
    "srcSet": "/images/onboarding/cards/walkout-basement-400.webp 400w, /images/onboarding/cards/walkout-basement-800.webp 800w"
   },
-  "exterior:Front porch": {
+  "features:First-floor laundry": {
    "kind": "photo",
-   "src": "/images/onboarding/cards/front-porch-400.webp",
-   "srcSet": "/images/onboarding/cards/front-porch-400.webp 400w, /images/onboarding/cards/front-porch-800.webp 800w"
+   "src": "/images/onboarding/cards/first-floor-laundry-400.webp",
+   "srcSet": "/images/onboarding/cards/first-floor-laundry-400.webp 400w, /images/onboarding/cards/first-floor-laundry-800.webp 800w"
   },
   "features:Countertop Seating": {
    "kind": "photo",
@@ -1188,6 +1217,11 @@
    "src": "/images/onboarding/cards/fenced-yard-400.webp",
    "srcSet": "/images/onboarding/cards/fenced-yard-400.webp 400w, /images/onboarding/cards/fenced-yard-800.webp 800w"
   },
+  "exterior:Privacy Fencing": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/privacy-fence-400.webp",
+   "srcSet": "/images/onboarding/cards/privacy-fence-400.webp 400w, /images/onboarding/cards/privacy-fence-800.webp 800w"
+  },
   "location:Mature Trees": {
    "kind": "photo",
    "src": "/images/onboarding/cards/mature-trees-400.webp",
@@ -1202,6 +1236,11 @@
    "kind": "photo",
    "src": "/images/onboarding/cards/pool-400.webp",
    "srcSet": "/images/onboarding/cards/pool-400.webp 400w, /images/onboarding/cards/pool-800.webp 800w"
+  },
+  "exterior:Front porch": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/front-porch-400.webp",
+   "srcSet": "/images/onboarding/cards/front-porch-400.webp 400w, /images/onboarding/cards/front-porch-800.webp 800w"
   },
   "location:Low-Traffic Street": {
    "kind": "photo",
@@ -1223,11 +1262,6 @@
    "kind": "photo",
    "src": "/images/onboarding/cards/cul-de-sac-400.webp",
    "srcSet": "/images/onboarding/cards/cul-de-sac-400.webp 400w, /images/onboarding/cards/cul-de-sac-800.webp 800w"
-  },
-  "location:Walkable schools": {
-   "kind": "photo",
-   "src": "/images/onboarding/cards/walkable-schools-400.webp",
-   "srcSet": "/images/onboarding/cards/walkable-schools-400.webp 400w, /images/onboarding/cards/walkable-schools-800.webp 800w"
   }
  }
 }

@@ -226,7 +226,7 @@ check('own features have their own library section', /Your own features/.test(aw
 await page.fill('.flh-ob-board-add input', 'front porch');
 await page.keyboard.press('Enter');
 await page.waitForSelector('.flh-ob-board-chooser');
-check('typed text matching another category reuses it and says where', /under Layout & Living Spaces/.test(await page.locator('.flh-ob-board-chooser-note').textContent()));
+check('typed text matching another category reuses it and says where', /under Exterior & Property/.test(await page.locator('.flh-ob-board-chooser-note').textContent()));
 await page.keyboard.press('Escape');
 
 /* --------------------------------- previews -------------------------------- */
@@ -513,27 +513,41 @@ for (const [width, zoom] of [[320, 1], [390, 1], [320, 1.5], [375, 1.5], [390, 1
 /* ------------------------- garage (Home to Buy) ---------------------------- */
 
 await open(page, 'step=cat_garage&state=empty&search=home_buy');
-check('garage details hidden until a garage matters', await page.locator('.flh-ob-board-group[data-group="garage"] .flh-ob-board-chip').count() === 1);
-await dragTo(page, chip('exterior:Garage', '.flh-ob-board-library'), COL('important'));
-check('ranking Garage shows its details in the library, but no Attached / Detached there', await page.locator('.flh-ob-board-group[data-group="garage"] .flh-ob-board-chip').count() === 3 && await page.locator('.flh-ob-board-library .flh-ob-board-segment').count() === 0);
-const rankedGarage = page.locator(`${COL('important')} [data-chip-id="exterior:Garage"]`);
-check('ranked Garage asks “Attached or detached?” on the chip', /Attached or detached\?/.test(await rankedGarage.textContent()));
+const garageChips = await texts(page, '.flh-ob-board-group[data-group="garage"] .flh-ob-board-chip-text');
+check('three garage choices in the library: Any, Attached, Detached (details hidden until one is ranked)', JSON.stringify(garageChips) === JSON.stringify(['Any Garage', 'Attached Garage', 'Detached Garage']), garageChips.join(', '));
+await dragTo(page, chip('exterior:Garage#attached', '.flh-ob-board-library'), COL('important'));
+const garageAfter = await texts(page, '.flh-ob-board-group[data-group="garage"] .flh-ob-board-chip-text');
+check('ranking Attached Garage: one garage in Important, the other two choices leave the library, details appear', JSON.stringify(await columnTexts(page, 'important')) === '["Attached Garage"]' && !garageAfter.some((text) => /Garage$/.test(text) && /Any|Attached|Detached/.test(text)) && garageAfter.includes('Workbench'), garageAfter.join(', '));
+const rankedGarage = page.locator(`${COL('important')} [data-chip-id^="exterior:Garage#"]`);
 await rankedGarage.click();
-check('Garage chooser holds the qualifier', await page.locator('.flh-ob-board-chooser .flh-ob-board-segment').count() === 3);
+check('the ranked garage’s chooser can switch the kind', await page.locator('.flh-ob-board-chooser .flh-ob-board-segment').count() === 3 && /Attached/.test(await page.locator('.flh-ob-board-chooser .flh-ob-board-segment[aria-pressed="true"]').textContent()));
 await page.locator('.flh-ob-board-chooser .flh-ob-board-segment', { hasText: 'Detached' }).click();
 await page.waitForTimeout(150);
-check('choosing Detached keeps the chooser open and marks it', await page.locator('.flh-ob-board-chooser .flh-ob-board-segment[aria-pressed="true"]').textContent().then((text) => /Detached/.test(text)));
 await shot(page, 'desktop-1440-garage-expanded', false);
 await page.keyboard.press('Escape');
 await page.waitForTimeout(100);
-check('the ranked chip now reads Garage · Detached', /Detached/.test(await rankedGarage.textContent()) && (await page.locator(`${COL('important')} .flh-ob-board-chip-text`).allTextContents()).includes('Garage'));
-// Ranking from the chooser reopens it on the chip so the qualifier can be answered at once.
-await open(page, 'step=cat_garage&state=empty&search=home_buy');
-await page.locator(chip('exterior:Garage', '.flh-ob-board-library')).click();
+check('switching it renames the one ranked garage (no second garage)', JSON.stringify(await columnTexts(page, 'important')) === '["Detached Garage"]');
+await dragTo(page, `${COL('important')} [data-chip-id^="exterior:Garage#"]`, '.flh-ob-board-library');
+check('removing it brings all three choices back to the library', JSON.stringify(await texts(page, '.flh-ob-board-group[data-group="garage"] .flh-ob-board-chip-text')) === JSON.stringify(['Any Garage', 'Attached Garage', 'Detached Garage']));
+await page.locator(chip('exterior:Garage#any', '.flh-ob-board-library')).click();
 await page.locator('.flh-ob-board-chooser .flh-ob-board-level.is-must').click();
-await page.waitForTimeout(300);
-check('ranking Garage from the chooser reopens it with Attached / Detached', await page.locator('.flh-ob-board-chooser .flh-ob-board-segment').count() === 3 && (await columnTexts(page, 'must')).includes('Garage'));
-await page.keyboard.press('Escape');
+await page.waitForTimeout(250);
+check('click-to-rank Any Garage', JSON.stringify(await columnTexts(page, 'must')) === '["Any Garage"]');
+// Home to Buy catalog (PR #186): approved choices on the board.
+await open(page, 'step=cat_layout&state=empty&search=home_buy');
+const layoutChips = await texts(page, '.flh-ob-board-group[data-group="layout"] .flh-ob-board-chip-text');
+check('Layout & Living Spaces: the six approved choices', JSON.stringify(layoutChips) === JSON.stringify(['First-Floor Bedroom', 'Home Office', 'Primary Ensuite', 'Finished Basement', 'Walkout Basement', 'Main Floor Laundry']), layoutChips.join(', '));
+const exteriorChips = await texts(page, '.flh-ob-board-group[data-group="exterior"] .flh-ob-board-chip-text');
+check('Exterior & Property: Fenced Yard and Privacy Fence, plus Deck / Patio, Mature Trees, Garden Space, Pool, Front Porch', JSON.stringify(exteriorChips) === JSON.stringify(['Deck / Patio', 'Fenced Yard', 'Privacy Fence', 'Mature Trees', 'Garden Space', 'Pool', 'Front Porch']), exteriorChips.join(', '));
+const neighborhoodChips = await texts(page, '.flh-ob-board-group[data-group="neighborhood"] .flh-ob-board-chip-text');
+check('Location & Neighborhood: no Walkable to Schools', JSON.stringify(neighborhoodChips) === JSON.stringify(['Low-Traffic Street', 'Sidewalks', 'Tree-Lined Street', 'No HOA', 'Cul-de-Sac']), neighborhoodChips.join(', '));
+const privacy = page.locator(chip('exterior:Privacy Fencing', '.flh-ob-board-library'));
+await privacy.scrollIntoViewIfNeeded();
+await privacy.hover();
+await page.waitForTimeout(650);
+check('Privacy Fence preview: the founder photo derivative', /\/images\/onboarding\/cards\/privacy-fence-400\.webp$/.test(await page.locator('.flh-ob-board-preview img').getAttribute('src') || '') && await page.locator('.flh-ob-board-preview img').evaluate((img) => img.complete && img.naturalWidth > 0));
+await shot(page, 'desktop-1440-privacy-fence-preview', false);
+await page.mouse.move(5, 5);
 // Not for rentals: Home to Rent Garage and apartment Garage Parking have no qualifier.
 await open(page, 'step=cat_rent_features&state=empty&search=home_rent');
 await page.locator(chip('exterior:Garage', '.flh-ob-board-library')).click();

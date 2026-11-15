@@ -128,13 +128,13 @@ function GarageQuestions({ priorities, patch, onNotImportant }) {
       </section>
       {PRIORITY_LEVELS.includes(importance) && (
         <section aria-labelledby="flh-ob-pf-garage-type">
-          <h2 id="flh-ob-pf-garage-type" className="flh-ob-label flh-ob-pf-section-label">Attached or detached?</h2>
+          <h2 id="flh-ob-pf-garage-type" className="flh-ob-label flh-ob-pf-section-label">Which garage?</h2>
           <ul className="flh-ob-pf-grid flh-ob-pf-grid-three" aria-label="Garage type">
             {GARAGE_TYPES.map((choice) => (
               <li key={choice.key} className="flh-ob-pf-cell">
                 <button type="button" className={`flh-ob-pf-card${type === choice.key ? ' is-selected is-important' : ''}`} aria-pressed={type === choice.key} onClick={() => patch((next) => setGarageType(next, choice.key))}>
                   <FeatureVisual feature={{ art: choice.art, icon: choice.icon }} eager />
-                  <span className="flh-ob-pf-card-body"><span className="flh-ob-pf-card-title">{choice.label}</span></span>
+                  <span className="flh-ob-pf-card-body"><span className="flh-ob-pf-card-title">{choice.label}</span><span className="flh-ob-pf-card-level">{choice.hint}</span></span>
                 </button>
               </li>
             ))}

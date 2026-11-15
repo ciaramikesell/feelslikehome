@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { CARD_WIDTHS, ONBOARDING_ILLUSTRATIONS, ONBOARDING_PHOTOS, PENDING_ONBOARDING_PHOTOS, cardImage } from '../src/lib/onboardingImages.js';
+import { CARD_WIDTHS, ONBOARDING_ILLUSTRATIONS, ONBOARDING_PHOTOS, PENDING_ONBOARDING_PHOTOS, RETIRED_ONBOARDING_PHOTOS, cardImage } from '../src/lib/onboardingImages.js';
 import {
   CURRENT_ONBOARDING_VERSION, advanceOnboarding, beginOnboarding, isLegacyOnboardedProfile, normalizeOnboardingState,
   onboardingStepsFor, resumeOnboardingStep, retreatOnboarding, setOnboardingSearchType, skipOnboardingStep,
@@ -93,10 +93,10 @@ test('a session started in the live flow carries finished screens into flow 4', 
 
 /* --------------------------------- catalog --------------------------------- */
 
-test('screens offer exactly the approved features and suggestions (Home to Buy)', () => {
+test('screens offer exactly the approved features and suggestions (Home to Buy, PR #186 refinement)', () => {
   const p = fresh();
-  assert.deepEqual(texts(p, 'layout'), ['First-Floor Bedroom', 'Home Office', 'Finished Basement', 'Primary Ensuite']);
-  assert.deepEqual(texts(p, 'layout', 'suggestions'), ['First-Floor Laundry', 'Walkout Basement', 'Front Porch']);
+  assert.deepEqual(texts(p, 'layout'), ['First-Floor Bedroom', 'Home Office', 'Primary Ensuite', 'Finished Basement', 'Walkout Basement', 'Main Floor Laundry']);
+  assert.deepEqual(texts(p, 'layout', 'suggestions'), []);
   assert.deepEqual(texts(p, 'kitchen'), ['Countertop Seating', 'Stainless Steel Appliances', 'Walk-in Pantry']);
   assert.deepEqual(texts(p, 'kitchen', 'suggestions'), ['Eat-in Kitchen', 'Kitchen Island', 'Formal Dining Room']);
   assert.deepEqual(texts(p, 'living'), ['Fireplace', 'High Ceilings']);
@@ -104,12 +104,17 @@ test('screens offer exactly the approved features and suggestions (Home to Buy)'
   assert.deepEqual(texts(p, 'bath'), ['Double Vanity', 'Soaking Tub']);
   assert.deepEqual(texts(p, 'bath', 'suggestions'), ['Separate Shower / Tub', 'Private Toilet', 'Linen Closet']);
   assert.deepEqual(texts(p, 'garage', 'suggestions'), ['Workbench', 'Garage Extension', 'Door to Backyard']);
-  assert.deepEqual(texts(p, 'exterior'), ['Deck / Patio', 'Fenced Yard']);
-  assert.deepEqual(texts(p, 'exterior', 'suggestions'), ['Mature Trees', 'Garden Space', 'Pool']);
+  assert.deepEqual(texts(p, 'exterior'), ['Deck / Patio', 'Fenced Yard', 'Privacy Fence']);
+  assert.deepEqual(texts(p, 'exterior', 'suggestions'), ['Mature Trees', 'Garden Space', 'Pool', 'Front Porch']);
   assert.deepEqual(texts(p, 'neighborhood'), ['Low-Traffic Street', 'Sidewalks', 'Tree-Lined Street', 'No HOA']);
-  assert.deepEqual(texts(p, 'neighborhood', 'suggestions'), ['Cul-de-Sac', 'Walkable to Schools']);
+  assert.deepEqual(texts(p, 'neighborhood', 'suggestions'), ['Cul-de-Sac']);
+  assert.deepEqual(GARAGE_TYPES.map((type) => [type.key, type.label]), [['any', 'Any garage'], ['attached', 'Attached garage'], ['detached', 'Detached garage']]);
+  // Same identities as before: renamed on screen only.
+  const layout = priorityCategoriesFor(p).find((category) => category.key === 'layout').features;
+  assert.equal(layout.find((feature) => feature.text === 'Main Floor Laundry').id, 'features:First-floor laundry');
+  assert.equal(priorityCategoriesFor(p).find((category) => category.key === 'exterior').features.find((feature) => feature.text === 'Privacy Fence').id, 'exterior:Privacy Fencing');
   const all = priorityCategoriesFor(p).flatMap((category) => [...category.features, ...category.suggestions].map((feature) => feature.text.toLowerCase()));
-  for (const omitted of ['second-floor laundry', 'basement storage', 'fire pit', 'room for entertaining', 'walkable neighborhood', 'near water']) {
+  for (const omitted of ['second-floor laundry', 'first-floor laundry', 'basement storage', 'fire pit', 'room for entertaining', 'workshop space', 'walkable neighborhood', 'near water', 'wooded setting', 'walkable to schools', 'walkable schools']) {
     assert.ok(!all.includes(omitted), `${omitted} is not offered in onboarding`);
   }
 });
@@ -184,7 +189,7 @@ test('Add your own never duplicates across case, spacing or punctuation, and fin
   assert.equal(island.feature.id, 'features:Kitchen Island');
   assert.deepEqual(island.priorities, p, 'a catalog feature needs no new item');
   const porch = addOwnFeature(p, 'kitchen', 'Front Porch');
-  assert.deepEqual([porch.feature.id, porch.homeCategory], ['exterior:Front porch', 'layout']);
+  assert.deepEqual([porch.feature.id, porch.homeCategory], ['exterior:Front porch', 'exterior']);
   const shower = addOwnFeature(p, 'bath', 'separate shower/tub');
   assert.equal(shower.feature.label, 'Separate Shower / Tub', 'the suggestion, not a near-duplicate');
   const air = addOwnFeature(p, 'living', 'central air');
@@ -311,9 +316,16 @@ test('photos: an explicit manifest maps every card to the founder’s upload; de
   const uploads = readdirSync(new URL('../public/images/onboarding/', import.meta.url)).filter((file) => file.endsWith('.webp'));
   const active = Object.values(ONBOARDING_PHOTOS).map((photo) => photo.file);
   const pending = Object.keys(PENDING_ONBOARDING_PHOTOS);
-  assert.deepEqual([...pending].sort(), ['apartment-pool.webp', 'privacy-fence.webp', 'private-garage.webp'], 'only these three are reserved');
-  assert.deepEqual(pending.filter((file) => active.includes(file)), [], 'a reserved upload is not also an active mapping');
-  assert.deepEqual([...uploads].sort(), [...active, ...pending].sort(), 'every upload is active or reserved by name');
+  const retired = Object.keys(RETIRED_ONBOARDING_PHOTOS);
+  assert.deepEqual([...pending].sort(), ['apartment-pool.webp', 'private-garage.webp'], 'only these two are reserved (rental catalog work)');
+  assert.deepEqual([...retired].sort(), ['walkable-to-schools.webp'], 'only this card was retired (PR #186)');
+  assert.ok(active.includes('privacy-fence.webp'), 'Privacy Fence is now an active photo (PR #186)');
+  assert.deepEqual([...pending, ...retired].filter((file) => active.includes(file)), [], 'a reserved or retired upload is not also an active mapping');
+  assert.deepEqual([...uploads].sort(), [...active, ...pending, ...retired].sort(), 'every upload is active, reserved or retired by name');
+  for (const file of retired) {
+    assert.ok(RETIRED_ONBOARDING_PHOTOS[file].reason.length > 10);
+    for (const width of CARD_WIDTHS) assert.equal(existsSync(new URL(`../public/images/onboarding/cards/${file.replace(/\.webp$/, '').replace('walkable-to-schools', 'walkable-schools')}-${width}.webp`, import.meta.url)), false, `${file}: no card derivative is served`);
+  }
   for (const file of pending) {
     const key = file.replace(/\.webp$/, '');
     assert.equal(cardImage(key), null, `${file} is never shown`);
