@@ -76,6 +76,21 @@ export const ONBOARDING_PHOTOS = Object.freeze({
   'pet-friendly': photo('pet-friendly.webp'),
 });
 
+// Founder uploads that are on main but NOT yet assigned to any card (main
+// 3326b47). They are reserved for the upcoming catalog update and are never
+// shown: cardImage() reads only ONBOARDING_PHOTOS, no derivatives exist for
+// them, and the photo test requires every upload to be either an active
+// mapping above or exactly one of these. `intended` records where each is
+// expected to land (docs/mobile-priority-onboarding-v3.md §5); it is
+// documentation only, not a mapping. To activate one: add it to
+// ONBOARDING_PHOTOS with its card's `art` key, remove it here, and run
+// scripts/visual/onboarding-card-images.mjs.
+export const PENDING_ONBOARDING_PHOTOS = Object.freeze({
+  'apartment-pool.webp': Object.freeze({ intended: 'Apartment to Rent · The Property · Pool (icon-only today)' }),
+  'private-garage.webp': Object.freeze({ intended: 'Apartment to Rent · The Unit · Private Garage suggestion (icon-only today)' }),
+  'privacy-fence.webp': Object.freeze({ intended: 'A Privacy Fence feature (Exterior & Property), not yet in the approved catalog' }),
+});
+
 // Features with no photo yet keep an FLH-authored illustration.
 export const ONBOARDING_ILLUSTRATIONS = Object.freeze(['in-unit-laundry', 'garage-either']);
 

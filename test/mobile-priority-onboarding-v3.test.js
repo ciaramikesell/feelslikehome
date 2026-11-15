@@ -3,7 +3,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
-import { CARD_WIDTHS, ONBOARDING_ILLUSTRATIONS, ONBOARDING_PHOTOS, cardImage } from '../src/lib/onboardingImages.js';
+import { CARD_WIDTHS, ONBOARDING_ILLUSTRATIONS, ONBOARDING_PHOTOS, PENDING_ONBOARDING_PHOTOS, cardImage } from '../src/lib/onboardingImages.js';
 import {
   CURRENT_ONBOARDING_VERSION, advanceOnboarding, beginOnboarding, isLegacyOnboardedProfile, normalizeOnboardingState,
   onboardingStepsFor, resumeOnboardingStep, retreatOnboarding, setOnboardingSearchType, skipOnboardingStep,
@@ -304,9 +304,23 @@ test('photos: an explicit manifest maps every card to the founder’s upload; de
       assert.doesNotMatch(svg, /<image|href=/);
     }
   }
-  // Every uploaded photo is used, and every manifest entry is used by a card.
+  // Every uploaded photo is either used by a card (an active manifest entry)
+  // or one of the explicitly reserved, not-yet-assigned uploads — never both,
+  // never neither. A new unassigned upload still fails here until it is mapped
+  // or reserved by name.
   const uploads = readdirSync(new URL('../public/images/onboarding/', import.meta.url)).filter((file) => file.endsWith('.webp'));
-  assert.deepEqual([...uploads].sort(), Object.values(ONBOARDING_PHOTOS).map((photo) => photo.file).sort());
+  const active = Object.values(ONBOARDING_PHOTOS).map((photo) => photo.file);
+  const pending = Object.keys(PENDING_ONBOARDING_PHOTOS);
+  assert.deepEqual([...pending].sort(), ['apartment-pool.webp', 'privacy-fence.webp', 'private-garage.webp'], 'only these three are reserved');
+  assert.deepEqual(pending.filter((file) => active.includes(file)), [], 'a reserved upload is not also an active mapping');
+  assert.deepEqual([...uploads].sort(), [...active, ...pending].sort(), 'every upload is active or reserved by name');
+  for (const file of pending) {
+    const key = file.replace(/\.webp$/, '');
+    assert.equal(cardImage(key), null, `${file} is never shown`);
+    assert.equal(arts.has(key), false, `${file} is not referenced by any card`);
+    for (const width of CARD_WIDTHS) assert.equal(existsSync(new URL(`../public/images/onboarding/cards/${key}-${width}.webp`, import.meta.url)), false, `${file} has no derivative yet`);
+    assert.ok(PENDING_ONBOARDING_PHOTOS[file].intended.length > 10, `${file} says where it will be used`);
+  }
   assert.deepEqual([...Object.keys(ONBOARDING_PHOTOS)].filter((key) => !arts.has(key)), []);
   // Names that differ between upload and card are mapped explicitly.
   assert.equal(ONBOARDING_PHOTOS['garage-attached'].file, 'attached-garage.webp');

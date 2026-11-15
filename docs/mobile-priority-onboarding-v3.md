@@ -195,6 +195,24 @@ cover` in a 4:3 tile, `loading="lazy"` after the first row, `decoding="async"`.
 Only the screen being shown renders images, so other categories' photos are
 never fetched (QA checks this with the network log).
 
+**Reserved uploads (not yet assigned).** Three founder uploads arrived on
+`main` in `3326b47` for features that are not yet fully in the approved
+onboarding catalog. They are listed by name in `PENDING_ONBOARDING_PHOTOS`
+(`src/lib/onboardingImages.js`), are never shown (no manifest entry, no
+derivatives), and the photo test accepts exactly these three as reserved:
+every other upload must still be an active, card-used mapping with both
+derivatives.
+
+| Upload | Intended home in the upcoming catalog update |
+|---|---|
+| `apartment-pool.webp` | Apartment to Rent · The Property · **Pool** (icon-only today) |
+| `private-garage.webp` | Apartment to Rent · The Unit · **Private Garage** suggestion (icon-only today) |
+| `privacy-fence.webp` | A **Privacy Fence** feature for Exterior & Property, not yet in the approved catalog |
+
+To activate one: add it to `ONBOARDING_PHOTOS` under its card's `art` key,
+remove it from `PENDING_ONBOARDING_PHOTOS`, set the card's `art`, and run
+`scripts/visual/onboarding-card-images.mjs` for its derivatives.
+
 **Fallbacks** (in order): photo → FLH illustration (only `pet-friendly`,
 `in-unit-laundry`, `dishwasher`, `garage-either` — the four cards with no
 photo; `scripts/visual/feature-art.mjs` now generates only these) → an icon,
