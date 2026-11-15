@@ -46,9 +46,9 @@ test('completed accounts are never re-routed (gate and legacy rule untouched)', 
 
 /* ---------------------------------- flow 4 ---------------------------------- */
 
-test('flow 4: one category per screen, ten question screens for a buyer, then Review', () => {
+test('flow 4: one category per screen, nine question screens for a buyer (no geography screen), then Review', () => {
   const buy = onboardingStepsFor(4, { answers: { searchType: 'home_buy' } });
-  assert.deepEqual(buy, ['search_type', 'basics', 'locations', 'cat_layout', 'cat_kitchen', 'cat_living', 'cat_bath', 'cat_garage', 'cat_exterior', 'cat_neighborhood', 'review']);
+  assert.deepEqual(buy, ['search_type', 'basics', 'cat_layout', 'cat_kitchen', 'cat_living', 'cat_bath', 'cat_garage', 'cat_exterior', 'cat_neighborhood', 'review']);
   assert.deepEqual(onboardingStepsFor(4, {}), buy, 'before the type is chosen, the buyer screens are shown');
   // Rentals: docs/rental-foundations-onboarding-spec.md §1 (exact order in test/rental-foundations-onboarding.test.js).
   const rent = onboardingStepsFor(4, { answers: { searchType: 'home_rent' } });
@@ -71,13 +71,13 @@ test('Skip moves on without touching answers; Continue later clears the mark; re
   assert.equal(state.step, 'search_type');
   state = advanceOnboarding(4, state, 'search_type', T0).state;
   state = skipOnboardingStep(4, state, 'basics', T0).state;
-  assert.equal(state.step, 'locations');
+  assert.equal(state.step, 'cat_layout');
   assert.deepEqual(state.skipped, ['basics']);
   assert.ok(state.completed.includes('basics'));
   const resumed = beginOnboarding({ storedVersion: 4, storedState: { ...state, step: null }, context: OWN, now: T0, targetVersion: 4 });
-  assert.equal(resumed.state.step, 'locations');
+  assert.equal(resumed.state.step, 'cat_layout');
   assert.deepEqual(resumed.state.skipped, ['basics']);
-  state = retreatOnboarding(4, state, 'locations', T0);
+  state = retreatOnboarding(4, state, 'cat_layout', T0);
   assert.equal(state.step, 'basics');
   state = advanceOnboarding(4, state, 'basics', T0).state;
   assert.deepEqual(state.skipped, []);

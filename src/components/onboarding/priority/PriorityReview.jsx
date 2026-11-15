@@ -3,8 +3,7 @@
 import { ArrowRight, ChevronRight } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
 import { LEVEL_COPY } from '@/lib/searchProfile';
-import { areasSummary, basicsSummary } from '@/lib/onboardingReview';
-import { placesSummary } from '@/lib/onboardingReview';
+import { basicsSummary } from '@/lib/onboardingReview';
 import { GARAGE_TYPES, earlierPreferences, otherChosenPriorities, reviewCategories } from '@/lib/priorityCategories';
 
 // The editable summary after the last category. Every chosen priority is a
@@ -70,10 +69,8 @@ function LotLine({ lot, onOpen }) {
   );
 }
 
-export default function PriorityReview({ header, priorities, places = [], sharedFor = null, skipped = [], onEdit, onOpenFeature, onFinish, finishing, finishError }) {
+export default function PriorityReview({ header, priorities, sharedFor = null, skipped = [], onEdit, onOpenFeature, onFinish, finishing, finishError }) {
   const basics = basicsSummary(priorities).filter((row) => row.key !== 'lot');
-  const areas = areasSummary(priorities);
-  const savedPlaces = placesSummary(places);
   const categories = reviewCategories(priorities);
   const others = otherChosenPriorities(priorities);
   const earlier = earlierPreferences(priorities);
@@ -101,18 +98,6 @@ export default function PriorityReview({ header, priorities, places = [], shared
         <button type="button" className="flh-ob-review-secondary" onClick={() => onEdit('search_type')}>Change what you’re looking for</button>
       </Section>
 
-      <Section title="Where you’re looking" onEdit={() => onEdit('locations')}>
-        {areas.length ? (
-          <ul className="flh-ob-review-chips" aria-label="Areas of interest">
-            {areas.map((area) => <li key={area.key}><strong>{area.name}</strong><span>{area.type}</span></li>)}
-          </ul>
-        ) : <p className="flh-ob-pf-review-empty">No areas added yet.</p>}
-        {savedPlaces.length > 0 && (
-          <ul className="flh-ob-review-places">
-            {savedPlaces.map((place) => <li key={place.key}><strong>{place.label}</strong><span>{place.address}</span></li>)}
-          </ul>
-        )}
-      </Section>
 
       {categories.map((category) => {
         const wasSkipped = skipped.includes(category.step);

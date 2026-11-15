@@ -107,11 +107,16 @@ export const ONBOARDING_FLOWS = Object.freeze({
   //   Apartment to Rent  essentials, apt_unit, apt_property
   // A session stored on a screen its search no longer shows resumes at the
   // first unfinished screen (resumeOnboardingStep).
+  //
+  // No geography screen (founder decision, PR #185): FLH helps people decide
+  // between homes they have already found; it is not a listing search. A
+  // session stored on the former 'locations' screen resumes at the first
+  // unfinished screen after Basics. Saved areas and places are kept untouched
+  // (Places That Matter stays in My Search).
   4: Object.freeze({
     steps: Object.freeze([
       step('search_type', SCOPE.SEARCH),
       step('basics', SCOPE.SEARCH, { legacyKeys: ['basics'] }),
-      step('locations', SCOPE.SEARCH, { legacyKeys: ['locations'] }),
       step('cat_essentials', SCOPE.SEARCH, { when: renting }),
       step('cat_layout', SCOPE.SEARCH, { when: buying }),
       step('cat_kitchen', SCOPE.SEARCH, { when: buying }),

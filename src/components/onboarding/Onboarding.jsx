@@ -455,12 +455,6 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
               onSkip={(from) => moveOn(from, { skip: true })}
               onBack={(from) => goBack(from)}
               onSearchType={(type) => persistProgress(setOnboardingSearchType(progressRef.current, type))}
-              searchAreas={services.searchAreas}
-              AddressField={services.AddressField}
-              places={places}
-              placesError={placesError}
-              onCreatePlace={createPlace}
-              onDeletePlace={deletePlace}
               review={{ skipped: progressState.skipped || [], onEdit: editFromReview, onFinish: finishToDestination, finishing, finishError }}
               board={desktopBoard}
             />

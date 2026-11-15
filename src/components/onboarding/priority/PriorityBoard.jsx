@@ -398,7 +398,9 @@ export default function PriorityBoard({ priorities, patch, header, footer }) {
           </header>
           {fromColumn && <p className="flh-ob-board-drop-hint" aria-hidden="true">Drop here to remove it from your priorities</p>}
           <AddYourOwn groups={groups} priorities={priorities} patch={patch} board={board} />
-          {model.groups.map((group) => <LibraryGroup key={group.key} group={group} priorities={priorities} patch={patch} board={board} />)}
+          <div className="flh-ob-board-groups">
+            {model.groups.map((group) => <LibraryGroup key={group.key} group={group} priorities={priorities} patch={patch} board={board} />)}
+          </div>
         </section>
         <div className="flh-ob-board-columns" aria-label="Your priorities" role="group">
           {PRIORITY_LEVELS.map((tier) => <Column key={tier} tier={tier} items={model.columns[tier]} board={board} />)}

@@ -44,11 +44,29 @@ async function noOverflow(page) {
     return { overflow: doc.scrollWidth - doc.clientWidth, clipped };
   });
 }
+// Drags like a person: press on the chip, then move toward the target. When
+// the target is off screen (the columns sit below the library), hold the
+// pointer at the window edge so the browser auto-scrolls, then drop.
 async function dragTo(page, source, target) {
   const handle = page.locator(source).first();
   await handle.scrollIntoViewIfNeeded();
-  const box = await page.locator(target).first().boundingBox();
-  await handle.dragTo(page.locator(target).first(), { targetPosition: { x: Math.min(60, box.width / 2), y: 24 } });
+  const start = await handle.boundingBox();
+  await page.mouse.move(start.x + 16, start.y + start.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(start.x + 30, start.y + start.height / 2 + 12, { steps: 4 });
+  const height = page.viewportSize().height;
+  for (let i = 0; i < 120; i += 1) {
+    const box = await page.locator(target).first().boundingBox();
+    const y = box.y + Math.min(24, box.height / 2);
+    if (y > 30 && y < height - 30) {
+      await page.mouse.move(box.x + Math.min(60, box.width / 2), y, { steps: 6 });
+      await page.mouse.move(box.x + Math.min(64, box.width / 2), y + 3, { steps: 2 });
+      break;
+    }
+    await page.mouse.move(start.x + 40, y > 0 ? height - 4 - (i % 2) : 4 + (i % 2));
+    await page.waitForTimeout(40);
+  }
+  await page.mouse.up();
   await page.waitForTimeout(150);
 }
 
@@ -61,9 +79,9 @@ page.on('pageerror', (error) => errors.push(String(error)));
 /* ------------------------------- screen order ------------------------------ */
 
 const ORDER = {
-  home_buy: ['The Basics', 'The Basics', 'Where you’re looking', 'What matters most', 'Review'],
-  home_rent: ['The Basics', 'Rental Basics', 'Where you’re looking', 'Rental Essentials', 'What matters most', 'Review'],
-  apartment_rent: ['The Basics', 'Apartment Basics', 'Where you’re looking', 'Rental Essentials', 'What matters most', 'Review'],
+  home_buy: ['The Basics', 'The Basics', 'What matters most', 'Review'],
+  home_rent: ['The Basics', 'Rental Basics', 'Rental Essentials', 'What matters most', 'Review'],
+  apartment_rent: ['The Basics', 'Apartment Basics', 'Rental Essentials', 'What matters most', 'Review'],
 };
 for (const [search, expected] of Object.entries(ORDER)) {
   await open(page, `step=search_type&state=populated&search=${search}`);
@@ -78,7 +96,7 @@ for (const [search, expected] of Object.entries(ORDER)) {
   check(`desktop screen order (${search})`, JSON.stringify(seen) === JSON.stringify(expected), seen.join(' → '));
   await open(page, `step=search_type&state=populated&search=${search}`);
   const rail = await texts(page, '.flh-ob-steps li');
-  check(`rail lists the board once (${search})`, rail.filter((text) => /What Matters Most/.test(text)).length === 1 && !rail.some((text) => /Kitchen|The Unit|Rental Features/.test(text)), rail.join(' | '));
+  check(`rail lists the board once, no geography (${search})`, rail.filter((text) => /What Matters Most/.test(text)).length === 1 && !rail.some((text) => /Kitchen|The Unit|Rental Features|Where|Location/.test(text)), rail.join(' | '));
 }
 
 /* ------------------------------ drag and drop ------------------------------ */
@@ -86,6 +104,24 @@ for (const [search, expected] of Object.entries(ORDER)) {
 await open(page, 'step=cat_layout&state=empty&search=home_buy');
 check('board shown at 1440 for a category step', await page.locator('.flh-ob-board').count() === 1);
 check('nothing preselected', (await page.locator('.flh-ob-board-columns .flh-ob-board-chip').count()) === 0);
+const layoutFacts = await page.evaluate(() => {
+  const box = (selector) => document.querySelector(selector).getBoundingClientRect();
+  const library = box('.flh-ob-board-library');
+  const add = box('.flh-ob-board-add');
+  const groups = box('.flh-ob-board-groups');
+  const columns = [...document.querySelectorAll('.flh-ob-board-column')].map((column) => column.getBoundingClientRect());
+  const board = box('.flh-ob-board');
+  return {
+    libraryFullWidth: Math.abs(library.width - board.width) < 1,
+    addAtTop: add.top < groups.top,
+    columnsBelow: columns.every((column) => column.top >= library.bottom),
+    oneRow: new Set(columns.map((column) => Math.round(column.top))).size === 1,
+    equal: Math.max(...columns.map((c) => c.width)) - Math.min(...columns.map((c) => c.width)) < 1,
+    spanBoard: Math.abs(columns[2].right - columns[0].left - board.width) < 1,
+    emptyHeight: Math.min(...columns.map((c) => c.height)),
+  };
+});
+check('layout: full-width library on top (Add your own first), three equal columns in one row below', Object.entries(layoutFacts).every(([key, value]) => (key === 'emptyHeight' ? value >= 200 : value === true)), JSON.stringify(layoutFacts));
 check('heading and lead', /What matters most to you\?/.test(await page.locator('h1').textContent()) && /Drag the features that matter into the importance column that fits you\./.test(await page.locator('.flh-lead').textContent()));
 await shot(page, 'desktop-1440-empty', false);
 
@@ -122,6 +158,7 @@ await page.mouse.up();
 await page.waitForTimeout(200);
 check('drag feedback: library marked as a drop target with a hint', feedback.library && feedback.hint && feedback.dragging, JSON.stringify(feedback));
 check('column → library (unselected)', (await columnTexts(page, 'nice')).length === 0 && (await page.locator(chip('features:Soaking Tub', '.flh-ob-board-library')).count()) === 1);
+check('… back in its original category (Bathroom)', (await page.locator(chip('features:Soaking Tub', '.flh-ob-board-group[data-group="bath"]')).count()) === 1);
 check('removal says it never counts', /back to the library\. It won’t count/.test(await page.locator('.flh-ob-board-status').textContent()));
 await page.locator('.flh-ob-board-undo').click();
 await page.waitForTimeout(150);
@@ -172,6 +209,8 @@ await page.waitForSelector('.flh-ob-board-chooser');
 await page.locator('.flh-ob-board-chooser .flh-ob-board-level.is-important').click();
 await page.waitForTimeout(150);
 check('own feature added and ranked', (await columnTexts(page, 'important')).some((text) => text === 'Wine fridge'));
+const grown = await page.evaluate(() => [...document.querySelectorAll('.flh-ob-board-column')].map((column) => [column.querySelectorAll('.flh-ob-board-chip').length, Math.round(column.getBoundingClientRect().height)]));
+check('columns grow with their priorities (no inner scrolling)', grown.every(([, height]) => height >= 200) && await page.evaluate(() => [...document.querySelectorAll('.flh-ob-board-column')].every((column) => column.scrollHeight <= column.clientHeight + 1)), JSON.stringify(grown));
 await page.fill('.flh-ob-board-add input', '  WINE-fridge ');
 await page.keyboard.press('Enter');
 await page.waitForSelector('.flh-ob-board-chooser');
@@ -210,6 +249,38 @@ check('preview: name and one sentence', previewFacts.name === 'Fenced Yard' && /
 check('preview is decorative (aria-hidden) and small', previewFacts.hidden === 'true' && previewFacts.width < 260);
 check('preview never covers the columns', previewFacts.overlap === false);
 await shot(page, 'desktop-1440-preview-photo', false);
+// Never cut off at a section edge: a chip in the library's first row (with
+// the page scrolled so it is near the top of the window), and a chip in a column.
+const previewInView = () => page.evaluate(() => {
+  const preview = document.querySelector('.flh-ob-board-preview');
+  if (!preview) return null;
+  const rect = preview.getBoundingClientRect();
+  let clipped = false;
+  for (let node = preview.parentElement; node && node !== document.body; node = node.parentElement) {
+    const style = getComputedStyle(node);
+    if (/(hidden|clip|auto|scroll)/.test(style.overflowY + style.overflowX)) {
+      const box = node.getBoundingClientRect();
+      if (rect.top < box.top - 0.5 || rect.bottom > box.bottom + 0.5 || rect.left < box.left - 0.5 || rect.right > box.right + 0.5) clipped = true;
+    }
+  }
+  return { inWindow: rect.top >= 0 && rect.bottom <= innerHeight && rect.left >= 0 && rect.right <= innerWidth, clipped };
+});
+await page.mouse.move(5, 5);
+const firstRow = page.locator('.flh-ob-board-group').first().locator('.flh-ob-board-chip').first();
+await firstRow.evaluate((element) => window.scrollTo(0, window.scrollY + element.getBoundingClientRect().top - 20));
+await firstRow.hover();
+await page.waitForTimeout(650);
+const topEdge = await previewInView();
+check('preview near the top of the window flips below the chip, fully visible, not clipped', topEdge && topEdge.inWindow && !topEdge.clipped, JSON.stringify(topEdge));
+await page.mouse.move(5, 5);
+const columnChip = page.locator('.flh-ob-board-columns .flh-ob-board-chip').first();
+await columnChip.scrollIntoViewIfNeeded();
+await columnChip.hover();
+await page.waitForTimeout(650);
+const inColumn = await previewInView();
+check('preview for a chip in a column is fully visible, not clipped by the column', inColumn && inColumn.inWindow && !inColumn.clipped, JSON.stringify(inColumn));
+await shot(page, 'desktop-1440-preview-column', false);
+await page.mouse.move(5, 5);
 const describedBy = await fenced.getAttribute('aria-describedby');
 check('description available to AT without hover', /yard enclosed by a fence/.test(await page.locator(`[id="${describedBy}"]`).textContent()));
 const noHoa = page.locator(chip('location:No HOA', '.flh-ob-board-library'));
@@ -282,11 +353,11 @@ await page.waitForTimeout(250);
 check('Back from Review lands on the board', await page.locator('.flh-ob-board').count() === 1);
 await page.locator('.flh-ob-pf-footer .flh-ob-pf-back').click();
 await page.waitForTimeout(250);
-check('Back from the board: Where you’re looking', /Where are you/.test(await page.locator('h1').textContent()));
+check('Back from the board: Basics (no geography screen)', /basics of your/i.test(await page.locator('h1').textContent()));
 
 // Resumed mid-way on a phone screen (Bathroom), opened on desktop: the board.
 await open(page, 'step=cat_bath&state=populated&search=home_buy');
-check('resume on a later category opens the board', await page.locator('.flh-ob-board').count() === 1 && /Step 4 of 4/.test(await page.locator('.flh-eyebrow').first().textContent()));
+check('resume on a later category opens the board', await page.locator('.flh-ob-board').count() === 1 && /Step 3 of 3/.test(await page.locator('.flh-eyebrow').first().textContent()));
 check('populated: earlier choices are in their columns', (await columnTexts(page, 'must')).includes('Kitchen Island') && (await columnTexts(page, 'nice')).includes('Pot Filler'));
 await shot(page, 'desktop-1440-populated', false);
 await page.locator('.flh-ob-pf-footer .flh-ob-pf-skip').click();

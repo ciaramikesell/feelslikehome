@@ -4,10 +4,8 @@ import { useRef, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { OnboardingAction } from '@/components/onboarding/OnboardingShell';
 import { BudgetField, SearchTypeControl, Stepper, UnitField } from '@/components/onboarding/BasicsStep';
-import LocationsStep from '@/components/onboarding/LocationsStep';
 import PriorityBoard from '@/components/onboarding/priority/PriorityBoard';
 import { desktopProgress, isBoardStep } from '@/lib/priorityBoard';
-import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { STEPPERS } from '@/lib/onboardingBasics';
 import { basicsFieldsFor, LEVEL_COPY, PRIORITY_LEVELS } from '@/lib/searchProfile';
 import {
@@ -288,7 +286,6 @@ const SHARED_LABEL = (sharedFor, title) => `Your preferences for ${sharedFor} ·
 export default function PriorityFlow({
   step, progress, sharedFor = null, priorities, patch, editingFromReview = false, busy = false,
   onContinue, onSkip, onBack, onSearchType,
-  searchAreas, AddressField = AddressAutocomplete, places, placesError, onCreatePlace, onDeletePlace,
   review, board = false,
 }) {
   const picker = useImportancePicker(priorities, patch);
@@ -326,30 +323,12 @@ export default function PriorityFlow({
       />
     );
   }
-  if (step === 'locations') {
-    return (
-      <LocationsStep
-        priorities={priorities}
-        patch={patch}
-        AddressField={AddressField}
-        searchAreas={searchAreas}
-        places={places}
-        placesError={placesError}
-        onCreatePlace={onCreatePlace}
-        onDeletePlace={onDeletePlace}
-        onNext={() => onContinue(step)}
-        header={<Header eyebrow={eyebrow('Where you’re looking')} heading={['Where are you ', 'looking?']} lead="Add the cities, neighborhoods or school districts you’re drawn to. Each is an alternative, never a requirement." />}
-        footer={footer()}
-      />
-    );
-  }
   if (step === 'review') {
     return (
       <>
         <PriorityReview
           {...review}
           priorities={priorities}
-          places={places}
           sharedFor={sharedFor}
           onOpenFeature={picker.open}
           header={sharedFor

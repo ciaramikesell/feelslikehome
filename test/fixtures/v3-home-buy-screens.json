@@ -2,7 +2,6 @@
  "steps": [
   "search_type",
   "basics",
-  "locations",
   "cat_layout",
   "cat_kitchen",
   "cat_living",

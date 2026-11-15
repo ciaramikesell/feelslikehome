@@ -9,6 +9,15 @@ Production); `CURRENT_ONBOARDING_VERSION` is still 1.
 
 > FLH does the homework. The buyer makes the decisions.
 
+## 0. No geography screen (founder decision)
+
+FLH is a decision tool for homes people have already found, not a listing
+search, so flow 4 no longer has a "Where are you looking?" screen, on desktop
+or phones. Saved areas and places are kept; Places That Matter (with commute
+distances) stays an optional My Search setting; an in-progress session stored
+on the old screen resumes at the next unfinished one. See
+`docs/mobile-priority-onboarding-v3.md` and `test/onboarding-v3-no-geography.test.js`.
+
 ## 1. Rental onboarding (#184, merged)
 
 #184 (rental onboarding Stage 3) is merged into `main` (`8a781fd`) and this
@@ -19,7 +28,7 @@ branch includes it. The board uses #184's code directly; nothing is copied.
 | Rental Essentials pets question (`PetsQuestion`) | Rental Essentials stays **its own screen** on desktop (a question category is never folded into the board), rendered by the same `CategoryStep` as on phones, so the pets question, its hints and its Undo are identical. |
 | Pet-Friendly from the pets answer | Shown **once**, in its column, using #184's icon-only `PETS_FEATURE` (the pet photo is only ever shown with the question). Moving it is an explicit edit through the canonical write, which ends FLH's automatic ownership (`clearPetsAuto`). |
 | Home to Rent lot-size importance (D4) | See §2 *Ideal lot size*. |
-| Rental Basics / Apartment Basics titles | Unchanged; the desktop step order reads Search Type · Rental Basics (or Apartment Basics) · Where · Rental Essentials · What matters most · Review. |
+| Rental Basics / Apartment Basics titles | Unchanged; the desktop step order reads Search Type · Rental Basics (or Apartment Basics) · Rental Essentials · What matters most · Review. |
 
 ## 2. How it works
 
@@ -27,9 +36,9 @@ branch includes it. The board uses #184's code directly; nothing is copied.
 
 | Search | Desktop screens | Phone screens (unchanged) |
 |---|---|---|
-| Home to Buy | Search Type · Basics · Where · **What matters most** · Review | 10 + Review |
-| Home to Rent | Search Type · Basics · Where · Rental Essentials · **What matters most** · Review | 8 + Review |
-| Apartment to Rent | Search Type · Basics · Where · Rental Essentials · **What matters most** · Review | 6 + Review |
+| Home to Buy | Search Type · Basics · **What matters most** · Review | 9 + Review |
+| Home to Rent | Search Type · Rental Basics · Rental Essentials · **What matters most** · Review | 7 + Review |
+| Apartment to Rent | Search Type · Apartment Basics · Rental Essentials · **What matters most** · Review | 5 + Review |
 
 The flow-4 step list in `onboardingFlow.js` is **unchanged**. The board is a
 presentation of the consecutive card-category steps (`src/lib/priorityBoard.js`):
@@ -50,8 +59,14 @@ never loses an answer or restarts onboarding.
 read by `useDesktopBoard` (`useSyncExternalStore` + `matchMedia`; the server
 render is always the phone flow). Below 1024: phones, portrait tablets
 (768/820), and any desktop at 200% zoom keep the photo-card screens. 1024 and
-up: the board — 1024–1199 stacks the library (scrolls inside itself, ≤ 560px)
-above the columns; ≥ 1200 puts the library left and the columns right (sticky).
+up: the board. At every desktop width the **feature library is a full-width
+section on top** (Add your own first, then the categories in a wrapping grid,
+chips wrapping within each), and **Must Have · Important · Nice to Have sit
+below it in one row of three equal columns** that grow with their priorities
+(220px minimum, so an empty column is a comfortable drop target). Nothing
+scrolls inside itself. When the columns are below the fold, dragging toward
+the window edge auto-scrolls (QA drags this way at 1440 × 900); click-to-rank
+never needs scrolling.
 
 ### One catalog, one write path
 
@@ -131,6 +146,7 @@ reads **Back to review**. Back from Review returns to the board.
 
 ## 4. Tests and QA
 
+- `test/onboarding-v3-no-geography.test.js` (5): no geography screen, resume, kept areas, My Search places.
 - `test/desktop-priority-board.test.js` (20): desktop screen order for all
   three searches; progress; Continue / Skip / Back / resume across devices;
   library per search; every move and exactly-once; board = phone writes;
@@ -156,6 +172,6 @@ reads **Back to review**. Back from Review returns to the board.
    tap-to-choose (drag on touch is browser-dependent).
 5. Pre-existing, not changed here: at ≤ 215 CSS px (a 320–430px phone at
    150–200% zoom) a few step bodies are still wider than the screen — the
-   Areas of interest row on *Where are you looking?*, the single word
-   "neighborhood" in the Location & Neighborhood title, and the photo grid on
-   some category screens. Identical on `main`; outside the shared top bar.
+   single word "neighborhood" in the Location & Neighborhood title and the
+   photo grid on some category screens. Identical on `main`; outside the
+   shared top bar. (The Areas of interest row went with the geography screen.)

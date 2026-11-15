@@ -765,8 +765,8 @@ Plans or PR #166. Home to Buy is unchanged (pixel comparison below).
 | Search | Counted screens (progress `n/total`) | Then |
 |---|---|---|
 | Home to Buy | 10, unchanged | Review |
-| Home to Rent | 8: Search Type · **Rental Basics** · Where · **Rental Essentials** · Layout & Living Spaces · Rental Features · Exterior & Property · Location & Neighborhood | Review |
-| Apartment to Rent | 6: Search Type · **Apartment Basics** · Where · **Rental Essentials** · The Unit · The Property | Review |
+| Home to Rent | 8 (7 since PR #185, which removed Where): Search Type · **Rental Basics** · Where · **Rental Essentials** · Layout & Living Spaces · Rental Features · Exterior & Property · Location & Neighborhood | Review |
+| Apartment to Rent | 6 (5 since PR #185): Search Type · **Apartment Basics** · Where · **Rental Essentials** · The Unit · The Property | Review |
 
 Basics keeps the shared fields (monthly maximum rent with `$` and thousands
 separators, bedrooms, bathrooms, ideal square footage). Only the rental

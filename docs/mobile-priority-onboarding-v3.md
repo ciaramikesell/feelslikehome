@@ -68,6 +68,19 @@ above.
 > followed by Review. Rental Essentials is a single optional pets question.
 > Home to Buy is unchanged.
 
+> **No geography screen** (founder decision, PR #185): FLH is a decision tool
+> for homes people have already found, not a listing search, so flow 4 no
+> longer asks "Where are you looking?" for any kind of search, on phones or
+> desktop. Screens are now Home to Buy 9 (Type, Basics, Layout, Kitchen,
+> Living, Bath, Garage, Exterior, Neighborhood), Home to Rent 7 and Apartment
+> to Rent 5, each followed by Review, which no longer has a "Where you're
+> looking" section. Nothing is deleted: saved `searchAreas` and places stay in
+> the document and the database, home records keep their addresses, and
+> **Places That Matter** (with commute distances) stays an optional My Search
+> setting (`/search/places`). An in-progress session stored on the former
+> screen resumes at the next unfinished screen. The live flow (1), the
+> six-step preview (3) and finished accounts are unchanged.
+
 ## 2. Implementation plan (as built)
 
 1. `src/lib/priorityCategories.js` — the category catalog, identity
@@ -111,7 +124,7 @@ above.
 - **Back/forward and resume** preserve every answer (answers live in the
   priorities document, saved as they change; position and skipped screens in
   `onboarding_state`, saved on every move and when the app is backgrounded).
-- **Review**: Basics, Where you're looking, every category (chosen features by
+- **Review**: Basics, every category (chosen features by
   level, skipped screens marked), "More of your priorities" (chosen earlier,
   not on any screen), "Saved from earlier" (home type/layout/condition,
   read-only). Every priority opens the same sheet in place; Edit/Add opens the
@@ -250,7 +263,7 @@ by photos were removed.
 ## 8. Founder decisions
 
 Approved (PR #181 refinement): Dead-End Street removed; founder photos used;
-Rental Essentials renter-only; geography stays third; garage Not important
+Rental Essentials renter-only; geography stays third (superseded by PR #185: no geography screen); garage Not important
 auto-advances; `FLH_ONBOARDING_V3` stays off in Production.
 
 Still open: photos (or an icon) for the four illustrated cards.
@@ -265,8 +278,8 @@ The flag is read on the server per request; no code change is needed to try it.
 2. Redeploy the latest Preview deployment of this branch (env changes apply on
    the next deployment).
 3. On that Preview URL, sign up with a **new test account** (completed
-   accounts never re-enter onboarding). Walk: Home to Buy → Basics → Where are
-   you looking? (third) → each category → Review → Add my first home.
+   accounts never re-enter onboarding). Walk: Home to Buy → Basics → each
+   category → Review → Add my first home.
 4. Things to try: tap a photo card and choose a level; add a suggestion and
    your own feature (try typing it twice in different case); garage → Not
    important (moves on) → Back (still chosen); Skip a screen and see it on
@@ -277,5 +290,5 @@ The flag is read on the server per request; no code change is needed to try it.
    mid-way continue in the live flow with their answers kept.
 
 Development preview (no sign-in, nothing saved):
-`/dev/onboarding?flow=v3&step=search_type|basics|locations|cat_kitchen|…|review&state=empty|populated|legacy&search=home_buy|home_rent|apartment_rent`
+`/dev/onboarding?flow=v3&step=search_type|basics|cat_kitchen|…|review&state=empty|populated|legacy&search=home_buy|home_rent|apartment_rent`
 (development builds only; Preview and Production answer 404).

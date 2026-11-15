@@ -40,11 +40,11 @@ const column = (board, tier) => board.columns[tier].map((feature) => feature.tex
 
 /* ---------------------------------- steps ---------------------------------- */
 
-test('desktop screen order: Search type · Basics · Where · [Rental Essentials] · one board · Review', () => {
+test('desktop screen order: Search type · Basics · [Rental Essentials] · one board · Review', () => {
   const expected = {
-    home_buy: ['search_type', 'basics', 'locations', BOARD_STEP, 'review'],
-    home_rent: ['search_type', 'basics', 'locations', 'cat_essentials', BOARD_STEP, 'review'],
-    apartment_rent: ['search_type', 'basics', 'locations', 'cat_essentials', BOARD_STEP, 'review'],
+    home_buy: ['search_type', 'basics', BOARD_STEP, 'review'],
+    home_rent: ['search_type', 'basics', 'cat_essentials', BOARD_STEP, 'review'],
+    apartment_rent: ['search_type', 'basics', 'cat_essentials', BOARD_STEP, 'review'],
   };
   for (const type of TYPES) {
     const steps = onboardingStepsFor(4, { answers: { searchType: type } });
@@ -53,7 +53,7 @@ test('desktop screen order: Search type · Basics · Where · [Rental Essentials
     assert.ok(steps.filter(isBoardStep).length >= 2, type);
   }
   assert.deepEqual(onboardingStepsFor(4, { answers: { searchType: 'home_buy' } }),
-    ['search_type', 'basics', 'locations', 'cat_layout', 'cat_kitchen', 'cat_living', 'cat_bath', 'cat_garage', 'cat_exterior', 'cat_neighborhood', 'review'],
+    ['search_type', 'basics', 'cat_layout', 'cat_kitchen', 'cat_living', 'cat_bath', 'cat_garage', 'cat_exterior', 'cat_neighborhood', 'review'],
     'phone order unchanged');
   // Question screens (Rental Essentials) are never folded into the board.
   assert.equal(isBoardStep('cat_essentials'), false);
@@ -62,10 +62,10 @@ test('desktop screen order: Search type · Basics · Where · [Rental Essentials
 
 test('desktop progress counts the board once, wherever the stored category step is', () => {
   const steps = onboardingStepsFor(4, { answers: { searchType: 'home_buy' } });
-  for (const step of steps.filter(isBoardStep)) assert.deepEqual(desktopProgress(steps, step), { index: 3, position: 4, total: 4, steps: ['search_type', 'basics', 'locations', BOARD_STEP] }, step);
-  assert.equal(desktopProgress(steps, 'review').position, 4);
+  for (const step of steps.filter(isBoardStep)) assert.deepEqual(desktopProgress(steps, step), { index: 2, position: 3, total: 3, steps: ['search_type', 'basics', BOARD_STEP] }, step);
+  assert.equal(desktopProgress(steps, 'review').position, 3);
   const rent = onboardingStepsFor(4, { answers: { searchType: 'home_rent' } });
-  assert.deepEqual([desktopProgress(rent, 'cat_essentials').position, desktopProgress(rent, 'cat_exterior').position, desktopProgress(rent, 'cat_exterior').total], [4, 5, 5]);
+  assert.deepEqual([desktopProgress(rent, 'cat_essentials').position, desktopProgress(rent, 'cat_exterior').position, desktopProgress(rent, 'cat_exterior').total], [3, 4, 4]);
 });
 
 test('Continue completes every category at once; Skip marks each skipped; Back leaves from the first; resume is shared with phones', () => {
@@ -79,9 +79,9 @@ test('Continue completes every category at once; Skip marks each skipped; Back l
     const skipped = advanceBoard(4, state, { skip: true, now: T0 }).state;
     assert.equal(skipped.step, 'review');
     assert.deepEqual(skipped.skipped, board, 'Review offers each category again');
-    assert.equal(retreatBoard(4, state, T0).step, type === 'home_buy' ? 'locations' : 'cat_essentials');
+    assert.equal(retreatBoard(4, state, T0).step, type === 'home_buy' ? 'basics' : 'cat_essentials');
     // Same answer whichever category step is stored (a phone left mid-way).
-    assert.equal(retreatBoard(4, { ...state, step: board[board.length - 1] }, T0).step, type === 'home_buy' ? 'locations' : 'cat_essentials');
+    assert.equal(retreatBoard(4, { ...state, step: board[board.length - 1] }, T0).step, type === 'home_buy' ? 'basics' : 'cat_essentials');
   }
   // A desktop session resumed on a phone continues on the phone screens, and vice versa.
   let state = stateFor('home_buy', 'cat_layout');
@@ -426,4 +426,18 @@ test('onboarding top bar at 150–200% zoom: wraps instead of overlapping, only 
   assert.match(block, /@media \(max-width: 200px\) \{[^}]*--flh-brandmark-size: 18px/);
   // No phone at 100% is ≤ 300px wide, so the normal layout is untouched.
   assert.match(css, /\.flh-ob-topbar-row \{ display: grid; grid-template-columns: 44px minmax\(0, 1fr\) 44px;/);
+});
+
+test('layout: full-width library on top, three equal columns below, nothing scrolls inside itself', () => {
+  const css = read('src/app/globals.css');
+  const block = css.slice(css.indexOf('/* ── Desktop priority board'), css.indexOf('/* ── Mobile Priority Onboarding V3'));
+  assert.match(block, /\.flh-onboarding-root \.flh-ob-board \{ position: relative; display: grid; grid-template-columns: minmax\(0, 1fr\);/, 'one column: library, then the columns');
+  assert.doesNotMatch(block, /\.flh-ob-board \{ grid-template-columns: minmax\(300px/, 'no side-by-side library');
+  assert.match(block, /\.flh-onboarding-root \.flh-ob-board-columns \{ display: grid; grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/, 'three equal columns');
+  assert.doesNotMatch(block, /flh-ob-board-library \{[^}]*(max-height|overflow-y)/, 'the library grows; no inner scroll');
+  assert.doesNotMatch(block, /flh-ob-board-columns \{[^}]*position: sticky/);
+  assert.match(block, /\.flh-onboarding-root \.flh-ob-board-groups \{ display: grid; grid-template-columns: repeat\(auto-fill, minmax\(min\(100%, 300px\), 1fr\)\);/);
+  const board = read('src/components/onboarding/priority/PriorityBoard.jsx');
+  assert.ok(board.indexOf('<AddYourOwn') < board.indexOf('className="flh-ob-board-groups"'), 'Add your own first, then the categories');
+  assert.ok(board.indexOf('className="flh-ob-board-library') < board.indexOf('className="flh-ob-board-columns"'), 'library before the columns (reading and tab order)');
 });
