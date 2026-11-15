@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Feature illustrations for Mobile Priority Onboarding V3 — ONLY for the
-// features that have no founder photograph yet (pet-friendly, in-unit
-// laundry, dishwasher, "either garage"). Every other card uses the founder's
+// features that have no founder photograph yet (in-unit laundry, "either
+// garage"). Every other card uses the founder's
 // photography (src/lib/onboardingImages.js). Remove an entry here once a photo
 // for it is added to the manifest.
 //
@@ -41,8 +41,6 @@ const svg = (body, label) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0
 const ART = {
   'in-unit-laundry': ['In-unit laundry', `${room()}${rect(30, 40, 46, 52, C.white, 'rx="4"')}${circle(53, 70, 14, C.blueSoft)}${circle(53, 70, 7, C.white)}${line(36, 48, 50, 48)}${rect(84, 40, 46, 52, C.white, 'rx="4"')}${circle(107, 70, 14, C.blueSoft)}${line(90, 48, 104, 48)}${circle(122, 48, 2, C.ink)}`],
   'garage-either': ['Either garage', `${outdoor(98)}${rect(20, 58, 50, 40, C.white)}${path('M16 58L45 40L74 58Z', C.brickSoft)}${rect(28, 68, 34, 30, C.steel)}${line(28, 78, 62, 78)}${rect(90, 58, 50, 40, C.white)}${path('M86 58L115 40L144 58Z', C.brickSoft)}${rect(98, 68, 34, 30, C.steel)}${line(98, 78, 132, 78)}<text x="80" y="30" text-anchor="middle" font-family="sans-serif" font-size="14" font-weight="700" fill="${C.brick}">or</text>`],
-  'pet-friendly': ['Pet-friendly', `${room()}${rect(46, 80, 68, 12, C.brickSoft, 'rx="6"')}${path('M58 80C58 58 70 50 86 50C102 50 110 60 110 80Z', C.woodSoft)}${circle(64, 52, 12, C.woodSoft)}${path('M56 44L54 32L64 40', C.wood)}${path('M70 42L74 32L76 44', C.wood)}${circle(60, 52, 1.5, C.ink)}${circle(68, 52, 1.5, C.ink)}${path('M110 74C122 72 124 62 118 58', 'none')}`],
-  dishwasher: ['Dishwasher', `${room()}${rect(10, 48, 140, 44, C.white)}${rect(6, 42, 148, 8, C.woodSoft)}${rect(52, 52, 56, 40, C.steel, 'rx="3"')}${line(60, 60, 100, 60)}${circle(96, 56, 1.5, C.ink)}${rect(22, 16, 22, 18, C.blueSoft, 'rx="9"')}${rect(116, 16, 22, 18, C.blueSoft, 'rx="9"')}`],
 };
 
 await mkdir(OUT, { recursive: true });

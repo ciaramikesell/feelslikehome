@@ -25,7 +25,7 @@
 
 import {
   RENTAL_ESSENTIALS, criterionDisplayLabel, getItemlistCategories, homePreferenceCriteriaFor,
-  isRetiredPurchaseBuiltIn, normalizePriorities,
+  isExperientialCriterion, isRentalType, isRetiredPurchaseBuiltIn, isYesNoCriterion, normalizePriorities,
 } from './constants.js';
 import { ONBOARDING_SUGGESTIONS } from './onboarding.js';
 import { splitCategoryItems } from './matching.js';
@@ -33,57 +33,58 @@ import {
   PRIORITY_LEVELS, addCriterion, isCriterionSelected, moveCriterion, priorityLevels, searchExperienceKey, setGaragePreference,
 } from './searchProfile.js';
 import { switchSearchType } from './whatMattersCatalog.js';
+import { clearPetsState, restorePetsAfterSwitch, snapshotPets } from './rentalPets.js';
 import { groupValueLabel, whatMattersGroups } from './whatMattersGroups.js';
 
 const HOMES = Object.freeze(['home_buy', 'home_rent']);
 const RENTALS = Object.freeze(['home_rent', 'apartment_rent']);
 const BUY = Object.freeze(['home_buy']);
+const HOME_RENT = Object.freeze(['home_rent']);
 const APARTMENT = Object.freeze(['apartment_rent']);
 
 // A feature definition. `custom: true` = no catalog identity; created as the
-// buyer's own priority. `only` limits it to some kinds of search. `apartment`
-// names the identity an apartment search already uses for the same idea (its
-// rental catalog), so the same idea is never stored twice.
+// buyer's own priority. `only` limits it to some kinds of search. `hint` is a short
+// explanation shown with the card. `aliases` are other words a person might
+// type for the same card in Add your own.
 const f = (categoryKey, label, options = {}) => Object.freeze({ categoryKey, label, ...options });
 
+// The one priority the Rental Essentials pets question writes
+// (src/lib/rentalPets.js). It is never shown as its own ranked card.
+export const PETS_QUESTION = Object.freeze({ key: 'pets', categoryKey: 'features', label: 'Pets Allowed', text: 'Pet-Friendly', art: 'pet-friendly', icon: 'PawPrint' });
+
+// Screen order per kind of search (src/lib/onboardingFlow.js, flow 4):
+//   Home to Buy        layout, kitchen, living, bath, garage, exterior, neighborhood
+//   Home to Rent       essentials, rent_layout, rent_features, exterior, neighborhood
+//   Apartment to Rent  essentials, apt_unit, apt_property
+// See docs/rental-foundations-onboarding-spec.md §1 and §3 for the rental lists.
 export const PRIORITY_CATEGORIES = Object.freeze([
+  // Rentals: one optional question ("Will pets be moving with you?"), no
+  // cards. The former essentials are optional suggestions on later screens.
   Object.freeze({
-    key: 'essentials', step: 'cat_essentials', storage: 'features', only: RENTALS,
+    key: 'essentials', step: 'cat_essentials', storage: 'features', only: RENTALS, question: PETS_QUESTION,
     title: 'Rental Essentials', heading: ['The rental ', 'essentials'],
-    lead: 'The everyday basics of renting. Tap any that matter and choose how much.',
-    features: Object.freeze([
-      f('features', 'Pets Allowed', { text: 'Pet-Friendly', art: 'pet-friendly', icon: 'PawPrint' }),
-      f('features', 'In-Unit Laundry', { text: 'In-Unit Laundry', art: 'in-unit-laundry', icon: 'WashingMachine' }),
-      f('features', 'Utilities Included', { text: 'Utilities Included', icon: 'PlugZap' }),
-      f('exterior', 'Parking', { text: 'Parking', icon: 'SquareParking' }),
-      f('features', 'Central Air', { text: 'Central Air', icon: 'AirVent' }),
-      f('features', 'Dishwasher', { text: 'Dishwasher', art: 'dishwasher', icon: 'Utensils' }),
-    ]),
-    suggestions: Object.freeze([
-      f('exterior', 'Driveway / Off-Street Parking', { text: 'Off-Street Parking', icon: 'Car' }),
-      f('features', 'Storage Unit', { custom: true, icon: 'Archive' }),
-      f('features', 'Package Room', { custom: true, icon: 'Package' }),
-    ]),
+    lead: 'One quick question about moving in. You can skip it.',
+    features: Object.freeze([]),
+    suggestions: Object.freeze([]),
   }),
   Object.freeze({
-    key: 'layout', step: 'cat_layout', storage: 'features',
+    key: 'layout', step: 'cat_layout', storage: 'features', only: BUY,
     title: 'Layout & Living Spaces', heading: ['Layout & ', 'living spaces'],
     lead: 'How the rooms come together. Choose only what you’d weigh.',
     features: Object.freeze([
-      f('features', 'First-Floor Bedroom', { art: 'first-floor-bedroom', icon: 'BedSingle', only: HOMES }),
+      f('features', 'First-Floor Bedroom', { art: 'first-floor-bedroom', icon: 'BedSingle' }),
       f('features', 'Home office', { art: 'home-office', icon: 'Laptop' }),
-      f('features', 'Finished basement', { art: 'finished-basement', icon: 'Sofa', only: HOMES }),
+      f('features', 'Finished basement', { art: 'finished-basement', icon: 'Sofa' }),
       f('features', 'Primary ensuite', { art: 'primary-ensuite', icon: 'BedDouble' }),
     ]),
     suggestions: Object.freeze([
-      f('features', 'First-floor laundry', { art: 'first-floor-laundry', icon: 'WashingMachine', only: HOMES }),
-      f('features', 'Walkout basement', { art: 'walkout-basement', icon: 'DoorOpen', only: HOMES }),
-      f('exterior', 'Front porch', { art: 'front-porch', icon: 'Armchair', only: HOMES }),
-      f('features', 'Walk-In Closet', { icon: 'Shirt', only: APARTMENT }),
+      f('features', 'First-floor laundry', { art: 'first-floor-laundry', icon: 'WashingMachine' }),
+      f('features', 'Walkout basement', { art: 'walkout-basement', icon: 'DoorOpen' }),
+      f('exterior', 'Front porch', { art: 'front-porch', icon: 'Armchair' }),
     ]),
   }),
   Object.freeze({
-    key: 'kitchen', step: 'cat_kitchen', storage: 'features',
+    key: 'kitchen', step: 'cat_kitchen', storage: 'features', only: BUY,
     title: 'Kitchen', heading: ['The ', 'kitchen'],
     lead: 'Where the day starts and ends. Tap what matters.',
     features: Object.freeze([
@@ -98,7 +99,7 @@ export const PRIORITY_CATEGORIES = Object.freeze([
     ]),
   }),
   Object.freeze({
-    key: 'living', step: 'cat_living', storage: 'features',
+    key: 'living', step: 'cat_living', storage: 'features', only: BUY,
     title: 'Living Room', heading: ['The ', 'living room'],
     lead: 'The room you’ll spend evenings in.',
     features: Object.freeze([
@@ -111,7 +112,7 @@ export const PRIORITY_CATEGORIES = Object.freeze([
     ]),
   }),
   Object.freeze({
-    key: 'bath', step: 'cat_bath', storage: 'features',
+    key: 'bath', step: 'cat_bath', storage: 'features', only: BUY,
     title: 'Bathroom', heading: ['The ', 'bathroom'],
     lead: 'Small details you’ll notice every day.',
     features: Object.freeze([
@@ -125,9 +126,10 @@ export const PRIORITY_CATEGORIES = Object.freeze([
     ]),
   }),
   // Overall importance first (the existing exterior:Garage criterion), then the
-  // existing attached/detached qualifier and garage details. Not for apartments.
+  // existing attached/detached qualifier and garage details. Home to Buy only:
+  // Home to Rent asks Garage as one card on Rental Features.
   Object.freeze({
-    key: 'garage', step: 'cat_garage', storage: 'exterior', only: HOMES,
+    key: 'garage', step: 'cat_garage', storage: 'exterior', only: BUY,
     title: 'Garage', heading: ['The ', 'garage'],
     lead: 'First, how much does a garage matter to you?',
     features: Object.freeze([]),
@@ -137,38 +139,117 @@ export const PRIORITY_CATEGORIES = Object.freeze([
       f('exterior', 'Door to Backyard', { custom: true, art: 'garage-yard-door', icon: 'DoorOpen' }),
     ]),
   }),
+  // Home to Rent. Stored identities are the ones Home to Rent already uses
+  // (HOME_RENT_CATALOG casing, e.g. "Home office"); the rental essentials use
+  // the one identity both rental flows share (e.g. "Central Air").
   Object.freeze({
-    key: 'exterior', step: 'cat_exterior', storage: 'exterior',
+    key: 'rent_layout', step: 'cat_rent_layout', storage: 'features', only: HOME_RENT,
+    title: 'Layout & Living Spaces', heading: ['Layout & ', 'living spaces'],
+    lead: 'How the rooms come together. Choose only what you’d weigh.',
+    features: Object.freeze([
+      f('features', 'First-Floor Bedroom', { art: 'first-floor-bedroom', icon: 'BedSingle' }),
+      f('features', 'Home office', { art: 'home-office', icon: 'Laptop' }),
+      f('features', 'Finished basement', { art: 'finished-basement', icon: 'Sofa' }),
+      f('features', 'Primary ensuite', { text: 'Primary Ensuite Bathroom', art: 'primary-ensuite', icon: 'BedDouble' }),
+    ]),
+    suggestions: Object.freeze([
+      f('features', 'First-floor laundry', { art: 'first-floor-laundry', icon: 'WashingMachine' }),
+      // The renter's own Yes/No (D3). Never written from, or into, the
+      // Basics bedroom count.
+      f('features', 'Extra Bedroom', { custom: true, art: 'extra-bedroom', icon: 'BedSingle', hint: 'An extra bedroom beyond the minimum you entered in Basics.' }),
+      f('exterior', 'Front porch', { art: 'front-porch', icon: 'Armchair' }),
+    ]),
+  }),
+  Object.freeze({
+    key: 'rent_features', step: 'cat_rent_features', storage: 'features', only: HOME_RENT,
+    title: 'Rental Features', heading: ['Rental ', 'features'],
+    lead: 'The things you’d notice living there. Choose only what you’d weigh.',
+    features: Object.freeze([
+      f('features', 'Countertop Seating', { custom: true, text: 'Kitchen Countertop Seating', art: 'countertop-seating', icon: 'Coffee' }),
+      f('features', 'Stainless Steel Appliances', { art: 'stainless-appliances', icon: 'Refrigerator' }),
+      f('features', 'Fireplace', { art: 'fireplace', icon: 'Flame' }),
+      f('features', 'Central Air', { text: 'Central Air', icon: 'AirVent' }),
+      f('exterior', 'Garage', { text: 'Garage', icon: 'Warehouse' }),
+    ]),
+    suggestions: Object.freeze([
+      f('features', 'Kitchen Island', { art: 'kitchen-island', icon: 'ChefHat' }),
+      f('features', 'High Ceilings', { art: 'high-ceilings', icon: 'ArrowUpToLine' }),
+      f('features', 'In-Unit Laundry', { text: 'In-Unit Laundry', art: 'in-unit-laundry', icon: 'WashingMachine' }),
+      f('features', 'Dishwasher', { text: 'Dishwasher', art: 'dishwasher', icon: 'Utensils' }),
+      f('features', 'Utilities Included', { text: 'Utilities Included', icon: 'PlugZap' }),
+      f('exterior', 'Driveway / Off-Street Parking', { text: 'Off-Street Parking', icon: 'Car' }),
+    ]),
+  }),
+  // Apartment to Rent. Identities resolve to the rental catalog's own labels
+  // (resolveDefinition). Apartment amenities never use house photography.
+  Object.freeze({
+    key: 'apt_unit', step: 'cat_apt_unit', storage: 'features', only: APARTMENT,
+    title: 'The Unit', heading: ['The ', 'unit'],
+    lead: 'Your own front door and everything behind it.',
+    features: Object.freeze([
+      f('features', 'In-Unit Laundry', { text: 'In-Unit Laundry', art: 'in-unit-laundry', icon: 'WashingMachine' }),
+      f('features', 'Home Office', { text: 'Home Office Space', art: 'home-office', icon: 'Laptop' }),
+      f('features', 'Central Air', { text: 'Central Air', icon: 'AirVent' }),
+    ]),
+    suggestions: Object.freeze([
+      // Unit-level, the renter's own Yes/No (D1). Never inferred from the
+      // building's garage count, which answers Garage Parking instead.
+      f('exterior', 'Private Garage', { custom: true, icon: 'Warehouse', hint: 'A garage for your unit only.' }),
+      f('exterior', 'Patio / Deck / Outdoor Living', { text: 'Private Outdoor Space', art: 'apartment-balcony', icon: 'Sun', aliases: ['Outdoor Space', 'Balcony', 'Balcony / Patio'] }),
+      f('features', 'Dishwasher', { text: 'Dishwasher', art: 'dishwasher', icon: 'Utensils' }),
+      f('features', 'Utilities Included', { text: 'Utilities Included', icon: 'PlugZap' }),
+    ]),
+  }),
+  Object.freeze({
+    key: 'apt_property', step: 'cat_apt_property', storage: 'exterior', only: APARTMENT,
+    title: 'The Property', heading: ['The ', 'property'],
+    lead: 'The building and what comes with it.',
+    features: Object.freeze([
+      f('exterior', 'Fitness Center', { art: 'fitness-center', icon: 'Dumbbell' }),
+      f('exterior', 'Pool', { icon: 'Waves' }),
+      f('exterior', 'Garage', { text: 'Garage Parking', art: 'apartment-parking-garage', icon: 'Warehouse' }),
+    ]),
+    suggestions: Object.freeze([
+      f('exterior', 'Elevator', { art: 'elevator', icon: 'ArrowUpDown' }),
+      f('exterior', 'Parking', { text: 'Sufficient Parking', art: 'sufficient-parking', icon: 'SquareParking' }),
+      f('exterior', 'Secure Entry', { art: 'secure-entry', icon: 'ShieldCheck' }),
+    ]),
+  }),
+  Object.freeze({
+    key: 'exterior', step: 'cat_exterior', storage: 'exterior', only: HOMES,
     title: 'Exterior & Property', heading: ['Exterior & ', 'property'],
     lead: 'The outdoor space that comes with it.',
     features: Object.freeze([
-      f('exterior', 'Patio / deck', { art: 'deck-patio', icon: 'Sun', apartment: { label: 'Patio / Deck / Outdoor Living', text: 'Balcony / Patio' } }),
-      f('exterior', 'Fenced yard', { art: 'fenced-yard', icon: 'Fence', only: HOMES }),
+      f('exterior', 'Patio / deck', { art: 'deck-patio', icon: 'Sun' }),
+      f('exterior', 'Fenced yard', { art: 'fenced-yard', icon: 'Fence' }),
     ]),
     suggestions: Object.freeze([
-      f('location', 'Mature Trees', { art: 'mature-trees', icon: 'TreeDeciduous', only: HOMES }),
-      f('exterior', 'Garden Space', { art: 'garden', icon: 'Sprout', only: HOMES }),
+      f('location', 'Mature Trees', { art: 'mature-trees', icon: 'TreeDeciduous' }),
+      f('exterior', 'Garden Space', { art: 'garden', icon: 'Sprout', only: BUY }),
       f('exterior', 'Pool', { art: 'pool', icon: 'Waves' }),
-      f('exterior', 'Fitness Center', { icon: 'Dumbbell', only: APARTMENT }),
-      f('exterior', 'Secure Entry', { icon: 'ShieldCheck', only: APARTMENT }),
-      f('exterior', 'Elevator', { icon: 'ArrowUpDown', only: APARTMENT }),
+      f('exterior', 'Landscaping', { art: 'landscaping', icon: 'Flower2', only: HOME_RENT, hint: 'A well-kept, landscaped yard.' }),
     ]),
   }),
   // Street and neighborhood photos where the founder supplied one; abstract
-  // preferences (No HOA) stay icon-only.
+  // preferences (No HOA, Walkable Neighborhood, Reputable Schools) stay icon-only.
   Object.freeze({
-    key: 'neighborhood', step: 'cat_neighborhood', storage: 'location',
+    key: 'neighborhood', step: 'cat_neighborhood', storage: 'location', only: HOMES,
     title: 'Location & Neighborhood', heading: ['Location & ', 'neighborhood'],
     lead: 'The street and the neighborhood around it.',
     features: Object.freeze([
       f('location', 'Low-Traffic Street', { art: 'low-traffic-street', icon: 'Route' }),
-      f('location', 'Sidewalks', { art: 'sidewalks', icon: 'Footprints' }),
-      f('location', 'Tree-lined street', { text: 'Tree-Lined Street', art: 'tree-lined-street', icon: 'Trees' }),
+      f('location', 'Sidewalks', { art: 'sidewalks', icon: 'Footprints', only: BUY }),
+      f('location', 'Tree-lined street', { text: 'Tree-Lined Street', art: 'tree-lined-street', icon: 'Trees', only: BUY }),
       f('location', 'No HOA', { icon: 'Ban', only: BUY }),
+      f('location', 'Walkable Neighborhood', { icon: 'Store', only: HOME_RENT }),
     ]),
     suggestions: Object.freeze([
       f('location', 'Cul-de-Sac', { art: 'cul-de-sac', icon: 'Milestone' }),
-      f('location', 'Walkable schools', { text: 'Walkable to Schools', art: 'walkable-schools', icon: 'School' }),
+      f('location', 'Walkable schools', { text: 'Walkable to Schools', art: 'walkable-schools', icon: 'School', only: BUY }),
+      // The Yes/No identity, never the rental catalog's unanswerable
+      // "Parks Nearby" rating (spec A2).
+      f('location', 'Parks nearby', { text: 'Parks Nearby', art: 'parks-nearby', icon: 'Trees', only: HOME_RENT }),
+      f('location', 'Reputable Schools', { icon: 'School', only: HOME_RENT }),
     ]),
   }),
 ]);
@@ -204,7 +285,6 @@ const applies = (definition, experience) => !definition.only || definition.only.
 function resolveDefinition(definition, experience) {
   if (definition.custom) return { ...definition, label: definition.label };
   if (experience === 'apartment_rent') {
-    if (definition.apartment) return { ...definition, ...definition.apartment };
     const def = getItemlistCategories('rental').find((entry) => entry.key === definition.categoryKey);
     const rentalItem = [...(def?.coreItems || []), ...(def?.suggestedItems || [])]
       .find((item) => item.label.toLowerCase() === definition.label.toLowerCase());
@@ -226,6 +306,9 @@ function toFeature(definition, experience, category, role) {
     icon: resolved.icon || null,
     group: category.key,
     role, // 'feature' (a card from the start) | 'suggestion' (a chip until added)
+    // Additive, only where defined, so the Home to Buy screens are unchanged.
+    ...(resolved.hint ? { hint: resolved.hint } : {}),
+    ...(resolved.aliases ? { aliases: Object.freeze([...resolved.aliases]) } : {}),
   });
 }
 
@@ -261,12 +344,36 @@ function storedItems(priorities) {
     .flatMap((key) => (priorities[key]?.customItems || []).map((item) => ({ ...item, categoryKey: key }))));
 }
 
+// A1 (rental searches only): the label this card reads and writes. Rental
+// documents can hold a case variant of a card's identity (e.g. the live
+// flow's "Central air" for the "Central Air" card, or "Fenced Yard" for
+// "Fenced yard"). The purchase alias fold does not run for rentals, so two
+// selected variants would be scored twice. The card therefore reads, and
+// writes, the variant already stored: a selected one first, then one with any
+// stored tier; otherwise its own label. Only Yes/No variants count (a rating
+// such as the rental catalog's "Parks Nearby" is a different criterion). Home
+// to Buy is unchanged: it always uses the card's own label.
+export function storedFeatureLabel(raw, feature) {
+  const priorities = normalizePriorities(raw);
+  if (feature.custom || !isRentalType(priorities.searchType)) return feature.label;
+  const catState = priorities[feature.categoryKey] || {};
+  const tiers = catState.tiers || {};
+  const key = normalizeFeatureKey(feature.label);
+  const kindOf = (label) => storedItems(priorities).find((item) => item.categoryKey === feature.categoryKey && item.label === label)?.kind || 'check';
+  const variants = Object.keys(tiers).filter((label) => label !== feature.label && normalizeFeatureKey(label) === key && kindOf(label) !== 'rating');
+  const candidates = [feature.label, ...variants];
+  return candidates.find((label) => isCriterionSelected(priorities, feature.categoryKey, label))
+    || candidates.find((label) => Object.hasOwn(tiers, label))
+    || feature.label;
+}
+
 // 'must' | 'important' | 'nice' when chosen; null otherwise (never chosen, or
 // set to Not important). Unknown is never reported as anything else.
 export function featureLevel(raw, feature) {
   const priorities = normalizePriorities(raw);
-  const tier = priorities[feature.categoryKey]?.tiers?.[feature.label];
-  return PRIORITY_LEVELS.includes(tier) && isCriterionSelected(priorities, feature.categoryKey, feature.label) ? tier : null;
+  const label = storedFeatureLabel(priorities, feature);
+  const tier = priorities[feature.categoryKey]?.tiers?.[label];
+  return PRIORITY_LEVELS.includes(tier) && isCriterionSelected(priorities, feature.categoryKey, label) ? tier : null;
 }
 
 const customFeature = (item, group) => Object.freeze({
@@ -288,8 +395,11 @@ export function categoryView(raw, key) {
   // A suggestion becomes a card once it is chosen, or (a custom suggestion)
   // once it has been created.
   const addedSuggestions = category.suggestions.filter((feature) => featureLevel(priorities, feature) || (feature.custom && exists(feature)));
+  // A question screen (Rental Essentials) has no cards: anything saved there
+  // by an earlier version (e.g. Storage Unit) is kept and shown on Review
+  // under "More of your priorities" instead.
   const own = stored
-    .filter((item) => item.group === category.key && item.source === 'custom' && !offeredKeys.has(normalizeFeatureKey(idOf(item.categoryKey, item.label))))
+    .filter((item) => !category.question && item.group === category.key && item.source === 'custom' && !offeredKeys.has(normalizeFeatureKey(idOf(item.categoryKey, item.label))))
     .map((item) => customFeature(item, category.key));
   const cards = [...category.features, ...addedSuggestions, ...own].map((feature) => ({ ...feature, level: featureLevel(priorities, feature) }));
   const shown = new Set(cards.map((card) => card.id));
@@ -320,17 +430,28 @@ function ensureCustom(priorities, feature) {
 // "don't care" — the existing deselected state, never a "No" on any home.
 export function setFeatureLevel(raw, feature, level) {
   let priorities = normalizePriorities(raw);
+  const label = storedFeatureLabel(priorities, feature);
   if (!PRIORITY_LEVELS.includes(level)) {
-    return priorities[feature.categoryKey]?.tiers?.[feature.label] ? moveCriterion(priorities, feature.categoryKey, feature.label, 'dontcare') : priorities;
+    return priorities[feature.categoryKey]?.tiers?.[label] ? moveCriterion(priorities, feature.categoryKey, label, 'dontcare') : priorities;
   }
   if (feature.custom) {
     const ensured = ensureCustom(priorities, feature);
     priorities = ensured.priorities;
     return moveCriterion(priorities, feature.categoryKey, ensured.feature.label, level);
   }
-  return isCriterionSelected(priorities, feature.categoryKey, feature.label)
-    ? moveCriterion(priorities, feature.categoryKey, feature.label, level)
-    : addCriterion(priorities, { categoryKey: feature.categoryKey, label: feature.label, kind: 'check' }, level);
+  return isCriterionSelected(priorities, feature.categoryKey, label)
+    ? moveCriterion(priorities, feature.categoryKey, label, level)
+    : addCriterion(priorities, { categoryKey: feature.categoryKey, label, kind: 'check' }, level);
+}
+
+// A8: in a rental search, a catalog item that is neither answered Yes / No
+// nor judged after a tour can never be evaluated on any home (e.g. the rental
+// catalog's "Walkability", "Groceries Nearby" or "Parks Nearby" ratings). Add
+// your own never selects one; the typed text becomes the renter's own Yes/No
+// priority instead. Existing selections are untouched and still counted.
+function unanswerableForRental(priorities, categoryKey, item) {
+  return isRentalType(priorities.searchType) && item.source !== 'custom'
+    && !isYesNoCriterion(categoryKey, item) && !isExperientialCriterion(categoryKey, item.label);
 }
 
 // Things the person might mean that FLH already has an identity for: the
@@ -341,11 +462,12 @@ function catalogMatches(priorities) {
   const experience = searchExperienceKey(priorities) || 'home_buy';
   const fromDefs = getItemlistCategories(priorities.searchType).flatMap((def) => [...def.coreItems, ...def.suggestedItems, ...(def.specificItems || [])]
     .filter((item) => !isRetiredPurchaseBuiltIn(def.key, item, priorities.searchType))
-    .map((item) => ({ categoryKey: def.key, label: item.label })));
-  const curated = (ONBOARDING_SUGGESTIONS[experience] || []).flatMap(([, items]) => items).map((item) => ({ categoryKey: item.categoryKey, label: item.label }));
-  const prefs = homePreferenceCriteriaFor(experience).map((item) => ({ categoryKey: item.categoryKey, label: item.label }));
-  const essentials = experience === 'home_buy' ? [] : RENTAL_ESSENTIALS.map((item) => ({ categoryKey: item.categoryKey, label: item.label }));
-  return [...essentials, ...curated, ...prefs, ...fromDefs].filter((item) => item.categoryKey !== 'homeFeel');
+    .map((item) => ({ categoryKey: def.key, label: item.label, kind: item.kind })));
+  const curated = (ONBOARDING_SUGGESTIONS[experience] || []).flatMap(([, items]) => items).map((item) => ({ categoryKey: item.categoryKey, label: item.label, kind: item.kind }));
+  const prefs = homePreferenceCriteriaFor(experience).map((item) => ({ categoryKey: item.categoryKey, label: item.label, kind: item.kind }));
+  const essentials = experience === 'home_buy' ? [] : RENTAL_ESSENTIALS.map((item) => ({ categoryKey: item.categoryKey, label: item.label, kind: item.kind }));
+  return [...essentials, ...curated, ...prefs, ...fromDefs]
+    .filter((item) => item.categoryKey !== 'homeFeel' && !unanswerableForRental(priorities, item.categoryKey, item));
 }
 
 // "Add your own" on a screen (typed text or a suggestion chip). Never creates a
@@ -354,14 +476,15 @@ function catalogMatches(priorities) {
 // catalog criterion is reused. Otherwise a new custom feature is created on
 // this screen. Nothing is selected: the importance picker opens next.
 //   → { priorities, feature, homeCategory } (homeCategory: the screen the
-//     feature is shown on, when that isn't this one) or null for empty input.
+//     feature is shown on, when that isn't this one), { priorities, feature:
+//     null, error } when nothing can be added (A8), or null for empty input.
 export function addOwnFeature(raw, categoryKey, typed) {
   const priorities = normalizePriorities(raw);
   const category = priorityCategory(priorities, categoryKey);
   const label = cleanFeatureLabel(typed?.label ?? typed);
   if (!category || !label) return null;
   const key = normalizeFeatureKey(label);
-  const keyOf = (feature) => [normalizeFeatureKey(feature.label), normalizeFeatureKey(feature.text)];
+  const keyOf = (feature) => [feature.label, feature.text, ...(feature.aliases || [])].map(normalizeFeatureKey);
   const otherScreen = (feature) => (feature.group && feature.group !== category.key ? feature.group : null);
 
   const offered = allOffered(priorities).find((feature) => keyOf(feature).includes(key));
@@ -371,8 +494,11 @@ export function addOwnFeature(raw, categoryKey, typed) {
     return { priorities: ensured.priorities, feature: ensured.feature, homeCategory: otherScreen(offered) };
   }
 
-  const stored = storedItems(priorities).find((item) => item.categoryKey !== 'homeFeel'
+  const storedMatches = storedItems(priorities).filter((item) => item.categoryKey !== 'homeFeel'
     && [normalizeFeatureKey(item.label), normalizeFeatureKey(criterionDisplayLabel(item.categoryKey, item.label))].includes(key));
+  // An unanswerable rental item is reused only when the renter already chose
+  // it (so it is never duplicated); otherwise it is never selected here (A8).
+  const stored = storedMatches.find((item) => !unanswerableForRental(priorities, item.categoryKey, item) || isCriterionSelected(priorities, item.categoryKey, item.label));
   if (stored) {
     const feature = stored.source === 'custom'
       ? customFeature(stored, stored.group || null)
@@ -385,6 +511,13 @@ export function addOwnFeature(raw, categoryKey, typed) {
     return { priorities, feature: { ...customFeature(catalog, null), custom: false, text: criterionDisplayLabel(catalog.categoryKey, catalog.label), role: 'catalog' }, homeCategory: null };
   }
 
+  // The typed name is a rental catalog item FLH can't evaluate and that
+  // already exists in this category (e.g. the rental "Neighborhood" rating).
+  // A new item with the same name would share its stored key, so nothing is
+  // created; the person is asked for something more specific.
+  if (storedMatches.some((item) => item.categoryKey === category.storage)) {
+    return { priorities, feature: null, homeCategory: null, error: `“${label}” is too broad to check on a home. Try something more specific.` };
+  }
   const ensured = ensureCustom(priorities, { categoryKey: category.storage, label, group: category.key, custom: true });
   return { priorities: ensured.priorities, feature: customFeature({ categoryKey: category.storage, label: ensured.feature.label, kind: 'check' }, category.key), homeCategory: null };
 }
@@ -459,20 +592,128 @@ export const setGarageType = (raw, value) => setGaragePreference(raw, value);
 // what it removed), plus anything this flow offers for the new kind of
 // search that the earlier catalogs didn't — e.g. a Kitchen Island chosen for a
 // purchase stays chosen for an apartment, where this flow offers it too.
+//
+// The pets answer (src/lib/rentalPets.js): Home to Rent ↔ Apartment to Rent
+// keeps the answer, Pet-Friendly's level and FLH's automatic ownership of it;
+// a switch to Home to Buy clears the answer and the marker along with
+// Pet-Friendly (the caller's Undo restores the whole earlier document).
+//
+// Garage: a house's Garage (Home to Buy, Home to Rent) and an apartment
+// building's Garage Parking share the stored identity exterior:Garage, but
+// they are different preferences, and neither ever becomes the other. Only one
+// is active at a time (one tier, so Match counts it once). When a switch
+// crosses between a house search and an apartment search:
+//   • the source kind's preference (its level, and for a house its
+//     attached / detached garagePreference) is set aside in
+//     `exterior.heldGarage[kind]` and deactivated;
+//   • the destination kind's held preference, if any, is restored; otherwise
+//     the destination garage starts unselected.
+// The renter's later explicit choice for the destination is never overwritten:
+// a held level is only applied at the moment of the switch, and is replaced by
+// whatever is active when the renter switches away again. `heldGarage` is
+// additive and never read by Match (JS or SQL). Home to Buy ↔ Home to Rent is
+// a house ↔ house switch and is unchanged.
+const GARAGE = Object.freeze({ categoryKey: 'exterior', label: 'Garage', kind: 'check' });
+export const GARAGE_KIND_TEXT = Object.freeze({ house: 'Garage', apartment: 'Garage Parking' });
+const garageKind = (experience) => (experience === 'apartment_rent' ? 'apartment' : 'house');
+// A chosen level, or an explicit Not important ('dontcare'), is held.
+const HELD_TIERS = Object.freeze([...PRIORITY_LEVELS, 'dontcare']);
+
+// The held preferences as { house?, apartment? }. Anything malformed is ignored.
+export function heldGaragePreferences(raw) {
+  const held = normalizePriorities(raw).exterior?.heldGarage;
+  if (!held || typeof held !== 'object' || Array.isArray(held)) return {};
+  return Object.fromEntries(['house', 'apartment']
+    .filter((kind) => held[kind] && typeof held[kind] === 'object' && (HELD_TIERS.includes(held[kind].tier) || held[kind].garagePreference))
+    .map((kind) => [kind, { ...held[kind] }]));
+}
+
+function crossGarage(before, next, fromKind, toKind) {
+  const held = heldGaragePreferences(before);
+  const exterior = { ...next.exterior };
+  // Set the source preference aside (or clear an older held one).
+  const stored = before.exterior?.tiers?.Garage;
+  const tier = HELD_TIERS.includes(stored) ? stored : null;
+  const source = {
+    ...(tier ? { tier } : {}),
+    ...(fromKind === 'house' && before.exterior?.garagePreference ? { garagePreference: before.exterior.garagePreference } : {}),
+  };
+  if (Object.keys(source).length) held[fromKind] = source; else delete held[fromKind];
+  // Deactivate it: the destination garage starts unanswered (no tier at all,
+  // so a house Garage does not read as "Not important").
+  if (Object.hasOwn(exterior.tiers || {}, 'Garage')) {
+    const { Garage, ...tiers } = exterior.tiers;
+    exterior.tiers = tiers;
+  }
+  delete exterior.garagePreference;
+  // Restore the destination's own held preference.
+  const target = held[toKind];
+  delete held[toKind];
+  if (Object.keys(held).length) exterior.heldGarage = held; else delete exterior.heldGarage;
+  let out = { ...next, exterior };
+  if (target?.garagePreference) out = { ...out, exterior: { ...out.exterior, garagePreference: target.garagePreference } };
+  if (PRIORITY_LEVELS.includes(target?.tier)) out = addCriterion(out, GARAGE, target.tier);
+  else if (target?.tier === 'dontcare') out = moveCriterion(out, 'exterior', 'Garage', 'dontcare');
+  return {
+    priorities: out,
+    saved: PRIORITY_LEVELS.includes(tier) ? GARAGE_KIND_TEXT[fromKind] : null,
+    restoredGarage: PRIORITY_LEVELS.includes(target?.tier) ? GARAGE_KIND_TEXT[toKind] : null,
+  };
+}
+
+//   → { priorities, removed, garage: { saved, restored } } — `garage` names
+//     the preference set aside for the earlier kind of search and the one
+//     brought back, for the switch message (null when nothing moved).
 export function switchPrioritySearchType(raw, choiceKey) {
   const before = normalizePriorities(raw);
+  const none = { saved: null, restored: null };
+  if (before.onboardingSearchType === choiceKey) return { priorities: before, removed: [], garage: none };
   const beforeItems = priorityLevels(before).flatMap((level) => level.items);
+  const pets = snapshotPets(before);
+  const fromKind = garageKind(searchExperienceKey(before) || 'home_buy');
+  const toKind = garageKind(choiceKey);
+  const crossing = fromKind !== toKind;
   const result = switchSearchType(before, choiceKey);
   let next = result.priorities;
   const offered = new Map(allOffered(next).map((feature) => [normalizeFeatureKey(feature.id), feature]));
   const restored = new Set();
   for (const item of beforeItems) {
+    if (crossing && item.key === 'exterior:Garage') continue;
     const feature = offered.get(normalizeFeatureKey(item.key));
     if (!feature || featureLevel(next, feature)) continue;
     next = setFeatureLevel(next, feature, item.tier);
     restored.add(item.displayLabel);
   }
-  return { priorities: next, removed: result.removed.filter((label) => !restored.has(label)) };
+  if (choiceKey === 'home_rent' || choiceKey === 'apartment_rent') {
+    const kept = restorePetsAfterSwitch(next, pets);
+    next = kept.priorities;
+    if (kept.restoredLabel) restored.add(kept.restoredLabel);
+  } else {
+    next = clearPetsState(next);
+  }
+  let garage = none;
+  if (crossing) {
+    const moved = crossGarage(before, next, fromKind, toKind);
+    next = moved.priorities;
+    garage = { saved: moved.saved, restored: moved.restoredGarage };
+    // Saved, not removed: the switch message says so instead.
+    if (moved.saved || moved.restoredGarage) { restored.add('Garage'); restored.add('Garage Parking'); }
+  }
+  return { priorities: next, removed: result.removed.filter((label) => !restored.has(label)), garage };
+}
+
+// The status line after a switch (Screen 1). `phrase` is e.g. "an apartment
+// to rent". A house Garage and apartment Garage Parking are never converted
+// into each other: the earlier one is saved for its kind of search and comes
+// back on switching back. Without a garage note the wording is unchanged.
+const GARAGE_SEARCHES = Object.freeze({ Garage: 'home searches', 'Garage Parking': 'apartment searches' });
+export function switchMessage(phrase, { removed = [], garage = null } = {}) {
+  const parts = [`Now looking for ${phrase}.`];
+  if (removed.length) parts.push(`Removed what no longer applies: ${removed.join(', ')}.`);
+  if (garage?.saved) parts.push(`Your ${garage.saved} preference is saved for ${GARAGE_SEARCHES[garage.saved]} and comes back if you switch back.`);
+  if (garage?.restored) parts.push(`Your earlier ${garage.restored} preference is back.`);
+  parts.push('Everything else is kept.');
+  return parts.join(' ');
 }
 
 /* ---------------------------------- review --------------------------------- */
@@ -494,7 +735,7 @@ export function reviewCategories(raw) {
 export function otherChosenPriorities(raw) {
   const priorities = normalizePriorities(raw);
   const onScreens = new Set(priorityCategoriesFor(priorities).flatMap((category) => categoryView(priorities, category.key).cards.map((card) => card.id.toLowerCase())));
-  const groupedCustom = new Set(storedItems(priorities).filter((item) => item.source === 'custom' && item.group && priorityCategory(priorities, item.group)).map((item) => idOf(item.categoryKey, item.label).toLowerCase()));
+  const groupedCustom = new Set(storedItems(priorities).filter((item) => item.source === 'custom' && item.group && priorityCategory(priorities, item.group) && !priorityCategory(priorities, item.group).question).map((item) => idOf(item.categoryKey, item.label).toLowerCase()));
   return priorityLevels(priorities).flatMap((level) => level.items)
     .filter((item) => !onScreens.has(item.key.toLowerCase()) && !groupedCustom.has(item.key.toLowerCase()) && !(item.categoryKey === 'exterior' && item.label === 'Garage'))
     .map((item) => {

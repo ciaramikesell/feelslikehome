@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   AirVent, AppWindow, Archive, ArrowUpDown, ArrowUpToLine, Armchair, Ban, Bath, BedDouble, BedSingle, Car, ChefHat, Coffee,
-  DoorClosed, DoorOpen, Droplets, Dumbbell, Fence, Flame, Footprints, Laptop, Layers, Library, Milestone, Package, PawPrint,
-  PlugZap, Refrigerator, Route, School, ShieldCheck, Shirt, ShowerHead, Sofa, Sparkle, Sprout, SquareParking, TreeDeciduous,
+  DoorClosed, DoorOpen, Droplets, Dumbbell, Fence, Flame, Flower2, Footprints, Laptop, Layers, Library, Milestone, Package, PawPrint,
+  PlugZap, Refrigerator, Route, School, ShieldCheck, Shirt, ShowerHead, Sofa, Sparkle, Sprout, SquareParking, Store, TreeDeciduous,
   Trees, Utensils, UtensilsCrossed, Warehouse, WashingMachine, Waves, Wrench, Sun,
 } from 'lucide-react';
 import { CARD_SIZES, cardImage } from '@/lib/onboardingImages';
@@ -21,8 +21,8 @@ import { CARD_SIZES, cardImage } from '@/lib/onboardingImages';
 // being shown renders any images at all.
 const ICONS = {
   AirVent, AppWindow, Archive, ArrowUpDown, ArrowUpToLine, Armchair, Ban, Bath, BedDouble, BedSingle, Car, ChefHat, Coffee,
-  DoorClosed, DoorOpen, Droplets, Dumbbell, Fence, Flame, Footprints, Laptop, Layers, Library, Milestone, Package, PawPrint,
-  PlugZap, Refrigerator, Route, School, ShieldCheck, Shirt, ShowerHead, Sofa, Sprout, SquareParking, TreeDeciduous,
+  DoorClosed, DoorOpen, Droplets, Dumbbell, Fence, Flame, Flower2, Footprints, Laptop, Layers, Library, Milestone, Package, PawPrint,
+  PlugZap, Refrigerator, Route, School, ShieldCheck, Shirt, ShowerHead, Sofa, Sprout, SquareParking, Store, TreeDeciduous,
   Trees, Utensils, UtensilsCrossed, Warehouse, WashingMachine, Waves, Wrench, Sun,
 };
 

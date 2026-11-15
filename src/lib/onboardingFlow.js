@@ -49,6 +49,8 @@ const invitedCoBuyer = (state) => state.context?.role === 'co_buyer';
 export const PRIORITY_SEARCH_TYPES = Object.freeze(['home_buy', 'home_rent', 'apartment_rent']);
 const searchTypeOf = (state) => state.answers?.searchType || 'home_buy';
 const renting = (state) => searchTypeOf(state) !== 'home_buy';
+const buying = (state) => searchTypeOf(state) === 'home_buy';
+const homeRent = (state) => searchTypeOf(state) === 'home_rent';
 const apartment = (state) => searchTypeOf(state) === 'apartment_rent';
 
 export const ONBOARDING_FLOWS = Object.freeze({
@@ -98,21 +100,30 @@ export const ONBOARDING_FLOWS = Object.freeze({
   // Mobile Priority Onboarding V3 (docs/mobile-priority-onboarding-v3.md):
   // one category per screen, every screen skippable, an editable review at
   // the end. Released behind FLH_ONBOARDING_V3 (src/lib/featureFlags.js);
-  // CURRENT_ONBOARDING_VERSION is unchanged. Rentals get Rental Essentials;
-  // an apartment has no garage screen.
+  // CURRENT_ONBOARDING_VERSION is unchanged. Per kind of search
+  // (docs/rental-foundations-onboarding-spec.md §1):
+  //   Home to Buy        layout, kitchen, living, bath, garage, exterior, neighborhood
+  //   Home to Rent       essentials, rent_layout, rent_features, exterior, neighborhood
+  //   Apartment to Rent  essentials, apt_unit, apt_property
+  // A session stored on a screen its search no longer shows resumes at the
+  // first unfinished screen (resumeOnboardingStep).
   4: Object.freeze({
     steps: Object.freeze([
       step('search_type', SCOPE.SEARCH),
       step('basics', SCOPE.SEARCH, { legacyKeys: ['basics'] }),
       step('locations', SCOPE.SEARCH, { legacyKeys: ['locations'] }),
       step('cat_essentials', SCOPE.SEARCH, { when: renting }),
-      step('cat_layout', SCOPE.SEARCH),
-      step('cat_kitchen', SCOPE.SEARCH),
-      step('cat_living', SCOPE.SEARCH),
-      step('cat_bath', SCOPE.SEARCH),
-      step('cat_garage', SCOPE.SEARCH, { when: (state) => !apartment(state) }),
-      step('cat_exterior', SCOPE.SEARCH),
-      step('cat_neighborhood', SCOPE.SEARCH),
+      step('cat_layout', SCOPE.SEARCH, { when: buying }),
+      step('cat_kitchen', SCOPE.SEARCH, { when: buying }),
+      step('cat_living', SCOPE.SEARCH, { when: buying }),
+      step('cat_bath', SCOPE.SEARCH, { when: buying }),
+      step('cat_garage', SCOPE.SEARCH, { when: buying }),
+      step('cat_rent_layout', SCOPE.SEARCH, { when: homeRent }),
+      step('cat_rent_features', SCOPE.SEARCH, { when: homeRent }),
+      step('cat_apt_unit', SCOPE.SEARCH, { when: apartment }),
+      step('cat_apt_property', SCOPE.SEARCH, { when: apartment }),
+      step('cat_exterior', SCOPE.SEARCH, { when: (state) => !apartment(state) }),
+      step('cat_neighborhood', SCOPE.SEARCH, { when: (state) => !apartment(state) }),
       step('review', SCOPE.SEARCH, { legacyKeys: ['review'] }),
     ]),
   }),

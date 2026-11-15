@@ -1,5 +1,6 @@
 import { normalizePriorities, getItemlistCategories, criterionDisplayLabel, BUY_WHAT_MATTERS_GROUPS, HOME_RENT_CATALOG, homePreferenceCriteriaFor } from './constants.js';
 import { selectPriorityItem } from './matching.js';
+import { clearPetsAuto } from './rentalPets.js';
 
 export const NEW_SEARCH_CHOICES = Object.freeze([
   Object.freeze({ key: 'home_buy', label: 'Home to buy', intent: 'purchase', propertyType: 'house' }),
@@ -119,7 +120,9 @@ export function applyOnboardingSelections(raw, selectedKeys, dealbreakerKeys = n
   flatOnboardingSuggestions(next.onboardingSearchType).forEach((criterion) => {
     const key = `${criterion.categoryKey}:${criterion.label}`;
     const def = { key: criterion.categoryKey, coreItems: [], suggestedItems: [] };
-    next[criterion.categoryKey] = selectPriorityItem(next[criterion.categoryKey], def, { label: criterion.label, kind: criterion.kind }, selected.has(key) ? (dealbreakers.has(key) ? 'must' : 'important') : 'dontcare');
+    // A write to Pet-Friendly here is the person's own choice, so it ends any
+    // automatic ownership by the rental pets answer (src/lib/rentalPets.js).
+    next[criterion.categoryKey] = clearPetsAuto(selectPriorityItem(next[criterion.categoryKey], def, { label: criterion.label, kind: criterion.kind }, selected.has(key) ? (dealbreakers.has(key) ? 'must' : 'important') : 'dontcare'), criterion.categoryKey, criterion.label);
   });
   return next;
 }

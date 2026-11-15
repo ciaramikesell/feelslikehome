@@ -1,0 +1,1234 @@
+{
+ "steps": [
+  "search_type",
+  "basics",
+  "locations",
+  "cat_layout",
+  "cat_kitchen",
+  "cat_living",
+  "cat_bath",
+  "cat_garage",
+  "cat_exterior",
+  "cat_neighborhood",
+  "review"
+ ],
+ "categories": [
+  {
+   "key": "layout",
+   "step": "cat_layout",
+   "storage": "features",
+   "title": "Layout & Living Spaces",
+   "heading": [
+    "Layout & ",
+    "living spaces"
+   ],
+   "lead": "How the rooms come together. Choose only what you’d weigh.",
+   "features": [
+    {
+     "id": "features:First-Floor Bedroom",
+     "categoryKey": "features",
+     "label": "First-Floor Bedroom",
+     "text": "First-Floor Bedroom",
+     "kind": "check",
+     "custom": false,
+     "art": "first-floor-bedroom",
+     "icon": "BedSingle",
+     "group": "layout",
+     "role": "feature"
+    },
+    {
+     "id": "features:Home office",
+     "categoryKey": "features",
+     "label": "Home office",
+     "text": "Home Office",
+     "kind": "check",
+     "custom": false,
+     "art": "home-office",
+     "icon": "Laptop",
+     "group": "layout",
+     "role": "feature"
+    },
+    {
+     "id": "features:Finished basement",
+     "categoryKey": "features",
+     "label": "Finished basement",
+     "text": "Finished Basement",
+     "kind": "check",
+     "custom": false,
+     "art": "finished-basement",
+     "icon": "Sofa",
+     "group": "layout",
+     "role": "feature"
+    },
+    {
+     "id": "features:Primary ensuite",
+     "categoryKey": "features",
+     "label": "Primary ensuite",
+     "text": "Primary Ensuite",
+     "kind": "check",
+     "custom": false,
+     "art": "primary-ensuite",
+     "icon": "BedDouble",
+     "group": "layout",
+     "role": "feature"
+    }
+   ],
+   "suggestions": [
+    {
+     "id": "features:First-floor laundry",
+     "categoryKey": "features",
+     "label": "First-floor laundry",
+     "text": "First-Floor Laundry",
+     "kind": "check",
+     "custom": false,
+     "art": "first-floor-laundry",
+     "icon": "WashingMachine",
+     "group": "layout",
+     "role": "suggestion"
+    },
+    {
+     "id": "features:Walkout basement",
+     "categoryKey": "features",
+     "label": "Walkout basement",
+     "text": "Walkout Basement",
+     "kind": "check",
+     "custom": false,
+     "art": "walkout-basement",
+     "icon": "DoorOpen",
+     "group": "layout",
+     "role": "suggestion"
+    },
+    {
+     "id": "exterior:Front porch",
+     "categoryKey": "exterior",
+     "label": "Front porch",
+     "text": "Front Porch",
+     "kind": "check",
+     "custom": false,
+     "art": "front-porch",
+     "icon": "Armchair",
+     "group": "layout",
+     "role": "suggestion"
+    }
+   ]
+  },
+  {
+   "key": "kitchen",
+   "step": "cat_kitchen",
+   "storage": "features",
+   "title": "Kitchen",
+   "heading": [
+    "The ",
+    "kitchen"
+   ],
+   "lead": "Where the day starts and ends. Tap what matters.",
+   "features": [
+    {
+     "id": "features:Countertop Seating",
+     "categoryKey": "features",
+     "label": "Countertop Seating",
+     "text": "Countertop Seating",
+     "kind": "check",
+     "custom": true,
+     "art": "countertop-seating",
+     "icon": "Coffee",
+     "group": "kitchen",
+     "role": "feature"
+    },
+    {
+     "id": "features:Stainless Steel Appliances",
+     "categoryKey": "features",
+     "label": "Stainless Steel Appliances",
+     "text": "Stainless Steel Appliances",
+     "kind": "check",
+     "custom": false,
+     "art": "stainless-appliances",
+     "icon": "Refrigerator",
+     "group": "kitchen",
+     "role": "feature"
+    },
+    {
+     "id": "features:Walk-in Pantry",
+     "categoryKey": "features",
+     "label": "Walk-in Pantry",
+     "text": "Walk-in Pantry",
+     "kind": "check",
+     "custom": false,
+     "art": "walk-in-pantry",
+     "icon": "Package",
+     "group": "kitchen",
+     "role": "feature"
+    }
+   ],
+   "suggestions": [
+    {
+     "id": "features:Eat-in Kitchen",
+     "categoryKey": "features",
+     "label": "Eat-in Kitchen",
+     "text": "Eat-in Kitchen",
+     "kind": "check",
+     "custom": false,
+     "art": "eat-in-kitchen",
+     "icon": "Utensils",
+     "group": "kitchen",
+     "role": "suggestion"
+    },
+    {
+     "id": "features:Kitchen Island",
+     "categoryKey": "features",
+     "label": "Kitchen Island",
+     "text": "Kitchen Island",
+     "kind": "check",
+     "custom": false,
+     "art": "kitchen-island",
+     "icon": "ChefHat",
+     "group": "kitchen",
+     "role": "suggestion"
+    },
+    {
+     "id": "features:Formal Dining Room",
+     "categoryKey": "features",
+     "label": "Formal Dining Room",
+     "text": "Formal Dining Room",
+     "kind": "check",
+     "custom": false,
+     "art": "formal-dining",
+     "icon": "UtensilsCrossed",
+     "group": "kitchen",
+     "role": "suggestion"
+    }
+   ]
+  },
+  {
+   "key": "living",
+   "step": "cat_living",
+   "storage": "features",
+   "title": "Living Room",
+   "heading": [
+    "The ",
+    "living room"
+   ],
+   "lead": "The room you’ll spend evenings in.",
+   "features": [
+    {
+     "id": "features:Fireplace",
+     "categoryKey": "features",
+     "label": "Fireplace",
+     "text": "Fireplace",
+     "kind": "check",
+     "custom": false,
+     "art": "fireplace",
+     "icon": "Flame",
+     "group": "living",
+     "role": "feature"
+    },
+    {
+     "id": "features:High Ceilings",
+     "categoryKey": "features",
+     "label": "High Ceilings",
+     "text": "High Ceilings",
+     "kind": "check",
+     "custom": false,
+     "art": "high-ceilings",
+     "icon": "ArrowUpToLine",
+     "group": "living",
+     "role": "feature"
+    }
+   ],
+   "suggestions": [
+    {
+     "id": "features:Built-in Shelving",
+     "categoryKey": "features",
+     "label": "Built-in Shelving",
+     "text": "Built-in Shelving",
+     "kind": "check",
+     "custom": true,
+     "art": "built-in-shelving",
+     "icon": "Library",
+     "group": "living",
+     "role": "suggestion"
+    },
+    {
+     "id": "features:Large Windows",
+     "categoryKey": "features",
+     "label": "Large Windows",
+     "text": "Large Windows",
+     "kind": "check",
+     "custom": true,
+     "art": "large-windows",
+     "icon": "AppWindow",
+     "group": "living",
+     "role": "suggestion"
+    }
+   ]
+  },
+  {
+   "key": "bath",
+   "step": "cat_bath",
+   "storage": "features",
+   "title": "Bathroom",
+   "heading": [
+    "The ",
+    "bathroom"
+   ],
+   "lead": "Small details you’ll notice every day.",
+   "features": [
+    {
+     "id": "features:Double Vanity",
+     "categoryKey": "features",
+     "label": "Double Vanity",
+     "text": "Double Vanity",
+     "kind": "check",
+     "custom": false,
+     "art": "double-vanity",
+     "icon": "Droplets",
+     "group": "bath",
+     "role": "feature"
+    },
+    {
+     "id": "features:Soaking Tub",
+     "categoryKey": "features",
+     "label": "Soaking Tub",
+     "text": "Soaking Tub",
+     "kind": "check",
+     "custom": false,
+     "art": "soaking-tub",
+     "icon": "Bath",
+     "group": "bath",
+     "role": "feature"
+    }
+   ],
+   "suggestions": [
+    {
+     "id": "features:Separate Shower / Tub",
+     "categoryKey": "features",
+     "label": "Separate Shower / Tub",
+     "text": "Separate Shower / Tub",
+     "kind": "check",
+     "custom": true,
+     "art": "separate-shower",
+     "icon": "ShowerHead",
+     "group": "bath",
+     "role": "suggestion"
+    },
+    {
+     "id": "features:Private Toilet",
+     "categoryKey": "features",
+     "label": "Private Toilet",
+     "text": "Private Toilet",
+     "kind": "check",
+     "custom": true,
+     "art": "private-toilet",
+     "icon": "DoorClosed",
+     "group": "bath",
+     "role": "suggestion"
+    },
+    {
+     "id": "features:Linen Closet",
+     "categoryKey": "features",
+     "label": "Linen Closet",
+     "text": "Linen Closet",
+     "kind": "check",
+     "custom": true,
+     "art": "linen-closet",
+     "icon": "Layers",
+     "group": "bath",
+     "role": "suggestion"
+    }
+   ]
+  },
+  {
+   "key": "garage",
+   "step": "cat_garage",
+   "storage": "exterior",
+   "only": [
+    "home_buy",
+    "home_rent"
+   ],
+   "title": "Garage",
+   "heading": [
+    "The ",
+    "garage"
+   ],
+   "lead": "First, how much does a garage matter to you?",
+   "features": [],
+   "suggestions": [
+    {
+     "id": "exterior:Workbench",
+     "categoryKey": "exterior",
+     "label": "Workbench",
+     "text": "Workbench",
+     "kind": "check",
+     "custom": true,
+     "art": "workbench",
+     "icon": "Wrench",
+     "group": "garage",
+     "role": "suggestion"
+    },
+    {
+     "id": "exterior:Garage Extension",
+     "categoryKey": "exterior",
+     "label": "Garage Extension",
+     "text": "Garage Extension",
+     "kind": "check",
+     "custom": true,
+     "art": "garage-extension",
+     "icon": "Warehouse",
+     "group": "garage",
+     "role": "suggestion"
+    },
+    {
+     "id": "exterior:Door to Backyard",
+     "categoryKey": "exterior",
+     "label": "Door to Backyard",
+     "text": "Door to Backyard",
+     "kind": "check",
+     "custom": true,
+     "art": "garage-yard-door",
+     "icon": "DoorOpen",
+     "group": "garage",
+     "role": "suggestion"
+    }
+   ]
+  },
+  {
+   "key": "exterior",
+   "step": "cat_exterior",
+   "storage": "exterior",
+   "title": "Exterior & Property",
+   "heading": [
+    "Exterior & ",
+    "property"
+   ],
+   "lead": "The outdoor space that comes with it.",
+   "features": [
+    {
+     "id": "exterior:Patio / deck",
+     "categoryKey": "exterior",
+     "label": "Patio / deck",
+     "text": "Deck / Patio",
+     "kind": "check",
+     "custom": false,
+     "art": "deck-patio",
+     "icon": "Sun",
+     "group": "exterior",
+     "role": "feature"
+    },
+    {
+     "id": "exterior:Fenced yard",
+     "categoryKey": "exterior",
+     "label": "Fenced yard",
+     "text": "Fenced Yard",
+     "kind": "check",
+     "custom": false,
+     "art": "fenced-yard",
+     "icon": "Fence",
+     "group": "exterior",
+     "role": "feature"
+    }
+   ],
+   "suggestions": [
+    {
+     "id": "location:Mature Trees",
+     "categoryKey": "location",
+     "label": "Mature Trees",
+     "text": "Mature Trees",
+     "kind": "check",
+     "custom": false,
+     "art": "mature-trees",
+     "icon": "TreeDeciduous",
+     "group": "exterior",
+     "role": "suggestion"
+    },
+    {
+     "id": "exterior:Garden Space",
+     "categoryKey": "exterior",
+     "label": "Garden Space",
+     "text": "Garden Space",
+     "kind": "check",
+     "custom": false,
+     "art": "garden",
+     "icon": "Sprout",
+     "group": "exterior",
+     "role": "suggestion"
+    },
+    {
+     "id": "exterior:Pool",
+     "categoryKey": "exterior",
+     "label": "Pool",
+     "text": "Pool",
+     "kind": "check",
+     "custom": false,
+     "art": "pool",
+     "icon": "Waves",
+     "group": "exterior",
+     "role": "suggestion"
+    }
+   ]
+  },
+  {
+   "key": "neighborhood",
+   "step": "cat_neighborhood",
+   "storage": "location",
+   "title": "Location & Neighborhood",
+   "heading": [
+    "Location & ",
+    "neighborhood"
+   ],
+   "lead": "The street and the neighborhood around it.",
+   "features": [
+    {
+     "id": "location:Low-Traffic Street",
+     "categoryKey": "location",
+     "label": "Low-Traffic Street",
+     "text": "Low-Traffic Street",
+     "kind": "check",
+     "custom": false,
+     "art": "low-traffic-street",
+     "icon": "Route",
+     "group": "neighborhood",
+     "role": "feature"
+    },
+    {
+     "id": "location:Sidewalks",
+     "categoryKey": "location",
+     "label": "Sidewalks",
+     "text": "Sidewalks",
+     "kind": "check",
+     "custom": false,
+     "art": "sidewalks",
+     "icon": "Footprints",
+     "group": "neighborhood",
+     "role": "feature"
+    },
+    {
+     "id": "location:Tree-lined street",
+     "categoryKey": "location",
+     "label": "Tree-lined street",
+     "text": "Tree-Lined Street",
+     "kind": "check",
+     "custom": false,
+     "art": "tree-lined-street",
+     "icon": "Trees",
+     "group": "neighborhood",
+     "role": "feature"
+    },
+    {
+     "id": "location:No HOA",
+     "categoryKey": "location",
+     "label": "No HOA",
+     "text": "No HOA",
+     "kind": "check",
+     "custom": false,
+     "art": null,
+     "icon": "Ban",
+     "group": "neighborhood",
+     "role": "feature"
+    }
+   ],
+   "suggestions": [
+    {
+     "id": "location:Cul-de-Sac",
+     "categoryKey": "location",
+     "label": "Cul-de-Sac",
+     "text": "Cul-de-Sac",
+     "kind": "check",
+     "custom": false,
+     "art": "cul-de-sac",
+     "icon": "Milestone",
+     "group": "neighborhood",
+     "role": "suggestion"
+    },
+    {
+     "id": "location:Walkable schools",
+     "categoryKey": "location",
+     "label": "Walkable schools",
+     "text": "Walkable to Schools",
+     "kind": "check",
+     "custom": false,
+     "art": "walkable-schools",
+     "icon": "School",
+     "group": "neighborhood",
+     "role": "suggestion"
+    }
+   ]
+  }
+ ],
+ "views": [
+  {
+   "key": "layout",
+   "cards": [
+    {
+     "id": "features:First-Floor Bedroom",
+     "categoryKey": "features",
+     "label": "First-Floor Bedroom",
+     "text": "First-Floor Bedroom",
+     "kind": "check",
+     "custom": false,
+     "art": "first-floor-bedroom",
+     "icon": "BedSingle",
+     "group": "layout",
+     "role": "feature",
+     "level": null
+    },
+    {
+     "id": "features:Home office",
+     "categoryKey": "features",
+     "label": "Home office",
+     "text": "Home Office",
+     "kind": "check",
+     "custom": false,
+     "art": "home-office",
+     "icon": "Laptop",
+     "group": "layout",
+     "role": "feature",
+     "level": null
+    },
+    {
+     "id": "features:Finished basement",
+     "categoryKey": "features",
+     "label": "Finished basement",
+     "text": "Finished Basement",
+     "kind": "check",
+     "custom": false,
+     "art": "finished-basement",
+     "icon": "Sofa",
+     "group": "layout",
+     "role": "feature",
+     "level": null
+    },
+    {
+     "id": "features:Primary ensuite",
+     "categoryKey": "features",
+     "label": "Primary ensuite",
+     "text": "Primary Ensuite",
+     "kind": "check",
+     "custom": false,
+     "art": "primary-ensuite",
+     "icon": "BedDouble",
+     "group": "layout",
+     "role": "feature",
+     "level": null
+    }
+   ],
+   "suggestions": [
+    {
+     "id": "features:First-floor laundry",
+     "categoryKey": "features",
+     "label": "First-floor laundry",
+     "text": "First-Floor Laundry",
+     "kind": "check",
+     "custom": false,
+     "art": "first-floor-laundry",
+     "icon": "WashingMachine",
+     "group": "layout",
+     "role": "suggestion"
+    },
+    {
+     "id": "features:Walkout basement",
+     "categoryKey": "features",
+     "label": "Walkout basement",
+     "text": "Walkout Basement",
+     "kind": "check",
+     "custom": false,
+     "art": "walkout-basement",
+     "icon": "DoorOpen",
+     "group": "layout",
+     "role": "suggestion"
+    },
+    {
+     "id": "exterior:Front porch",
+     "categoryKey": "exterior",
+     "label": "Front porch",
+     "text": "Front Porch",
+     "kind": "check",
+     "custom": false,
+     "art": "front-porch",
+     "icon": "Armchair",
+     "group": "layout",
+     "role": "suggestion"
+    }
+   ]
+  },
+  {
+   "key": "kitchen",
+   "cards": [
+    {
+     "id": "features:Countertop Seating",
+     "categoryKey": "features",
+     "label": "Countertop Seating",
+     "text": "Countertop Seating",
+     "kind": "check",
+     "custom": true,
+     "art": "countertop-seating",
+     "icon": "Coffee",
+     "group": "kitchen",
+     "role": "feature",
+     "level": null
+    },
+    {
+     "id": "features:Stainless Steel Appliances",
+     "categoryKey": "features",
+     "label": "Stainless Steel Appliances",
+     "text": "Stainless Steel Appliances",
+     "kind": "check",
+     "custom": false,
+     "art": "stainless-appliances",
+     "icon": "Refrigerator",
+     "group": "kitchen",
+     "role": "feature",
+     "level": null
+    },
+    {
+     "id": "features:Walk-in Pantry",
+     "categoryKey": "features",
+     "label": "Walk-in Pantry",
+     "text": "Walk-in Pantry",
+     "kind": "check",
+     "custom": false,
+     "art": "walk-in-pantry",
+     "icon": "Package",
+     "group": "kitchen",
+     "role": "feature",
+     "level": null
+    }
+   ],
+   "suggestions": [
+    {
+     "id": "features:Eat-in Kitchen",
+     "categoryKey": "features",
+     "label": "Eat-in Kitchen",
+     "text": "Eat-in Kitchen",
+     "kind": "check",
+     "custom": false,
+     "art": "eat-in-kitchen",
+     "icon": "Utensils",
+     "group": "kitchen",
+     "role": "suggestion"
+    },
+    {
+     "id": "features:Kitchen Island",
+     "categoryKey": "features",
+     "label": "Kitchen Island",
+     "text": "Kitchen Island",
+     "kind": "check",
+     "custom": false,
+     "art": "kitchen-island",
+     "icon": "ChefHat",
+     "group": "kitchen",
+     "role": "suggestion"
+    },
+    {
+     "id": "features:Formal Dining Room",
+     "categoryKey": "features",
+     "label": "Formal Dining Room",
+     "text": "Formal Dining Room",
+     "kind": "check",
+     "custom": false,
+     "art": "formal-dining",
+     "icon": "UtensilsCrossed",
+     "group": "kitchen",
+     "role": "suggestion"
+    }
+   ]
+  },
+  {
+   "key": "living",
+   "cards": [
+    {
+     "id": "features:Fireplace",
+     "categoryKey": "features",
+     "label": "Fireplace",
+     "text": "Fireplace",
+     "kind": "check",
+     "custom": false,
+     "art": "fireplace",
+     "icon": "Flame",
+     "group": "living",
+     "role": "feature",
+     "level": null
+    },
+    {
+     "id": "features:High Ceilings",
+     "categoryKey": "features",
+     "label": "High Ceilings",
+     "text": "High Ceilings",
+     "kind": "check",
+     "custom": false,
+     "art": "high-ceilings",
+     "icon": "ArrowUpToLine",
+     "group": "living",
+     "role": "feature",
+     "level": null
+    }
+   ],
+   "suggestions": [
+    {
+     "id": "features:Built-in Shelving",
+     "categoryKey": "features",
+     "label": "Built-in Shelving",
+     "text": "Built-in Shelving",
+     "kind": "check",
+     "custom": true,
+     "art": "built-in-shelving",
+     "icon": "Library",
+     "group": "living",
+     "role": "suggestion"
+    },
+    {
+     "id": "features:Large Windows",
+     "categoryKey": "features",
+     "label": "Large Windows",
+     "text": "Large Windows",
+     "kind": "check",
+     "custom": true,
+     "art": "large-windows",
+     "icon": "AppWindow",
+     "group": "living",
+     "role": "suggestion"
+    }
+   ]
+  },
+  {
+   "key": "bath",
+   "cards": [
+    {
+     "id": "features:Double Vanity",
+     "categoryKey": "features",
+     "label": "Double Vanity",
+     "text": "Double Vanity",
+     "kind": "check",
+     "custom": false,
+     "art": "double-vanity",
+     "icon": "Droplets",
+     "group": "bath",
+     "role": "feature",
+     "level": null
+    },
+    {
+     "id": "features:Soaking Tub",
+     "categoryKey": "features",
+     "label": "Soaking Tub",
+     "text": "Soaking Tub",
+     "kind": "check",
+     "custom": false,
+     "art": "soaking-tub",
+     "icon": "Bath",
+     "group": "bath",
+     "role": "feature",
+     "level": null
+    }
+   ],
+   "suggestions": [
+    {
+     "id": "features:Separate Shower / Tub",
+     "categoryKey": "features",
+     "label": "Separate Shower / Tub",
+     "text": "Separate Shower / Tub",
+     "kind": "check",
+     "custom": true,
+     "art": "separate-shower",
+     "icon": "ShowerHead",
+     "group": "bath",
+     "role": "suggestion"
+    },
+    {
+     "id": "features:Private Toilet",
+     "categoryKey": "features",
+     "label": "Private Toilet",
+     "text": "Private Toilet",
+     "kind": "check",
+     "custom": true,
+     "art": "private-toilet",
+     "icon": "DoorClosed",
+     "group": "bath",
+     "role": "suggestion"
+    },
+    {
+     "id": "features:Linen Closet",
+     "categoryKey": "features",
+     "label": "Linen Closet",
+     "text": "Linen Closet",
+     "kind": "check",
+     "custom": true,
+     "art": "linen-closet",
+     "icon": "Layers",
+     "group": "bath",
+     "role": "suggestion"
+    }
+   ]
+  },
+  {
+   "key": "garage",
+   "cards": [],
+   "suggestions": [
+    {
+     "id": "exterior:Workbench",
+     "categoryKey": "exterior",
+     "label": "Workbench",
+     "text": "Workbench",
+     "kind": "check",
+     "custom": true,
+     "art": "workbench",
+     "icon": "Wrench",
+     "group": "garage",
+     "role": "suggestion"
+    },
+    {
+     "id": "exterior:Garage Extension",
+     "categoryKey": "exterior",
+     "label": "Garage Extension",
+     "text": "Garage Extension",
+     "kind": "check",
+     "custom": true,
+     "art": "garage-extension",
+     "icon": "Warehouse",
+     "group": "garage",
+     "role": "suggestion"
+    },
+    {
+     "id": "exterior:Door to Backyard",
+     "categoryKey": "exterior",
+     "label": "Door to Backyard",
+     "text": "Door to Backyard",
+     "kind": "check",
+     "custom": true,
+     "art": "garage-yard-door",
+     "icon": "DoorOpen",
+     "group": "garage",
+     "role": "suggestion"
+    }
+   ]
+  },
+  {
+   "key": "exterior",
+   "cards": [
+    {
+     "id": "exterior:Patio / deck",
+     "categoryKey": "exterior",
+     "label": "Patio / deck",
+     "text": "Deck / Patio",
+     "kind": "check",
+     "custom": false,
+     "art": "deck-patio",
+     "icon": "Sun",
+     "group": "exterior",
+     "role": "feature",
+     "level": null
+    },
+    {
+     "id": "exterior:Fenced yard",
+     "categoryKey": "exterior",
+     "label": "Fenced yard",
+     "text": "Fenced Yard",
+     "kind": "check",
+     "custom": false,
+     "art": "fenced-yard",
+     "icon": "Fence",
+     "group": "exterior",
+     "role": "feature",
+     "level": null
+    }
+   ],
+   "suggestions": [
+    {
+     "id": "location:Mature Trees",
+     "categoryKey": "location",
+     "label": "Mature Trees",
+     "text": "Mature Trees",
+     "kind": "check",
+     "custom": false,
+     "art": "mature-trees",
+     "icon": "TreeDeciduous",
+     "group": "exterior",
+     "role": "suggestion"
+    },
+    {
+     "id": "exterior:Garden Space",
+     "categoryKey": "exterior",
+     "label": "Garden Space",
+     "text": "Garden Space",
+     "kind": "check",
+     "custom": false,
+     "art": "garden",
+     "icon": "Sprout",
+     "group": "exterior",
+     "role": "suggestion"
+    },
+    {
+     "id": "exterior:Pool",
+     "categoryKey": "exterior",
+     "label": "Pool",
+     "text": "Pool",
+     "kind": "check",
+     "custom": false,
+     "art": "pool",
+     "icon": "Waves",
+     "group": "exterior",
+     "role": "suggestion"
+    }
+   ]
+  },
+  {
+   "key": "neighborhood",
+   "cards": [
+    {
+     "id": "location:Low-Traffic Street",
+     "categoryKey": "location",
+     "label": "Low-Traffic Street",
+     "text": "Low-Traffic Street",
+     "kind": "check",
+     "custom": false,
+     "art": "low-traffic-street",
+     "icon": "Route",
+     "group": "neighborhood",
+     "role": "feature",
+     "level": null
+    },
+    {
+     "id": "location:Sidewalks",
+     "categoryKey": "location",
+     "label": "Sidewalks",
+     "text": "Sidewalks",
+     "kind": "check",
+     "custom": false,
+     "art": "sidewalks",
+     "icon": "Footprints",
+     "group": "neighborhood",
+     "role": "feature",
+     "level": null
+    },
+    {
+     "id": "location:Tree-lined street",
+     "categoryKey": "location",
+     "label": "Tree-lined street",
+     "text": "Tree-Lined Street",
+     "kind": "check",
+     "custom": false,
+     "art": "tree-lined-street",
+     "icon": "Trees",
+     "group": "neighborhood",
+     "role": "feature",
+     "level": null
+    },
+    {
+     "id": "location:No HOA",
+     "categoryKey": "location",
+     "label": "No HOA",
+     "text": "No HOA",
+     "kind": "check",
+     "custom": false,
+     "art": null,
+     "icon": "Ban",
+     "group": "neighborhood",
+     "role": "feature",
+     "level": null
+    }
+   ],
+   "suggestions": [
+    {
+     "id": "location:Cul-de-Sac",
+     "categoryKey": "location",
+     "label": "Cul-de-Sac",
+     "text": "Cul-de-Sac",
+     "kind": "check",
+     "custom": false,
+     "art": "cul-de-sac",
+     "icon": "Milestone",
+     "group": "neighborhood",
+     "role": "suggestion"
+    },
+    {
+     "id": "location:Walkable schools",
+     "categoryKey": "location",
+     "label": "Walkable schools",
+     "text": "Walkable to Schools",
+     "kind": "check",
+     "custom": false,
+     "art": "walkable-schools",
+     "icon": "School",
+     "group": "neighborhood",
+     "role": "suggestion"
+    }
+   ]
+  }
+ ],
+ "images": {
+  "features:First-Floor Bedroom": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/first-floor-bedroom-400.webp",
+   "srcSet": "/images/onboarding/cards/first-floor-bedroom-400.webp 400w, /images/onboarding/cards/first-floor-bedroom-800.webp 800w"
+  },
+  "features:Home office": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/home-office-400.webp",
+   "srcSet": "/images/onboarding/cards/home-office-400.webp 400w, /images/onboarding/cards/home-office-800.webp 800w"
+  },
+  "features:Finished basement": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/finished-basement-400.webp",
+   "srcSet": "/images/onboarding/cards/finished-basement-400.webp 400w, /images/onboarding/cards/finished-basement-800.webp 800w"
+  },
+  "features:Primary ensuite": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/primary-ensuite-400.webp",
+   "srcSet": "/images/onboarding/cards/primary-ensuite-400.webp 400w, /images/onboarding/cards/primary-ensuite-800.webp 800w"
+  },
+  "features:First-floor laundry": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/first-floor-laundry-400.webp",
+   "srcSet": "/images/onboarding/cards/first-floor-laundry-400.webp 400w, /images/onboarding/cards/first-floor-laundry-800.webp 800w"
+  },
+  "features:Walkout basement": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/walkout-basement-400.webp",
+   "srcSet": "/images/onboarding/cards/walkout-basement-400.webp 400w, /images/onboarding/cards/walkout-basement-800.webp 800w"
+  },
+  "exterior:Front porch": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/front-porch-400.webp",
+   "srcSet": "/images/onboarding/cards/front-porch-400.webp 400w, /images/onboarding/cards/front-porch-800.webp 800w"
+  },
+  "features:Countertop Seating": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/countertop-seating-400.webp",
+   "srcSet": "/images/onboarding/cards/countertop-seating-400.webp 400w, /images/onboarding/cards/countertop-seating-800.webp 800w"
+  },
+  "features:Stainless Steel Appliances": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/stainless-appliances-400.webp",
+   "srcSet": "/images/onboarding/cards/stainless-appliances-400.webp 400w, /images/onboarding/cards/stainless-appliances-800.webp 800w"
+  },
+  "features:Walk-in Pantry": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/walk-in-pantry-400.webp",
+   "srcSet": "/images/onboarding/cards/walk-in-pantry-400.webp 400w, /images/onboarding/cards/walk-in-pantry-800.webp 800w"
+  },
+  "features:Eat-in Kitchen": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/eat-in-kitchen-400.webp",
+   "srcSet": "/images/onboarding/cards/eat-in-kitchen-400.webp 400w, /images/onboarding/cards/eat-in-kitchen-800.webp 800w"
+  },
+  "features:Kitchen Island": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/kitchen-island-400.webp",
+   "srcSet": "/images/onboarding/cards/kitchen-island-400.webp 400w, /images/onboarding/cards/kitchen-island-800.webp 800w"
+  },
+  "features:Formal Dining Room": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/formal-dining-400.webp",
+   "srcSet": "/images/onboarding/cards/formal-dining-400.webp 400w, /images/onboarding/cards/formal-dining-800.webp 800w"
+  },
+  "features:Fireplace": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/fireplace-400.webp",
+   "srcSet": "/images/onboarding/cards/fireplace-400.webp 400w, /images/onboarding/cards/fireplace-800.webp 800w"
+  },
+  "features:High Ceilings": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/high-ceilings-400.webp",
+   "srcSet": "/images/onboarding/cards/high-ceilings-400.webp 400w, /images/onboarding/cards/high-ceilings-800.webp 800w"
+  },
+  "features:Built-in Shelving": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/built-in-shelving-400.webp",
+   "srcSet": "/images/onboarding/cards/built-in-shelving-400.webp 400w, /images/onboarding/cards/built-in-shelving-800.webp 800w"
+  },
+  "features:Large Windows": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/large-windows-400.webp",
+   "srcSet": "/images/onboarding/cards/large-windows-400.webp 400w, /images/onboarding/cards/large-windows-800.webp 800w"
+  },
+  "features:Double Vanity": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/double-vanity-400.webp",
+   "srcSet": "/images/onboarding/cards/double-vanity-400.webp 400w, /images/onboarding/cards/double-vanity-800.webp 800w"
+  },
+  "features:Soaking Tub": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/soaking-tub-400.webp",
+   "srcSet": "/images/onboarding/cards/soaking-tub-400.webp 400w, /images/onboarding/cards/soaking-tub-800.webp 800w"
+  },
+  "features:Separate Shower / Tub": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/separate-shower-400.webp",
+   "srcSet": "/images/onboarding/cards/separate-shower-400.webp 400w, /images/onboarding/cards/separate-shower-800.webp 800w"
+  },
+  "features:Private Toilet": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/private-toilet-400.webp",
+   "srcSet": "/images/onboarding/cards/private-toilet-400.webp 400w, /images/onboarding/cards/private-toilet-800.webp 800w"
+  },
+  "features:Linen Closet": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/linen-closet-400.webp",
+   "srcSet": "/images/onboarding/cards/linen-closet-400.webp 400w, /images/onboarding/cards/linen-closet-800.webp 800w"
+  },
+  "exterior:Workbench": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/workbench-400.webp",
+   "srcSet": "/images/onboarding/cards/workbench-400.webp 400w, /images/onboarding/cards/workbench-800.webp 800w"
+  },
+  "exterior:Garage Extension": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/garage-extension-400.webp",
+   "srcSet": "/images/onboarding/cards/garage-extension-400.webp 400w, /images/onboarding/cards/garage-extension-800.webp 800w"
+  },
+  "exterior:Door to Backyard": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/garage-yard-door-400.webp",
+   "srcSet": "/images/onboarding/cards/garage-yard-door-400.webp 400w, /images/onboarding/cards/garage-yard-door-800.webp 800w"
+  },
+  "exterior:Patio / deck": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/deck-patio-400.webp",
+   "srcSet": "/images/onboarding/cards/deck-patio-400.webp 400w, /images/onboarding/cards/deck-patio-800.webp 800w"
+  },
+  "exterior:Fenced yard": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/fenced-yard-400.webp",
+   "srcSet": "/images/onboarding/cards/fenced-yard-400.webp 400w, /images/onboarding/cards/fenced-yard-800.webp 800w"
+  },
+  "location:Mature Trees": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/mature-trees-400.webp",
+   "srcSet": "/images/onboarding/cards/mature-trees-400.webp 400w, /images/onboarding/cards/mature-trees-800.webp 800w"
+  },
+  "exterior:Garden Space": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/garden-400.webp",
+   "srcSet": "/images/onboarding/cards/garden-400.webp 400w, /images/onboarding/cards/garden-800.webp 800w"
+  },
+  "exterior:Pool": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/pool-400.webp",
+   "srcSet": "/images/onboarding/cards/pool-400.webp 400w, /images/onboarding/cards/pool-800.webp 800w"
+  },
+  "location:Low-Traffic Street": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/low-traffic-street-400.webp",
+   "srcSet": "/images/onboarding/cards/low-traffic-street-400.webp 400w, /images/onboarding/cards/low-traffic-street-800.webp 800w"
+  },
+  "location:Sidewalks": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/sidewalks-400.webp",
+   "srcSet": "/images/onboarding/cards/sidewalks-400.webp 400w, /images/onboarding/cards/sidewalks-800.webp 800w"
+  },
+  "location:Tree-lined street": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/tree-lined-street-400.webp",
+   "srcSet": "/images/onboarding/cards/tree-lined-street-400.webp 400w, /images/onboarding/cards/tree-lined-street-800.webp 800w"
+  },
+  "location:No HOA": null,
+  "location:Cul-de-Sac": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/cul-de-sac-400.webp",
+   "srcSet": "/images/onboarding/cards/cul-de-sac-400.webp 400w, /images/onboarding/cards/cul-de-sac-800.webp 800w"
+  },
+  "location:Walkable schools": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/walkable-schools-400.webp",
+   "srcSet": "/images/onboarding/cards/walkable-schools-400.webp 400w, /images/onboarding/cards/walkable-schools-800.webp 800w"
+  }
+ }
+}
