@@ -172,3 +172,58 @@ dbTest('apartment Garage Parking from the board: scored once, JS = SQL; the held
   const { heldGarage, ...exterior } = aDoc.exterior;
   assert.deepEqual(await check({ ...aDoc, exterior }), withHeld, 'the held house Garage changes neither score');
 });
+
+// Home to Rent Ideal lot size (#184, D4) ranked on the desktop board: the same
+// document as the phone's sheet, JS = SQL for co-renters while it is ranked,
+// moved back to the library, cleared, and re-entered (never re-ranked by itself).
+dbTest('Home to Rent lot size from the board: board = phone, JS = SQL through rank → library → clear → re-enter', async () => {
+  const { lotSizeValue, setLotSizeImportance, setLotSizeValue } = await import('../src/lib/priorityCategories.js');
+  const a = db.createUser({ email: 'board.lot.a@example.com', firstName: 'Acre' });
+  const b = db.createUser({ email: 'board.lot.b@example.com', firstName: 'Other' });
+  const search = db.admin(`select id from public.searches where user_id = '${a}'`)[0].id;
+  const invitation = await createInvitation(db.clientFor(a), search, a, 'board.lot.b@example.com', 'co_buyer');
+  assert.equal((await acceptInvitation(db.clientFor(b), invitation.token)).success, true);
+  const lot = (doc) => feature(doc, `Ideal lot size · ${lotSizeValue(doc)}+ acres`);
+
+  let board = setLotSizeValue(fresh('home_rent'), '0.5');
+  board = placeOnBoard(board, lot(board), 'must');
+  const phone = setLotSizeImportance(setLotSizeValue(fresh('home_rent'), '0.5'), 'must');
+  assert.deepEqual(normalizePriorities(board), normalizePriorities(phone));
+  const theirs = setLotSizeImportance(setLotSizeValue(fresh('home_rent'), '2'), 'nice');
+  await savePriorities(db.clientFor(b), { id: search }, b, theirs);
+
+  const homeIds = [];
+  for (const [name, acres] of [['big', '1 acres'], ['small', '0.25 acres'], ['unknown', '']]) {
+    homeIds.push(await insertHome(db.clientFor(a), { user_id: a, search_id: search, address: `${name} Board Acre Ln, Royal Oak, MI 48073`, price: '2400', lot_size: acres }));
+  }
+  const check = async (doc, label) => {
+    await savePriorities(db.clientFor(a), { id: search }, a, doc);
+    const priorities = normalizePriorities(await resolvePriorities(db.clientFor(a), { id: search }, a));
+    assert.deepEqual(priorities.lotSizeTarget, normalizePriorities(doc).lotSizeTarget, `${label}: round-trip`);
+    const homes = await getHomesForUser(db.clientFor(a), a, search);
+    const projected = await resolveCoBuyerComparePerspectives(db.clientFor(b), { id: search }, homeIds);
+    return homeIds.map((id) => {
+      const mine = computeMatch(homes.find((home) => home.id === id), priorities);
+      const seen = projected.get(id).match;
+      assert.deepEqual([seen.pct, seen.selectedCount, seen.evaluatedCount], [mine.pct, mine.selectedCount, mine.evaluatedCount], `${label}: JS = SQL`);
+      return mine.allSelected.find((item) => item.key === 'lotSize') || null;
+    });
+  };
+  const bRow = () => JSON.stringify(db.admin(`select priorities from public.search_member_priorities where search_id = '${search}' and user_id = '${b}'`)[0].priorities);
+  const before = bRow();
+
+  let [big, small, unknown] = await check(board, 'ranked Must Have');
+  assert.deepEqual([big.met, small.met, unknown.evaluated], [true, false, false], 'unknown lot size is never a miss');
+  board = placeOnBoard(board, lot(board), 'none');
+  [big, small, unknown] = await check(board, 'back to the library');
+  assert.deepEqual([big, small, unknown], [null, null, null], 'unranked acreage is not in Match');
+  board = placeOnBoard(board, lot(board), 'important');
+  board = setLotSizeValue(board, '');
+  assert.deepEqual(board.lotSizeTarget, { value: '', tier: 'dontcare' });
+  [big, small, unknown] = await check(board, 'cleared');
+  assert.deepEqual([big, small, unknown], [null, null, null]);
+  board = setLotSizeValue(board, '0.5');
+  [big, small, unknown] = await check(board, 're-entered');
+  assert.deepEqual([big, small, unknown], [null, null, null], 're-entered acreage starts unranked');
+  assert.equal(bRow(), before, 'the other renter’s row is byte-identical');
+});

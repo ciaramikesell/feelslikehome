@@ -3493,6 +3493,20 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-ob-cta { justify-content: space-between; width: 100%; min-height: 56px; padding: 0 7px 0 20px; border-radius: 14px; font-size: 17px; box-shadow: 0 12px 24px -14px rgba(185,83,50,.6); }
 .flh-ob-cta-icon { display: grid; place-items: center; flex-shrink: 0; width: 42px; height: 42px; border-radius: 10px; background: rgba(255,255,255,.16); }
 
+/* Large text (a phone at 150–200% zoom, ≤ 300 CSS px; no phone at 100% is
+   this narrow): the wordmark wraps instead of running under the step count,
+   and the Back slot takes no room when there is no Back button. */
+@media (max-width: 300px) {
+  .flh-onboarding-root .flh-ob-topbar-row { grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 8px; }
+  .flh-onboarding-root .flh-ob-topbar .flh-ob-wordmark { font-size: 15px; line-height: 1.15; white-space: normal; text-align: center; }
+}
+@media (max-width: 200px) {
+  .flh-onboarding-root .flh-ob-topbar .flh-ob-brand { --flh-brandmark-size: 18px; gap: 6px; }
+  .flh-onboarding-root .flh-ob-topbar .flh-ob-wordmark { font-size: 14px; }
+  /* With Back and the count there is no room for the words: the mark alone (decorative, not a control). */
+  .flh-onboarding-root .flh-ob-topbar-row:has(.flh-ob-back) .flh-ob-wordmark { display: none; }
+}
+
 /* Desktop-only rail: hidden on phones and tablets, where the top bar does its job. */
 .flh-ob-rail { display: none; }
 
@@ -3972,6 +3986,7 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-onboarding-root .flh-ob-board-segment.is-current { border-color: var(--brick); background: #FDF1EA; color: var(--brick-deep); box-shadow: inset 0 0 0 1px var(--brick); }
 .flh-onboarding-root .flh-ob-board-lot .flh-ob-field { gap: 6px; }
 .flh-onboarding-root .flh-ob-board-lot .flh-ob-input { max-width: 220px; }
+.flh-onboarding-root .flh-ob-board-lot-help { margin: 6px 0 0; }
 
 /* Chips: compact, text only, draggable; the level is in words for AT and as a colour edge */
 .flh-onboarding-root .flh-ob-board-chip { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; min-height: 36px; padding: 6px 12px 6px 7px; border: 1px solid var(--ob-line); border-radius: 999px; background: #fff; color: var(--ink); font: 600 13px/1.25 var(--font-sans); text-align: left; cursor: grab; transition: border-color .12s ease, box-shadow .12s ease, opacity .12s ease, transform .12s ease; }
@@ -4048,6 +4063,39 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
   .flh-onboarding-root .flh-ob-board-library { max-height: none; overflow: visible; }
   .flh-onboarding-root .flh-ob-board-drop-hint { top: 0; }
   .flh-onboarding-root .flh-ob-board-columns { position: sticky; top: calc(var(--flh-safe-top, 0px) + 16px); }
+}
+
+/* Before hydration (server HTML) a board step is the phone screen inside the
+   board gate. At ≥ 1024px that markup only exists until JavaScript
+   swaps in the board, so the photo cards are replaced by a board-shaped
+   placeholder with the board's own header, the column is already widened and
+   the rail already shows the board as one step. Below 1024px the gate is
+   display: contents and nothing changes. */
+.flh-onboarding-root .flh-ob-board-gate { display: contents; }
+.flh-onboarding-root .flh-ob-board-pending, .flh-onboarding-root .flh-ob-step-board-label, .flh-onboarding-root .flh-ob-step-board-number { display: none; }
+@media (min-width: 1024px) {
+  .flh-onboarding-root .flh-ob-board-gate > .flh-ob-pf-step { display: none; }
+  .flh-onboarding-root .flh-ob-board-gate > .flh-ob-board-pending { display: grid; }
+  .flh-onboarding-root:has(.flh-ob-board-gate) { --ob-measure: 1180px; }
+  .flh-onboarding-root:has(.flh-ob-board-gate) .flh-ob-layout { grid-template-columns: 200px minmax(0, var(--ob-measure)); column-gap: clamp(32px, 3.5vw, 72px); }
+  .flh-onboarding-root:has(.flh-ob-board-gate) .flh-ob-steps li[data-board="rest"] { display: none; }
+  .flh-onboarding-root:has(.flh-ob-board-gate) .flh-ob-steps li[data-board="first"] > span:nth-child(2) { display: none; }
+  .flh-onboarding-root:has(.flh-ob-board-gate) .flh-ob-steps li[data-board="first"] > .flh-ob-step-board-label { display: inline; }
+  .flh-onboarding-root:has(.flh-ob-board-gate) .flh-ob-steps li[data-board="first"] { color: var(--ink); font-weight: 700; }
+  .flh-onboarding-root:has(.flh-ob-board-gate) .flh-ob-steps li[data-board="first"] .flh-ob-step-marker { border-color: var(--brick); background: var(--brick); color: #fff; }
+  .flh-onboarding-root:has(.flh-ob-board-gate) .flh-ob-steps li[data-board="first"] .flh-ob-step-marker svg { display: none; }
+  .flh-onboarding-root:has(.flh-ob-board-gate) .flh-ob-steps li[data-board="first"] .flh-ob-step-board-number { display: inline; }
+  .flh-onboarding-root .flh-ob-board-pending-frame { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 36px; }
+  .flh-onboarding-root .flh-ob-board-pending-frame span { min-height: 240px; border: 1px solid var(--ob-line); border-radius: 18px; background: var(--ob-warm-row); }
+  .flh-onboarding-root .flh-ob-board-pending-frame span:first-child { grid-column: 1 / -1; border-radius: 20px; background: var(--flh-card, #fff); }
+}
+@media (min-width: 1200px) {
+  .flh-onboarding-root .flh-ob-board-pending-frame { grid-template-columns: minmax(300px, 1.1fr) repeat(3, minmax(0, .667fr)); }
+  .flh-onboarding-root .flh-ob-board-pending-frame span { min-height: 480px; }
+  .flh-onboarding-root .flh-ob-board-pending-frame span:first-child { grid-column: auto; }
+}
+@media (min-width: 1440px) {
+  .flh-onboarding-root:has(.flh-ob-board-gate) .flh-ob-layout { grid-template-columns: minmax(220px, 260px) minmax(0, var(--ob-measure)); }
 }
 
 /* ── Mobile Priority Onboarding V3 (flow 4) ──────────────────────────────────

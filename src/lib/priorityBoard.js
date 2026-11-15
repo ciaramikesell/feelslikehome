@@ -23,9 +23,10 @@
 import { normalizePriorities } from './constants.js';
 import { PRIORITY_LEVELS, basicsFieldsFor, priorityLevels } from './searchProfile.js';
 import {
-  PRIORITY_CATEGORIES, categoryView, featureLevel, garageImportance, normalizeFeatureKey, priorityCategoriesFor, setFeatureLevel,
+  LOT_SIZE_FEATURE, PETS_FEATURE, PRIORITY_CATEGORIES, categoryView, featureLevel, garageImportance, lotSizeImportance, lotSizeRankable,
+  lotSizeValue, normalizeFeatureKey, priorityCategoriesFor, setFeatureLevel, setLotSizeImportance,
 } from './priorityCategories.js';
-import { PETS_CRITERION_KEY, PETS_TEXT } from './rentalPets.js';
+import { PETS_CRITERION_KEY } from './rentalPets.js';
 import { advanceOnboarding, onboardingStepsFor, retreatOnboarding, skipOnboardingStep } from './onboardingFlow.js';
 
 /* ------------------------------- breakpoint -------------------------------- */
@@ -103,10 +104,18 @@ export const BOARD_HOUSE_GARAGE = Object.freeze({
   custom: false, art: null, icon: 'Warehouse', group: 'garage', role: 'feature',
 });
 
-const PETS_FEATURE = Object.freeze({
-  id: PETS_CRITERION_KEY, categoryKey: 'features', label: 'Pets Allowed', text: PETS_TEXT, kind: 'check',
-  custom: false, art: 'pet-friendly', icon: 'PawPrint', group: 'essentials', role: 'pets',
-});
+// Home to Rent's Ideal lot size (#184, D4): once acreage is entered it is a
+// chip like any other, ranked with the existing lotSizeTarget tier
+// (setLotSizeImportance). Without acreage there is no chip, and clearing the
+// acreage resets the tier (setLotSizeValue), so re-entering it never brings
+// back an old ranking. Home to Buy keeps its acreage as a plain field.
+const isLotSize = (feature) => feature?.target === 'lotSizeTarget';
+function lotSizeChip(raw) {
+  if (!lotSizeRankable(raw)) return null;
+  const value = lotSizeValue(raw);
+  if (!value) return null;
+  return { ...LOT_SIZE_FEATURE, icon: 'Fence', text: `Ideal lot size · ${value}+ acres`, level: lotSizeImportance(raw) };
+}
 
 // Every feature the board offers for this kind of search, by category, in the
 // phone screens' order: features, then suggestions, then the person's own.
@@ -155,6 +164,11 @@ export function boardColumns(input, categories = boardCategories(input)) {
       columns[level.tier].push({ feature, order: known ? known.order : 1e9 + columns[level.tier].length });
     }
   }
+  const lot = lotSizeChip(raw);
+  if (lot?.level) {
+    const exterior = categories.findIndex(({ category }) => category.key === 'exterior');
+    columns[lot.level].push({ feature: lot, order: exterior * 1000 + 999 });
+  }
   return Object.fromEntries(PRIORITY_LEVELS.map((tier) => [tier, columns[tier].sort((a, b) => a.order - b.order).map((entry) => entry.feature)]));
 }
 
@@ -168,7 +182,11 @@ export function priorityBoard(input, { earlierRemoved = [] } = {}) {
   const ranked = new Set(PRIORITY_LEVELS.flatMap((tier) => columns[tier].map((feature) => norm(feature.id))));
   const experience = raw.onboardingSearchType || 'home_buy';
   const garageMatters = PRIORITY_LEVELS.includes(garageImportance(raw));
+  const lot = lotSizeChip(raw);
   const groups = categories.map(({ category, features }) => {
+    const lotField = category.key === 'exterior' && Boolean(basicsFieldsFor(experience).lotSize);
+    const lotInLibrary = lotField && lot && !lot.level ? lot : null;
+    const lotRanked = lotField && lot?.level;
     let library = features.filter((feature) => !ranked.has(norm(feature.id)));
     const rankedCount = features.length - library.length;
     // As on the phone screen: garage details once a garage matters (or once
@@ -177,19 +195,21 @@ export function priorityBoard(input, { earlierRemoved = [] } = {}) {
     if (garageDetailsHidden) library = library.filter((feature) => feature.id === BOARD_HOUSE_GARAGE.id);
     return {
       key: category.key, step: category.step, title: category.title, storage: category.storage,
-      features: library.map((feature) => ({ ...feature, level: null })), rankedCount, garageDetailsHidden,
-      lotSize: category.key === 'exterior' && Boolean(basicsFieldsFor(experience).lotSize),
+      features: [...library.map((feature) => ({ ...feature, level: null })), ...(lotInLibrary ? [lotInLibrary] : [])], rankedCount: rankedCount + (lotRanked ? 1 : 0), garageDetailsHidden,
+      lotSize: lotField,
+      lotRankable: lotField && lotSizeRankable(raw),
     };
   });
   // Earlier priorities the board doesn't offer, removed during this visit:
   // kept in the library so they can be put back (they are never deleted).
   const earlier = earlierRemoved.filter((feature) => !ranked.has(norm(feature.id)) && !groups.some((group) => group.features.some((entry) => norm(entry.id) === norm(feature.id))));
   if (earlier.length) groups.push({ key: 'earlier', step: null, title: 'From earlier', features: earlier.map((feature) => ({ ...feature, level: null })), rankedCount: 0, garageDetailsHidden: false, lotSize: false });
-  return { groups, columns, rankedCount: ranked.size };
+  return { groups, columns, rankedCount: PRIORITY_LEVELS.reduce((sum, tier) => sum + columns[tier].length, 0) };
 }
 
 // Where a feature currently is: 'must' | 'important' | 'nice' | null (library).
 export function boardLevel(raw, feature) {
+  if (isLotSize(feature)) return lotSizeImportance(raw);
   const key = norm(feature.id);
   for (const [tier, items] of Object.entries(boardColumns(raw))) if (items.some((item) => norm(item.id) === key)) return tier;
   return featureLevel(raw, feature);
@@ -201,6 +221,7 @@ export function boardLevel(raw, feature) {
 export function placeOnBoard(raw, feature, target) {
   const current = boardLevel(raw, feature);
   if (target === current || (target === 'none' && !current)) return raw;
+  if (isLotSize(feature)) return setLotSizeImportance(raw, PRIORITY_LEVELS.includes(target) ? target : 'none');
   return setFeatureLevel(raw, feature, PRIORITY_LEVELS.includes(target) ? target : 'none');
 }
 

@@ -131,9 +131,13 @@ above.
   a flow-4 session restarts flow 1's screens with all answers kept.
 - **Additive fields**: `customItems[].group` (screen key) and
   `onboarding_state.answers.searchType` / `skipped`. Older code ignores them.
-- **Desktop board**: works from the same document. `group` gives a future
-  desktop board the same categories; My Search already shows every V3 item
-  (its existing category lists, custom items included).
+- **Desktop board** (PR #185, `docs/desktop-priority-board.md`): at ≥ 1024
+  CSS px the card-category screens are shown as one board — a feature library
+  grouped by these same categories (via `group`) and three importance columns
+  of draggable text chips, with hover/focus photo previews. It is a
+  presentation of the same flow-4 steps over the same document and write path
+  (`setFeatureLevel`, `setLotSizeValue` / `setLotSizeImportance`), so phone and
+  desktop share answers and progress. Phones are unchanged.
 - **Renaming a custom feature** changes its key (`category:label`). It is
   offered while setting up, before homes are evaluated; answers already given
   on homes under the old name would not follow. (Onboarding accounts and
@@ -228,14 +232,17 @@ by photos were removed.
   manifest entry plus re-running the derivative script.
 - Some uploads are smaller than 800 px wide; their 800w derivative is an
   upscale (no worse than the browser scaling the 400w).
-- At 200% zoom the phone grid drops to one column and the footer stacks;
-  the shared top bar's step count overlaps the wordmark at that size — a
-  pre-existing shell issue, also in the live flow, left unchanged.
+- At 200% zoom the phone grid drops to one column and the footer stacks.
+  The shared top bar's step count used to overlap the wordmark at 150–200%;
+  since PR #185 the wordmark wraps at ≤ 300 CSS px (the mark alone when Back
+  also needs the room), with no change at 100%.
 - "Large text" was tested as browser zoom; the app sets type in px, so iOS
   Dynamic Type does not scale it (true of the whole app today).
 - Your People (co-buyer/Realtor intent) is not in V3, matching the live flow;
   invitations remain in My Search.
-- No desktop priority board yet (separate future UI); the schema supports it.
+- Desktop: the category screens are one board at ≥ 1024 CSS px (PR #185,
+  `docs/desktop-priority-board.md`); below that, and at 200% zoom on a
+  desktop, these phone screens are used.
 - The dev preview's in-memory services were used for browser QA; real
   persistence is covered by the Postgres tests, not by an end-to-end browser
   run against Supabase.

@@ -62,8 +62,8 @@ page.on('pageerror', (error) => errors.push(String(error)));
 
 const ORDER = {
   home_buy: ['The Basics', 'The Basics', 'Where you’re looking', 'What matters most', 'Review'],
-  home_rent: ['The Basics', 'The Basics', 'Where you’re looking', 'Rental Essentials', 'What matters most', 'Review'],
-  apartment_rent: ['The Basics', 'The Basics', 'Where you’re looking', 'Rental Essentials', 'What matters most', 'Review'],
+  home_rent: ['The Basics', 'Rental Basics', 'Where you’re looking', 'Rental Essentials', 'What matters most', 'Review'],
+  apartment_rent: ['The Basics', 'Apartment Basics', 'Where you’re looking', 'Rental Essentials', 'What matters most', 'Review'],
 };
 for (const [search, expected] of Object.entries(ORDER)) {
   await open(page, `step=search_type&state=populated&search=${search}`);
@@ -306,6 +306,133 @@ await open(page, 'step=cat_apt_unit&state=populated&search=apartment_rent');
 const aptGroups = await texts(page, '.flh-ob-board-group-title');
 check('Apartment board: The Unit · The Property; Garage Parking; no lot size', aptGroups.map((text) => text.replace(/\d+ ranked/, '').trim()).join('|') === 'The Unit|The Property' && /Garage Parking/.test(await page.locator(chip('exterior:Garage')).textContent()) && await page.locator('.flh-ob-board-lot').count() === 0, aptGroups.join('|'));
 await shot(page, 'desktop-1440-apartment-to-rent', false);
+
+/* ------------------- #184 on desktop: pets and lot size --------------------- */
+
+for (const search of ['home_rent', 'apartment_rent']) {
+  await open(page, `step=cat_essentials&state=empty&search=${search}`);
+  check(`pets question on desktop (${search})`, /Will pets be moving with you\?/.test(await page.locator('.flh-onboarding').textContent()) && await page.locator('input[type="radio"]').count() === 3);
+  await page.getByRole('radio', { name: 'Yes' }).check();
+  await page.waitForTimeout(150);
+  if (search === 'home_rent') await shot(page, 'desktop-1440-rental-essentials-pets', false);
+  await page.locator('.flh-ob-pf-footer .flh-ob-cta').click();
+  await page.waitForTimeout(250);
+  check(`pets Yes → Pet-Friendly in Must Have on the board (${search})`, (await columnTexts(page, 'must')).includes('Pet-Friendly') && (await page.locator('.flh-ob-board-chip-text', { hasText: /^Pet-Friendly$/ }).count()) === 1);
+  await page.locator('.flh-ob-pf-footer .flh-ob-pf-back').click();
+  await page.waitForTimeout(250);
+  check(`Back from the board returns to the pets question, answer kept (${search})`, await page.getByRole('radio', { name: 'Yes' }).isChecked());
+}
+
+const LOT = '.flh-ob-board-library [data-chip-id="lotSizeTarget"]';
+await open(page, 'step=cat_exterior&state=empty&search=home_rent');
+check('Home to Rent: no lot chip before acreage', await page.locator('[data-chip-id="lotSizeTarget"]').count() === 0 && /Enter acreage to choose/.test(await page.locator('.flh-ob-board-lot-help').textContent()));
+await page.locator('.flh-ob-board-lot input').fill('0.5');
+await page.waitForTimeout(150);
+check('acreage entered → an unranked “Ideal lot size” chip', /Ideal lot size · 0\.5\+ acres/.test(await page.locator(LOT).textContent()) && /Not part of your Match/.test(await page.locator('.flh-ob-board-lot-help').textContent()));
+await dragTo(page, LOT, COL('important'));
+check('drag ranks the acreage', (await columnTexts(page, 'important')).includes('Ideal lot size · 0.5+ acres') && /as Important/.test(await page.locator('.flh-ob-board-lot-help').textContent()));
+await page.locator(`${COL('important')} [data-chip-id="lotSizeTarget"]`).click();
+await page.locator('.flh-ob-board-chooser .flh-ob-board-level.is-must').click();
+await page.waitForTimeout(150);
+check('chooser re-ranks it', (await columnTexts(page, 'must')).includes('Ideal lot size · 0.5+ acres'));
+await shot(page, 'desktop-1440-home-to-rent-lot-ranked', false);
+await page.locator('.flh-ob-board-lot input').fill('');
+await page.waitForTimeout(150);
+check('clearing acreage removes the ranking', (await page.locator('[data-chip-id="lotSizeTarget"]').count()) === 0);
+await page.locator('.flh-ob-board-lot input').fill('1');
+await page.waitForTimeout(150);
+check('re-entering does not bring the old ranking back', (await page.locator(LOT).count()) === 1 && !(await columnTexts(page, 'must')).some((text) => /lot size/.test(text)));
+await page.locator(LOT).click();
+await page.locator('.flh-ob-board-chooser .flh-ob-board-level.is-nice').click();
+await page.waitForTimeout(150);
+await page.locator('.flh-ob-pf-footer .flh-ob-cta').click();
+await page.waitForTimeout(300);
+check('Review shows the ranked acreage', /1 acres/.test(await page.locator('.flh-ob-pf-review').textContent()) && /Nice to Have/.test(await page.locator('.flh-ob-pf-review').textContent()));
+await open(page, 'step=cat_exterior&state=empty&search=home_buy');
+await page.locator('.flh-ob-board-lot input').fill('0.3');
+await page.waitForTimeout(150);
+check('Home to Buy: acreage is a plain field, no chip, no importance text', (await page.locator('[data-chip-id="lotSizeTarget"]').count()) === 0 && (await page.locator('.flh-ob-board-lot-help').count()) === 0);
+// Phone ↔ desktop parity for Home to Rent lot size, in one session.
+await open(page, 'step=cat_exterior&state=empty&search=home_rent');
+await page.locator('.flh-ob-board-lot input').fill('0.75');
+await page.locator(LOT).click();
+await page.locator('.flh-ob-board-chooser .flh-ob-board-level.is-important').click();
+await page.waitForTimeout(150);
+await page.setViewportSize({ width: 390, height: 844 });
+await page.waitForTimeout(300);
+check('desktop-ranked acreage shows on the phone screen', /Important/.test(await page.locator('.flh-ob-pf-lot-button').textContent()) && await page.locator('.flh-ob-pf-question input').inputValue() === '0.75');
+await page.locator('.flh-ob-pf-lot-button').click();
+await page.getByRole('button', { name: /^Must Have/ }).click();
+await page.waitForTimeout(150);
+await page.setViewportSize({ width: 1440, height: 900 });
+await page.waitForTimeout(300);
+check('phone-ranked acreage shows on the board', (await columnTexts(page, 'must')).includes('Ideal lot size · 0.75+ acres'));
+
+/* --------------------------- initial desktop load --------------------------- */
+
+for (const [label, viewport] of [['1440', { width: 1440, height: 900 }], ['1024', { width: 1024, height: 768 }], ['390', { width: 390, height: 844 }]]) {
+  // The moment before hydration: the server HTML and CSS are painted (React's
+  // inline streaming scripts run), but the app's JavaScript bundles have not
+  // arrived, so nothing has hydrated yet.
+  const noJs = await browser.newContext({ viewport });
+  await noJs.route(/\/_next\/static\/chunks\/.*\.js/, (route) => route.abort());
+  const serverHtml = await noJs.newPage();
+  await serverHtml.goto(url('step=cat_kitchen&state=populated&search=home_buy'), { waitUntil: 'load' });
+  await serverHtml.evaluate(() => document.querySelectorAll('style[data-next-hide-fouc], noscript[data-next-hide-fouc]').forEach((element) => element.remove()));
+  await serverHtml.evaluate(() => document.fonts.ready);
+  await serverHtml.waitForTimeout(300);
+  const before = await serverHtml.evaluate(() => {
+    const visible = (selector) => [...document.querySelectorAll(selector)].filter((element) => element.getClientRects().length && getComputedStyle(element).visibility !== 'hidden').length;
+    const h1 = [...document.querySelectorAll('h1')].find((element) => element.getClientRects().length);
+    const rail = [...document.querySelectorAll('.flh-ob-steps li')].filter((element) => element.getClientRects().length).map((element) => element.innerText.replace(/\s+/g, ' ').trim());
+    return { cards: visible('.flh-ob-pf-card'), pending: visible('.flh-ob-board-pending'), title: h1?.textContent, top: Math.round(h1?.getBoundingClientRect().top ?? -1), left: Math.round(h1?.getBoundingClientRect().left ?? -1), rail };
+  });
+  if (label !== '390') await shot(serverHtml, `initial-load-${label}-before-hydration`, false);
+  await noJs.close();
+  if (label === '390') {
+    check('initial load 390: server HTML is the phone screen (photo cards), no placeholder', before.cards > 0 && before.pending === 0 && /kitchen/i.test(before.title), JSON.stringify(before));
+    continue;
+  }
+  const live = await browser.newContext({ viewport });
+  const hydrated = await live.newPage();
+  await hydrated.goto(url('step=cat_kitchen&state=populated&search=home_buy'), { waitUntil: 'networkidle' });
+  await hydrated.waitForSelector('.flh-ob-board');
+  const after = await hydrated.evaluate(() => { const h1 = document.querySelector('h1'); return { title: h1.textContent, top: Math.round(h1.getBoundingClientRect().top), left: Math.round(h1.getBoundingClientRect().left), rail: [...document.querySelectorAll('.flh-ob-steps li')].map((element) => element.innerText.replace(/\s+/g, ' ').trim()) }; });
+  await live.close();
+  check(`initial load ${label}: no photo cards before hydration; placeholder has the board's header`, before.cards === 0 && before.pending === 1 && before.title === after.title, JSON.stringify({ before, after }));
+  check(`initial load ${label}: heading does not move when the board arrives`, before.top === after.top && before.left === after.left, `${before.left},${before.top} → ${after.left},${after.top}`);
+  check(`initial load ${label}: rail already shows the board as one step`, JSON.stringify(before.rail) === JSON.stringify(after.rail), `${before.rail.join('|')} → ${after.rail.join('|')}`);
+}
+
+/* ----------------------- shared top bar at 150 / 200% ----------------------- */
+
+for (const [width, zoom] of [[320, 1], [390, 1], [320, 1.5], [375, 1.5], [390, 1.5], [430, 1.5], [320, 2], [375, 2], [390, 2], [430, 2]]) {
+  for (const step of ['cat_neighborhood', 'review']) {
+    const context = await browser.newContext({ viewport: { width: Math.round(width / zoom), height: 700 }, deviceScaleFactor: zoom });
+    const zoomed = await context.newPage();
+    await open(zoomed, `step=${step}&state=populated&search=home_buy`);
+    const facts = await zoomed.evaluate(() => {
+      const box = (selector) => document.querySelector(selector)?.getBoundingClientRect();
+      const word = box('.flh-ob-topbar .flh-ob-wordmark');
+      const brand = box('.flh-ob-topbar .flh-ob-brand');
+      const count = box('.flh-ob-count');
+      const back = box('.flh-ob-topbar .flh-ob-back');
+      const visibleBrandRight = word && word.width ? word.right : brand.right;
+      const visibleBrandLeft = word && word.width ? Math.min(word.left, brand.left) : brand.left;
+      return {
+        countOverlap: Math.round(Math.max(0, visibleBrandRight - count.left)),
+        backOverlap: back ? Math.round(Math.max(0, back.right - visibleBrandLeft)) : 0,
+        clipped: [brand, count, back].filter(Boolean).some((rect) => rect.right > innerWidth + 0.5 || rect.left < -0.5),
+        backSize: back ? [Math.round(back.width), Math.round(back.height)] : null,
+        wordmark: Boolean(word && word.width),
+      };
+    });
+    const ok = facts.countOverlap === 0 && facts.backOverlap === 0 && !facts.clipped && (!facts.backSize || (facts.backSize[0] >= 44 && facts.backSize[1] >= 44));
+    check(`top bar ${width}px at ${zoom * 100}% (${step}): no overlap or clipping, Back ≥ 44px`, ok, JSON.stringify(facts));
+    if (zoom === 2 && width === 390) await zoomed.screenshot({ path: OUT ? `${OUT}/topbar-390-200-${step}.png` : '/dev/null', clip: { x: 0, y: 0, width: 195, height: 150 } }).catch(() => {});
+    await context.close();
+  }
+}
 
 /* ------------------------- garage (Home to Buy) ---------------------------- */
 

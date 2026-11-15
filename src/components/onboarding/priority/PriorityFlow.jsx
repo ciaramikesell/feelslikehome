@@ -6,7 +6,7 @@ import { OnboardingAction } from '@/components/onboarding/OnboardingShell';
 import { BudgetField, SearchTypeControl, Stepper, UnitField } from '@/components/onboarding/BasicsStep';
 import LocationsStep from '@/components/onboarding/LocationsStep';
 import PriorityBoard from '@/components/onboarding/priority/PriorityBoard';
-import { isBoardStep } from '@/lib/priorityBoard';
+import { desktopProgress, isBoardStep } from '@/lib/priorityBoard';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { STEPPERS } from '@/lib/onboardingBasics';
 import { basicsFieldsFor, LEVEL_COPY, PRIORITY_LEVELS } from '@/lib/searchProfile';
@@ -373,18 +373,44 @@ export default function PriorityFlow({
   }
   const category = priorityCategory(priorities, step);
   if (!category) return <p className="flh-ob-unbuilt" role="status">This step isn’t available for this search.</p>;
+  const categoryStep = (
+    <CategoryStep
+      categoryKey={category.key}
+      priorities={priorities}
+      patch={patch}
+      picker={picker}
+      header={<Header eyebrow={eyebrow(category.title)} heading={category.heading} lead={category.lead} />}
+      footer={footer()}
+      onAutoAdvance={category.key === 'garage' ? () => onContinue(step) : null}
+    />
+  );
+  const boardProgress = desktopProgress([...progress.steps, 'review'], step);
   return (
     <>
-      <CategoryStep
-        categoryKey={category.key}
-        priorities={priorities}
-        patch={patch}
-        picker={picker}
-        header={<Header eyebrow={eyebrow(category.title)} heading={category.heading} lead={category.lead} />}
-        footer={footer()}
-        onAutoAdvance={category.key === 'garage' ? () => onContinue(step) : null}
-      />
+      {isBoardStep(step)
+        ? <BoardGate pendingEyebrow={sharedFor ? SHARED_LABEL(sharedFor, 'What matters most') : `Step ${boardProgress.position} of ${boardProgress.total} · What matters most`}>{categoryStep}</BoardGate>
+        : categoryStep}
       {picker.element}
     </>
+  );
+}
+
+// Before hydration a desktop browser shows server HTML, which is always the
+// phone screen (the server can't know the width). For a board step that HTML
+// also carries a board-shaped placeholder; at ≥ 1024px, and only while this
+// gate is on screen (the board replaces it as soon as JavaScript runs), CSS
+// shows the placeholder instead of the photo cards, so the cards never flash.
+// Below 1024px the wrapper is display: contents and the placeholder is not
+// displayed: the phone screen is unchanged. Server and first client render are
+// identical, so there is no hydration mismatch. docs/desktop-priority-board.md.
+function BoardGate({ pendingEyebrow, children }) {
+  return (
+    <div className="flh-ob-board-gate">
+      {children}
+      <div className="flh-onboarding-step flh-ob-board-pending" aria-hidden="true">
+        <Header eyebrow={pendingEyebrow} heading={['What matters ', 'most to you?']} lead="Drag the features that matter into the importance column that fits you." />
+        <div className="flh-ob-board-pending-frame"><span /><span /><span /><span /></div>
+      </div>
+    </div>
   );
 }

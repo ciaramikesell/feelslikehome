@@ -33,7 +33,7 @@ import RankStepV2 from '@/components/onboarding/RankStepV2';
 import ReviewStep from '@/components/onboarding/ReviewStep';
 import PriorityFlow from '@/components/onboarding/priority/PriorityFlow';
 import useDesktopBoard from '@/components/onboarding/priority/useDesktopBoard';
-import { BOARD_STEP, BOARD_STEP_LABEL, advanceBoard, desktopProgress, isBoardStep, retreatBoard } from '@/lib/priorityBoard';
+import { BOARD_CATEGORY_STEPS, BOARD_STEP, BOARD_STEP_LABEL, advanceBoard, desktopProgress, isBoardStep, retreatBoard } from '@/lib/priorityBoard';
 
 // Screen labels for the flow-1 steps (src/lib/onboardingFlow.js owns order and branching).
 // Flow 1 is live; the approved six-step flow (3) is built and previewed step by step.
@@ -429,7 +429,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
   return (
     <div className={`hh-root flh-onboarding-root${onBoard && !ready ? ' flh-ob-board-wide' : ''}`}>
       <div className="flh-ob-layout">
-        <OnboardingRail progress={progress} labels={priorityFlow ? { ...STEP_LABELS, locations: LOCATION_LABEL_V4, basics: BASICS_LABEL_V4[priorities.onboardingSearchType] || STEP_LABELS.basics } : STEP_LABELS} complete={ready} sharedFor={sharedFor} />
+        <OnboardingRail progress={progress} labels={priorityFlow ? { ...STEP_LABELS, locations: LOCATION_LABEL_V4, basics: BASICS_LABEL_V4[priorities.onboardingSearchType] || STEP_LABELS.basics } : STEP_LABELS} complete={ready} sharedFor={sharedFor} boardSteps={priorityFlow && !desktopBoard ? BOARD_CATEGORY_STEPS : null} boardLabel={BOARD_STEP_LABEL} />
         <main className="flh-onboarding">
           {/* Back returns to the previous step; nothing precedes the first one yet. */}
           {/* Flow 4 puts Back in its Back · Skip · Continue footer (Review keeps the top Back). */}

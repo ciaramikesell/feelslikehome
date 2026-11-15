@@ -9,22 +9,17 @@ Production); `CURRENT_ONBOARDING_VERSION` is still 1.
 
 > FLH does the homework. The buyer makes the decisions.
 
-## 1. Dependency on PR #184 (rental onboarding Stage 3)
+## 1. Rental onboarding (#184, merged)
 
-#184 was open (draft, head `76597e9`) when this was built. This branch is cut
-from `main` at `ef77c3e` and does **not** include, copy or modify any #184
-code.
+#184 (rental onboarding Stage 3) is merged into `main` (`8a781fd`) and this
+branch includes it. The board uses #184's code directly; nothing is copied.
 
-| #184 brings | Desktop board on `main` today | After #184 merges |
-|---|---|---|
-| `PetsQuestion` on Rental Essentials | Rental Essentials stays **its own screen** on desktop (it is a question category, never folded into the board). On `main` that screen has no question yet — exactly as on phones. | `PetsQuestion` renders inside `CategoryStep`, which the desktop Rental Essentials screen already uses, so desktop gets it with **no further change**. |
-| Pet-Friendly level from the pets answer | If chosen, shown **once**, in its column (read from `priorityLevels`). Moving it is an explicit edit through the canonical write, which ends FLH's automatic ownership (`clearPetsAuto`, already on `main`). | Unchanged. |
-| Home to Rent lot-size importance (`setLotSizeValue`, `lotSizeImportance`) | The board shows **Ideal lot size** in the Exterior group with `main`'s write (value only), as the phone screen does on `main`. | **Follow-up needed (small):** switch the board's lot-size field to `setLotSizeValue` and add a "How important is lot size?" control using `setLotSizeImportance`, mirroring #184's `LotSizeImportance`. Not done here to avoid duplicating unfinished work. |
-| `BASICS_LABEL_V4` rail labels, renter hints | n/a | Text-level merge in `Onboarding.jsx` (both edit the rail `labels` line) and `PriorityFlow.jsx` imports; no semantic conflict. |
-
-Shared files both branches touch: `Onboarding.jsx`, `PriorityFlow.jsx`,
-`globals.css` (this branch's CSS is a separate block, inserted *before* the
-V3 block so it does not collide with #184's appends at the end of the file).
+| From #184 | On the desktop board |
+|---|---|
+| Rental Essentials pets question (`PetsQuestion`) | Rental Essentials stays **its own screen** on desktop (a question category is never folded into the board), rendered by the same `CategoryStep` as on phones, so the pets question, its hints and its Undo are identical. |
+| Pet-Friendly from the pets answer | Shown **once**, in its column, using #184's icon-only `PETS_FEATURE` (the pet photo is only ever shown with the question). Moving it is an explicit edit through the canonical write, which ends FLH's automatic ownership (`clearPetsAuto`). |
+| Home to Rent lot-size importance (D4) | See §2 *Ideal lot size*. |
+| Rental Basics / Apartment Basics titles | Unchanged; the desktop step order reads Search Type · Rental Basics (or Apartment Basics) · Where · Rental Essentials · What matters most · Review. |
 
 ## 2. How it works
 
@@ -81,6 +76,8 @@ above the columns; ≥ 1200 puts the library left and the columns right (sticky)
 | Add your own | typing first lists canonical library features (any category) that match; Add / Enter uses `addOwnFeature` (dedupe ignoring case, spacing and punctuation, across every category, the person's document and the catalog), then the chooser opens immediately. A match on another category says where it lives. |
 | Garage (Home to Buy) | one **Garage** chip with the existing `exterior:Garage` identity (same write as the phone's garage question; removal = Not important). Attached / Detached / Either and the garage details appear once it matters, as on the phone. |
 | Garage (rentals) | Home to Rent **Garage** and apartment **Garage Parking** are the phone's cards. `heldGarage` switching logic is untouched; tests cover house ↔ apartment round trips through the board. |
+| Ideal lot size (Home to Rent) | the acreage field sits in the Exterior group and writes through #184's `setLotSizeValue`. Once acreage is entered it becomes an **"Ideal lot size · n+ acres"** chip in the library, unranked and not part of Match until the renter drags or clicks it into a column (`setLotSizeImportance`, the phone sheet's write). Clearing the acreage removes the chip and resets the importance; re-entered acreage starts unranked. Moving the chip back to the library unranks it and keeps the acreage. |
+| Ideal lot size (Home to Buy) | unchanged: a plain acreage field (value only, no chip, no importance). |
 | Legacy priorities | chosen earlier but not offered: shown in their column, movable; removed ones stay in a "From earlier" library group for the visit. Never deleted. |
 | Co-buyers | the board edits only the document it is given (the caller's own row). |
 
@@ -97,6 +94,35 @@ and is only ever rendered by the desktop board. The sentence is also each
 chip's `aria-describedby`, so nothing depends on hovering. No photo was added,
 modified or downloaded.
 
+### Initial desktop load
+
+The server can't know the window width, so its HTML for a board step is the
+phone screen, and the board replaces it once JavaScript runs. To keep the
+photo cards from flashing on a desktop in that moment, the server HTML wraps a
+board step in `.flh-ob-board-gate` together with a board-shaped placeholder
+(`BoardGate` in `PriorityFlow.jsx`, `aria-hidden`):
+
+- below 1024px the gate is `display: contents` and the placeholder is not
+  displayed — the phone screen is unchanged (pixel-compared with `main`);
+- at ≥ 1024px CSS shows the placeholder (the board's own header and empty
+  library/column frames) instead of the cards, widens the column, and shows the
+  rail with the board as one step. The gate only exists until hydration (after
+  it, a desktop always renders the board), so these rules never apply to a
+  hydrated page.
+
+Server and first client render are the same markup, so there is no hydration
+mismatch, and the heading does not move when the board arrives (QA measures
+it). Trade-off: the placeholder needs JavaScript to become the board — as does
+everything in onboarding.
+
+### Shared top bar at 150–200% zoom
+
+Phones at 150–200% zoom (≤ 300 CSS px — no phone at 100% is that narrow) let
+the wordmark wrap instead of running under the step count, and the empty Back
+slot takes no room. At ≤ 200 CSS px the mark and type shrink slightly, and on
+screens that also show Back (Review) the top bar shows the brand mark alone;
+the wordmark is decorative, not a control. Back stays 44 × 44 px.
+
 ## 3. Review
 
 Desktop Review is the existing editable Review. A priority opens the existing
@@ -105,25 +131,31 @@ reads **Back to review**. Back from Review returns to the board.
 
 ## 4. Tests and QA
 
-- `test/desktop-priority-board.test.js` (15): desktop screen order for all
+- `test/desktop-priority-board.test.js` (20): desktop screen order for all
   three searches; progress; Continue / Skip / Back / resume across devices;
   library per search; every move and exactly-once; board = phone writes;
   removal never scored and Unknown ≠ No; garage; house/apartment garage across
-  switches; Add your own; legacy; pets; co-buyer purity; descriptions and
-  images; UI and release-safety contracts.
-- `test/desktop-priority-board-db.test.js` (real Postgres 16, 2): board =
+  switches; Add your own; legacy; pets (#184); Home to Rent lot size; Home to
+  Buy lot size unchanged; co-buyer purity; descriptions and images; initial
+  load gate; zoomed top bar; UI and release-safety contracts.
+- `test/desktop-priority-board-db.test.js` (real Postgres 16, 3): board =
   phone document; round-trip; co-buyer independence; JS = SQL on homes with a
-  garage / none / unknown, after a No answer, and for apartment Garage Parking
-  with a held house Garage.
-- `scripts/qa/desktop-priority-board-qa.mjs`: **81 / 81** (see the PR).
+  garage / none / unknown, after a No answer, for apartment Garage Parking with
+  a held house Garage, and for Home to Rent lot size through rank → library →
+  clear → re-enter.
+- `scripts/qa/desktop-priority-board-qa.mjs` (see the PR for counts).
 - `docs/desktop-priority-board-screenshots/`.
 
 ## 5. Open decisions
 
 1. Breakpoint 1024 (iPad landscape and 1024-wide portrait tablets get the board).
-2. Wording of the 58 preview sentences (founder review).
-3. Lot-size importance on the board for Home to Rent, after #184.
-4. Rename of your own features is offered in the phone sheet and on Review,
+2. Wording of the 59 preview sentences (founder review).
+3. Rename of your own features is offered in the phone sheet and on Review,
    not in the board's small chooser.
-5. Desktop drag uses native HTML5 drag and drop; touch tablets at ≥ 1024 use
+4. Desktop drag uses native HTML5 drag and drop; touch tablets at ≥ 1024 use
    tap-to-choose (drag on touch is browser-dependent).
+5. Pre-existing, not changed here: at ≤ 215 CSS px (a 320–430px phone at
+   150–200% zoom) a few step bodies are still wider than the screen — the
+   Areas of interest row on *Where are you looking?*, the single word
+   "neighborhood" in the Location & Neighborhood title, and the photo grid on
+   some category screens. Identical on `main`; outside the shared top bar.

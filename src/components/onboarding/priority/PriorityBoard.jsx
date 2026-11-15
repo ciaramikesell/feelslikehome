@@ -4,7 +4,9 @@ import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 're
 import { Check, GripVertical, Plus, Undo2 } from 'lucide-react';
 import { UnitField } from '@/components/onboarding/BasicsStep';
 import { LEVEL_COPY, PRIORITY_LEVELS } from '@/lib/searchProfile';
-import { GARAGE_TYPES, addOwnFeature, garageImportance, garageType, priorityCategory, setGarageType } from '@/lib/priorityCategories';
+import {
+  GARAGE_TYPES, addOwnFeature, garageImportance, garageType, lotSizeImportance, lotSizeValue, priorityCategory, setGarageType, setLotSizeValue,
+} from '@/lib/priorityCategories';
 import { boardLevel, boardSuggestions, placeOnBoard, priorityBoard } from '@/lib/priorityBoard';
 import { featureDescription } from '@/lib/featureDescriptions';
 import FeatureVisual from './FeatureVisual';
@@ -121,6 +123,19 @@ function GarageType({ priorities, patch }) {
   );
 }
 
+// Home to Rent: the acreage becomes a chip ("Ideal lot size · n+ acres") once
+// entered; it counts only after the renter puts it in a column.
+function LotSizeHelp({ priorities }) {
+  const value = lotSizeValue(priorities);
+  const level = lotSizeImportance(priorities);
+  const text = !value
+    ? 'Enter acreage to choose how much it matters. Optional.'
+    : level
+      ? `Homes on at least ${value} acres count toward your Match as ${LEVEL_COPY[level].heading}. An unknown lot size never counts against a home.`
+      : 'Not part of your Match until you drag “Ideal lot size” into a column, or click it to choose.';
+  return <p className="flh-ob-help flh-ob-board-lot-help" role="status">{text}</p>;
+}
+
 function LibraryGroup({ group, priorities, patch, board }) {
   const headingId = useId();
   const garageRanked = group.key === 'garage' && PRIORITY_LEVELS.includes(garageImportance(priorities));
@@ -137,7 +152,9 @@ function LibraryGroup({ group, priorities, patch, board }) {
       {garageRanked && <GarageType priorities={priorities} patch={patch} />}
       {group.lotSize && (
         <div className="flh-ob-board-lot">
-          <UnitField label="Ideal lot size" unit="acres" decimal value={priorities.lotSizeTarget.value} onChange={(value) => patch((next) => { next.lotSizeTarget = { ...next.lotSizeTarget, value }; return next; })} />
+          {/* The phone screen's write (#184): Home to Rent clears the importance with the acreage; Home to Buy only sets the value. */}
+          <UnitField label="Ideal lot size" unit="acres" decimal value={priorities.lotSizeTarget.value} onChange={(value) => patch((next) => (group.lotRankable ? setLotSizeValue(next, value) : { ...next, lotSizeTarget: { ...next.lotSizeTarget, value } }))} />
+          {group.lotRankable && <LotSizeHelp priorities={priorities} />}
         </div>
       )}
     </section>

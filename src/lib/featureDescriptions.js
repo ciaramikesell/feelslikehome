@@ -58,6 +58,7 @@ const DESCRIPTIONS = Object.freeze({
   Pool: 'A swimming pool on the property.',
   Landscaping: 'A well-kept, landscaped yard.',
   'Private Outdoor Space': 'A balcony or patio that’s yours alone.',
+  'Ideal lot size': 'Homes on at least this much land count; an unknown lot size never counts against one.',
   // Rental features
   'Central Air': 'Air conditioning throughout, not window units.',
   'In-Unit Laundry': 'A washer and dryer inside your own home.',

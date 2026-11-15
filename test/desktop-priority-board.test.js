@@ -346,3 +346,84 @@ test('release safety: live flow version and flag unchanged; no scoring or storag
   const model = read('src/lib/priorityBoard.js');
   assert.doesNotMatch(model, /computeMatch|matching\.js|supabase/);
 });
+
+/* ------------------------ #184 integration (final review) ------------------ */
+
+test('Home to Rent lot size on the board: chip once acreage is entered, ranked through setLotSizeImportance, reset by clearing', async () => {
+  const { lotSizeImportance, setLotSizeImportance, setLotSizeValue } = await import('../src/lib/priorityCategories.js');
+  const exterior = (doc) => priorityBoard(doc).groups.find((group) => group.key === 'exterior');
+  const lotChip = (doc) => allFeatures(priorityBoard(doc)).find((feature) => feature.target === 'lotSizeTarget');
+  let p = fresh('home_rent');
+  assert.equal(lotChip(p), undefined, 'no acreage, no chip');
+  assert.equal(exterior(p).lotRankable, true);
+  p = setLotSizeValue(p, '0.5');
+  assert.deepEqual([lotChip(p).text, lotChip(p).level], ['Ideal lot size · 0.5+ acres', null], 'entered acreage is unranked until chosen');
+  p = placeOnBoard(p, lotChip(p), 'important');
+  assert.deepEqual(column(priorityBoard(p), 'important'), ['Ideal lot size · 0.5+ acres']);
+  assert.deepEqual(p, setLotSizeImportance(setLotSizeValue(fresh('home_rent'), '0.5'), 'important'), 'the phone screen’s writes');
+  p = placeOnBoard(p, lotChip(p), 'must');
+  assert.equal(lotSizeImportance(p), 'must');
+  assert.equal(allFeatures(priorityBoard(p)).filter((feature) => feature.target).length, 1, 'exactly one place');
+  // Clearing resets the importance; re-entering never brings it back.
+  p = setLotSizeValue(p, '');
+  assert.deepEqual([p.lotSizeTarget, lotChip(p)], [{ value: '', tier: 'dontcare' }, undefined]);
+  p = setLotSizeValue(p, '1');
+  assert.deepEqual([lotChip(p).level, column(priorityBoard(p), 'must')], [null, []]);
+  // Back to the library: unranked (not in Match), acreage kept.
+  p = placeOnBoard(placeOnBoard(p, lotChip(p), 'nice'), lotChip(p), 'none');
+  assert.deepEqual(p.lotSizeTarget, { value: '1', tier: 'dontcare' });
+  assert.equal(featureDescription(lotChip(p)).length > 10, true);
+  // Match: only a ranked acreage counts, an unknown lot size never misses.
+  const ranked = placeOnBoard(p, lotChip(p), 'must');
+  assert.equal(computeMatch({ price: '2000', lotSize: '', checks: {} }, ranked).allSelected.find((item) => item.key === 'lotSize').evaluated, false);
+  assert.equal(computeMatch({ price: '2000', lotSize: '0.25 acres', checks: {} }, ranked).allSelected.find((item) => item.key === 'lotSize').met, false);
+  assert.equal(computeMatch({ price: '2000', lotSize: '0.25 acres', checks: {} }, p)?.allSelected?.some((item) => item.key === 'lotSize') || false, false);
+});
+
+test('Home to Buy lot size is unchanged: a plain field, no chip, value-only writes', async () => {
+  const { setLotSizeValue } = await import('../src/lib/priorityCategories.js');
+  let p = setLotSizeValue(fresh('home_buy'), '0.3');
+  const exterior = priorityBoard(p).groups.find((group) => group.key === 'exterior');
+  assert.deepEqual([exterior.lotSize, exterior.lotRankable], [true, false]);
+  assert.equal(allFeatures(priorityBoard(p)).some((feature) => feature.target), false);
+  const before = p.lotSizeTarget.tier;
+  p = setLotSizeValue(p, '');
+  assert.equal(p.lotSizeTarget.tier, before, 'clearing never touches a buyer’s tier');
+  const board = read('src/components/onboarding/priority/PriorityBoard.jsx');
+  assert.match(board, /group\.lotRankable \? setLotSizeValue\(next, value\) : \{ \.\.\.next, lotSizeTarget: \{ \.\.\.next\.lotSizeTarget, value \} \}/, 'the same write as the phone screen');
+  assert.match(read('src/components/onboarding/priority/PriorityFlow.jsx'), /rankLot \? setLotSizeValue\(next, value\) : \{ \.\.\.next, lotSizeTarget: \{ \.\.\.next\.lotSizeTarget, value \} \}/);
+});
+
+test('pets after #184: the question stays its own desktop screen; Pet-Friendly uses #184’s icon-only feature on the board', async () => {
+  const { PETS_FEATURE } = await import('../src/lib/priorityCategories.js');
+  const flow = read('src/components/onboarding/priority/PriorityFlow.jsx');
+  assert.match(flow, /\{category\.question && <PetsQuestion/, 'CategoryStep renders the pets question');
+  assert.equal(isBoardStep('cat_essentials'), false);
+  const p = setPetsMoving(fresh('apartment_rent'), 'yes', T0).priorities;
+  const chip = priorityBoard(p).columns.must[0];
+  assert.deepEqual([chip.id, chip.text, chip.art], [PETS_FEATURE.id, 'Pet-Friendly', null], 'the pets photo is never shown on a ranked chip');
+});
+
+test('initial desktop load: server HTML carries a board placeholder shown only at ≥ 1024px before hydration', () => {
+  const flow = read('src/components/onboarding/priority/PriorityFlow.jsx');
+  assert.match(flow, /isBoardStep\(step\)\n\s+\? <BoardGate/);
+  assert.match(flow, /className="flh-onboarding-step flh-ob-board-pending" aria-hidden="true"/);
+  const css = read('src/app/globals.css');
+  assert.match(css, /\.flh-onboarding-root \.flh-ob-board-gate \{ display: contents; \}/, 'phones: layout unchanged');
+  assert.match(css, /\.flh-onboarding-root \.flh-ob-board-pending, \.flh-onboarding-root \.flh-ob-step-board-label, \.flh-onboarding-root \.flh-ob-step-board-number \{ display: none; \}/);
+  const gate = css.slice(css.indexOf('.flh-onboarding-root .flh-ob-board-gate { display: contents; }'));
+  assert.match(gate, /@media \(min-width: 1024px\) \{\n\s+\.flh-onboarding-root \.flh-ob-board-gate > \.flh-ob-pf-step \{ display: none; \}\n\s+\.flh-onboarding-root \.flh-ob-board-gate > \.flh-ob-board-pending \{ display: grid; \}/);
+  assert.equal(String(DESKTOP_BOARD_MIN_WIDTH), gate.match(/@media \(min-width: (\d+)px\)/)[1], 'same breakpoint as the board');
+  const shell = read('src/components/onboarding/OnboardingShell.jsx');
+  assert.match(shell, /data-board=\{board\}/);
+  assert.match(read('src/components/onboarding/Onboarding.jsx'), /boardSteps=\{priorityFlow && !desktopBoard \? BOARD_CATEGORY_STEPS : null\}/, 'only the server / pre-hydration markup is marked');
+});
+
+test('onboarding top bar at 150–200% zoom: wraps instead of overlapping, only at ≤ 300 CSS px', () => {
+  const css = read('src/app/globals.css');
+  const block = css.slice(css.indexOf('@media (max-width: 300px) {\n  .flh-onboarding-root .flh-ob-topbar-row'));
+  assert.match(block, /^@media \(max-width: 300px\) \{\n  \.flh-onboarding-root \.flh-ob-topbar-row \{ grid-template-columns: auto minmax\(0, 1fr\) auto; column-gap: 8px; \}\n  \.flh-onboarding-root \.flh-ob-topbar \.flh-ob-wordmark \{ font-size: 15px; line-height: 1\.15; white-space: normal; text-align: center; \}\n\}/);
+  assert.match(block, /@media \(max-width: 200px\) \{[^}]*--flh-brandmark-size: 18px/);
+  // No phone at 100% is ≤ 300px wide, so the normal layout is untouched.
+  assert.match(css, /\.flh-ob-topbar-row \{ display: grid; grid-template-columns: 44px minmax\(0, 1fr\) 44px;/);
+});
