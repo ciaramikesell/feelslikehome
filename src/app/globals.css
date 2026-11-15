@@ -4024,7 +4024,41 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-onboarding-root .flh-ob-pf-error { margin: 0; color: var(--negative); font: 600 12.5px/1.4 var(--font-sans); }
 .flh-onboarding-root .flh-ob-pf-sheet-fine { margin: 14px 0 0; color: var(--ink-soft); font: 500 11.5px/1.4 var(--font-sans); }
 
-/* Review. */
+/* Review. The single column never grows past the screen: without
+   minmax(0, 1fr) the implicit track took its widest child's min-content and
+   was clipped by the root at large text / zoom (390px at 200%). */
+.flh-onboarding-root .flh-ob-pf-review,
+.flh-onboarding-root .flh-ob-pf-review .flh-ob-review-card { grid-template-columns: minmax(0, 1fr); }
+.flh-onboarding-root .flh-ob-pf-review .flh-ob-review-title { min-width: 0; overflow-wrap: break-word; hyphens: auto; }
+.flh-onboarding-root .flh-ob-pf-review .flh-ob-pf-card-level { max-width: 100%; }
+/* Large text / zoom (any phone at 150–200%, at most 287 CSS px wide):
+   headings, rows and priorities wrap instead of overrunning their card.
+   Every phone at 100% (320px and up) keeps the one-line layout. */
+@media (max-width: 300px) {
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-head { flex-wrap: wrap; row-gap: 0; }
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-head .flh-ob-review-edit { margin-left: -4px; }
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-card { padding: 16px; }
+  /* Block (not flex) so a long title wraps, and hyphenates a word wider than the card. */
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-title { display: block; }
+  .flh-onboarding-root .flh-ob-pf-review .flh-page-title { overflow-wrap: break-word; hyphens: auto; }
+  .flh-onboarding-root .flh-ob-pf-review-item { padding: 8px 8px 8px 10px; }
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-row { flex-wrap: wrap; row-gap: 2px; }
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-row dt { min-width: 0; }
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-row dd { margin-left: auto; }
+  /* Name and arrow on the first line; the level gets the full width below. */
+  .flh-onboarding-root .flh-ob-pf-review-item { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "name go" "level level"; row-gap: 6px; }
+  .flh-onboarding-root .flh-ob-pf-review-name { grid-area: name; }
+  .flh-onboarding-root .flh-ob-pf-review-item > svg { grid-area: go; }
+  .flh-onboarding-root .flh-ob-pf-review-item .flh-ob-pf-card-level { grid-area: level; justify-self: start; }
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-chips li { flex-wrap: wrap; row-gap: 2px; border-radius: 14px; }
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-chips strong { min-width: 0; overflow-wrap: break-word; }
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-actions .flh-ob-cta { gap: 10px; padding-block: 7px; white-space: normal; text-align: left; line-height: 1.25; }
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-actions .flh-ob-cta > span:first-child { min-width: 0; white-space: normal; overflow-wrap: break-word; }
+}
+/* 320px phones at 200%: a little more room inside each card. */
+@media (max-width: 200px) {
+  .flh-onboarding-root .flh-ob-pf-review .flh-ob-review-card { padding: 12px; }
+}
 .flh-onboarding-root .flh-ob-pf-review-total { margin: 0; padding: 12px 14px; border-radius: 14px; background: var(--sage); color: var(--positive); font: 600 13.5px/1.45 var(--font-sans); }
 .flh-onboarding-root .flh-ob-pf-review-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .flh-onboarding-root .flh-ob-pf-review-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; width: 100%; min-height: 48px; padding: 8px 10px 8px 12px; border: 1px solid var(--ob-line); border-radius: 12px; background: #fff; color: var(--ink); text-align: left; cursor: pointer; font: inherit; }

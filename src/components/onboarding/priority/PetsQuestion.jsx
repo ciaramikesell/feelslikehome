@@ -2,7 +2,7 @@
 
 import { useId, useState } from 'react';
 import { PETS_ANSWERS, petsChangeMessage, petsMovingAnswer, petsProvenance, restorePets, setPetsMoving } from '@/lib/rentalPets';
-import { PETS_ANSWER_TEXT, PETS_QUESTION } from '@/lib/priorityCategories';
+import { PETS_ANSWER_TEXT, PETS_QUESTION, petsAnswerHints } from '@/lib/priorityCategories';
 import FeatureVisual from './FeatureVisual';
 
 // Rental Essentials: "Will pets be moving with you?" (spec §7, D2).
@@ -13,11 +13,6 @@ import FeatureVisual from './FeatureVisual';
 // snapshot setPetsMoving returned. Skipping the screen writes nothing.
 // FLH asks nothing else: no pet type, breed, size, weight, count or name.
 
-const HINTS = Object.freeze({
-  yes: 'Pet-Friendly becomes a Must Have',
-  no: 'No pet requirement',
-  not_sure: 'Decide later—nothing changes',
-});
 
 // The quiet line under the choices, describing the saved state (never a change).
 function restingLine(priorities) {
@@ -50,6 +45,8 @@ export default function PetsQuestion({ priorities, patch }) {
     setStatus({ message: 'Undone. Your earlier answer is back.', undo: null });
   };
   const resting = status ? null : restingLine(priorities);
+  // What each answer would do now: never promises a change FLH won't make.
+  const hints = petsAnswerHints(priorities);
 
   return (
     <section className="flh-card flh-ob-pf-pets" aria-labelledby={`${id}-q`}>
@@ -64,7 +61,7 @@ export default function PetsQuestion({ priorities, patch }) {
             <label key={key} className={`flh-ob-pf-option flh-ob-pf-pets-choice${answer === key ? ' is-current' : ''}`}>
               <input type="radio" name={`${id}-pets`} value={key} checked={answer === key} onChange={() => choose(key)} aria-label={PETS_ANSWER_TEXT[key]} aria-describedby={`${id}-${key}-hint`} />
               <span className="flh-ob-pf-option-title" aria-hidden="true">{PETS_ANSWER_TEXT[key]}</span>
-              <span id={`${id}-${key}-hint`} className="flh-ob-pf-option-hint">{HINTS[key]}</span>
+              <span id={`${id}-${key}-hint`} className="flh-ob-pf-option-hint">{hints[key]}</span>
             </label>
           ))}
         </div>

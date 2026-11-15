@@ -13,7 +13,7 @@ import { CURRENT_ONBOARDING_VERSION, onboardingStepsFor } from '../src/lib/onboa
 import { addCriterion } from '../src/lib/searchProfile.js';
 import {
   LOT_SIZE_FEATURE, PETS_FEATURE, categoryView, lotSizeImportance, lotSizeRankable, lotSizeReview, otherChosenPriorities,
-  petsReview, priorityCategoriesFor, reviewCategories, setFeatureLevel, setLotSizeImportance,
+  petsAnswerHints, petsReview, priorityCategoriesFor, reviewCategories, setFeatureLevel, setLotSizeImportance, setLotSizeValue,
 } from '../src/lib/priorityCategories.js';
 import { petsAutoMarker, petsMovingAnswer, restorePets, setPetsMoving } from '../src/lib/rentalPets.js';
 
@@ -205,4 +205,90 @@ test('the desktop step rail names every rental screen (never a raw step key)', (
     for (const step of onboardingStepsFor(4, { answers: { searchType: type } })) assert.match(labels, new RegExp(`\\b${step}: '`), `${type}: ${step}`);
   }
   assert.match(source, /BASICS_LABEL_V4 = \{ home_rent: 'Rental Basics', apartment_rent: 'Apartment Basics' \}/);
+});
+
+/* ------------------------- pre-merge polish (PR #184) ------------------------- */
+
+test('lot size: enter → rank → clear → re-enter → rank again; clearing never leaves an importance behind', () => {
+  let p = setLotSizeValue(fresh('home_rent'), '0.5');
+  assert.deepEqual(p.lotSizeTarget, { value: '0.5', tier: 'dontcare' });
+  p = setLotSizeImportance(p, 'must');
+  assert.equal(lotItem(p).tier, 'must');
+  for (const cleared of ['', '   ']) {
+    const q = setLotSizeValue(p, cleared);
+    assert.deepEqual(q.lotSizeTarget, { value: cleared, tier: 'dontcare' }, 'clearing resets the importance');
+    assert.equal(lotItem(q), undefined, 'empty target: nothing in Match');
+  }
+  p = setLotSizeValue(setLotSizeValue(p, ''), '0.75');
+  assert.deepEqual(p.lotSizeTarget, { value: '0.75', tier: 'dontcare' }, 're-entering does not bring the old importance back');
+  assert.equal(lotItem(p), undefined, 'unranked target: nothing in Match');
+  assert.equal(lotSizeReview(p).scored, false);
+  p = setLotSizeImportance(p, 'important');
+  assert.deepEqual([lotItem(p).tier, lotItem(p).met], ['important', true], 'ranked again only when chosen');
+  // Editing the acreage without clearing it keeps the chosen importance.
+  assert.deepEqual(setLotSizeValue(p, '1').lotSizeTarget, { value: '1', tier: 'important' });
+});
+
+test('lot size: Home to Buy and apartments only ever change the value', () => {
+  const buyer = { ...fresh('home_buy'), lotSizeTarget: { value: '0.5', tier: 'important' } };
+  assert.deepEqual(setLotSizeValue(buyer, '').lotSizeTarget, { value: '', tier: 'important' }, 'Home to Buy unchanged');
+  const apartment = { ...fresh('apartment_rent'), lotSizeTarget: { value: '', tier: 'nice' } };
+  assert.deepEqual(setLotSizeValue(apartment, '').lotSizeTarget, { value: '', tier: 'nice' });
+  const flow = read('src/components/onboarding/priority/PriorityFlow.jsx');
+  assert.match(flow, /rankLot \? setLotSizeValue\(next, value\) : \{ \.\.\.next, lotSizeTarget: \{ \.\.\.next\.lotSizeTarget, value \} \}/);
+});
+
+test('pets hints: the Yes line never promises a change FLH will not make', () => {
+  const pets = (tier) => setFeatureLevel(fresh('home_rent'), PETS_FEATURE, tier);
+  const states = {
+    'no priority': fresh('home_rent'),
+    'automatic Must Have': setPetsMoving(fresh('home_rent'), 'yes', T).priorities,
+    'automatic over an earlier Important': setPetsMoving(pets('important'), 'yes', T).priorities,
+    'manual Must Have': pets('must'),
+    'manual Must Have, answered Yes': setPetsMoving(pets('must'), 'yes', T).priorities,
+    'manual Important': pets('important'),
+    'manual Nice to Have': pets('nice'),
+    'manually overridden after Yes': setFeatureLevel(setPetsMoving(fresh('home_rent'), 'yes', T).priorities, PETS_FEATURE, 'important'),
+  };
+  assert.deepEqual(Object.fromEntries(Object.entries(states).map(([name, p]) => [name, petsAnswerHints(p).yes])), {
+    'no priority': 'Pet-Friendly becomes a Must Have',
+    'automatic Must Have': 'Pet-Friendly is a Must Have because of this answer',
+    'automatic over an earlier Important': 'Pet-Friendly is a Must Have because of this answer',
+    'manual Must Have': 'Pet-Friendly is already a Must Have, as you set it',
+    'manual Must Have, answered Yes': 'Pet-Friendly is already a Must Have, as you set it',
+    'manual Important': 'Pet-Friendly goes from Important to Must Have',
+    'manual Nice to Have': 'Pet-Friendly goes from Nice to Have to Must Have',
+    'manually overridden after Yes': 'Pet-Friendly stays Important, as you set it',
+  });
+  // Each hint agrees with what setPetsMoving (unchanged) would actually do.
+  const LEVEL = { must: 'Must Have', important: 'Important', nice: 'Nice to Have' };
+  for (const [name, p] of Object.entries(states)) {
+    const hints = petsAnswerHints(p);
+    for (const answer of ['yes', 'no', 'not_sure']) {
+      if (petsMovingAnswer(p) === answer) continue; // the selected answer is not re-applied
+      const after = setPetsMoving(p, answer, T).priorities.features.tiers['Pets Allowed'];
+      const level = LEVEL[after];
+      if (level) assert.ok(hints[answer].includes(level), `${name} / ${answer}: "${hints[answer]}" should name ${level}`);
+      else assert.match(hints[answer], /no pet requirement|nothing changes|becomes/i, `${name} / ${answer}: "${hints[answer]}"`);
+      assert.equal(/goes from|becomes/.test(hints[answer]), setPetsMoving(p, answer, T).change === 'set_must', `${name} / ${answer}: promises a change only when one happens`);
+    }
+  }
+  assert.deepEqual(petsAnswerHints(states['automatic over an earlier Important']), {
+    yes: 'Pet-Friendly is a Must Have because of this answer',
+    no: 'Pet-Friendly goes back to Important',
+    not_sure: 'Decide later—Pet-Friendly goes back to Important',
+  });
+  assert.deepEqual(petsAnswerHints(states['manual Important']).no, 'Pet-Friendly stays Important, as you set it');
+  const source = read('src/components/onboarding/priority/PetsQuestion.jsx');
+  assert.match(source, /const hints = petsAnswerHints\(priorities\);/);
+  assert.doesNotMatch(source, /const HINTS/);
+});
+
+test('Review: the single column and its cards never grow past the screen (200% zoom fix), scoped to the V3 Review', () => {
+  const css = read('src/app/globals.css');
+  assert.match(css, /\.flh-onboarding-root \.flh-ob-pf-review,\n\.flh-onboarding-root \.flh-ob-pf-review \.flh-ob-review-card \{ grid-template-columns: minmax\(0, 1fr\); \}/);
+  // Wrapping rules only at large text / zoom (≤ 300 CSS px), so every phone at 100% keeps its layout.
+  const narrow = css.slice(css.indexOf('/* Large text / zoom (any phone at 150–200%'));
+  assert.match(narrow, /^[\s\S]*?@media \(max-width: 300px\) \{[\s\S]*?\.flh-ob-pf-review \.flh-ob-review-head \{ flex-wrap: wrap;/);
+  assert.match(narrow, /\.flh-ob-pf-review \.flh-ob-review-actions \.flh-ob-cta > span:first-child \{ min-width: 0; white-space: normal;/);
 });

@@ -11,7 +11,7 @@ import { basicsFieldsFor, LEVEL_COPY, PRIORITY_LEVELS } from '@/lib/searchProfil
 import {
   GARAGE_TYPES, LOT_SIZE_FEATURE, addOwnFeature, categoryView, featureLevel, garageImportance, garageType, lotSizeImportance,
   lotSizeRankable, lotSizeValue, priorityCategory, renameOwnFeature, setFeatureLevel, setGarageImportance, setGarageType,
-  setLotSizeImportance, switchMessage, switchPrioritySearchType,
+  setLotSizeImportance, setLotSizeValue, switchMessage, switchPrioritySearchType,
 } from '@/lib/priorityCategories';
 import FeatureCard from './FeatureCard';
 import FeatureVisual from './FeatureVisual';
@@ -198,7 +198,7 @@ export function CategoryStep({ categoryKey, priorities, patch, header, footer, p
       {category.question && <PetsQuestion priorities={priorities} patch={patch} />}
       {lotSize && (
         <section className="flh-card flh-ob-pf-question">
-          <UnitField label="Ideal lot size" unit="acres" decimal value={priorities.lotSizeTarget.value} onChange={(value) => patch((next) => { next.lotSizeTarget = { ...next.lotSizeTarget, value }; return next; })} />
+          <UnitField label="Ideal lot size" unit="acres" decimal value={priorities.lotSizeTarget.value} onChange={(value) => patch((next) => (rankLot ? setLotSizeValue(next, value) : { ...next, lotSizeTarget: { ...next.lotSizeTarget, value } }))} />
           {rankLot && <LotSizeImportance priorities={priorities} onOpen={() => picker.open({ ...LOT_SIZE_FEATURE, level: lotSizeImportance(priorities) })} />}
         </section>
       )}

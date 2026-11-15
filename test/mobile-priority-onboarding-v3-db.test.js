@@ -14,7 +14,7 @@ const { normalizePriorities } = await import('../src/lib/constants.js');
 const { chooseSearchType } = await import('../src/lib/onboardingBasics.js');
 const { criterionAnswerPatch } = await import('../src/lib/matchCriteria.js');
 const { priorityLevels } = await import('../src/lib/searchProfile.js');
-const { PETS_FEATURE, addOwnFeature, categoryView, featureLevel, garageImportance, garageType, setFeatureLevel, setGarageImportance, setGarageType, setLotSizeImportance, switchPrioritySearchType } = await import('../src/lib/priorityCategories.js');
+const { PETS_FEATURE, addOwnFeature, categoryView, featureLevel, garageImportance, garageType, setFeatureLevel, setGarageImportance, setGarageType, setLotSizeImportance, setLotSizeValue, switchPrioritySearchType } = await import('../src/lib/priorityCategories.js');
 const {
   acceptInvitation, createInvitation, getHomesForUser, resolveCoBuyerComparePerspectives, resolvePriorities, savePriorities,
   saveHomePersonalAndShared, saveHomePersonalState,
@@ -320,4 +320,22 @@ dbTest('Home to Rent lot-size importance and Review edits: JS = SQL for co-rente
   assert.deepEqual(aStored.lotSizeTarget, { value: '0.5', tier: 'dontcare' });
   const aUnranked = await both(a, b);
   for (const name of Object.keys(homeIds)) assert.equal(lot(aUnranked[name]), undefined, name);
+
+  // Enter → rank → clear → re-enter → rank again (Home to Rent): the cleared
+  // and the re-entered-but-unranked targets count in neither scorer.
+  const ranked = setLotSizeImportance(aDoc, 'nice');
+  const cleared = setLotSizeValue(ranked, '');
+  await savePriorities(db.clientFor(a), { id: search }, a, cleared);
+  assert.deepEqual(normalizePriorities(await resolvePriorities(db.clientFor(a), { id: search }, a)).lotSizeTarget, { value: '', tier: 'dontcare' });
+  const aCleared = await both(a, b);
+  for (const name of Object.keys(homeIds)) assert.equal(lot(aCleared[name]), undefined, `cleared: ${name}`);
+  const reentered = setLotSizeValue(cleared, '0.5');
+  await savePriorities(db.clientFor(a), { id: search }, a, reentered);
+  assert.deepEqual(normalizePriorities(await resolvePriorities(db.clientFor(a), { id: search }, a)).lotSizeTarget, { value: '0.5', tier: 'dontcare' }, 'the old importance is not reactivated');
+  const aReentered = await both(a, b);
+  for (const name of Object.keys(homeIds)) assert.equal(lot(aReentered[name]), undefined, `re-entered: ${name}`);
+  await savePriorities(db.clientFor(a), { id: search }, a, setLotSizeImportance(reentered, 'important'));
+  const aRankedAgain = await both(a, b);
+  assert.deepEqual([lot(aRankedAgain.big).tier, lot(aRankedAgain.big).met, lot(aRankedAgain.small).met, lot(aRankedAgain.unknown).evaluated], ['important', true, false, false]);
+  assert.equal(JSON.stringify(db.admin(`select priorities from public.search_member_priorities where search_id = '${search}' and user_id = '${b}'`)[0].priorities), bRow, 'B’s row still untouched');
 });

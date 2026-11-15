@@ -855,7 +855,7 @@ unchanged.
   No, keyboard arrows, hints, a ranked custom addition, acreage ranking,
   Review edits of acreage, Pet-Friendly and the pets answer); resumed sessions.
 
-### Verification (this change)
+### Verification (first push, `98f46bb`)
 
 | Check | Result |
 |---|---|
@@ -871,18 +871,59 @@ Basics "Rental Basics" / "Apartment Basics" for renters.
 
 Contact sheets: `docs/rental-onboarding-stage3-screenshots/`.
 
+### Pre-merge polish (founder review of #184)
+
+1. **Review at large text / zoom (also fixes Home to Buy).** The V3 Review
+   step is a grid whose implicit column took its widest child's min-content,
+   so at 150–200% zoom the whole column was wider than the screen and the
+   onboarding root clipped it (no sideways scroll, but cut-off rows, badges
+   and buttons). Fix, scoped to `.flh-ob-pf-review` (the six-step preview and
+   every other screen are untouched):
+   - the Review column and each card are `minmax(0, 1fr)`;
+   - only at ≤ 300 CSS px (any phone at 150–200%): section titles wrap
+     (block, hyphenating a word wider than the card), the Edit link wraps
+     under the title, Basics rows wrap the value under the label, each
+     priority puts its name and arrow on the first line and its level on a
+     full-width second line, area chips wrap their type under the name, and
+     the finish button's label wraps beside its arrow (still ≥ 56 px tall).
+   Every phone at 100% (320 / 375 / 390 / 430 px) keeps the earlier layout:
+   Home to Buy Review is pixel-identical there.
+2. **Clearing Ideal lot size (Home to Rent).** `setLotSizeValue`: clearing the
+   acreage also returns `lotSizeTarget.tier` to `dontcare`, so re-entered
+   acreage starts unranked and is scored only after an importance is chosen
+   again. Editing the acreage without clearing it keeps the importance. Home
+   to Buy and apartments only ever change the value, as before.
+3. **Context-aware pets wording.** `petsAnswerHints` (presentation only;
+   `rentalPets.js` is unchanged) describes what each answer would do now:
+
+   | Pet-Friendly now | Yes | No | Not sure yet |
+   |---|---|---|---|
+   | not a priority | becomes a Must Have | No pet requirement | Decide later—nothing changes |
+   | FLH's Must Have (Yes answered) | is a Must Have because of this answer | goes back to <earlier level> / No pet requirement | Decide later—goes back to <earlier level> / no pet requirement |
+   | the renter's own Must Have | is already a Must Have, as you set it | stays Must Have, as you set it | Decide later—stays Must Have |
+   | the renter's own other level, not answered Yes | goes from <level> to Must Have | stays <level>, as you set it | Decide later—stays <level> |
+   | the renter's own other level after Yes (manual override) | stays <level>, as you set it | stays <level>, as you set it | Decide later—stays <level> |
+
+   A test checks every state × answer against what `setPetsMoving` actually
+   does: a hint names the resulting level, and promises a change only when one
+   happens. Undo is unchanged.
+
+Verification after the polish: `npm test` with real Postgres 1,516 pass, 0
+fail (2 pre-existing RentCast skips); browser QA 578 / 578, including a Review sweep at
+320 / 375 / 390 / 430 px × 100 / 150 / 200% (Home to Buy, Home to Rent,
+Apartment, shared setup: nothing clipped or overrunning, Review buttons
+≥ 44 px); Home to Buy V3 (240) and live / six-step (480) screenshots against
+`main`: 0 pixels changed; Home to Buy Review at 320 / 375 / 430 px at 100%:
+0 pixels changed; `npm run build` passes. Sheets: `review-200-zoom-before-after.jpg`,
+`review-zoom-widths.jpg`, `home-to-buy-review-100-unchanged.jpg`, `pets-hints-390.jpg`.
+
 ### For founder review
 
-- **Pre-existing, not changed here:** at 390 px with 200% zoom, the V3 Review
-  screen (Home to Buy as well as rentals) clips the right edge of some rows
-  inside its cards; the page itself does not scroll sideways. Fixing it changes
-  Home to Buy pixels, so it is left for a separate change.
-- Lot size: clearing the acreage keeps a chosen importance stored (inert:
-  Match needs an acreage), as My Search's Basics editor does; re-entering
-  acreage shows it again.
-- The Yes hint reads "Pet-Friendly becomes a Must Have" even when the renter
-  already set it to Must Have themselves (the status line then says it already
-  is).
+- **Pre-existing, not changed here:** at 200% zoom the shared onboarding top
+  bar draws the step counter ("10/10") over the end of the "Feels Like Home"
+  wordmark, on every V3 screen (Home to Buy too). It is outside the Review
+  content and would change every buyer screen under zoom, so it is left for a
+  separate change.
 
 ### Still for Stage 4
 

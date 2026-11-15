@@ -33,7 +33,7 @@ import {
   PRIORITY_LEVELS, addCriterion, isCriterionSelected, moveCriterion, priorityLevels, searchExperienceKey, setGaragePreference,
 } from './searchProfile.js';
 import { switchSearchType } from './whatMattersCatalog.js';
-import { PETS_CRITERION, PETS_TEXT, clearPetsState, petsProvenance, restorePetsAfterSwitch, snapshotPets } from './rentalPets.js';
+import { PETS_CRITERION, PETS_TEXT, clearPetsState, petsAutoMarker, petsProvenance, restorePetsAfterSwitch, snapshotPets } from './rentalPets.js';
 import { groupValueLabel, whatMattersGroups } from './whatMattersGroups.js';
 
 const HOMES = Object.freeze(['home_buy', 'home_rent']);
@@ -766,6 +766,41 @@ export const PETS_FEATURE = Object.freeze({
 });
 export const PETS_ANSWER_TEXT = Object.freeze({ yes: 'Yes', no: 'No', not_sure: 'Not sure yet' });
 
+// The line under each pets answer, describing what choosing it would do to
+// Pet-Friendly given the document as it is now. Presentation only: it mirrors
+// setPetsMoving (src/lib/rentalPets.js), which is unchanged, so the copy never
+// promises a change FLH won't make.
+//   no priority          Yes: becomes a Must Have
+//   automatic Must Have  Yes: a Must Have because of this answer; No / Not sure: goes back
+//   manual Must Have     Yes: already a Must Have, as you set it
+//   manual other level   Yes: goes from <level> to Must Have (or, already
+//                        answered Yes, stays as you set it); No / Not sure: stays
+const LEVEL_NAME = Object.freeze({ must: 'Must Have', important: 'Important', nice: 'Nice to Have' });
+export function petsAnswerHints(raw) {
+  const priorities = normalizePriorities(raw);
+  const { answer, tier, automatic } = petsProvenance(priorities);
+  const marker = petsAutoMarker(priorities);
+  if (marker) {
+    const previous = LEVEL_NAME[marker.previousTier];
+    return {
+      yes: automatic ? 'Pet-Friendly is a Must Have because of this answer' : 'Pet-Friendly becomes a Must Have',
+      no: previous ? `Pet-Friendly goes back to ${previous}` : 'No pet requirement',
+      not_sure: previous ? `Decide later—Pet-Friendly goes back to ${previous}` : 'Decide later—no pet requirement',
+    };
+  }
+  if (tier) {
+    const level = LEVEL_NAME[tier];
+    return {
+      yes: tier === 'must'
+        ? 'Pet-Friendly is already a Must Have, as you set it'
+        : (answer === 'yes' ? `Pet-Friendly stays ${level}, as you set it` : `Pet-Friendly goes from ${level} to Must Have`),
+      no: `Pet-Friendly stays ${level}, as you set it`,
+      not_sure: `Decide later—Pet-Friendly stays ${level}`,
+    };
+  }
+  return { yes: 'Pet-Friendly becomes a Must Have', no: 'No pet requirement', not_sure: 'Decide later—nothing changes' };
+}
+
 // Chosen priorities that no category screen shows (earlier My Search picks,
 // an old flow's choices, Home Preferences). Kept, counted, editable on Review.
 // Rentals: Pet-Friendly is left out because the Rental Essentials row shows
@@ -808,6 +843,17 @@ export const lotSizeValue = (raw) => String(normalizePriorities(raw).lotSizeTarg
 export function lotSizeImportance(raw) {
   const tier = normalizePriorities(raw).lotSizeTarget?.tier;
   return PRIORITY_LEVELS.includes(tier) ? tier : null;
+}
+
+// The acreage as typed. Home to Rent: clearing it also clears its importance
+// (tier back to 'dontcare'), so typing a new acreage never silently brings
+// back an old ranking; the renter chooses again. Home to Buy (and any search
+// without ranked acreage) only ever changes the value, as before.
+export function setLotSizeValue(raw, value) {
+  const priorities = normalizePriorities(raw);
+  const lotSizeTarget = { ...priorities.lotSizeTarget, value };
+  if (lotSizeRankable(priorities) && !String(value ?? '').trim()) lotSizeTarget.tier = 'dontcare';
+  return { ...priorities, lotSizeTarget };
 }
 
 // A level ranks the acreage; anything else ('none', Not important) returns it

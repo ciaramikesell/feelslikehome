@@ -286,7 +286,10 @@ for (const zoom of [1.5, 2]) {
   check('rent: no ranking cards and no Add your own on Rental Essentials', (await page.locator('.flh-ob-pf-card').count()) === 0 && (await page.locator('.flh-ob-pf-add').count()) === 0);
   check('rent: the pets question uses the pet-friendly photo', await page.locator('.flh-ob-pf-pets-media img').evaluate((img) => /pet-friendly-(400|800)\.webp$/.test(img.currentSrc) && img.naturalWidth > 0));
   check('rent: nothing is preselected', !(await radio('Yes').isChecked()) && !(await radio('No').isChecked()) && !(await radio('Not sure yet').isChecked()));
+  const describedBy = async (name) => page.getByRole('radio', { name, exact: true }).evaluate((input) => document.getElementById(input.getAttribute('aria-describedby'))?.textContent);
+  check('rent: with no priority, Yes says Pet-Friendly becomes a Must Have', (await describedBy('Yes')) === 'Pet-Friendly becomes a Must Have');
   await radio('Yes').check();
+  check('rent: after Yes, its hint says the Must Have is because of this answer', (await describedBy('Yes')) === 'Pet-Friendly is a Must Have because of this answer' && (await describedBy('No')) === 'No pet requirement');
   check('rent: Yes says Pet-Friendly is now a Must Have, with Undo', /Pet-Friendly is now a Must Have\./.test(await status()) && await page.getByRole('button', { name: 'Undo' }).isVisible());
   await shot(page, 'rent-flow-pets-yes-390');
   await page.getByRole('button', { name: 'Undo' }).click();
@@ -337,6 +340,14 @@ for (const zoom of [1.5, 2]) {
   await lotSheet.getByRole('button', { name: /^Important/ }).click();
   check('rent: lot size ranked Important', await page.getByRole('button', { name: /^Lot size importance: Important/ }).isVisible() && await page.getByText(/at least 0\.5 acres count toward your Match/).isVisible());
   await shot(page, 'rent-flow-lot-ranked-390');
+  // Clear → re-enter: the old importance is not silently reactivated.
+  await page.getByRole('textbox', { name: /Ideal lot size/ }).fill('');
+  check('rent: clearing the acreage hides and resets its importance', (await page.getByRole('button', { name: /Lot size importance/ }).count()) === 0);
+  await page.getByRole('textbox', { name: /Ideal lot size/ }).fill('0.5');
+  check('rent: re-entered acreage starts unranked', await page.getByRole('button', { name: /^Lot size importance: not chosen/ }).isVisible());
+  await page.getByRole('button', { name: /^Lot size importance: not chosen/ }).click();
+  await page.getByRole('dialog', { name: 'Ideal lot size' }).getByRole('button', { name: /^Important/ }).click();
+  check('rent: ranked again only when chosen explicitly', await page.getByRole('button', { name: /^Lot size importance: Important/ }).isVisible());
   await page.getByRole('button', { name: 'Landscaping' }).click();
   check('rent: Landscaping hint', await page.getByRole('dialog', { name: 'Landscaping' }).getByText('A well-kept, landscaped yard.').isVisible());
   await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
@@ -421,9 +432,51 @@ for (const zoom of [1.5, 2]) {
   check('resume: a step the apartment flow lacks falls back to a real screen', !(await page.getByText('This step isn’t available').count()));
   await page.goto(url('step=cat_essentials&state=manual&search=home_rent'), { waitUntil: 'networkidle' });
   await ready(page);
+  const describedBy = async (name) => page.getByRole('radio', { name, exact: true }).evaluate((input) => document.getElementById(input.getAttribute('aria-describedby'))?.textContent);
+  check('resume: FLH’s Must Have over an earlier own Important — No says it goes back to Important', (await describedBy('No')) === 'Pet-Friendly goes back to Important');
   await page.getByRole('radio', { name: 'No', exact: true }).check();
   check('resume: FLH’s Must Have over an earlier own Important — No restores Important', /Pet-Friendly is back to Important\./.test(await page.locator('.flh-ob-pf-pets-status').textContent()));
+  check('a renter’s own Important: Yes says it goes from Important to Must Have, No says it stays', (await describedBy('Yes')) === 'Pet-Friendly goes from Important to Must Have' && (await describedBy('No')) === 'Pet-Friendly stays Important, as you set it');
+  await page.goto(url('step=review&state=legacy&search=home_rent'), { waitUntil: 'networkidle' });
+  await ready(page);
+  await page.getByRole('button', { name: /^Pet-Friendly:/ }).click();
+  await page.getByRole('dialog', { name: 'Pet-Friendly' }).getByRole('button', { name: /^Must Have/ }).click();
+  await page.getByRole('button', { name: 'Edit: Rental Essentials' }).click();
+  await page.getByRole('heading', { name: /rental essentials/i }).waitFor();
+  check('a renter’s own Must Have (set on Review): Yes says it already is, never that FLH will make it one', (await describedBy('Yes')) === 'Pet-Friendly is already a Must Have, as you set it');
+  await shot(page, 'pets-manual-must-hint-390');
   await page.close();
+}
+
+// 2e. Review at every phone width and zoom: nothing overruns its card or the
+// screen, and no text is wider than its own box (labels, priorities, badges,
+// buttons). Home to Buy, both rental flows and shared setup.
+for (const width of [320, 375, 390, 430]) {
+  for (const zoom of [1, 1.5, 2]) {
+    const page = await browser.newPage({ viewport: { width: Math.round(width / zoom), height: Math.round(844 / zoom) }, deviceScaleFactor: 2 * zoom });
+    for (const [name, query] of [['review', 'step=review&state=legacy'], ['rent-review', 'step=review&state=legacy&search=home_rent'], ['apartment-review', 'step=review&state=populated&search=apartment_rent'], ['shared-review', 'step=review&state=populated&mode=shared']]) {
+      await page.goto(url(query), { waitUntil: 'networkidle' });
+      await ready(page);
+      const bad = await page.evaluate(() => {
+        const vw = document.documentElement.clientWidth;
+        const out = [];
+        for (const el of document.querySelectorAll('.flh-ob-review *')) {
+          if (el.closest('.flh-ob-review-mark') || el instanceof SVGElement) continue; // the brand mark's badge overlaps by design
+          const r = el.getBoundingClientRect();
+          if (!r.width) continue;
+          const card = el.closest('.flh-ob-review-card, .flh-ob-review-actions, .flh-onboarding-header, .flh-ob-pf-review-total');
+          const cr = card?.getBoundingClientRect();
+          if (r.right > vw + 0.5 || r.left < -0.5 || (card && card !== el && r.right > cr.right + 0.5) || (el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 1)) out.push(`${el.className || el.tagName}: "${(el.textContent || '').trim().slice(0, 24)}"`);
+        }
+        return [...new Set(out)];
+      });
+      check(`${name} @${width} ${zoom * 100}%: nothing clipped or overrunning`, bad.length === 0, bad.slice(0, 4).join(' | '));
+      const targets = await page.evaluate(() => [...document.querySelectorAll('.flh-ob-review button')].filter((b) => b.getBoundingClientRect().height < 44).map((b) => b.textContent.trim().slice(0, 20)));
+      check(`${name} @${width} ${zoom * 100}%: Review buttons stay ≥ 44px tall`, targets.length === 0, targets.join(' | '));
+      if (zoom === 2 && ['review', 'rent-review'].includes(name)) await shot(page, `${name}-${width}-zoom-200`);
+    }
+    await page.close();
+  }
 }
 
 // 3. Photos: shown on the cards, card-sized, lazy, one screen at a time.
