@@ -598,28 +598,87 @@ export const setGarageType = (raw, value) => setGaragePreference(raw, value);
 // a switch to Home to Buy clears the answer and the marker along with
 // Pet-Friendly (the caller's Undo restores the whole earlier document).
 //
-// Garage: a house's garage (Home to Buy, Home to Rent) and an apartment
-// building's Garage Parking share the identity exterior:Garage, but they are
-// not the same wish. Moving into Apartment to Rent therefore never turns a
-// house Garage priority into Garage Parking: the existing switch deactivates
-// it (and says so), and its level is set aside in `exterior.heldGarage`
-// (additive, never read by Match). Garage Parking counts only once the renter
-// chooses it. Moving back to a house search restores the held level.
-const HOUSE_GARAGE = Object.freeze({ categoryKey: 'exterior', label: 'Garage', kind: 'check' });
+// Garage: a house's Garage (Home to Buy, Home to Rent) and an apartment
+// building's Garage Parking share the stored identity exterior:Garage, but
+// they are different preferences, and neither ever becomes the other. Only one
+// is active at a time (one tier, so Match counts it once). When a switch
+// crosses between a house search and an apartment search:
+//   • the source kind's preference (its level, and for a house its
+//     attached / detached garagePreference) is set aside in
+//     `exterior.heldGarage[kind]` and deactivated;
+//   • the destination kind's held preference, if any, is restored; otherwise
+//     the destination garage starts unselected.
+// The renter's later explicit choice for the destination is never overwritten:
+// a held level is only applied at the moment of the switch, and is replaced by
+// whatever is active when the renter switches away again. `heldGarage` is
+// additive and never read by Match (JS or SQL). Home to Buy ↔ Home to Rent is
+// a house ↔ house switch and is unchanged.
+const GARAGE = Object.freeze({ categoryKey: 'exterior', label: 'Garage', kind: 'check' });
+export const GARAGE_KIND_TEXT = Object.freeze({ house: 'Garage', apartment: 'Garage Parking' });
+const garageKind = (experience) => (experience === 'apartment_rent' ? 'apartment' : 'house');
+// A chosen level, or an explicit Not important ('dontcare'), is held.
+const HELD_TIERS = Object.freeze([...PRIORITY_LEVELS, 'dontcare']);
+
+// The held preferences as { house?, apartment? }. Anything malformed is ignored.
+export function heldGaragePreferences(raw) {
+  const held = normalizePriorities(raw).exterior?.heldGarage;
+  if (!held || typeof held !== 'object' || Array.isArray(held)) return {};
+  return Object.fromEntries(['house', 'apartment']
+    .filter((kind) => held[kind] && typeof held[kind] === 'object' && (HELD_TIERS.includes(held[kind].tier) || held[kind].garagePreference))
+    .map((kind) => [kind, { ...held[kind] }]));
+}
+
+function crossGarage(before, next, fromKind, toKind) {
+  const held = heldGaragePreferences(before);
+  const exterior = { ...next.exterior };
+  // Set the source preference aside (or clear an older held one).
+  const stored = before.exterior?.tiers?.Garage;
+  const tier = HELD_TIERS.includes(stored) ? stored : null;
+  const source = {
+    ...(tier ? { tier } : {}),
+    ...(fromKind === 'house' && before.exterior?.garagePreference ? { garagePreference: before.exterior.garagePreference } : {}),
+  };
+  if (Object.keys(source).length) held[fromKind] = source; else delete held[fromKind];
+  // Deactivate it: the destination garage starts unanswered (no tier at all,
+  // so a house Garage does not read as "Not important").
+  if (Object.hasOwn(exterior.tiers || {}, 'Garage')) {
+    const { Garage, ...tiers } = exterior.tiers;
+    exterior.tiers = tiers;
+  }
+  delete exterior.garagePreference;
+  // Restore the destination's own held preference.
+  const target = held[toKind];
+  delete held[toKind];
+  if (Object.keys(held).length) exterior.heldGarage = held; else delete exterior.heldGarage;
+  let out = { ...next, exterior };
+  if (target?.garagePreference) out = { ...out, exterior: { ...out.exterior, garagePreference: target.garagePreference } };
+  if (PRIORITY_LEVELS.includes(target?.tier)) out = addCriterion(out, GARAGE, target.tier);
+  else if (target?.tier === 'dontcare') out = moveCriterion(out, 'exterior', 'Garage', 'dontcare');
+  return {
+    priorities: out,
+    saved: PRIORITY_LEVELS.includes(tier) ? GARAGE_KIND_TEXT[fromKind] : null,
+    restoredGarage: PRIORITY_LEVELS.includes(target?.tier) ? GARAGE_KIND_TEXT[toKind] : null,
+  };
+}
+
+//   → { priorities, removed, garage: { saved, restored } } — `garage` names
+//     the preference set aside for the earlier kind of search and the one
+//     brought back, for the switch message (null when nothing moved).
 export function switchPrioritySearchType(raw, choiceKey) {
   const before = normalizePriorities(raw);
-  if (before.onboardingSearchType === choiceKey) return { priorities: before, removed: [] };
+  const none = { saved: null, restored: null };
+  if (before.onboardingSearchType === choiceKey) return { priorities: before, removed: [], garage: none };
   const beforeItems = priorityLevels(before).flatMap((level) => level.items);
   const pets = snapshotPets(before);
-  const fromApartment = searchExperienceKey(before) === 'apartment_rent';
-  const toApartment = choiceKey === 'apartment_rent' && !fromApartment;
-  const garageTier = beforeItems.find((item) => item.key === 'exterior:Garage')?.tier || null;
+  const fromKind = garageKind(searchExperienceKey(before) || 'home_buy');
+  const toKind = garageKind(choiceKey);
+  const crossing = fromKind !== toKind;
   const result = switchSearchType(before, choiceKey);
   let next = result.priorities;
   const offered = new Map(allOffered(next).map((feature) => [normalizeFeatureKey(feature.id), feature]));
   const restored = new Set();
   for (const item of beforeItems) {
-    if (toApartment && item.key === 'exterior:Garage') continue;
+    if (crossing && item.key === 'exterior:Garage') continue;
     const feature = offered.get(normalizeFeatureKey(item.key));
     if (!feature || featureLevel(next, feature)) continue;
     next = setFeatureLevel(next, feature, item.tier);
@@ -632,17 +691,29 @@ export function switchPrioritySearchType(raw, choiceKey) {
   } else {
     next = clearPetsState(next);
   }
-  if (toApartment && garageTier) {
-    next = { ...next, exterior: { ...next.exterior, heldGarage: { tier: garageTier, from: searchExperienceKey(before) } } };
-  } else if (fromApartment && choiceKey !== 'apartment_rent' && next.exterior?.heldGarage) {
-    const { heldGarage, ...exterior } = next.exterior;
-    next = { ...next, exterior };
-    if (PRIORITY_LEVELS.includes(heldGarage.tier)) {
-      next = addCriterion(next, HOUSE_GARAGE, heldGarage.tier);
-      restored.add('Garage');
-    }
+  let garage = none;
+  if (crossing) {
+    const moved = crossGarage(before, next, fromKind, toKind);
+    next = moved.priorities;
+    garage = { saved: moved.saved, restored: moved.restoredGarage };
+    // Saved, not removed: the switch message says so instead.
+    if (moved.saved || moved.restoredGarage) { restored.add('Garage'); restored.add('Garage Parking'); }
   }
-  return { priorities: next, removed: result.removed.filter((label) => !restored.has(label)) };
+  return { priorities: next, removed: result.removed.filter((label) => !restored.has(label)), garage };
+}
+
+// The status line after a switch (Screen 1). `phrase` is e.g. "an apartment
+// to rent". A house Garage and apartment Garage Parking are never converted
+// into each other: the earlier one is saved for its kind of search and comes
+// back on switching back. Without a garage note the wording is unchanged.
+const GARAGE_SEARCHES = Object.freeze({ Garage: 'home searches', 'Garage Parking': 'apartment searches' });
+export function switchMessage(phrase, { removed = [], garage = null } = {}) {
+  const parts = [`Now looking for ${phrase}.`];
+  if (removed.length) parts.push(`Removed what no longer applies: ${removed.join(', ')}.`);
+  if (garage?.saved) parts.push(`Your ${garage.saved} preference is saved for ${GARAGE_SEARCHES[garage.saved]} and comes back if you switch back.`);
+  if (garage?.restored) parts.push(`Your earlier ${garage.restored} preference is back.`);
+  parts.push('Everything else is kept.');
+  return parts.join(' ');
 }
 
 /* ---------------------------------- review --------------------------------- */

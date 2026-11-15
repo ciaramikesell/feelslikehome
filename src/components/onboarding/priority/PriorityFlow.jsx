@@ -10,7 +10,7 @@ import { STEPPERS } from '@/lib/onboardingBasics';
 import { basicsFieldsFor, LEVEL_COPY, PRIORITY_LEVELS } from '@/lib/searchProfile';
 import {
   GARAGE_TYPES, addOwnFeature, categoryView, featureLevel, garageImportance, garageType, priorityCategory,
-  renameOwnFeature, setFeatureLevel, setGarageImportance, setGarageType, switchPrioritySearchType,
+  renameOwnFeature, setFeatureLevel, setGarageImportance, setGarageType, switchMessage, switchPrioritySearchType,
 } from '@/lib/priorityCategories';
 import FeatureCard from './FeatureCard';
 import FeatureVisual from './FeatureVisual';
@@ -194,12 +194,14 @@ function SearchTypeStep({ priorities, patch, header, footerFor, onSearchType }) 
   const chooseType = (key) => {
     setInvalid(false);
     if (key === choice) return;
-    const { priorities: next, removed } = switchPrioritySearchType(priorities, key);
+    const { priorities: next, removed, garage } = switchPrioritySearchType(priorities, key);
     patch(() => next);
     onSearchType(key);
     setSwitched((earlier) => {
       const all = [...new Set([...(earlier?.removed || []), ...removed])];
-      return all.length ? { removed: all, previous: earlier?.previous || priorities, previousType: earlier?.previousType || choice } : null;
+      // The garage note describes this switch only (a held preference moves with each switch).
+      const garageNote = garage?.saved || garage?.restored ? garage : null;
+      return all.length || garageNote ? { removed: all, garage: garageNote, previous: earlier?.previous || priorities, previousType: earlier?.previousType || choice } : null;
     });
   };
   const undo = () => { patch(() => switched.previous); onSearchType(switched.previousType); setSwitched(null); };
@@ -215,7 +217,7 @@ function SearchTypeStep({ priorities, patch, header, footerFor, onSearchType }) 
       <SearchTypeControl choice={choice} onChoose={chooseType} invalid={invalid} groupRef={typeRef} />
       {switched && (
         <div className="flh-ob-switch-note" role="status">
-          <p>Now looking for {SEARCH_TYPE_PHRASES[choice]}. Removed what no longer applies: {switched.removed.join(', ')}. Everything else is kept.</p>
+          <p>{switchMessage(SEARCH_TYPE_PHRASES[choice], switched)}</p>
           <button type="button" className="flh-text-action" onClick={undo}>Undo</button>
         </div>
       )}

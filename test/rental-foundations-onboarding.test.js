@@ -14,7 +14,7 @@ import { ONBOARDING_FLOWS, beginOnboarding, onboardingStepsFor, resumeOnboarding
 import { addCriterion, isCriterionSelected, priorityLevels } from '../src/lib/searchProfile.js';
 import {
   PETS_QUESTION, PRIORITY_CATEGORIES, addOwnFeature, categoryView, featureLevel, garageImportance, garageType, normalizeFeatureKey, otherChosenPriorities,
-  priorityCategoriesFor, reviewCategories, setFeatureLevel, setGarageImportance, setGarageType, storedFeatureLabel, switchPrioritySearchType,
+  priorityCategoriesFor, reviewCategories, setFeatureLevel, setGarageImportance, setGarageType, storedFeatureLabel, switchMessage, switchPrioritySearchType,
 } from '../src/lib/priorityCategories.js';
 import { setPetsMoving } from '../src/lib/rentalPets.js';
 
@@ -333,7 +333,7 @@ test('switching rental type keeps what the new flow offers and lists what it rem
   assert.deepEqual([level('features:Central Air'), level('features:In-Unit Laundry')], ['must', 'important']);
   // The house Garage is not reinterpreted as Garage Parking (it is held; see the garage tests).
   assert.equal(level('exterior:Garage'), null);
-  assert.ok(removed.includes('Garage'));
+  assert.ok(!removed.includes('Garage'));
   assert.ok(removed.some((label) => /^fenced yard$/i.test(label)), JSON.stringify(removed));
 });
 
@@ -398,83 +398,160 @@ test('the question screen shows no cards or Add your own (its UI is Stage 3); Cr
 
 /* ------------------- garage across search-type switches ------------------- */
 // A house Garage (Home to Buy / Home to Rent) and apartment Garage Parking
-// share exterior:Garage but are different wishes. Founder correction on #183.
+// share exterior:Garage but are different preferences; neither becomes the
+// other. Founder decision on #183.
 
 const GARAGE = { categoryKey: 'exterior', label: 'Garage', custom: false };
 const garageParking = (raw) => offered(raw).find((feature) => feature.id === 'exterior:Garage' && feature.text === 'Garage Parking');
+const rentGarage = (raw) => offered(raw).find((feature) => feature.id === 'exterior:Garage' && feature.text === 'Garage');
+const garageTierCount = (raw) => Object.keys(raw.exterior.tiers).filter((label) => normalizeFeatureKey(label) === 'garage').length;
+const garageScored = (raw, home = { ...RENT_HOME, garageSpaces: '2' }) => computeMatch(home, raw).allSelected.filter((item) => item.key === 'exterior:Garage').length;
+const buyer = (tier = 'must', type = 'attached') => setGarageType(setGarageImportance(withBudget(fresh('home_buy')), tier), type);
+const apartmentWith = (tier) => setFeatureLevel(withBudget(fresh('apartment_rent')), GARAGE, tier);
 
-test('garage: Home to Buy → Apartment never activates Garage Parking; the buyer’s level is held, not lost', () => {
-  let buy = withBudget(fresh('home_buy'));
-  buy = setGarageType(setGarageImportance(buy, 'must'), 'attached');
-  const { priorities, removed } = switchPrioritySearchType(buy, 'apartment_rent');
-  assert.equal(featureLevel(priorities, garageParking(priorities)), null, 'Garage Parking is not chosen');
+test('garage: Home to Buy → Apartment holds the house Garage (with attached/detached); Garage Parking starts unselected', () => {
+  const { priorities, removed, garage } = switchPrioritySearchType(buyer('must', 'attached'), 'apartment_rent');
+  assert.equal(featureLevel(priorities, garageParking(priorities)), null);
   assert.equal(isCriterionSelected(priorities, 'exterior', 'Garage'), false);
-  assert.ok(!selectedKeys(priorities).includes('exterior:Garage'));
-  assert.ok(removed.includes('Garage'), 'the switch says Garage no longer applies');
-  assert.deepEqual(priorities.exterior.heldGarage, { tier: 'must', from: 'home_buy' }, 'kept in saved data');
-  assert.equal(priorities.exterior.garagePreference, 'attached', 'the attached / detached qualifier is kept');
+  assert.deepEqual(priorities.exterior.heldGarage, { house: { tier: 'must', garagePreference: 'attached' } });
+  assert.equal(priorities.exterior.garagePreference, undefined, 'no house qualifier on the apartment board');
   assert.ok(priorities.exterior.customItems.some((item) => item.label === 'Garage'), 'the stored identity is not deleted');
-  // Match: no Garage Parking requirement, whatever the building has.
-  const match = computeMatch({ ...RENT_HOME, garageSpaces: '0' }, priorities);
-  assert.equal(match.selectedCount, 1);
-  assert.equal(match.allSelected.some((item) => item.key === 'exterior:Garage'), false);
+  assert.ok(!removed.includes('Garage'));
+  assert.deepEqual(garage, { saved: 'Garage', restored: null });
+  assert.equal(garageScored(priorities), 0);
 });
 
-test('garage: Garage Parking counts only after the renter chooses it', () => {
-  const buy = setGarageImportance(withBudget(fresh('home_buy')), 'important');
-  let apartment = switchPrioritySearchType(buy, 'apartment_rent').priorities;
-  assert.equal(categoryView(apartment, 'apt_property').cards.find((card) => card.text === 'Garage Parking').level, null);
-  apartment = setFeatureLevel(apartment, garageParking(apartment), 'nice');
-  assert.equal(featureLevel(apartment, garageParking(apartment)), 'nice');
-  assert.equal(computeMatch({ ...RENT_HOME, garageSpaces: '40' }, apartment).evaluatedCount, 2, 'now answered by the building’s garage spaces');
-  assert.deepEqual(apartment.exterior.heldGarage, { tier: 'important', from: 'home_buy' }, 'the explicit choice does not discard the held house level');
-});
-
-test('garage: Apartment → Home to Buy restores the original level; buy → apartment → buy round-trips', () => {
-  const buy = setGarageType(setGarageImportance(withBudget(fresh('home_buy')), 'must'), 'detached');
-  const apartment = switchPrioritySearchType(buy, 'apartment_rent').priorities;
-  const back = switchPrioritySearchType(apartment, 'home_buy');
-  assert.equal(garageImportance(back.priorities), 'must');
-  assert.equal(garageType(back.priorities), 'detached');
-  assert.equal(back.priorities.exterior.heldGarage, undefined, 'nothing left behind');
-  assert.ok(!back.removed.includes('Garage'));
-  assert.deepEqual(selectedKeys(back.priorities).sort(), selectedKeys(buy).sort());
-  // A Garage Parking the renter chose in the apartment does not replace the house level.
-  const chosen = setFeatureLevel(apartment, garageParking(apartment), 'nice');
-  assert.equal(garageImportance(switchPrioritySearchType(chosen, 'home_buy').priorities), 'must');
-  // Apartment Garage Parking chosen with no held house level: the existing switch behavior is unchanged.
-  const own = setFeatureLevel(fresh('apartment_rent'), GARAGE, 'nice');
-  assert.equal(garageImportance(switchPrioritySearchType(own, 'home_buy').priorities), 'nice');
-  // A buyer with no Garage priority holds nothing.
-  assert.equal(switchPrioritySearchType(fresh('home_buy'), 'apartment_rent').priorities.exterior.heldGarage, undefined);
-  // Not important (dontcare) is not a priority to hold.
-  assert.equal(switchPrioritySearchType(setGarageImportance(fresh('home_buy'), 'not_important'), 'apartment_rent').priorities.exterior.heldGarage, undefined);
-});
-
-test('garage: rental ↔ rental — Home to Rent’s house Garage is held for an apartment and restored on return', () => {
+test('garage: Home to Rent → Apartment behaves the same', () => {
   let rent = withBudget(fresh('home_rent'));
-  rent = setFeatureLevel(rent, offered(rent).find((feature) => feature.id === 'exterior:Garage'), 'important');
-  const apartment = switchPrioritySearchType(rent, 'apartment_rent');
-  assert.equal(featureLevel(apartment.priorities, garageParking(apartment.priorities)), null);
-  assert.deepEqual(apartment.priorities.exterior.heldGarage, { tier: 'important', from: 'home_rent' });
-  const back = switchPrioritySearchType(apartment.priorities, 'home_rent');
-  assert.equal(featureLevel(back.priorities, GARAGE), 'important');
-  assert.equal(back.priorities.exterior.heldGarage, undefined);
-  // Pets survive the same round trip (Stage 2 behavior unchanged).
-  const withPets = switchPrioritySearchType(switchPrioritySearchType(setPetsMoving(rent, 'yes', '2026-11-14T12:00:00.000Z').priorities, 'apartment_rent').priorities, 'home_rent').priorities;
-  assert.deepEqual([withPets.features.tiers['Pets Allowed'], withPets.features.petsMoving, featureLevel(withPets, GARAGE)], ['must', 'yes', 'important']);
+  rent = setFeatureLevel(rent, rentGarage(rent), 'important');
+  const { priorities, garage } = switchPrioritySearchType(rent, 'apartment_rent');
+  assert.equal(featureLevel(priorities, garageParking(priorities)), null);
+  assert.deepEqual(priorities.exterior.heldGarage, { house: { tier: 'important' } });
+  assert.deepEqual(garage, { saved: 'Garage', restored: null });
 });
 
-test('garage: Undo returns the exact earlier document; buy ↔ home rent is unchanged', () => {
-  const buy = setGarageType(setGarageImportance(withBudget(fresh('home_buy')), 'important'), 'attached');
+test('garage: Apartment → Home to Buy holds Garage Parking; the house Garage starts unselected', () => {
+  const { priorities, removed, garage } = switchPrioritySearchType(apartmentWith('important'), 'home_buy');
+  assert.equal(garageImportance(priorities), null, 'house Garage unselected (not even Not important)');
+  assert.equal(isCriterionSelected(priorities, 'exterior', 'Garage'), false);
+  assert.deepEqual(priorities.exterior.heldGarage, { apartment: { tier: 'important' } });
+  assert.ok(!removed.includes('Garage') && !removed.includes('Garage Parking'));
+  assert.deepEqual(garage, { saved: 'Garage Parking', restored: null });
+  assert.equal(garageScored(priorities), 0);
+});
+
+test('garage: Apartment → Home to Rent behaves the same', () => {
+  const { priorities, garage } = switchPrioritySearchType(apartmentWith('nice'), 'home_rent');
+  assert.equal(featureLevel(priorities, rentGarage(priorities)), null);
+  assert.deepEqual(priorities.exterior.heldGarage, { apartment: { tier: 'nice' } });
+  assert.deepEqual(garage, { saved: 'Garage Parking', restored: null });
+});
+
+test('garage: round trips restore each kind’s own preference, attached/detached included', () => {
+  const buy = buyer('must', 'detached');
+  const apt = switchPrioritySearchType(buy, 'apartment_rent').priorities;
+  const back = switchPrioritySearchType(apt, 'home_buy');
+  assert.deepEqual([garageImportance(back.priorities), garageType(back.priorities)], ['must', 'detached']);
+  assert.equal(back.priorities.exterior.heldGarage, undefined, 'nothing left behind');
+  assert.deepEqual(back.garage, { saved: null, restored: 'Garage' });
+  assert.deepEqual(selectedKeys(back.priorities).sort(), selectedKeys(buy).sort());
+  // Apartment → Home to Rent → Apartment.
+  const aptStart = apartmentWith('important');
+  const there = switchPrioritySearchType(aptStart, 'home_rent').priorities;
+  const home = switchPrioritySearchType(there, 'apartment_rent');
+  assert.equal(featureLevel(home.priorities, garageParking(home.priorities)), 'important');
+  assert.deepEqual(home.garage, { saved: null, restored: 'Garage Parking' });
+  assert.equal(home.priorities.exterior.heldGarage, undefined);
+  // Both kinds held at once, each restored on its own side, many times over.
+  let p = buy;
+  p = switchPrioritySearchType(p, 'apartment_rent').priorities;
+  p = setFeatureLevel(p, garageParking(p), 'nice');
+  for (let i = 0; i < 3; i += 1) {
+    p = switchPrioritySearchType(p, 'home_buy').priorities;
+    assert.deepEqual([garageImportance(p), garageType(p), p.exterior.heldGarage], ['must', 'detached', { apartment: { tier: 'nice' } }]);
+    p = switchPrioritySearchType(p, 'home_rent').priorities;
+    assert.deepEqual([featureLevel(p, GARAGE), p.exterior.heldGarage], ['must', { apartment: { tier: 'nice' } }], 'buy ↔ home rent keeps the house Garage');
+    p = switchPrioritySearchType(p, 'apartment_rent').priorities;
+    assert.deepEqual([featureLevel(p, garageParking(p)), p.exterior.heldGarage], ['nice', { house: { tier: 'must', garagePreference: 'detached' } }]);
+    assert.equal(garageTierCount(p), 1, 'one stored Garage tier, never two');
+  }
+});
+
+test('garage: an explicit destination choice is kept, never overwritten by a held level', () => {
+  // Buy (Must) → Apartment: the renter picks Garage Parking Nice. Back to buy: the
+  // house Must returns; to the apartment again: their Nice returns (not Must).
+  let p = switchPrioritySearchType(buyer('must'), 'apartment_rent').priorities;
+  p = setFeatureLevel(p, garageParking(p), 'nice');
+  assert.equal(featureLevel(p, garageParking(p)), 'nice');
+  assert.deepEqual(p.exterior.heldGarage, { house: { tier: 'must', garagePreference: 'attached' } }, 'the choice does not touch the held house level');
+  p = switchPrioritySearchType(p, 'home_buy').priorities;
+  assert.equal(garageImportance(p), 'must');
+  // The buyer explicitly changes the house Garage; returning to it later keeps that change.
+  p = setGarageImportance(p, 'nice');
+  p = switchPrioritySearchType(switchPrioritySearchType(p, 'apartment_rent').priorities, 'home_buy').priorities;
+  assert.equal(garageImportance(p), 'nice', 'the replacement is what is restored');
+  // An explicit Not important is the buyer's answer too: held, not counted, and back on return.
+  p = setGarageImportance(p, 'not_important');
+  const apt = switchPrioritySearchType(p, 'apartment_rent');
+  assert.equal(apt.priorities.exterior.heldGarage.house.tier, 'dontcare');
+  assert.equal(apt.garage.saved, null, 'nothing to announce: it was not a priority');
+  assert.equal(featureLevel(apt.priorities, garageParking(apt.priorities)), 'nice', 'the renter’s own Garage Parking from earlier is back');
+  assert.equal(garageImportance(switchPrioritySearchType(apt.priorities, 'home_buy').priorities), 'not_important');
+  // A buyer with no garage priority holds nothing.
+  assert.equal(switchPrioritySearchType(fresh('home_buy'), 'apartment_rent').priorities.exterior.heldGarage, undefined);
+});
+
+test('garage: Match counts the active preference once; the held one never counts', () => {
+  let p = switchPrioritySearchType(buyer('must'), 'apartment_rent').priorities;
+  assert.equal(garageScored(p), 0);
+  p = setFeatureLevel(p, garageParking(p), 'nice');
+  assert.equal(garageScored(p), 1);
+  assert.equal(computeMatch({ ...RENT_HOME, garageSpaces: '0' }, p).allSelected.find((item) => item.key === 'exterior:Garage').tier, 'nice');
+  const bare = { ...p, exterior: { ...p.exterior, heldGarage: undefined } };
+  for (const garageSpaces of ['0', '2', undefined]) {
+    assert.deepEqual(computeMatch({ ...RENT_HOME, garageSpaces }, p), computeMatch({ ...RENT_HOME, garageSpaces }, bare), 'heldGarage is invisible to Match');
+  }
+});
+
+test('garage: Undo returns the exact earlier document; switches never mutate it', () => {
+  const buy = buyer('important', 'attached');
   const snapshot = JSON.stringify(buy);
-  switchPrioritySearchType(buy, 'apartment_rent');
-  assert.equal(JSON.stringify(buy), snapshot, 'the switch never mutates the earlier document the flow keeps for Undo');
+  const apt = switchPrioritySearchType(buy, 'apartment_rent').priorities;
+  const aptSnapshot = JSON.stringify(apt);
+  switchPrioritySearchType(apt, 'home_buy');
+  assert.equal(JSON.stringify(buy), snapshot);
+  assert.equal(JSON.stringify(apt), aptSnapshot);
   const flow = read('src/components/onboarding/priority/PriorityFlow.jsx');
   assert.match(flow, /const undo = \(\) => \{ patch\(\(\) => switched\.previous\);/);
   assert.match(flow, /previous: earlier\?\.previous \|\| priorities/, 'Undo after several switches returns to the first document');
-  // Home to Buy ↔ Home to Rent: Garage carries as before, nothing is held.
+  assert.match(flow, /return all\.length \|\| garageNote \?/, 'a garage-only switch still offers Undo');
+});
+
+test('garage: Home to Buy ↔ Home to Rent is unchanged; nothing is held', () => {
+  const buy = buyer('important', 'attached');
   const rent = switchPrioritySearchType(buy, 'home_rent');
-  assert.deepEqual([featureLevel(rent.priorities, GARAGE), rent.priorities.exterior.heldGarage, rent.removed.includes('Garage')], ['important', undefined, false]);
-  assert.equal(garageImportance(switchPrioritySearchType(rent.priorities, 'home_buy').priorities), 'important');
+  assert.deepEqual([featureLevel(rent.priorities, GARAGE), rent.priorities.exterior.garagePreference, rent.priorities.exterior.heldGarage, rent.garage], ['important', 'attached', undefined, { saved: null, restored: null }]);
+  const again = switchPrioritySearchType(rent.priorities, 'home_buy');
+  assert.deepEqual([garageImportance(again.priorities), garageType(again.priorities), again.priorities.exterior.heldGarage], ['important', 'attached', undefined]);
+});
+
+test('garage: co-buyers’ held and active garage preferences are each their own', () => {
+  const a0 = buyer('must');
+  const b0 = apartmentWith('important');
+  const bJson = JSON.stringify(b0);
+  const a1 = switchPrioritySearchType(a0, 'apartment_rent').priorities;
+  assert.equal(JSON.stringify(b0), bJson, 'B is untouched by A’s switch');
+  const b1 = switchPrioritySearchType(b0, 'home_buy').priorities;
+  assert.deepEqual([a1.exterior.heldGarage, featureLevel(a1, garageParking(a1))], [{ house: { tier: 'must', garagePreference: 'attached' } }, null]);
+  assert.deepEqual([b1.exterior.heldGarage, garageImportance(b1)], [{ apartment: { tier: 'important' } }, null]);
+});
+
+test('garage: the switch message says the preference is saved and restored, never removed', () => {
+  assert.equal(switchMessage('an apartment to rent', { removed: [], garage: { saved: 'Garage', restored: null } }),
+    'Now looking for an apartment to rent. Your Garage preference is saved for home searches and comes back if you switch back. Everything else is kept.');
+  assert.equal(switchMessage('a home to buy', { removed: ['Pet-friendly'], garage: { saved: 'Garage Parking', restored: 'Garage' } }),
+    'Now looking for a home to buy. Removed what no longer applies: Pet-friendly. Your Garage Parking preference is saved for apartment searches and comes back if you switch back. Your earlier Garage preference is back. Everything else is kept.');
+  // Without a garage note the wording is exactly as before.
+  assert.equal(switchMessage('a home to rent', { removed: ['Walk-in Pantry'] }), 'Now looking for a home to rent. Removed what no longer applies: Walk-in Pantry. Everything else is kept.');
+  assert.doesNotMatch(read('src/components/onboarding/priority/PriorityFlow.jsx'), /Removed what no longer applies: \{switched\.removed/);
 });

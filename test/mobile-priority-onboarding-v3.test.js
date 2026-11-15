@@ -242,8 +242,8 @@ test('changing the kind of search keeps what still applies and says what it remo
   assert.ok(removed.includes('Kitchen Island'));
   assert.equal(featureLevel(priorities, { categoryKey: 'features', label: 'Countertop Seating' }), 'nice');
   assert.equal(featureLevel(priorities, { categoryKey: 'exterior', label: 'Garage' }), null);
-  assert.ok(removed.includes('Garage'));
-  assert.deepEqual(priorities.exterior.heldGarage, { tier: 'important', from: 'home_buy' });
+  assert.ok(!removed.includes('Garage'), 'saved, not removed');
+  assert.deepEqual(priorities.exterior.heldGarage, { house: { tier: 'important' } });
 });
 
 /* --------------------------------- review --------------------------------- */

@@ -399,15 +399,27 @@ because you set it yourself."
   so a later return to renting shows the question unanswered. Undo restores all
   three together.
 - **Home to Buy → rental.** Nothing pet-related is written. The question is unanswered.
-- **Garage (founder correction on PR #183).** A house Garage (Home to Buy or
-  Home to Rent) is never reinterpreted as apartment Garage Parking, although
-  both use `exterior:Garage`. Switching into Apartment to Rent deactivates it as
-  the existing switch already did, lists it as removed (with Undo), and keeps its
-  level in the additive `exterior.heldGarage = { tier, from }`. Garage Parking
-  becomes active only when the renter chooses it. Switching back to Home to Buy
-  or Home to Rent restores the held level (even if Garage Parking was chosen in
-  between) and removes the key. `garagePreference` (attached/detached) and the
-  stored identity are never deleted. Home to Buy ↔ Home to Rent is unchanged.
+- **Garage (founder decision on PR #183).** A house Garage (Home to Buy, Home
+  to Rent) and apartment Garage Parking are different preferences; neither
+  ever becomes the other, although both are stored as `exterior:Garage` (one
+  tier, so only the active one is ever scored, once). A switch between a house
+  search and an apartment search:
+  - sets the source preference aside in the additive
+    `exterior.heldGarage = { house?: { tier, garagePreference? }, apartment?: { tier } }`
+    (an explicit "Not important" is held too) and removes it from the active
+    tiers, so the destination garage starts **unanswered**;
+  - restores the destination's own held preference, if any (for a house,
+    with its attached/detached detail);
+  - never overwrites an explicit choice: a held level is applied only at the
+    moment of a switch, and whatever is active when switching away again
+    (including a replacement the person chose) is what gets held next.
+
+  Home to Buy ↔ Home to Rent is unchanged (house ↔ house). Undo restores the
+  exact earlier document. The switch message says "Your Garage preference is
+  saved for home searches and comes back if you switch back" (or Garage
+  Parking … apartment searches) and, on return, "Your earlier Garage preference
+  is back", instead of listing it as removed. `heldGarage` is never read by
+  Match (JS or SQL; real-Postgres parity test).
 
 ### Co-buyers
 
@@ -704,20 +716,20 @@ and the A1 guard prevents new duplicates whatever already exists.
 - `switchPrioritySearchType`: rental ↔ rental keeps the answer, the level and
   the marker; rental → Home to Buy clears all three (the flow's existing Undo
   restores the whole earlier document); buy → rental writes nothing pet-related.
-- **Garage across switches (founder correction):** `switchPrioritySearchType`
-  no longer re-activates a house Garage as apartment Garage Parking. The level
-  is held in `exterior.heldGarage` and restored on returning to a house search
-  (§7, "Search-type switches"). Neither scorer reads the key (real-Postgres
-  test). Apartment → Home to Buy with a Garage Parking the renter chose and no
-  held level keeps the pre-existing behavior (it carries as Garage).
+- **Garage across switches (founder decision):** `switchPrioritySearchType`
+  holds a house Garage when moving to an apartment and apartment Garage
+  Parking when moving to a house search, restoring each on return (§7,
+  "Search-type switches"). `switchMessage` (pure) builds the switch status
+  line. Neither scorer reads `heldGarage` (real-Postgres test with co-buyers
+  switching in opposite directions).
 - `otherChosenPriorities` does **not** yet exclude `features:Pets Allowed`:
   doing so before the Stage 3 Review row exists would hide Pet-Friendly from
   Review. Stage 3 adds the exclusion together with the Review row.
 
 ### Tests
 
-- `test/rental-foundations-onboarding.test.js` (Stage 1, 25 tests including the
-  five garage-switch regressions),
+- `test/rental-foundations-onboarding.test.js` (Stage 1, 31 tests including
+  eleven garage-switch regressions),
   `test/rental-pets-onboarding.test.js` (Stage 2, 16 tests), and one new
   real-Postgres test in `test/mobile-priority-onboarding-v3-db.test.js`
   (co-renters, JS = SQL with `pets_allowed` null / true / false, additive keys

@@ -14,7 +14,7 @@ const { normalizePriorities } = await import('../src/lib/constants.js');
 const { chooseSearchType } = await import('../src/lib/onboardingBasics.js');
 const { criterionAnswerPatch } = await import('../src/lib/matchCriteria.js');
 const { priorityLevels } = await import('../src/lib/searchProfile.js');
-const { addOwnFeature, categoryView, featureLevel, setFeatureLevel, setGarageImportance, setGarageType } = await import('../src/lib/priorityCategories.js');
+const { addOwnFeature, categoryView, featureLevel, garageImportance, garageType, setFeatureLevel, setGarageImportance, setGarageType, switchPrioritySearchType } = await import('../src/lib/priorityCategories.js');
 const {
   acceptInvitation, createInvitation, getHomesForUser, resolveCoBuyerComparePerspectives, resolvePriorities, savePriorities,
   saveHomePersonalAndShared, saveHomePersonalState,
@@ -176,7 +176,7 @@ dbTest('rental pets answer: JS = SQL for co-renters with pets_allowed null / tru
   const aBare = await both(a, b);
   for (const name of Object.keys(homeIds)) assert.deepEqual([aBare[name].pct, aBare[name].evaluatedCount], [aMatch[name].pct, aMatch[name].evaluatedCount], name);
   // A held house Garage (set aside when switching into an apartment) is equally invisible to both scorers.
-  await savePriorities(db.clientFor(a), { id: search }, a, { ...aStored, exterior: { ...aStored.exterior, heldGarage: { tier: 'must', from: 'home_buy' } } });
+  await savePriorities(db.clientFor(a), { id: search }, a, { ...aStored, exterior: { ...aStored.exterior, heldGarage: { house: { tier: 'must', garagePreference: 'attached' } } } });
   const aHeld = await both(a, b);
   for (const name of Object.keys(homeIds)) assert.deepEqual([aHeld[name].pct, aHeld[name].selectedCount, aHeld[name].evaluatedCount], [aMatch[name].pct, aMatch[name].selectedCount, aMatch[name].evaluatedCount], name);
   await savePriorities(db.clientFor(a), { id: search }, a, aStored);
@@ -190,4 +190,69 @@ dbTest('rental pets answer: JS = SQL for co-renters with pets_allowed null / tru
   assert.equal(pets((await both(a, b)).notAllowed), undefined, 'No writes no anti-pet requirement');
   // The shared fact is never written by the pets answer.
   assert.deepEqual(db.admin(`select pets_allowed from public.homes where search_id = '${search}' order by address`).map((row) => row.pets_allowed), [true, false, null], 'allowed, notAllowed, unknown');
+});
+
+// House Garage and apartment Garage Parking across search-type switches
+// (founder decision on #183): two co-buyers switch in opposite directions.
+// The held preference is never scored, the active one is scored once, and
+// computeMatch equals the SQL Compare scorer throughout.
+dbTest('garage switching: held preferences are invisible to Match; JS = SQL for co-buyers in both directions', async () => {
+  const a = db.createUser({ email: 'garage.a@example.com', firstName: 'House' });
+  const b = db.createUser({ email: 'garage.b@example.com', firstName: 'Flat' });
+  const search = db.admin(`select id from public.searches where user_id = '${a}'`)[0].id;
+  const invitation = await createInvitation(db.clientFor(a), search, a, 'garage.b@example.com', 'co_buyer');
+  assert.equal((await acceptInvitation(db.clientFor(b), invitation.token)).success, true);
+  const GARAGE = { categoryKey: 'exterior', label: 'Garage', custom: false };
+  const start = (type) => { const p = chooseSearchType(normalizePriorities({}), type, { presetPropertyType: false }); return { ...p, budget: { ...p.budget, value: '3000', tier: 'important' } }; };
+  // A: a buyer (Garage Must, attached) moves to an apartment and explicitly picks Garage Parking Nice.
+  let aDoc = setGarageType(setGarageImportance(start('home_buy'), 'must'), 'attached');
+  aDoc = switchPrioritySearchType(aDoc, 'apartment_rent').priorities;
+  aDoc = setFeatureLevel(aDoc, GARAGE, 'nice');
+  // B: an apartment renter (Garage Parking Important) moves to Home to Buy.
+  let bDoc = switchPrioritySearchType(setFeatureLevel(start('apartment_rent'), GARAGE, 'important'), 'home_buy').priorities;
+  await savePriorities(db.clientFor(a), { id: search }, a, aDoc);
+  await savePriorities(db.clientFor(b), { id: search }, b, bDoc);
+
+  const homeIds = {};
+  for (const [name, spaces] of [['noGarage', '0'], ['twoCar', '2'], ['unknown', '']]) {
+    const inserted = await db.clientFor(a).from('homes').insert({ user_id: a, search_id: search, address: `${name} Garage Way, Royal Oak, MI 48073`, price: '2400', garage_spaces: spaces }).select('id').single();
+    assert.equal(inserted.error, null, JSON.stringify(inserted.error));
+    homeIds[name] = inserted.data.id;
+  }
+  const both = async (subject, viewer) => {
+    const priorities = normalizePriorities(await resolvePriorities(db.clientFor(subject), { id: search }, subject));
+    const homes = await getHomesForUser(db.clientFor(subject), subject, search);
+    const projected = await resolveCoBuyerComparePerspectives(db.clientFor(viewer), { id: search }, Object.values(homeIds));
+    const out = {};
+    for (const [name, id] of Object.entries(homeIds)) {
+      const own = computeMatch(homes.find((home) => home.id === id), priorities);
+      const other = projected.get(id).match;
+      assert.deepEqual([other.pct, other.selectedCount, other.evaluatedCount], [own.pct, own.selectedCount, own.evaluatedCount], `JS = SQL on ${name}`);
+      out[name] = own;
+    }
+    return { priorities, out };
+  };
+  const garageItems = (match) => match.allSelected.filter((item) => item.key === 'exterior:Garage');
+
+  let aSide = await both(a, b);
+  assert.deepEqual(aSide.priorities.exterior.heldGarage, { house: { tier: 'must', garagePreference: 'attached' } }, 'held preference round-trips');
+  for (const match of Object.values(aSide.out)) assert.deepEqual(garageItems(match).map((item) => item.tier), ['nice'], 'only the active Garage Parking counts, once');
+  assert.deepEqual([aSide.out.noGarage.pct, aSide.out.twoCar.pct, aSide.out.unknown.evaluatedCount], [67, 100, 1], 'budget 2 + Nice 1 → 2/3; 3/3; garage Unknown');
+  let bSide = await both(b, a);
+  assert.deepEqual(bSide.priorities.exterior.heldGarage, { apartment: { tier: 'important' } });
+  for (const match of Object.values(bSide.out)) assert.equal(garageItems(match).length, 0, 'the held Garage Parking never counts for the buyer');
+  assert.equal(bSide.out.noGarage.pct, 100);
+
+  // Both switch back: each restores their own earlier preference; still JS = SQL.
+  const bRow = JSON.stringify(db.admin(`select priorities from public.search_member_priorities where search_id = '${search}' and user_id = '${b}'`)[0].priorities);
+  await savePriorities(db.clientFor(a), { id: search }, a, switchPrioritySearchType(aSide.priorities, 'home_buy').priorities);
+  assert.equal(JSON.stringify(db.admin(`select priorities from public.search_member_priorities where search_id = '${search}' and user_id = '${b}'`)[0].priorities), bRow, 'A’s switch never touches B');
+  await savePriorities(db.clientFor(b), { id: search }, b, switchPrioritySearchType(bSide.priorities, 'apartment_rent').priorities);
+  aSide = await both(a, b);
+  assert.deepEqual([garageImportance(aSide.priorities), garageType(aSide.priorities), aSide.priorities.exterior.heldGarage], ['must', 'attached', { apartment: { tier: 'nice' } }]);
+  for (const match of Object.values(aSide.out)) assert.deepEqual(garageItems(match).map((item) => item.tier), ['must']);
+  assert.equal(aSide.out.noGarage.pct, 33, 'house Garage Must is answered No by 0 spaces: 2/6');
+  bSide = await both(b, a);
+  assert.deepEqual([featureLevel(bSide.priorities, GARAGE), bSide.priorities.exterior.heldGarage], ['important', undefined]);
+  for (const match of Object.values(bSide.out)) assert.deepEqual(garageItems(match).map((item) => item.tier), ['important']);
 });
