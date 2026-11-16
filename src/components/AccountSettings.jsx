@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { LogOut, SlidersHorizontal, UserRound } from 'lucide-react';
+import { CircleHelp, LogOut, Share, SlidersHorizontal, UserRound } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { updateProfileName } from '@/lib/supabase/data';
+import ShareTutorial from '@/components/ShareTutorial';
 
 // Account & Settings: profile, access, and session. It never needs an active
 // buyer search. Access is described only from what the product actually has:
@@ -16,6 +17,7 @@ export default function AccountSettings({ userId, email, firstName, lastName, se
   const [first, setFirst] = useState(firstName);
   const [last, setLast] = useState(lastName);
   const [state, setState] = useState('idle');
+  const [shareTutorialOpen, setShareTutorialOpen] = useState(false);
   const dirty = first.trim() !== firstName.trim() || last.trim() !== lastName.trim();
 
   const saveName = async (event) => {
@@ -78,6 +80,19 @@ export default function AccountSettings({ userId, email, firstName, lastName, se
           <Link className="hh-btn hh-btn-ghost" href="/onboarding">Start a search</Link>
         </>}
       </section>
+
+      {/* Help for the installed iOS app only: the Share Extension it teaches
+          doesn't exist in a browser. Shown by the first-paint native flag
+          (see .flh-native-only and NATIVE_SHELL_FLAG_SCRIPT). Replayable any
+          time without signing out; nothing about it is stored. */}
+      <section className="flh-card flh-account-section flh-native-only" aria-labelledby="account-help">
+        <h2 id="account-help" className="flh-section-kicker"><CircleHelp size={14} aria-hidden="true" /> Help</h2>
+        <p className="flh-account-copy">Save a home straight from Safari or a listing app with the Share button.</p>
+        <div className="flh-account-help-actions">
+          <button type="button" className="hh-btn hh-btn-ghost flh-press" onClick={() => setShareTutorialOpen(true)}><Share size={15} aria-hidden="true" /> Practice sharing a home</button>
+        </div>
+      </section>
+      {shareTutorialOpen && <ShareTutorial onClose={() => setShareTutorialOpen(false)} />}
 
       <section className="flh-card flh-account-section" aria-labelledby="account-session">
         <h2 id="account-session" className="flh-section-kicker">Session</h2>

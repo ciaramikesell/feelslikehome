@@ -1,0 +1,18 @@
+- dialog "Saved to Feels Like Home.":
+  - button "Back"
+  - list "Step 3 of 3"
+  - paragraph: Practice run · a pretend Share Sheet
+  - heading "Saved to Feels Like Home." [level=2]
+  - article "Example listing":
+    - text: Example listing
+    - button "Share"
+    - text: $485,000 3 bd · 2 ba · 1,840 sq ft 14 Linden Lane, Maple Hollow
+  - region "Saved":
+    - paragraph: In the app, Add Home opens with the listing ready for you to review.
+  - list:
+    - listitem: Works from Safari and supported listing apps.
+    - listitem: Its spot in the Share Sheet varies by app and iOS version.
+    - listitem: Don’t see it? Swipe the app row to More, tap Edit, and add Feels Like Home to Favorites.
+    - listitem: This is the app’s share option — not an Add to Home Screen shortcut.
+  - button "Done"
+  - button "Practice again"

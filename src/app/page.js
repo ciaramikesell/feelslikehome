@@ -4,11 +4,17 @@ import { getProfile } from '@/lib/supabase/data';
 import { hasRealtorRelationship } from '@/lib/supabase/collaboration';
 import { REALTOR_WORKSPACE_PATH, entersAsRealtor } from '@/lib/realtorEntry';
 import PublicLanding from '@/components/PublicLanding';
+import NativeWelcome from '@/components/NativeWelcome';
 
 export default async function RootPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return <PublicLanding />;
+  // Signed out: both entries are server-rendered and CSS shows exactly one
+  // before first paint — the short native welcome inside the iOS app (the
+  // <html data-flh-native> flag, see src/lib/platform.js), the unchanged
+  // public homepage everywhere else. No redirect is involved, so deep links,
+  // invitations and shared-listing URLs never pass through the welcome.
+  if (!user) return <><NativeWelcome /><div className="flh-web-entry"><PublicLanding /></div></>;
 
   const profile = await getProfile(supabase, user.id);
   // A Realtor (by sign-up intent, or by a Realtor membership for someone who

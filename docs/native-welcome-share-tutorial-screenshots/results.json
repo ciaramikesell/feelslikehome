@@ -1,0 +1,302 @@
+[
+  {
+    "name": "desktop-1440: no native flag in an ordinary browser",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop-1440: public homepage visible",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop-1440: native welcome never shown",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "mobile-safari-390: no native flag in an ordinary browser",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "mobile-safari-390: public homepage visible",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "mobile-safari-390: native welcome never shown",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "native cold launch: welcome painted before hydration",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "native cold launch: homepage hidden before hydration",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "native cold launch: public homepage visible on 0 frames",
+    "ok": true,
+    "detail": "84 frames sampled"
+  },
+  {
+    "name": "native: head script logs \"native flag set before first paint\", then hydration logs \"confirmed\"",
+    "ok": true,
+    "detail": "[FLH Native QA] native flag set before first paint → [FLH Native QA] first-paint native flag confirmed"
+  },
+  {
+    "name": "failure drill (bridge after <head>): check warns MISSING and repairs the flag",
+    "ok": true,
+    "detail": "[FLH Native QA] first-paint native flag was MISSING; set after hydration"
+  },
+  {
+    "name": "failure drill: welcome shown after hydration (homepage only flashed before it)",
+    "ok": true,
+    "detail": "homepage on 0/87 frames before repair"
+  },
+  {
+    "name": "web: no native QA lines and no flag",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "native w320: Get Started and Sign in fully visible without scrolling",
+    "ok": true,
+    "detail": "sign-in bottom 502 / 568, overflow 0px"
+  },
+  {
+    "name": "native w320: tap targets ≥ 44px",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "native w320: hero is the desktop homepage photo",
+    "ok": true,
+    "detail": "/_next/image?url=%2Fimages%2FWarm%20Cottage.png&w=3840&q=75"
+  },
+  {
+    "name": "native w375: Get Started and Sign in fully visible without scrolling",
+    "ok": true,
+    "detail": "sign-in bottom 601 / 667, overflow 0px"
+  },
+  {
+    "name": "native w375: tap targets ≥ 44px",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "native w375: hero is the desktop homepage photo",
+    "ok": true,
+    "detail": "/_next/image?url=%2Fimages%2FWarm%20Cottage.png&w=3840&q=75"
+  },
+  {
+    "name": "native w390: Get Started and Sign in fully visible without scrolling",
+    "ok": true,
+    "detail": "sign-in bottom 746 / 844, overflow 0px"
+  },
+  {
+    "name": "native w390: tap targets ≥ 44px",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "native w390: hero is the desktop homepage photo",
+    "ok": true,
+    "detail": "/_next/image?url=%2Fimages%2FWarm%20Cottage.png&w=3840&q=75"
+  },
+  {
+    "name": "native w430: Get Started and Sign in fully visible without scrolling",
+    "ok": true,
+    "detail": "sign-in bottom 801 / 932, overflow 0px"
+  },
+  {
+    "name": "native w430: tap targets ≥ 44px",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "native w430: hero is the desktop homepage photo",
+    "ok": true,
+    "detail": "/_next/image?url=%2Fimages%2FWarm%20Cottage.png&w=3840&q=75"
+  },
+  {
+    "name": "native: \"Get Started\" opens the existing /auth/sign-up",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "native: \"Already have an account? Sign in\" opens the existing /auth/sign-in",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "native: signing in from the welcome reaches My Homes",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "native signed-in launch: lands on My Homes",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "native signed-in launch: welcome and homepage never painted",
+    "ok": true,
+    "detail": "95 frames"
+  },
+  {
+    "name": "native signed-out invitation link: sign-in keeps the invitation, never the welcome",
+    "ok": true,
+    "detail": "/auth/sign-in?redirect=/invite/<token>"
+  },
+  {
+    "name": "native signed-out shared listing: sign-in keeps the full destination",
+    "ok": true,
+    "detail": "/auth/sign-in?redirect=/homes?url=https%3A%2F%2Fwww.zillow.com%2Fhomedetails%2F41-Maple-St-Troy-MI-48084%2F123_zpid%2F%3Futm%3Dshare%23photos"
+  },
+  {
+    "name": "native Universal Link over the welcome: routes to the invitation",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "native Share Extension link (signed in): Add Home opens with the shared listing",
+    "ok": true,
+    "detail": "41 Maple St, Troy, MI 48084"
+  },
+  {
+    "name": "tutorial: opens as a dialog from the welcome",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "tutorial: focus starts on the one-line instruction",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "tutorial: a wrong tile gives a gentle hint, not a dead end",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "tutorial: More explains More → Edit → Favorites",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "tutorial: Back returns to the listing step",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "haptics: light impact on each highlighted tap, selection on other tiles, success once",
+    "ok": true,
+    "detail": "impact:LIGHT, selectionChanged, selectionChanged, impact:LIGHT, impact:LIGHT, notification:SUCCESS"
+  },
+  {
+    "name": "tutorial: Practice again replays from step 1",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "tutorial: Skip closes it, back on the welcome",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "tutorial: focus returns to the trigger",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "tutorial: Escape closes it",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "haptics: none on opening/closing the tutorial or on navigation",
+    "ok": true,
+    "detail": "6 haptic calls in total"
+  },
+  {
+    "name": "keyboard: Tab reaches Share",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "keyboard: Tab reaches Feels Like Home",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "keyboard: reaches the saved step and Done",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "keyboard: focus stays inside the dialog",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "screen reader: the saved step exposes heading, facts and Done",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Reduce Motion: highlight, sheet slide and press spring are effectively off",
+    "ok": true,
+    "detail": "1e-05s / 1e-05s / 1e-05s"
+  },
+  {
+    "name": "Reduce Motion: tutorial still completes",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "tutorial 320: Feels Like Home tile on screen and tappable",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "tutorial 320: no horizontal page overflow",
+    "ok": true,
+    "detail": "0px"
+  },
+  {
+    "name": "tutorial 430: Feels Like Home tile on screen and tappable",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "tutorial 430: no horizontal page overflow",
+    "ok": true,
+    "detail": "0px"
+  },
+  {
+    "name": "Account (native): Help offers the share tutorial",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Account (native): tutorial opens without signing out",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Account (mobile Safari): no Share Extension help where the extension cannot exist",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no unexpected console errors",
+    "ok": true,
+    "detail": ""
+  }
+]
