@@ -42,7 +42,27 @@
   {
     "name": "native cold launch: public homepage visible on 0 frames",
     "ok": true,
-    "detail": "79 frames sampled"
+    "detail": "84 frames sampled"
+  },
+  {
+    "name": "native: head script logs \"native flag set before first paint\", then hydration logs \"confirmed\"",
+    "ok": true,
+    "detail": "[FLH Native QA] native flag set before first paint → [FLH Native QA] first-paint native flag confirmed"
+  },
+  {
+    "name": "failure drill (bridge after <head>): check warns MISSING and repairs the flag",
+    "ok": true,
+    "detail": "[FLH Native QA] first-paint native flag was MISSING; set after hydration"
+  },
+  {
+    "name": "failure drill: welcome shown after hydration (homepage only flashed before it)",
+    "ok": true,
+    "detail": "homepage on 0/87 frames before repair"
+  },
+  {
+    "name": "web: no native QA lines and no flag",
+    "ok": true,
+    "detail": ""
   },
   {
     "name": "native w320: Get Started and Sign in fully visible without scrolling",
@@ -127,7 +147,7 @@
   {
     "name": "native signed-in launch: welcome and homepage never painted",
     "ok": true,
-    "detail": "86 frames"
+    "detail": "95 frames"
   },
   {
     "name": "native signed-out invitation link: sign-in keeps the invitation, never the welcome",

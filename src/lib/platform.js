@@ -45,4 +45,21 @@ export function isNativePluginAvailable(name) {
 // neither bridge exists, so the attribute is never set and nothing changes.
 // It decides presentation only — routing and auth stay server-side.
 export const NATIVE_SHELL_ATTRIBUTE = 'data-flh-native';
-export const NATIVE_SHELL_FLAG_SCRIPT = `(function(){try{var w=window;if(w.CapacitorCustomPlatform||w.androidBridge||(w.webkit&&w.webkit.messageHandlers&&w.webkit.messageHandlers.bridge)){document.documentElement.setAttribute('${NATIVE_SHELL_ATTRIBUTE}','')}}catch(e){}})();`;
+// Inside the shell it also logs one line; Capacitor forwards console output to
+// Xcode's console in Debug builds, so a Simulator run shows whether the flag
+// really was set before first paint (see ensureNativeShellFlag below).
+export const NATIVE_SHELL_FLAG_SCRIPT = `(function(){try{var w=window;if(w.CapacitorCustomPlatform||w.androidBridge||(w.webkit&&w.webkit.messageHandlers&&w.webkit.messageHandlers.bridge)){document.documentElement.setAttribute('${NATIVE_SHELL_ATTRIBUTE}','');if(w.console&&w.console.info)w.console.info('[FLH Native QA] native flag set before first paint')}}catch(e){}})();`;
+
+// Post-hydration safety net for the flag above. Capacitor's iOS shell
+// registers the `bridge` handler before it loads any page, so the head script
+// should always have set the flag. If it ever did not (a future Capacitor
+// change, an unusual WebView), this sets it as soon as isNativeApp() can
+// answer — the welcome then appears a moment late instead of never — and
+// says so in the console, so a Simulator/device run can't miss it.
+// Returns 'web', 'confirmed' (set before first paint) or 'corrected'.
+export function ensureNativeShellFlag(root = globalThis.document?.documentElement) {
+  if (!isNativeApp() || !root) return 'web';
+  if (root.hasAttribute(NATIVE_SHELL_ATTRIBUTE)) return 'confirmed';
+  root.setAttribute(NATIVE_SHELL_ATTRIBUTE, '');
+  return 'corrected';
+}

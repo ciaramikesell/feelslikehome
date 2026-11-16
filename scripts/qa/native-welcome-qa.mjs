@@ -73,9 +73,13 @@ const browser = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE
 const consoleErrors = [];
 const IGNORED = /favicon|Failed to load resource|maps\.googleapis|youtube|Download the React DevTools|not implemented on|ERR_|net::/i;
 
-async function context({ native = false, viewport = sizes.w390, signedIn = null, reducedMotion = 'no-preference', device = null } = {}) {
+async function context({ native = false, lateBridge = false, viewport = sizes.w390, signedIn = null, reducedMotion = 'no-preference', device = null } = {}) {
   const ctx = await browser.newContext(device ? { ...device, reducedMotion } : { viewport, deviceScaleFactor: 2, isMobile: viewport.width < 600, hasTouch: viewport.width < 600, reducedMotion });
   if (native) await ctx.addInitScript(NATIVE_INIT);
+  // Failure drill: the bridge appears only once <body> exists, i.e. AFTER the
+  // <head> flag script ran — what a broken shell would look like. The
+  // post-hydration check must then repair the flag and warn.
+  if (lateBridge) await ctx.addInitScript(`new MutationObserver((records, observer) => { if (!document.body) return; observer.disconnect(); (function install() { ${NATIVE_INIT} })(); }).observe(document, { childList: true, subtree: true });`);
   await ctx.addInitScript(FRAME_SAMPLER);
   if (signedIn) await ctx.addCookies([{ name: 'sb-localhost-auth-token', value: `base64-${Buffer.from(JSON.stringify(signedIn.session)).toString('base64url')}`, domain: 'localhost', path: '/' }]);
   ctx.on('page', (page) => page.on('console', (m) => { if (m.type() === 'error' && !IGNORED.test(m.text())) consoleErrors.push(m.text()); }));
@@ -115,6 +119,39 @@ for (const [label, opts] of [['desktop-1440', { viewport: { width: 1440, height:
   await page.waitForLoadState('networkidle');
   const frames = await page.evaluate(() => window.__frames);
   check('native cold launch: public homepage visible on 0 frames', frames.length > 0 && frames.every((f) => !f.landing), `${frames.length} frames sampled`);
+  await ctx.close();
+}
+{
+  // The two Xcode-console lines the founder's Simulator run looks for.
+  const ctx = await context({ native: true });
+  const page = await ctx.newPage();
+  const lines = [];
+  page.on('console', (m) => { if (/\[FLH Native QA\] (native flag|first-paint)/.test(m.text())) lines.push(m.text()); });
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(300);
+  check('native: head script logs "native flag set before first paint", then hydration logs "confirmed"', JSON.stringify(lines) === JSON.stringify(['[FLH Native QA] native flag set before first paint', '[FLH Native QA] first-paint native flag confirmed']), lines.join(' → '));
+  await ctx.close();
+}
+{
+  const ctx = await context({ lateBridge: true });
+  const page = await ctx.newPage();
+  const lines = [];
+  page.on('console', (m) => { if (/\[FLH Native QA\] (native flag|first-paint)/.test(m.text())) lines.push(m.text()); });
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+  await page.waitForTimeout(300);
+  const frames = await page.evaluate(() => window.__frames);
+  check('failure drill (bridge after <head>): check warns MISSING and repairs the flag', JSON.stringify(lines) === JSON.stringify(['[FLH Native QA] first-paint native flag was MISSING; set after hydration']), lines.join(' → '));
+  check('failure drill: welcome shown after hydration (homepage only flashed before it)', await isVisible(page, '.flh-welcome') && !(await isVisible(page, '.pl-root')), `homepage on ${frames.filter((f) => f.landing).length}/${frames.length} frames before repair`);
+  await ctx.close();
+}
+{
+  // A browser never logs either line and never gets the flag.
+  const ctx = await context({});
+  const page = await ctx.newPage();
+  const lines = [];
+  page.on('console', (m) => { if (/\[FLH Native QA\]/.test(m.text())) lines.push(m.text()); });
+  await page.goto(`${base}/`, { waitUntil: 'networkidle' });
+  check('web: no native QA lines and no flag', lines.length === 0 && !(await page.evaluate(() => document.documentElement.hasAttribute('data-flh-native'))));
   await ctx.close();
 }
 

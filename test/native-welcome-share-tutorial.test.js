@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import capacitorConfig from '../capacitor.config.js';
-import { NATIVE_SHELL_ATTRIBUTE, NATIVE_SHELL_FLAG_SCRIPT, isNativeApp, isNativePluginAvailable } from '../src/lib/platform.js';
+import { NATIVE_SHELL_ATTRIBUTE, NATIVE_SHELL_FLAG_SCRIPT, ensureNativeShellFlag, isNativeApp, isNativePluginAvailable } from '../src/lib/platform.js';
 
 const read = (p) => fs.readFileSync(p, 'utf8');
 const layout = read('src/app/layout.js');
@@ -50,6 +50,27 @@ test('the root layout inlines the flag script in <head>, before any body content
 test('outside the shell every native helper resolves false', () => {
   assert.equal(isNativeApp(), false);
   assert.equal(isNativePluginAvailable('Haptics'), false);
+  const root = { hasAttribute: () => false, setAttribute: () => { throw new Error('must not touch the web page'); } };
+  assert.equal(ensureNativeShellFlag(root), 'web');
+});
+
+test('inside the shell the head script logs one QA line for Xcode; in a browser it logs nothing', () => {
+  const logs = [];
+  const console = { info: (line) => logs.push(line) };
+  vm.runInNewContext(NATIVE_SHELL_FLAG_SCRIPT, { window: { console }, document: { documentElement: { setAttribute() {} } } });
+  assert.deepEqual(logs, []);
+  vm.runInNewContext(NATIVE_SHELL_FLAG_SCRIPT, { window: { console, webkit: { messageHandlers: { bridge: {} } } }, document: { documentElement: { setAttribute() {} } } });
+  assert.deepEqual(logs, ['[FLH Native QA] native flag set before first paint']);
+});
+
+test('a post-hydration check confirms the flag in the shell and repairs it if the head script missed', () => {
+  const check = read('src/components/NativeShellFlagCheck.jsx');
+  assert.match(layout, /<NativeShellFlagCheck \/>/);
+  assert.match(check, /ensureNativeShellFlag\(\)/);
+  assert.match(check, /first-paint native flag confirmed/);
+  assert.match(check, /first-paint native flag was MISSING; set after hydration/);
+  const platform = read('src/lib/platform.js');
+  assert.match(platform, /if \(!isNativeApp\(\) \|\| !root\) return 'web';\s*if \(root\.hasAttribute\(NATIVE_SHELL_ATTRIBUTE\)\) return 'confirmed';\s*root\.setAttribute\(NATIVE_SHELL_ATTRIBUTE, ''\);\s*return 'corrected';/);
 });
 
 /* ------------------------------- routing safety ------------------------------- */

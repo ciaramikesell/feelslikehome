@@ -1,6 +1,7 @@
 import './globals.css';
 import InstallPrompt from '@/components/InstallPrompt';
 import DeepLinkBridge from '@/components/DeepLinkBridge';
+import NativeShellFlagCheck from '@/components/NativeShellFlagCheck';
 import { NATIVE_SHELL_FLAG_SCRIPT } from '@/lib/platform';
 
 export const metadata = {
@@ -41,6 +42,7 @@ export default function RootLayout({ children }) {
         {children}
         <InstallPrompt />
         <DeepLinkBridge />
+        <NativeShellFlagCheck />
       </body>
     </html>
   );
