@@ -1,0 +1,476 @@
+[
+  {
+    "section": "A · Personalize",
+    "name": "A1 native welcome, no homepage frame",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "A · Personalize",
+    "name": "A2 sign-up creates one account, one search, onboarding not yet complete",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "A · Personalize",
+    "name": "A7 Review shows the choices, the completion moment, and nothing invented",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "A · Personalize",
+    "name": "A8 finish: onboarding complete (v4, personalize); exactly the answers given; no dontcare",
+    "ok": true,
+    "detail": "{\"Home office\":\"must\",\"Walk-in Pantry\":\"important\"}"
+  },
+  {
+    "section": "A · Personalize",
+    "name": "A9 nothing is saved until \"Save Home\"",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "A · Personalize",
+    "name": "A9 saved: one home, on this search",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "A · Personalize",
+    "name": "A9 the saved confirmation is honest about what is next",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "A · Personalize",
+    "name": "the saved home opens in its overview",
+    "ok": true,
+    "detail": "/homes/e7027580-47c5-40a2-834a-19deb08bbef3"
+  },
+  {
+    "section": "A · Personalize",
+    "name": "A11 Match explains itself and shows no % while nothing is known (price, beds unknown; Unknown ≠ No)",
+    "ok": true,
+    "detail": "Nothing is known yet for your priorities, so there’s no % yet. 4 are still unanswered."
+  },
+  {
+    "section": "A · Personalize",
+    "name": "A12 answering Home Office Yes: a Match appears, based only on that answer",
+    "ok": true,
+    "detail": "100% Match"
+  },
+  {
+    "section": "A · Personalize",
+    "name": "A12 changing it to No: a missed Must Have, the Match responds",
+    "ok": true,
+    "detail": "0% Match"
+  },
+  {
+    "section": "A · Personalize",
+    "name": "A12 back to Unknown: no %, never counted as a No",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "A · Personalize",
+    "name": "A13 Close returns to My Homes, which lists the new home",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "A · Personalize",
+    "name": "A14 tapping \"View home\" immediately after saving always opens the home",
+    "ok": true,
+    "detail": "3/3"
+  },
+  {
+    "section": "B · Save first",
+    "name": "B6 skipping Basics lands directly in Add Home",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "B · Save first",
+    "name": "B7 saved",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "B · Save first",
+    "name": "B7 the saved confirmation doesn’t promise a fit to priorities that don’t exist yet",
+    "ok": true,
+    "detail": "Homes View home Next, when you’re ready: View home shows what FLH found. Your Match starts once you tell FLH what matters—anytime, in My Search. Nothing else is required."
+  },
+  {
+    "section": "B · Save first",
+    "name": "the saved home opens in its overview",
+    "ok": true,
+    "detail": "/homes/e976c227-c164-45d1-976f-e3450da42c9b"
+  },
+  {
+    "section": "B · Save first",
+    "name": "B8 empty profile: no Match %, no number anywhere, never framed as a poor fit",
+    "ok": true,
+    "detail": "Your Match Unknown isn’t No. Fact-based results update from Home Facts. No Match yet—it starts once you tell FLH what ma"
+  },
+  {
+    "section": "B · Save first",
+    "name": "B9 a gentle, optional path to Explore My Priorities",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "B · Save first",
+    "name": "B9 My Homes card: no %, a link to Explore",
+    "ok": true,
+    "detail": "No Match yet—it starts once you tell FLH what matters. Explore My Priorities"
+  },
+  {
+    "section": "B · Save first",
+    "name": "B10 a Must Have and an Important saved; still no dontcare",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "B · Save first",
+    "name": "B10 onboarding state untouched by Explore",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "B · Save first",
+    "name": "B11 back on the home: the new priorities are listed, unanswered, and there is still no % (nothing known)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "B · Save first",
+    "name": "B12 one own answer → Match from that answer only; Walk-in Pantry stays Unknown",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "B · Save first",
+    "name": "B12 stored as this buyer’s own answer only (Pantry not written)",
+    "ok": true,
+    "detail": "{\"features:Home office\":true}"
+  },
+  {
+    "section": "C · Share Extension",
+    "name": "C1 signed out: the shared listing is kept through sign-in",
+    "ok": true,
+    "detail": "/homes?url=https%3A%2F%2Fwww.zillow.com%2Fhomedetails%2F77-Birch-Ln-Troy-MI-48084%2F9988_zpid%2F%3Futm_source%3Dshare"
+  },
+  {
+    "section": "C · Share Extension",
+    "name": "C1 new account → onboarding, destination still kept",
+    "ok": true,
+    "detail": "http://localhost:3200/onboarding?redirect=%2Fhomes%3Furl%3Dhttps%253A%252F%252Fwww.zillow.com%252Fhomedetails%252F77-Bir"
+  },
+  {
+    "section": "C · Share Extension",
+    "name": "C2 after onboarding: Add Home opens with the shared listing’s address",
+    "ok": true,
+    "detail": "77 Birch Ln, Troy, MI 48084"
+  },
+  {
+    "section": "C · Share Extension",
+    "name": "C2 nothing is saved before the buyer confirms",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "C · Share Extension",
+    "name": "C2 saved once, with the original listing link kept",
+    "ok": true,
+    "detail": "https://www.zillow.com/homedetails/77-Birch-Ln-Troy-MI-48084/9988_zpid/?utm_source=share"
+  },
+  {
+    "section": "C · Share Extension",
+    "name": "C3 sharing the same listing again opens the saved home (no duplicate)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "C · Share Extension",
+    "name": "C4 warm app, a new listing: Add Home with its address, nothing saved yet",
+    "ok": true,
+    "detail": "90 Cedar Ct, Troy, MI 48084"
+  },
+  {
+    "section": "C · Share Extension",
+    "name": "C5 no photo is imported from pasted text",
+    "ok": true,
+    "detail": "none"
+  },
+  {
+    "section": "Returning",
+    "name": "R1 signing back in: straight to My Homes; onboarding never restarts",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Returning",
+    "name": "R1 even visiting /onboarding sends a finished account to its homes",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Returning",
+    "name": "R2 My Search Quick Edit works and lists the onboarding choices",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Returning",
+    "name": "R3 Explore preloads the chosen preferences",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Returning",
+    "name": "R4 My Search shows where to pick up",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Returning",
+    "name": "R4 resume returns to the last category",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Returning",
+    "name": "R5 category jump works",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Returning",
+    "name": "R6 the change reached the home’s Match (Walk-in Pantry now a Must Have, still unanswered)",
+    "ok": true,
+    "detail": "Your Match 100% Match Your 100% is based on 1 known priority. 3 are still unanswered. Answer next: Walk-in Pantry 1 Must-Have still unknown. Must-Haves 2 1 unan"
+  },
+  {
+    "section": "Returning",
+    "name": "R7 the way back to saved homes is always there (Homes in the bottom nav)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Collaboration",
+    "name": "X1 signed out: the invitation is kept through sign-in",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Collaboration",
+    "name": "X1 invitation acceptance joins the intended shared search",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Collaboration",
+    "name": "X1 the co-buyer still has exactly their own one search",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Collaboration",
+    "name": "X2 co-buyer’s own preferences on the shared search (Home Office: Nice to Have)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Collaboration",
+    "name": "X2 owner’s preferences untouched by the co-buyer",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Collaboration",
+    "name": "X3 co-buyer sees their own Match (their Home Office is unanswered by them; the owner’s Yes is not theirs)",
+    "ok": true,
+    "detail": "Your Match Nothing is known yet for your priorities, so there’s no % yet. 1 is still unanswered. Answer next: Home Office Your co-buyer’s Match: 100%, from thei"
+  },
+  {
+    "section": "Collaboration",
+    "name": "X4 co-buyer Explore shows THEIR answers",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Collaboration",
+    "name": "X4 co-buyer edit stays in their row; owner unchanged",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Collaboration",
+    "name": "X5 switching to their own search shows that search’s (empty) priorities",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Realtor",
+    "name": "Realtor sign-up lands in the People workspace, never buyer onboarding (flag on)",
+    "ok": true,
+    "detail": "/people"
+  },
+  {
+    "section": "Realtor",
+    "name": "Realtor sign-up: one account, one search row, nothing extra",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Realtor",
+    "name": "seeded Realtor: People workspace opens",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Realtor",
+    "name": "seeded Realtor: nothing they do in Explore changes a buyer’s priorities",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Flag matrix",
+    "name": "ON new buyer: V3 → Quick Start → Add Home; one search; no dontcare",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Flag matrix",
+    "name": "OFF new buyer: the live onboarding flow (no V3 screens); one search",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Flag matrix",
+    "name": "ON new renter: V3 → Quick Start → Add Home; one search; no dontcare",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Flag matrix",
+    "name": "OFF new renter: the live onboarding flow (no V3 screens); one search",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Flag matrix",
+    "name": "ON new aptrenter: V3 → Quick Start → Add Home; one search; no dontcare",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Flag matrix",
+    "name": "OFF new aptrenter: the live onboarding flow (no V3 screens); one search",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Flag matrix",
+    "name": "ON existing completed buyer: straight to homes, never onboarding",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Flag matrix",
+    "name": "OFF existing completed buyer: straight to homes, never onboarding",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Flag matrix",
+    "name": "ON, mid live flow: continues in V3 with every answer kept (budget, Fireplace), one search",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Flag matrix",
+    "name": "OFF, mid V3: the live flow takes over with every answer kept (budget, Walk-in Pantry), one search",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Flag matrix",
+    "name": "OFF: Explore is not found; nothing else breaks",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "section": "Flag matrix",
+    "name": "OFF: /homes renders for a V3-onboarded account",
+    "ok": true,
+    "detail": "200"
+  },
+  {
+    "section": "Flag matrix",
+    "name": "OFF: /search renders for a V3-onboarded account",
+    "ok": true,
+    "detail": "200"
+  },
+  {
+    "section": "Flag matrix",
+    "name": "OFF: /search/priorities renders for a V3-onboarded account",
+    "ok": true,
+    "detail": "200"
+  },
+  {
+    "section": "Flag matrix",
+    "name": "OFF: /homes/e7027580-47c5-40a2-834a-19deb08bbef3 renders for a V3-onboarded account",
+    "ok": true,
+    "detail": "200"
+  },
+  {
+    "section": "Flag matrix",
+    "name": "OFF: /compare renders for a V3-onboarded account",
+    "ok": true,
+    "detail": "200"
+  },
+  {
+    "section": "Flag matrix",
+    "name": "OFF: /account renders for a V3-onboarded account",
+    "ok": true,
+    "detail": "200"
+  },
+  {
+    "section": "Responsive",
+    "name": "320px: home, overlay, My Search and Explore without horizontal overflow",
+    "ok": true,
+    "detail": "0px"
+  },
+  {
+    "section": "Responsive",
+    "name": "375px: home, overlay, My Search and Explore without horizontal overflow",
+    "ok": true,
+    "detail": "0px"
+  },
+  {
+    "section": "Responsive",
+    "name": "390px: home, overlay, My Search and Explore without horizontal overflow",
+    "ok": true,
+    "detail": "0px"
+  },
+  {
+    "section": "Responsive",
+    "name": "430px: home, overlay, My Search and Explore without horizontal overflow",
+    "ok": true,
+    "detail": "0px"
+  },
+  {
+    "section": "Responsive",
+    "name": "1280px: home, overlay, My Search and Explore without horizontal overflow",
+    "ok": true,
+    "detail": "0px"
+  },
+  {
+    "section": "All",
+    "name": "no unexpected console or page errors",
+    "ok": true,
+    "detail": ""
+  }
+]

@@ -193,6 +193,18 @@ async function handle(req, res) {
     return id ? send(res, 200, sessionFor({ id, email: authUser(id)?.email })) : send(res, 400, { error: 'invalid_grant' });
   }
   if (path.startsWith('/auth/v1/logout')) return send(res, 204);
+  // Sign-up as a project with email confirmation off: create the user (the
+  // real handle_new_user trigger makes their profile and search) and return a
+  // session, so browser QA can drive the real sign-up form (Milestone 4).
+  if (path === '/auth/v1/signup' && req.method === 'POST') {
+    const body = JSON.parse(raw.toString() || '{}');
+    const email = String(body.email || '').trim().toLowerCase();
+    if (!email) return send(res, 400, { code: 400, msg: 'Signup requires a valid email' });
+    if (db.admin(`select id from auth.users where email = ${text(email)}`).length) return send(res, 422, { code: 422, error_code: 'user_already_exists', msg: 'User already registered' });
+    const id = randomUUID();
+    db.exec(`insert into auth.users (id, email, raw_user_meta_data) values (${text(id)}, ${text(email)}, ${literal(body.data || {})}::jsonb)`);
+    return send(res, 200, sessionFor({ id, email }));
+  }
 
   // supabase-js uploads a File/Blob as multipart form data (field "" or
   // "file"), the way Supabase Storage expects: keep only the file part.

@@ -1,0 +1,81 @@
+PASS  [A · Personalize] A1 native welcome, no homepage frame
+PASS  [A · Personalize] A2 sign-up creates one account, one search, onboarding not yet complete
+PASS  [A · Personalize] A7 Review shows the choices, the completion moment, and nothing invented
+PASS  [A · Personalize] A8 finish: onboarding complete (v4, personalize); exactly the answers given; no dontcare — {"Home office":"must","Walk-in Pantry":"important"}
+PASS  [A · Personalize] A9 nothing is saved until "Save Home"
+PASS  [A · Personalize] A9 saved: one home, on this search
+PASS  [A · Personalize] A9 the saved confirmation is honest about what is next
+PASS  [A · Personalize] the saved home opens in its overview — /homes/e7027580-47c5-40a2-834a-19deb08bbef3
+PASS  [A · Personalize] A11 Match explains itself and shows no % while nothing is known (price, beds unknown; Unknown ≠ No) — Nothing is known yet for your priorities, so there’s no % yet. 4 are still unanswered.
+PASS  [A · Personalize] A12 answering Home Office Yes: a Match appears, based only on that answer — 100% Match
+PASS  [A · Personalize] A12 changing it to No: a missed Must Have, the Match responds — 0% Match
+PASS  [A · Personalize] A12 back to Unknown: no %, never counted as a No
+PASS  [A · Personalize] A13 Close returns to My Homes, which lists the new home
+PASS  [A · Personalize] A14 tapping "View home" immediately after saving always opens the home — 3/3
+PASS  [B · Save first] B6 skipping Basics lands directly in Add Home
+PASS  [B · Save first] B7 saved
+PASS  [B · Save first] B7 the saved confirmation doesn’t promise a fit to priorities that don’t exist yet — Homes View home Next, when you’re ready: View home shows what FLH found. Your Match starts once you tell FLH what matters—anytime, in My Search. Nothing else is required.
+PASS  [B · Save first] the saved home opens in its overview — /homes/e976c227-c164-45d1-976f-e3450da42c9b
+PASS  [B · Save first] B8 empty profile: no Match %, no number anywhere, never framed as a poor fit — Your Match Unknown isn’t No. Fact-based results update from Home Facts. No Match yet—it starts once you tell FLH what ma
+PASS  [B · Save first] B9 a gentle, optional path to Explore My Priorities
+PASS  [B · Save first] B9 My Homes card: no %, a link to Explore — No Match yet—it starts once you tell FLH what matters. Explore My Priorities
+PASS  [B · Save first] B10 a Must Have and an Important saved; still no dontcare
+PASS  [B · Save first] B10 onboarding state untouched by Explore
+PASS  [B · Save first] B11 back on the home: the new priorities are listed, unanswered, and there is still no % (nothing known)
+PASS  [B · Save first] B12 one own answer → Match from that answer only; Walk-in Pantry stays Unknown
+PASS  [B · Save first] B12 stored as this buyer’s own answer only (Pantry not written) — {"features:Home office":true}
+PASS  [C · Share Extension] C1 signed out: the shared listing is kept through sign-in — /homes?url=https%3A%2F%2Fwww.zillow.com%2Fhomedetails%2F77-Birch-Ln-Troy-MI-48084%2F9988_zpid%2F%3Futm_source%3Dshare
+PASS  [C · Share Extension] C1 new account → onboarding, destination still kept — http://localhost:3200/onboarding?redirect=%2Fhomes%3Furl%3Dhttps%253A%252F%252Fwww.zillow.com%252Fhomedetails%252F77-Bir
+PASS  [C · Share Extension] C2 after onboarding: Add Home opens with the shared listing’s address — 77 Birch Ln, Troy, MI 48084
+PASS  [C · Share Extension] C2 nothing is saved before the buyer confirms
+PASS  [C · Share Extension] C2 saved once, with the original listing link kept — https://www.zillow.com/homedetails/77-Birch-Ln-Troy-MI-48084/9988_zpid/?utm_source=share
+PASS  [C · Share Extension] C3 sharing the same listing again opens the saved home (no duplicate)
+PASS  [C · Share Extension] C4 warm app, a new listing: Add Home with its address, nothing saved yet — 90 Cedar Ct, Troy, MI 48084
+PASS  [C · Share Extension] C5 no photo is imported from pasted text — none
+PASS  [Returning] R1 signing back in: straight to My Homes; onboarding never restarts
+PASS  [Returning] R1 even visiting /onboarding sends a finished account to its homes
+PASS  [Returning] R2 My Search Quick Edit works and lists the onboarding choices
+PASS  [Returning] R3 Explore preloads the chosen preferences
+PASS  [Returning] R4 My Search shows where to pick up
+PASS  [Returning] R4 resume returns to the last category
+PASS  [Returning] R5 category jump works
+PASS  [Returning] R6 the change reached the home’s Match (Walk-in Pantry now a Must Have, still unanswered) — Your Match 100% Match Your 100% is based on 1 known priority. 3 are still unanswered. Answer next: Walk-in Pantry 1 Must-Have still unknown. Must-Haves 2 1 unan
+PASS  [Returning] R7 the way back to saved homes is always there (Homes in the bottom nav)
+PASS  [Collaboration] X1 signed out: the invitation is kept through sign-in
+PASS  [Collaboration] X1 invitation acceptance joins the intended shared search
+PASS  [Collaboration] X1 the co-buyer still has exactly their own one search
+PASS  [Collaboration] X2 co-buyer’s own preferences on the shared search (Home Office: Nice to Have)
+PASS  [Collaboration] X2 owner’s preferences untouched by the co-buyer
+PASS  [Collaboration] X3 co-buyer sees their own Match (their Home Office is unanswered by them; the owner’s Yes is not theirs) — Your Match Nothing is known yet for your priorities, so there’s no % yet. 1 is still unanswered. Answer next: Home Office Your co-buyer’s Match: 100%, from thei
+PASS  [Collaboration] X4 co-buyer Explore shows THEIR answers
+PASS  [Collaboration] X4 co-buyer edit stays in their row; owner unchanged
+PASS  [Collaboration] X5 switching to their own search shows that search’s (empty) priorities
+PASS  [Realtor] Realtor sign-up lands in the People workspace, never buyer onboarding (flag on) — /people
+PASS  [Realtor] Realtor sign-up: one account, one search row, nothing extra
+PASS  [Realtor] seeded Realtor: People workspace opens
+PASS  [Realtor] seeded Realtor: nothing they do in Explore changes a buyer’s priorities
+PASS  [Flag matrix] ON new buyer: V3 → Quick Start → Add Home; one search; no dontcare
+PASS  [Flag matrix] OFF new buyer: the live onboarding flow (no V3 screens); one search
+PASS  [Flag matrix] ON new renter: V3 → Quick Start → Add Home; one search; no dontcare
+PASS  [Flag matrix] OFF new renter: the live onboarding flow (no V3 screens); one search
+PASS  [Flag matrix] ON new aptrenter: V3 → Quick Start → Add Home; one search; no dontcare
+PASS  [Flag matrix] OFF new aptrenter: the live onboarding flow (no V3 screens); one search
+PASS  [Flag matrix] ON existing completed buyer: straight to homes, never onboarding
+PASS  [Flag matrix] OFF existing completed buyer: straight to homes, never onboarding
+PASS  [Flag matrix] ON, mid live flow: continues in V3 with every answer kept (budget, Fireplace), one search
+PASS  [Flag matrix] OFF, mid V3: the live flow takes over with every answer kept (budget, Walk-in Pantry), one search
+PASS  [Flag matrix] OFF: Explore is not found; nothing else breaks
+PASS  [Flag matrix] OFF: /homes renders for a V3-onboarded account — 200
+PASS  [Flag matrix] OFF: /search renders for a V3-onboarded account — 200
+PASS  [Flag matrix] OFF: /search/priorities renders for a V3-onboarded account — 200
+PASS  [Flag matrix] OFF: /homes/e7027580-47c5-40a2-834a-19deb08bbef3 renders for a V3-onboarded account — 200
+PASS  [Flag matrix] OFF: /compare renders for a V3-onboarded account — 200
+PASS  [Flag matrix] OFF: /account renders for a V3-onboarded account — 200
+PASS  [Responsive] 320px: home, overlay, My Search and Explore without horizontal overflow — 0px
+PASS  [Responsive] 375px: home, overlay, My Search and Explore without horizontal overflow — 0px
+PASS  [Responsive] 390px: home, overlay, My Search and Explore without horizontal overflow — 0px
+PASS  [Responsive] 430px: home, overlay, My Search and Explore without horizontal overflow — 0px
+PASS  [Responsive] 1280px: home, overlay, My Search and Explore without horizontal overflow — 0px
+PASS  [All] no unexpected console or page errors
+
+79/79 checks passed

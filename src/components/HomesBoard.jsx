@@ -512,7 +512,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     router.replace('/homes');
   }, [mode, searchParams, router, homes, openHomeModal]);
 
-  const saveHome = useCallback(async (home, { shared = true, optimistic = false, keepModalOpen = false } = {}) => {
+  const saveHome = useCallback(async (home, { shared = true, optimistic = false, keepModalOpen = false, refresh = true } = {}) => {
     const supabase = createClient();
     const previous = homes.find((candidate) => candidate.id === home.id);
     const version = (mutationVersions.current.get(home.id) || 0) + 1;
@@ -560,7 +560,11 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
     // Favorites/Archive nav visibility is computed server-side in the layout — refresh
     // it so a first favorite/archive (or the last one being undone) updates the nav
     // right away instead of only after a manual reload.
-    router.refresh();
+    // A brand-new home skips it (refresh: false): saveEditedHome awaits the
+    // revalidating refreshMyHomes() instead, and a stray refresh still in flight
+    // when the buyer taps "View home" on the saved state overrode that
+    // navigation (Milestone 4: a quick tap left them on My Homes).
+    if (refresh) router.refresh();
     return saved;
   }, [userId, searchId, router, homes]);
 
@@ -574,7 +578,7 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   const saveEditedHome = useCallback(async (home, { landing = 'overlay' } = {}) => {
     const isNew = !modalHome?.id;
     const shared = !home.id || hasSharedHomeChanges(home, modalHome);
-    const saved = await saveHome(home, { shared, keepModalOpen: isNew });
+    const saved = await saveHome(home, { shared, keepModalOpen: isNew, refresh: !isNew });
     if (isNew && saved?.id) {
       // The disappearing home. saveHome's router.refresh() is discarded by the
       // navigation below, so the client Router Cache kept My Homes' pre-save
@@ -599,10 +603,30 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
 
   // The saved state's "View home": the new home's overlay over this board, so
   // Close steps back to My Homes.
+  //
+  // Milestone 4 fix: the revalidating refreshMyHomes() above makes the App
+  // Router refetch this board in the background (~1–2s). A "View home" tap
+  // before that refetch lands was superseded by it — the dialog closed and the
+  // buyer stayed on My Homes (2 in 5 quick taps in QA). The refetch can't be
+  // awaited from here, so if the buyer is still on /homes shortly after the
+  // tap, the same navigation is issued again (at most three times). It never
+  // overrides anywhere else they have gone in the meantime.
   const openSavedHome = useCallback((id) => {
-    if (workspace) workspace.openedFromBoard.current = true;
-    router.push(`/homes/${encodeURIComponent(id)}`, { scroll: false });
+    const target = `/homes/${encodeURIComponent(id)}`;
+    const go = () => {
+      if (workspace) workspace.openedFromBoard.current = true;
+      router.push(target, { scroll: false });
+    };
+    go();
     setModalHome(null);
+    let attempts = 0;
+    const ensureOpened = () => {
+      if (typeof window === 'undefined' || window.location.pathname !== '/homes' || attempts >= 3) return;
+      attempts += 1;
+      go();
+      setTimeout(ensureOpened, 700);
+    };
+    setTimeout(ensureOpened, 700);
   }, [router, workspace]);
 
   // Opening a home (card, Edit): the overlay route. On My Homes the board stays
