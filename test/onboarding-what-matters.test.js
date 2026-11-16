@@ -170,7 +170,7 @@ test('the Step 4 catalog uses only existing canonical identities, with the appro
   assert.deepEqual(table, [
     ['Location & Neighborhood', ['Cul-de-Sac', 'Sidewalks', 'Low-Traffic Street', 'Walkable Neighborhood', 'Near Water', 'Wooded Setting', 'Mature Trees', 'Walkable Schools', 'No HOA']],
     ['Home Features', ['Kitchen Island', 'Stainless Steel Appliances', 'Fireplace', 'Central Air', 'Walk-in Pantry', 'High Ceilings', 'Double Vanity', 'Soaking Tub']],
-    ['Layout & Living Spaces', ['First-Floor Bedroom', 'Home Office', 'Second-Floor Laundry', 'First-Floor Laundry', 'Formal Dining Room', 'Eat-in Kitchen', 'Primary Ensuite', 'Basement Storage']],
+    ['Layout & Living Spaces', ['First-Floor Bedroom', 'Home Office', 'Second-Floor Laundry', 'Main Floor Laundry', 'Formal Dining Room', 'Eat-in Kitchen', 'Primary Ensuite', 'Basement Storage']],
     ['Exterior & Property', ['Deck / Patio', 'Front Porch', 'Pool', 'Room for Entertaining', 'Fire Pit', 'Garden Space', 'Screened-in Porch', 'Workshop Space']],
   ]);
   // Concepts that already existed keep their stored identity.

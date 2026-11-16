@@ -52,7 +52,10 @@ test('a preview session stored on a screen its search no longer shows resumes at
   assert.equal(resumeOnboardingStep(4, { ...stored, step: 'cat_exterior', answers: { searchType: 'apartment_rent' } }), 'cat_apt_unit');
 });
 
-test('Home to Buy screens are byte-for-byte unchanged (snapshot taken from main before this change)', () => {
+// The approved Home to Buy screens, byte for byte. Rental work must never
+// change them. Updated deliberately for the founder-approved Home to Buy
+// catalog refinement (PR #186); see docs/home-to-buy-catalog-refinement.md.
+test('Home to Buy screens are byte-for-byte the approved snapshot (rentals never change them)', () => {
   const snapshot = JSON.parse(read('test/fixtures/v3-home-buy-screens.json'));
   const p = fresh('home_buy');
   const categories = priorityCategoriesFor(p);
@@ -79,7 +82,7 @@ test('Home to Rent offers exactly the approved cards and suggestions, with their
     ['Finished Basement', 'features:Finished basement'], ['Primary Ensuite Bathroom', 'features:Primary ensuite'],
   ]);
   assert.deepEqual(rows(p, 'rent_layout', 'suggestions'), [
-    ['First-Floor Laundry', 'features:First-floor laundry'], ['Extra Bedroom', 'features:Extra Bedroom'], ['Front Porch', 'exterior:Front porch'],
+    ['Main Floor Laundry', 'features:First-floor laundry'], ['Extra Bedroom', 'features:Extra Bedroom'], ['Front Porch', 'exterior:Front porch'],
   ]);
   assert.deepEqual(rows(p, 'rent_features', 'features'), [
     ['Kitchen Countertop Seating', 'features:Countertop Seating'], ['Stainless Steel Appliances', 'features:Stainless Steel Appliances'],

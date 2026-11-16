@@ -71,17 +71,21 @@ export const PRIORITY_CATEGORIES = Object.freeze([
     key: 'layout', step: 'cat_layout', storage: 'features', only: BUY,
     title: 'Layout & Living Spaces', heading: ['Layout & ', 'living spaces'],
     lead: 'How the rooms come together. Choose only what you’d weigh.',
+    // Home to Buy catalog refinement (PR #186): the six approved choices.
+    // "Main Floor Laundry" is the existing features:First-floor laundry
+    // identity (the one Home Facts' laundry location answers), shown under
+    // the approved name; nothing is renamed in storage. Finished and Walkout
+    // basement stay two independent Yes/No priorities. Front Porch moved to
+    // Exterior & Property (same identity, exterior:Front porch).
     features: Object.freeze([
       f('features', 'First-Floor Bedroom', { art: 'first-floor-bedroom', icon: 'BedSingle' }),
       f('features', 'Home office', { art: 'home-office', icon: 'Laptop' }),
-      f('features', 'Finished basement', { art: 'finished-basement', icon: 'Sofa' }),
       f('features', 'Primary ensuite', { art: 'primary-ensuite', icon: 'BedDouble' }),
-    ]),
-    suggestions: Object.freeze([
-      f('features', 'First-floor laundry', { art: 'first-floor-laundry', icon: 'WashingMachine' }),
+      f('features', 'Finished basement', { art: 'finished-basement', icon: 'Sofa' }),
       f('features', 'Walkout basement', { art: 'walkout-basement', icon: 'DoorOpen' }),
-      f('exterior', 'Front porch', { art: 'front-porch', icon: 'Armchair' }),
+      f('features', 'First-floor laundry', { text: 'Main Floor Laundry', art: 'first-floor-laundry', icon: 'WashingMachine', aliases: ['First-Floor Laundry', 'First floor laundry'] }),
     ]),
+    suggestions: Object.freeze([]),
   }),
   Object.freeze({
     key: 'kitchen', step: 'cat_kitchen', storage: 'features', only: BUY,
@@ -219,14 +223,20 @@ export const PRIORITY_CATEGORIES = Object.freeze([
     key: 'exterior', step: 'cat_exterior', storage: 'exterior', only: HOMES,
     title: 'Exterior & Property', heading: ['Exterior & ', 'property'],
     lead: 'The outdoor space that comes with it.',
+    // Fenced Yard: an enclosed yard, any fence. Privacy Fence (Home to Buy):
+    // the existing exterior:Privacy Fencing identity — a fence that screens
+    // the yard from view. Two independent Yes/No priorities; neither is ever
+    // inferred from the other.
     features: Object.freeze([
       f('exterior', 'Patio / deck', { art: 'deck-patio', icon: 'Sun' }),
       f('exterior', 'Fenced yard', { art: 'fenced-yard', icon: 'Fence' }),
+      f('exterior', 'Privacy Fencing', { text: 'Privacy Fence', art: 'privacy-fence', icon: 'Fence', only: BUY, aliases: ['Privacy Fence'] }),
     ]),
     suggestions: Object.freeze([
       f('location', 'Mature Trees', { art: 'mature-trees', icon: 'TreeDeciduous' }),
       f('exterior', 'Garden Space', { art: 'garden', icon: 'Sprout', only: BUY }),
       f('exterior', 'Pool', { art: 'pool', icon: 'Waves' }),
+      f('exterior', 'Front porch', { art: 'front-porch', icon: 'Armchair', only: BUY }),
       f('exterior', 'Landscaping', { art: 'landscaping', icon: 'Flower2', only: HOME_RENT, hint: 'A well-kept, landscaped yard.' }),
     ]),
   }),
@@ -245,7 +255,8 @@ export const PRIORITY_CATEGORIES = Object.freeze([
     ]),
     suggestions: Object.freeze([
       f('location', 'Cul-de-Sac', { art: 'cul-de-sac', icon: 'Milestone' }),
-      f('location', 'Walkable schools', { text: 'Walkable to Schools', art: 'walkable-schools', icon: 'School', only: BUY }),
+      // Walkable to Schools is no longer offered to buyers (PR #186); anyone who
+      // chose it keeps it (Review: "More of your priorities"; still counted).
       // The Yes/No identity, never the rental catalog's unanswerable
       // "Parks Nearby" rating (spec A2).
       f('location', 'Parks nearby', { text: 'Parks Nearby', art: 'parks-nearby', icon: 'Trees', only: HOME_RENT }),
@@ -554,10 +565,16 @@ export function renameOwnFeature(raw, feature, typed) {
 /* ---------------------------------- garage --------------------------------- */
 
 export const GARAGE_IMPORTANCE = Object.freeze(['must', 'important', 'nice', 'not_important']);
+// The three garage choices shown to buyers (PR #186): one Garage priority
+// (exterior:Garage, one importance, scored from the home's garage spaces)
+// with the existing exterior.garagePreference qualifier. Only one can be
+// chosen, so they never conflict or count twice. The qualifier is recorded
+// for the buyer; Match does not yet score attached vs detached (a Home Facts
+// / Match change planned for the next PR).
 export const GARAGE_TYPES = Object.freeze([
-  Object.freeze({ key: 'attached', label: 'Attached', art: 'garage-attached', icon: 'Warehouse' }),
-  Object.freeze({ key: 'detached', label: 'Detached', art: 'garage-detached', icon: 'Warehouse' }),
-  Object.freeze({ key: 'any', label: 'Either is fine', art: 'garage-either', icon: 'Warehouse' }),
+  Object.freeze({ key: 'any', label: 'Any garage', text: 'Any Garage', hint: 'Attached or detached', art: 'garage-either', icon: 'Warehouse' }),
+  Object.freeze({ key: 'attached', label: 'Attached garage', text: 'Attached Garage', hint: 'Joined to the house', art: 'garage-attached', icon: 'Warehouse' }),
+  Object.freeze({ key: 'detached', label: 'Detached garage', text: 'Detached Garage', hint: 'Separate from the house', art: 'garage-detached', icon: 'Warehouse' }),
 ]);
 
 // The existing exterior:Garage criterion's level; 'not_important' when the

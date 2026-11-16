@@ -89,7 +89,7 @@ dbTest('board-written priorities equal the phone’s, round-trip unchanged, stay
   assert.deepEqual(ownerStored, normalizePriorities(board), 'reads back exactly');
   assert.deepEqual(coBuyerStored, normalizePriorities(theirs), 'the co-buyer’s document is their own');
   assert.deepEqual(Object.fromEntries(Object.entries(priorityBoard(ownerStored).columns).map(([tier, items]) => [tier, items.map((item) => item.text)])),
-    { must: ['Countertop Seating'], important: ['Kitchen Island', 'Garage'], nice: ['Pot filler'] });
+    { must: ['Countertop Seating'], important: ['Kitchen Island', 'Any Garage'], nice: ['Pot filler'] });
 
   const homeIds = {};
   for (const [name, garageSpaces] of [['noGarage', '0'], ['garage', '2'], ['unknown', '']]) {

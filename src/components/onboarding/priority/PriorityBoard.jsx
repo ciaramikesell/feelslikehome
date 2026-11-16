@@ -7,9 +7,11 @@ import { LEVEL_COPY, PRIORITY_LEVELS } from '@/lib/searchProfile';
 import {
   GARAGE_TYPES, garageType, lotSizeImportance, lotSizeValue, priorityCategory, setGarageType, setLotSizeValue,
 } from '@/lib/priorityCategories';
-import { BOARD_HOUSE_GARAGE, BOARD_OWN_GROUP, BOARD_OWN_TITLE, addBoardOwnFeature, boardLevel, boardSuggestions, placeOnBoard, priorityBoard } from '@/lib/priorityBoard';
+import { BOARD_OWN_GROUP, isBoardHouseGarage, BOARD_OWN_TITLE, addBoardOwnFeature, boardLevel, boardSuggestions, placeOnBoard, priorityBoard } from '@/lib/priorityBoard';
 import { featureDescription } from '@/lib/featureDescriptions';
 import FeatureVisual from './FeatureVisual';
+import YardConflictNote from './YardConflictNote';
+import { yardConflict } from '@/lib/yardConflict';
 
 // The desktop priority board (docs/desktop-priority-board.md): one screen that
 // replaces the phone's category screens. A feature library grouped by those
@@ -32,7 +34,7 @@ const COLUMN_EMPTY = Object.freeze({
   nice: 'Bonuses you’d enjoy.',
 });
 
-const isHouseGarage = (feature) => feature?.id === BOARD_HOUSE_GARAGE.id && feature.group === BOARD_HOUSE_GARAGE.group;
+const isHouseGarage = isBoardHouseGarage;
 
 function levelText(level) {
   return level ? LEVEL_COPY[level].heading : 'not ranked';
@@ -114,7 +116,7 @@ function GarageType({ priorities, patch }) {
   const id = useId();
   return (
     <div className="flh-ob-board-garage" role="group" aria-labelledby={id}>
-      <p id={id} className="flh-ob-board-chooser-question">Attached or detached?</p>
+      <p id={id} className="flh-ob-board-chooser-question">Which garage?</p>
       <div className="flh-ob-board-segments">
         {GARAGE_TYPES.map((choice) => (
           <button key={choice.key} type="button" className={`flh-ob-board-segment${type === choice.key ? ' is-current' : ''}`} aria-pressed={type === choice.key}
@@ -176,7 +178,7 @@ function LibraryGroup({ group, priorities, patch, board }) {
       {group.features.length > 0
         ? <ul className="flh-ob-board-chips" aria-label={group.title}>{group.features.map((feature) => <Chip key={feature.id} feature={feature} level={null} board={board} dragging={board.dragging?.id === feature.id} />)}</ul>
         : <p className="flh-ob-board-all-ranked">{group.own ? (group.rankedCount ? 'All ranked.' : 'What you add appears here.') : 'All ranked.'}</p>}
-      {group.garageDetailsHidden && <p className="flh-ob-board-note">Rank Garage to see details like a workbench or a door to the yard.</p>}
+      {group.garageDetailsHidden && <p className="flh-ob-board-note">Rank a garage to see details like a workbench or a door to the yard.</p>}
       {group.lotSize && <LotSizePanel group={group} priorities={priorities} patch={patch} board={board} />}
     </section>
   );
@@ -325,7 +327,6 @@ export default function PriorityBoard({ priorities, patch, header, footer }) {
   const previewTimer = useRef(null);
   const [lastAction, setLastAction] = useState(null);
   const focusAfter = useRef(null);
-  const reopenAfter = useRef(null);
   const libraryDrop = useDropTarget({ draggingRef, dragging, drop: (target) => drop(target) }, 'none');
 
   // Keyboard focus follows a chip after it moves (or the chooser closes).
@@ -335,9 +336,6 @@ export default function PriorityBoard({ priorities, patch, header, footer }) {
     focusAfter.current = null;
     const chip = [...(boardRef.current?.querySelectorAll('[data-chip-id]') || [])].find((element) => element.dataset.chipId === id);
     chip?.focus({ preventScroll: false });
-    // Ranking the house Garage reopens its chooser where the chip now is, so
-    // Attached / Detached can be answered straight away.
-    if (chip && reopenAfter.current?.id === id) { setChooser({ feature: reopenAfter.current, anchor: chip, note: null }); reopenAfter.current = null; }
   });
   useEffect(() => () => clearTimeout(previewTimer.current), []);
 
@@ -387,7 +385,6 @@ export default function PriorityBoard({ priorities, patch, header, footer }) {
     setChooser(null);
     place(feature, tier, { refocus: true });
     if (!PRIORITY_LEVELS.includes(tier) || boardLevel(priorities, feature) === tier) focusAfter.current = feature.id;
-    if (isHouseGarage(feature) && PRIORITY_LEVELS.includes(tier) && !garageType(priorities)) reopenAfter.current = feature;
   };
   const undo = () => {
     if (!lastAction) return;
@@ -397,13 +394,7 @@ export default function PriorityBoard({ priorities, patch, header, footer }) {
     focusAfter.current = id;
   };
 
-  // The ranked house Garage carries its attached / detached answer (or asks for it).
-  const qualifierFor = (feature, level) => {
-    if (!level || !isHouseGarage(feature)) return null;
-    const type = GARAGE_TYPES.find((choice) => choice.key === garageType(priorities));
-    return type ? { text: type.label, set: true } : { text: 'Attached or detached?', set: false };
-  };
-  const board = { model, dragging, draggingRef, dragStart, dragEnd, drop, openChooser, previewSoon, previewHide, qualifierFor };
+  const board = { model, dragging, draggingRef, dragStart, dragEnd, drop, openChooser, previewSoon, previewHide };
   const fromColumn = dragging && dragging.from !== 'none';
 
   return (
@@ -429,6 +420,10 @@ export default function PriorityBoard({ priorities, patch, header, footer }) {
             {model.groups.map((group) => <LibraryGroup key={group.key} group={group} priorities={priorities} patch={patch} board={board} />)}
           </div>
         </section>
+        <YardConflictNote className="flh-ob-board-yard-conflict" conflict={yardConflict(priorities)} onEdit={(feature, button) => {
+          const chip = [...(boardRef.current?.querySelectorAll('.flh-ob-board-columns [data-chip-id]') || [])].find((element) => element.dataset.chipId === feature.id);
+          openChooser(feature, chip || button);
+        }} />
         <div className="flh-ob-board-summary">
           <h2 className="flh-ob-board-summary-title">Your priorities</h2>
           <ul className="flh-ob-board-summary-counts" aria-label="Ranked by importance">

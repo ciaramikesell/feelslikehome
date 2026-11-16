@@ -23,7 +23,7 @@
 import { normalizePriorities } from './constants.js';
 import { PRIORITY_LEVELS, basicsFieldsFor, priorityLevels } from './searchProfile.js';
 import {
-  LOT_SIZE_FEATURE, PETS_FEATURE, PRIORITY_CATEGORIES, addOwnFeature, categoryView, featureLevel, garageImportance, lotSizeImportance, lotSizeRankable,
+  GARAGE_TYPES, LOT_SIZE_FEATURE, PETS_FEATURE, PRIORITY_CATEGORIES, addOwnFeature, categoryView, garageType, setGarageType, featureLevel, garageImportance, lotSizeImportance, lotSizeRankable,
   lotSizeValue, normalizeFeatureKey, priorityCategoriesFor, setFeatureLevel, setLotSizeImportance,
 } from './priorityCategories.js';
 import { PETS_CRITERION_KEY } from './rentalPets.js';
@@ -104,6 +104,18 @@ export const BOARD_HOUSE_GARAGE = Object.freeze({
   custom: false, art: null, icon: 'Warehouse', group: 'garage', role: 'feature',
 });
 
+// The library offers that one Garage priority as three chips (PR #186):
+// Any Garage, Attached Garage, Detached Garage. Each is the same
+// exterior:Garage criterion plus the existing garagePreference qualifier, so
+// ranking one is one importance and one qualifier — never three criteria.
+// Once a garage is ranked all three leave the library; the column shows the
+// one chosen (Any Garage when no qualifier is stored, which means "any").
+export const BOARD_GARAGE_CHOICES = Object.freeze(GARAGE_TYPES.map((type) => Object.freeze({
+  ...BOARD_HOUSE_GARAGE, id: `exterior:Garage#${type.key}`, variant: type.key, text: type.text, art: type.art,
+})));
+export const isBoardHouseGarage = (feature) => feature?.categoryKey === 'exterior' && feature.label === 'Garage' && feature.group === 'garage';
+const garageChoiceFor = (raw) => BOARD_GARAGE_CHOICES.find((choice) => choice.variant === (garageType(raw) || 'any'));
+
 // Home to Rent's Ideal lot size (#184, D4): once acreage is entered it is a
 // chip like any other, ranked with the existing lotSizeTarget tier
 // (setLotSizeImportance). Without acreage there is no chip, and clearing the
@@ -172,7 +184,7 @@ function boardCategories(priorities) {
     const view = categoryView(priorities, category.key);
     const own = view.cards.filter((card) => card.role === 'own');
     const offered = [...view.category.features, ...view.category.suggestions, ...own];
-    const features = category.key === 'garage' ? [{ ...BOARD_HOUSE_GARAGE }, ...offered] : offered;
+    const features = category.key === 'garage' ? [...BOARD_GARAGE_CHOICES.map((choice) => ({ ...choice })), ...offered] : offered;
     const seen = new Set();
     return {
       category,
@@ -199,7 +211,8 @@ export function boardColumns(input, categories = boardCategories(input)) {
       const key = norm(item.key);
       if (seen.has(key)) continue;
       seen.add(key);
-      const known = index.get(key);
+      const garageGroup = key === norm(BOARD_HOUSE_GARAGE.id) ? categories.findIndex(({ category }) => category.key === 'garage') : -1;
+      const known = garageGroup >= 0 ? { feature: garageChoiceFor(raw), order: garageGroup * 1000 } : index.get(key);
       const feature = known
         ? { ...known.feature, level: level.tier }
         : key === norm(PETS_CRITERION_KEY)
@@ -234,16 +247,15 @@ export function priorityBoard(input, { earlierRemoved = [] } = {}) {
   const groups = categories.map(({ category, features }) => {
     const lotField = category.key === 'exterior' && Boolean(basicsFieldsFor(experience).lotSize);
     const lotInLibrary = lotField && lot && !lot.level ? lot : null;
-    const lotRanked = lotField && lot?.level;
-    let library = features.filter((feature) => !ranked.has(norm(feature.id)));
-    const rankedCount = features.length - library.length;
+    let library = features.filter((feature) => !ranked.has(norm(feature.id)) && !(feature.variant && garageMatters));
+    const rankedCount = PRIORITY_LEVELS.reduce((sum, tier) => sum + columns[tier].filter((feature) => feature.group === category.key).length, 0);
     // As on the phone screen: garage details once a garage matters (or once
     // any detail is already chosen).
     const garageDetailsHidden = category.key === 'garage' && !garageMatters && rankedCount === 0;
-    if (garageDetailsHidden) library = library.filter((feature) => feature.id === BOARD_HOUSE_GARAGE.id);
+    if (garageDetailsHidden) library = library.filter((feature) => feature.variant);
     return {
       key: category.key, step: category.step, title: category.title, storage: category.storage,
-      features: library.map((feature) => ({ ...feature, level: null })), rankedCount: rankedCount + (lotRanked ? 1 : 0), garageDetailsHidden,
+      features: library.map((feature) => ({ ...feature, level: null })), rankedCount, garageDetailsHidden,
       lotSize: lotField,
       lotRankable: lotField && lotSizeRankable(raw),
       // Home to Rent: the entered acreage, unranked, shown in the lot-size panel.
@@ -264,6 +276,7 @@ export function priorityBoard(input, { earlierRemoved = [] } = {}) {
 // Where a feature currently is: 'must' | 'important' | 'nice' | null (library).
 export function boardLevel(raw, feature) {
   if (isLotSize(feature)) return lotSizeImportance(raw);
+  if (isBoardHouseGarage(feature)) return featureLevel(raw, BOARD_HOUSE_GARAGE);
   const key = norm(feature.id);
   for (const [tier, items] of Object.entries(boardColumns(raw))) if (items.some((item) => norm(item.id) === key)) return tier;
   return featureLevel(raw, feature);
@@ -276,6 +289,10 @@ export function placeOnBoard(raw, feature, target) {
   const current = boardLevel(raw, feature);
   if (target === current || (target === 'none' && !current)) return raw;
   if (isLotSize(feature)) return setLotSizeImportance(raw, PRIORITY_LEVELS.includes(target) ? target : 'none');
+  // A garage choice: the Garage importance plus its qualifier (the phone's
+  // garage question writes exactly these two). Removing it is Not important;
+  // the qualifier is kept, as on the phone.
+  if (feature.variant && PRIORITY_LEVELS.includes(target)) return setGarageType(setFeatureLevel(raw, BOARD_HOUSE_GARAGE, target), feature.variant);
   return setFeatureLevel(raw, feature, PRIORITY_LEVELS.includes(target) ? target : 'none');
 }
 

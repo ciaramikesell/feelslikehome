@@ -194,7 +194,7 @@ for (const zoom of [1.5, 2]) {
   check('no duplicate from case, spacing or punctuation', (await page.locator('.flh-ob-pf-card-title', { hasText: /pot filler/i }).count()) === 1);
   await page.getByRole('textbox', { name: 'Add your own' }).fill('front porch');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
-  check('a feature from another screen is found, not duplicated', await page.getByRole('dialog', { name: 'Front Porch' }).getByText('You’ll find this under Layout & Living Spaces.').isVisible());
+  check('a feature from another screen is found, not duplicated', await page.getByRole('dialog', { name: 'Front Porch' }).getByText('You’ll find this under Exterior & Property.').isVisible());
   await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
   await shot(page, 'flow-kitchen-chosen-390');
 
@@ -216,7 +216,10 @@ for (const zoom of [1.5, 2]) {
   await page.getByRole('button', { name: 'Skip' }).click(); // bath
   await page.getByRole('heading', { name: 'The garage', level: 1 }).waitFor();
   await page.getByRole('button', { name: /^Important/ }).click();
-  check('garage subtype appears once a garage matters', await page.getByRole('heading', { name: 'Attached or detached?' }).isVisible());
+  check('garage subtype appears once a garage matters', await page.getByRole('heading', { name: 'Which garage?' }).isVisible());
+  const garageChoices = await page.locator('section[aria-labelledby="flh-ob-pf-garage-type"] .flh-ob-pf-card-title').allTextContents();
+  check('three garage choices: Any, Attached, Detached', JSON.stringify(garageChoices) === JSON.stringify(['Any garage', 'Attached garage', 'Detached garage']), garageChoices.join(', '));
+  await shot(page, 'flow-garage-choices-390');
   await page.getByRole('button', { name: /^Not important/ }).click();
   await page.getByRole('heading', { name: /Exterior & property/i, level: 1 }).waitFor();
   check('garage Not important advances to the next screen automatically', await page.getByRole('heading', { name: /Exterior & property/i, level: 1 }).isVisible());
@@ -224,10 +227,10 @@ for (const zoom of [1.5, 2]) {
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await page.getByRole('heading', { name: 'The garage', level: 1 }).waitFor();
   check('Back to the garage shows Not important chosen, with no subtype', await page.getByRole('button', { name: /^Not important/ }).getAttribute('aria-pressed') === 'true'
-    && !(await page.getByRole('heading', { name: 'Attached or detached?' }).isVisible()));
+    && !(await page.getByRole('heading', { name: 'Which garage?' }).isVisible()));
   await shot(page, 'flow-garage-not-important-back-390');
   await page.getByRole('button', { name: /^Nice to Have/ }).click();
-  check('changing it back brings the subtype back', await page.getByRole('heading', { name: 'Attached or detached?' }).isVisible() && await page.getByRole('heading', { name: 'The garage', level: 1 }).isVisible());
+  check('changing it back brings the subtype back', await page.getByRole('heading', { name: 'Which garage?' }).isVisible() && await page.getByRole('heading', { name: 'The garage', level: 1 }).isVisible());
   await page.getByRole('button', { name: /^Not important/ }).click();
   await page.getByRole('heading', { name: /Exterior & property/i, level: 1 }).waitFor();
   await page.getByRole('textbox', { name: /Ideal lot size/ }).fill('0.5');

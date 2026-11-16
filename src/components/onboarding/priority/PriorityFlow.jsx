@@ -18,6 +18,8 @@ import FeatureVisual from './FeatureVisual';
 import ImportanceSheet from './ImportanceSheet';
 import AddOwnFeature from './AddOwnFeature';
 import PriorityReview from './PriorityReview';
+import YardConflictNote from './YardConflictNote';
+import { yardConflict } from '@/lib/yardConflict';
 import PetsQuestion from './PetsQuestion';
 
 // Mobile Priority Onboarding V3 (flow 4). Every screen has the same frame:
@@ -128,13 +130,13 @@ function GarageQuestions({ priorities, patch, onNotImportant }) {
       </section>
       {PRIORITY_LEVELS.includes(importance) && (
         <section aria-labelledby="flh-ob-pf-garage-type">
-          <h2 id="flh-ob-pf-garage-type" className="flh-ob-label flh-ob-pf-section-label">Attached or detached?</h2>
+          <h2 id="flh-ob-pf-garage-type" className="flh-ob-label flh-ob-pf-section-label">Which garage?</h2>
           <ul className="flh-ob-pf-grid flh-ob-pf-grid-three" aria-label="Garage type">
             {GARAGE_TYPES.map((choice) => (
               <li key={choice.key} className="flh-ob-pf-cell">
                 <button type="button" className={`flh-ob-pf-card${type === choice.key ? ' is-selected is-important' : ''}`} aria-pressed={type === choice.key} onClick={() => patch((next) => setGarageType(next, choice.key))}>
                   <FeatureVisual feature={{ art: choice.art, icon: choice.icon }} eager />
-                  <span className="flh-ob-pf-card-body"><span className="flh-ob-pf-card-title">{choice.label}</span></span>
+                  <span className="flh-ob-pf-card-body"><span className="flh-ob-pf-card-title">{choice.label}</span><span className="flh-ob-pf-card-level">{choice.hint}</span></span>
                 </button>
               </li>
             ))}
@@ -206,6 +208,7 @@ export function CategoryStep({ categoryKey, priorities, patch, header, footer, p
         <>
           {garage && view.cards.length > 0 && <h2 className="flh-ob-label flh-ob-pf-section-label">Garage details</h2>}
           <FeatureGrid cards={view.cards} onOpen={(feature) => picker.open(feature)} label={category.title} />
+          {category.key === 'exterior' && <YardConflictNote conflict={yardConflict(priorities)} onEdit={(feature) => picker.open(feature)} />}
           <AddOwnFeature title={category.title} suggestions={view.suggestions} onAdd={add} />
           {notice && <p className="sr-only" role="status">{notice}</p>}
           {addError && <p className="flh-ob-help" role="alert">{addError}</p>}

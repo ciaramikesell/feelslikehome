@@ -77,7 +77,7 @@ test('canonical weighted Home criteria are exactly the approved taxonomy, groupe
   assert.deepEqual(groups, [
     ['Location & Neighborhood', ['Cul-de-Sac', 'Sidewalks', 'Low-Traffic Street', 'Walkable Neighborhood', 'Near Water', 'Wooded Setting', 'Mature Trees', 'Walkable Schools', 'No HOA']],
     ['Home Features', ['Kitchen Island', 'Stainless Steel Appliances', 'Fireplace', 'Central Air', 'Walk-in Pantry', 'High Ceilings', 'Double Vanity', 'Soaking Tub']],
-    ['Layout & Living Spaces', ['First-Floor Bedroom', 'Home Office', 'Second-Floor Laundry', 'First-Floor Laundry', 'Formal Dining Room', 'Eat-in Kitchen', 'Primary Ensuite', 'Basement Storage']],
+    ['Layout & Living Spaces', ['First-Floor Bedroom', 'Home Office', 'Second-Floor Laundry', 'Main Floor Laundry', 'Formal Dining Room', 'Eat-in Kitchen', 'Primary Ensuite', 'Basement Storage']],
     ['Exterior & Property', ['Deck / Patio', 'Front Porch', 'Pool', 'Room for Entertaining', 'Fire Pit', 'Garden Space', 'Screened-in Porch', 'Workshop Space']],
     ['Home Preferences', ['Garage', 'First-Floor Primary', 'Finished Basement', 'Walkout Basement', 'Fenced Yard', 'Privacy Fence', 'Unfenced Yard']],
   ]);
@@ -93,7 +93,7 @@ test('Home to Rent keeps its earlier canonical Home criteria (no HOA); Apartment
   assert.deepEqual(offeredLabels(rent), [
     ...essentials,
     'Reputable Schools', 'Walkable to Town', 'Parks Nearby', 'Quiet Street', 'Bustling Street', 'Near Water', 'Walkable Schools',
-    'Finished Basement', 'Walkout Basement', 'First-Floor Primary', 'Guest Bedroom', 'Primary Ensuite', 'First-Floor Laundry', 'Home Office', 'Fireplace',
+    'Finished Basement', 'Walkout Basement', 'First-Floor Primary', 'Guest Bedroom', 'Primary Ensuite', 'Main Floor Laundry', 'Home Office', 'Fireplace',
     'Deck / Patio', 'Fenced Yard', 'Privacy Fence', 'Large Backyard', 'Front Porch', 'Pool', 'Landscaping',
     'Garage',
   ]);

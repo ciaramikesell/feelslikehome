@@ -248,7 +248,11 @@ const CRITERION_DISPLAY_LABEL_OVERRIDES = {
   'features:Finished basement': 'Finished Basement',
   'features:Walkout basement': 'Walkout Basement',
   'features:Primary ensuite': 'Primary Ensuite',
-  'features:First-floor laundry': 'First-Floor Laundry',
+  // Founder decision (PR #186): "Main Floor Laundry" everywhere a priority is
+  // shown (selection, My Search, Review, Match). Stored identity unchanged —
+  // both stored spellings keep their keys, Home Facts answers and SQL mapping.
+  'features:First-floor laundry': 'Main Floor Laundry',
+  'features:First-Floor Laundry': 'Main Floor Laundry',
   'features:Home office': 'Home Office',
   'features:Central air': 'Central Air',
   'exterior:Patio / deck': 'Deck / Patio',

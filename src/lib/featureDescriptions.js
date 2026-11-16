@@ -21,6 +21,7 @@ const DESCRIPTIONS = Object.freeze({
   'Primary Ensuite': 'A primary bedroom with its own attached bathroom.',
   'Primary Ensuite Bathroom': 'A primary bedroom with its own attached bathroom.',
   'First-Floor Laundry': 'Washer and dryer on the main level, not down in the basement.',
+  'Main Floor Laundry': 'Washer and dryer on the main level, not down in the basement or upstairs.',
   'Walkout Basement': 'A lower level with a door straight out to the yard.',
   'Front Porch': 'A covered spot at the front door to sit and say hello.',
   'Extra Bedroom': 'One more bedroom than the minimum you entered in Basics.',
@@ -45,6 +46,9 @@ const DESCRIPTIONS = Object.freeze({
   'Linen Closet': 'A closet for towels and sheets near the bathrooms.',
   // Garage
   Garage: 'A garage that comes with the home.',
+  'Any Garage': 'A garage of either kind: attached or detached both suit you.',
+  'Attached Garage': 'A garage joined to the house, so you can walk straight in.',
+  'Detached Garage': 'A garage that stands on its own, apart from the house.',
   'Garage Parking': 'Covered parking in the building’s garage.',
   Workbench: 'Room in the garage for a workbench and tools.',
   'Garage Extension': 'Extra garage depth or bays for storage, a workshop or a bigger vehicle.',
@@ -52,7 +56,8 @@ const DESCRIPTIONS = Object.freeze({
   'Private Garage': 'A garage for your unit only, not shared parking.',
   // Exterior & property
   'Deck / Patio': 'An outdoor deck or patio for meals and lounging.',
-  'Fenced Yard': 'A yard enclosed by a fence, for kids, pets or privacy.',
+  'Fenced Yard': 'A yard enclosed by a fence of any kind.',
+  'Privacy Fence': 'A tall, solid fence that screens the yard from view.',
   'Mature Trees': 'Established trees for shade and character.',
   'Garden Space': 'A sunny patch of ground ready for planting.',
   Pool: 'A swimming pool on the property.',
