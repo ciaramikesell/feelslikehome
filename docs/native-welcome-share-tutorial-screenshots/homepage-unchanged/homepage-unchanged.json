@@ -1,0 +1,71 @@
+[
+  {
+    "name": "desktop-1440",
+    "identical": true,
+    "pixels": true,
+    "imageRequests": {
+      "before": [
+        "/_next/image?url=%2Fimages%2FFLH%20Example.png&w=828&q=75",
+        "/_next/image?url=%2Fimages%2FWarm%20Cottage.png&w=1080&q=75"
+      ],
+      "after": [
+        "/_next/image?url=%2Fimages%2FFLH%20Example.png&w=828&q=75",
+        "/_next/image?url=%2Fimages%2FWarm%20Cottage.png&w=1080&q=75"
+      ]
+    }
+  },
+  {
+    "name": "desktop-1024",
+    "identical": true,
+    "pixels": true,
+    "imageRequests": {
+      "before": [
+        "/_next/image?url=%2Fimages%2FFLH%20Example.png&w=640&q=75",
+        "/_next/image?url=%2Fimages%2FWarm%20Cottage.png&w=640&q=75"
+      ],
+      "after": [
+        "/_next/image?url=%2Fimages%2FFLH%20Example.png&w=640&q=75",
+        "/_next/image?url=%2Fimages%2FWarm%20Cottage.png&w=640&q=75"
+      ]
+    }
+  },
+  {
+    "name": "mobile-safari-iphone-13",
+    "identical": true,
+    "pixels": true,
+    "imageRequests": {
+      "before": [
+        "/_next/image?url=%2Fimages%2FWarm%20Cottage.png&w=1200&q=75"
+      ],
+      "after": [
+        "/_next/image?url=%2Fimages%2FWarm%20Cottage.png&w=1200&q=75"
+      ]
+    }
+  },
+  {
+    "name": "mobile-safari-iphone-se",
+    "identical": true,
+    "pixels": true,
+    "imageRequests": {
+      "before": [
+        "/_next/image?url=%2Fimages%2FWarm%20Cottage.png&w=640&q=75"
+      ],
+      "after": [
+        "/_next/image?url=%2Fimages%2FWarm%20Cottage.png&w=640&q=75"
+      ]
+    }
+  },
+  {
+    "name": "mobile-320",
+    "identical": true,
+    "pixels": true,
+    "imageRequests": {
+      "before": [
+        "/_next/image?url=%2Fimages%2FWarm%20Cottage.png&w=384&q=75"
+      ],
+      "after": [
+        "/_next/image?url=%2Fimages%2FWarm%20Cottage.png&w=384&q=75"
+      ]
+    }
+  }
+]

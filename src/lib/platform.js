@@ -20,3 +20,29 @@ import { Capacitor } from '@capacitor/core';
 export function isNativeApp() {
   return Capacitor.isNativePlatform();
 }
+
+// Asks whether a Capacitor plugin's native half is compiled into the installed
+// binary. The app is remote-hosted, so the live web code can be newer than the
+// app a person installed: a plugin added in a later release (e.g. Haptics) is
+// absent from older builds, and callers must quietly do nothing there.
+export function isNativePluginAvailable(name) {
+  return isNativeApp() && Capacitor.isPluginAvailable(name);
+}
+
+// ── First-paint native flag ─────────────────────────────────────────────────
+// isNativeApp() can only run after hydration, so anything gated on it alone
+// shows the web version for a beat first. For the one place where that beat
+// is visible — the signed-out root, which must show the native welcome and
+// never the public marketing homepage — the root layout inlines this script
+// in <head>. It runs synchronously before <body> is parsed and marks <html>
+// with NATIVE_SHELL_ATTRIBUTE; CSS then picks the right surface for the
+// very first paint.
+//
+// The check is the same native-bridge check @capacitor/core's getPlatformId()
+// makes (window.androidBridge, or the WKScriptMessageHandler named "bridge"
+// that Capacitor's iOS shell registers before any page loads). It never reads
+// the user agent, the viewport width or the URL. In every ordinary browser
+// neither bridge exists, so the attribute is never set and nothing changes.
+// It decides presentation only — routing and auth stay server-side.
+export const NATIVE_SHELL_ATTRIBUTE = 'data-flh-native';
+export const NATIVE_SHELL_FLAG_SCRIPT = `(function(){try{var w=window;if(w.CapacitorCustomPlatform||w.androidBridge||(w.webkit&&w.webkit.messageHandlers&&w.webkit.messageHandlers.bridge)){document.documentElement.setAttribute('${NATIVE_SHELL_ATTRIBUTE}','')}}catch(e){}})();`;

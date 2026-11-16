@@ -9,7 +9,7 @@ const authForm = fs.readFileSync('src/components/auth/AuthForm.jsx', 'utf8');
 const css = fs.readFileSync('src/app/globals.css', 'utf8');
 
 test('signed-out visitors receive the public landing while signed-in routing remains intact', () => {
-  assert.match(root, /if \(!user\) return <PublicLanding \/>/);
+  assert.match(root, /if \(!user\) return <><NativeWelcome \/><div className=\"flh-web-entry\"><PublicLanding \/><\/div><\/>;/);
   assert.match(root, /redirect\(realtor \? REALTOR_WORKSPACE_PATH : '\/onboarding'\)/);
   assert.match(root, /redirect\('\/homes'\)/);
 });
