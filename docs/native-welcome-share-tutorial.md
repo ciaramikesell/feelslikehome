@@ -8,6 +8,23 @@ only (§8, §9).
 
 Screenshots and QA output: `docs/native-welcome-share-tutorial-screenshots/`.
 
+## Screenshots
+
+These are from browser-emulated native QA, not the installed app (see §6).
+The images are in [`native-welcome-share-tutorial-screenshots/`](native-welcome-share-tutorial-screenshots/).
+
+**Native welcome**
+
+| 390 × 844 | 320 × 568 | 430 × 932 |
+|---|---|---|
+| <img src="native-welcome-share-tutorial-screenshots/native-welcome-390.png" width="240" alt="Native welcome at 390 px"> | <img src="native-welcome-share-tutorial-screenshots/native-welcome-320.png" width="200" alt="Native welcome at 320 px"> | <img src="native-welcome-share-tutorial-screenshots/native-welcome-430.png" width="260" alt="Native welcome at 430 px"> |
+
+**Share tutorial (390 px)**
+
+| 1 · Tap Share | 2 · Tap Feels Like Home | 2 · More hint | 3 · Saved | 3 · Good to know |
+|---|---|---|---|---|
+| <img src="native-welcome-share-tutorial-screenshots/tutorial-1-tap-share-390.png" width="180" alt="Step 1: example listing, Share highlighted"> | <img src="native-welcome-share-tutorial-screenshots/tutorial-2-share-sheet-390.png" width="180" alt="Step 2: pretend Share Sheet, Feels Like Home highlighted"> | <img src="native-welcome-share-tutorial-screenshots/tutorial-2b-more-hint-390.png" width="180" alt="Step 2: the More, Edit, Favorites hint"> | <img src="native-welcome-share-tutorial-screenshots/tutorial-3-saved-390.png" width="180" alt="Step 3: saved check"> | <img src="native-welcome-share-tutorial-screenshots/tutorial-3b-good-to-know-390.png" width="180" alt="Step 3: Share Extension facts and Done"> |
+
 ## 1. Audit — native detection, first paint and deep links
 
 **Architecture (unchanged).** Remote-hosted Capacitor 8.5: the WebView loads
