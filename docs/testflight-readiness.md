@@ -2,7 +2,7 @@
 
 **Base:** `main` at `e022b79` (#190 and #191 merged; Production V3 on).
 
-**Scope:** an audit first, then three safe, code-only fixes (§G: P1-1 to P1-3). Nothing about signing, team, bundle IDs, entitlements, remote hosting, V3, the Share Extension or Universal Links was changed. Nothing was archived, uploaded or submitted, and no testers were invited.
+**Scope:** an audit first, then three safe, code-only fixes (§G: P1-1 to P1-3), plus the founder-approved **iPhone-only** device family for the initial release (§J). Nothing about signing, team, bundle IDs, entitlements, remote hosting, V3, the Share Extension or Universal Links was changed. Nothing was archived, uploaded or submitted, and no testers were invited.
 
 ## What was checked, and how
 
@@ -22,7 +22,7 @@
 | Targets | `App` (`app.feelslikehome.mobile`) + embedded `ShareExtension` (`app.feelslikehome.mobile.share`) | ✅ Ready |
 | Team / signing | `DEVELOPMENT_TEAM = QCQYKZVAC8`, Automatic signing, both targets, Debug and Release (committed in #153) | ✅ Ready (founder's account must hold both App IDs) |
 | Version / build | `1.0 (1)` on **both** targets; they must always match | ✅ Ready (increment the build number per upload, §B) |
-| Deployment target | iOS 15.0; iPhone + iPad (`1,2`) | ✅ Ready; iPad support is a 🟠 founder decision (§G P2-3) |
+| Deployment target / devices | iOS 15.0; **iPhone only** (`TARGETED_DEVICE_FAMILY = 1`, App and ShareExtension, Debug and Release) | ✅ Ready: founder decision, iPhone-first (§J) |
 | Toolchain | Capacitor 8.5.2 (SPM, no CocoaPods) + `@capacitor/app` 8.1.1 + `@capacitor/haptics` 8.0.2. **Uploads require Xcode 26 / iOS 26 SDK** (Apple, since 28 Apr 2026) | 🟠 Requires founder (Xcode 26 on the Mac) |
 | Remote hosting | `server.url = https://feelslikehome.app`, `cleartext: false`; the synced config on a fresh `cap sync` has no Preview URL (just verified) | ✅ Ready, but **re-run `npx cap sync ios` without `CAP_SERVER_URL` before archiving** (§B) |
 | Universal Links | Entitlement `applinks:feelslikehome.app`; AASA live and on Apple's CDN with the matching app ID | ✅ Ready |
@@ -120,7 +120,6 @@ These steps keep your existing checkout and its local signing files untouched by
 | App icon | 1024×1024 PNG, opaque, no rounded corners (iOS masks it) | ✅ In this PR (`scripts/ios/render-native-art.mjs`, from `public/favicon.svg`, the same art as `apple-touch-icon.png`). **Please approve or replace.** |
 | Launch screen | Storyboard + `Splash` image 2732×2732 | ✅ In this PR |
 | iPhone screenshots (App Store, not TestFlight) | 6.9″: 1320×2868 (or 1290×2796), 3–10 images | 🟠 Founder; capture on an iPhone 16/17 Pro Max Simulator |
-| iPad screenshots (only if iPad stays supported) | 13″: 2064×2752 (or 2048×2732) | 🟠 Founder decision (P2-3) |
 | Name / subtitle | ≤ 30 characters each (e.g. "Feels Like Home" / "Decide on the home you found") | 🟠 Founder |
 | Description, keywords (≤ 100 chars), support URL, marketing URL | App Store listing | 🟠 Founder |
 | Privacy Policy URL | Required for App Store; needed for external review in practice | 🔴 Founder (P1-6) |
@@ -173,7 +172,7 @@ These steps keep your existing checkout and its local signing files untouched by
 | P1-6 | **P1** | **No Privacy Policy** URL | Founder writes it; then a `/privacy` page |
 | P2-1 | P2 | Guideline **4.2** (web wrapper) scrutiny, stronger if the Share Extension doesn't work | Fix P1-4; in review notes mention the Share Extension, Universal Links, haptics and native welcome |
 | P2-2 | P2 | **Xcode 26** required for uploads; an older Xcode build is refused | Update Xcode on the Mac |
-| P2-3 | P2 | **iPad** is declared (`TARGETED_DEVICE_FAMILY = 1,2`): App Store needs 13″ iPad screenshots and iPad QA. Removing iPad later, after an App Store release, isn't allowed | Decide before the first **App Store** release (TestFlight doesn't lock it). If iPhone-only, I can make that one-line change with your approval |
+| P2-3 | ~~P2~~ | ~~**iPad** was declared (`1,2`), requiring 13″ iPad screenshots and iPad QA~~ | ✅ **Resolved:** iPhone-only for the initial release (§J); no iPad screenshots or iPad QA needed |
 | P2-4 | P2 | Review **demo account** missing → Beta App Review stalls | Create a dedicated reviewer account (onboarded, sample homes) |
 | P2-5 | P2 | A Preview `CAP_SERVER_URL` left over from testing could be synced into a release | §B step 2 check (the synced config is git-ignored, so it only matters on the Mac) |
 | P3-1 | P3 | `UIRequiredDeviceCapabilities = armv7` (Capacitor 8's own template default; uploads accept it) | Leave |
@@ -196,6 +195,29 @@ These steps keep your existing checkout and its local signing files untouched by
 4. ☐ **§C:** create the app record → upload `1.0 (1)` → answer export compliance → Test Information with a **demo account** → start **internal** testing.
 5. ☐ Write the **Privacy Policy** (and Terms). I'll add `/privacy` and link it in the app.
 6. ☐ Decide **account deletion** behaviour (§F). I'll implement it in a dedicated PR with tests.
-7. ☐ Decide **iPad** support before the first App Store release.
-8. ☐ Then **external** TestFlight (Beta App Review).
-9. ☐ Monetization later, StoreKit-first (§H).
+7. ☐ Then **external** TestFlight (Beta App Review).
+8. ☐ Monetization later, StoreKit-first (§H).
+
+*(iPad: decided, iPhone-only for the initial release, so there's no iPad step. See §J.)*
+
+## J. iPhone-first decision (initial release)
+
+**Decision (founder):** Feels Like Home's first iOS release is **iPhone-only**.
+
+**What changed:**
+- `TARGETED_DEVICE_FAMILY` went from `"1,2"` to `1` in all four build configurations: App Debug and Release, ShareExtension Debug and Release.
+- **Share Extension compatibility:** an embedded extension should declare the same device family as the app that contains it. Keeping the extension at `1,2` inside an iPhone-only app is a mismatch that Xcode's validation can flag. Setting both to `1` keeps the pair consistent. Nothing else about the extension changed: bundle ID, activation rules, hand-off code, and still no entitlements.
+- **Unchanged:** bundle IDs, team and signing, entitlements, Universal Links, deployment target (iOS 15.0), versions, remote hosting.
+
+**What this means for the initial release:**
+- **No iPad screenshots.** App Store Connect asks only for iPhone screenshots: 6.9″, 1320×2868 or 1290×2796 (§E).
+- **No dedicated iPad QA.** For smoke tests and Simulator runs, use an iPhone (§B step 8).
+- **iPads can still install the app** from the App Store, running in iPhone compatibility mode ("Designed for iPhone", an iPhone-sized window). App Review may open it on an iPad, so an iPad shouldn't crash or show broken layout. That's a quick sanity check, not a design target.
+- The `UISupportedInterfaceOrientations~ipad` entry in `Info.plist` is left in place. iOS ignores it for an iPhone-only app, and it saves a step when iPad support returns.
+
+**Adding native iPad support later** (an ordinary future update; adding a device family is allowed after release, removing one isn't):
+1. Set `TARGETED_DEVICE_FAMILY` back to `"1,2"` on both targets.
+2. Update `test/ios-release-readiness.test.js`.
+3. QA the web layouts at iPad sizes: split view, Stage Manager, landscape.
+4. Provide 13″ iPad screenshots: 2064×2752 or 2048×2732.
+5. Upload a new build.

@@ -24,7 +24,7 @@ function png(path) {
 }
 const fromTemplate = (path) => execFileSync('tar', ['-xzOf', 'node_modules/@capacitor/cli/assets/ios-spm-template.tar.gz', path]);
 
-test('signing, team, bundle IDs and versions are exactly as committed (unchanged by this milestone)', () => {
+test('signing, team, bundle IDs, versions and device family are exactly as committed', () => {
   assert.equal((pbx.match(/DEVELOPMENT_TEAM = QCQYKZVAC8;/g) || []).length, 4, 'App + ShareExtension, Debug + Release');
   assert.equal((pbx.match(/CODE_SIGN_STYLE = Automatic;/g) || []).length, 4);
   assert.equal((pbx.match(/PRODUCT_BUNDLE_IDENTIFIER = app\.feelslikehome\.mobile;/g) || []).length, 2);
@@ -33,6 +33,9 @@ test('signing, team, bundle IDs and versions are exactly as committed (unchanged
   assert.deepEqual([...new Set(pbx.match(/MARKETING_VERSION = [^;]+;/g))], ['MARKETING_VERSION = 1.0;']);
   assert.deepEqual([...new Set(pbx.match(/CURRENT_PROJECT_VERSION = [^;]+;/g))], ['CURRENT_PROJECT_VERSION = 1;']);
   assert.deepEqual([...new Set(pbx.match(/IPHONEOS_DEPLOYMENT_TARGET = [^;]+;/g))], ['IPHONEOS_DEPLOYMENT_TARGET = 15.0;']);
+  // iPhone-only for the initial release (docs/testflight-readiness.md §J): App and ShareExtension,
+  // Debug and Release. The extension must match its host app's device family.
+  assert.deepEqual(pbx.match(/TARGETED_DEVICE_FAMILY = [^;]+;/g), Array(4).fill('TARGETED_DEVICE_FAMILY = 1;'));
   assert.equal(capacitorConfig.appId, 'app.feelslikehome.mobile');
 });
 
