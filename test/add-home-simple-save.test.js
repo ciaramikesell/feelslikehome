@@ -199,8 +199,10 @@ test('after Save Home: a clear saved state, then back to My Homes or into the ho
 test('My Homes keeps the saved home and the Router Cache fix; the overlay opens only when the buyer asks', () => {
   const fn = board.match(/const saveEditedHome = useCallback\(async \(home, \{ landing = 'overlay' \} = \{\}\) => \{[\s\S]*?\n {2}\}, \[modalHome, saveHome, router, workspace\]\);/)[0];
   assert.match(fn, /await refreshMyHomes\(\)\.catch\(\(\) => \{\}\);\s*await new Promise\(\(resolve\) => setTimeout\(resolve, 0\)\);\s*if \(landing === 'saved'\) return saved;\s*\/\/ The new home opens/);
-  assert.match(fn, /const saved = await saveHome\(home, \{ shared, keepModalOpen: isNew \}\);/);
-  assert.match(board, /const openSavedHome = useCallback\(\(id\) => \{\s*if \(workspace\) workspace\.openedFromBoard\.current = true;\s*router\.push\(`\/homes\/\$\{encodeURIComponent\(id\)\}`, \{ scroll: false \}\);\s*setModalHome\(null\);/);
+  // Milestone 4: a new home skips the stray router.refresh() (refresh: !isNew).
+  assert.match(fn, /const saved = await saveHome\(home, \{ shared, keepModalOpen: isNew, refresh: !isNew \}\);/);
+  // "View home": the overlay over this board, re-issued if a background refetch superseded it (Milestone 4).
+  assert.match(board, /const openSavedHome = useCallback\(\(id\) => \{\s*const target = `\/homes\/\$\{encodeURIComponent\(id\)\}`;\s*const go = \(\) => \{\s*if \(workspace\) workspace\.openedFromBoard\.current = true;\s*router\.push\(target, \{ scroll: false \}\);\s*\};\s*go\(\);\s*setModalHome\(null\);/);
   assert.match(board, /existingHomes=\{homes\} importLanding onOpenSavedHome=\{openSavedHome\}/);
 });
 

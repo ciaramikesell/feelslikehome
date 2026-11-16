@@ -29,6 +29,7 @@ import { criterionResolution } from '@/lib/matchCriteria';
 import { homeFactContext } from '@/lib/homeFactCriteria';
 import { PROVENANCE_LABELS, fieldProvenance, hasImportSnapshot } from '@/lib/homeProvenance';
 import { isNativeApp } from '@/lib/platform';
+import { useFeatureFlag } from '@/components/FeatureFlags';
 import { applyBasementDescription, BASEMENT_FIELDS, BASEMENT_SUGGESTIONS, basementFieldValue, basementMatchReading, importedDetailCount } from '@/lib/homeFacts';
 import { importedCoordinatePatch, listingImportSnapshot } from '@/lib/importSnapshot';
 import { BUSY_COOLDOWN_MS, SESSION_LOOKUP_LIMIT, appliedImportFields, draftBuyerContent, draftContentPhrase, findHomeByAddress, findSwitchPlan, freshDraft, lookupCacheKey } from '@/lib/lookupSession';
@@ -748,7 +749,7 @@ function SwitchPropertyConfirm({ pending, vocabulary, onStartFresh, onKeep }) {
 // to go — back to My Homes, or into the saved home's overview. Nothing else is
 // asked. A photo whose optional upload failed is reported here; the home and
 // everything else were saved.
-function SavedHomeView({ summary, vocabulary, isCollaborative, onBackToHomes, onOpenHome, dialogRef }) {
+function SavedHomeView({ summary, vocabulary, isCollaborative, onBackToHomes, onOpenHome, dialogRef, noPrioritiesYet = false }) {
   const headingRef = useRef(null);
   useEffect(() => { headingRef.current?.focus(); }, []);
   return <div className="hh-modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onBackToHomes()}>
@@ -773,13 +774,19 @@ function SavedHomeView({ summary, vocabulary, isCollaborative, onBackToHomes, on
         <button type="button" className="hh-btn flh-saved-back" onClick={onBackToHomes}>Back to My Homes</button>
         <button type="button" className="hh-btn hh-btn-ghost flh-saved-open" onClick={onOpenHome}>View {vocabulary.singularLower} <ArrowRight size={15} aria-hidden="true" /></button>
       </div>
-      <p className="flh-saved-hint">Next, when you’re ready: View {vocabulary.singularLower} shows what FLH found and how it fits your priorities. Nothing else is required.</p>
+      {/* Milestone 4 (FLH_ONBOARDING_V3 only): someone who skipped priorities
+          has none for a home to "fit" yet — say what the Match needs, without
+          asking for anything now. Otherwise the line is unchanged. */}
+      {noPrioritiesYet
+        ? <p className="flh-saved-hint">Next, when you’re ready: View {vocabulary.singularLower} shows what FLH found. Your Match starts once you tell FLH what matters—anytime, in My Search. Nothing else is required.</p>
+        : <p className="flh-saved-hint">Next, when you’re ready: View {vocabulary.singularLower} shows what FLH found and how it fits your priorities. Nothing else is required.</p>}
     </div>
   </div>;
 }
 
 export default function HomeModal({ initial, priorities, sharedFactAwareness = {}, isCollaborative = false, onSave, onClose, userId, onWantToTour, onArchiveRequest, presentation = 'modal', autoFindOnMount = false, matchPerspectives = [], saveLabel = null, existingHomes = [], importLanding = false, personalAnswers = true, onOpenSavedHome = null }) {
   const [form, setForm] = useState(initial);
+  const guidedPriorities = useFeatureFlag('guidedPriorities');
   const vocabulary = homeVocabulary(priorities);
   const [pasteText, setPasteText] = useState('');
   const [parseMsg, setParseMsg] = useState('');
@@ -1383,6 +1390,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
   />;
 
   if (savedHome) return <SavedHomeView summary={savedHome} vocabulary={vocabulary} isCollaborative={isCollaborative} dialogRef={dialogRef}
+    noPrioritiesYet={guidedPriorities && computeMatch({}, priorities) === null}
     onBackToHomes={onClose} onOpenHome={() => (onOpenSavedHome ? onOpenSavedHome(savedHome.id) : onClose())} />;
 
   // The found card's optional photo: the staged file's preview, or the photo

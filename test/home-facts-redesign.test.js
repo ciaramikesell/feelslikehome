@@ -277,7 +277,7 @@ test('the disappearing home is fixed at the source: the Router Cache is rebuilt 
   // Save Home (Add Home V3) rebuilds the cache the same way, then stays on its saved state.
   assert.match(fn, /await new Promise\(\(resolve\) => setTimeout\(resolve, 0\)\);\s*if \(landing === 'saved'\) return saved;/);
   assert.match(fn, /const isNew = !modalHome\?\.id;/);
-  assert.match(fn, /const saved = await saveHome\(home, \{ shared, keepModalOpen: isNew \}\);\s*if \(isNew && saved\?\.id\) \{[\s\S]*?await refreshMyHomes\(\)\.catch\(\(\) => \{\}\);\s*await new Promise\(\(resolve\) => setTimeout\(resolve, 0\)\);[\s\S]*?router\.push\(`\/homes\/\$\{encodeURIComponent\(saved\.id\)\}`, \{ scroll: false \}\);/);
+  assert.match(fn, /const saved = await saveHome\(home, \{ shared, keepModalOpen: isNew, refresh: !isNew \}\);\s*if \(isNew && saved\?\.id\) \{[\s\S]*?await refreshMyHomes\(\)\.catch\(\(\) => \{\}\);\s*await new Promise\(\(resolve\) => setTimeout\(resolve, 0\)\);[\s\S]*?router\.push\(`\/homes\/\$\{encodeURIComponent\(saved\.id\)\}`, \{ scroll: false \}\);/);
   assert.doesNotMatch(fn.replace(/\/\/[^\n]*/g, ''), /router\.refresh\(\)/);
   const action = read('src/app/(app)/homes/actions.js');
   assert.match(action, /^'use server';/);
