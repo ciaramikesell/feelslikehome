@@ -81,7 +81,10 @@ test('Realtors keep a read-only workspace; the overlay never renders for them', 
 
 test('Laundry Location is shown only when the database has it, as Unknown + three locations', () => {
   assert.match(facts, /const laundryKnownToDatabase = home\.laundryLocation !== undefined;/);
-  assert.match(facts, /\{laundryKnownToDatabase && <div className="flh-hf2-mini is-wide"><label htmlFor="hf-laundryLocation">Laundry location<\/label>/);
+  // PR #187: in Home Facts after Basement (no longer in the photo summary's utilities).
+  assert.match(facts, /\{laundryKnownToDatabase && !apartment && <Group id="hf-laundry-title" title="Laundry">\s*<Row label="Location" htmlFor="hf-laundryLocation"[^>]*>\{select\('laundryLocation', null, LAUNDRY_LOCATION_CHOICES\)\}<\/Row>/);
+  const utilities = facts.match(/<PhoneCollapse id=\{`hf-utilities-[\s\S]*?<\/PhoneCollapse>/)[0];
+  assert.doesNotMatch(utilities, /laundry/i);
   assert.match(fields, /<option value="">\{unknownLabel\}<\/option>/);
 });
 

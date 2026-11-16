@@ -289,7 +289,8 @@ test('Home Facts keeps personal answers out and never offers edit controls to re
   // Pros / Cons are edited here too (below Basement), only through the shared
   // NoteListFields definitions and the same shared save.
   for (const personal of ['reaction', 'ratings', 'checks', 'PostTourModal']) assert.doesNotMatch(facts.replace(/\/\/[^\n]*/g, ''), new RegExp(`\\b${personal}\\b`));
-  assert.match(facts, /\{NOTE_LIST_FIELDS\.map\(\(\{ key, label, marker, placeholder \}\) => <NoteTextField key=\{key\}/);
+  // PR #187: Pros / Cons first, then the generic Notes only while it holds text.
+  assert.match(facts, /\{\[\.\.\.noteFields\.filter\(\(\{ key \}\) => key !== 'notes'\), \.\.\.noteFields\.filter\(\(\{ key \}\) => key === 'notes'\)\]\.map\(\(\{ key, label, marker, placeholder \}\) => <NoteTextField key=\{key\}/);
   assert.match(facts, /onCommit=\{\(text\) => save\(\{ \[key\]: text \}\)\}/);
   for (const personal of ['pros', 'cons', 'reaction', 'ratings']) assert.doesNotMatch(factsLib, new RegExp(`home\\??\\.${personal}\\b`));
   assert.match(facts, /const isReadOnly = readOnly \|\| !editor;/);

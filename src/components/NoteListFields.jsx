@@ -1,5 +1,6 @@
 'use client';
 
+import { useRef } from 'react';
 import { noteEntries } from '@/lib/homeDisplay';
 
 // Shared Notes / Pros / Cons on a home: three plain text boxes, one entry per
@@ -14,10 +15,16 @@ export const NOTE_LIST_FIELDS = Object.freeze([
 ]);
 export const noteListHint = (text) => { const count = noteEntries(text).length; return count > 0 ? `${count} · one per line` : 'One per line'; };
 
+// PR #187: the generic Notes box is offered only while it holds something —
+// notes typed earlier, written after a tour, or added from a pasted listing
+// ("Add to notes") — so that text is never hidden. Once shown it stays for the
+// visit (clearing it doesn't unmount it mid-edit). Pros and Cons are always offered.
 export default function NoteListFields({ form, set, idPrefix }) {
+  const notesShown = useRef(false);
+  if (String(form.notes ?? '').trim()) notesShown.current = true;
   return (
     <div className="hh-edit-notes-fields hh-note-list-fields">
-      {NOTE_LIST_FIELDS.map(({ key, label, marker, placeholder }) => {
+      {NOTE_LIST_FIELDS.filter(({ key }) => key !== 'notes' || notesShown.current).map(({ key, label, marker, placeholder }) => {
         const id = `${idPrefix}-${key}`;
         return (
           <div key={key} className={`hh-note-list-field is-${key}`}>

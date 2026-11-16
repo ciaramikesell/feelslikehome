@@ -20,6 +20,7 @@ import { searchIntentCapabilities, PROPERTY_TYPE_LABELS } from './searchIntent.j
 import { formatCurrencyDisplay, formatHomePrice, formatLotSizeDisplay, formatTriState, formatDateOnly, digitsOnly } from './homeDisplay.js';
 import { fieldProvenance, hasImportSnapshot } from './homeProvenance.js';
 import { isLegacyNoHoaFact, uncoveredFeatures } from './listingFacts.js';
+import { homeFactAnswer } from './homeFactCriteria.js';
 
 const isBlank = (value) => value === null || value === undefined || (typeof value === 'string' && value.trim() === '')
   || (Array.isArray(value) && value.length === 0);
@@ -110,6 +111,112 @@ export const GARAGE_TYPE_CHOICES = Object.freeze([['none', 'None'], ['attached',
 export const GARAGE_SPACE_CHOICES = Object.freeze([['0', 'None'], ['1', '1'], ['2', '2'], ['3+', '3+']]);
 export const BASEMENT_STYLE_CHOICES = Object.freeze([['none', 'None'], ['traditional', 'Traditional'], ['gardenview', 'Gardenview'], ['walkout', 'Walkout']]);
 export const BASEMENT_CONDITION_CHOICES = Object.freeze([['none', 'None'], ['unfinished', 'Unfinished'], ['partially_finished', 'Partially Finished'], ['finished', 'Finished']]);
+
+/* ------------------------------ Basement description ------------------------------ */
+
+// One flexible Basement field ("Finished Walkout", "Unfinished", "Partially
+// Finished" …) over the two structured facts Match reads (basement_condition,
+// basement_style). The words a person typed are kept in basementNotes when they
+// say more than the two facts; the facts are derived only when the wording is
+// explicit:
+//   - whole words only: "Unfinished" is never "Finished";
+//   - "Finished" alone says nothing about a walkout, and "Walkout" alone says
+//     nothing about finish — the other fact stays Unknown;
+//   - two finishes ("finished and unfinished areas"), two styles, a negation
+//     ("no walkout") or a hedge ("possibly finished") leave that wording
+//     Unknown rather than guessed at.
+export const BASEMENT_SUGGESTIONS = Object.freeze(['Finished Walkout', 'Finished', 'Partially Finished', 'Unfinished', 'Walkout', 'Unfinished Walkout', 'No basement']);
+const BASEMENT_CONDITION_WORDS = Object.freeze({ finished: 'Finished', unfinished: 'Unfinished', partially_finished: 'Partially Finished' });
+const BASEMENT_STYLE_WORDS = Object.freeze({ walkout: 'Walkout', traditional: 'Traditional', gardenview: 'Gardenview' });
+const NO_BASEMENT = /^\s*(?:none|no|no basement|basement:\s*none)\s*$/i;
+const BASEMENT_DOUBT = /\b(?:no|not|non|without|possibly|possible|maybe|potential|could|unknown|unclear|tbd)\b|\?/i;
+// Words that add nothing to the two facts (so "Fully finished basement" is fully read).
+const BASEMENT_FILLER = /\b(?:basement|lower|level|fully|full|completely|the|a|and|with|style)\b|[,&/+.\-–—:;()]/gi;
+
+/**
+ * Reads a basement description. Each fact is a stored token or null (Unknown);
+ * `complete` is true when every word was read (nothing worth keeping as a note).
+ * @returns {{ basementCondition: string|null, basementStyle: string|null, complete: boolean }}
+ */
+export function parseBasementDescription(text) {
+  const raw = String(text ?? '').trim();
+  if (!raw) return { basementCondition: null, basementStyle: null, complete: true };
+  if (NO_BASEMENT.test(raw)) return { basementCondition: 'none', basementStyle: 'none', complete: true };
+  let rest = raw.toLowerCase().replace(/\bwalk[ -]?outs?\b/g, ' walkout ').replace(/\bgarden[ -]?view\b/g, ' gardenview ');
+  const take = (pattern) => { const found = pattern.test(rest); rest = rest.replace(pattern, ' '); return found; };
+  const partial = take(/\b(?:partially|partly|partial|part)[ -]?finished\b/g);
+  const unfinished = take(/\bunfinished\b/g);
+  const finished = take(/\bfinished\b/g);
+  const conditions = [partial && 'partially_finished', unfinished && 'unfinished', finished && 'finished'].filter(Boolean);
+  const styles = ['walkout', 'traditional', 'gardenview'].filter((style) => take(new RegExp(`\\b${style}\\b`, 'g')));
+  const doubtful = BASEMENT_DOUBT.test(raw);
+  const leftover = rest.replace(BASEMENT_FILLER, ' ').trim();
+  return {
+    basementCondition: !doubtful && conditions.length === 1 ? conditions[0] : null,
+    basementStyle: !doubtful && styles.length === 1 ? styles[0] : null,
+    complete: !doubtful && !leftover && conditions.length <= 1 && styles.length <= 1,
+  };
+}
+
+// The two stored facts as one description ("Finished Walkout"). A contradiction
+// (one says none, the other describes a basement) is shown as both, never hidden.
+export function describeBasement(condition, style) {
+  const noCondition = condition === 'none';
+  const noStyle = style === 'none';
+  if ((noCondition || noStyle) && !BASEMENT_CONDITION_WORDS[condition] && !BASEMENT_STYLE_WORDS[style]) return 'No basement';
+  const words = [BASEMENT_CONDITION_WORDS[condition], BASEMENT_STYLE_WORDS[style]].filter(Boolean).join(' ');
+  return noCondition || noStyle ? `${words} (also marked No basement)` : words;
+}
+
+// What Match reads from the two facts, said plainly under the field — from
+// the Match reading itself (homeFactCriteria.js), so the two never disagree.
+const READ_WORD = (value) => (value === true ? 'Yes' : value === 'no' ? 'No' : 'Unknown');
+export function basementMatchReading(condition, style) {
+  const home = { basementCondition: condition ?? null, basementStyle: style ?? null };
+  return `Match reads Finished: ${READ_WORD(homeFactAnswer(home, 'features:Finished basement'))} · Walkout: ${READ_WORD(homeFactAnswer(home, 'features:Walkout basement'))}`;
+}
+
+// What the Basement field shows: the person's own words when they still match
+// the stored facts, else the facts as a description, else an earlier note
+// (never read for Match until someone uses it).
+export function basementFieldValue(home) {
+  const condition = home?.basementCondition ?? null;
+  const style = home?.basementStyle ?? null;
+  const note = isBlank(home?.basementNotes) ? '' : String(home.basementNotes).trim();
+  const structured = condition || style ? describeBasement(condition, style) : '';
+  const parsed = note ? parseBasementDescription(note) : null;
+  const noteMatches = parsed && parsed.basementCondition === condition && parsed.basementStyle === style && (condition || style);
+  if (noteMatches) return { text: note, source: 'note', earlierNote: null, offer: null };
+  if (structured) return { text: structured, source: 'facts', earlierNote: note || null, offer: null };
+  if (note) {
+    const offer = parsed.basementCondition || parsed.basementStyle ? { basementCondition: parsed.basementCondition, basementStyle: parsed.basementStyle } : null;
+    return { text: note, source: 'earlier_note', earlierNote: null, offer };
+  }
+  return { text: '', source: null, earlierNote: null, offer: null };
+}
+
+// The patch for a typed description: the two facts as read (Unknown where the
+// words don't say), plus the words themselves when they say more. Only changed
+// fields. Clearing the field clears both facts, and the note when it was what
+// the field showed. An earlier note is never deleted by editing the facts.
+export function basementDescriptionPatch(home, text) {
+  const typed = String(text ?? '').trim();
+  const shown = basementFieldValue(home);
+  const parsed = parseBasementDescription(typed);
+  const next = { basementCondition: parsed.basementCondition, basementStyle: parsed.basementStyle };
+  if (!typed) {
+    if (shown.source === 'note' || shown.source === 'earlier_note') next.basementNotes = '';
+  } else if (!parsed.complete || shown.source === 'note' || shown.source === 'earlier_note') {
+    // Keep their words: wording FLH couldn't fully read, or replacing words they typed before.
+    next.basementNotes = typed;
+  }
+  const patch = {};
+  for (const [field, value] of Object.entries(next)) {
+    const before = field === 'basementNotes' ? String(home?.[field] ?? '').trim() : home?.[field] ?? null;
+    if (before !== value) patch[field] = value;
+  }
+  return patch;
+}
 
 const choiceLabel = (choices, value) => choices.find(([key]) => key === value)?.[1] || (isBlank(value) ? '' : String(value));
 
@@ -330,10 +437,24 @@ export function homeFactsWelcome(home, justAdded) {
 
 // Laundry Location (homes.laundry_location, 2026-10-18-laundry-location.sql).
 // Null is Unknown. Separate from the rental In-Unit Laundry fact and from any
-// personal laundry answer; never a Match input.
+// personal laundry answer. Main Floor answers the Main Floor Laundry priority
+// Yes (homeFactCriteria.js); no location ever answers No.
+// 'first_floor' reads "Main Floor", the same words as the Main Floor Laundry
+// priority it answers (stored token unchanged).
 export const LAUNDRY_LOCATION_CHOICES = Object.freeze([
-  ['basement', 'Basement'], ['first_floor', 'First Floor'], ['second_floor', 'Second Floor'],
+  ['first_floor', 'Main Floor'], ['basement', 'Basement'], ['second_floor', 'Second Floor'],
 ]);
+
+// HOA status (homes.has_hoa): true / false / null (Unknown). The confirmed answer
+// No HOA reads; a $0 fee alone never sets or implies it.
+export const HOA_STATUS_CHOICES = Object.freeze([['yes', 'Has an HOA'], ['no', 'No HOA']]);
+export const hoaStatusChoice = (value) => (value === true ? 'yes' : value === false ? 'no' : '');
+export const hoaStatusValue = (choice) => (choice === 'yes' ? true : choice === 'no' ? false : null);
+// The fee and the status disagree: say so, and leave No HOA Unknown (noHoaReading).
+export function hoaConflict(home) {
+  const fee = home?.hoaFeeMonthly;
+  return home?.hasHoa === false && fee !== null && fee !== undefined && fee !== '' && Number(fee) > 0;
+}
 
 // Suggestions only (a datalist): heating and cooling stay free text so an
 // imported "Forced Air, Gas" is kept exactly as the listing said it.
@@ -394,8 +515,8 @@ export function garageSpacesSelectValue(value) {
 // HOA fee (homes.hoa_fee_monthly). Null is Unknown; 0 is a confirmed $0
 // monthly fee, stored as the number 0 so it stays distinct from Unknown. A $0
 // fee does not prove there is no HOA (there may still be an association, or
-// fees billed another way), so it reads "$0/mo", never "No HOA". Never a Match
-// input: the personal "No HOA" answer is separate and is not changed here.
+// fees billed another way), so it reads "$0/mo", never "No HOA". A fee above
+// $0 answers No HOA "No"; the confirmed HOA status above decides otherwise.
 export function formatHoaFee(value) {
   if (value === null || value === undefined || value === '') return '';
   const amount = Number(value);

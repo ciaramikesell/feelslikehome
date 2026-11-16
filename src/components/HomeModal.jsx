@@ -689,7 +689,7 @@ function ImportFoundCard({ form, set, importResult, lookupResult = null, importP
         <DeferredAnswersNote answers={deferredAnswers} vocabulary={vocabulary} />
       </details>
       <details className="hh-details flh-found-notes">
-        <summary>Add notes, pros, or cons <span>Optional · shared with this search</span><ChevronDown className="hh-accordion-chevron" size={18} aria-hidden="true" /></summary>
+        <summary>Add pros or cons <span>Optional · shared with this search</span><ChevronDown className="hh-accordion-chevron" size={18} aria-hidden="true" /></summary>
         <NoteListFields form={form} set={set} idPrefix="add-home" />
       </details>
     </div>

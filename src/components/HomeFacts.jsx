@@ -3,9 +3,10 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { ArrowUpRight, House, Link2, Pencil, Upload } from 'lucide-react';
 import {
-  BASEMENT_CONDITION_CHOICES, BASEMENT_STYLE_CHOICES, CONDITION_FACT_CHOICES, COOLING_SUGGESTIONS, GARAGE_SPACE_CHOICES,
-  GARAGE_TYPE_CHOICES, HEATING_SUGGESTIONS, LAUNDRY_LOCATION_CHOICES, LAYOUT_FACT_CHOICES, PROPERTY_TYPE_CHOICES,
-  basementPatch, editHoaFee, formatHoaFee, garagePatch, garageSpacesSelectValue, homeFactsAvailability, layoutPatch, layoutValues,
+  BASEMENT_SUGGESTIONS, CONDITION_FACT_CHOICES, COOLING_SUGGESTIONS, GARAGE_SPACE_CHOICES,
+  GARAGE_TYPE_CHOICES, HEATING_SUGGESTIONS, HOA_STATUS_CHOICES, LAUNDRY_LOCATION_CHOICES, LAYOUT_FACT_CHOICES, PROPERTY_TYPE_CHOICES,
+  basementDescriptionPatch, basementFieldValue, basementMatchReading, describeBasement, editHoaFee, formatHoaFee, garagePatch, garageSpacesSelectValue,
+  hoaConflict, hoaStatusChoice, hoaStatusValue, homeFactsAvailability, layoutPatch, layoutValues,
   listingSays, normalizeLotSizeInput, parseTaxYear, propertyTaxPatch, TAX_YEAR_INVALID_MESSAGE,
 } from '@/lib/homeFacts';
 import { photoFileError, PHOTO_BUCKET, storagePathFromPublicUrl, uploadHomePhoto } from '@/lib/homePhoto';
@@ -27,8 +28,14 @@ import { NOTE_LIST_FIELDS, noteListHint } from '@/components/NoteListFields';
 // which applies it at once and autosaves only the changed shared fields
 // (src/lib/useHomeAutosave.js). Imported values look like any other value;
 // missing ones stay visible as Unknown with a warm highlight. Personal answers
-// live in Match Criteria. The shared Notes / Pros / Cons are editable here
-// (below Basement) as well as in Tour Feedback: the same three fields.
+// live in Match Criteria. Pros / Cons are editable here (below Basement and
+// Laundry) as well as in Tour Feedback: the same shared fields.
+//
+// PR #187: Basement is one description ("Finished Walkout") over the two
+// facts Match reads; Laundry sits after Basement; School Details is one
+// freeform field beside the district; the generic Notes box is gone — Notes
+// already written (typed, after a tour, or added from a pasted listing) stay
+// shown and editable until they're cleared, and are never deleted here.
 //
 // Not shown here (still stored, never deleted): Listing ID, Exterior, Roof,
 // days on market and every other listing-snapshot fact.
@@ -240,7 +247,9 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
   const priceLabel = showsRentalFacts ? 'Monthly rent' : 'Asking price';
   const laundryKnownToDatabase = home.laundryLocation !== undefined;
   const utilitiesSummary = [home.yearBuilt, !showsRentalFacts && home.propertyTaxAnnual ? `${money(home.propertyTaxAnnual)}/yr` : null, home.heating || home.cooling ? 'Heating & cooling' : null].filter(Boolean).join(' · ');
-  const schoolCount = ['schoolDistrict', 'elementarySchool', 'middleSchool', 'highSchool'].filter((field) => home[field]).length;
+  const schoolSummary = [home.schoolDistrict, home.schoolsNotes ? 'details added' : null].filter(Boolean).join(' · ') || 'Unknown';
+  const basement = basementFieldValue(home);
+  const hoaKnownToDatabase = home.hasHoa !== undefined;
   // Phase 6: the dated listing summary (Details opens the sheet) and a quiet way
   // down to Your Match (HomeOverlay). Rendered in the identity column on wider
   // screens and full width on phones (CSS shows one of the two).
@@ -252,8 +261,15 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
     ].filter(Boolean)} />
     {!isReadOnly && matchShortcut}
   </>;
+  // The generic Notes box is shown only while it holds something (PR #187): it
+  // is where post-tour notes and "add to notes" listing details were written,
+  // so existing text is never hidden; an empty one isn't offered.
+  // Once shown it stays for this visit, so clearing it never unmounts the field mid-edit.
+  const notesShown = useRef(false);
+  if (String(home.notes ?? '').trim()) notesShown.current = true;
+  const noteFields = NOTE_LIST_FIELDS.filter(({ key }) => key !== 'notes' || notesShown.current);
   // Read-only viewers (a Realtor) see the section only when something is written.
-  const showNotes = !isReadOnly || NOTE_LIST_FIELDS.some(({ key }) => noteEntries(home[key]).length > 0);
+  const showNotes = !isReadOnly || noteFields.some(({ key }) => noteEntries(home[key]).length > 0);
 
   return (
     <div className="flh-hf2">
@@ -302,7 +318,6 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
             {!apartment && <>
               <div className="flh-hf2-mini is-wide"><label htmlFor="hf-heating">Heating</label>{text('heating', null, { list: 'hf-heating-options' })}{!home.heating && listingSays(home, 'heating') && <small className="flh-hf2-hint">{listingSays(home, 'heating')}</small>}</div>
               <div className="flh-hf2-mini is-wide"><label htmlFor="hf-cooling">Cooling</label>{text('cooling', null, { list: 'hf-cooling-options' })}{!home.cooling && listingSays(home, 'cooling') && <small className="flh-hf2-hint">{listingSays(home, 'cooling')}</small>}</div>
-              {laundryKnownToDatabase && <div className="flh-hf2-mini is-wide"><label htmlFor="hf-laundryLocation">Laundry location</label>{select('laundryLocation', null, LAUNDRY_LOCATION_CHOICES)}</div>}
               <datalist id="hf-heating-options">{HEATING_SUGGESTIONS.map((value) => <option key={value} value={value} />)}</datalist>
               <datalist id="hf-cooling-options">{COOLING_SUGGESTIONS.map((value) => <option key={value} value={value} />)}</datalist>
             </>}
@@ -330,7 +345,10 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
               {!apartment && (home.secondaryBedroomLocation || (priorities.secondaryBedroomLocation?.value && priorities.secondaryBedroomLocation.tier !== 'dontcare')) && <Row label="Secondary bedrooms" htmlFor="hf-secondaryBedroomLocation">{select('secondaryBedroomLocation', null, SECONDARY_BEDROOM_CHOICES, (value) => save({ secondaryBedroomLocation: value || '' }))}</Row>}
               {/* Always offered for a home to buy: blank is Unknown, 0 is a confirmed $0 monthly fee
                   (not proof there's no HOA). */}
+              {/* HOA status: the confirmed answer No HOA reads. A $0 fee alone never sets it. */}
+              {!showsRentalFacts && hoaKnownToDatabase && <Row label="HOA" htmlFor="hf-hasHoa"><SelectField id="hf-hasHoa" value={hoaStatusChoice(home.hasHoa)} choices={HOA_STATUS_CHOICES} readOnly={isReadOnly} failed={failed('hasHoa')} onCommit={(choice) => save({ hasHoa: hoaStatusValue(choice) })} /></Row>}
               {!showsRentalFacts && <Row label="HOA fee" hint={isReadOnly ? null : 'Enter 0 for a $0 monthly fee'} htmlFor="hf-hoaFeeMonthly">{text('hoaFeeMonthly', null, { parse: parseMoneyNumber, format: formatHoaFee, edit: editHoaFee, inputMode: 'numeric' })}</Row>}
+              {!showsRentalFacts && hoaConflict(home) && <p className="flh-hf2-note" role="note">The fee says there’s an HOA, but HOA is set to No. No HOA stays Unknown in Match until they agree.</p>}
               {showsRentalFacts && home.availableOn && <Row label="Available on"><span className="flh-fact-text">{formatDateOnly(home.availableOn)}</span></Row>}
               {showsRentalFacts && [['petsAllowed', 'Pets allowed'], ['utilitiesIncluded', 'Utilities included'], ['inUnitLaundry', 'In-unit laundry']].map(([field, label]) => (
                 home[field] == null ? null : <Row key={field} label={label}><span className="flh-fact-text">{formatTriState(home[field])}</span></Row>
@@ -338,41 +356,58 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
               {!isReadOnly && onEditAll && <button type="button" className="flh-hf2-more" onClick={onEditAll}>More {vocabulary.singularLower} details</button>}
             </Group>
 
-            {available.schools && <PhoneCollapse id={`hf-schools-${home.id}`} title="School details" summary={`${schoolCount} of 4 fields${home.schoolDistrict ? ` · ${home.schoolDistrict}` : ''}`} className="flh-hf2-schools">
+            {/* One freeform School Details field (homes.schools_notes) beside the district.
+                Saved school names stay shown and editable; nothing is looked up or
+                inferred from the address. */}
+            {available.schools && <PhoneCollapse id={`hf-schools-${home.id}`} title="School details" summary={schoolSummary} className="flh-hf2-schools">
               <Group id="hf-schools-title" title="School Details">
                 <Row label="District" htmlFor="hf-schoolDistrict">{text('schoolDistrict')}</Row>
-                <Row label="Elementary" htmlFor="hf-elementarySchool">{text('elementarySchool')}</Row>
-                <Row label="Middle" htmlFor="hf-middleSchool">{text('middleSchool')}</Row>
-                <Row label="High" htmlFor="hf-highSchool">{text('highSchool')}</Row>
-                {home.schoolsNotes && <Row label="School notes" htmlFor="hf-schoolsNotes">{text('schoolsNotes', null, { parse: parseLegacyText })}</Row>}
+                <div className="flh-hf-row is-stacked">
+                  <label className="flh-hf-row-label" htmlFor="hf-schoolsNotes">Details</label>
+                  <div className="flh-hf-row-control">{text('schoolsNotes', null, { parse: parseLegacyText, multiline: true, placeholder: isReadOnly ? 'Unknown' : 'Schools, bus routes, boundary or enrollment notes…' })}</div>
+                </div>
+                {[['elementarySchool', 'Elementary'], ['middleSchool', 'Middle'], ['highSchool', 'High']].filter(([field]) => home[field]).map(([field, label]) => <Row key={field} label={label} htmlFor={`hf-${field}`}>{text(field)}</Row>)}
               </Group>
             </PhoneCollapse>}
           </div>
 
-          {(available.garage || available.basement || showNotes) && <div className="flh-hf2-column flh-hf2-column-side">
+          {(available.garage || available.basement || laundryKnownToDatabase || showNotes) && <div className="flh-hf2-column flh-hf2-column-side">
             {available.garage && <Group id="hf-garage-title" title="Garage">
               <Pair>
                 <PairField label="Type" htmlFor="hf-garageType">{select('garageType', null, GARAGE_TYPE_CHOICES, (value) => save(garagePatch(home, 'garageType', value)))}</PairField>
                 <PairField label="Spaces" htmlFor="hf-garageSpaces"><SelectField id="hf-garageSpaces" value={garageSpacesSelectValue(home.garageSpaces)} choices={GARAGE_SPACE_CHOICES} readOnly={isReadOnly} failed={failed('garageSpaces')} onCommit={(value) => save(garagePatch(home, 'garageSpaces', value))} /></PairField>
               </Pair>
             </Group>}
+            {/* Basement: one description over the two facts Match reads
+                (basementDescriptionPatch). "Match reads" says what was understood. */}
             {available.basement && <Group id="hf-basement-title" title="Basement">
-              <Pair>
-                <PairField label="Style" htmlFor="hf-basementStyle">{select('basementStyle', null, BASEMENT_STYLE_CHOICES, (value) => save(basementPatch(home, 'basementStyle', value)))}</PairField>
-                <PairField label="Condition" htmlFor="hf-basementCondition">{select('basementCondition', null, BASEMENT_CONDITION_CHOICES, (value) => save(basementPatch(home, 'basementCondition', value)))}</PairField>
-              </Pair>
-              {home.basementNotes && !home.basementStyle && !home.basementCondition && <p className="flh-hf2-note">Earlier note: “{home.basementNotes}”</p>}
+              <div className="flh-hf-basement">
+                <QuietInput id="hf-basement" label="Basement description" value={basement.text} readOnly={isReadOnly} failed={failed('basementCondition') || failed('basementStyle') || failed('basementNotes')}
+                  registerDraft={editor?.registerDraft} list="hf-basement-options" placeholder="Unknown — e.g. Finished Walkout" parse={(value) => value.trim()}
+                  onCommit={(value) => { const patch = basementDescriptionPatch(home, value); if (Object.keys(patch).length) save(patch); }} className="is-boxed" />
+                {!isReadOnly && <datalist id="hf-basement-options">{BASEMENT_SUGGESTIONS.map((value) => <option key={value} value={value} />)}</datalist>}
+                {(home.basementCondition || home.basementStyle) && <small className="flh-hf2-hint flh-hf-basement-reading">{basementMatchReading(home.basementCondition, home.basementStyle)}</small>}
+                {basement.source === 'earlier_note' && <small className="flh-hf2-hint">{basement.offer && !isReadOnly
+                  ? <>Earlier note, not yet read for Match. <button type="button" className="flh-offered-review" onClick={() => save(Object.fromEntries(Object.entries(basement.offer).filter(([, value]) => value)))}>Use as {describeBasement(basement.offer.basementCondition, basement.offer.basementStyle)}<span className="sr-only"> for Match</span></button></>
+                  : 'Earlier note, not read for Match.'}</small>}
+              </div>
+              {basement.earlierNote && <p className="flh-hf2-note">Earlier note: “{basement.earlierNote}”</p>}
               {/* Context only: a foundation type never says a basement's style or condition. */}
               {!home.basementStyle && !home.basementCondition && record.foundation && <p className="flh-hf2-note">County records: {record.foundation} foundation. Not proof of a basement’s style or condition.</p>}
+            </Group>}
+            {/* Laundry, after Basement (moved from the photo summary). Main Floor answers the
+                Main Floor Laundry priority; no location is ever read as "No". */}
+            {laundryKnownToDatabase && !apartment && <Group id="hf-laundry-title" title="Laundry">
+              <Row label="Location" htmlFor="hf-laundryLocation" hint={!isReadOnly && home.laundryLocation === 'first_floor' ? 'Counts for Main Floor Laundry' : null}>{select('laundryLocation', null, LAUNDRY_LOCATION_CHOICES)}</Row>
             </Group>}
             {/* The shared notes / pros / cons (the same fields as Tour Feedback and
                 the Home Card previews), saved like every other fact here. */}
             {showNotes && <section className="flh-hf-block flh-hf-notes" aria-labelledby="hf-notes-title">
               <div className="flh-hf-notes-head">
-                <h3 id="hf-notes-title" className="flh-hf-block-title">Notes, Pros &amp; Cons</h3>
+                <h3 id="hf-notes-title" className="flh-hf-block-title">{noteFields.some(({ key }) => key === 'notes') ? 'Pros, Cons & Notes' : 'Pros & Cons'}</h3>
                 {isCollaborative && !isReadOnly && <span className="flh-hf-notes-context">Shared with this search</span>}
               </div>
-              {NOTE_LIST_FIELDS.map(({ key, label, marker, placeholder }) => <NoteTextField key={key} id={`hf-${key}`} label={label} marker={marker} placeholder={placeholder}
+              {[...noteFields.filter(({ key }) => key !== 'notes'), ...noteFields.filter(({ key }) => key === 'notes')].map(({ key, label, marker, placeholder }) => <NoteTextField key={key} id={`hf-${key}`} label={label} marker={marker} placeholder={placeholder}
                 value={home[key]} readOnly={isReadOnly} failed={failed(key)} registerDraft={editor?.registerDraft} onCommit={(text) => save({ [key]: text })} />)}
             </section>}
           </div>}
