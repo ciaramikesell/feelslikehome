@@ -15,7 +15,7 @@ Home Facts and automatic Match fulfillment are the next PR.
 | Home Preferences on V3 Basics? | **Not present.** V3's Basics (`BasicsQuestions` in `PriorityFlow.jsx`) asks budget, bedrooms, bathrooms and ideal square footage only; lot size is on Exterior & Property. The expandable Home Preferences section belongs to the live flow's `BasicsStep` (flow 1), which this PR does not touch. A test now pins V3 Basics so it cannot come back. Saved home type / layout / condition / garage / basement / yard values are untouched and still shown read-only on Review ("Saved from earlier") and editable in Add Home / Home Facts. |
 | Near Water, Wooded Setting, Walkable Neighborhood, Second-Floor Laundry, Room for Entertaining, Fire Pit, Workshop Space | Already **not offered** by V3 Home to Buy (they are live-flow suggestions and catalog entries). Kept in the catalog for anyone who chose them. |
 | Walkable to Schools (`location:Walkable schools`) | Was a V3 Home to Buy suggestion → **removed** here. |
-| First-Floor Laundry (`features:First-floor laundry`) | The identity Home Facts' laundry location answers (`laundry_location = first_floor`). **Not renamed in storage**: the V3 card shows it as **Main Floor Laundry** (`text`), so saved choices, Home Facts answers and both scorers are unchanged. Elsewhere (My Search, Match details) it still reads "First-Floor Laundry" — see *Decisions*. |
+| First-Floor Laundry (`features:First-floor laundry`) | The identity Home Facts' laundry location answers (`laundry_location = first_floor`). **Not renamed in storage**: the V3 card shows it as **Main Floor Laundry** (`text`), so saved choices, Home Facts answers and both scorers are unchanged. Per the founder decision it now reads "Main Floor Laundry" everywhere a priority is shown (see *Founder decisions*). |
 | Finished / Walkout basement | Two independent identities (`features:Finished basement`, `features:Walkout basement`), each answered separately by Home Facts. Kept separate. |
 | Privacy Fence | Already a canonical identity: `exterior:Privacy Fencing`, displayed "Privacy Fence", a factual Yes / No deliberately distinct from `exterior:Fenced yard` (the Home Preferences code already allows both). Listing-text reading keeps them as separate concepts. **Reused** — no new identity. |
 | Garage | One criterion `exterior:Garage` (one importance; Match scores it from the home's garage spaces) plus `exterior.garagePreference` (`any` / `attached` / `detached`), which is recorded for the buyer but **not** a Match input. `heldGarage` sets both aside across house ↔ apartment switches. |
@@ -83,12 +83,34 @@ Laundry. Co-buyers keep independent documents.
   (`test/fixtures/v3-home-buy-screens.json`, regenerated for the approved
   catalog), desktop board garage tests, desktop and mobile QA scripts.
 
-## Decisions for the founder
+## Founder decisions (approved)
 
-1. **"Main Floor Laundry" everywhere?** It is the onboarding name only; My
-   Search / Match / Home Facts still say "First-Floor Laundry" (same identity).
-   Renaming the display label app-wide is a one-line change, left for approval.
-2. **Front Porch** moved from Layout to Exterior & Property suggestions (it is
-   an exterior identity and was not in the approved Layout list).
-3. **Garage Match semantics** (above) — next PR.
-4. **Garden Space** kept as an Exterior suggestion (not in either list).
+1. **"Main Floor Laundry" everywhere a priority is shown** — onboarding (phone
+   and desktop), My Search, Review and Match rows — through the one display
+   label map (`criterionDisplayLabel`), for both stored spellings of the
+   identity (`features:First-floor laundry`, `features:First-Floor Laundry`).
+   Storage, Home Facts' laundry-location answers and the SQL mapping are
+   unchanged. Listing-evidence wording ("First-floor laundry" as something a
+   listing says) is left as is. Renters see the same label for the same
+   identity (Home to Rent's Layout card); their catalog and behaviour are
+   otherwise unchanged.
+2. **Front Porch** in Exterior & Property — approved.
+3. **Garden Space** stays an optional Exterior suggestion — approved.
+4. **Garage-specific Match fulfillment is deferred.** See *Required before
+   launching V3* below. No Match or SQL change in this PR.
+5. **Unfenced Yard is preserved.** Nothing is cleaned up or overwritten. When a
+   buyer's priorities hold Unfenced Yard together with Fenced Yard and/or
+   Privacy Fence (`src/lib/yardConflict.js`, read-only), a calm note says so on
+   **Review**, on the phone **Exterior & Property** screen and on the **desktop
+   board** (above the columns), with "Change …" buttons that open each
+   priority's ordinary importance picker. Nothing changes until the buyer
+   chooses.
+
+## Required before launching V3 (`FLH_ONBOARDING_V3` in Production)
+
+**Attached / Detached garage fulfillment in Match.** V3 now asks buyers for
+Any / Attached / Detached Garage, but Match (JS and SQL) still scores the one
+`exterior:Garage` priority from garage spaces only, so an attached-only buyer's
+Match is met by a detached garage. The next Home Facts / Match PR must score the
+qualifier from the home's recorded garage type (Home Facts already stores it),
+in both scorers with JS = SQL parity, before V3 is enabled for buyers.

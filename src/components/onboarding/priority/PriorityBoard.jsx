@@ -10,6 +10,8 @@ import {
 import { BOARD_OWN_GROUP, isBoardHouseGarage, BOARD_OWN_TITLE, addBoardOwnFeature, boardLevel, boardSuggestions, placeOnBoard, priorityBoard } from '@/lib/priorityBoard';
 import { featureDescription } from '@/lib/featureDescriptions';
 import FeatureVisual from './FeatureVisual';
+import YardConflictNote from './YardConflictNote';
+import { yardConflict } from '@/lib/yardConflict';
 
 // The desktop priority board (docs/desktop-priority-board.md): one screen that
 // replaces the phone's category screens. A feature library grouped by those
@@ -418,6 +420,10 @@ export default function PriorityBoard({ priorities, patch, header, footer }) {
             {model.groups.map((group) => <LibraryGroup key={group.key} group={group} priorities={priorities} patch={patch} board={board} />)}
           </div>
         </section>
+        <YardConflictNote className="flh-ob-board-yard-conflict" conflict={yardConflict(priorities)} onEdit={(feature, button) => {
+          const chip = [...(boardRef.current?.querySelectorAll('.flh-ob-board-columns [data-chip-id]') || [])].find((element) => element.dataset.chipId === feature.id);
+          openChooser(feature, chip || button);
+        }} />
         <div className="flh-ob-board-summary">
           <h2 className="flh-ob-board-summary-title">Your priorities</h2>
           <ul className="flh-ob-board-summary-counts" aria-label="Ranked by importance">

@@ -28,7 +28,7 @@ test('Home to Buy curated suggestions are exactly the approved four groups — o
   assert.deepEqual(displayed('home_buy'), [
     'Cul-de-Sac', 'Sidewalks', 'Low-Traffic Street', 'Walkable Neighborhood', 'Near Water', 'Wooded Setting', 'Mature Trees', 'Walkable Schools', 'No HOA',
     'Kitchen Island', 'Stainless Steel Appliances', 'Fireplace', 'Central Air', 'Walk-in Pantry', 'High Ceilings', 'Double Vanity', 'Soaking Tub',
-    'First-Floor Bedroom', 'Home Office', 'Second-Floor Laundry', 'First-Floor Laundry', 'Formal Dining Room', 'Eat-in Kitchen', 'Primary Ensuite', 'Basement Storage',
+    'First-Floor Bedroom', 'Home Office', 'Second-Floor Laundry', 'Main Floor Laundry', 'Formal Dining Room', 'Eat-in Kitchen', 'Primary Ensuite', 'Basement Storage',
     'Deck / Patio', 'Front Porch', 'Pool', 'Room for Entertaining', 'Fire Pit', 'Garden Space', 'Screened-in Porch', 'Workshop Space',
   ]);
   assert.deepEqual(ONBOARDING_SUGGESTIONS.home_buy.map(([title]) => title), ['Location & Neighborhood', 'Home Features', 'Layout & Living Spaces', 'Exterior & Property']);
@@ -44,7 +44,7 @@ test('Home to Buy curated suggestions are exactly the approved four groups — o
 test('Home to Rent keeps its earlier canonical Home criteria (without No HOA); Garage moved to Home preferences', () => {
   assert.deepEqual(displayed('home_rent'), [
     'Reputable Schools', 'Walkable to Town', 'Parks Nearby', 'Quiet Street', 'Bustling Street', 'Near Water', 'Walkable Schools',
-    'Finished Basement', 'Walkout Basement', 'First-Floor Primary', 'Guest Bedroom', 'Primary Ensuite', 'First-Floor Laundry', 'Home Office', 'Central Air', 'Fireplace',
+    'Finished Basement', 'Walkout Basement', 'First-Floor Primary', 'Guest Bedroom', 'Primary Ensuite', 'Main Floor Laundry', 'Home Office', 'Central Air', 'Fireplace',
     'Deck / Patio', 'Fenced Yard', 'Privacy Fence', 'Large Backyard', 'Front Porch', 'Pool', 'Landscaping',
   ]);
   assert.ok(!displayed('home_rent').includes('No HOA'));

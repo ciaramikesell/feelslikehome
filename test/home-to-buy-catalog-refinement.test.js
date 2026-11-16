@@ -147,13 +147,59 @@ test('nothing a buyer already saved is lost: removed choices stay chosen, counte
 test('rentals, the live flow and the scorers are untouched', () => {
   const rentExterior = screen('home_rent', 'exterior');
   assert.deepEqual([...rentExterior.features, ...rentExterior.suggestions].map((feature) => feature.text), ['Deck / Patio', 'Fenced Yard', 'Mature Trees', 'Pool', 'Landscaping']);
-  assert.deepEqual(screen('home_rent', 'rent_layout').suggestions.map((feature) => feature.text), ['First-Floor Laundry', 'Extra Bedroom', 'Front Porch']);
+  assert.deepEqual(screen('home_rent', 'rent_layout').suggestions.map((feature) => feature.text), ['Main Floor Laundry', 'Extra Bedroom', 'Front Porch']);
   assert.deepEqual(screen('home_rent', 'neighborhood').suggestions.map((feature) => feature.text), ['Cul-de-Sac', 'Parks Nearby', 'Reputable Schools']);
   assert.equal(offered('apartment_rent').some((feature) => /Privacy|Main Floor/.test(feature.text)), false);
   assert.equal(GARAGE_TYPES.length, 3);
   // Live flow (1) suggestions still include its own list (not this catalog).
   assert.ok(ONBOARDING_SUGGESTIONS.home_buy.flatMap(([, items]) => items).length > 0);
-  for (const path of ['src/lib/matching.js', 'src/lib/constants.js', 'src/lib/onboarding.js', 'src/lib/onboardingFlow.js']) {
+  // constants.js changes only the Main Floor Laundry display label (founder decision).
+  for (const path of ['src/lib/matching.js', 'src/lib/onboarding.js', 'src/lib/onboardingFlow.js']) {
     assert.doesNotMatch(read(path), /PR #186/, `${path} is not part of this change`);
   }
+});
+
+/* ----------------------- founder decisions (PR #186) ---------------------- */
+
+test('“Main Floor Laundry” everywhere a priority is shown; storage, Home Facts and listing wording unchanged', async () => {
+  const { criterionDisplayLabel } = await import('../src/lib/constants.js');
+  const { criterionLabel } = await import('../src/lib/matching.js');
+  // Both stored spellings of the one identity read the same.
+  assert.equal(criterionDisplayLabel('features', 'First-floor laundry'), 'Main Floor Laundry');
+  assert.equal(criterionDisplayLabel('features', 'First-Floor Laundry'), 'Main Floor Laundry');
+  const p = addCriterion(fresh(), { categoryKey: 'features', label: 'First-floor laundry', kind: 'check' }, 'important');
+  const item = priorityLevels(p).flatMap((level) => level.items).find((entry) => entry.key === 'features:First-floor laundry');
+  assert.equal(item.displayLabel, 'Main Floor Laundry', 'My Search / Review rows');
+  assert.equal(criterionLabel({ key: 'features:First-floor laundry', label: 'First-floor laundry' }), 'Main Floor Laundry', 'Match rows');
+  assert.equal(priorityBoard(p).columns.important[0].text, 'Main Floor Laundry', 'desktop board');
+  assert.equal(categoryView(p, 'layout').cards.find((card) => card.id === 'features:First-floor laundry').text, 'Main Floor Laundry', 'phone card');
+  assert.equal(p.features.tiers['First-floor laundry'], 'important', 'stored under the same identity');
+  // Listing evidence still describes what a listing says.
+  assert.match(read('src/lib/listingTextAnswers.js'), /firstFloorLaundry: \{ yesLabel: 'First-floor laundry'/);
+  assert.match(read('src/lib/homeFactCriteria.js'), /firstFloorLaundry: Object\.freeze\(\['features:First-floor laundry', 'features:First-Floor Laundry'\]\)/);
+});
+
+test('Unfenced Yard chosen earlier is preserved; a contradiction with Fenced Yard / Privacy Fence is identified and editable, never auto-resolved', async () => {
+  const { yardConflict } = await import('../src/lib/yardConflict.js');
+  let p = addCriterion(fresh(), { categoryKey: 'exterior', label: 'Unfenced Yard', kind: 'check' }, 'nice'); // from the old Home Preferences
+  assert.equal(yardConflict(p), null, 'one side alone is not a conflict');
+  const fenced = screen('home_buy', 'exterior').features.find((feature) => feature.text === 'Fenced Yard');
+  const privacy = screen('home_buy', 'exterior').features.find((feature) => feature.text === 'Privacy Fence');
+  p = setFeatureLevel(p, fenced, 'important');
+  p = placeOnBoard(p, privacy, 'must');
+  const keys = priorityLevels(p).flatMap((level) => level.items).map((entry) => entry.key);
+  assert.ok(keys.includes('exterior:Unfenced Yard'), 'never overwritten by choosing a fenced option');
+  const conflict = yardConflict(p);
+  assert.deepEqual([conflict.unfenced.text, conflict.fenced.map((feature) => feature.text).sort()], ['Unfenced Yard', ['Fenced Yard', 'Privacy Fence']]);
+  assert.match(conflict.message, /Nothing changes until you choose/);
+  // Editing either side is the ordinary write; removing Unfenced clears the conflict.
+  const resolved = setFeatureLevel(p, conflict.unfenced, 'none');
+  assert.equal(yardConflict(resolved), null);
+  assert.equal(resolved.exterior.tiers['Unfenced Yard'], 'dontcare', 'kept in the document, just no longer chosen');
+  assert.equal(yardConflict(setFeatureLevel(setFeatureLevel(p, fenced, 'none'), privacy, 'none')), null);
+  // Shown where the buyer can act on it: Review, the phone Exterior screen, the desktop board.
+  assert.match(read('src/components/onboarding/priority/PriorityReview.jsx'), /<YardConflictNote conflict=\{yardConflict\(priorities\)\}/);
+  assert.match(read('src/components/onboarding/priority/PriorityFlow.jsx'), /category\.key === 'exterior' && <YardConflictNote conflict=\{yardConflict\(priorities\)\}/);
+  assert.match(read('src/components/onboarding/priority/PriorityBoard.jsx'), /<YardConflictNote className="flh-ob-board-yard-conflict" conflict=\{yardConflict\(priorities\)\}/);
+  assert.doesNotMatch(read('src/lib/yardConflict.js'), /setFeatureLevel|moveCriterion|removeCriterion|patch\(/, 'read-only');
 });

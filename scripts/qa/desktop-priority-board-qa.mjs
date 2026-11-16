@@ -557,6 +557,20 @@ await page.locator(`${COL('nice')} [data-chip-id="exterior:Garage"]`).click();
 check('Home to Rent Garage has no Attached / Detached (as on the phone)', await page.locator('.flh-ob-board-chooser .flh-ob-board-segment').count() === 0 && await page.locator('.flh-ob-board-chip-qualifier').count() === 0);
 await page.keyboard.press('Escape');
 
+/* ---------------- yard conflict (founder decision, PR #186) ---------------- */
+
+await open(page, 'step=cat_exterior&state=legacy&search=home_buy');
+const yardNote = page.locator('.flh-ob-yard-conflict');
+check('Unfenced Yard (kept from earlier) + Fenced Yard: the conflict is pointed out, both stay chosen', await yardNote.count() === 1 && /Unfenced Yard and Fenced Yard/.test(await yardNote.textContent())
+  && (await columnTexts(page, 'nice')).includes('Unfenced Yard') && (await columnTexts(page, 'important')).includes('Fenced Yard'));
+const yardButtons = await yardNote.getByRole('button').evaluateAll((buttons) => buttons.map((button) => Math.round(button.getBoundingClientRect().height)));
+check('its edit actions are ≥ 44px tall', yardButtons.length === 2 && yardButtons.every((height) => height >= 44), yardButtons.join(','));
+await yardNote.getByRole('button', { name: 'Change Unfenced Yard' }).click();
+check('“Change Unfenced Yard” opens its ordinary importance chooser', await page.locator('.flh-ob-board-chooser').count() === 1 && /Unfenced Yard/.test(await page.locator('.flh-ob-board-chooser-title').textContent()));
+await page.locator('.flh-ob-board-chooser .flh-ob-board-remove').click();
+await page.waitForTimeout(200);
+check('removing it (the buyer’s choice) clears the conflict; Fenced Yard untouched', await page.locator('.flh-ob-yard-conflict').count() === 0 && (await columnTexts(page, 'important')).includes('Fenced Yard'));
+
 /* ------------------------- widths, tablets and zoom ------------------------ */
 
 const SIZES = [

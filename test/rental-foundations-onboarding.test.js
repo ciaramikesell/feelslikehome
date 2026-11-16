@@ -82,7 +82,7 @@ test('Home to Rent offers exactly the approved cards and suggestions, with their
     ['Finished Basement', 'features:Finished basement'], ['Primary Ensuite Bathroom', 'features:Primary ensuite'],
   ]);
   assert.deepEqual(rows(p, 'rent_layout', 'suggestions'), [
-    ['First-Floor Laundry', 'features:First-floor laundry'], ['Extra Bedroom', 'features:Extra Bedroom'], ['Front Porch', 'exterior:Front porch'],
+    ['Main Floor Laundry', 'features:First-floor laundry'], ['Extra Bedroom', 'features:Extra Bedroom'], ['Front Porch', 'exterior:Front porch'],
   ]);
   assert.deepEqual(rows(p, 'rent_features', 'features'), [
     ['Kitchen Countertop Seating', 'features:Countertop Seating'], ['Stainless Steel Appliances', 'features:Stainless Steel Appliances'],

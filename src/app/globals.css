@@ -4131,6 +4131,18 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
   .flh-onboarding-root:has(.flh-ob-board-gate) .flh-ob-layout { grid-template-columns: minmax(220px, 260px) minmax(0, var(--ob-measure)); }
 }
 
+/* Contradictory yard priorities (src/lib/yardConflict.js): a calm, non-blocking note. */
+.flh-onboarding-root .flh-ob-yard-conflict { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; padding: 12px 14px; border: 1px solid #E8C9A6; border-radius: 14px; background: #FDF4E7; color: var(--ink); }
+.flh-onboarding-root .flh-ob-yard-conflict > svg { margin-top: 2px; color: #A0621B; }
+.flh-onboarding-root .flh-ob-yard-conflict-copy { min-width: 0; }
+.flh-onboarding-root .flh-ob-yard-conflict-copy p { margin: 0; font: 500 13.5px/1.45 var(--font-sans); overflow-wrap: anywhere; }
+.flh-onboarding-root .flh-ob-yard-conflict-actions { display: flex; flex-wrap: wrap; gap: 0 16px; margin-top: 2px; }
+.flh-onboarding-root .flh-ob-yard-conflict-actions .flh-text-action { min-height: 44px; max-width: 100%; white-space: normal; text-align: left; overflow-wrap: anywhere; }
+@media (max-width: 300px) {
+  .flh-onboarding-root .flh-ob-yard-conflict { grid-template-columns: minmax(0, 1fr); }
+  .flh-onboarding-root .flh-ob-yard-conflict > svg { display: none; }
+}
+
 /* ── Mobile Priority Onboarding V3 (flow 4) ──────────────────────────────────
    One category per screen: a two-column visual card grid on phones (three
    columns from 560px), the shared importance sheet, "Add your own", and one

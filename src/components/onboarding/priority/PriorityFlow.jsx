@@ -18,6 +18,8 @@ import FeatureVisual from './FeatureVisual';
 import ImportanceSheet from './ImportanceSheet';
 import AddOwnFeature from './AddOwnFeature';
 import PriorityReview from './PriorityReview';
+import YardConflictNote from './YardConflictNote';
+import { yardConflict } from '@/lib/yardConflict';
 import PetsQuestion from './PetsQuestion';
 
 // Mobile Priority Onboarding V3 (flow 4). Every screen has the same frame:
@@ -206,6 +208,7 @@ export function CategoryStep({ categoryKey, priorities, patch, header, footer, p
         <>
           {garage && view.cards.length > 0 && <h2 className="flh-ob-label flh-ob-pf-section-label">Garage details</h2>}
           <FeatureGrid cards={view.cards} onOpen={(feature) => picker.open(feature)} label={category.title} />
+          {category.key === 'exterior' && <YardConflictNote conflict={yardConflict(priorities)} onEdit={(feature) => picker.open(feature)} />}
           <AddOwnFeature title={category.title} suggestions={view.suggestions} onAdd={add} />
           {notice && <p className="sr-only" role="status">{notice}</p>}
           {addError && <p className="flh-ob-help" role="alert">{addError}</p>}

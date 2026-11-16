@@ -134,6 +134,12 @@ function priorityFlowPriorities(state, searchType = 'home_buy') {
   next = pick('features', 'Pot Filler', 'nice', true, 'kitchen');
   if (searchType !== 'apartment_rent') { next = setGarageImportance(next, 'important'); next = setGarageType(next, 'attached'); }
   if (state === 'legacy') next = { ...next, preferredPropertyTypes: { values: ['house'], tier: 'important' }, homeLayout: { values: ['Ranch / Single Story'], tier: 'important' } };
+  // An Unfenced Yard kept from the old Home Preferences next to a V3 Fenced Yard:
+  // the contradiction Review, Exterior and the board point out (PR #186).
+  if (state === 'legacy' && searchType === 'home_buy') {
+    next = addCriterion(next, { categoryKey: 'exterior', label: 'Unfenced Yard', kind: 'check' }, 'nice');
+    next = setFeatureLevel(next, { categoryKey: 'exterior', label: 'Fenced yard', custom: false }, 'important');
+  }
   return withPreviewAreas(next);
 }
 

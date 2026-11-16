@@ -4,6 +4,8 @@ import { ArrowRight, ChevronRight } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
 import { LEVEL_COPY } from '@/lib/searchProfile';
 import { basicsSummary } from '@/lib/onboardingReview';
+import { yardConflict } from '@/lib/yardConflict';
+import YardConflictNote from './YardConflictNote';
 import { GARAGE_TYPES, earlierPreferences, otherChosenPriorities, reviewCategories } from '@/lib/priorityCategories';
 
 // The editable summary after the last category. Every chosen priority is a
@@ -84,6 +86,7 @@ export default function PriorityReview({ header, priorities, sharedFor = null, s
     <div className="flh-onboarding-step flh-ob-review flh-ob-pf-review">
       <span className="flh-ob-review-mark" aria-hidden="true"><BrandMark size={44} /></span>
       {header}
+      <YardConflictNote conflict={yardConflict(priorities)} onEdit={(feature) => open(feature)} />
       <p className="flh-ob-pf-review-total" role="status">{total ? `${total} ${total === 1 ? 'priority' : 'priorities'} shape your Match. Unknown details never count against a home.` : 'No priorities chosen yet—that’s fine. Add them now or anytime in My Search.'}</p>
 
       <Section title="The Basics" onEdit={() => onEdit('basics')}>
