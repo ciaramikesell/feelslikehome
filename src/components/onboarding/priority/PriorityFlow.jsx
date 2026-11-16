@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Compass, Sparkles } from 'lucide-react';
 import { OnboardingAction } from '@/components/onboarding/OnboardingShell';
 import { BudgetField, SearchTypeControl, Stepper, UnitField } from '@/components/onboarding/BasicsStep';
@@ -21,6 +21,7 @@ import PriorityReview from './PriorityReview';
 import YardConflictNote from './YardConflictNote';
 import { yardConflict } from '@/lib/yardConflict';
 import PetsQuestion from './PetsQuestion';
+import { selectionHaptic } from '@/lib/haptics';
 
 // Mobile Priority Onboarding V3 (flow 4). Every screen has the same frame:
 // eyebrow (step and category), heading, lead, content, then one footer with
@@ -59,14 +60,36 @@ export function PriorityFooter({ onBack, onSkip, onContinue, continueLabel = 'Co
 const levelOf = (priorities, feature) => (feature.target === 'lotSizeTarget' ? lotSizeImportance(priorities) : featureLevel(priorities, feature));
 const writeLevel = (priorities, feature, tier) => (feature.target === 'lotSizeTarget' ? setLotSizeImportance(priorities, tier) : setFeatureLevel(priorities, feature, tier));
 
-// The importance picker, shared by every category screen and by Review.
+// Milestone 3 motion: the sheet slides away instead of vanishing — on phones
+// only, and never under Reduce Motion (then it closes at once). Short enough
+// that the next tap is never waiting on it.
+export const SHEET_CLOSE_MS = 180;
+function animatesSheetClose() {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return false;
+  return window.matchMedia('(max-width: 700px)').matches && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+// The importance picker, shared by every category screen and by Review — in
+// first-time onboarding and in Explore My Priorities alike.
 export function useImportancePicker(priorities, patch) {
   const [sheet, setSheet] = useState(null);
+  const [closing, setClosing] = useState(false);
   const [announcement, setAnnouncement] = useState('');
-  const open = (feature, note = null) => setSheet({ feature, note });
-  const close = () => setSheet(null);
+  const closeTimer = useRef(null);
+  useEffect(() => () => clearTimeout(closeTimer.current), []);
+  const open = (feature, note = null) => { clearTimeout(closeTimer.current); setClosing(false); setSheet({ feature, note }); };
+  const close = () => {
+    if (!animatesSheetClose()) { setSheet(null); return; }
+    setClosing(true);
+    clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => { setSheet(null); setClosing(false); }, SHEET_CLOSE_MS);
+  };
   const choose = (tier) => {
+    if (closing) return;
     const { feature } = sheet;
+    // A subtle native tick for choosing an importance (Not important included).
+    // Guarded: silent on the web and on builds without the Haptics plugin.
+    selectionHaptic();
     patch((next) => writeLevel(next, feature, tier));
     setAnnouncement(PRIORITY_LEVELS.includes(tier) ? `${feature.text}: ${LEVEL_COPY[tier].heading}.` : `${feature.text}: not important.`);
     close();
@@ -84,6 +107,7 @@ export function useImportancePicker(priorities, patch) {
       <p className="sr-only" role="status" aria-live="polite">{announcement}</p>
       <ImportanceSheet
         open={Boolean(sheet)}
+        closing={closing}
         feature={sheet?.feature || null}
         note={sheet?.note || null}
         level={sheet ? levelOf(priorities, sheet.feature) : null}
@@ -119,6 +143,7 @@ function GarageQuestions({ priorities, patch, onNotImportant }) {
         <div className="flh-ob-pf-options" role="group" aria-labelledby="flh-ob-pf-garage-q">
           {GARAGE_CHOICES.map((choice) => (
             <button key={choice.key} type="button" className={`flh-ob-pf-option${importance === choice.key ? ' is-current' : ''}`} aria-pressed={importance === choice.key} onClick={() => {
+              if (importance !== choice.key) selectionHaptic();
               patch((next) => setGarageImportance(next, choice.key));
               if (choice.key === 'not_important' && onNotImportant) onNotImportant();
             }}>

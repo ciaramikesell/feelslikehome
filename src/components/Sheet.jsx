@@ -32,6 +32,10 @@ export default function Sheet({
   dismissOnBackdrop = true,
   children,
   className = '',
+  // Opt-in exit animation: the caller keeps the sheet mounted for a moment
+  // with closing=true (only the importance picker does today); every other
+  // sheet is unchanged.
+  closing = false,
 }) {
   const dialogRef = useRef(null);
   const titleId = useId();
@@ -94,8 +98,8 @@ export default function Sheet({
 
   return (
     <div
-      className="hh-sheet-backdrop"
-      onMouseDown={(event) => dismissOnBackdrop && event.target === event.currentTarget && onClose()}
+      className={`hh-sheet-backdrop${closing ? ' is-closing' : ''}`}
+      onMouseDown={(event) => !closing && dismissOnBackdrop && event.target === event.currentTarget && onClose()}
     >
       <div
         ref={dialogRef}

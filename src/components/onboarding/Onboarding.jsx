@@ -24,6 +24,7 @@ import { createCommuteDestination, deleteCommuteDestination, savePriorities, set
 import { choiceFromSelection, normalizePeople } from '@/lib/onboardingPeople';
 import { googleAreaSuggestions } from '@/lib/areaSearchProvider';
 import { sanitizeRedirectPath } from '@/lib/safeRedirect';
+import { confirmHaptic } from '@/lib/haptics';
 import { OnboardingAction, OnboardingRail, OnboardingTopBar } from '@/components/onboarding/OnboardingShell';
 import BasicsStep from '@/components/onboarding/BasicsStep';
 import LocationsStep from '@/components/onboarding/LocationsStep';
@@ -312,6 +313,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
 
   // Editing from Review (six-step flow and flow 4): the edited step's Continue returns to Review.
   const [returnToReview, setReturnToReview] = useState(false);
+  const [arrivedAtReview, setArrivedAtReview] = useState(false);
   const goTo = async (fromStep) => {
     await flush();
     const { state: next } = advanceOnboarding(version, progressRef.current, fromStep);
@@ -344,6 +346,10 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
       setReturnToReview(false);
       persistProgress({ ...next, step: 'review' });
     } else {
+      // Milestone 3: reaching Review by finishing the last category earns one
+      // small completion moment; returning to Review after an edit does not.
+      // (Phones and tablets; the desktop board's Review is unchanged.)
+      if (!desktopBoard && next.step === 'review' && fromStep !== 'review') setArrivedAtReview(true);
       persistProgress(next);
     }
     if (!sharedSetup) track(ANALYTICS_EVENTS.ONBOARDING_STEP_COMPLETED, { ...eventContext, step: boardMove ? BOARD_STEP : fromStep, ...(skip ? { reason: 'skipped' } : {}) });
@@ -372,6 +378,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
     router.push(destination); router.refresh();
   };
   const editFromReview = (targetStep) => {
+    setArrivedAtReview(false);
     setReturnToReview(true);
     persistProgress({ ...progressRef.current, step: targetStep, updatedAt: new Date().toISOString() });
     window.scrollTo?.({ top: 0 });
@@ -393,6 +400,8 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
         await services.completeOnboarding(userId, { version, state: completeOnboardingState(version, progressRef.current) });
         track(ANALYTICS_EVENTS.ONBOARDING_COMPLETED, eventContext);
       }
+      // One light tap, only once everything has actually been saved.
+      if (priorityFlow) confirmHaptic();
       leave(pendingRedirect || destination);
     } catch {
       finishingRef.current = false;
@@ -469,7 +478,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
               onSkip={(from) => moveOn(from, { skip: true })}
               onBack={(from) => goBack(from)}
               onSearchType={(type) => persistProgress(setOnboardingSearchType(progressRef.current, type))}
-              review={{ skipped: progressState.skipped || [], onEdit: editFromReview, onFinish: finishToDestination, finishing, finishError }}
+              review={{ skipped: progressState.skipped || [], onEdit: editFromReview, onFinish: finishToDestination, finishing, finishError, celebrate: arrivedAtReview }}
               board={desktopBoard}
               setupPath={progressState.answers?.setupPath || null}
               onSetupPath={chooseSetupPath}

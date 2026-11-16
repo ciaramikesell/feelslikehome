@@ -1,0 +1,42 @@
+[
+  {
+    "name": "real flow: the completion moment appears on Review",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "onboarding (native): a tick for the importance; nothing for Continue/Skip; one light tap once setup is saved",
+    "ok": true,
+    "detail": "selectionChanged → selectionChanged, impact:LIGHT"
+  },
+  {
+    "name": "…and the data is saved exactly as before (Must Have; nothing else)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Explore (native), after an edit: one tick, then one light tap on Done",
+    "ok": true,
+    "detail": "[\"selectionChanged\",\"impact:LIGHT\"]"
+  },
+  {
+    "name": "Explore (native), just looking: no haptics at all",
+    "ok": true,
+    "detail": "[]"
+  },
+  {
+    "name": "Explore 320px: slim progress shows Kitchen as 2 of 7; no overflow",
+    "ok": true,
+    "detail": "2 filled, overflow 0"
+  },
+  {
+    "name": "Explore 390px: slim progress shows Kitchen as 2 of 7; no overflow",
+    "ok": true,
+    "detail": "2 filled, overflow 0"
+  },
+  {
+    "name": "no unexpected console errors",
+    "ok": true,
+    "detail": ""
+  }
+]

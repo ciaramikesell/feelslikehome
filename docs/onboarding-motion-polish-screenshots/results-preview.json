@@ -1,0 +1,137 @@
+[
+  {
+    "name": "choosing a level: the sheet starts sliding away (phones)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "…and the card is marked just-set for its one-shot spring",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "the sheet is gone within ~250ms (no wait before the next tap)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "the spring does not loop: the class clears",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "haptics: one selection tick per importance chosen (incl. Not important); none for Next, Back, Skip or closing the sheet",
+    "ok": true,
+    "detail": "selectionChanged, selectionChanged"
+  },
+  {
+    "name": "garage: a tick when the importance changes; none for re-tapping it or choosing the garage type",
+    "ok": true,
+    "detail": "selectionChanged"
+  },
+  {
+    "name": "an older installed build (no Haptics plugin): choosing works normally, no haptic calls, no errors",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "mobile Safari / desktop (no native bridge): choosing works normally, no haptic calls, no errors",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Reduce Motion: the sheet closes at once (no slide)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Reduce Motion: no spring on the card; transitions effectively off",
+    "ok": true,
+    "detail": "none / 1e-05s"
+  },
+  {
+    "name": "keyboard: the sheet opens with focus inside it",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "keyboard: choosing returns focus to the card, whose name now says the level in words",
+    "ok": true,
+    "detail": "Double Vanity: Important. Choose importance"
+  },
+  {
+    "name": "with the keyboard up, the Add-your-own field stays visible and is not covered by the sticky footer",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "adding your own feature opens the importance sheet (no level preselected)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "320px: no horizontal overflow, nothing clipped, sheet buttons ≥ 44px",
+    "ok": true,
+    "detail": "overflow 0/0, small 0, clipped 0"
+  },
+  {
+    "name": "375px: no horizontal overflow, nothing clipped, sheet buttons ≥ 44px",
+    "ok": true,
+    "detail": "overflow 0/0, small 0, clipped 0"
+  },
+  {
+    "name": "390px: no horizontal overflow, nothing clipped, sheet buttons ≥ 44px",
+    "ok": true,
+    "detail": "overflow 0/0, small 0, clipped 0"
+  },
+  {
+    "name": "430px: no horizontal overflow, nothing clipped, sheet buttons ≥ 44px",
+    "ok": true,
+    "detail": "overflow 0/0, small 0, clipped 0"
+  },
+  {
+    "name": "195px (200% text): no horizontal overflow, nothing clipped, sheet buttons ≥ 44px",
+    "ok": true,
+    "detail": "overflow 0/0, small 0, clipped 0"
+  },
+  {
+    "name": "finishing the last category: a small completion moment on Review",
+    "ok": true,
+    "detail": "Nicely done. 7 priorities shape your Match. Unknown details never count against a home."
+  },
+  {
+    "name": "the moment is truthful (no claim of a found or verified home)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "returning to Review after an edit: no repeat celebration",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Review opened directly: no celebration",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop Feature Library / board (1440) is pixel-identical to main (search=home_buy)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "desktop Feature Library / board (1440) is pixel-identical to main (search=home_rent)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "motion demo recorded",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "no unexpected console errors",
+    "ok": true,
+    "detail": ""
+  }
+]
