@@ -51,7 +51,8 @@ test('Laundry Location imports only an explicit, single location', () => {
   assert.equal(normalizeRentCastFields({ features: { laundry: 'Basement', laundryLocation: 'Basement' } }, null).fields.laundryLocation, undefined);
   assert.equal(normalizeRentCastFields({ features: { laundry: 'Basement' } }, null, { apartmentCommunity: true }).fields.laundryLocation, undefined);
   assert.equal(mergeImportFields({ laundryLocation: 'second_floor' }, { laundryLocation: 'basement' }).laundryLocation, 'second_floor');
-  assert.deepEqual(LAUNDRY_LOCATION_CHOICES.map(([key]) => key), ['basement', 'first_floor', 'second_floor']);
+  // PR #187: Main Floor first, labelled as the priority it answers; the stored tokens are unchanged.
+  assert.deepEqual(LAUNDRY_LOCATION_CHOICES, [['first_floor', 'Main Floor'], ['basement', 'Basement'], ['second_floor', 'Second Floor']]);
 });
 
 test('layout, garage and basement edits write only what changed and keep None distinct from Unknown', () => {

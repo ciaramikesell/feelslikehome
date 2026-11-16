@@ -15,6 +15,8 @@ import { answerableCriteriaKeys, criterionAnswerPatch, criterionResolution } fro
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const MIGRATION = read('supabase/migrations/2026-11-02-home-facts-match-parity.sql');
 const PREVIOUS = read('supabase/migrations/2026-10-18-lot-size-units-match-parity.sql');
+// The newest scorer body (PR #187) answers every JS fact-backed key.
+const NEWEST = read('supabase/migrations/2026-11-16-home-facts-match-fulfillment.sql');
 
 const CONDITIONS = [undefined, 'none', 'unfinished', 'partially_finished', 'finished'];
 const STYLES = [undefined, 'none', 'traditional', 'gardenview', 'walkout'];
@@ -127,9 +129,9 @@ test('Match Criteria: fact-backed criteria are answerable; clearing an override 
   const priorities = buyer();
   assert.ok(answerableCriteriaKeys(priorities).has('exterior:Garage'));
   const home = { garageSpaces: '2', checks: { 'exterior:Garage': 'no' } };
-  assert.deepEqual(criterionResolution(home, 'exterior:Garage', 'purchase'), { value: 'no', source: 'answer', fact: true, link: ['hf-garageSpaces', 'Garage'] });
+  assert.deepEqual(criterionResolution(home, 'exterior:Garage', 'purchase'), { value: 'no', source: 'answer', fact: true, link: ['hf-garageType', 'Garage'] });
   const cleared = criterionAnswerPatch(home, 'exterior:Garage', undefined, 'purchase').personal.checks;
-  assert.deepEqual(criterionResolution({ ...home, checks: cleared }, 'exterior:Garage', 'purchase'), { value: true, source: 'home_facts', fact: true, link: ['hf-garageSpaces', 'Garage'] });
+  assert.deepEqual(criterionResolution({ ...home, checks: cleared }, 'exterior:Garage', 'purchase'), { value: true, source: 'home_facts', fact: true, link: ['hf-garageType', 'Garage'] });
   // An older-label answer is read for today's label (purchase), and clearing hides it.
   const legacy = { basementCondition: 'finished', checks: { 'features:First-Floor Laundry': 'no' } };
   assert.equal(criterionResolution(legacy, 'features:First-floor laundry', 'purchase').value, 'no');
@@ -142,12 +144,12 @@ test('Match Criteria: fact-backed criteria are answerable; clearing an override 
 /* ------------------------- JS ↔ SQL scorer contract ------------------------- */
 
 test('the SQL scorer answers exactly the JS fact-backed keys, and folds exactly the JS purchase aliases', () => {
-  const sqlFactKeys = [...MIGRATION.matchAll(/when v_key (?:=|in \()\s*('[^)]*?')\)? then case/g)]
+  const sqlFactKeys = [...NEWEST.matchAll(/when v_key (?:=|in \()\s*('[^)]*?')\)? then case/g)]
     .flatMap((match) => [...match[1].matchAll(/'([^']+)'/g)].map((key) => key[1]));
   assert.deepEqual(sqlFactKeys.sort(), Object.values(HOME_FACT_CRITERIA).flat().sort());
-  const forward = [...MIGRATION.match(/v_alias := case v_key([\s\S]*?)end;/)[1].matchAll(/when '([^']+)' then '([^']+)'/g)].map((match) => [match[1], match[2]]);
+  const forward = [...NEWEST.match(/v_alias := case v_key([\s\S]*?)end;/)[1].matchAll(/when '([^']+)' then '([^']+)'/g)].map((match) => [match[1], match[2]]);
   assert.deepEqual(forward.sort(), PURCHASE_LEGACY_ALIAS_KEYS.map((pair) => [...pair]).sort());
-  const reverse = [...MIGRATION.match(/v_raw := v_checks -> \(case v_key([\s\S]*?)end\);/)[1].matchAll(/when '([^']+)' then '([^']+)'/g)].map((match) => [match[2], match[1]]);
+  const reverse = [...NEWEST.match(/v_raw := v_checks -> \(case v_key([\s\S]*?)end\);/)[1].matchAll(/when '([^']+)' then '([^']+)'/g)].map((match) => [match[2], match[1]]);
   assert.deepEqual(reverse.sort(), PURCHASE_LEGACY_ALIAS_KEYS.map((pair) => [...pair]).sort());
 });
 

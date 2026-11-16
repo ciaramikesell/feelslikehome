@@ -59,9 +59,9 @@ const LEGACY_HOME_FEEL_SUGGESTED = ['Natural Light', 'Character / Charm', 'Room 
 export const EXTERIOR_CORE = [];
 // 'Privacy Fencing' is new — a purely factual yes/no fact, deliberately distinct from
 // the subjective post-tour 'exterior:Privacy' ("Yard Privacy") rating below.
-// 'Garage' is the one weighted garage criterion (scored from the home's existing
-// garageSpaces fact — see computeMatch); Attached/Detached is an optional,
-// informational qualifier (exterior.garagePreference), never a separate criterion.
+// 'Garage' is the one weighted garage criterion (scored from the home's garage
+// type and spaces — see homeFactCriteria.js garageReading); Attached/Detached is
+// its qualifier (exterior.garagePreference), never a separate criterion.
 // 'Unfenced Yard' is the Home Preferences opposite of a fenced yard; The Basics
 // never lets it be chosen alongside 'Fenced yard' or 'Privacy Fencing'.
 export const EXTERIOR_SUGGESTED = [
@@ -71,8 +71,9 @@ export const EXTERIOR_SUGGESTED = [
 ].map((label) => ({ label, kind: 'check' }));
 
 // Optional qualifier shown when Garage is selected. Stored on the participant's
-// own priorities document (exterior.garagePreference); absent means 'any'. It is
-// context for the buyer, not a Match input.
+// own priorities document (exterior.garagePreference); absent means 'any'. It
+// decides which garage type fulfils the one Garage criterion (Any: attached or
+// detached; Attached / Detached: only that type) in both Match scorers.
 export const GARAGE_PREFERENCE_OPTIONS = Object.freeze([
   Object.freeze({ key: 'any', label: 'Any' }),
   Object.freeze({ key: 'attached', label: 'Attached' }),

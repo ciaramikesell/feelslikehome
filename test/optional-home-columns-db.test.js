@@ -98,12 +98,12 @@ test('every HOME_SHARED_COLUMNS use in src goes through the optional-column fall
     .filter(({ text }) => /\bHOME_SHARED_COLUMNS\b(?!_)/.test(text) && !/^\s*(?:\/\/|\*)/.test(text)));
   // The definition, and the one place that reads with it: withOptionalHomeColumns.
   const sanctioned = uses.filter(({ text }) => /^export const HOME_SHARED_COLUMNS =/.test(text.trim())
-    || text.trim() === 'const result = await read(HOME_SHARED_COLUMNS);');
+    || text.trim() === 'let result = await read(HOME_SHARED_COLUMNS);');
   const unguarded = uses.filter((use) => !sanctioned.includes(use)).map(({ file, line, text }) => `${file.split('/src/')[1]}:${line}: ${text.trim()}`);
   // The full-row write keeps its own drop-the-column retry (saveHomePersonalAndShared).
   const writes = unguarded.filter((entry) => /from\('homes'\)\.(?:update|insert)\(/.test(entry));
   assert.equal(writes.length, 2, 'the two full-row writes (update / insert) in saveHomePersonalAndShared');
-  assert.match(read('src/lib/supabase/collaboration.js'), /const missing = missingOptionalColumn\(sharedError\);/);
+  assert.match(read('src/lib/supabase/collaboration.js'), /for \(let column = missingOptionalColumn\(sharedError\); column && !missing\.includes\(column\); column = missingOptionalColumn\(sharedError\)\) \{/);
   assert.deepEqual(unguarded.filter((entry) => !writes.includes(entry)), []);
 });
 

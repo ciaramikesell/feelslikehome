@@ -119,7 +119,7 @@ test('#165 + #167: the review list and the Match editor read the same answer the
   // and the editor's "Home Facts" option clears through setCheckItem, which also ends a suggestion's ownership.
   assert.match(modal, /hasRecordedAnswer\(form\.checks, suggestion\.key, priorities\.searchType\)/);
   assert.match(modal, /const setCheckItem = \(cat, label, value\) => \{\n\s*setConfirmedAnswers\(/);
-  assert.match(modal, /const resolutionOf = \(key\) => criterionResolution\(form, key, priorities\.searchType\);/);
+  assert.match(modal, /const resolutionOf = \(key\) => criterionResolution\(form, key, priorities\.searchType, homeFactContext\(priorities\)\);/);
   assert.match(modal, /label = id === 'unknown' && resolved\.fact !== undefined \? 'Home Facts' : text/);
 });
 
@@ -161,7 +161,9 @@ test('every fact-backed criterion key has a filterable, answerable criterion und
       const priorities = addCriterion(normalizePriorities({ searchType }), { categoryKey, label, kind: 'check', source: searchType === 'rental' ? 'custom' : undefined }, 'must');
       const selected = computeMatch({ checks: {} }, priorities).allSelected.map((entry) => entry.key);
       assert.equal(selected.length, 1, key);
-      assert.equal(homeFactAnswer({ garageSpaces: '1', basementCondition: 'finished', basementStyle: 'walkout', laundryLocation: label.startsWith('Second') ? 'second_floor' : 'first_floor', primaryBedroomLocation: 'Main Floor' }, selected[0]) === undefined, label === 'No HOA', key);
+      assert.equal(homeFactAnswer({ garageSpaces: '1', basementCondition: 'finished', basementStyle: 'walkout', laundryLocation: label.startsWith('Second') ? 'second_floor' : 'first_floor', primaryBedroomLocation: 'Main Floor' }, selected[0]) === undefined, ['No HOA', 'Central air', 'Central Air'].includes(label), key);
+      if (label === 'No HOA') assert.equal(homeFactAnswer({ hasHoa: false }, selected[0]), true, key);
+      if (label.startsWith('Central')) assert.equal(homeFactAnswer({ cooling: 'Central Air' }, selected[0]), true, key);
     }
   }
 });

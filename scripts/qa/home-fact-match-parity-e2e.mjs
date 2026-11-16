@@ -158,7 +158,9 @@ async function run() {
       await owner.goto(`${base}/homes/${homeId}`, { waitUntil: 'networkidle' });
       await owner.locator('.flh-overlay[role="dialog"]:not(.is-loading)').waitFor({ timeout: 30000 });
       await expandFacts(owner);
-      await owner.locator('#hf-basementCondition').selectOption('unfinished');
+      // PR #187: one Basement description over the two facts ("Unfinished" keeps the Traditional style Unknown).
+      await owner.locator('#hf-basement').fill('Unfinished');
+      await owner.locator('#hf-basement').blur();
       await until(() => q(`select basement_condition from public.homes where id = ${lit(homeId)}`)[0].basement_condition === 'unfinished', 'fact not saved');
       await openMatch(owner, `/homes/${homeId}?section=match`);
       assert((await matchRow(owner, 'Finished Basement').getAttribute('class')).includes('is-missed'), 'Finished basement did not follow the corrected fact');

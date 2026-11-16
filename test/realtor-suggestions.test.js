@@ -44,7 +44,9 @@ test('suggestion embedding respects the homes column allowlist instead of SELECT
   // The embed's columns come only from the allowlist (with the optional-column
   // fallback): HOME_SHARED_COLUMNS, or HOME_SHARED_COLUMNS_REQUIRED on retry.
   assert.match(collaboration, /withOptionalHomeColumns\(\(columns\) => supabase\.from\('realtor_suggestions'\)\s*\.select\(`[^`]*homes\(\$\{columns\}\)`\)/);
-  assert.match(collaboration, /async function withOptionalHomeColumns\(read\) \{\s*const result = await read\(HOME_SHARED_COLUMNS\);\s*return missingOptionalColumn\(result\.error\) \? read\(HOME_SHARED_COLUMNS_REQUIRED\) : result;/);
+  // Each retry leaves out only the optional column the database named (PR #187: two optional columns).
+  assert.match(collaboration, /async function withOptionalHomeColumns\(read\) \{\s*const missing = \[\];\s*let result = await read\(HOME_SHARED_COLUMNS\);\s*for \(let column = missingOptionalColumn\(result\.error\); column && !missing\.includes\(column\); column = missingOptionalColumn\(result\.error\)\) \{\s*missing\.push\(column\);\s*result = await read\(sharedColumnsWithout\(missing\)\);/);
+  assert.match(collaboration, /const sharedColumnsWithout = \(missing\) => \[HOME_SHARED_COLUMNS_REQUIRED, \.\.\.OPTIONAL_HOME_COLUMNS\.filter/);
 });
 
 test('Realtor creation is relationship-scoped, revoked access fails, and duplicates are idempotent', () => {

@@ -32,13 +32,15 @@ export function criterionAnswer(home, key, searchType) {
 
 // The answer Match uses and where it came from: the buyer's own answer, an
 // exact Home Fact, or nothing (Unknown). `link` is the Home Facts field behind
-// a criterion a fact can answer, as [field id, short label].
-export function criterionResolution(home, key, searchType) {
+// a criterion a fact can answer, as [field id, short label]. `context` is
+// homeFactContext(priorities) for the buyer whose answer this is (their Garage
+// qualifier); without it Garage reads as Any.
+export function criterionResolution(home, key, searchType, context = {}) {
   if (SHARED_BOOLEAN_FACT_FIELDS[key]) {
     const value = sharedFactAnswer(home, key);
     return { value, source: value === undefined ? null : 'answer', fact: undefined, link: null };
   }
-  const resolved = resolveCriterionAnswer(home, key, foldLegacyCheckAliases(home?.checks, searchType));
+  const resolved = resolveCriterionAnswer(home, key, foldLegacyCheckAliases(home?.checks, searchType), context);
   const concept = homeFactConcept(key);
   return { ...resolved, link: concept ? HOME_FACT_LINKS[concept] : null };
 }

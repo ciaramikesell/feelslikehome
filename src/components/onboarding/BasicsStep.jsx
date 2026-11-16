@@ -191,7 +191,7 @@ function HomePreferences({ priorities, patch }) {
       <div id={`${id}-panel`} className="flh-ob-disclosure-panel flh-ob-pref-panel" hidden={!open}>
         <p className="flh-ob-help">Choose only what you’d weigh. Each starts as Important—you’ll rank them with everything else.</p>
         {rows.map((row) => <PreferenceRow key={row.key} row={row} onToggle={(option) => patch((next) => toggleHomePreference(next, option))} />)}
-        {garageChosen && <p className="flh-ob-help">Match checks whether a home has a garage; attached or detached is saved with your preference.</p>}
+        {garageChosen && <p className="flh-ob-help">Match checks for the garage you choose: Any is met by an attached or detached garage; Attached or Detached only by that kind.</p>}
       </div>
     </div>
   );

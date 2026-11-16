@@ -78,7 +78,7 @@ dbTest('each buyer’s Home preferences persist in their own preferences, rank I
 dbTest('shared layout / condition facts hold several values, either buyer can edit them, and both scorers agree', async () => {
   const owner = db.clientFor(ids.owner);
   const coBuyer = db.clientFor(ids.coBuyer);
-  const inserted = await owner.from('homes').insert({ user_id: ids.owner, search_id: ids.search, address: '4 Lakeview Ave, Grosse Pointe, MI 48236', price: '450000', garage_spaces: '2' }).select('id').single();
+  const inserted = await owner.from('homes').insert({ user_id: ids.owner, search_id: ids.search, address: '4 Lakeview Ave, Grosse Pointe, MI 48236', price: '450000', garage_spaces: '2', garage_type: 'attached' }).select('id').single();
   assert.equal(inserted.error, null);
   const homeId = inserted.data.id;
 
@@ -113,7 +113,7 @@ dbTest('shared layout / condition facts hold several values, either buyer can ed
     'features:First-Floor Primary': 'unknown',
     'features:Finished basement': true,
     'features:Walkout basement': false,
-    'exterior:Garage': true,
+    'exterior:Garage': true, // Attached chosen, and Home Facts records an attached garage (PR #187)
     'exterior:Fenced yard': 'unknown',
     'exterior:Privacy Fencing': 'unknown',
   });

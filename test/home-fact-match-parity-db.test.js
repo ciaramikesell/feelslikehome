@@ -22,6 +22,8 @@ const {
 
 const dbTest = (name, fn) => test(name, { skip: DB_TESTS_ENABLED ? false : DB_SKIP_REASON }, fn);
 const MIGRATION = 'supabase/migrations/2026-11-02-home-facts-match-parity.sql';
+// PR #187's scorer body builds on this one, so pre-migration production leaves it out too.
+const NEWEST_SCORER = 'supabase/migrations/2026-11-16-home-facts-match-fulfillment.sql';
 const PREFLIGHT = readFileSync(new URL('../supabase/home-facts-match-parity-preflight.sql', import.meta.url), 'utf8').replace(/;\s*$/, '');
 
 const FACT_CRITERIA = [
@@ -295,7 +297,7 @@ dbTest('owner and co-buyer together: every fact × own-answer state, both scorer
 });
 
 dbTest('production path: preflight on pre-migration data, then the migration — Compare follows the new rule and nothing is rewritten', async () => {
-  const legacy = createTestDatabase({ steps: POST_SNAPSHOT_MIGRATIONS.filter((step) => step.file !== MIGRATION) });
+  const legacy = createTestDatabase({ steps: POST_SNAPSHOT_MIGRATIONS.filter((step) => ![MIGRATION, NEWEST_SCORER].includes(step.file)) });
   try {
     const owner = legacy.createUser({ email: 'owner.legacy.factparity@example.com', firstName: 'Ciara', lastName: 'M' });
     const coBuyer = legacy.createUser({ email: 'cobuyer.legacy.factparity@example.com', firstName: 'Andrew', lastName: 'M' });

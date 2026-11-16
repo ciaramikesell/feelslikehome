@@ -2,7 +2,7 @@ import { TIER_META, MULTISELECT_CATEGORIES, SINGLESELECT_CATEGORIES, getItemlist
 import { normalizeSearchIntent } from './searchIntent.js';
 import { EVIDENCE_STRENGTH, findingsFromFields } from './importDomain.js';
 import { lotSizeAcres } from './lotSize.js';
-import { garageSpacesCount, resolveCriterionAnswer } from './homeFactCriteria.js';
+import { garagePreferenceOf, garageSpacesCount, homeFactContext, resolveCriterionAnswer } from './homeFactCriteria.js';
 
 export function parseNum(v) {
   if (v === '' || v === null || v === undefined) return null;
@@ -345,20 +345,29 @@ export function parseListingTextFindings(text, searchType = null) {
  *     is excluded entirely, never scored as a 0.
  *
  * Home Facts answer some check criteria exactly (src/lib/homeFactCriteria.js):
- * Garage from `home.garageSpaces` ("0" is a real No, empty is Unknown), Finished
- * and Walkout basement, first/second-floor laundry, First-Floor Primary and No
- * HOA. The buyer's own explicit Yes / No overrides the fact; without either the
+ * Garage from garage type and spaces, read for the buyer's own Any / Attached /
+ * Detached qualifier ("0" or None is a real No, empty is Unknown), Finished
+ * and Walkout basement, first/second-floor laundry, First-Floor Primary, No
+ * HOA (HOA status and fee) and Central Air (Cooling). The buyer's own explicit Yes / No overrides the fact; without either the
  * criterion stays Unknown. This is the "objective auto-data should feed Match
  * when reliable" case, with no extra question asked.
  * ---------------------------------------------------------------------------------- */
 
 // The detail line for a check answer. Garage read from Home Facts keeps its
-// established wording ("2-car garage" / "No garage").
-function answerDetail(key, yes, source, home) {
-  if (source === 'home_facts' && key === 'exterior:Garage') {
-    const spaces = garageSpacesCount(home.garageSpaces);
-    return yes ? `${spaces}-car garage` : 'No garage';
-  }
+// established wording ("2-car garage" / "No garage") and names the kind when
+// Home Facts records it ("2-car attached garage", "Detached garage — you
+// want attached").
+const GARAGE_KIND = Object.freeze({ attached: 'attached', detached: 'detached' });
+export function garageAnswerDetail(home, yes, garagePreference = 'any') {
+  const spaces = garageSpacesCount(home?.garageSpaces);
+  const kind = GARAGE_KIND[home?.garageType] || null;
+  if (!yes && (home?.garageType === 'none' || spaces === 0)) return 'No garage';
+  const words = [spaces > 0 ? `${spaces}-car` : null, kind, 'garage'].filter(Boolean).join(' ');
+  const text = words.charAt(0).toUpperCase() + words.slice(1);
+  return yes ? text : `${text} — you want ${garagePreference}`;
+}
+function answerDetail(key, yes, source, home, priorities) {
+  if (source === 'home_facts' && key === 'exterior:Garage') return garageAnswerDetail(home, yes, garagePreferenceOf(priorities));
   return yes ? 'Yes' : 'No';
 }
 
@@ -368,6 +377,8 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
   // legacy label (e.g. 'features:Home Office') still counts once the search's own
   // priority has folded onto the canonical label — never silently forgotten.
   const checks = foldLegacyCheckAliases(home.checks, priorities.searchType);
+  // This buyer's own fact context (their Garage qualifier), never another's.
+  const factContext = homeFactContext(priorities);
   const all = []; // every priority the user actually selected, evaluated or not
   const push = (key, label, tier, evaluated, score, met, detail, objective, source) => {
     all.push({ key, label, tier, evaluated, score, met, detail, objective, ...(source ? { source } : {}) });
@@ -507,8 +518,8 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
       // home that predates this UI. UNKNOWN MUST NOT PRODUCE MISSING.
       //
       // A Home Fact can answer some of these exactly (homeFactCriteria.js:
-      // Garage from garage spaces, Finished / Walkout basement, laundry floor,
-      // First-Floor Primary, No HOA). The buyer's own Yes / No always wins;
+      // Garage from type and spaces (with the buyer's qualifier), Finished / Walkout basement, laundry floor,
+      // First-Floor Primary, No HOA, Central Air). The buyer's own Yes / No always wins;
       // otherwise the fact answers; otherwise Unknown. The fact is read here,
       // never copied into anyone's checks.
       //
@@ -518,10 +529,10 @@ export function computeMatch(home, priorities, commuteEvaluation = null) {
       // in the same order the SQL Compare scorer reads ratings, then checks.
       const legacyRating = item.kind === 'rating' ? home.ratings?.[ns] : undefined;
       if (typeof legacyRating === 'number' && legacyRating > 0) { push(ns, item.label, tier, true, legacyRating / 5, legacyRating >= 3, `${legacyRating}/5`, true, 'earlier_rating'); return; }
-      const answer = resolveCriterionAnswer(home, ns, checks);
+      const answer = resolveCriterionAnswer(home, ns, checks, factContext);
       const source = answer.source === 'home_facts' ? 'home_facts' : undefined;
-      if (answer.value === true) { push(ns, item.label, tier, true, 1, true, answerDetail(ns, true, answer.source, home), true, source); return; }
-      if (answer.value === 'no') { push(ns, item.label, tier, true, 0, false, answerDetail(ns, false, answer.source, home), true, source); return; }
+      if (answer.value === true) { push(ns, item.label, tier, true, 1, true, answerDetail(ns, true, answer.source, home, priorities), true, source); return; }
+      if (answer.value === 'no') { push(ns, item.label, tier, true, 0, false, answerDetail(ns, false, answer.source, home, priorities), true, source); return; }
       notEvaluated(ns, item.label, tier, true);
     });
   });

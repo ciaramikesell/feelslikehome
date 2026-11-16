@@ -143,12 +143,15 @@ test('Garage is one choice — Any, Attached or Detached — and clearing it lea
   assert.equal(homePreferencesSummary(priorities).count, 0);
   // Garage size and "No garage" need Match support first (deferred): never stored or shown.
   assert.doesNotMatch(JSON.stringify(homePreferenceRows(start('home_buy'))), /car|No Garage/i);
-  // Match checks whether there is a garage; the qualifier never changes that (said in the UI).
+  // PR #187: Attached is met only by an attached garage (said in the UI);
+  // spaces alone don't say which kind, and no garage is still No.
   const attached = choose(start('home_buy'), ['garage', 'Attached']);
-  assert.equal(status({ garageSpaces: '2' }, attached, 'exterior:Garage'), true);
+  assert.equal(status({ garageSpaces: '2', garageType: 'attached' }, attached, 'exterior:Garage'), true);
+  assert.equal(status({ garageSpaces: '2', garageType: 'detached' }, attached, 'exterior:Garage'), false);
+  assert.equal(status({ garageSpaces: '2' }, attached, 'exterior:Garage'), 'unknown');
   assert.equal(status({ garageSpaces: '0' }, attached, 'exterior:Garage'), false);
   assert.equal(status({}, attached, 'exterior:Garage'), 'unknown');
-  assert.match(read('src/components/onboarding/BasicsStep.jsx'), /Match checks whether a home has a garage; attached or detached is saved with your preference\./);
+  assert.match(read('src/components/onboarding/BasicsStep.jsx'), /Match checks for the garage you choose: Any is met by an attached or detached garage; Attached or Detached only by that kind\./);
 });
 
 test('a basement can be Finished and Walkout, and a yard Fenced with a Privacy Fence; Unfenced replaces both', () => {

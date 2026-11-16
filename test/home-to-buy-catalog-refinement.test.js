@@ -112,9 +112,14 @@ test('garage: three choices are one Garage priority; switching kinds of search k
     const p = placeOnBoard(fresh(), choice, 'must');
     assert.equal(priorityLevels(p).flatMap((level) => level.items).filter((entry) => entry.categoryKey === 'exterior' && /garage/i.test(entry.label)).length, 1, `${choice.text}: one criterion`);
     assert.equal(garageType(p), choice.variant);
-    // Match still scores Garage from garage spaces, whatever the qualifier (no scoring change).
-    assert.equal(computeMatch({ price: '1', garageSpaces: '2', checks: {} }, p).allSelected.find((entry) => entry.key === 'exterior:Garage').met, true);
-    assert.equal(computeMatch({ price: '1', garageSpaces: '', checks: {} }, p).allSelected.find((entry) => entry.key === 'exterior:Garage').evaluated, false);
+    // PR #187: the qualifier picks which garage type fulfils the one Garage criterion.
+    const garage = (home) => computeMatch({ price: '1', checks: {}, ...home }, p).allSelected.filter((entry) => entry.key === 'exterior:Garage');
+    assert.equal(garage({ garageSpaces: '2', garageType: choice.variant === 'detached' ? 'detached' : 'attached' })[0].met, true, choice.text);
+    assert.equal(garage({ garageSpaces: '2', garageType: choice.variant === 'detached' ? 'attached' : 'detached' })[0].met, choice.variant === 'any', choice.text);
+    assert.equal(garage({ garageSpaces: '2' })[0].evaluated, choice.variant === 'any', `${choice.text}: spaces alone don't name the kind`);
+    assert.equal(garage({ garageSpaces: '0' })[0].met, false);
+    assert.equal(garage({ garageSpaces: '' })[0].evaluated, false);
+    assert.equal(garage({ garageSpaces: '2', garageType: 'attached' }).length, 1, 'counted once');
   }
   let p = placeOnBoard(fresh(), BOARD_GARAGE_CHOICES.find((choice) => choice.variant === 'detached'), 'important');
   p = switchPrioritySearchType(p, 'apartment_rent').priorities;
