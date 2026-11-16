@@ -22,10 +22,10 @@
    ],
    "title": "Layout & Living Spaces",
    "heading": [
-    "Layout & ",
-    "living spaces"
+    "Room for the way ",
+    "you live"
    ],
-   "lead": "How the rooms come together. Choose only what you’d weigh.",
+   "lead": "Tap anything that matters to you. Skip the rest.",
    "features": [
     {
      "id": "features:First-Floor Bedroom",
@@ -115,10 +115,10 @@
    ],
    "title": "Kitchen",
    "heading": [
-    "The ",
-    "kitchen"
+    "What’s cooking in your ",
+    "dream kitchen?"
    ],
-   "lead": "Where the day starts and ends. Tap what matters.",
+   "lead": "Where the day starts and ends.",
    "features": [
     {
      "id": "features:Countertop Seating",
@@ -205,10 +205,10 @@
    ],
    "title": "Living Room",
    "heading": [
-    "The ",
-    "living room"
+    "Where you’ll ",
+    "unwind"
    ],
-   "lead": "The room you’ll spend evenings in.",
+   "lead": "The room you’ll spend your evenings in.",
    "features": [
     {
      "id": "features:Fireplace",
@@ -271,8 +271,8 @@
    ],
    "title": "Bathroom",
    "heading": [
-    "The ",
-    "bathroom"
+    "What makes a bathroom feel ",
+    "just right?"
    ],
    "lead": "Small details you’ll notice every day.",
    "features": [
@@ -349,8 +349,8 @@
    ],
    "title": "Garage",
    "heading": [
-    "The ",
-    "garage"
+    "Let’s talk ",
+    "garage space"
    ],
    "lead": "First, how much does a garage matter to you?",
    "features": [],
@@ -403,10 +403,10 @@
    ],
    "title": "Exterior & Property",
    "heading": [
-    "Exterior & ",
-    "property"
+    "Let’s step ",
+    "outside"
    ],
-   "lead": "The outdoor space that comes with it.",
+   "lead": "Your yard and the outdoor space around it.",
    "features": [
     {
      "id": "exterior:Patio / deck",
@@ -509,10 +509,10 @@
    ],
    "title": "Location & Neighborhood",
    "heading": [
-    "Location & ",
-    "neighborhood"
+    "What makes a neighborhood feel ",
+    "like home?"
    ],
-   "lead": "The street and the neighborhood around it.",
+   "lead": "The street and the area around it.",
    "features": [
     {
      "id": "location:Low-Traffic Street",

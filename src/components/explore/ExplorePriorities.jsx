@@ -12,6 +12,7 @@ import { exploreCategory, exploreIndex, exploreProgress, exploreSteps, neighborE
 import { createClient } from '@/lib/supabase/client';
 import { savePriorities } from '@/lib/supabase/collaboration';
 import { useReliableOptimisticState } from '@/lib/useReliableOptimisticState';
+import { confirmHaptic } from '@/lib/haptics';
 
 // Explore My Priorities (Milestone 2): the V3 category walkthrough, opened
 // from My Search whenever someone likes. Same document and save path as My
@@ -111,6 +112,9 @@ export default function ExplorePriorities({ search, userId, initialPriorities, i
     await flush();
     // A failed save keeps the person here with Retry, instead of leaving with lost changes.
     if (lastWriteFailed.current) { setLeaving(false); return; }
+    // A light tap only when something was actually changed and saved; just
+    // looking around and leaving stays silent.
+    if (edited) confirmHaptic();
     router.push('/search');
     router.refresh();
   };
@@ -142,6 +146,13 @@ export default function ExplorePriorities({ search, userId, initialPriorities, i
       <div className="flh-ob-layout">
         <main className="flh-onboarding flh-explore" ref={headingRef}>
           {bar}
+          {/* Milestone 3: the same slim segmented progress as onboarding — where
+              you are in the categories, not a checklist of features to finish. */}
+          {category && (
+            <div className="flh-ob-progress flh-explore-progress" style={{ '--ob-steps': steps.length }} aria-hidden="true">
+              {steps.map((key, index) => <span key={key} className={index < position ? 'is-done' : ''} />)}
+            </div>
+          )}
           {saveError && <p className="hh-save-error" role="alert">{saveError} <button type="button" onClick={retry}>Retry</button></p>}
           {category ? (
             <CategoryScreen
@@ -163,7 +174,7 @@ export default function ExplorePriorities({ search, userId, initialPriorities, i
           ) : (
             <div className="flh-onboarding-step flh-ob-pf-step flh-explore-index">
               <PriorityHeader eyebrow="My Search · Explore My Priorities" heading={['What would you like ', 'to explore?']} lead="Walk through the things that make a home feel right. Change your mind anytime." />
-              {notice && <p className="flh-explore-notice" role="status">{notice}</p>}
+              {notice && <p className="flh-explore-notice" role="status"><span className="flh-explore-notice-mark" aria-hidden="true"><Check size={15} strokeWidth={2.8} /></span>{notice}</p>}
               <OnboardingAction onClick={() => open(progress.lastStep || steps[0])}>
                 {progress.lastStep ? `Pick up at ${exploreCategory(priorities, progress.lastStep)?.title}` : `Start with ${exploreCategory(priorities, steps[0])?.title || 'the first category'}`}
               </OnboardingAction>

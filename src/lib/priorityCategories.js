@@ -62,15 +62,15 @@ export const PRIORITY_CATEGORIES = Object.freeze([
   // cards. The former essentials are optional suggestions on later screens.
   Object.freeze({
     key: 'essentials', step: 'cat_essentials', storage: 'features', only: RENTALS, question: PETS_QUESTION,
-    title: 'Rental Essentials', heading: ['The rental ', 'essentials'],
-    lead: 'One quick question about moving in. You can skip it.',
+    title: 'Rental Essentials', heading: ['First, a quick ', 'moving-in question'],
+    lead: 'Just one—skip it if it doesn’t apply.',
     features: Object.freeze([]),
     suggestions: Object.freeze([]),
   }),
   Object.freeze({
     key: 'layout', step: 'cat_layout', storage: 'features', only: BUY,
-    title: 'Layout & Living Spaces', heading: ['Layout & ', 'living spaces'],
-    lead: 'How the rooms come together. Choose only what you’d weigh.',
+    title: 'Layout & Living Spaces', heading: ['Room for the way ', 'you live'],
+    lead: 'Tap anything that matters to you. Skip the rest.',
     // Home to Buy catalog refinement (PR #186): the six approved choices.
     // "Main Floor Laundry" is the existing features:First-floor laundry
     // identity (the one Home Facts' laundry location answers), shown under
@@ -89,8 +89,8 @@ export const PRIORITY_CATEGORIES = Object.freeze([
   }),
   Object.freeze({
     key: 'kitchen', step: 'cat_kitchen', storage: 'features', only: BUY,
-    title: 'Kitchen', heading: ['The ', 'kitchen'],
-    lead: 'Where the day starts and ends. Tap what matters.',
+    title: 'Kitchen', heading: ['What’s cooking in your ', 'dream kitchen?'],
+    lead: 'Where the day starts and ends.',
     features: Object.freeze([
       f('features', 'Countertop Seating', { custom: true, art: 'countertop-seating', icon: 'Coffee' }),
       f('features', 'Stainless Steel Appliances', { art: 'stainless-appliances', icon: 'Refrigerator' }),
@@ -104,8 +104,8 @@ export const PRIORITY_CATEGORIES = Object.freeze([
   }),
   Object.freeze({
     key: 'living', step: 'cat_living', storage: 'features', only: BUY,
-    title: 'Living Room', heading: ['The ', 'living room'],
-    lead: 'The room you’ll spend evenings in.',
+    title: 'Living Room', heading: ['Where you’ll ', 'unwind'],
+    lead: 'The room you’ll spend your evenings in.',
     features: Object.freeze([
       f('features', 'Fireplace', { art: 'fireplace', icon: 'Flame' }),
       f('features', 'High Ceilings', { art: 'high-ceilings', icon: 'ArrowUpToLine' }),
@@ -117,7 +117,7 @@ export const PRIORITY_CATEGORIES = Object.freeze([
   }),
   Object.freeze({
     key: 'bath', step: 'cat_bath', storage: 'features', only: BUY,
-    title: 'Bathroom', heading: ['The ', 'bathroom'],
+    title: 'Bathroom', heading: ['What makes a bathroom feel ', 'just right?'],
     lead: 'Small details you’ll notice every day.',
     features: Object.freeze([
       f('features', 'Double Vanity', { art: 'double-vanity', icon: 'Droplets' }),
@@ -134,7 +134,7 @@ export const PRIORITY_CATEGORIES = Object.freeze([
   // Home to Rent asks Garage as one card on Rental Features.
   Object.freeze({
     key: 'garage', step: 'cat_garage', storage: 'exterior', only: BUY,
-    title: 'Garage', heading: ['The ', 'garage'],
+    title: 'Garage', heading: ['Let’s talk ', 'garage space'],
     lead: 'First, how much does a garage matter to you?',
     features: Object.freeze([]),
     suggestions: Object.freeze([
@@ -148,8 +148,8 @@ export const PRIORITY_CATEGORIES = Object.freeze([
   // the one identity both rental flows share (e.g. "Central Air").
   Object.freeze({
     key: 'rent_layout', step: 'cat_rent_layout', storage: 'features', only: HOME_RENT,
-    title: 'Layout & Living Spaces', heading: ['Layout & ', 'living spaces'],
-    lead: 'How the rooms come together. Choose only what you’d weigh.',
+    title: 'Layout & Living Spaces', heading: ['Room for the way ', 'you live'],
+    lead: 'Tap anything that matters to you. Skip the rest.',
     features: Object.freeze([
       f('features', 'First-Floor Bedroom', { art: 'first-floor-bedroom', icon: 'BedSingle' }),
       f('features', 'Home office', { art: 'home-office', icon: 'Laptop' }),
@@ -166,8 +166,8 @@ export const PRIORITY_CATEGORIES = Object.freeze([
   }),
   Object.freeze({
     key: 'rent_features', step: 'cat_rent_features', storage: 'features', only: HOME_RENT,
-    title: 'Rental Features', heading: ['Rental ', 'features'],
-    lead: 'The things you’d notice living there. Choose only what you’d weigh.',
+    title: 'Rental Features', heading: ['The everyday ', 'comforts'],
+    lead: 'The things you’d notice living there.',
     features: Object.freeze([
       f('features', 'Countertop Seating', { custom: true, text: 'Kitchen Countertop Seating', art: 'countertop-seating', icon: 'Coffee' }),
       f('features', 'Stainless Steel Appliances', { art: 'stainless-appliances', icon: 'Refrigerator' }),
@@ -188,8 +188,8 @@ export const PRIORITY_CATEGORIES = Object.freeze([
   // (resolveDefinition). Apartment amenities never use house photography.
   Object.freeze({
     key: 'apt_unit', step: 'cat_apt_unit', storage: 'features', only: APARTMENT,
-    title: 'The Unit', heading: ['The ', 'unit'],
-    lead: 'Your own front door and everything behind it.',
+    title: 'The Unit', heading: ['Behind your own ', 'front door'],
+    lead: 'Tap anything that matters to you. Skip the rest.',
     features: Object.freeze([
       f('features', 'In-Unit Laundry', { text: 'In-Unit Laundry', art: 'in-unit-laundry', icon: 'WashingMachine' }),
       f('features', 'Home Office', { text: 'Home Office Space', art: 'home-office', icon: 'Laptop' }),
@@ -206,8 +206,8 @@ export const PRIORITY_CATEGORIES = Object.freeze([
   }),
   Object.freeze({
     key: 'apt_property', step: 'cat_apt_property', storage: 'exterior', only: APARTMENT,
-    title: 'The Property', heading: ['The ', 'property'],
-    lead: 'The building and what comes with it.',
+    title: 'The Property', heading: ['The building ', 'and beyond'],
+    lead: 'What comes with the place you call home.',
     features: Object.freeze([
       f('exterior', 'Fitness Center', { art: 'fitness-center', icon: 'Dumbbell' }),
       f('exterior', 'Pool', { icon: 'Waves' }),
@@ -221,8 +221,8 @@ export const PRIORITY_CATEGORIES = Object.freeze([
   }),
   Object.freeze({
     key: 'exterior', step: 'cat_exterior', storage: 'exterior', only: HOMES,
-    title: 'Exterior & Property', heading: ['Exterior & ', 'property'],
-    lead: 'The outdoor space that comes with it.',
+    title: 'Exterior & Property', heading: ['Let’s step ', 'outside'],
+    lead: 'Your yard and the outdoor space around it.',
     // Fenced Yard: an enclosed yard, any fence. Privacy Fence (Home to Buy):
     // the existing exterior:Privacy Fencing identity — a fence that screens
     // the yard from view. Two independent Yes/No priorities; neither is ever
@@ -244,8 +244,8 @@ export const PRIORITY_CATEGORIES = Object.freeze([
   // preferences (No HOA, Walkable Neighborhood, Reputable Schools) stay icon-only.
   Object.freeze({
     key: 'neighborhood', step: 'cat_neighborhood', storage: 'location', only: HOMES,
-    title: 'Location & Neighborhood', heading: ['Location & ', 'neighborhood'],
-    lead: 'The street and the neighborhood around it.',
+    title: 'Location & Neighborhood', heading: ['What makes a neighborhood feel ', 'like home?'],
+    lead: 'The street and the area around it.',
     features: Object.freeze([
       f('location', 'Low-Traffic Street', { art: 'low-traffic-street', icon: 'Route' }),
       f('location', 'Sidewalks', { art: 'sidewalks', icon: 'Footprints', only: BUY }),

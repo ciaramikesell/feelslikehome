@@ -2178,6 +2178,56 @@ html[data-flh-native] .flh-web-entry { display: none !important; }
 .flh-explore-entry { margin-top: 14px; }
 .flh-explore-entry-resume { margin-top: 4px; }
 
+/* ── Milestone 3: onboarding motion & feedback (docs/onboarding-motion-polish.md)
+   Applies to the V3 category screens in first-time onboarding AND Explore My
+   Priorities (both render CategoryScreen inside .flh-onboarding-root). CSS
+   only, 140–260ms, every animation one-shot (nothing loops), and all of it
+   off under Reduce Motion. The desktop board keeps its own styles. */
+@keyframes flh-ob-land { 0% { transform: scale(.55); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes flh-ob-card-land { 0% { transform: scale(.985); } 55% { transform: scale(1.015); } 100% { transform: scale(1); } }
+@keyframes flh-ob-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes flh-ob-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes flh-ob-sheet-down { from { transform: translateY(0); } to { transform: translateY(100%); } }
+
+/* Press: a gentle give under the finger on everything you tap to choose. */
+.flh-onboarding-root .flh-ob-pf-card, .flh-onboarding-root .flh-ob-pf-option, .flh-onboarding-root .flh-ob-path-card, .flh-onboarding-root .flh-ob-pf-level, .flh-explore-row {
+  transition: transform .16s cubic-bezier(.2, .8, .3, 1), border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+.flh-onboarding-root .flh-ob-pf-card:active, .flh-onboarding-root .flh-ob-path-card:active, .flh-explore-row:active { transform: scale(.97); }
+.flh-onboarding-root .flh-ob-pf-level:active, .flh-onboarding-root .flh-ob-pf-option:active { transform: scale(.98); }
+
+/* The choice lands: one spring on the check and the level badge, a breath on the card. */
+.flh-onboarding-root .flh-ob-pf-card.is-just-set { animation: flh-ob-card-land .24s ease-out; }
+.flh-onboarding-root .flh-ob-pf-card.is-just-set .flh-ob-pf-card-check,
+.flh-onboarding-root .flh-ob-pf-card.is-just-set .flh-ob-pf-card-level { animation: flh-ob-land .24s cubic-bezier(.34, 1.56, .64, 1) both; }
+.flh-onboarding-root .flh-ob-pf-card.is-just-set .flh-ob-pf-card-level { transform-origin: left center; }
+
+/* Progress fills in rather than jumping. */
+.flh-onboarding-root .flh-ob-progress span { transition: background-color .25s ease; }
+.flh-explore-progress { margin: 0 0 16px; }
+
+/* The importance sheet on phones: the backdrop fades in; on close the sheet
+   slides back down (Sheet's opt-in `closing`, used by the importance picker only). */
+@media (max-width: 700px) {
+  .flh-onboarding-root .hh-sheet-backdrop:has(> .flh-ob-pf-sheet) { animation: flh-ob-fade-in .2s ease-out both; }
+  .flh-onboarding-root .hh-sheet-backdrop.is-closing { animation: flh-ob-fade-out .18s ease-in both; pointer-events: none; }
+  .flh-onboarding-root .hh-sheet-backdrop.is-closing > .hh-sheet { animation: flh-ob-sheet-down .18s ease-in both; }
+}
+
+/* Completion: a check that springs in once — on Review after the last
+   category, and when Explore has been walked to the end. */
+.flh-onboarding-root .flh-ob-done-mark { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: var(--flh-sage-bg, #E3EADF); color: var(--flh-sage-ink, #4F6B47); animation: flh-ob-land .26s cubic-bezier(.34, 1.56, .64, 1) both; }
+.flh-explore-notice { display: flex; align-items: flex-start; gap: 10px; }
+.flh-explore-notice-mark { display: grid; place-items: center; flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--flh-sage-ink, #4F6B47); color: #fff; animation: flh-ob-land .24s cubic-bezier(.34, 1.56, .64, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .flh-onboarding-root .flh-ob-pf-card:active, .flh-onboarding-root .flh-ob-path-card:active, .flh-explore-row:active,
+  .flh-onboarding-root .flh-ob-pf-level:active, .flh-onboarding-root .flh-ob-pf-option:active { transform: none; }
+  .flh-onboarding-root .flh-ob-pf-card.is-just-set, .flh-onboarding-root .flh-ob-pf-card.is-just-set .flh-ob-pf-card-check,
+  .flh-onboarding-root .flh-ob-pf-card.is-just-set .flh-ob-pf-card-level, .flh-onboarding-root .flh-ob-done-mark, .flh-explore-notice-mark,
+  .flh-onboarding-root .hh-sheet-backdrop:has(> .flh-ob-pf-sheet) { animation: none; }
+}
+
 /* ── Account & Settings ─────────────────────────────────────────────────── */
 .flh-account { box-sizing: border-box; width: 100%; max-width: 672px; margin: 0 auto; padding: 8px 16px calc(96px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: var(--flh-stack); }
 .flh-account-header h1 { margin: 0; font-size: 26px; }

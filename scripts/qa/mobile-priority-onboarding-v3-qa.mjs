@@ -27,6 +27,8 @@ const launch = () => chromium.launch(process.env.FLH_CHROMIUM ? { executablePath
 const results = [];
 const check = (name, ok, detail = '') => { results.push({ name, ok, detail }); console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? ` — ${detail}` : ''}`); };
 const url = (query) => `${BASE}/dev/onboarding?flow=v3&${query}`;
+// Since PR #189 a setup-path choice follows the kind of search; this script walks the Personalize path.
+const choosePersonalize = async (page) => { const choice = page.getByRole('button', { name: /Let’s personalize your search/ }); await choice.waitFor({ timeout: 10000 }); await choice.click(); };
 
 async function ready(page) {
   await page.evaluate(() => document.fonts.ready);
@@ -150,6 +152,7 @@ for (const zoom of [1.5, 2]) {
   check('search type is required', await page.getByRole('alert').filter({ hasText: 'Choose what you’re looking for' }).isVisible());
   await page.getByRole('radio', { name: /Home to Buy/ }).check();
   await page.getByRole('button', { name: /Continue/ }).click();
+  await choosePersonalize(page); // Milestone 2 setup-path choice (PR #189)
   await page.getByRole('heading', { name: /basics of your home search/i }).waitFor();
   const budget = page.getByLabel('Maximum budget');
   await budget.fill('650000');
@@ -157,10 +160,10 @@ for (const zoom of [1.5, 2]) {
   await page.getByRole('button', { name: 'More bedrooms' }).click();
   await page.getByRole('button', { name: /Continue/ }).click();
   // No geography screen (PR #185): Basics leads straight to the first category.
-  await page.getByRole('heading', { name: /living spaces/ }).waitFor();
-  check('progress counts nine question screens (no geography screen)', (await page.locator('.flh-ob-count').textContent()) === '3/9');
+  await page.getByRole('heading', { name: /Room for the way you live/ }).waitFor();
+  check('progress counts ten question screens incl. the setup-path choice (no geography screen)', (await page.locator('.flh-ob-count').textContent()) === '4/10');
   await page.getByRole('button', { name: 'Skip' }).click();
-  await page.getByRole('heading', { name: 'The kitchen', level: 1 }).waitFor();
+  await page.getByRole('heading', { name: /dream kitchen/, level: 1 }).waitFor();
   check('nothing is preselected', (await page.locator('.flh-ob-pf-card.is-selected').count()) === 0);
 
   // Card → bottom sheet → level stays visible on the card.
@@ -200,7 +203,7 @@ for (const zoom of [1.5, 2]) {
 
   // Back keeps answers.
   await page.getByRole('button', { name: 'Back', exact: true }).click();
-  await page.getByRole('heading', { name: /living spaces/ }).waitFor();
+  await page.getByRole('heading', { name: /Room for the way you live/ }).waitFor();
   await page.getByRole('button', { name: /Continue/ }).click();
   check('Back and forward keep every answer', await page.getByRole('button', { name: /^Walk-in Pantry: Must Have/ }).isVisible() && await page.getByRole('button', { name: /^Kitchen Island: Important/ }).isVisible());
 
@@ -209,30 +212,32 @@ for (const zoom of [1.5, 2]) {
   await page.keyboard.press('Enter');
   await page.getByRole('dialog', { name: 'Stainless Steel Appliances' }).waitFor();
   await page.keyboard.press('Escape');
+  // Milestone 3: on phones the sheet slides away (~180ms) before focus returns.
+  await page.getByRole('dialog', { name: 'Stainless Steel Appliances' }).waitFor({ state: 'detached' });
   check('keyboard: Enter opens the picker, Escape closes it unchanged, focus returns', await page.getByRole('button', { name: /^Stainless Steel Appliances: not chosen/ }).evaluate((el) => el === document.activeElement));
 
   await page.getByRole('button', { name: /Continue/ }).click();
   await page.getByRole('button', { name: 'Skip' }).click(); // living room
   await page.getByRole('button', { name: 'Skip' }).click(); // bath
-  await page.getByRole('heading', { name: 'The garage', level: 1 }).waitFor();
+  await page.getByRole('heading', { name: /garage space/, level: 1 }).waitFor();
   await page.getByRole('button', { name: /^Important/ }).click();
   check('garage subtype appears once a garage matters', await page.getByRole('heading', { name: 'Which garage?' }).isVisible());
   const garageChoices = await page.locator('section[aria-labelledby="flh-ob-pf-garage-type"] .flh-ob-pf-card-title').allTextContents();
   check('three garage choices: Any, Attached, Detached', JSON.stringify(garageChoices) === JSON.stringify(['Any garage', 'Attached garage', 'Detached garage']), garageChoices.join(', '));
   await shot(page, 'flow-garage-choices-390');
   await page.getByRole('button', { name: /^Not important/ }).click();
-  await page.getByRole('heading', { name: /Exterior & property/i, level: 1 }).waitFor();
-  check('garage Not important advances to the next screen automatically', await page.getByRole('heading', { name: /Exterior & property/i, level: 1 }).isVisible());
+  await page.getByRole('heading', { name: /step outside/i, level: 1 }).waitFor();
+  check('garage Not important advances to the next screen automatically', await page.getByRole('heading', { name: /step outside/i, level: 1 }).isVisible());
   // Back: the earlier answer is shown and can be changed.
   await page.getByRole('button', { name: 'Back', exact: true }).click();
-  await page.getByRole('heading', { name: 'The garage', level: 1 }).waitFor();
+  await page.getByRole('heading', { name: /garage space/, level: 1 }).waitFor();
   check('Back to the garage shows Not important chosen, with no subtype', await page.getByRole('button', { name: /^Not important/ }).getAttribute('aria-pressed') === 'true'
     && !(await page.getByRole('heading', { name: 'Which garage?' }).isVisible()));
   await shot(page, 'flow-garage-not-important-back-390');
   await page.getByRole('button', { name: /^Nice to Have/ }).click();
-  check('changing it back brings the subtype back', await page.getByRole('heading', { name: 'Which garage?' }).isVisible() && await page.getByRole('heading', { name: 'The garage', level: 1 }).isVisible());
+  check('changing it back brings the subtype back', await page.getByRole('heading', { name: 'Which garage?' }).isVisible() && await page.getByRole('heading', { name: /garage space/, level: 1 }).isVisible());
   await page.getByRole('button', { name: /^Not important/ }).click();
-  await page.getByRole('heading', { name: /Exterior & property/i, level: 1 }).waitFor();
+  await page.getByRole('heading', { name: /step outside/i, level: 1 }).waitFor();
   await page.getByRole('textbox', { name: /Ideal lot size/ }).fill('0.5');
   await page.getByRole('button', { name: /Continue/ }).click();
   await page.getByRole('button', { name: 'Skip' }).click(); // neighborhood
@@ -245,7 +250,7 @@ for (const zoom of [1.5, 2]) {
   await page.getByRole('dialog', { name: 'Kitchen Island' }).getByRole('button', { name: /^Must Have/ }).click();
   check('review edits importance in place', await page.getByRole('button', { name: /^Kitchen Island: Must Have/ }).isVisible());
   await page.getByRole('button', { name: 'Add: Bathroom' }).click();
-  await page.getByRole('heading', { name: 'The bathroom', level: 1 }).waitFor();
+  await page.getByRole('heading', { name: /bathroom feel just right/, level: 1 }).waitFor();
   await page.getByRole('button', { name: /^Soaking Tub/ }).click();
   await page.getByRole('dialog').getByRole('button', { name: /^Nice to Have/ }).click();
   await page.getByRole('button', { name: 'Back to review' }).click();
@@ -270,17 +275,18 @@ for (const zoom of [1.5, 2]) {
   await page.goto(url('step=search_type&state=empty'), { waitUntil: 'networkidle' });
   await ready(page);
   await page.getByRole('radio', { name: /Home to Rent/ }).check();
-  check('rent: search type screen is 1/7', (await count()) === '1/7', await count());
+  check('rent: search type screen is 1/8', (await count()) === '1/8', await count());
   await cont();
+  await choosePersonalize(page); // Milestone 2 setup-path choice (PR #189)
   await page.getByRole('heading', { name: /basics of your rental search/i }).waitFor();
-  check('rent: Rental Basics eyebrow and 2/7', (await page.locator('.flh-eyebrow').first().textContent()).includes('Rental Basics') && (await count()) === '2/7');
+  check('rent: Rental Basics eyebrow and 3/8', (await page.locator('.flh-eyebrow').first().textContent()).includes('Rental Basics') && (await count()) === '3/8');
   const rent = page.getByLabel('Maximum monthly rent');
   await rent.fill('2800');
   check('rent: monthly rent shows $ and thousands separators', (await rent.inputValue()) === '2,800' && await page.locator('.flh-ob-currency').first().isVisible());
   await page.getByRole('button', { name: 'More bedrooms' }).click();
   await cont();
-  await page.getByRole('heading', { name: /rental essentials/i }).waitFor();
-  check('rent: no geography screen; Rental Essentials is 3/7 with Back · Skip · Continue', (await count()) === '3/7');
+  await page.getByRole('heading', { name: /moving-in question/i }).waitFor();
+  check('rent: no geography screen; Rental Essentials is 4/8 with Back · Skip · Continue', (await count()) === '4/8');
   check('rent: no ranking cards and no Add your own on Rental Essentials', (await page.locator('.flh-ob-pf-card').count()) === 0 && (await page.locator('.flh-ob-pf-add').count()) === 0);
   check('rent: the pets question uses the pet-friendly photo', await page.locator('.flh-ob-pf-pets-media img').evaluate((img) => /pet-friendly-(400|800)\.webp$/.test(img.currentSrc) && img.naturalWidth > 0));
   check('rent: nothing is preselected', !(await radio('Yes').isChecked()) && !(await radio('No').isChecked()) && !(await radio('Not sure yet').isChecked()));
@@ -306,8 +312,8 @@ for (const zoom of [1.5, 2]) {
   await page.keyboard.press('ArrowUp');
   check('keyboard: and back to Yes', await radio('Yes').isChecked() && /Must Have/.test(await status()));
   await cont();
-  await page.getByRole('heading', { name: /living spaces/i }).waitFor();
-  check('rent: Layout is 4/7', (await count()) === '4/7');
+  await page.getByRole('heading', { name: /Room for the way you live/i }).waitFor();
+  check('rent: Layout is 5/8', (await count()) === '5/8');
   await page.getByRole('button', { name: 'Extra Bedroom' }).click();
   const sheet = page.getByRole('dialog', { name: 'Extra Bedroom' });
   check('rent: Extra Bedroom hint shows in the sheet', await sheet.getByText('An extra bedroom beyond the minimum you entered in Basics.').isVisible());
@@ -315,19 +321,19 @@ for (const zoom of [1.5, 2]) {
   check('rent: Extra Bedroom card carries its hint', await page.locator('.flh-ob-pf-card', { hasText: 'Extra Bedroom' }).locator('.flh-ob-pf-card-hint').isVisible());
   // Back keeps the pets answer.
   await page.getByRole('button', { name: 'Back', exact: true }).click();
-  await page.getByRole('heading', { name: /rental essentials/i }).waitFor();
+  await page.getByRole('heading', { name: /moving-in question/i }).waitFor();
   check('rent: Back keeps the pets answer', await radio('Yes').isChecked() && /because pets are moving with you/.test(await status()));
   await cont();
   await cont();
-  await page.getByRole('heading', { name: /Rental features/i, level: 1 }).waitFor();
-  check('rent: Rental Features is 5/7; Garage is one card', (await count()) === '5/7' && (await page.locator('.flh-ob-pf-card-title', { hasText: /^Garage$/ }).count()) === 1);
+  await page.getByRole('heading', { name: /everyday comforts/i, level: 1 }).waitFor();
+  check('rent: Rental Features is 6/8; Garage is one card', (await count()) === '6/8' && (await page.locator('.flh-ob-pf-card-title', { hasText: /^Garage$/ }).count()) === 1);
   await page.getByRole('textbox', { name: 'Add your own' }).fill('Wine fridge');
   await page.getByRole('button', { name: 'Add', exact: true }).click();
   await page.getByRole('dialog', { name: 'Wine fridge' }).getByRole('button', { name: /^Important/ }).click();
   check('rent: a custom addition is ranked immediately', await page.getByRole('button', { name: /^Wine fridge \(your own\): Important/ }).isVisible());
   await cont();
-  await page.getByRole('heading', { name: /Exterior & property/i, level: 1 }).waitFor();
-  check('rent: Exterior is 6/7', (await count()) === '6/7');
+  await page.getByRole('heading', { name: /step outside/i, level: 1 }).waitFor();
+  check('rent: Exterior is 7/8', (await count()) === '7/8');
   check('rent: lot-size importance waits for acreage', (await page.getByRole('button', { name: /Lot size importance/ }).count()) === 0);
   await page.getByRole('textbox', { name: /Ideal lot size/ }).fill('0.5');
   const lotButton = page.getByRole('button', { name: /^Lot size importance: not chosen/ });
@@ -351,7 +357,7 @@ for (const zoom of [1.5, 2]) {
   await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
   await cont();
   await page.getByRole('heading', { name: /neighborhood/i, level: 1 }).waitFor();
-  check('rent: Neighborhood is 7/7', (await count()) === '7/7');
+  check('rent: Neighborhood is 8/8', (await count()) === '8/8');
   await page.getByRole('button', { name: 'Skip' }).click();
   await page.getByRole('heading', { name: /Your search is/ }).waitFor();
   const essentials = page.getByRole('region', { name: 'Rental Essentials' });
@@ -370,7 +376,7 @@ for (const zoom of [1.5, 2]) {
   check('review: a manual Pet-Friendly edit reads “You set this yourself”', await essentials.getByText('You set this yourself').isVisible());
   // Edit the pets answer from Review: No keeps the renter's own level.
   await page.getByRole('button', { name: 'Edit: Rental Essentials' }).click();
-  await page.getByRole('heading', { name: /rental essentials/i }).waitFor();
+  await page.getByRole('heading', { name: /moving-in question/i }).waitFor();
   await radio('No').check();
   check('edit from Review: No keeps a level the renter set', /Pet-Friendly stays Important because you set it yourself\./.test(await status()));
   await page.getByRole('button', { name: 'Back to review' }).click();
@@ -388,22 +394,23 @@ for (const zoom of [1.5, 2]) {
   await page.goto(url('step=search_type&state=empty'), { waitUntil: 'networkidle' });
   await ready(page);
   await page.getByRole('radio', { name: /Apartment to Rent/ }).check();
-  check('apartment: 1/5', (await count()) === '1/5');
+  check('apartment: 1/6', (await count()) === '1/6');
   await page.getByRole('button', { name: /Continue/ }).click();
+  await choosePersonalize(page); // Milestone 2 setup-path choice (PR #189)
   await page.getByRole('heading', { name: /basics of your apartment search/i }).waitFor();
-  check('apartment: Apartment Basics 2/5', (await page.locator('.flh-eyebrow').first().textContent()).includes('Apartment Basics') && (await count()) === '2/5');
+  check('apartment: Apartment Basics 3/6', (await page.locator('.flh-eyebrow').first().textContent()).includes('Apartment Basics') && (await count()) === '3/6');
   await page.getByRole('button', { name: 'Skip' }).click();
-  await page.getByRole('heading', { name: /rental essentials/i }).waitFor();
-  check('apartment: no geography screen; Rental Essentials 3/5', (await count()) === '3/5');
+  await page.getByRole('heading', { name: /moving-in question/i }).waitFor();
+  check('apartment: no geography screen; Rental Essentials 4/6', (await count()) === '4/6');
   await page.getByRole('button', { name: 'Skip' }).click();
-  await page.getByRole('heading', { name: 'The unit', level: 1 }).waitFor();
-  check('apartment: The Unit 4/5', (await count()) === '4/5');
+  await page.getByRole('heading', { name: /front door/, level: 1 }).waitFor();
+  check('apartment: The Unit 5/6', (await count()) === '5/6');
   await page.getByRole('button', { name: 'Private Garage' }).click();
   check('apartment: Private Garage hint', await page.getByRole('dialog', { name: 'Private Garage' }).getByText('A garage for your unit only.').isVisible());
   await page.getByRole('dialog').getByRole('button', { name: /^Must Have/ }).click();
   await page.getByRole('button', { name: /Continue/ }).click();
-  await page.getByRole('heading', { name: 'The property', level: 1 }).waitFor();
-  check('apartment: The Property 5/5, Garage Parking card', (await count()) === '5/5' && await page.getByRole('button', { name: /^Garage Parking: not chosen/ }).isVisible());
+  await page.getByRole('heading', { name: /building and beyond/, level: 1 }).waitFor();
+  check('apartment: The Property 6/6, Garage Parking card', (await count()) === '6/6' && await page.getByRole('button', { name: /^Garage Parking: not chosen/ }).isVisible());
   await page.getByRole('button', { name: /Continue/ }).click();
   await page.getByRole('heading', { name: /Your search is/ }).waitFor();
   check('apartment review: skipped pets question says so', await page.getByRole('region', { name: 'Rental Essentials' }).getByText('Skipped—add anytime.').isVisible());
@@ -423,7 +430,7 @@ for (const zoom of [1.5, 2]) {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await page.goto(url('step=cat_rent_features&state=populated&search=home_rent'), { waitUntil: 'networkidle' });
   await ready(page);
-  check('resume: Home to Rent resumes on Rental Features at 5/7 with saved choices', (await page.locator('.flh-ob-count').textContent()) === '5/7' && await page.getByRole('button', { name: /^Central Air: Must Have/ }).isVisible());
+  check('resume: Home to Rent resumes on Rental Features at 6/8 with saved choices', (await page.locator('.flh-ob-count').textContent()) === '6/8' && await page.getByRole('button', { name: /^Central Air: Must Have/ }).isVisible());
   await page.goto(url('step=cat_kitchen&state=populated&search=apartment_rent'), { waitUntil: 'networkidle' });
   await ready(page);
   check('resume: a step the apartment flow lacks falls back to a real screen', !(await page.getByText('This step isn’t available').count()));
@@ -439,7 +446,7 @@ for (const zoom of [1.5, 2]) {
   await page.getByRole('button', { name: /^Pet-Friendly:/ }).click();
   await page.getByRole('dialog', { name: 'Pet-Friendly' }).getByRole('button', { name: /^Must Have/ }).click();
   await page.getByRole('button', { name: 'Edit: Rental Essentials' }).click();
-  await page.getByRole('heading', { name: /rental essentials/i }).waitFor();
+  await page.getByRole('heading', { name: /moving-in question/i }).waitFor();
   check('a renter’s own Must Have (set on Review): Yes says it already is, never that FLH will make it one', (await describedBy('Yes')) === 'Pet-Friendly is already a Must Have, as you set it');
   await shot(page, 'pets-manual-must-hint-390');
   await page.close();
@@ -534,7 +541,7 @@ for (const width of [320, 375, 390, 430]) {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
   await page.goto(url('step=cat_layout&state=populated&search=home_buy'), { waitUntil: 'networkidle' });
   await ready(page);
-  check('buyers never see Rental Essentials', !(await page.locator('.flh-ob-rail, .flh-ob-topbar').first().textContent()).includes('Rental Essentials') && (await page.locator('.flh-ob-count').textContent()) === '3/9');
+  check('buyers never see Rental Essentials', !(await page.locator('.flh-ob-rail, .flh-ob-topbar').first().textContent()).includes('Rental Essentials') && (await page.locator('.flh-ob-count').textContent()) === '4/10');
   await page.close();
 }
 

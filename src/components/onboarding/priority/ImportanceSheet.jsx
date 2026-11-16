@@ -10,7 +10,7 @@ import { LEVEL_COPY, PRIORITY_LEVELS } from '@/lib/searchProfile';
 // tap applies it and closes, so arrow keys never change an answer by accident.
 // Closing without a choice changes nothing. The person's own features can be
 // renamed here too (before homes are evaluated against them).
-export default function ImportanceSheet({ feature, level, open, onClose, onChoose, onRename, note = null }) {
+export default function ImportanceSheet({ feature, level, open, closing = false, onClose, onChoose, onRename, note = null }) {
   const id = useId();
   const [renaming, setRenaming] = useState(false);
   const [name, setName] = useState('');
@@ -25,7 +25,7 @@ export default function ImportanceSheet({ feature, level, open, onClose, onChoos
   };
 
   return (
-    <Sheet open={open} onClose={onClose} title={feature.text} size="compact" className="flh-ob-pf-sheet">
+    <Sheet open={open} closing={closing} onClose={onClose} title={feature.text} size="compact" className="flh-ob-pf-sheet">
       {note && <p className="flh-ob-pf-sheet-note" role="status">{note}</p>}
       {feature.hint && <p className="flh-ob-pf-sheet-hint">{feature.hint}</p>}
       <div role="group" aria-labelledby={`${id}-q`} className="flh-ob-pf-levels">

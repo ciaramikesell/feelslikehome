@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowRight, ChevronRight } from 'lucide-react';
+import { ArrowRight, Check, ChevronRight } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
 import { LEVEL_COPY } from '@/lib/searchProfile';
 import { basicsSummary } from '@/lib/onboardingReview';
@@ -71,7 +71,7 @@ function LotLine({ lot, onOpen }) {
   );
 }
 
-export default function PriorityReview({ header, priorities, sharedFor = null, skipped = [], onEdit, onOpenFeature, onFinish, finishing, finishError }) {
+export default function PriorityReview({ header, priorities, sharedFor = null, skipped = [], onEdit, onOpenFeature, onFinish, finishing, finishError, celebrate = false }) {
   const basics = basicsSummary(priorities).filter((row) => row.key !== 'lot');
   const categories = reviewCategories(priorities);
   const others = otherChosenPriorities(priorities);
@@ -84,10 +84,15 @@ export default function PriorityReview({ header, priorities, sharedFor = null, s
 
   return (
     <div className="flh-onboarding-step flh-ob-review flh-ob-pf-review">
-      <span className="flh-ob-review-mark" aria-hidden="true"><BrandMark size={44} /></span>
+      {/* Milestone 3: having just walked every category, a small one-shot
+          "done" moment (a check that springs in once). It celebrates the
+          person's own choices — never that FLH found or verified anything. */}
+      {celebrate
+        ? <span className="flh-ob-review-mark flh-ob-done-mark" aria-hidden="true"><Check size={30} strokeWidth={2.6} /></span>
+        : <span className="flh-ob-review-mark" aria-hidden="true"><BrandMark size={44} /></span>}
       {header}
       <YardConflictNote conflict={yardConflict(priorities)} onEdit={(feature) => open(feature)} />
-      <p className="flh-ob-pf-review-total" role="status">{total ? `${total} ${total === 1 ? 'priority' : 'priorities'} shape your Match. Unknown details never count against a home.` : 'No priorities chosen yet—that’s fine. Add them now or anytime in My Search.'}</p>
+      <p className="flh-ob-pf-review-total" role="status">{celebrate ? 'Nicely done. ' : ''}{total ? `${total} ${total === 1 ? 'priority' : 'priorities'} shape your Match. Unknown details never count against a home.` : 'No priorities chosen yet—that’s fine. Add them now or anytime in My Search.'}</p>
 
       <Section title="The Basics" onEdit={() => onEdit('basics')}>
         <dl className="flh-ob-review-list">
