@@ -20,15 +20,17 @@ function sqlRetiredKeys(sql) {
 }
 
 test('the newest co-buyer Compare scorer skips exactly the JS retired purchase built-ins', () => {
-  assert.equal(latestDefinition.file, '2026-11-02-home-facts-match-parity.sql');
+  assert.equal(latestDefinition.file, '2026-11-16-home-facts-match-fulfillment.sql');
   assert.deepEqual([...sqlRetiredKeys(latestDefinition.sql)].sort(), [...RETIRED_PURCHASE_BUILT_IN_KEYS].sort());
 });
 
-test('Garage stays a scored criterion on both sides, from the shared garage_spaces fact', () => {
+test('Garage stays a scored criterion on both sides, from the shared garage type and spaces facts', () => {
   assert.ok(!RETIRED_PURCHASE_BUILT_IN_KEYS.includes('exterior:Garage'));
-  // Home Facts → Match parity: Garage is read from garage spaces only after the
-  // participant's own answer (test/home-fact-match-parity.test.js).
+  // Home Facts → Match parity: Garage is read from the facts only after the
+  // participant's own answer, for their own Any / Attached / Detached
+  // qualifier (PR #187; test/home-fact-match-parity.test.js).
   assert.match(latestDefinition.sql, /when v_key = 'exterior:Garage' then case/);
+  assert.match(latestDefinition.sql, /v_garage_pref := case when v_priorities #>> '\{exterior,garagePreference\}' in \('attached', 'detached'\)/);
 });
 
 test('Mudroom is a scored purchase criterion on both sides again', () => {

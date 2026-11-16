@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ArrowUpRight, Check, ChevronDown, Minus, X } from 'lucide-react';
 import { TIER_META, criterionDisplayLabel, isExperientialCriterion } from '@/lib/constants';
 import { answerableCriteriaKeys, criterionAnswer, criterionResolution, legacyCriterionRating } from '@/lib/matchCriteria';
+import { homeFactContext } from '@/lib/homeFactCriteria';
 
 // Match Criteria: the buyer's own priorities from My Search, in three tiers.
 // Rows come from computeMatch's allSelected — the very list the Match % is
@@ -101,10 +102,13 @@ const answerText = (value) => (value === true ? 'Yes' : value === 'no' ? 'No' : 
 // Where a fact-backed answer comes from, in one quiet line under the name:
 // "From Home Facts: No · Basement ↗" while the fact answers it; "Your answer · Home
 // Facts: No" when the buyer's own answer overrides a fact that says otherwise.
-function FactNote({ resolved, onOpenFact }) {
+// A fact detail beyond Yes / No (Garage: "Detached garage — you want attached")
+// is shown with it, so the reason is visible without opening the fact.
+function FactNote({ resolved, detail = null, onOpenFact }) {
   const [field, short] = resolved.link;
   const go = onOpenFact ? <button type="button" className="flh-mc2-source" onClick={() => onOpenFact(field)}>{short} <ArrowUpRight size={11} aria-hidden="true" /><span className="sr-only"> — go to this fact in Home Facts</span></button> : <span>{short}</span>;
-  if (resolved.source === 'home_facts') return <small className="flh-mc2-from">From Home Facts: <b className={`is-${resolved.value === true ? 'met' : 'missed'}`}>{answerText(resolved.value)}</b> · {go}</small>;
+  const why = detail && detail !== 'Yes' && detail !== 'No' ? <> · {detail}</> : null;
+  if (resolved.source === 'home_facts') return <small className="flh-mc2-from">From Home Facts: <b className={`is-${resolved.value === true ? 'met' : 'missed'}`}>{answerText(resolved.value)}</b>{why} · {go}</small>;
   if (resolved.source === 'answer' && resolved.fact !== undefined && resolved.fact !== resolved.value) return <small className="flh-mc2-from">Your answer · Home Facts: {answerText(resolved.fact)} {go}</small>;
   return null;
 }
@@ -153,7 +157,7 @@ function Tier({ tier, rows, home, priorities, answerable, readOnly, onAnswer, on
       {rows.map((item) => {
         const canAnswer = answerable.has(item.key);
         const own = canAnswer ? criterionAnswer(home, item.key, priorities.searchType) : null;
-        const resolved = canAnswer ? criterionResolution(home, item.key, priorities.searchType) : null;
+        const resolved = canAnswer ? criterionResolution(home, item.key, priorities.searchType, homeFactContext(priorities)) : null;
         const value = resolved?.value;
         const tone = canAnswer ? (value === true ? 'met' : value === 'no' ? 'missed' : 'unknown') : criterionState(item).tone;
         // A 1–5 rating from before this priority could be answered Yes / No
@@ -165,7 +169,7 @@ function Tier({ tier, rows, home, priorities, answerable, readOnly, onAnswer, on
         // Only while the buyer hasn't answered and no Home Fact answers it.
         const hint = canAnswer && !readOnly && own === undefined && !factBacked ? listingHints.get(item.key) : null;
         return <li key={item.key} className={`flh-mc2-row is-${tone}`} data-criterion={item.key}>
-          <span className="flh-mc2-name">{criterionName(item)}{factBacked && <FactNote resolved={resolved} onOpenFact={onOpenFact} />}{earlier && <small className="flh-mc2-from">Earlier rating: {earlier}/5 · counts until you answer</small>}{hint && <ListingHint hint={hint} />}</span>
+          <span className="flh-mc2-name">{criterionName(item)}{factBacked && <FactNote resolved={resolved} detail={item.source === 'home_facts' ? item.detail : null} onOpenFact={onOpenFact} />}{earlier && <small className="flh-mc2-from">Earlier rating: {earlier}/5 · counts until you answer</small>}{hint && <ListingHint hint={hint} />}</span>
           {!canAnswer ? <FactResult item={item} onOpenFact={onOpenFact} tourHref={tourHref} />
             : readOnly ? <span className={`flh-mc2-state is-${tone}`}>{earlier ? `${earlier}/5` : value === true ? 'Yes' : value === 'no' ? 'No' : 'Unknown'}</span>
               : <AnswerControl item={item} value={own} factBacked={factBacked} onChange={(next) => onAnswer(item, next)} />}

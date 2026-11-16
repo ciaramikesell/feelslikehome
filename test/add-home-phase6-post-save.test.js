@@ -178,10 +178,11 @@ test('wiring: the saved state names one next step and keeps the same two actions
   assert.match(modal, /<span className="flh-found-type">Listed as \{importResult\.listing\.listingType\}<\/span>/);
 });
 
+// Pinned to the phase itself: from its start to the PR #186 merge (main before
+// PR #187, which is a deliberate Match change of its own).
 test('scope: no scoring, threshold, schema, migration, dependency or Floor Plans change in this phase', () => {
-  const changed = execFileSync('git', ['diff', '--name-only', '25ef9e94d3c59dfadd0c683dc13d5988f9a5ef45', '--'], { cwd: new URL('..', import.meta.url), encoding: 'utf8' }).split('\n').filter(Boolean);
-  const untracked = execFileSync('git', ['ls-files', '--others', '--exclude-standard'], { cwd: new URL('..', import.meta.url), encoding: 'utf8' }).split('\n').filter(Boolean);
-  for (const path of [...changed, ...untracked]) {
+  const changed = execFileSync('git', ['diff', '--name-only', '25ef9e94d3c59dfadd0c683dc13d5988f9a5ef45', 'a6e3f91f42d2813f3a429f4af8a171d8bf41e169', '--'], { cwd: new URL('..', import.meta.url), encoding: 'utf8' }).split('\n').filter(Boolean);
+  for (const path of changed) {
     assert.doesNotMatch(path, /^supabase\/|^src\/lib\/(matching|matchReveal|homeFactCriteria|matchCriteria)\.js$|FloorPlan|floor-plan|package(-lock)?\.json$/i, `out of scope: ${path}`);
   }
 });

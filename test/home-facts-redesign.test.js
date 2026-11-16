@@ -164,21 +164,27 @@ test('saving a group writes only what changed, normalized; Unknown is null on th
   for (const personal of ['checks', 'ratings', 'pros', 'cons', 'reaction', 'status']) assert.equal(Object.values(HOME_FACT_GROUP_FIELDS).flat().includes(personal), false);
 });
 
-test('Match scoring is unchanged: the new Home Facts details never move a Match', () => {
+test('Match scoring: descriptive Home Facts details never move a Match (garage type and cooling do since PR #187)', () => {
   let priorities = addCriterion(buy(), { categoryKey: 'exterior', label: 'Garage', kind: 'check' }, 'must');
   priorities = addCriterion(priorities, { categoryKey: 'features', label: 'Finished basement', kind: 'check' }, 'nice');
   priorities = { ...priorities, budget: { value: '400000', tier: 'must' }, homeCondition: { values: ['Move-In Ready'], tier: 'important' } };
   const home = { ...emptyHome(), price: '335000', garageSpaces: '2', homeCondition: ['Move-In Ready'], checks: { 'features:Finished basement': 'no' } };
-  const withDetails = { ...home, garageType: 'none', basementStyle: 'walkout', basementCondition: 'finished', heating: 'x', cooling: 'x', exterior: 'x', roof: 'x', listingId: 'x', schoolDistrict: 'x', elementarySchool: 'x', middleSchool: 'x', highSchool: 'x' };
-  assert.deepEqual(computeMatch(withDetails, priorities), computeMatch(home, priorities));
+  // Garage type agrees with the spaces here, so Garage still reads the same; a
+  // cooling text that names no system answers nothing (Central Air isn't selected).
+  const withDetails = { ...home, garageType: 'attached', basementStyle: 'walkout', basementCondition: 'finished', heating: 'x', cooling: 'x', exterior: 'x', roof: 'x', listingId: 'x', schoolDistrict: 'x', elementarySchool: 'x', middleSchool: 'x', highSchool: 'x' };
+  // Same score, counts and per-criterion results; only the Garage wording names the type.
+  const shape = (match) => ({ pct: match.pct, selected: match.selectedCount, evaluated: match.evaluatedCount, rows: match.allSelected.map((item) => [item.key, item.evaluated, item.met, item.source]) });
+  assert.deepEqual(shape(computeMatch(withDetails, priorities)), shape(computeMatch(home, priorities)));
+  assert.equal(computeMatch(withDetails, priorities).allSelected.find((item) => item.key === 'exterior:Garage').detail, '2-car attached garage');
   // The new "3+" spaces choice still reads as 3 for Garage, in JS and in the SQL Compare scorer.
   assert.equal(computeMatch({ ...home, garageSpaces: '3+' }, priorities).allSelected.find((item) => item.key === 'exterior:Garage').met, true);
-  assert.match(read('supabase/migrations/2026-11-02-home-facts-match-parity.sql'), /substring\(v_home\.garage_spaces from '\[0-9\]\+\(\?:\\\.\[0-9\]\+\)\?\|\\\.\[0-9\]\+'\)::numeric > 0/);
-  // No scorer reads the descriptive details. (Basement style and condition answer
-  // Finished / Walkout basement since the Home Facts → Match parity PR; see
-  // test/home-fact-match-parity.test.js.)
-  const sqlScorer = read('supabase/migrations/2026-11-02-home-facts-match-parity.sql');
-  for (const column of ['garage_type', 'heating', 'school_district_name']) assert.doesNotMatch(sqlScorer + read('src/lib/matching.js'), new RegExp(`\\b${column}\\b`));
+  const sqlScorer = read('supabase/migrations/2026-11-16-home-facts-match-fulfillment.sql');
+  assert.match(sqlScorer, /substring\(v_home\.garage_spaces from '\[0-9\]\+\(\?:\\\.\[0-9\]\+\)\?\|\\\.\[0-9\]\+'\)::numeric/);
+  // No scorer reads the descriptive details (heating, exterior, roof, schools).
+  // Basement style and condition answer Finished / Walkout basement since the
+  // Home Facts → Match parity PR; garage type and cooling since PR #187 (see
+  // test/home-fact-match-parity.test.js).
+  for (const column of ['heating', 'roof', 'school_district_name', 'elementary_school']) assert.doesNotMatch(sqlScorer + read('src/lib/matching.js'), new RegExp(`\\b${column}\\b`));
 });
 
 test('the welcome says "We found your home." for an import, counts only imported details, and falls back for manual homes', () => {

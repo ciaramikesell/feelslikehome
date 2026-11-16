@@ -26,6 +26,7 @@ import { HOME_PROPERTY_TYPE_OPTIONS, PROPERTY_TYPE_LABELS, searchIntentCapabilit
 import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
 import { countListingDetails, groupListingFacts } from '@/lib/listingFacts';
 import { criterionResolution } from '@/lib/matchCriteria';
+import { homeFactContext } from '@/lib/homeFactCriteria';
 import { PROVENANCE_LABELS, fieldProvenance, hasImportSnapshot } from '@/lib/homeProvenance';
 import { isNativeApp } from '@/lib/platform';
 import { importedDetailCount } from '@/lib/homeFacts';
@@ -342,7 +343,7 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
   // reads and writes that field so a recorded answer counts in Match.
   const answerOf = (key) => (SHARED_BOOLEAN_FACT_FIELDS[key] ? sharedFactAnswer(form, key) : foldedChecks[key]);
   // The answer Match uses: the buyer's own, else an exact Home Fact (homeFactCriteria.js).
-  const resolutionOf = (key) => criterionResolution(form, key, priorities.searchType);
+  const resolutionOf = (key) => criterionResolution(form, key, priorities.searchType, homeFactContext(priorities));
   const setAnswer = (item, next) => {
     const key = `${item.categoryKey}:${item.label}`;
     if (SHARED_BOOLEAN_FACT_FIELDS[key]) set(SHARED_BOOLEAN_FACT_FIELDS[key], sharedFactValue(next));

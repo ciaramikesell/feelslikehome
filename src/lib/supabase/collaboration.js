@@ -44,8 +44,13 @@ const HOME_SHARED_COLUMNS_REQUIRED = `${HOME_SHARED_COLUMNS_PRE_PASS_B},property
 // safely read and write homes without them. The UI hides a fact whose column
 // is missing (its value reads as undefined, never as Unknown/null).
 //   laundry_location — 2026-10-18-laundry-location.sql
-export const OPTIONAL_HOME_COLUMNS = Object.freeze(['laundry_location']);
+//   has_hoa          — 2026-11-16-home-facts-match-fulfillment.sql (HOA status)
+// Both are Match inputs now, read by both scorers; without the column the fact
+// is simply Unknown (never No), exactly like an unanswered one.
+export const OPTIONAL_HOME_COLUMNS = Object.freeze(['laundry_location', 'has_hoa']);
 export const HOME_SHARED_COLUMNS = `${HOME_SHARED_COLUMNS_REQUIRED},${OPTIONAL_HOME_COLUMNS.join(',')}`;
+// The projection without the optional columns a database said it lacks.
+const sharedColumnsWithout = (missing) => [HOME_SHARED_COLUMNS_REQUIRED, ...OPTIONAL_HOME_COLUMNS.filter((column) => !missing.includes(column))].join(',');
 
 // The optional column a missing-column response names, or null for any other
 // error (which must still fail visibly).
@@ -62,9 +67,16 @@ function missingOptionalColumn(error) {
 // once, without the optional columns. Any other error is returned as-is for
 // the caller to throw. (The full-row write retries on its own; see
 // saveHomePersonalAndShared.)
+// Each retry leaves out only the column the database named, so a database
+// that has one optional column but not another keeps the one it has.
 async function withOptionalHomeColumns(read) {
-  const result = await read(HOME_SHARED_COLUMNS);
-  return missingOptionalColumn(result.error) ? read(HOME_SHARED_COLUMNS_REQUIRED) : result;
+  const missing = [];
+  let result = await read(HOME_SHARED_COLUMNS);
+  for (let column = missingOptionalColumn(result.error); column && !missing.includes(column); column = missingOptionalColumn(result.error)) {
+    missing.push(column);
+    result = await read(sharedColumnsWithout(missing));
+  }
+  return result;
 }
 
 const PASS_B_DATABASE_COLUMNS = ['property_type', 'available_on', 'pets_allowed', 'utilities_included', 'in_unit_laundry'];
@@ -504,7 +516,7 @@ const SHARED_FIELDS = [
   'propertyType', 'availableOn', 'petsAllowed', 'utilitiesIncluded', 'inUnitLaundry',
   'propertyName', 'selectedFloorPlanName', 'selectedUnitLabel',
   'listingId', 'heating', 'cooling', 'exterior', 'roof', 'garageType', 'basementStyle', 'basementCondition',
-  'schoolDistrict', 'elementarySchool', 'middleSchool', 'highSchool', 'laundryLocation',
+  'schoolDistrict', 'elementarySchool', 'middleSchool', 'highSchool', 'laundryLocation', 'hasHoa',
 ];
 
 function emptyPersonalState() {
@@ -627,13 +639,16 @@ export async function saveHomePersonalAndShared(supabase, home, userId, searchId
   // Only an optional (non-Match) column may be dropped, and only when the
   // database says it doesn't exist yet. The write failed as a whole, so
   // nothing was half-saved before this retry.
-  const missing = missingOptionalColumn(sharedError);
-  if (missing) {
-    const { [missing]: _factsOmitted, ...requiredFacts } = sharedFacts;
-    const { [missing]: _rowOmitted, ...requiredRow } = sharedRow;
+  const missing = [];
+  for (let column = missingOptionalColumn(sharedError); column && !missing.includes(column); column = missingOptionalColumn(sharedError)) {
+    missing.push(column);
+    const keep = ([key]) => !missing.includes(key);
+    const requiredFacts = Object.fromEntries(Object.entries(sharedFacts).filter(keep));
+    const requiredRow = Object.fromEntries(Object.entries(sharedRow).filter(keep));
+    const columns = sharedColumnsWithout(missing);
     ({ data: savedShared, error: sharedError } = homeId
-      ? await supabase.from('homes').update(requiredFacts).eq('id', homeId).select(HOME_SHARED_COLUMNS_REQUIRED).single()
-      : await supabase.from('homes').insert(requiredRow).select(HOME_SHARED_COLUMNS_REQUIRED).single());
+      ? await supabase.from('homes').update(requiredFacts).eq('id', homeId).select(columns).single()
+      : await supabase.from('homes').insert(requiredRow).select(columns).single());
   }
   // Never retry a write without the canonical shared-fact columns. That legacy
   // compatibility path reported success after silently dropping propertyType
@@ -1171,6 +1186,8 @@ function rowToHomeWithOwner(row) {
     // Optional column: undefined (not null) when the database predates it, so
     // the UI can hide the fact instead of offering an edit that can't save.
     laundryLocation: 'laundry_location' in row ? row.laundry_location ?? null : undefined,
+    // HOA status: true (has an HOA), false (confirmed no HOA), null (Unknown).
+    hasHoa: 'has_hoa' in row ? row.has_hoa ?? null : undefined,
   };
 }
 
@@ -1236,6 +1253,7 @@ function homeToSharedRow(home, userId, searchId) {
     high_school: factOrNull(home.highSchool),
     // Written only when the home was read with the column (see rowToHome).
     ...(home.laundryLocation !== undefined ? { laundry_location: factOrNull(home.laundryLocation) } : {}),
+    ...(home.hasHoa !== undefined ? { has_hoa: home.hasHoa === true || home.hasHoa === false ? home.hasHoa : null } : {}),
     updated_at: new Date().toISOString(),
   };
 }

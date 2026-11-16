@@ -118,21 +118,26 @@ test('selected and unselected criteria toggle, and everything selected starts as
   assert.ok(priorities.features.customItems.some((item) => item.label === 'Fireplace'));
 });
 
-test('Garage is the weighted parent; Attached/Detached is an optional qualifier that never changes Match', () => {
+test('Garage is the weighted parent; Attached/Detached is its qualifier, read against the home\'s garage type (PR #187)', () => {
   let priorities = addCriterion(buy(), criterion(buy(), 'Garage'));
   priorities = setGaragePreference(priorities, 'attached');
   assert.equal(priorities.exterior.garagePreference, 'attached');
   assert.deepEqual(priorityLevels(priorities)[1].items.map((item) => [item.displayLabel, item.qualifier]), [['Garage', 'Attached']]);
   assert.equal(setGaragePreference(priorities, 'carport').exterior.garagePreference, 'attached');
-  // Scored from the home's existing garage-spaces fact, identically for any qualifier.
+  const garage = (home, preference) => computeMatch(home, setGaragePreference(priorities, preference)).allSelected.filter((item) => item.key === 'exterior:Garage');
   for (const preference of ['any', 'attached', 'detached']) {
-    const withPreference = setGaragePreference(priorities, preference);
-    const withGarage = computeMatch({ garageSpaces: '2' }, withPreference).allSelected.find((item) => item.key === 'exterior:Garage');
-    assert.equal(withGarage.met, true);
-    const unknown = computeMatch({}, withPreference).allSelected.find((item) => item.key === 'exterior:Garage');
-    assert.equal(unknown.evaluated, false);
+    // One criterion whatever the qualifier; Unknown stays Unknown, no garage is No.
+    assert.equal(garage({}, preference).length, 1);
+    assert.equal(garage({}, preference)[0].evaluated, false);
+    assert.equal(garage({ garageSpaces: '0' }, preference)[0].met, false);
   }
-  assert.equal(computeMatch({ garageSpaces: '0' }, priorities).allSelected.find((item) => item.key === 'exterior:Garage').met, false);
+  // Spaces alone say there is a garage, not which kind.
+  assert.equal(garage({ garageSpaces: '2' }, 'any')[0].met, true);
+  assert.equal(garage({ garageSpaces: '2' }, 'attached')[0].evaluated, false);
+  // The recorded type decides Attached / Detached.
+  assert.equal(garage({ garageSpaces: '2', garageType: 'attached' }, 'attached')[0].met, true);
+  assert.equal(garage({ garageSpaces: '2', garageType: 'detached' }, 'attached')[0].met, false);
+  assert.equal(garage({ garageType: 'detached' }, 'any')[0].met, true);
 });
 
 test('custom priorities are the buyer’s own, start Important, and never duplicate an offered one', () => {
