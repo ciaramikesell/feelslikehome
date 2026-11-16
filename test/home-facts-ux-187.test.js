@@ -169,3 +169,46 @@ test('Notes: the empty generic box is gone from Home Facts and Add / Edit Home; 
   assert.match(read('src/lib/supabase/collaboration.js'), /'notes', 'pros', 'cons', 'latitude'/, 'still a shared field: nothing is dropped from saves');
   assert.match(read('src/components/HomeModal.jsx'), /<summary>Add pros or cons <span>Optional · shared with this search<\/span>/);
 });
+
+/* ------------------- Add / Edit Home editor uses the same path ------------------- */
+
+import { applyBasementDescription, BASEMENT_FIELDS } from '../src/lib/homeFacts.js';
+
+const BASELINES = [
+  {}, { basementCondition: 'finished', basementStyle: 'walkout' }, { basementCondition: 'unfinished' }, { basementStyle: 'traditional' },
+  { basementCondition: 'none', basementStyle: 'none' }, { basementNotes: 'Finished walk-out w/ bar' }, { basementNotes: 'Crawl space only' },
+  { basementCondition: 'finished', basementNotes: 'Finished with wet bar' }, { basementCondition: 'unfinished', basementNotes: 'Old listing note' },
+];
+const TEXTS = ['Finished Walkout', 'Finished', 'Unfinished', 'Walkout', 'Partially Finished', 'No basement', 'Finished with wet bar', 'Finished, unfinished storage', 'Possibly finished', ''];
+
+test('Add / Edit Home and Home Facts store exactly the same basement for every starting state and description', () => {
+  for (const baseline of BASELINES) {
+    const shown = basementFieldValue(baseline).text;
+    for (const text of [...TEXTS, shown]) {
+      const editor = applyBasementDescription(baseline, text);
+      // Home Facts commits only a changed text, as a patch over the saved home.
+      const facts = text.trim() === shown ? {} : basementDescriptionPatch(baseline, text);
+      const homeFacts = Object.fromEntries(BASEMENT_FIELDS.map((field) => [field, field in facts ? facts[field] : (baseline[field] ?? (field === 'basementNotes' ? '' : null))]));
+      assert.deepEqual(editor, homeFacts, `${JSON.stringify(baseline)} ← "${text}"`);
+      // And Match reads the result identically from either place.
+      for (const key of [FINISHED, WALKOUT]) assert.equal(homeFactAnswer(editor, key), homeFactAnswer(homeFacts, key));
+    }
+  }
+});
+
+test('editor: a new description counts in Match once saved; untouched values and legacy notes are never overwritten', () => {
+  // The legacy note is preserved; the new, fully read description becomes the facts.
+  const legacy = { basementNotes: 'Finished walk-out w/ bar' };
+  assert.deepEqual(applyBasementDescription(legacy, 'Unfinished'), { basementCondition: 'unfinished', basementStyle: null, basementNotes: 'Finished walk-out w/ bar' });
+  assert.equal(homeFactAnswer(applyBasementDescription(legacy, 'Unfinished'), FINISHED), 'no');
+  assert.equal(basementFieldValue(applyBasementDescription(legacy, 'Unfinished')).earlierNote, 'Finished walk-out w/ bar');
+  // Re-typing what was shown is not an edit: saved facts stay exactly as they were (no derivation from a legacy note).
+  assert.deepEqual(applyBasementDescription(legacy, 'Finished walk-out w/ bar'), { basementCondition: null, basementStyle: null, basementNotes: 'Finished walk-out w/ bar' });
+  assert.deepEqual(applyBasementDescription({ basementCondition: 'finished', basementStyle: 'gardenview' }, 'Finished Gardenview'), { basementCondition: 'finished', basementStyle: 'gardenview', basementNotes: '' });
+  // The editor binds the shared path, not the note alone.
+  const modal = read('src/components/HomeModal.jsx');
+  assert.match(modal, /<BasementDescriptionField form=\{form\} set=\{set\} \/>/);
+  assert.doesNotMatch(modal, /value=\{form\.basementNotes\}/);
+  assert.match(modal, /const next = applyBasementDescription\(baseline\.current, text\);/);
+  assert.match(modal, /onFocus=\{\(\) => \{ baseline\.current = Object\.fromEntries\(BASEMENT_FIELDS\.map/);
+});

@@ -29,7 +29,7 @@ import { criterionResolution } from '@/lib/matchCriteria';
 import { homeFactContext } from '@/lib/homeFactCriteria';
 import { PROVENANCE_LABELS, fieldProvenance, hasImportSnapshot } from '@/lib/homeProvenance';
 import { isNativeApp } from '@/lib/platform';
-import { importedDetailCount } from '@/lib/homeFacts';
+import { applyBasementDescription, BASEMENT_FIELDS, BASEMENT_SUGGESTIONS, basementFieldValue, basementMatchReading, importedDetailCount } from '@/lib/homeFacts';
 import { importedCoordinatePatch, listingImportSnapshot } from '@/lib/importSnapshot';
 import { BUSY_COOLDOWN_MS, SESSION_LOOKUP_LIMIT, appliedImportFields, draftBuyerContent, draftContentPhrase, findHomeByAddress, findSwitchPlan, freshDraft, lookupCacheKey } from '@/lib/lookupSession';
 import { findInputLabel, foundDetailsLine, foundHomeEssentials, foundHomePriceLine, savedHomeSummary } from '@/lib/addHomeSave';
@@ -56,6 +56,35 @@ function CoBuyerOnlyHelper() {
 function ProvenanceTag({ provenance }) {
   if (!provenance) return null;
   return <span className={`flh-provenance is-${provenance}`}>{PROVENANCE_LABELS[provenance]}</span>;
+}
+
+// Basement in the Add / Edit editor (PR #187): the same one-field description,
+// parser and storage as Home Facts (applyBasementDescription), so an edit here
+// counts in Match as soon as the home is saved — no second step in Home Facts.
+// Typing starts from the basement fields as they were (the baseline), so saved
+// facts the person doesn't change are never rewritten, and an earlier note is
+// kept unless they replace it.
+function BasementDescriptionField({ form, set }) {
+  const [draft, setDraft] = useState(null);
+  const baseline = useRef(null);
+  const shown = draft ?? basementFieldValue(form).text;
+  const reading = (form.basementCondition || form.basementStyle) ? basementMatchReading(form.basementCondition, form.basementStyle) : null;
+  return <div className="hh-basement-field">
+    <label className="hh-label" htmlFor="edit-home-basement" style={{ fontSize: 10.5, marginBottom: 3 }}>Basement</label>
+    <input id="edit-home-basement" className="hh-input" list="edit-home-basement-options" value={shown} placeholder="Unknown — e.g. Finished Walkout"
+      style={{ fontSize: 12.5, padding: '6px 9px', borderStyle: shown ? 'solid' : 'dashed', borderColor: shown ? 'var(--line)' : 'var(--ink-soft)' }}
+      onFocus={() => { baseline.current = Object.fromEntries(BASEMENT_FIELDS.map((field) => [field, form[field]])); }}
+      onChange={(event) => {
+        const text = event.target.value;
+        if (!baseline.current) baseline.current = Object.fromEntries(BASEMENT_FIELDS.map((field) => [field, form[field]]));
+        setDraft(text);
+        const next = applyBasementDescription(baseline.current, text);
+        for (const field of BASEMENT_FIELDS) if (next[field] !== form[field]) set(field, next[field]);
+      }}
+      onBlur={() => { setDraft(null); baseline.current = null; }} />
+    <datalist id="edit-home-basement-options">{BASEMENT_SUGGESTIONS.map((value) => <option key={value} value={value} />)}</datalist>
+    {reading && <small className="flh-hf2-hint">{reading}</small>}
+  </div>;
 }
 
 function CompactField({ label, value, onChange, isCurrency, placeholder, must, coBuyerOnly, provenance = null }) {
@@ -431,7 +460,7 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
           <section className="hh-edit-home-card" data-step="review" aria-labelledby="home-details-heading">
             <h2 id="home-details-heading" className="hh-serif">Home details</h2>
             <div className="hh-edit-fields-grid">
-              <CompactField label="Basement" value={form.basementNotes} onChange={(value) => set('basementNotes', value)} placeholder="Unknown" />
+              <BasementDescriptionField form={form} set={set} />
               <CompactField label="School details" value={form.schoolsNotes} onChange={(value) => set('schoolsNotes', value)} placeholder="Unknown" />
               {MULTISELECT_CATEGORIES.filter((definition) => sharedFactAwareness[definition.key]?.eligibleForSharedFactCapture).map((definition) => <StructuredFactChips key={definition.key} definition={definition} value={form[definition.key]} onChange={(value) => set(definition.key, value)} coBuyerOnly={sharedFactAwareness[definition.key]?.coBuyerOnly} />)}
               {SINGLESELECT_CATEGORIES.filter((definition) => sharedFactAwareness[definition.key]?.eligibleForSharedFactCapture).map((definition) => <div key={definition.key}><label className="hh-label">{definition.title}</label><select className="hh-input" value={form[definition.key] || ''} onChange={(e) => set(definition.key, e.target.value)}><option value="">Unknown / not specified</option>{definition.options.filter((option) => option !== 'No Preference').map((option) => <option key={option}>{option}</option>)}</select></div>)}

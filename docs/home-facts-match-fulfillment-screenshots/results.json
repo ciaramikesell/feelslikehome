@@ -1,47 +1,47 @@
 [
   {
-    "step": "before (main): Home Facts on desktop and phone",
-    "ok": true,
-    "ms": 5374
-  },
-  {
     "step": "[desktop] Home Facts layout: Laundry after Basement (not in the photo summary), one Basement field, HOA status, School Details, existing Notes kept",
     "ok": true,
-    "ms": 2935
+    "ms": 6500
   },
   {
     "step": "[desktop] a home with no notes offers no empty Notes box; an earlier basement note is shown and used only on click",
     "ok": true,
-    "ms": 2792
+    "ms": 2718
   },
   {
     "step": "[desktop] owner Match (Garage: Attached): detached garage is a miss with its reason; Central Air, No HOA, Main Floor Laundry and the basement from Home Facts",
     "ok": true,
-    "ms": 3445
+    "ms": 2564
   },
   {
     "step": "[desktop] co-buyer (Garage: Detached) on the same home: Garage met; their own Match equals the owner's Compare view",
     "ok": true,
-    "ms": 5159
+    "ms": 4651
   },
   {
     "step": "[desktop] edits: \"Unfinished\" is never finished; ambiguous wording stays Unknown and is kept; \"Has an HOA\" contradicts No HOA at $0; an own Yes overrides for the owner only",
     "ok": true,
-    "ms": 5716
+    "ms": 5486
   },
   {
     "step": "[phone-390] Home Facts and Match fit with no horizontal overflow",
     "ok": true,
-    "ms": 5646
+    "ms": 5321
   },
   {
     "step": "[narrow-320] Home Facts and Match fit with no horizontal overflow",
     "ok": true,
-    "ms": 5543
+    "ms": 4825
   },
   {
     "step": "[zoom-200] Home Facts and Match fit with no horizontal overflow",
     "ok": true,
-    "ms": 5322
+    "ms": 4884
+  },
+  {
+    "step": "[desktop] Add / Edit Home editor: a basement edit counts in Match on save, legacy note preserved, same result as Home Facts",
+    "ok": true,
+    "ms": 6846
   }
 ]

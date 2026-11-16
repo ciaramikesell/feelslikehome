@@ -137,9 +137,26 @@ function basementContradiction(home) {
 }
 
 // The fact-based answer for one concept: true (Yes), 'no' (No) or undefined.
+// Release safety: the 2026-11-16 migration adds homes.has_hoa and the new
+// Compare scorer in one transaction. A home read from a database without that
+// column (rowToHome marks it PRE_FULFILLMENT_FACT_RULES) is scored with the
+// 2026-11-02 rules the database's scorer still uses — Garage from spaces only,
+// for any qualifier, and no Central Air reading — so the buyer's own Match and
+// the co-buyer Compare view never disagree, whichever ships first. (No HOA
+// needs nothing: without the column there is no HOA status to read.)
+export const PRE_FULFILLMENT_FACT_RULES = 'pre-2026-11-16';
+const usesPreFulfillmentRules = (home) => home?.matchFactRules === PRE_FULFILLMENT_FACT_RULES;
+
 function readConcept(concept, home, context = {}) {
   const condition = home?.basementCondition;
   const style = home?.basementStyle;
+  if (usesPreFulfillmentRules(home)) {
+    if (concept === 'garage') {
+      const spaces = garageSpacesCount(home?.garageSpaces);
+      return spaces === null ? undefined : spaces > 0 ? true : 'no';
+    }
+    if (concept === 'centralAir') return undefined;
+  }
   switch (concept) {
     case 'garage': return garageReading(home, context.garagePreference);
     // "None" in either basement field means there is no basement, unless the

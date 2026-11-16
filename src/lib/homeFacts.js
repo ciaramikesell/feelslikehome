@@ -198,7 +198,8 @@ export function basementFieldValue(home) {
 // The patch for a typed description: the two facts as read (Unknown where the
 // words don't say), plus the words themselves when they say more. Only changed
 // fields. Clearing the field clears both facts, and the note when it was what
-// the field showed. An earlier note is never deleted by editing the facts.
+// the field showed (the person deleted that text). Otherwise an earlier note is
+// never deleted or overwritten by a description FLH fully reads.
 export function basementDescriptionPatch(home, text) {
   const typed = String(text ?? '').trim();
   const shown = basementFieldValue(home);
@@ -206,8 +207,10 @@ export function basementDescriptionPatch(home, text) {
   const next = { basementCondition: parsed.basementCondition, basementStyle: parsed.basementStyle };
   if (!typed) {
     if (shown.source === 'note' || shown.source === 'earlier_note') next.basementNotes = '';
-  } else if (!parsed.complete || shown.source === 'note' || shown.source === 'earlier_note') {
-    // Keep their words: wording FLH couldn't fully read, or replacing words they typed before.
+  } else if (!parsed.complete || shown.source === 'note') {
+    // Keep their words: wording FLH couldn't fully read, or replacing their own
+    // earlier description. A fully read description never overwrites an earlier
+    // (legacy) note: it stays, shown beside the facts as "Earlier note".
     next.basementNotes = typed;
   }
   const patch = {};
@@ -216,6 +219,19 @@ export function basementDescriptionPatch(home, text) {
     if (before !== value) patch[field] = value;
   }
   return patch;
+}
+
+// The Add / Edit Home editor (HomeModal) holds the whole home in a form and
+// saves it at once, so it applies the same description patch to the basement
+// fields as they were when the person started typing (`baseline`): the very
+// same reading and storage as Home Facts, and nothing they didn't touch is
+// rewritten. Returns all three basement fields.
+export const BASEMENT_FIELDS = Object.freeze(['basementCondition', 'basementStyle', 'basementNotes']);
+export function applyBasementDescription(baseline, text) {
+  const current = Object.fromEntries(BASEMENT_FIELDS.map((field) => [field, field === 'basementNotes' ? (baseline?.[field] ?? '') : (baseline?.[field] ?? null)]));
+  // Text equal to what was shown is not an edit (Home Facts' field doesn't commit it either).
+  if (String(text ?? '').trim() === basementFieldValue(baseline).text) return current;
+  return { ...current, ...basementDescriptionPatch(baseline, text) };
 }
 
 const choiceLabel = (choices, value) => choices.find(([key]) => key === value)?.[1] || (isBlank(value) ? '' : String(value));

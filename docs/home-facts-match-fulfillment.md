@@ -97,30 +97,110 @@ a separate, additive PR.
 
 ## Migration (needs founder approval; not applied)
 
-`2026-11-16-home-facts-match-fulfillment.sql`:
+`2026-11-16-home-facts-match-fulfillment.sql`, **one transaction**:
 
-1. **Adds `homes.has_hoa boolean`** — nullable, no default, no backfill;
-   select/insert/update granted to `authenticated` exactly like
+1. **Adds `homes.has_hoa boolean`**: nullable, no default, no backfill;
+   select / insert / update granted to `authenticated` exactly like
    `laundry_location`. *Why:* nothing stored could express "this home has no
    HOA", and a $0 fee is not proof, so No HOA could never be fulfilled.
-2. **Replaces the Compare scorer body** (same signature, SECURITY DEFINER,
-   empty search_path, grants); only the Garage, No HOA and Central Air readings
-   change. Re-runnable.
+2. **Replaces the Compare scorer body.** The signature, SECURITY DEFINER, empty
+   search_path and grants are unchanged. Only the Garage, No HOA and Central Air
+   readings change. Re-runnable.
 
-The app treats `has_hoa` as an optional column (like `laundry_location`): before
-the migration the HOA status control is hidden and No HOA reads as before. The
-optional-column fallback now drops only the column the database names.
+### Keeping the two scorers in agreement
 
-**Order:** run `supabase/home-facts-match-fulfillment-preflight.sql`
-(read-only counts; every `required` row must be ok), apply the migration,
-deploy the app. **Rollback:** re-apply `2026-11-02-home-facts-match-parity.sql`
-and promote the previous deployment; `has_hoa` can stay (unused).
+The app knows which scorer the database has, because the migration adds the
+column and the new scorer together. A home read from a database without
+`has_hoa` is marked by the data layer (`matchFactRules: 'pre-2026-11-16'`, set
+in `rowToHome`). That home is scored with the 2026-11-02 rules the database
+still uses: Garage from spaces only, for any qualifier, and no Central Air
+reading. As soon as the migration commits, the next read has the column and
+both scorers switch to the new rules together.
 
-**Score impact** (counted by the preflight): Attached/Detached buyers whose
-homes have garage spaces but no recorded type move from Yes to Unknown; a
-garage of the other type becomes a miss; homes with a recorded type and blank
-spaces become answered; contradictory type/spaces become Unknown; Central Air
-is newly answered from Cooling. No HOA moves only once someone sets the status.
+So the app can safely ship first. The only gap is a page loaded before the
+migration and not yet refreshed. Nothing is written in that window, and it ends
+on the next load. `test/home-facts-match-fulfillment-db.test.js` proves JS = SQL
+on the pre-migration database and again after the migration.
+
+Before the migration, the HOA status control is hidden. The optional-column
+fallback drops only the column the database names, so `laundry_location` is
+still read and saved.
+
+### Release order (each step needs founder approval)
+
+1. **Merge and deploy the app** (Vercel Production). Against the pre-migration
+   database it scores with the 2026-11-02 rules, so Match is unchanged for buyers.
+2. **Run the preflight** `supabase/home-facts-match-fulfillment-preflight.sql`
+   in the Production SQL editor. It is a single read-only SELECT that returns
+   counts only.
+   - Every `required` row must be `ok`.
+   - The body row must read `expected: 2026-11-02-home-facts-match-parity.sql`.
+   - Review the `info` counts: Garage changes by qualifier, Must-Haves that
+     become misses, Central Air newly answered.
+3. **Apply the migration.** Column and scorer change in one transaction.
+4. **Re-run the preflight.** The body row then reads `ALREADY APPLIED`, and
+   `has_hoa already exists` reads yes.
+5. Spot-check one owner / co-buyer search: their own Match % equals what the
+   other buyer sees in Compare.
+
+### Rollback
+
+- **App only** (the migration was not applied): promote the previous Vercel
+  deployment. Nothing else to undo.
+- **After the migration**: re-apply `2026-11-02-home-facts-match-parity.sql`
+  (scorer body only) and promote the previous Vercel deployment, back to back.
+  - The previous app doesn't read `has_hoa` and uses the 2026-11-02 rules, so
+    the two again agree.
+  - Between the two steps, Compare may briefly show the other rule set. Nothing
+    is written.
+  - `has_hoa` stays (nullable and unused). Dropping it is never needed. If ever
+    wanted, it is a separate, explicitly approved step, because it would discard
+    HOA answers buyers entered.
+- No step rewrites preferences, homes or answers. The tests run migrate →
+  rollback → migrate again and check that nothing changed.
+
+**Score impact** (counted by the preflight):
+- Attached/Detached buyers whose homes have garage spaces but no recorded type
+  move from Yes to Unknown.
+- A garage of the other type becomes a miss.
+- Homes with a recorded type and blank spaces become answered.
+- Contradictory type and spaces become Unknown.
+- Central Air is newly answered from Cooling.
+- No HOA moves only once someone sets the status.
+
+## Add / Edit Home editor: same basement path
+
+The Add / Edit Home editor (`HomeModal`, add and edit modes) used to bind
+Basement to `basement_notes` only. An edit there never reached Match until
+someone clicked "Use as …" in Home Facts. Its Basement field now uses the same
+parser and storage as Home Facts (`applyBasementDescription` over
+`basementDescriptionPatch`), so the edit counts as soon as the home is saved.
+
+- Typing starts from the basement fields as they were when the person began
+  (the baseline). Saved facts they don't change are never rewritten, and
+  re-typing exactly what was shown is not an edit.
+- A legacy note is kept. A fully read new description becomes the facts, and
+  the old note stays visible as "Earlier note". Words FLH can't fully read
+  replace only the text the person was editing.
+- The same "Match reads Finished … · Walkout …" line shows under the field.
+- `test/home-facts-ux-187.test.js` checks that both entry points store
+  identical results over 9 starting states × 11 descriptions. The browser QA
+  edits Basement in the editor, saves, and checks the database, Home Facts and
+  Match.
+
+"Use as …" remains in Home Facts only for legacy notes nobody has edited since.
+
+## Founder decisions (PR #187 review)
+
+1. **Central Air**: conservative, as implemented. Explicit "no cooling" is No;
+   other systems and ambiguous text stay Unknown.
+2. **Fenced Yard / Privacy Fence** automatic fulfillment is deferred to a future PR.
+3. **Garage "Both"**: wanted eventually, not in this PR. Homes with both kinds,
+   or an ambiguous kind, stay Unknown for Attached / Detached and are never
+   matched or rejected.
+4. **Add / Edit Home basement**: fixed (above).
+5. Styling, manual-answer precedence, JS / SQL parity, owner / co-buyer
+   independence and Unknown-is-neutral are unchanged.
 
 ## Tests and QA
 
@@ -142,14 +222,3 @@ is newly answered from Cooling. No HOA moves only once someone sets the status.
 - Browser QA: `scripts/qa/home-facts-match-fulfillment-e2e.mjs` (9/9) and the
   existing `home-fact-match-parity-e2e.mjs` (11/11). Screenshots in
   `docs/home-facts-match-fulfillment-screenshots/`.
-
-## Open questions for the founder
-
-1. **Garage "both kinds"**: Garage type can't record attached *and* detached.
-   Such homes stay Unknown type (never rejected). Add a "Both" choice later?
-2. **Cooling "None"** is the only explicit No for Central Air; window units /
-   mini-split stay Unknown. Confirm.
-3. **Fence fact**: none exists; auto-fulfilling Fenced Yard / Privacy Fence
-   needs a new shared field (separate PR).
-4. The **Add / Edit Home** editor's legacy Basement text box still writes only
-   `basement_notes` (shown on Home Facts as an earlier note with "Use as …").

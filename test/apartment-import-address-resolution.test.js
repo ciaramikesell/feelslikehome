@@ -90,5 +90,6 @@ test('address UI keeps selection, free typing, keyboard support, RentCast, and c
   assert.match(modal, /lookupAddress\(address, \{ listingUrl: form\.listingUrl \}\)/);
   assert.match(modal, /hh-find-home-row/);
   assert.match(modal, /We found \{apartmentIdentity\.propertyName\}/);
-  assert.match(modal, /<CompactField label="Basement"/);
+  // PR #187: Basement is the shared one-field description (same parser and storage as Home Facts).
+  assert.match(modal, /<BasementDescriptionField form=\{form\} set=\{set\} \/>/);
 });

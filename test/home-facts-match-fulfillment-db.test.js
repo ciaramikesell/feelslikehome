@@ -261,6 +261,13 @@ dbTest('production path: preflight on pre-migration data, the migration (twice),
     const saved = await saveHomePersonalAndShared(legacy.clientFor(owner), { ...homesBefore.find((home) => home.id === homeIds.unknown), laundryLocation: 'first_floor' }, owner, search);
     assert.deepEqual([saved.laundryLocation, saved.hasHoa], ['first_floor', undefined]);
 
+    // Before the migration: the app reads these homes with the 2026-11-02 rules the
+    // database's scorer still has, so the two Match views agree on every home.
+    assert.ok(homesBefore.every((home) => home.matchFactRules === 'pre-2026-11-16'));
+    const pre = await bothScorers(legacy, { viewerId: owner, subjectId: coBuyer, search, homeIds, label: 'before migration' });
+    assert.equal(pre.spacesOnly.allSelected.find((item) => item.key === 'exterior:Garage').met, true, 'old rule: spaces alone answer Garage');
+    assert.equal(pre.attachedCentral.allSelected.find((item) => item.key === 'features:Central air').evaluated, false, 'old rule: Cooling is not read');
+
     const snapshot = () => legacy.admin(`select
       (select json_agg(p order by p.user_id) from public.search_member_priorities p) as priorities,
       (select json_agg(h order by h.id) from public.homes h) as homes,
@@ -299,6 +306,7 @@ dbTest('production path: preflight on pre-migration data, the migration (twice),
     assert.ok(privileges('has_hoa').filter((row) => row.rolname === 'authenticated').every((row) => row.granted));
 
     const result = await bothScorers(legacy, { viewerId: owner, subjectId: coBuyer, search, homeIds, label: 'after' });
+    assert.ok((await getHomesForUser(legacy.clientFor(coBuyer), coBuyer, search)).every((home) => home.matchFactRules === undefined && home.hasHoa === null), 'the new rules, at once');
     const garage = (name) => result[name].allSelected.find((item) => item.key === 'exterior:Garage');
     assert.deepEqual([garage('attachedCentral').met, garage('detachedNone').met, garage('spacesOnly').evaluated, garage('contradiction').evaluated, garage('typeOnly').met],
       [true, true, false, false, true], 'the own Yes on the detached home wins');

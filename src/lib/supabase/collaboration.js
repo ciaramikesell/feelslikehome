@@ -7,6 +7,7 @@
 // a query that RLS would reject simply returns no rows, and every function
 // here degrades safely (falls back, never throws the user into a broken state).
 
+import { PRE_FULFILLMENT_FACT_RULES } from '@/lib/homeFactCriteria';
 import { defaultPriorities } from '@/lib/constants';
 import { deriveSharedFactPriorityAwareness } from '@/lib/sharedFactPriorityAwareness';
 import { hasOutstandingWantToTour } from '@/lib/lifecycle';
@@ -1188,6 +1189,10 @@ function rowToHomeWithOwner(row) {
     laundryLocation: 'laundry_location' in row ? row.laundry_location ?? null : undefined,
     // HOA status: true (has an HOA), false (confirmed no HOA), null (Unknown).
     hasHoa: 'has_hoa' in row ? row.has_hoa ?? null : undefined,
+    // Before the 2026-11-16 migration (no has_hoa column) the database's
+    // Compare scorer still uses the 2026-11-02 fact rules; read with the same
+    // rules so the two Match views agree (homeFactCriteria.js).
+    ...('has_hoa' in row ? {} : { matchFactRules: PRE_FULFILLMENT_FACT_RULES }),
   };
 }
 

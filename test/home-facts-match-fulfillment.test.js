@@ -210,3 +210,21 @@ test('Home Facts never reads an unaccepted suggestion: only shared home fields a
   const code = read('src/lib/homeFactCriteria.js').split('\n').filter((line) => !/^\s*\/\//.test(line)).join('\n');
   assert.doesNotMatch(code, /listingImport|offeredFacts|supabase|fetch\(/);
 });
+
+test('release safety: a home read before the migration is scored with the 2026-11-02 rules (no JS / SQL disagreement)', async () => {
+  const { PRE_FULFILLMENT_FACT_RULES } = await import('../src/lib/homeFactCriteria.js');
+  const legacy = { matchFactRules: PRE_FULFILLMENT_FACT_RULES };
+  // Garage: spaces only, for any qualifier, exactly as the 2026-11-02 scorer.
+  for (const preference of ['any', 'attached', 'detached']) {
+    assert.equal(homeFactAnswer({ ...legacy, garageType: 'detached', garageSpaces: '2' }, 'exterior:Garage', { garagePreference: preference }), true);
+    assert.equal(homeFactAnswer({ ...legacy, garageType: 'attached' }, 'exterior:Garage', { garagePreference: preference }), undefined);
+    assert.equal(homeFactAnswer({ ...legacy, garageSpaces: '0' }, 'exterior:Garage', { garagePreference: preference }), 'no');
+  }
+  assert.equal(homeFactAnswer({ ...legacy, cooling: 'Central Air' }, 'features:Central air'), undefined);
+  assert.equal(homeFactAnswer({ ...legacy, hoaFeeMonthly: 300 }, 'location:No HOA'), 'no');
+  assert.equal(homeFactAnswer({ ...legacy, basementCondition: 'finished' }, 'features:Finished basement'), true, 'earlier rules unchanged');
+  // Only the data layer sets the marker, and only when the database lacks has_hoa.
+  const data = read('src/lib/supabase/collaboration.js');
+  assert.match(data, /\.\.\.\('has_hoa' in row \? \{\} : \{ matchFactRules: PRE_FULFILLMENT_FACT_RULES \}\),/);
+  assert.match(MIGRATION, /^begin;\n\nalter table public\.homes add column if not exists has_hoa boolean;/m, 'column and scorer switch in one transaction');
+});

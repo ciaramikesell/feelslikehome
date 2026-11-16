@@ -263,6 +263,43 @@ async function run() {
     await page?.context().close();
   }
 
+  // The Add / Edit Home editor (here opened from Home Facts' "More home details",
+  // which Home to Rent uses) saves the basement through the same parser and
+  // storage as Home Facts: the edit counts in Match with no second step, a
+  // legacy note is kept, and the result reads identically in Home Facts.
+  let editor;
+  await step('[desktop] Add / Edit Home editor: a basement edit counts in Match on save, legacy note preserved, same result as Home Facts', async () => {
+    let rental = normalizePriorities({ searchType: 'rental' });
+    rental = addCriterion(rental, { categoryKey: 'features', label: 'Finished Basement', kind: 'check', source: 'custom' }, 'must');
+    rental = addCriterion(rental, { categoryKey: 'features', label: 'Walkout Basement', kind: 'check', source: 'custom' }, 'important');
+    setPriorities(OWNER, rental);
+    const rentalHome = insertHome('16', { basement_notes: 'Finished walk-out w/ bar', basement_condition: null, basement_style: null, beds: '3' });
+    editor = await signedIn(browser, 'owner', DESKTOP);
+    await openFacts(editor, base, rentalHome);
+    await editor.locator('.flh-hf2-more').click();
+    const field = editor.locator('#edit-home-basement');
+    await field.waitFor({ timeout: 30000 });
+    assert(await field.inputValue() === 'Finished walk-out w/ bar', `editor shows ${await field.inputValue()}`);
+    await field.fill('Unfinished');
+    await field.blur();
+    assert((await editor.locator('.hh-basement-field small').textContent()).includes('Finished: No'), 'editor Match reads line');
+    await shot(editor, 'after-editor-basement', '.hh-basement-field');
+    await editor.getByRole('button', { name: 'Save changes' }).click();
+    await until(() => homeRow(rentalHome).basement_condition === 'unfinished', 'editor did not save the basement facts');
+    const row = homeRow(rentalHome);
+    assert(row.basement_style === null && row.basement_notes === 'Finished walk-out w/ bar', `saved ${JSON.stringify(row)}`);
+    await openFacts(editor, base, rentalHome);
+    assert(await editor.locator('#hf-basement').inputValue() === 'Unfinished', 'Home Facts shows the editor\'s description');
+    assert((await editor.locator('.flh-hf2-note', { hasText: 'Earlier note' }).textContent()).includes('Finished walk-out w/ bar'), 'legacy note not shown');
+    await openMatch(editor, rentalHome);
+    assert(await rowState(editor, 'Finished Basement') === 'missed', 'the editor edit did not reach Match');
+    assert((await fromNote(editor, 'Finished Basement')).startsWith('From Home Facts: No'), 'not labelled From Home Facts');
+    assert(await rowState(editor, 'Walkout Basement') === 'unknown', '"Unfinished" established a walkout answer');
+    assert(Object.keys(checksOf(rentalHome, OWNER)).length === 0, 'answers were written');
+    setPriorities(OWNER, ownerPriorities);
+  }, () => [editor].filter(Boolean));
+  await editor?.context().close();
+
   await browser.close();
   writeFileSync(join(outDir, 'results.json'), JSON.stringify(log, null, 2));
   const failed = log.filter((entry) => !entry.ok);
