@@ -1,6 +1,7 @@
 {
  "steps": [
   "search_type",
+  "setup_path",
   "basics",
   "cat_layout",
   "cat_kitchen",

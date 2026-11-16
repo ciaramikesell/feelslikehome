@@ -7,6 +7,7 @@ import HomeFacts from '@/components/HomeFacts';
 import MatchCriteria, { FACT_LINKS, criterionName } from '@/components/MatchCriteria';
 import { recordListingAnswers, savedListingAnswers } from '@/lib/listingTextAnswers';
 import TourFeedback from '@/components/TourFeedback';
+import { useFeatureFlag } from '@/components/FeatureFlags';
 import RealtorContributions from '@/components/RealtorContributions';
 import PostTourModal from '@/components/PostTourModal';
 import ArchiveConfirmModal from '@/components/ArchiveConfirmModal';
@@ -69,6 +70,7 @@ function SaveState({ status, onRetry, conflict = false }) {
 // overlay (?section=tour) so the research flow never turns into a survey.
 export default function HomeOverlay({ serverHome, coBuyerPerspective = null, realtorContributions = { notes: [], tours: [] }, section = 'facts', returnTo = '/homes' }) {
   const router = useRouter();
+  const guidedPriorities = useFeatureFlag('guidedPriorities');
   const workspace = useHomesWorkspace();
   const { priorities, commuteDestinations, sharedFactAwareness, isCollaborative, userId, searchId, updateHome, adoptServerHome, setBusy, openedFromBoard } = workspace;
   // The freshly read home replaces the board's copy (unless a save is mid-air).
@@ -375,7 +377,10 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
             {coBuyerPerspective?.match?.pct != null && <p className="flh-overlay-match-context">Your co-buyer’s Match: <strong>{coBuyerPerspective.match.pct}%</strong>, from their own priorities and answers.</p>}
             {isCollaborative && <p className="flh-overlay-match-lead">Your answers here are yours alone. Home Facts are shared with everyone in this search.</p>}
             {match ? <MatchCriteria home={home} priorities={priorities} match={match} onAnswer={answerCriterion} onOpenFact={openFact} tourHref={tourHref} listingAnswers={listingAnswers} openByTier={openCountByTier(progress)} revealRequest={revealRequest} />
-              : <p className="flh-overlay-match-context">No priorities are set for this search yet. <a href="/search">Set them in My Search</a>.</p>}
+              : guidedPriorities
+                // Milestone 2 (FLH_ONBOARDING_V3): point to the walkthrough. Flag off: unchanged.
+                ? <p className="flh-overlay-match-context">No Match yet—it starts once you tell FLH what matters. <a href="/search/explore">Explore My Priorities</a>.</p>
+                : <p className="flh-overlay-match-context">No priorities are set for this search yet. <a href="/search">Set them in My Search</a>.</p>}
           </section>
 
           <footer className="flh-overlay-foot">

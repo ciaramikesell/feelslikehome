@@ -378,7 +378,8 @@ test('bottom navigation keeps the five buyer destinations with terracotta active
 test('focused editors own the phone screen and respect iOS safe areas', () => {
   const shell = read('src/components/AppShell.jsx');
   const css = read('src/app/globals.css');
-  assert.match(shell, /FOCUSED_MOBILE_ROUTES = Object\.freeze\(\['\/search\/priorities', '\/search\/places'\]\)/);
+  // Milestone 2 adds Explore My Priorities (behind FLH_ONBOARDING_V3; not found when off).
+  assert.match(shell, /FOCUSED_MOBILE_ROUTES = Object\.freeze\(\['\/search\/priorities', '\/search\/places', '\/search\/explore'\]\)/);
   assert.match(css, /\.hh-focused-route \.hh-mobile-nav, \.hh-focused-route \.beta-feedback \{ display: none; \}/);
   assert.match(css, /\.flh-action-bar \{[^}]*padding: 18px 16px calc\(12px \+ env\(safe-area-inset-bottom\)\)/);
   assert.match(css, /\.flh-has-action-bar \{ padding-bottom: calc\(128px \+ env\(safe-area-inset-bottom\)\); \}/);

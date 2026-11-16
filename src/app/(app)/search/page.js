@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { requireUser, withAuthRecovery } from '@/lib/supabase/auth';
 import MySearchPanel from '@/components/MySearchPanel';
+import { onboardingV3Enabled } from '@/lib/featureFlags';
 import { normalizePriorities } from '@/lib/constants';
 import { resolveActiveSearch, resolvePriorities, getSearchParticipantIds, getCommuteDestinations, resolveCollaboratorSearchContext, getSearchPeople, listRealtorInvitations } from '@/lib/supabase/collaboration';
 
@@ -52,6 +53,7 @@ export default async function SearchPage({ searchParams }) {
         people={visiblePeople}
         realtorInvitations={realtorInvitations}
         firstRun={params?.welcome === '1'}
+        exploreEnabled={onboardingV3Enabled()}
       />
     );
   });

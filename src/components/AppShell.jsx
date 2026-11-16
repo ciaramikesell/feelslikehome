@@ -12,6 +12,7 @@ import { isNativeApp } from '@/lib/platform';
 import SearchSwitcher from '@/components/SearchSwitcher';
 import BetaFeedback from '@/components/BetaFeedback';
 import Sheet from '@/components/Sheet';
+import { FeatureFlagsProvider } from '@/components/FeatureFlags';
 
 const TAB_ICONS = {
   homes: HomeIcon,
@@ -51,7 +52,10 @@ function MobileNav({ pathname, vocabulary, highlightKey }) {
 // own back/cancel header and a sticky save action replace the shared header and
 // bottom navigation below the phone breakpoint (see .hh-focused-route in
 // globals.css). Desktop chrome is unchanged on these routes.
-export const FOCUSED_MOBILE_ROUTES = Object.freeze(['/search/priorities', '/search/places']);
+// Explore My Priorities (/search/explore, behind FLH_ONBOARDING_V3) is the
+// category walkthrough with its own top bar and footer, so it is focused too
+// (not found while the flag is off).
+export const FOCUSED_MOBILE_ROUTES = Object.freeze(['/search/priorities', '/search/places', '/search/explore']);
 
 // Device-specific by design for V1 — see MOBILE_TOUR_DISMISS_KEY usage below.
 const MOBILE_TOUR_DISMISS_KEY = 'flh-mobile-tour-dismissed';
@@ -231,7 +235,7 @@ function NameCompletionPrompt({ userId, onSaved }) {
   );
 }
 
-export default function AppShell({ children, userEmail, userId, firstName = null, accessibleSearches, activeSearchId, priorities, searchIntent, isCollaborative = false, appVersion, workspace = 'buyer' }) {
+export default function AppShell({ children, userEmail, userId, firstName = null, accessibleSearches, activeSearchId, priorities, searchIntent, isCollaborative = false, appVersion, workspace = 'buyer', features = null }) {
   const pathname = usePathname();
   const router = useRouter();
   const [howToOpen, setHowToOpen] = useState(false);
@@ -351,7 +355,7 @@ export default function AppShell({ children, userEmail, userId, firstName = null
         {/* Keyed by the active search: switching searches remounts every page's
             client state (homes list, My Search editor, Compare, Map), so nothing
             from the previous search can linger after the server re-resolves it. */}
-        <Fragment key={activeSearchId || workspace}>{children}</Fragment>
+        <FeatureFlagsProvider value={features}><Fragment key={activeSearchId || workspace}>{children}</Fragment></FeatureFlagsProvider>
       </div>
 
       {hasBuyerSearch && <MobileNav pathname={pathname} vocabulary={vocabulary} highlightKey={tourOpen ? mobileTourSteps(vocabulary)[tourStep]?.key : undefined} />}

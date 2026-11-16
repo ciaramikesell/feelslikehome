@@ -18,7 +18,7 @@ import { moveGroup, priorityLevelsWithGroups } from '@/lib/whatMattersGroups';
 import { createClient } from '@/lib/supabase/client';
 import { useReliableOptimisticState } from '@/lib/useReliableOptimisticState';
 import { completeOnboarding, saveOnboardingProgress } from '@/lib/supabase/data';
-import { advanceOnboarding, completeOnboardingState, onboardingProgress, retreatOnboarding, setOnboardingAnswer, setOnboardingSearchType, skipOnboardingStep } from '@/lib/onboardingFlow';
+import { advanceOnboarding, completeOnboardingState, isQuickStartState, onboardingProgress, retreatOnboarding, setOnboardingAnswer, setOnboardingSearchType, setOnboardingSetupPath, skipOnboardingStep } from '@/lib/onboardingFlow';
 import { ANALYTICS_EVENTS, track } from '@/lib/analytics';
 import { createCommuteDestination, deleteCommuteDestination, savePriorities, setActiveSearch } from '@/lib/supabase/collaboration';
 import { choiceFromSelection, normalizePeople } from '@/lib/onboardingPeople';
@@ -43,7 +43,7 @@ const STEP_LABELS = {
   basics: 'The Basics', what_matters: 'What Matters', rank: 'Rank Priorities',
   locations: 'Location', collaboration: 'Your People', priorities: 'What Matters', review: 'Review',
   // Flow 4 (Mobile Priority Onboarding V3).
-  search_type: 'Search Type', cat_essentials: 'Rental Essentials', cat_layout: 'Layout & Living', cat_kitchen: 'Kitchen',
+  search_type: 'Search Type', setup_path: 'Getting Started', cat_essentials: 'Rental Essentials', cat_layout: 'Layout & Living', cat_kitchen: 'Kitchen',
   cat_living: 'Living Room', cat_bath: 'Bathroom', cat_garage: 'Garage', cat_exterior: 'Exterior & Property',
   cat_neighborhood: 'Neighborhood',
   // Rentals (docs/rental-foundations-onboarding-spec.md).
@@ -329,9 +329,17 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
   const moveOn = async (fromStep, { skip = false } = {}) => {
     await flush();
     const boardMove = desktopBoard && isBoardStep(fromStep);
-    const { state: next } = boardMove
+    const { state: next, done } = boardMove
       ? advanceBoard(version, progressRef.current, { skip })
       : (skip ? skipOnboardingStep : advanceOnboarding)(version, progressRef.current, fromStep);
+    // Quick start (Milestone 2): Basics is the last screen, so leaving it
+    // finishes setup and opens Add Home (or the pending deep-link destination).
+    if (done && isQuickStartState(next)) {
+      persistProgress(next);
+      if (!sharedSetup) track(ANALYTICS_EVENTS.ONBOARDING_STEP_COMPLETED, { ...eventContext, step: fromStep, ...(skip ? { reason: 'skipped' } : {}) });
+      // Shared-search setup ends on that search's Homes, exactly as before (finish() handles errors).
+      return sharedSetup ? finish() : finishToDestination('/homes?add=1');
+    }
     if (returnToReview) {
       setReturnToReview(false);
       persistProgress({ ...next, step: 'review' });
@@ -340,6 +348,12 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
     }
     if (!sharedSetup) track(ANALYTICS_EVENTS.ONBOARDING_STEP_COMPLETED, { ...eventContext, step: boardMove ? BOARD_STEP : fromStep, ...(skip ? { reason: 'skipped' } : {}) });
     window.scrollTo?.({ top: 0 });
+  };
+  // The setup-path choice moves straight on: the choice decides which screens
+  // follow, so it is recorded before the move is computed.
+  const chooseSetupPath = (path) => {
+    persistProgress(setOnboardingSetupPath(progressRef.current, path));
+    return moveOn('setup_path');
   };
   // Going back never clears an answer: priorities stay saved, and the
   // screen re-renders from them.
@@ -457,6 +471,9 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
               onSearchType={(type) => persistProgress(setOnboardingSearchType(progressRef.current, type))}
               review={{ skipped: progressState.skipped || [], onEdit: editFromReview, onFinish: finishToDestination, finishing, finishError }}
               board={desktopBoard}
+              setupPath={progressState.answers?.setupPath || null}
+              onSetupPath={chooseSetupPath}
+              quickStart={isQuickStartState(progressState)}
             />
           )}
           {!ready && !priorityFlow && step === 'basics' && (

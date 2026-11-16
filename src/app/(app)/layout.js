@@ -6,6 +6,7 @@ import { resolveActiveSearch, getAccessibleSearches, needsSharedSearchSetup, res
 import { entersAsRealtor } from '@/lib/realtorEntry';
 import { normalizeSearchIntent } from '@/lib/searchIntent';
 import AppShell from '@/components/AppShell';
+import { onboardingV3Enabled } from '@/lib/featureFlags';
 
 export default async function AppGroupLayout({ children }) {
   return withAuthRecovery(async () => {
@@ -34,13 +35,15 @@ export default async function AppGroupLayout({ children }) {
     if (!profile?.onboarding_complete) redirect(withRedirectParam('/onboarding', await currentPathForRedirect()));
 
     const appVersion = process.env.VERCEL_GIT_COMMIT_SHA || process.env.VERCEL_DEPLOYMENT_ID || null;
+    // Client-visible release flags (src/components/FeatureFlags.jsx). Off unless the environment turns them on.
+    const features = { guidedPriorities: onboardingV3Enabled() };
     const firstName = storedProfile?.first_name || null;
 
     if (isAccountRoute) {
       const { search } = storedProfile?.onboarding_complete ? await resolveActiveSearch(supabase, user.id) : { search: null };
       if (!search) {
         return (
-          <AppShell userEmail={user.email} userId={user.id} firstName={firstName} accessibleSearches={[]} activeSearchId={null} priorities={null} searchIntent={null} isCollaborative={false} appVersion={appVersion} workspace="account">
+          <AppShell userEmail={user.email} userId={user.id} firstName={firstName} accessibleSearches={[]} activeSearchId={null} priorities={null} searchIntent={null} isCollaborative={false} appVersion={appVersion} features={features} workspace="account">
             {children}
           </AppShell>
         );
@@ -53,7 +56,7 @@ export default async function AppGroupLayout({ children }) {
     // buyer search.
     if (isRealtorWorkspace) {
       return (
-        <AppShell userEmail={user.email} userId={user.id} firstName={firstName} accessibleSearches={[]} activeSearchId={null} priorities={null} searchIntent={null} isCollaborative={false} appVersion={appVersion} workspace="realtor">
+        <AppShell userEmail={user.email} userId={user.id} firstName={firstName} accessibleSearches={[]} activeSearchId={null} priorities={null} searchIntent={null} isCollaborative={false} appVersion={appVersion} features={features} workspace="realtor">
           {children}
         </AppShell>
       );
@@ -71,7 +74,7 @@ export default async function AppGroupLayout({ children }) {
     ]);
 
     return (
-      <AppShell userEmail={user.email} userId={user.id} firstName={firstName} accessibleSearches={accessibleSearches} activeSearchId={search.id} priorities={priorities} searchIntent={normalizeSearchIntent(priorities?.searchType)} isCollaborative={participantIds.length > 1} appVersion={appVersion}>
+      <AppShell userEmail={user.email} userId={user.id} firstName={firstName} accessibleSearches={accessibleSearches} activeSearchId={search.id} priorities={priorities} searchIntent={normalizeSearchIntent(priorities?.searchType)} isCollaborative={participantIds.length > 1} appVersion={appVersion} features={features}>
         {children}
       </AppShell>
     );

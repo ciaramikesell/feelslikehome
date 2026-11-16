@@ -1,0 +1,242 @@
+[
+  {
+    "name": "setup path: two large tappable cards (≥ 44px)",
+    "ok": true,
+    "detail": "131, 107"
+  },
+  {
+    "name": "personalize → Basics next (no extra introductory page)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "personalize → the first category (Layout & Living)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "personalize → Review at the end",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "personalize: onboarding complete, version 4, path recorded",
+    "ok": true,
+    "detail": "{\"setupPath\":\"personalize\",\"searchType\":\"home_buy\"}"
+  },
+  {
+    "name": "personalize: Walk-in Pantry Must Have saved; skipped categories wrote nothing",
+    "ok": true,
+    "detail": "dontcare: none"
+  },
+  {
+    "name": "personalize: still exactly one search",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "quick start: Basics says optional and finishes with \"Start saving homes\"",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "quick start → lands directly in Add Home",
+    "ok": true,
+    "detail": "http://localhost:3200/homes?add=1"
+  },
+  {
+    "name": "quick start: onboarding complete (version 4, as_i_go)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "quick start: no dontcare written, no features, one search",
+    "ok": true,
+    "detail": "dontcare: none"
+  },
+  {
+    "name": "signed-up but not onboarded: a shared listing goes to onboarding with the destination kept",
+    "ok": true,
+    "detail": "http://localhost:3200/onboarding?redirect=%2Fhomes%3Furl%3Dhttps%253A%252F%252Fwww.zillow.com%252Fhomedetails%252F41-Map"
+  },
+  {
+    "name": "quick start finishes onto the shared listing, not a blank Add Home",
+    "ok": true,
+    "detail": "https://www.zillow.com/homedetails/41-Maple-St-Troy-MI-48084/123_zpid/"
+  },
+  {
+    "name": "My Search shows Explore My Priorities (flag on); Quick Edit still there",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Explore index: \"What would you like to explore?\" with this search’s categories",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Explore page header: Explore · n of N · Kitchen",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "a clear \"Saved\" confirmation after an edit",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Skip changes no answer (only the resume point moves)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Done: back on My Search with the edit persisted",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "re-entry never changes onboarding_complete / _version / _state",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "still no dontcare anywhere",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "My Search offers to pick up where they stopped",
+    "ok": true,
+    "detail": "Explore My Priorities Walk through the things that make a home feel right. Change your mind anytime. Pick up at Bathroom"
+  },
+  {
+    "name": "Explore index: \"Pick up at Bathroom\" and Kitchen shows 1 chosen",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "onboarding answers are prefilled on re-entry (Walk-in Pantry: Must Have)",
+    "ok": true,
+    "detail": "Walk-in Pantry: Must Have. Choose importance"
+  },
+  {
+    "name": "jump to Kitchen → edit → exit persists",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "after the last category: back to the index with a calm \"all done\" note; still revisitable",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "keyboard: opening a category moves focus to its heading",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "co-buyer edit lands in their own row",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "owner’s row on the same search is untouched",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "switching searches loads that search’s own priorities and resume point",
+    "ok": true,
+    "detail": "Start with Layout & Living Spaces"
+  },
+  {
+    "name": "…and back on the shared search, its own resume point",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "invitation link (signed out) still goes to sign-in with the invitation kept",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "Realtor entry unchanged (never sent through buyer onboarding)",
+    "ok": true,
+    "detail": "/homes"
+  },
+  {
+    "name": "flag off: new users get the live flow (no setup path, no V3 screens)",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "flag off: /search/explore shows the not-found page and no Explore UI",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "flag off: no Explore card on My Search",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "flag off: /search at 390px is pixel-identical to main",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "flag off: /search at 1280px is pixel-identical to main",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "flag off: /search/priorities at 390px is pixel-identical to main",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "flag off: /search/priorities at 1280px is pixel-identical to main",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "flag off: /homes at 1280px is pixel-identical to main",
+    "ok": true,
+    "detail": ""
+  },
+  {
+    "name": "320px: no horizontal overflow; bar and footer controls ≥ 44px",
+    "ok": true,
+    "detail": "overflow 0/0/0, small 0"
+  },
+  {
+    "name": "375px: no horizontal overflow; bar and footer controls ≥ 44px",
+    "ok": true,
+    "detail": "overflow 0/0/0, small 0"
+  },
+  {
+    "name": "390px: no horizontal overflow; bar and footer controls ≥ 44px",
+    "ok": true,
+    "detail": "overflow 0/0/0, small 0"
+  },
+  {
+    "name": "430px: no horizontal overflow; bar and footer controls ≥ 44px",
+    "ok": true,
+    "detail": "overflow 0/0/0, small 0"
+  },
+  {
+    "name": "large text (200%): Explore index fits without sideways scrolling",
+    "ok": true,
+    "detail": "0px"
+  },
+  {
+    "name": "Reduce Motion: the importance sheet does not slide",
+    "ok": true,
+    "detail": "1e-05s"
+  },
+  {
+    "name": "no unexpected console errors",
+    "ok": true,
+    "detail": ""
+  }
+]

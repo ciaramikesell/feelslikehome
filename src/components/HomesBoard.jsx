@@ -8,6 +8,7 @@ import {
   Heart, Home as HomeIcon, Undo2, Footprints, MessageCircle, Check, SlidersHorizontal, X,
 } from 'lucide-react';
 import { CriteriaDisclosure, MatchSummary } from '@/components/ui';
+import { useFeatureFlag } from '@/components/FeatureFlags';
 import { useCommuteObserver, readCommuteResult, useCommuteCacheVersion } from '@/lib/useCommuteObserver';
 import { evaluateCommute } from '@/lib/commute';
 import HomeModal from '@/components/HomeModal';
@@ -89,6 +90,7 @@ function commuteRouteParts(destination, state) {
 // presentation changed.
 function HomeCard({ home, priorities, commuteDestinations, mode, filterResult = null, onEdit, onOpen, onArchiveRequest, onWantToTour, onOpenPostTour, onRemoveFromTour, onRestore, onRequestDelete, floorPlans = null }) {
   const [imgError, setImgError] = useState(false);
+  const guidedPriorities = useFeatureFlag('guidedPriorities');
   const styleSummary = homeStyleSummary(home);
   const showPhoto = home.photoUrl && !imgError;
   const identity = homeIdentity(home, priorities);
@@ -226,7 +228,11 @@ function HomeCard({ home, priorities, commuteDestinations, mode, filterResult = 
               )}
             </section>
           ) : (
-            <p className="hh-match-empty">Set your priorities in <em>My Search</em> to see a match score.</p>
+            guidedPriorities
+              // Milestone 2 (FLH_ONBOARDING_V3): nothing chosen yet is not a poor fit —
+              // no number, just the way in. Flag off: the line is unchanged.
+              ? <p className="hh-match-empty">No Match yet—it starts once you tell FLH what matters. <Link href="/search/explore">Explore My Priorities</Link></p>
+              : <p className="hh-match-empty">Set your priorities in <em>My Search</em> to see a match score.</p>
           )}
 
           {propertyFacts.length > 0 && (

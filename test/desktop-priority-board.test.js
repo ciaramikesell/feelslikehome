@@ -40,11 +40,11 @@ const column = (board, tier) => board.columns[tier].map((feature) => feature.tex
 
 /* ---------------------------------- steps ---------------------------------- */
 
-test('desktop screen order: Search type · Basics · [Rental Essentials] · one board · Review', () => {
+test('desktop screen order: Search type · Setup path · Basics · [Rental Essentials] · one board · Review', () => {
   const expected = {
-    home_buy: ['search_type', 'basics', BOARD_STEP, 'review'],
-    home_rent: ['search_type', 'basics', 'cat_essentials', BOARD_STEP, 'review'],
-    apartment_rent: ['search_type', 'basics', 'cat_essentials', BOARD_STEP, 'review'],
+    home_buy: ['search_type', 'setup_path', 'basics', BOARD_STEP, 'review'],
+    home_rent: ['search_type', 'setup_path', 'basics', 'cat_essentials', BOARD_STEP, 'review'],
+    apartment_rent: ['search_type', 'setup_path', 'basics', 'cat_essentials', BOARD_STEP, 'review'],
   };
   for (const type of TYPES) {
     const steps = onboardingStepsFor(4, { answers: { searchType: type } });
@@ -53,8 +53,8 @@ test('desktop screen order: Search type · Basics · [Rental Essentials] · one 
     assert.ok(steps.filter(isBoardStep).length >= 2, type);
   }
   assert.deepEqual(onboardingStepsFor(4, { answers: { searchType: 'home_buy' } }),
-    ['search_type', 'basics', 'cat_layout', 'cat_kitchen', 'cat_living', 'cat_bath', 'cat_garage', 'cat_exterior', 'cat_neighborhood', 'review'],
-    'phone order unchanged');
+    ['search_type', 'setup_path', 'basics', 'cat_layout', 'cat_kitchen', 'cat_living', 'cat_bath', 'cat_garage', 'cat_exterior', 'cat_neighborhood', 'review'],
+    'phone order: the categories unchanged, after the Milestone 2 setup-path choice');
   // Question screens (Rental Essentials) are never folded into the board.
   assert.equal(isBoardStep('cat_essentials'), false);
   assert.deepEqual(BOARD_CATEGORY_STEPS, PRIORITY_CATEGORIES.filter((category) => !category.question).map((category) => category.step));
@@ -62,10 +62,10 @@ test('desktop screen order: Search type · Basics · [Rental Essentials] · one 
 
 test('desktop progress counts the board once, wherever the stored category step is', () => {
   const steps = onboardingStepsFor(4, { answers: { searchType: 'home_buy' } });
-  for (const step of steps.filter(isBoardStep)) assert.deepEqual(desktopProgress(steps, step), { index: 2, position: 3, total: 3, steps: ['search_type', 'basics', BOARD_STEP] }, step);
-  assert.equal(desktopProgress(steps, 'review').position, 3);
+  for (const step of steps.filter(isBoardStep)) assert.deepEqual(desktopProgress(steps, step), { index: 3, position: 4, total: 4, steps: ['search_type', 'setup_path', 'basics', BOARD_STEP] }, step);
+  assert.equal(desktopProgress(steps, 'review').position, 4);
   const rent = onboardingStepsFor(4, { answers: { searchType: 'home_rent' } });
-  assert.deepEqual([desktopProgress(rent, 'cat_essentials').position, desktopProgress(rent, 'cat_exterior').position, desktopProgress(rent, 'cat_exterior').total], [3, 4, 4]);
+  assert.deepEqual([desktopProgress(rent, 'cat_essentials').position, desktopProgress(rent, 'cat_exterior').position, desktopProgress(rent, 'cat_exterior').total], [4, 5, 5]);
 });
 
 test('Continue completes every category at once; Skip marks each skipped; Back leaves from the first; resume is shared with phones', () => {

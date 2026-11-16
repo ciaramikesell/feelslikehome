@@ -354,8 +354,13 @@ export function switchSearchType(raw, choiceKey) {
   ].map((chip) => [keyOf({ type: 'criterion', ...chip }).toLowerCase(), chip]));
   // Home preferences no other kind of search asks (e.g. a basement for an
   // apartment) are cleared like any other pick that no longer applies.
+  // Only an entry that is actually stored is cleared: one the person never
+  // answered stays absent (Unknown) instead of being written as 'dontcare'.
+  // Both read identically everywhere (neither is selected nor scored); this
+  // just keeps a fresh document free of answers nobody gave.
   for (const entry of homePreferenceCriteriaFor('home_buy')) {
-    if (!offered.has(`${entry.categoryKey}:${entry.label}`.toLowerCase())) next = moveCriterion(next, entry.categoryKey, entry.label, 'dontcare');
+    const stored = Object.hasOwn(next[entry.categoryKey]?.tiers || {}, entry.label);
+    if (stored && !offered.has(`${entry.categoryKey}:${entry.label}`.toLowerCase())) next = moveCriterion(next, entry.categoryKey, entry.label, 'dontcare');
   }
   for (const item of beforeItems) {
     const chip = offered.get(item.key.toLowerCase());
