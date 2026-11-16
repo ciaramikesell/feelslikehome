@@ -46,9 +46,9 @@ test('completed accounts are never re-routed (gate and legacy rule untouched)', 
 
 /* ---------------------------------- flow 4 ---------------------------------- */
 
-test('flow 4: one category per screen, nine question screens for a buyer (no geography screen), then Review', () => {
+test('flow 4: one category per screen, ten question screens for a buyer who personalizes (setup-path choice, no geography screen), then Review', () => {
   const buy = onboardingStepsFor(4, { answers: { searchType: 'home_buy' } });
-  assert.deepEqual(buy, ['search_type', 'basics', 'cat_layout', 'cat_kitchen', 'cat_living', 'cat_bath', 'cat_garage', 'cat_exterior', 'cat_neighborhood', 'review']);
+  assert.deepEqual(buy, ['search_type', 'setup_path', 'basics', 'cat_layout', 'cat_kitchen', 'cat_living', 'cat_bath', 'cat_garage', 'cat_exterior', 'cat_neighborhood', 'review']);
   assert.deepEqual(onboardingStepsFor(4, {}), buy, 'before the type is chosen, the buyer screens are shown');
   // Rentals: docs/rental-foundations-onboarding-spec.md §1 (exact order in test/rental-foundations-onboarding.test.js).
   const rent = onboardingStepsFor(4, { answers: { searchType: 'home_rent' } });
@@ -365,7 +365,9 @@ test('Dead-End Street is no longer offered, but a buyer who already added it kee
 test('garage Not important moves straight on; coming back shows it chosen and changeable', () => {
   const flow = read('src/components/onboarding/priority/PriorityFlow.jsx');
   assert.match(flow, /patch\(\(next\) => setGarageImportance\(next, choice\.key\)\);\n\s+if \(choice\.key === 'not_important' && onNotImportant\) onNotImportant\(\);/);
-  assert.match(flow, /onAutoAdvance=\{category\.key === 'garage' \? \(\) => onContinue\(step\) : null\}/);
+  // Wired once in the shared CategoryScreen (Milestone 2): only the garage page auto-advances, to the flow's own Continue.
+  assert.match(flow, /onAutoAdvance=\{category\.key === 'garage' \? onAutoAdvance : null\}/);
+  assert.match(flow, /onAutoAdvance=\{\(\) => onContinue\(step\)\}/);
   assert.match(flow, /aria-pressed=\{importance === choice\.key\}/);
   // Continue (not Skip): the answer is recorded and Back returns to it.
   assert.match(read('src/components/onboarding/Onboarding.jsx'), /onContinue=\{\(from\) => moveOn\(from\)\}/);

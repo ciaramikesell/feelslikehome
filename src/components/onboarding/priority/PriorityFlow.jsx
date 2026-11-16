@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Compass, Sparkles } from 'lucide-react';
 import { OnboardingAction } from '@/components/onboarding/OnboardingShell';
 import { BudgetField, SearchTypeControl, Stepper, UnitField } from '@/components/onboarding/BasicsStep';
 import PriorityBoard from '@/components/onboarding/priority/PriorityBoard';
@@ -29,7 +29,7 @@ import PetsQuestion from './PetsQuestion';
 
 const SEARCH_TYPE_PHRASES = { home_buy: 'a home to buy', home_rent: 'a home to rent', apartment_rent: 'an apartment to rent' };
 
-function Header({ eyebrow, heading, lead }) {
+export function PriorityHeader({ eyebrow, heading, lead }) {
   return (
     <header className="flh-onboarding-header">
       <p className="flh-eyebrow">{eyebrow}</p>
@@ -38,6 +38,7 @@ function Header({ eyebrow, heading, lead }) {
     </header>
   );
 }
+const Header = PriorityHeader;
 
 export function PriorityFooter({ onBack, onSkip, onContinue, continueLabel = 'Continue', busy = false }) {
   return (
@@ -219,6 +220,64 @@ export function CategoryStep({ categoryKey, priorities, patch, header, footer, p
   );
 }
 
+// One category page, complete: its header (from the category's own copy), the
+// cards, and the shared importance sheet. The single building block for every
+// category walkthrough — first-time onboarding (below) and Explore My
+// Priorities (src/components/explore/ExplorePriorities.jsx) — so Milestone 3's
+// polish lands in one place and reaches both.
+export function CategoryScreen({ category, priorities, patch, eyebrow, footer, onAutoAdvance = null, picker: sharedPicker = null }) {
+  const ownPicker = useImportancePicker(priorities, patch);
+  const picker = sharedPicker || ownPicker;
+  return (
+    <>
+      <CategoryStep
+        categoryKey={category.key}
+        priorities={priorities}
+        patch={patch}
+        picker={picker}
+        header={<Header eyebrow={eyebrow} heading={category.heading} lead={category.lead} />}
+        footer={footer}
+        onAutoAdvance={category.key === 'garage' ? onAutoAdvance : null}
+      />
+      {!sharedPicker && picker.element}
+    </>
+  );
+}
+
+// Milestone 2: the two first-time setup paths, as two large choices. Both are
+// good ways to start; neither changes how Match works. Choosing one moves on.
+const SETUP_PATH_CHOICES = Object.freeze([
+  Object.freeze({ key: 'personalize', icon: Sparkles, title: 'Let’s personalize your search', body: 'Walk through the features that matter to you, one room at a time.', recommended: true }),
+  Object.freeze({ key: 'as_i_go', icon: Compass, title: 'I’ll figure it out as I go', body: 'Start saving homes now. You can tell us what matters later.' }),
+]);
+
+// Tapping a choice is the one action, so there is no Continue: only a quiet
+// Back, in the flow of the page, so both choices fit a 320 × 568 screen.
+function SetupPathStep({ setupPath, onChoose, header, onBack, busy }) {
+  return (
+    <div className="flh-onboarding-step flh-ob-pf-step flh-ob-setup-path">
+      {header}
+      <div className="flh-ob-path-options" role="group" aria-label="How would you like to start?">
+        {SETUP_PATH_CHOICES.map(({ key, icon: Icon, title, body, recommended }) => (
+          <button key={key} type="button" className={`flh-ob-path-card${setupPath === key ? ' is-current' : ''}`} aria-pressed={setupPath === key} disabled={busy} onClick={() => onChoose(key)}>
+            <span className="flh-ob-path-icon" aria-hidden="true"><Icon size={22} strokeWidth={2} /></span>
+            <span className="flh-ob-path-text">
+              {recommended && <span className="flh-ob-path-badge">Recommended</span>}
+              <span className="flh-ob-path-title">{title}</span>
+              <span className="flh-ob-path-body">{body}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+      {onBack && (
+        <nav className="flh-ob-path-nav" aria-label="Step navigation">
+          <button type="button" className="flh-ob-pf-back" onClick={onBack} disabled={busy}><ArrowLeft size={18} strokeWidth={2.2} aria-hidden="true" /><span>Back</span></button>
+        </nav>
+      )}
+    </div>
+  );
+}
+
 function SearchTypeStep({ priorities, patch, header, footerFor, onSearchType }) {
   const choice = priorities.onboardingSearchType || '';
   const [invalid, setInvalid] = useState(false);
@@ -290,6 +349,7 @@ export default function PriorityFlow({
   step, progress, sharedFor = null, priorities, patch, editingFromReview = false, busy = false,
   onContinue, onSkip, onBack, onSearchType,
   review, board = false,
+  setupPath = null, onSetupPath = null, quickStart = false,
 }) {
   const picker = useImportancePicker(priorities, patch);
   const choice = priorities.onboardingSearchType || 'home_buy';
@@ -316,13 +376,27 @@ export default function PriorityFlow({
       />
     );
   }
+  if (step === 'setup_path') {
+    return (
+      <SetupPathStep
+        setupPath={setupPath}
+        onChoose={onSetupPath}
+        header={<Header eyebrow={eyebrow('Getting Started')} heading={['How would you like ', 'to start?']} lead="Either way it’s the same FLH, and you can change your mind anytime." />}
+        onBack={first || editingFromReview ? null : () => onBack(step)}
+        busy={busy}
+      />
+    );
+  }
   if (step === 'basics') {
+    // Quick start (Milestone 2): Basics is the last screen and every answer on
+    // it is optional; Continue or Skip finishes and opens Add Home.
+    const quickLead = 'All optional. Skip anything you haven’t decided—you can add it later.';
     return (
       <BasicsQuestions
         priorities={priorities}
         patch={patch}
-        header={<Header eyebrow={eyebrow(BASICS_TITLE[choice] || 'The Basics')} heading={['The basics of your ', BASICS_NOUN[choice] || 'home search']} lead={choice === 'home_buy' ? 'Your budget and the space you need. Skip anything you haven’t decided.' : 'Your monthly rent and the space you need. Skip anything you haven’t decided.'} />}
-        footer={footer()}
+        header={<Header eyebrow={eyebrow(BASICS_TITLE[choice] || 'The Basics')} heading={['The basics of your ', BASICS_NOUN[choice] || 'home search']} lead={quickStart ? quickLead : (choice === 'home_buy' ? 'Your budget and the space you need. Skip anything you haven’t decided.' : 'Your monthly rent and the space you need. Skip anything you haven’t decided.')} />}
+        footer={footer(quickStart ? { label: sharedFor ? 'Save and see the homes' : 'Start saving homes' } : {})}
       />
     );
   }
@@ -356,14 +430,14 @@ export default function PriorityFlow({
   const category = priorityCategory(priorities, step);
   if (!category) return <p className="flh-ob-unbuilt" role="status">This step isn’t available for this search.</p>;
   const categoryStep = (
-    <CategoryStep
-      categoryKey={category.key}
+    <CategoryScreen
+      category={category}
       priorities={priorities}
       patch={patch}
       picker={picker}
-      header={<Header eyebrow={eyebrow(category.title)} heading={category.heading} lead={category.lead} />}
+      eyebrow={eyebrow(category.title)}
       footer={footer()}
-      onAutoAdvance={category.key === 'garage' ? () => onContinue(step) : null}
+      onAutoAdvance={() => onContinue(step)}
     />
   );
   const boardProgress = desktopProgress([...progress.steps, 'review'], step);

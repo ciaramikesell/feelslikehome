@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, House, MapPin, Sparkles } from 'lucide-react';
+import { ArrowRight, Compass, House, MapPin, Sparkles } from 'lucide-react';
 import Sheet from '@/components/Sheet';
 import BasicsEditor from '@/components/BasicsEditor';
 import YourPeople from '@/components/YourPeople';
@@ -17,6 +17,7 @@ import { priorityLevelsWithGroups, selectedGroupCount } from '@/lib/whatMattersG
 import { createClient } from '@/lib/supabase/client';
 import { useReliableOptimisticState } from '@/lib/useReliableOptimisticState';
 import { savePriorities } from '@/lib/supabase/collaboration';
+import { exploreCategory, exploreProgress } from '@/lib/explorePriorities';
 
 // My Search is a personal search profile: an overview you can read at a glance,
 // with each part opening its own focused editor. "Onboarding teaches me how to
@@ -43,6 +44,27 @@ function WhatMattersMost({ levels }) {
       ) : (
         <p className="flh-card-empty">Nothing ranked yet. Add what matters to you and your homes will start to measure up. <Chevron /></p>
       )}
+    </SectionCard>
+  );
+}
+
+// Explore My Priorities (Milestone 2, behind FLH_ONBOARDING_V3): the friendly
+// way back into the category-by-category walkthrough. Quick editing above
+// (Rank Priorities) is unchanged; both edit the same document.
+function ExploreMyPriorities({ priorities }) {
+  const last = exploreProgress(priorities).lastStep;
+  const lastTitle = last ? exploreCategory(priorities, last)?.title : null;
+  return (
+    <SectionCard href="/search/explore" className="flh-explore-entry" ariaLabel={`Explore My Priorities. Walk through the things that make a home feel right.${lastTitle ? ` Pick up at ${lastTitle}.` : ''}`}>
+      <div className="flh-card-row">
+        <IconBadge icon={Compass} />
+        <div className="flh-card-heading">
+          <h2 className="flh-card-title">Explore My Priorities</h2>
+          <p className="flh-card-sub">Walk through the things that make a home feel right. Change your mind anytime.</p>
+          {lastTitle && <p className="flh-card-sub flh-explore-entry-resume">Pick up at <strong>{lastTitle}</strong></p>}
+        </div>
+        <Chevron />
+      </div>
     </SectionCard>
   );
 }
@@ -131,7 +153,7 @@ function SearchStatus({ count, firstRun }) {
   );
 }
 
-export default function MySearchPanel({ search, userId, isOwner, participantCount, memberUserId, initialPriorities, initialCommuteDestinations, collaboratorContext = null, people = null, realtorInvitations = [], firstRun = false }) {
+export default function MySearchPanel({ search, userId, isOwner, participantCount, memberUserId, initialPriorities, initialCommuteDestinations, collaboratorContext = null, people = null, realtorInvitations = [], firstRun = false, exploreEnabled = false }) {
   const persistPriorities = useCallback((next) => savePriorities(createClient(), search, userId, next), [search, userId]);
   const { state: priorities, patch, saveError, retry, isSaving } = useReliableOptimisticState(normalizePriorities(initialPriorities), persistPriorities);
   const [basicsOpen, setBasicsOpen] = useState(false);
@@ -147,6 +169,7 @@ export default function MySearchPanel({ search, userId, isOwner, participantCoun
       <div className="flh-my-search-grid">
         <div className="flh-my-search-primary">
           <WhatMattersMost levels={levels} />
+          {exploreEnabled && <ExploreMyPriorities priorities={priorities} />}
         </div>
         <div className="flh-my-search-rail">
           <WhatImLookingFor priorities={priorities} onEdit={() => setBasicsOpen(true)} />

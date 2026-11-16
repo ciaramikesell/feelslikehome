@@ -48,6 +48,18 @@ const invitedCoBuyer = (state) => state.context?.role === 'co_buyer';
 // screens are shown, so the step count never shrinks to nothing.
 export const PRIORITY_SEARCH_TYPES = Object.freeze(['home_buy', 'home_rent', 'apartment_rent']);
 const searchTypeOf = (state) => state.answers?.searchType || 'home_buy';
+
+// Flow 4's two first-time setup paths (Milestone 2,
+// docs/onboarding-paths-explore-priorities.md), chosen right after the kind of
+// search. 'personalize' continues into Basics and every category screen, then
+// Review — the flow exactly as it was. 'as_i_go' (quick start) keeps only
+// Basics (all optional) and then finishes onboarding, opening Add Home.
+// Unanswered = personalize, so a session started before this screen existed
+// carries on exactly as before.
+export const SETUP_PATHS = Object.freeze(['personalize', 'as_i_go']);
+const quickStart = (state) => state.answers?.setupPath === 'as_i_go';
+const personalizing = (state) => !quickStart(state);
+export const isQuickStartState = (rawState) => quickStart(normalizeOnboardingState(rawState));
 const renting = (state) => searchTypeOf(state) !== 'home_buy';
 const buying = (state) => searchTypeOf(state) === 'home_buy';
 const homeRent = (state) => searchTypeOf(state) === 'home_rent';
@@ -116,20 +128,22 @@ export const ONBOARDING_FLOWS = Object.freeze({
   4: Object.freeze({
     steps: Object.freeze([
       step('search_type', SCOPE.SEARCH),
+      // Milestone 2: "Let's personalize your search" or "I'll figure it out as I go".
+      step('setup_path', SCOPE.SEARCH),
       step('basics', SCOPE.SEARCH, { legacyKeys: ['basics'] }),
-      step('cat_essentials', SCOPE.SEARCH, { when: renting }),
-      step('cat_layout', SCOPE.SEARCH, { when: buying }),
-      step('cat_kitchen', SCOPE.SEARCH, { when: buying }),
-      step('cat_living', SCOPE.SEARCH, { when: buying }),
-      step('cat_bath', SCOPE.SEARCH, { when: buying }),
-      step('cat_garage', SCOPE.SEARCH, { when: buying }),
-      step('cat_rent_layout', SCOPE.SEARCH, { when: homeRent }),
-      step('cat_rent_features', SCOPE.SEARCH, { when: homeRent }),
-      step('cat_apt_unit', SCOPE.SEARCH, { when: apartment }),
-      step('cat_apt_property', SCOPE.SEARCH, { when: apartment }),
-      step('cat_exterior', SCOPE.SEARCH, { when: (state) => !apartment(state) }),
-      step('cat_neighborhood', SCOPE.SEARCH, { when: (state) => !apartment(state) }),
-      step('review', SCOPE.SEARCH, { legacyKeys: ['review'] }),
+      step('cat_essentials', SCOPE.SEARCH, { when: (state) => personalizing(state) && renting(state) }),
+      step('cat_layout', SCOPE.SEARCH, { when: (state) => personalizing(state) && buying(state) }),
+      step('cat_kitchen', SCOPE.SEARCH, { when: (state) => personalizing(state) && buying(state) }),
+      step('cat_living', SCOPE.SEARCH, { when: (state) => personalizing(state) && buying(state) }),
+      step('cat_bath', SCOPE.SEARCH, { when: (state) => personalizing(state) && buying(state) }),
+      step('cat_garage', SCOPE.SEARCH, { when: (state) => personalizing(state) && buying(state) }),
+      step('cat_rent_layout', SCOPE.SEARCH, { when: (state) => personalizing(state) && homeRent(state) }),
+      step('cat_rent_features', SCOPE.SEARCH, { when: (state) => personalizing(state) && homeRent(state) }),
+      step('cat_apt_unit', SCOPE.SEARCH, { when: (state) => personalizing(state) && apartment(state) }),
+      step('cat_apt_property', SCOPE.SEARCH, { when: (state) => personalizing(state) && apartment(state) }),
+      step('cat_exterior', SCOPE.SEARCH, { when: (state) => personalizing(state) && !apartment(state) }),
+      step('cat_neighborhood', SCOPE.SEARCH, { when: (state) => personalizing(state) && !apartment(state) }),
+      step('review', SCOPE.SEARCH, { legacyKeys: ['review'], when: personalizing }),
     ]),
   }),
 });
@@ -161,6 +175,7 @@ export function normalizeOnboardingState(raw) {
     answers: {
       ...(COLLABORATION_CHOICES.includes(answers.collaboration) ? { collaboration: answers.collaboration } : {}),
       ...(PRIORITY_SEARCH_TYPES.includes(answers.searchType) ? { searchType: answers.searchType } : {}),
+      ...(SETUP_PATHS.includes(answers.setupPath) ? { setupPath: answers.setupPath } : {}),
     },
     // Screens left with Skip (flow 4). Also in `completed`, so resuming never
     // sends someone back to a screen they chose to skip; Review lists them.
@@ -190,7 +205,12 @@ export function resumeOnboardingStep(version, rawState) {
   const state = normalizeOnboardingState(rawState);
   const steps = onboardingStepsFor(version, state);
   if (state.step && steps.includes(state.step)) return state.step;
-  return steps.find((key) => !state.completed.includes(key)) || steps[steps.length - 1];
+  // A session that was already past the setup-path screen when it was added
+  // (any later screen finished) chose to personalize by carrying on: never
+  // send it back to the choice.
+  const pastSetupPath = (key) => key === 'setup_path' && !state.answers.setupPath
+    && steps.slice(steps.indexOf(key) + 1).some((later) => state.completed.includes(later));
+  return steps.find((key) => !state.completed.includes(key) && !pastSetupPath(key)) || steps[steps.length - 1];
 }
 
 export function onboardingProgress(version, rawState, currentStep) {
@@ -274,6 +294,15 @@ export function setOnboardingSearchType(rawState, searchType, now = new Date().t
   if (!PRIORITY_SEARCH_TYPES.includes(searchType)) return state;
   if (state.answers.searchType === searchType) return state;
   return { ...state, answers: { ...state.answers, searchType }, updatedAt: now };
+}
+
+// Flow 4: records the setup path, which decides whether the category screens
+// and Review follow Basics. Changing it never touches the priorities document.
+export function setOnboardingSetupPath(rawState, setupPath, now = new Date().toISOString()) {
+  const state = normalizeOnboardingState(rawState);
+  if (!SETUP_PATHS.includes(setupPath)) return state;
+  if (state.answers.setupPath === setupPath) return state;
+  return { ...state, answers: { ...state.answers, setupPath }, updatedAt: now };
 }
 
 // Skip: moves on exactly like Continue but changes no answer, and remembers

@@ -53,8 +53,8 @@ test('an in-progress V3 session stored on the old geography screen resumes at th
     // Already past it, or skipped it: carry on where they were; nothing is lost.
     const later = { ...stored, step: null, completed: ['search_type', 'basics', 'locations', next], skipped: ['locations'] };
     assert.notEqual(resumeOnboardingStep(4, later), 'locations');
-    // Never got as far as Basics: Basics first.
-    assert.equal(resumeOnboardingStep(4, { ...stored, completed: ['search_type'] }), 'basics');
+    // Never got as far as Basics: the setup-path choice (Milestone 2) comes first.
+    assert.equal(resumeOnboardingStep(4, { ...stored, completed: ['search_type'] }), 'setup_path');
   }
 });
 

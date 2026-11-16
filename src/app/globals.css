@@ -2133,6 +2133,51 @@ html[data-flh-native] .flh-web-entry { display: none !important; }
 .flh-st-replay { min-height: 44px; border: 0; border-radius: 12px; background: transparent; color: var(--ink-soft); font: 600 14px var(--font-sans); cursor: pointer; }
 .flh-account-help-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 4px; }
 
+/* ── Milestone 2: setup paths + Explore My Priorities
+   (docs/onboarding-paths-explore-priorities.md). The setup-path cards are
+   onboarding-scoped; Explore reuses the V3 onboarding frame (.flh-onboarding-root
+   .flh-ob-layout) inside the signed-in app, in one centred column. */
+.flh-onboarding-root .flh-ob-path-options { display: grid; gap: 12px; }
+.flh-onboarding-root .flh-ob-path-card { display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: start; gap: 14px; width: 100%; min-height: 96px; padding: 18px 18px 18px 16px; border: 1px solid var(--ob-line); border-radius: 18px; background: #fff; color: var(--ink); text-align: left; cursor: pointer; font: inherit; transition: border-color .15s ease, box-shadow .15s ease; }
+.flh-onboarding-root .flh-ob-path-card:hover { border-color: #CDBFAE; }
+.flh-onboarding-root .flh-ob-path-card.is-current { border-color: var(--brick); box-shadow: inset 0 0 0 1px var(--brick); }
+.flh-onboarding-root .flh-ob-path-icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: #F3E7DC; color: var(--brick); }
+.flh-onboarding-root .flh-ob-path-text { display: grid; gap: 4px; min-width: 0; }
+.flh-onboarding-root .flh-ob-path-badge { justify-self: start; padding: 2px 9px; border-radius: 999px; background: var(--flh-sage-bg, #E3EADF); color: var(--flh-sage-ink, #4F6B47); font: 700 11px/1.5 var(--font-sans); letter-spacing: .04em; text-transform: uppercase; }
+.flh-onboarding-root .flh-ob-path-title { font: 600 18px/1.25 var(--font-serif); letter-spacing: -.01em; }
+.flh-onboarding-root .flh-ob-path-body { color: var(--ink-soft); font-size: 14.5px; line-height: 1.45; }
+.flh-onboarding-root .flh-ob-path-nav { display: flex; }
+@media (max-width: 400px) { .flh-onboarding-root .flh-ob-path-nav .flh-ob-pf-back span { display: inline; } }
+
+.flh-explore-root .flh-ob-layout { max-width: var(--ob-measure); margin: 0 auto; padding: 0 0 48px; }
+@media (min-width: 960px) { .flh-explore-root .flh-ob-layout { display: block; padding: 8px 0 72px; } }
+.flh-explore-bar { position: sticky; top: var(--flh-safe-top); z-index: 6; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; min-height: 56px; margin-bottom: 8px; padding-top: var(--flh-flow-top-10); background: var(--paper); }
+.flh-explore-bar-action { justify-self: start; display: inline-flex; white-space: nowrap; align-items: center; gap: 6px; min-height: 44px; padding: 0 10px; border: 0; border-radius: 12px; background: transparent; color: var(--ink); font: 600 15px var(--font-sans); cursor: pointer; }
+.flh-explore-bar-action:hover { background: rgba(46,38,33,.05); }
+.flh-explore-done { justify-self: end; color: var(--brick); }
+.flh-explore-bar-status { justify-self: center; min-height: 20px; }
+.flh-explore .flh-onboarding-header .flh-page-title:focus { outline: none; }
+.flh-explore-index .flh-ob-cta { margin-top: 4px; }
+.flh-explore-notice { margin: 0; padding: 12px 14px; border-radius: 14px; background: var(--flh-sage-bg, #E3EADF); color: var(--flh-sage-ink, #4F6B47); font-size: 14.5px; line-height: 1.45; }
+.flh-explore-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.flh-explore-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) 20px; align-items: center; gap: 14px; width: 100%; min-height: 76px; padding: 6px 14px 6px 6px; border: 1px solid var(--ob-line); border-radius: 16px; background: #fff; color: var(--ink); text-align: left; cursor: pointer; font: inherit; }
+.flh-explore-row:hover { border-color: #CDBFAE; }
+.flh-explore-thumb { display: block; width: 64px; height: 64px; overflow: hidden; border-radius: 12px; background: #F3E7DC; }
+.flh-explore-thumb .flh-ob-pf-media { aspect-ratio: auto; height: 100%; }
+.flh-explore-row-text { display: grid; gap: 3px; min-width: 0; }
+.flh-explore-row-title { font: 600 16px/1.25 var(--font-sans); overflow-wrap: break-word; }
+.flh-explore-row-meta { display: inline-flex; align-items: center; gap: 4px; color: var(--ink-soft); font-size: 13px; }
+.flh-explore-row-chevron { color: var(--ink-soft); }
+@media (max-width: 300px) {
+  .flh-explore-row { grid-template-columns: minmax(0, 1fr) 20px; padding-left: 14px; }
+  .flh-explore-thumb { display: none; }
+  .flh-explore-bar { grid-template-columns: auto auto; justify-content: space-between; }
+  .flh-explore-bar-status { display: none; }
+}
+/* My Search entry. */
+.flh-explore-entry { margin-top: 14px; }
+.flh-explore-entry-resume { margin-top: 4px; }
+
 /* ── Account & Settings ─────────────────────────────────────────────────── */
 .flh-account { box-sizing: border-box; width: 100%; max-width: 672px; margin: 0 auto; padding: 8px 16px calc(96px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: var(--flh-stack); }
 .flh-account-header h1 { margin: 0; font-size: 26px; }

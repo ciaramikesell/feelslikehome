@@ -26,11 +26,11 @@ const lotItem = (raw, home = HOME) => computeMatch(home, raw)?.allSelected.find(
 
 /* ------------------------------- the screens ------------------------------- */
 
-test('exact screens and progress per search type: Home to Rent 7, Apartment 5, Home to Buy 9 (Review is the finish line; no geography screen)', () => {
+test('exact screens and progress per search type: Home to Rent 8, Apartment 6, Home to Buy 10 (with the setup-path choice; Review is the finish line; no geography screen)', () => {
   const counted = (type) => onboardingStepsFor(4, { answers: { searchType: type } }).filter((step) => step !== 'review');
-  assert.deepEqual(counted('home_rent'), ['search_type', 'basics', 'cat_essentials', 'cat_rent_layout', 'cat_rent_features', 'cat_exterior', 'cat_neighborhood']);
-  assert.deepEqual(counted('apartment_rent'), ['search_type', 'basics', 'cat_essentials', 'cat_apt_unit', 'cat_apt_property']);
-  assert.equal(counted('home_buy').length, 9);
+  assert.deepEqual(counted('home_rent'), ['search_type', 'setup_path', 'basics', 'cat_essentials', 'cat_rent_layout', 'cat_rent_features', 'cat_exterior', 'cat_neighborhood']);
+  assert.deepEqual(counted('apartment_rent'), ['search_type', 'setup_path', 'basics', 'cat_essentials', 'cat_apt_unit', 'cat_apt_property']);
+  assert.equal(counted('home_buy').length, 10);
   assert.equal(CURRENT_ONBOARDING_VERSION, 1, 'the live flow is unchanged');
 });
 
