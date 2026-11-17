@@ -193,7 +193,7 @@ test('saved evidence is read defensively: conflicts, other sources, duplicates a
 test('the found card shows one shared checklist and defers personal answers; the Save Home order is unchanged', () => {
   assert.doesNotMatch(card, /<ListingAnswerReview/, 'no personal review on the card');
   const at = (needle) => card.indexOf(needle);
-  const order = ['className="hh-btn flh-found-add"', '<ListingDetailsPaste paste={paste} />', '<HomeFactReview review={factReview} />', '<DeferredAnswersNote', 'className="hh-details flh-found-notes"'].map(at);
+  const order = ['className="hh-btn flh-found-add"', '<ListingDetailsPaste paste={paste} />', '<HomeFactReview review={factReview} />', '<DeferredAnswersNote'].map(at);
   assert.ok(order.every((index) => index > 0), `missing: ${order}`);
   assert.deepEqual([...order].sort((a, b) => a - b), order);
   // The folded paste's count is shared facts only.

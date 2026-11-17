@@ -114,7 +114,7 @@ test('the welcome reuses the exact desktop homepage hero photograph', () => {
 
 test('the welcome has the approved copy and the existing auth paths', () => {
   assert.match(welcome, /A little closer to home\./);
-  assert.match(welcome, /Save homes you&rsquo;ve found, see what matches, and decide together\./);
+  assert.match(welcome, /Already found a few homes you love\?/);
   assert.match(welcome, /<Link href="\/auth\/sign-up"[^>]*>Get Started/);
   assert.match(welcome, /<Link href="\/auth\/sign-in"[^>]*>Already have an account\? <b>Sign in<\/b>/);
 });
@@ -151,11 +151,11 @@ test('the tutorial is replayable and stores nothing', () => {
 });
 
 test('the tutorial explains the Share Extension accurately', () => {
-  assert.match(tutorial, /Works from Safari and supported listing apps\./);
+  assert.match(tutorial, /Practice only — no listing is imported or saved here\./);
   assert.match(tutorial, /varies by app and iOS version/);
-  assert.match(tutorial, /<b>More<\/b>, tap <b>Edit<\/b>, and add Feels Like Home to <b>Favorites<\/b>/);
+  assert.match(tutorial, /Copy the listing link and paste it into Add Home/);
   assert.match(tutorial, /not an Add to Home Screen shortcut/);
-  assert.match(tutorial, /Add Home opens with the listing ready for you to review/);
+  assert.match(tutorial, /copy the link and paste it into Add Home instead/);
 });
 
 test('the example listing is fictional and uses existing FLH photography', () => {

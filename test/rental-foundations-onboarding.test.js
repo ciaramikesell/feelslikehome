@@ -54,8 +54,9 @@ test('a preview session stored on a screen its search no longer shows resumes at
 
 // The approved Home to Buy screens, byte for byte. Rental work must never
 // change them. Updated deliberately for the founder-approved Home to Buy
-// catalog refinement (PR #186); see docs/home-to-buy-catalog-refinement.md.
-test('Home to Buy screens are byte-for-byte the approved snapshot (rentals never change them)', () => {
+// catalog refinement (PR #186), then the requested Part A card promotion;
+// see docs/first-use-part-a/README.md.
+test('Home to Buy screens match the Part A presentation snapshot (rentals never change them)', () => {
   const snapshot = JSON.parse(read('test/fixtures/v3-home-buy-screens.json'));
   const p = fresh('home_buy');
   const categories = priorityCategoriesFor(p);

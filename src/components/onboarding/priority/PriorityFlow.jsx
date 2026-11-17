@@ -34,7 +34,7 @@ export function PriorityHeader({ eyebrow, heading, lead }) {
   return (
     <header className="flh-onboarding-header">
       <p className="flh-eyebrow">{eyebrow}</p>
-      <h1 className="flh-page-title">{heading[0]}<em>{heading[1]}</em></h1>
+      <h1 className="flh-page-title flh-editorial-heading"><span>{heading[0]}</span><em>{heading[1].charAt(0).toUpperCase() + heading[1].slice(1)}</em></h1>
       {lead && <p className="flh-lead">{lead}</p>}
     </header>
   );

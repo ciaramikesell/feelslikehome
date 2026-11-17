@@ -17,9 +17,9 @@ import { OnboardingAction } from '@/components/onboarding/OnboardingShell';
 // full names (src/lib/onboarding.js) are unchanged.
 const SEARCH_TYPE_PHRASES = { home_buy: 'a home to buy', home_rent: 'a home to rent', apartment_rent: 'an apartment to rent' };
 const SEARCH_TYPE_OPTIONS = Object.freeze({
-  home_buy: { title: 'Home to Buy', note: 'Purchase budget', icon: House },
-  home_rent: { title: 'Home to Rent', note: 'Monthly rent', icon: KeyRound },
-  apartment_rent: { title: 'Apartment to Rent', note: 'Monthly rent', icon: Building2 },
+  home_buy: { title: 'Home to Buy', icon: House },
+  home_rent: { title: 'Home to Rent', icon: KeyRound },
+  apartment_rent: { title: 'Apartment to Rent', icon: Building2 },
 });
 
 function OptionalTag() {
@@ -43,7 +43,7 @@ export function SearchTypeControl({ choice, onChoose, invalid, groupRef }) {
             <label key={option.key} className={`flh-ob-searchtype-option${selected ? ' is-selected' : ''}`}>
               <input type="radio" className="flh-ob-pill-input" name={`${id}-type`} value={option.key} checked={selected} onChange={() => onChoose(option.key)} />
               <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
-              <span className="flh-ob-searchtype-copy"><span className="flh-ob-searchtype-title">{copy.title}</span><span className="flh-ob-searchtype-note">{copy.note}</span></span>
+              <span className="flh-ob-searchtype-copy"><span className="flh-ob-searchtype-title">{copy.title}</span></span>
             </label>
           );
         })}

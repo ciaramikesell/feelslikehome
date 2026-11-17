@@ -155,9 +155,7 @@
      "icon": "Package",
      "group": "kitchen",
      "role": "feature"
-    }
-   ],
-   "suggestions": [
+    },
     {
      "id": "features:Eat-in Kitchen",
      "categoryKey": "features",
@@ -168,7 +166,7 @@
      "art": "eat-in-kitchen",
      "icon": "Utensils",
      "group": "kitchen",
-     "role": "suggestion"
+     "role": "feature"
     },
     {
      "id": "features:Kitchen Island",
@@ -180,8 +178,10 @@
      "art": "kitchen-island",
      "icon": "ChefHat",
      "group": "kitchen",
-     "role": "suggestion"
-    },
+     "role": "feature"
+    }
+   ],
+   "suggestions": [
     {
      "id": "features:Formal Dining Room",
      "categoryKey": "features",
@@ -299,9 +299,7 @@
      "icon": "Bath",
      "group": "bath",
      "role": "feature"
-    }
-   ],
-   "suggestions": [
+    },
     {
      "id": "features:Separate Shower / Tub",
      "categoryKey": "features",
@@ -312,19 +310,7 @@
      "art": "separate-shower",
      "icon": "ShowerHead",
      "group": "bath",
-     "role": "suggestion"
-    },
-    {
-     "id": "features:Private Toilet",
-     "categoryKey": "features",
-     "label": "Private Toilet",
-     "text": "Private Toilet",
-     "kind": "check",
-     "custom": true,
-     "art": "private-toilet",
-     "icon": "DoorClosed",
-     "group": "bath",
-     "role": "suggestion"
+     "role": "feature"
     },
     {
      "id": "features:Linen Closet",
@@ -335,6 +321,20 @@
      "custom": true,
      "art": "linen-closet",
      "icon": "Layers",
+     "group": "bath",
+     "role": "feature"
+    }
+   ],
+   "suggestions": [
+    {
+     "id": "features:Private Toilet",
+     "categoryKey": "features",
+     "label": "Private Toilet",
+     "text": "Private Toilet",
+     "kind": "check",
+     "custom": true,
+     "art": "private-toilet",
+     "icon": "DoorClosed",
      "group": "bath",
      "role": "suggestion"
     }
@@ -709,9 +709,7 @@
      "group": "kitchen",
      "role": "feature",
      "level": null
-    }
-   ],
-   "suggestions": [
+    },
     {
      "id": "features:Eat-in Kitchen",
      "categoryKey": "features",
@@ -722,7 +720,8 @@
      "art": "eat-in-kitchen",
      "icon": "Utensils",
      "group": "kitchen",
-     "role": "suggestion"
+     "role": "feature",
+     "level": null
     },
     {
      "id": "features:Kitchen Island",
@@ -734,8 +733,11 @@
      "art": "kitchen-island",
      "icon": "ChefHat",
      "group": "kitchen",
-     "role": "suggestion"
-    },
+     "role": "feature",
+     "level": null
+    }
+   ],
+   "suggestions": [
     {
      "id": "features:Formal Dining Room",
      "categoryKey": "features",
@@ -835,9 +837,7 @@
      "group": "bath",
      "role": "feature",
      "level": null
-    }
-   ],
-   "suggestions": [
+    },
     {
      "id": "features:Separate Shower / Tub",
      "categoryKey": "features",
@@ -848,19 +848,8 @@
      "art": "separate-shower",
      "icon": "ShowerHead",
      "group": "bath",
-     "role": "suggestion"
-    },
-    {
-     "id": "features:Private Toilet",
-     "categoryKey": "features",
-     "label": "Private Toilet",
-     "text": "Private Toilet",
-     "kind": "check",
-     "custom": true,
-     "art": "private-toilet",
-     "icon": "DoorClosed",
-     "group": "bath",
-     "role": "suggestion"
+     "role": "feature",
+     "level": null
     },
     {
      "id": "features:Linen Closet",
@@ -871,6 +860,21 @@
      "custom": true,
      "art": "linen-closet",
      "icon": "Layers",
+     "group": "bath",
+     "role": "feature",
+     "level": null
+    }
+   ],
+   "suggestions": [
+    {
+     "id": "features:Private Toilet",
+     "categoryKey": "features",
+     "label": "Private Toilet",
+     "text": "Private Toilet",
+     "kind": "check",
+     "custom": true,
+     "art": "private-toilet",
+     "icon": "DoorClosed",
      "group": "bath",
      "role": "suggestion"
     }
@@ -1183,15 +1187,15 @@
    "src": "/images/onboarding/cards/separate-shower-400.webp",
    "srcSet": "/images/onboarding/cards/separate-shower-400.webp 400w, /images/onboarding/cards/separate-shower-800.webp 800w"
   },
-  "features:Private Toilet": {
-   "kind": "photo",
-   "src": "/images/onboarding/cards/private-toilet-400.webp",
-   "srcSet": "/images/onboarding/cards/private-toilet-400.webp 400w, /images/onboarding/cards/private-toilet-800.webp 800w"
-  },
   "features:Linen Closet": {
    "kind": "photo",
    "src": "/images/onboarding/cards/linen-closet-400.webp",
    "srcSet": "/images/onboarding/cards/linen-closet-400.webp 400w, /images/onboarding/cards/linen-closet-800.webp 800w"
+  },
+  "features:Private Toilet": {
+   "kind": "photo",
+   "src": "/images/onboarding/cards/private-toilet-400.webp",
+   "srcSet": "/images/onboarding/cards/private-toilet-400.webp 400w, /images/onboarding/cards/private-toilet-800.webp 800w"
   },
   "exterior:Workbench": {
    "kind": "photo",

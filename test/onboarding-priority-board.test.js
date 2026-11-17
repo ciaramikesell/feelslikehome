@@ -98,9 +98,9 @@ test('three-step journey preserves choices on Back, persists before completion, 
   assert.match(onboarding, /await flush\(\);\n(?:\s+\/\/.*\n)*\s+await persistPriorities\(priorities\);\n\s+await services\.completeOnboarding\(userId, \{ version, state: completeOnboardingState\(version, progressRef\.current\) \}\);/);
   // #73: a pending share-intake destination (see (app)/layout.js) takes over when present.
   assert.match(onboarding, /if \(pendingRedirect\) \{ router\.push\(pendingRedirect\); router\.refresh\(\); return; \}/);
-  assert.match(onboarding, /Your search is ready\./);
-  assert.match(onboarding, /Now let’s see how your first home measures up\./);
-  assert.match(onboarding, /Add your first home <ArrowRight/);
+  assert.match(onboarding, /You know what matters\./);
+  assert.match(onboarding, /Bring in a listing you’ve already found\./);
+  assert.match(onboarding, /Import your first listing <ArrowRight/);
   assert.match(onboarding, /onAddHome=\{\(\) => leave\('\/homes\?add=1'\)\}/);
   assert.match(onboarding, /onViewSearch=\{\(\) => leave\('\/search\?welcome=1'\)\}/);
   assert.match(onboarding, /Unknown information never counts against a home\./);

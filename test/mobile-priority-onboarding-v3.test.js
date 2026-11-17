@@ -93,16 +93,16 @@ test('a session started in the live flow carries finished screens into flow 4', 
 
 /* --------------------------------- catalog --------------------------------- */
 
-test('screens offer exactly the approved features and suggestions (Home to Buy, PR #186 refinement)', () => {
+test('screens retain existing Home to Buy identities with the Part A card promotion', () => {
   const p = fresh();
   assert.deepEqual(texts(p, 'layout'), ['First-Floor Bedroom', 'Home Office', 'Primary Ensuite', 'Finished Basement', 'Walkout Basement', 'Main Floor Laundry']);
   assert.deepEqual(texts(p, 'layout', 'suggestions'), []);
-  assert.deepEqual(texts(p, 'kitchen'), ['Countertop Seating', 'Stainless Steel Appliances', 'Walk-in Pantry']);
-  assert.deepEqual(texts(p, 'kitchen', 'suggestions'), ['Eat-in Kitchen', 'Kitchen Island', 'Formal Dining Room']);
+  assert.deepEqual(texts(p, 'kitchen'), ['Countertop Seating', 'Stainless Steel Appliances', 'Walk-in Pantry', 'Eat-in Kitchen', 'Kitchen Island']);
+  assert.deepEqual(texts(p, 'kitchen', 'suggestions'), ['Formal Dining Room']);
   assert.deepEqual(texts(p, 'living'), ['Fireplace', 'High Ceilings']);
   assert.deepEqual(texts(p, 'living', 'suggestions'), ['Built-in Shelving', 'Large Windows']);
-  assert.deepEqual(texts(p, 'bath'), ['Double Vanity', 'Soaking Tub']);
-  assert.deepEqual(texts(p, 'bath', 'suggestions'), ['Separate Shower / Tub', 'Private Toilet', 'Linen Closet']);
+  assert.deepEqual(texts(p, 'bath'), ['Double Vanity', 'Soaking Tub', 'Separate Shower / Tub', 'Linen Closet']);
+  assert.deepEqual(texts(p, 'bath', 'suggestions'), ['Private Toilet']);
   assert.deepEqual(texts(p, 'garage', 'suggestions'), ['Workbench', 'Garage Extension', 'Door to Backyard']);
   assert.deepEqual(texts(p, 'exterior'), ['Deck / Patio', 'Fenced Yard', 'Privacy Fence']);
   assert.deepEqual(texts(p, 'exterior', 'suggestions'), ['Mature Trees', 'Garden Space', 'Pool', 'Front Porch']);

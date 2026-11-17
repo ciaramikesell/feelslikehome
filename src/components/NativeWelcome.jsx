@@ -40,13 +40,13 @@ export default function NativeWelcome() {
       <div className="flh-welcome-body">
         <div className="flh-welcome-brand" aria-hidden="true"><BrandMark size={30} /><Wordmark size={23} /></div>
         <h1 id="flh-welcome-title" className="flh-welcome-title">A little closer to home.</h1>
-        <p className="flh-welcome-lede">Save homes you&rsquo;ve found, see what matches, and decide together.</p>
+        <p className="flh-welcome-lede"><strong>Already found a few homes you love?</strong> Import their listings, see how they match what matters to you, and decide together.</p>
         <div className="flh-welcome-actions">
           <Link href="/auth/sign-up" className="flh-welcome-primary flh-press">Get Started <ArrowRight size={18} aria-hidden="true" /></Link>
           <Link href="/auth/sign-in" className="flh-welcome-secondary flh-press">Already have an account? <b>Sign in</b></Link>
         </div>
         <button type="button" className="flh-welcome-tour flh-press" onClick={() => setTutorialOpen(true)}>
-          <Share size={15} aria-hidden="true" /> See how saving a home works
+          <Share size={15} aria-hidden="true" /> Try a listing import · no account needed
         </button>
       </div>
       {tutorialOpen && <ShareTutorial onClose={() => setTutorialOpen(false)} />}
