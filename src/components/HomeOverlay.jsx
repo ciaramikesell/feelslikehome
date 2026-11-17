@@ -15,13 +15,14 @@ import HomeModal from '@/components/HomeModal';
 import MatchReveal from '@/components/MatchReveal';
 import { useHomesWorkspace } from '@/components/HomesWorkspace';
 import { isArchivedStatus } from '@/lib/constants';
-import { computeMatch, matchFactualSummary } from '@/lib/matching';
+import { computeMatch, matchFactualSummary, mustHaveStatus } from '@/lib/matching';
 import { crossedRevealThreshold, matchCompleteness } from '@/lib/matchReveal';
-import { answerableCriteriaKeys, criterionAnswerPatch, inPersonAnswerPatch } from '@/lib/matchCriteria';
-import { matchProgress, matchProgressLine, matchShortcutLines, openCountByTier } from '@/lib/matchProgress';
+import { answerableCriteriaKeys, criterionAnswerPatch, criterionResolution, inPersonAnswerPatch } from '@/lib/matchCriteria';
+import { matchProgress, matchProgressLine, openCountByTier } from '@/lib/matchProgress';
+import { homeFactContext } from '@/lib/homeFactCriteria';
 import { searchIntentCapabilities } from '@/lib/searchIntent';
 import { evaluateCommute } from '@/lib/commute';
-import { homeIdentity, homeVocabulary } from '@/lib/homePresentation';
+import { homeVocabulary } from '@/lib/homePresentation';
 import { useCommuteObserver } from '@/lib/useCommuteObserver';
 import { useHomeAutosave } from '@/lib/useHomeAutosave';
 import { applyPostTourVerdict, archiveHome, restoreHome, toggleFavorite } from '@/lib/lifecycle';
@@ -192,8 +193,10 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
   // Which of THIS buyer's priorities are still open (display only; docs/add-home-v3-phase6-ux-audit.md).
   const progress = match ? matchProgress(match, { answerable: answerableCriteriaKeys(priorities), factKeys: Object.keys(FACT_LINKS) }) : null;
   const progressLine = matchProgressLine(progress, match?.pct ?? null);
-  const shortcutLines = matchShortcutLines(progress, match?.pct ?? null);
-  const identity = homeIdentity(home, priorities);
+  const unanswered = (match?.allSelected || []).filter((item) => !item.evaluated);
+  const mustStatus = mustHaveStatus(match);
+  const unansweredMust = mustStatus.unknown;
+  const priorityFields = [...new Set(unanswered.map((item) => FACT_LINKS[item.key]?.[0] || criterionResolution(home, item.key, priorities.searchType, homeFactContext(priorities)).link?.[0]).filter(Boolean))];
   const vocabulary = homeVocabulary(priorities);
   const usesFullEditor = vocabulary.apartment || searchIntentCapabilities(priorities.searchType).showsRentalFacts;
   const homePath = `/homes/${encodeURIComponent(home.id)}`;
@@ -262,6 +265,11 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
   const openFact = (fieldId) => {
     const node = document.getElementById(fieldId);
     if (!node) return;
+    // A linked fact can be inside a collapsed category. Reveal its ancestors
+    // before scrolling/focusing; do not write or infer an answer.
+    for (let parent = node.parentElement; parent; parent = parent.parentElement) {
+      if (parent.tagName === 'DETAILS') parent.open = true;
+    }
     node.scrollIntoView({ behavior: 'smooth', block: 'center' });
     node.focus({ preventScroll: true });
   };
@@ -329,21 +337,27 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
   };
   // Score and completeness are said apart: "100% on 4 known priorities", then
   // "3 unanswered". The % is computeMatch's own, unchanged.
-  const matchShortcut = match ? <button type="button" className="flh-match-jump" onClick={goToMatch}>
-    <span className="flh-match-jump-text">
-      <span className="flh-match-jump-main">Your Match · <b>{shortcutLines.main}</b></span>
-      <small>{shortcutLines.sub}</small>
-    </span>
-    <ArrowDown size={14} aria-hidden="true" />
-  </button> : null;
+  const matchOverview = <section className="flh-match-overview" aria-labelledby="flh-match-overview-title">
+    <div className="flh-match-overview-heading">
+      <h2 id="flh-match-overview-title" className="hh-serif">Your Match</h2>
+      <strong className="flh-match-overview-score">{match?.pct != null ? `${match.pct}%` : 'No % yet'}</strong>
+    </div>
+    <p>{progress?.known ? `Based on ${progress.known} known ${progress.known === 1 ? 'priority' : 'priorities'}.` : 'Your Match starts with known details and your own priorities.'} Unknown never counts as No.</p>
+    {unansweredMust > 0 && <p className="flh-match-overview-open"><strong>{unansweredMust} unanswered Must-Have{unansweredMust === 1 ? '' : 's'}</strong> · not yet confirmed</p>}
+    {summary?.mustClause && (!unansweredMust || mustStatus.missed > 0) && <p>{summary.mustClause}.</p>}
+    <div className="flh-match-overview-actions">
+      {match && <button type="button" className="flh-match-jump" onClick={goToMatch}>See Match details <ArrowDown size={14} aria-hidden="true" /></button>}
+      {progress?.next && <button type="button" className="flh-match-next" onClick={answerNext}>Review: <b>{criterionName(progress.next)}</b> <ArrowRight size={14} aria-hidden="true" /></button>}
+    </div>
+  </section>;
 
   return <div className="flh-overlay-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !nestedOpen) close(); }}>
     <div ref={(node) => { dialogRef.current = node; setRef(node); }} className="flh-overlay" role="dialog" aria-modal="true" aria-labelledby="flh-overlay-title">
       <header className="flh-overlay-bar">
         <div className="flh-overlay-bar-title">
           {view === 'tour' && <button type="button" className="flh-overlay-back" onClick={() => showView('research')}><ArrowLeft size={15} aria-hidden="true" /> Home details</button>}
-          <h1 id="flh-overlay-title" ref={titleRef} tabIndex={-1}>{view === 'tour' ? 'Tour Feedback · ' : ''}{identity.primary}</h1>
-          {identity.supporting && <p>{identity.supporting}</p>}
+          <h1 id="flh-overlay-title" ref={titleRef} tabIndex={-1}>{view === 'tour' ? 'Tour Feedback' : 'Home details'}</h1>
+
         </div>
         <div className="flh-overlay-bar-actions">
           <SaveState status={autosave.status} onRetry={autosave.retry} conflict={!!notesConflict} />
@@ -362,7 +376,7 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
 
       <div className="flh-overlay-scroll" ref={scrollRef}>
         {view === 'research' ? <>
-          <HomeFacts home={home} priorities={priorities} vocabulary={vocabulary} editor={editor} userId={userId} isCollaborative={isCollaborative} onEditAll={usesFullEditor ? () => setFullEditor(true) : null} matchShortcut={matchShortcut} />
+          <HomeFacts home={home} priorities={priorities} vocabulary={vocabulary} editor={editor} userId={userId} isCollaborative={isCollaborative} onEditAll={usesFullEditor ? () => setFullEditor(true) : null} matchOverview={matchOverview} priorityFields={priorityFields} />
 
           <section className="flh-overlay-match" aria-labelledby="flh-match-title" ref={matchRef} tabIndex={-1}>
             <header className="flh-hf2-section-head">
@@ -384,7 +398,7 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
           </section>
 
           <footer className="flh-overlay-foot">
-            <p>Come back to this home whenever you like.</p>
+
             <button type="button" className="flh-overlay-tour-link" onClick={() => showView('tour')}><NotebookText size={15} aria-hidden="true" /> Tour feedback &amp; notes</button>
           </footer>
         </> : <div className="flh-overlay-tour">

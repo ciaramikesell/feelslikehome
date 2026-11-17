@@ -71,7 +71,7 @@ export function QuietInput({
     {/* multiline: a one-row textarea that wraps (a long street address), still one value. */}
     <Field
       id={id} className="flh-quiet-input" value={shown} rows={multiline ? 1 : undefined} placeholder={placeholder} inputMode={inputMode} size={size} autoComplete={autoComplete} list={list}
-      aria-invalid={failed || invalid || undefined} aria-describedby={errorId}
+      aria-invalid={failed || invalid || undefined} aria-describedby={errorId} aria-description={unknown && className.includes('is-priority-unknown') ? 'Related to an unanswered priority. Optional.' : undefined}
       onFocus={() => { if (draft === null) setDraft(edit ? edit(value) : format(value)); }}
       onChange={(event) => {
         touched.current = true;
@@ -91,14 +91,22 @@ export function QuietInput({
 
 // A native select. `choices` is [[value, label], …]; '' is Unknown and is
 // always offered first. A saved value that isn't offered stays visible.
-export function SelectField({ id, label, value, choices, onCommit, readOnly = false, failed = false, labelHidden = true, unknownLabel = 'Unknown' }) {
+export function SelectField({ id, label, value, choices, onCommit, readOnly = false, failed = false, labelHidden = true, unknownLabel = 'Unknown', priority = false }) {
+  const pointerSelection = useRef(false);
   const current = value === null || value === undefined ? '' : String(value);
   const options = current && !choices.some(([key]) => key === current) ? [...choices, [current, current]] : choices;
   const text = options.find(([key]) => key === current)?.[1] || '';
   if (readOnly) return <span className={`flh-fact-text ${current ? '' : 'is-unknown'}`}>{text || 'Unknown'}</span>;
-  return <span className={`flh-select ${current ? '' : 'is-unknown'} ${failed ? 'is-failed' : ''}`}>
+  return <span className={`flh-select ${current ? '' : 'is-unknown'} ${failed ? 'is-failed' : ''} ${priority && !current ? 'is-priority-unknown' : ''}`}>
     {label && <label htmlFor={id} className={labelHidden ? 'sr-only' : 'flh-quiet-label'}>{label}</label>}
-    <select id={id} value={current} aria-invalid={failed || undefined} onChange={(event) => onCommit(event.target.value || null)}>
+    <select id={id} value={current} aria-invalid={failed || undefined} aria-description={priority && !current ? 'Related to an unanswered priority. Optional.' : undefined} onPointerDown={() => { pointerSelection.current = true; }}
+      onKeyDown={() => { pointerSelection.current = false; }}
+      onChange={(event) => {
+        onCommit(event.target.value || null);
+        // Touch/pointer picks finish this one-value interaction. Keyboard and
+        // assistive selection keep native focus and arrow-key behavior.
+        if (pointerSelection.current) { event.currentTarget.blur(); pointerSelection.current = false; }
+      }}>
       <option value="">{unknownLabel}</option>
       {options.map(([key, optionLabel]) => <option key={key} value={key}>{optionLabel}</option>)}
     </select>
@@ -109,7 +117,7 @@ export function SelectField({ id, label, value, choices, onCommit, readOnly = fa
 // A compact "choose any that apply" dropdown: the chosen values show as small
 // tokens (each removable), and the menu holds a checkbox per choice plus
 // Unknown, which clears them. Commits on every change.
-export function MultiSelectField({ id, label, values, choices, onCommit, readOnly = false, failed = false }) {
+export function MultiSelectField({ id, label, values, choices, onCommit, readOnly = false, failed = false, priority = false }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
   const menuId = `${id}-menu`;
@@ -133,17 +141,18 @@ export function MultiSelectField({ id, label, values, choices, onCommit, readOnl
 
   if (readOnly) return <span className={`flh-fact-text ${selected.length ? '' : 'is-unknown'}`}>{selected.length ? selected.map(labelOf).join(' · ') : 'Unknown'}</span>;
   const toggle = (key) => onCommit(selected.includes(key) ? selected.filter((value) => value !== key) : [...selected, key]);
-  return <div className={`flh-multi ${selected.length ? '' : 'is-unknown'} ${failed ? 'is-failed' : ''} ${open ? 'is-open' : ''}`} ref={rootRef}>
+  return <div className={`flh-multi ${selected.length ? '' : 'is-unknown'} ${failed ? 'is-failed' : ''} ${open ? 'is-open' : ''} ${priority && !selected.length ? 'is-priority-unknown' : ''}`} ref={rootRef}>
     <div className="flh-multi-field">
       {selected.length > 0 && <ul className="flh-multi-tokens" aria-label={`${label}: chosen`}>
         {selected.map((value) => <li key={value}><span>{labelOf(value)}</span><button type="button" onClick={() => toggle(value)} aria-label={`Remove ${labelOf(value)} from ${label}`}><X size={12} aria-hidden="true" /></button></li>)}
       </ul>}
-      <button type="button" id={id} className="flh-multi-toggle" aria-expanded={open} aria-controls={menuId} aria-label={`${label}: ${selected.length ? selected.map(labelOf).join(', ') : 'Unknown'}. Choose`} onClick={() => setOpen((value) => !value)}>
+      <button type="button" id={id} className="flh-multi-toggle" aria-expanded={open} aria-controls={menuId} aria-description={priority && !selected.length ? 'Related to an unanswered priority. Optional.' : undefined} aria-label={`${label}: ${selected.length ? selected.map(labelOf).join(', ') : 'Unknown'}. Choose`} onClick={() => setOpen((value) => !value)}>
         {!selected.length && <span className="flh-multi-placeholder">Unknown</span>}
         <ChevronDown size={15} aria-hidden="true" />
       </button>
     </div>
     {open && <div className="flh-multi-menu" id={menuId} role="group" aria-label={`${label} — choose any that apply`}>
+      <p className="flh-multi-instruction">Choose any that apply</p>
       {all.map(([key, optionLabel]) => <label key={key} className={selected.includes(key) ? 'is-on' : ''}>
         <input type="checkbox" checked={selected.includes(key)} onChange={() => toggle(key)} />
         <span className="flh-multi-check" aria-hidden="true">{selected.includes(key) && <Check size={12} />}</span>{optionLabel}
@@ -152,6 +161,7 @@ export function MultiSelectField({ id, label, values, choices, onCommit, readOnl
         <input type="checkbox" checked={!selected.length} onChange={() => { if (selected.length) onCommit([]); }} />
         <span className="flh-multi-check" aria-hidden="true">{!selected.length && <Check size={12} />}</span>Unknown
       </label>
+      <button type="button" className="flh-multi-done" onClick={() => { setOpen(false); rootRef.current?.querySelector('.flh-multi-toggle')?.focus(); }}>Done</button>
     </div>}
   </div>;
 }

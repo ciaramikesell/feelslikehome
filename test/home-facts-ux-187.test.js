@@ -110,7 +110,7 @@ test('typing a description writes only what changed, keeps the person\'s words, 
 });
 
 test('Basement UI: one field with suggestions and a plain "Match reads" line; Use for an earlier note is an explicit click', () => {
-  const basement = facts.match(/<Group id="hf-basement-title" title="Basement">([\s\S]*?)<\/Group>/)[1];
+  const basement = facts.match(/<Group id="hf-basement-title" title="Basement"[^>]*>([\s\S]*?)<\/Group>/)[1];
   assert.match(basement, /<datalist id="hf-basement-options">\{BASEMENT_SUGGESTIONS\.map/);
   assert.match(basement, /basementMatchReading\(home\.basementCondition, home\.basementStyle\)/);
   assert.match(basement, /onClick=\{\(\) => save\(Object\.fromEntries\(Object\.entries\(basement\.offer\)\.filter/);
@@ -138,7 +138,7 @@ test('HOA status: a separate, explicit control; a $0 fee never sets it; a disagr
   assert.deepEqual([hoaStatusValue('yes'), hoaStatusValue('no'), hoaStatusValue(''), hoaStatusValue(null)], [true, false, null, null]);
   assert.equal(hoaConflict({ hasHoa: false, hoaFeeMonthly: 125 }), true);
   for (const home of [{ hasHoa: false, hoaFeeMonthly: 0 }, { hasHoa: true, hoaFeeMonthly: 0 }, { hasHoa: null, hoaFeeMonthly: 125 }, { hasHoa: false, hoaFeeMonthly: null }]) assert.equal(hoaConflict(home), false);
-  assert.match(facts, /hoaKnownToDatabase && <Row label="HOA" htmlFor="hf-hasHoa"><SelectField id="hf-hasHoa" value=\{hoaStatusChoice\(home\.hasHoa\)\}/);
+  assert.match(facts, /hoaKnownToDatabase && <Row label="HOA" htmlFor="hf-hasHoa"><SelectField[^>]*id="hf-hasHoa" value=\{hoaStatusChoice\(home\.hasHoa\)\}/);
   assert.match(facts, /onCommit=\{\(choice\) => save\(\{ hasHoa: hoaStatusValue\(choice\) \}\)\}/);
   // The fee control and its "$0 is not No HOA" wording are unchanged.
   assert.match(facts, /<Row label="HOA fee" hint=\{isReadOnly \? null : 'Enter 0 for a \$0 monthly fee'\}/);
@@ -147,7 +147,7 @@ test('HOA status: a separate, explicit control; a $0 fee never sets it; a disagr
 /* --------------------------------- Schools --------------------------------- */
 
 test('School Details: one freeform field beside the district; saved school names stay; nothing is looked up', () => {
-  const schools = facts.match(/<Group id="hf-schools-title" title="School Details">([\s\S]*?)<\/Group>/)[1];
+  const schools = facts.match(/<Group id="hf-schools-title" title="Schools"[^>]*>([\s\S]*?)<\/Group>/)[1];
   assert.match(schools, /<Row label="District" htmlFor="hf-schoolDistrict">\{text\('schoolDistrict'\)\}<\/Row>/);
   assert.match(schools, /text\('schoolsNotes', null, \{ parse: parseLegacyText, multiline: true/);
   assert.match(schools, /\[\['elementarySchool', 'Elementary'\], \['middleSchool', 'Middle'\], \['highSchool', 'High'\]\]\.filter\(\(\[field\]\) => home\[field\]\)/);

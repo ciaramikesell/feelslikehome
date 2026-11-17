@@ -46,7 +46,7 @@ const assert = (condition, message) => { if (!condition) throw new Error(message
 // jsonb stores keys in its own order: compare values, not key order.
 const sorted = (value) => (Array.isArray(value) ? value.map(sorted) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, sorted(value[key])])) : value);
 const sameJson = (a, b) => JSON.stringify(sorted(a)) === JSON.stringify(sorted(b));
-const homeRow = (id) => q(`select hoa_fee_monthly, property_tax_annual, property_tax_year, property_type, selected_floor_plan_name, selected_unit_label, heating, cooling, listing_import from public.homes where id = '${id}'`)[0];
+const homeRow = (id) => q(`select has_hoa, hoa_fee_monthly, property_tax_annual, property_tax_year, property_type, selected_floor_plan_name, selected_unit_label, heating, cooling, listing_import from public.homes where id = '${id}'`)[0];
 const until = async (fn, message, timeout = 15000) => {
   const end = Date.now() + timeout;
   for (;;) { if (await fn()) return; if (Date.now() > end) throw new Error(message); await new Promise((r) => setTimeout(r, 150)); }
@@ -80,8 +80,9 @@ async function step(name, fn, pages) {
   } catch (error) { log.push({ step: name, ok: false, error: error.message }); console.error('FAIL', name, '—', error.message); }
 }
 
-// Phones collapse photo options, year/taxes/utilities and schools: open them.
+// Open the optional fact categories while testing their editing/save paths.
 const expandAll = async (page) => {
+  await page.locator('.flh-hf2 details').evaluateAll((nodes) => nodes.forEach((node) => { node.open = true; }));
   for (let i = 0; i < 8; i += 1) {
     const toggle = page.locator('.flh-phone-collapse-toggle[aria-expanded="false"]:visible').first();
     if (!(await toggle.count())) return;
@@ -146,7 +147,7 @@ async function run() {
       await owner.reload({ waitUntil: 'networkidle' });
       await overlayOpen(owner);
       assert(await owner.locator('#hf-hoaFeeMonthly').inputValue() === '$0/mo', `reloaded $0 reads "${await owner.locator('#hf-hoaFeeMonthly').inputValue()}"`);
-      assert(!/no hoa/i.test(await owner.locator('.flh-overlay').innerText()), 'a $0 fee must never read as "No HOA"');
+      assert(await owner.locator('#hf-hasHoa').inputValue() === '' && homeRow(homeId).has_hoa === null, 'a $0 fee must keep HOA status Unknown, never No HOA');
       await owner.locator('#hf-hoaFeeMonthly').focus();
       assert(await owner.locator('#hf-hoaFeeMonthly').inputValue() === '0', 'editing a confirmed $0 must not open blank');
       await owner.locator('#hf-hoaFeeMonthly').blur();

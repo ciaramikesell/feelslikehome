@@ -1,0 +1,14 @@
+{
+  "base": "1eda8c6 (main, including PRs 193 and 194)",
+  "runtime": {"node": "24.22.1", "next": "15.5.29", "postgresql": "17.11", "browser": "system Chromium via Playwright"},
+  "unit": {"passed": 1406, "failed": 0, "skipped": 251},
+  "with_postgresql": {"passed": 1655, "failed": 0, "skipped": 2, "skip_reason": "Sanitized live RentCast fixtures are absent"},
+  "production_build": "passed; changed source compared with repository src",
+  "focused_browser_checks": {"passed": 113, "failed": 0},
+  "home_facts_match_fulfillment": {"passed": 9, "failed": 0},
+  "home_facts_completeness": {"passed": 21, "failed": 0},
+  "phone_widths_css_px": [320, 375, 390, 430],
+  "desktop_width_css_px": 1280,
+  "text_sizes_percent": [150, 200],
+  "limitations": ["Physical iPhone Dynamic Type, VoiceOver and OS picker UI need founder device QA", "No hosted Supabase or production data was used"]
+}

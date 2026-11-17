@@ -143,13 +143,13 @@ test('a listing type is attributed to the listing; a conflicting year built is s
 
 /* ------------------------------------ wiring ------------------------------------ */
 
-test('wiring: Home Facts keeps the sheet pattern (no inline fold-out); the full context and provenance live in the sheet', () => {
+test('wiring: listing context keeps its review sheet; the full context and provenance live in the sheet', () => {
   const facts = read('src/components/HomeFacts.jsx');
-  assert.doesNotMatch(facts, /<details/);
+  assert.doesNotMatch(facts.slice(facts.indexOf('function ListingContext'), facts.indexOf('function Row')), /<details/);
   assert.match(facts, /<Sheet open=\{open\} onClose=\{\(\) => setOpen\(false\)\} title="Found when this home was added"/);
   assert.match(facts, /It isn’t refreshed after that and can be out of date\. None of it changes Home Facts or your Match\./);
   assert.match(facts, /\{lines\.map\(\(line\) => <p key=\{line\}>\{line\}<\/p>\)\}/);
-  assert.match(facts, /Unknown means FLH hasn’t found it yet\. It never counts as No in your Match\./);
+  assert.match(facts, /Unknown isn’t No\./);
   // Unknown-only hints and every edit path are untouched.
   assert.match(facts, /hint=\{!layoutValues\(home\)\.length && record\.stories \?/);
   assert.match(facts, /\{!isReadOnly && matchShortcut\}/);
@@ -157,7 +157,7 @@ test('wiring: Home Facts keeps the sheet pattern (no inline fold-out); the full 
 
 test('wiring: the next step only scrolls and focuses; answers still come only from the buyer’s own radio', () => {
   const overlay = read('src/components/HomeOverlay.jsx');
-  const answerNext = overlay.slice(overlay.indexOf('const answerNext'), overlay.indexOf('const matchShortcut'));
+  const answerNext = overlay.slice(overlay.indexOf('const answerNext'), overlay.indexOf('const matchOverview'));
   assert.doesNotMatch(answerNext, /save|answerCriterion|onAnswer|autosave/i);
   assert.match(answerNext, /openFact\(FACT_LINKS\[next\.key\]\[0\]\)/);
   assert.match(overlay, /openByTier=\{openCountByTier\(progress\)\} revealRequest=\{revealRequest\}/);
