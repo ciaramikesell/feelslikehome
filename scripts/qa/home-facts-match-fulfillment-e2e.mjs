@@ -87,6 +87,7 @@ async function step(name, fn, pages) {
 
 const shot = (page, name, element = null) => (element ? page.locator(element).first().screenshot({ path: join(outDir, `${name}.png`) }) : page.screenshot({ path: join(outDir, `${name}.png`), fullPage: true }));
 const expandFacts = async (page) => {
+  await page.locator('.flh-hf2 details').evaluateAll((nodes) => nodes.forEach((node) => { node.open = true; }));
   for (let i = 0; i < 8; i += 1) {
     const toggle = page.locator('.flh-hf2 .flh-phone-collapse-toggle[aria-expanded="false"]:visible').first();
     if (!(await toggle.count())) return;

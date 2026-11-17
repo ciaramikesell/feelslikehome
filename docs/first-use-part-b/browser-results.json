@@ -1,0 +1,454 @@
+[
+  {
+    "name": "320: photo precedes summary and Match precedes facts",
+    "ok": true
+  },
+  {
+    "name": "320: photo controls are visible without disclosure",
+    "ok": true
+  },
+  {
+    "name": "320: high Match names unanswered Must-Haves",
+    "ok": true
+  },
+  {
+    "name": "320 overview: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "320: Schools is discoverable when unknown",
+    "ok": true
+  },
+  {
+    "name": "320: keyboard opens Schools and saves district",
+    "ok": true
+  },
+  {
+    "name": "320: linked fact reveals category and receives focus",
+    "ok": true
+  },
+  {
+    "name": "320: native selector is single-valued and saves once chosen",
+    "ok": true
+  },
+  {
+    "name": "320: pointer selection dismisses the single-value control",
+    "ok": true
+  },
+  {
+    "name": "320: keyboard selection retains native focus",
+    "ok": true
+  },
+  {
+    "name": "320: existing layout + primary-floor selections retained",
+    "ok": true
+  },
+  {
+    "name": "320: multi-value Done closes and restores focus without dropping values",
+    "ok": true
+  },
+  {
+    "name": "320: condition retains simultaneous characteristics",
+    "ok": true
+  },
+  {
+    "name": "320: Escape closes only the multi-value menu",
+    "ok": true
+  },
+  {
+    "name": "320: shared impressions keep existing notes and personal answers",
+    "ok": true
+  },
+  {
+    "name": "320 150% text: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "320 facts 150% text: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "320 150%: photo and disclosure touch targets",
+    "ok": true
+  },
+  {
+    "name": "320 200% text: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "320 facts 200% text: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "320 200%: photo and disclosure touch targets",
+    "ok": true
+  },
+  {
+    "name": "320: no runtime errors",
+    "ok": true
+  },
+  {
+    "name": "375: photo precedes summary and Match precedes facts",
+    "ok": true
+  },
+  {
+    "name": "375: photo controls are visible without disclosure",
+    "ok": true
+  },
+  {
+    "name": "375: high Match names unanswered Must-Haves",
+    "ok": true
+  },
+  {
+    "name": "375 overview: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "375: Schools is discoverable when unknown",
+    "ok": true
+  },
+  {
+    "name": "375: keyboard opens Schools and saves district",
+    "ok": true
+  },
+  {
+    "name": "375: linked fact reveals category and receives focus",
+    "ok": true
+  },
+  {
+    "name": "375: native selector is single-valued and saves once chosen",
+    "ok": true
+  },
+  {
+    "name": "375: pointer selection dismisses the single-value control",
+    "ok": true
+  },
+  {
+    "name": "375: keyboard selection retains native focus",
+    "ok": true
+  },
+  {
+    "name": "375: existing layout + primary-floor selections retained",
+    "ok": true
+  },
+  {
+    "name": "375: multi-value Done closes and restores focus without dropping values",
+    "ok": true
+  },
+  {
+    "name": "375: condition retains simultaneous characteristics",
+    "ok": true
+  },
+  {
+    "name": "375: Escape closes only the multi-value menu",
+    "ok": true
+  },
+  {
+    "name": "375: shared impressions keep existing notes and personal answers",
+    "ok": true
+  },
+  {
+    "name": "375 150% text: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "375 facts 150% text: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "375 150%: photo and disclosure touch targets",
+    "ok": true
+  },
+  {
+    "name": "375 200% text: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "375 facts 200% text: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "375 200%: photo and disclosure touch targets",
+    "ok": true
+  },
+  {
+    "name": "375: no runtime errors",
+    "ok": true
+  },
+  {
+    "name": "390: photo precedes summary and Match precedes facts",
+    "ok": true
+  },
+  {
+    "name": "390: photo controls are visible without disclosure",
+    "ok": true
+  },
+  {
+    "name": "390: high Match names unanswered Must-Haves",
+    "ok": true
+  },
+  {
+    "name": "390 overview: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "390: Schools is discoverable when unknown",
+    "ok": true
+  },
+  {
+    "name": "390: keyboard opens Schools and saves district",
+    "ok": true
+  },
+  {
+    "name": "390: linked fact reveals category and receives focus",
+    "ok": true
+  },
+  {
+    "name": "390: native selector is single-valued and saves once chosen",
+    "ok": true
+  },
+  {
+    "name": "390: pointer selection dismisses the single-value control",
+    "ok": true
+  },
+  {
+    "name": "390: keyboard selection retains native focus",
+    "ok": true
+  },
+  {
+    "name": "390: existing layout + primary-floor selections retained",
+    "ok": true
+  },
+  {
+    "name": "390: multi-value Done closes and restores focus without dropping values",
+    "ok": true
+  },
+  {
+    "name": "390: condition retains simultaneous characteristics",
+    "ok": true
+  },
+  {
+    "name": "390: Escape closes only the multi-value menu",
+    "ok": true
+  },
+  {
+    "name": "390: shared impressions keep existing notes and personal answers",
+    "ok": true
+  },
+  {
+    "name": "390 150% text: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "390 facts 150% text: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "390 150%: photo and disclosure touch targets",
+    "ok": true
+  },
+  {
+    "name": "390 200% text: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "390 facts 200% text: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "390 200%: photo and disclosure touch targets",
+    "ok": true
+  },
+  {
+    "name": "legacy single-value option survives reload",
+    "ok": true
+  },
+  {
+    "name": "photo URL and remove use the existing save path",
+    "ok": true
+  },
+  {
+    "name": "upload uses the caller’s existing Storage folder",
+    "ok": true
+  },
+  {
+    "name": "390: no runtime errors",
+    "ok": true
+  },
+  {
+    "name": "430: photo precedes summary and Match precedes facts",
+    "ok": true
+  },
+  {
+    "name": "430: photo controls are visible without disclosure",
+    "ok": true
+  },
+  {
+    "name": "430: high Match names unanswered Must-Haves",
+    "ok": true
+  },
+  {
+    "name": "430 overview: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "430: Schools is discoverable when unknown",
+    "ok": true
+  },
+  {
+    "name": "430: keyboard opens Schools and saves district",
+    "ok": true
+  },
+  {
+    "name": "430: linked fact reveals category and receives focus",
+    "ok": true
+  },
+  {
+    "name": "430: native selector is single-valued and saves once chosen",
+    "ok": true
+  },
+  {
+    "name": "430: pointer selection dismisses the single-value control",
+    "ok": true
+  },
+  {
+    "name": "430: keyboard selection retains native focus",
+    "ok": true
+  },
+  {
+    "name": "430: existing layout + primary-floor selections retained",
+    "ok": true
+  },
+  {
+    "name": "430: multi-value Done closes and restores focus without dropping values",
+    "ok": true
+  },
+  {
+    "name": "430: condition retains simultaneous characteristics",
+    "ok": true
+  },
+  {
+    "name": "430: Escape closes only the multi-value menu",
+    "ok": true
+  },
+  {
+    "name": "430: shared impressions keep existing notes and personal answers",
+    "ok": true
+  },
+  {
+    "name": "430 150% text: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "430 facts 150% text: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "430 150%: photo and disclosure touch targets",
+    "ok": true
+  },
+  {
+    "name": "430 200% text: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "430 facts 200% text: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "430 200%: photo and disclosure touch targets",
+    "ok": true
+  },
+  {
+    "name": "430: no runtime errors",
+    "ok": true
+  },
+  {
+    "name": "1280: photo precedes summary and Match precedes facts",
+    "ok": true
+  },
+  {
+    "name": "1280: photo controls are visible without disclosure",
+    "ok": true
+  },
+  {
+    "name": "1280: high Match names unanswered Must-Haves",
+    "ok": true
+  },
+  {
+    "name": "1280 overview: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "1280: Schools is discoverable when unknown",
+    "ok": true
+  },
+  {
+    "name": "1280: keyboard opens Schools and saves district",
+    "ok": true
+  },
+  {
+    "name": "1280: linked fact reveals category and receives focus",
+    "ok": true
+  },
+  {
+    "name": "1280: native selector is single-valued and saves once chosen",
+    "ok": true
+  },
+  {
+    "name": "1280: pointer selection dismisses the single-value control",
+    "ok": true
+  },
+  {
+    "name": "1280: keyboard selection retains native focus",
+    "ok": true
+  },
+  {
+    "name": "1280: existing layout + primary-floor selections retained",
+    "ok": true
+  },
+  {
+    "name": "1280: multi-value Done closes and restores focus without dropping values",
+    "ok": true
+  },
+  {
+    "name": "1280: condition retains simultaneous characteristics",
+    "ok": true
+  },
+  {
+    "name": "1280: Escape closes only the multi-value menu",
+    "ok": true
+  },
+  {
+    "name": "1280: shared impressions keep existing notes and personal answers",
+    "ok": true
+  },
+  {
+    "name": "1280 150% text: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "1280 facts 150% text: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "1280 150%: photo and disclosure touch targets",
+    "ok": true
+  },
+  {
+    "name": "1280 200% text: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "1280 facts 200% text: no page or overlay overflow",
+    "ok": true
+  },
+  {
+    "name": "1280 200%: photo and disclosure touch targets",
+    "ok": true
+  },
+  {
+    "name": "1280: no runtime errors",
+    "ok": true
+  }
+]

@@ -33,9 +33,9 @@ const noteFields = read('src/components/NoteListFields.jsx');
 /* --------------------------------- layout --------------------------------- */
 
 test('Garage: two separate controls side by side; Basement: one description over the same two stored facts (PR #187)', () => {
-  const garage = facts.match(/<Group id="hf-garage-title" title="Garage">([\s\S]*?)<\/Group>/)[1];
-  const basement = facts.match(/<Group id="hf-basement-title" title="Basement">([\s\S]*?)<\/Group>/)[1];
-  assert.match(garage, /<Pair>\s*<PairField label="Type" htmlFor="hf-garageType">\{select\('garageType', null, GARAGE_TYPE_CHOICES, \(value\) => save\(garagePatch\(home, 'garageType', value\)\)\)\}<\/PairField>\s*<PairField label="Spaces" htmlFor="hf-garageSpaces"><SelectField id="hf-garageSpaces" value=\{garageSpacesSelectValue\(home\.garageSpaces\)\} choices=\{GARAGE_SPACE_CHOICES\}[^>]*onCommit=\{\(value\) => save\(garagePatch\(home, 'garageSpaces', value\)\)\} \/><\/PairField>\s*<\/Pair>/);
+  const garage = facts.match(/<Group id="hf-garage-title" title="Garage"[^>]*>([\s\S]*?)<\/Group>/)[1];
+  const basement = facts.match(/<Group id="hf-basement-title" title="Basement"[^>]*>([\s\S]*?)<\/Group>/)[1];
+  assert.match(garage, /<Pair>\s*<PairField label="Type" htmlFor="hf-garageType">\{select\('garageType', null, GARAGE_TYPE_CHOICES, \(value\) => save\(garagePatch\(home, 'garageType', value\)\)\)\}<\/PairField>\s*<PairField label="Spaces" htmlFor="hf-garageSpaces"><SelectField[^>]*id="hf-garageSpaces" value=\{garageSpacesSelectValue\(home\.garageSpaces\)\} choices=\{GARAGE_SPACE_CHOICES\}[^>]*onCommit=\{\(value\) => save\(garagePatch\(home, 'garageSpaces', value\)\)\} \/><\/PairField>\s*<\/Pair>/);
   assert.match(basement, /<QuietInput id="hf-basement" label="Basement description" value=\{basement\.text\}/);
   assert.match(basement, /onCommit=\{\(value\) => \{ const patch = basementDescriptionPatch\(home, value\); if \(Object\.keys\(patch\)\.length\) save\(patch\); \}\}/);
   assert.match(basement, /list="hf-basement-options"/);
@@ -60,11 +60,11 @@ test('pair CSS: equal columns, never wider than the column, stacks into rows bel
   assert.match(css, /\.flh-select select \{ width: 100%;/);
 });
 
-test('Pros & Cons sit below Basement and Laundry in the right column; read-only viewers see them only when written', () => {
+test('Pros & Cons follow property facts; read-only viewers see them only when written', () => {
   const side = facts.indexOf('className="flh-hf2-column flh-hf2-column-side"');
   const order = ['id="hf-garage-title"', 'id="hf-basement-title"', 'id="hf-laundry-title"', 'id="hf-notes-title"'].map((needle) => facts.indexOf(needle, side));
   assert.ok(side > facts.indexOf('id="hf-basic-title"') && order.every((index, i) => index > (i ? order[i - 1] : side)), `order ${order}`);
-  assert.match(facts, /\{\(available\.garage \|\| available\.basement \|\| laundryKnownToDatabase \|\| showNotes\) && <div className="flh-hf2-column flh-hf2-column-side">/);
+  assert.match(facts, /\{\(available\.garage \|\| available\.basement \|\| laundryKnownToDatabase\) && <div className="flh-hf2-column flh-hf2-column-side">/);
   assert.match(facts, /const showNotes = !isReadOnly \|\| noteFields\.some\(\(\{ key \}\) => noteEntries\(home\[key\]\)\.length > 0\);/);
   assert.match(facts, /\{noteFields\.some\(\(\{ key \}\) => key === 'notes'\) \? 'Pros, Cons & Notes' : 'Pros & Cons'\}/);
   // The generic Notes box only while it holds text (never hiding a tour or listing note), sticky for the visit.

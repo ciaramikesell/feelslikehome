@@ -182,7 +182,7 @@ test('wiring: Home Facts shows dated context and hints only for Unknown fields; 
   assert.match(facts, /hint=\{!\(home\.homeCondition \|\| \[\]\)\.length && listingType === 'New Construction' \? 'The listing called it New Construction' : null\}/);
   assert.match(facts, /\{!home\.basementStyle && !home\.basementCondition && record\.foundation && <p className="flh-hf2-note">County records: \{record\.foundation\} foundation\. Not proof of a basement’s style or condition\.<\/p>\}/);
   assert.match(facts, /Subdivision: \{record\.subdivision\} · county records/);
-  assert.doesNotMatch(facts, /<details/, 'still no inline fold-out');
+  assert.doesNotMatch(facts.slice(facts.indexOf('function ListingContext'), facts.indexOf('function Row')), /<details/, 'listing context stays in its review sheet');
   const modal = read('src/components/HomeModal.jsx');
   assert.match(modal, /importResult\.listing\?\.status === 'active' && \['New Construction', 'Foreclosure', 'Short Sale'\]\.includes\(importResult\.listing\?\.listingType\)/);
   const criteria = read('src/components/MatchCriteria.jsx');

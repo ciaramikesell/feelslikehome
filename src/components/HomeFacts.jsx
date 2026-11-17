@@ -1,13 +1,13 @@
 'use client';
 
 import { Fragment, useEffect, useRef, useState } from 'react';
-import { ArrowUpRight, House, Link2, Pencil, Upload } from 'lucide-react';
+import { ChevronDown, ArrowUpRight, House, Link2, Pencil, Upload } from 'lucide-react';
 import {
   BASEMENT_SUGGESTIONS, CONDITION_FACT_CHOICES, COOLING_SUGGESTIONS, GARAGE_SPACE_CHOICES,
   GARAGE_TYPE_CHOICES, HEATING_SUGGESTIONS, HOA_STATUS_CHOICES, LAUNDRY_LOCATION_CHOICES, LAYOUT_FACT_CHOICES, PROPERTY_TYPE_CHOICES,
   basementDescriptionPatch, basementFieldValue, basementMatchReading, describeBasement, editHoaFee, formatHoaFee, garagePatch, garageSpacesSelectValue,
   hoaConflict, hoaStatusChoice, hoaStatusValue, homeFactsAvailability, layoutPatch, layoutValues,
-  listingSays, normalizeLotSizeInput, parseTaxYear, propertyTaxPatch, TAX_YEAR_INVALID_MESSAGE,
+  listingSays, normalizeLotSizeInput, parseTaxYear, propertyTaxPatch, propertyTypeLabel, TAX_YEAR_INVALID_MESSAGE,
 } from '@/lib/homeFacts';
 import { photoFileError, PHOTO_BUCKET, storagePathFromPublicUrl, uploadHomePhoto } from '@/lib/homePhoto';
 import { digitsOnly, formatCurrencyDisplay, formatDateOnly, formatLotSizeDisplay, formatTriState, noteEntries, splitAddressLines } from '@/lib/homeDisplay';
@@ -20,14 +20,14 @@ import { countyRecordContext, formatShortDate, listingContextSummary, listingSna
 import Sheet from '@/components/Sheet';
 import { OfferedFactsSheet } from '@/components/FactChecklist';
 import { createClient } from '@/lib/supabase/client';
-import { MultiSelectField, PhoneCollapse, QuietInput, SelectField } from '@/components/FactFields';
+import { MultiSelectField, QuietInput, SelectField } from '@/components/FactFields';
 import { NOTE_LIST_FIELDS, noteListHint } from '@/components/NoteListFields';
 
 // Home Facts — everything FLH knows about the property, directly editable.
 // No Edit buttons and no Save: each change is handed to `editor.saveShared`,
 // which applies it at once and autosaves only the changed shared fields
 // (src/lib/useHomeAutosave.js). Imported values look like any other value;
-// missing ones stay visible as Unknown with a warm highlight. Personal answers
+// missing ones stay neutral; only unanswered priorities get a subtle cue. Personal answers
 // live in Match Criteria. Pros / Cons are editable here (below Basement and
 // Laundry) as well as in Tour Feedback: the same shared fields.
 //
@@ -85,11 +85,15 @@ function Row({ label, htmlFor, hint, children }) {
   </div>;
 }
 
-function Group({ id, title, children }) {
-  return <section className="flh-hf-block" aria-labelledby={id}>
-    <h3 id={id} className="flh-hf-block-title">{title}</h3>
-    {children}
-  </section>;
+function Group({ id, title, summary = 'Not added yet', defaultOpen = false, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return <details className="flh-hf-block flh-facts-group" open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
+    <summary aria-labelledby={id}>
+      <span><h3 id={id} className="flh-hf-block-title">{title}</h3><small>{summary}</small></span>
+      <ChevronDown size={18} aria-hidden="true" />
+    </summary>
+    <div className="flh-facts-group-body">{children}</div>
+  </details>;
 }
 
 // Two separate facts side by side under one heading (Garage: Type · Spaces;
@@ -183,12 +187,12 @@ function PhotoControls({ home, readOnly, editor, userId, alt }) {
     : <span className="flh-hf2-photo-empty"><House size={34} aria-hidden="true" /><small>{home.photoUrl ? 'Photo couldn’t load' : 'No photo yet'}</small></span>;
   return <div className="flh-hf2-photo-wrap">
     <div className="flh-hf2-photo">{photo}</div>
-    {!readOnly && <PhoneCollapse id={`hf-photo-options-${home.id}`} title="Photo options" className="is-photo">
+    {!readOnly && <div className="flh-hf-photo-controls" role="group" aria-label="Photo options">
       <div className="flh-hf2-photo-actions">
-        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={choose} hidden />
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={choose} aria-label="Upload property photo" hidden />
         <button type="button" className="flh-hf2-photo-action is-primary" onClick={() => fileRef.current?.click()} disabled={uploading}><Upload size={13} aria-hidden="true" /> {uploading ? 'Uploading…' : home.photoUrl ? 'Change photo' : 'Upload photo'}</button>
         <button type="button" className="flh-hf2-photo-action" aria-expanded={urlOpen} onClick={() => setUrlOpen((open) => !open)}><Link2 size={13} aria-hidden="true" /> Photo URL</button>
-        {home.photoUrl && <button type="button" className="flh-hf2-photo-action" onClick={() => editor.saveShared({ photoUrl: '' })}>Remove</button>}
+        {home.photoUrl && <button type="button" className="flh-hf2-photo-action" onClick={() => editor.saveShared({ photoUrl: '' })}>Remove photo</button>}
       </div>
       {urlOpen && <div className="flh-hf2-photo-url">
         <QuietInput id="hf-photo-url" label="Photo URL" labelHidden={false} value={home.photoUrl} placeholder="https://…" inputMode="url" registerDraft={editor.registerDraft} failed={editor.failed.includes('photoUrl')}
@@ -197,7 +201,7 @@ function PhotoControls({ home, readOnly, editor, userId, alt }) {
         <small>Use an image link you have the right to use. FLH never copies listing-site photos.</small>
       </div>}
       {error && <p className="hh-save-error" role="alert">{error}</p>}
-    </PhoneCollapse>}
+    </div>}
   </div>;
 }
 
@@ -207,7 +211,8 @@ function ListingLink({ home, readOnly, editor }) {
     parse={(text) => { const url = text.trim(); if (!url) return ''; try { const parsed = new URL(url); return /^https?:$/.test(parsed.protocol) ? parsed.toString() : undefined; } catch { return undefined; } }}
     onCommit={(listingUrl) => { editor.saveShared({ listingUrl }); setEditing(false); }} className="is-link" />;
   if (readOnly) return home.listingUrl ? <a className="flh-hf-listing" href={home.listingUrl} target="_blank" rel="noreferrer">View listing <ArrowUpRight size={13} aria-hidden="true" /></a> : null;
-  if (!home.listingUrl || editing) return <div className="flh-hf-listing-edit">{field}</div>;
+  if (editing) return <div className="flh-hf-listing-edit">{field}</div>;
+  if (!home.listingUrl) return <button type="button" className="flh-hf-add-link" onClick={() => setEditing(true)}>Add listing link</button>;
   return <div className="flh-hf-listing-row">
     <a className="flh-hf-listing" href={home.listingUrl} target="_blank" rel="noreferrer">View listing <ArrowUpRight size={13} aria-hidden="true" /><span className="sr-only"> (opens in a new tab)</span></a>
     <button type="button" className="flh-hf-link-edit" onClick={() => setEditing(true)} aria-label="Change listing link"><Pencil size={12} aria-hidden="true" /></button>
@@ -231,23 +236,24 @@ function OfferedFactsEntry({ home, onAdd }) {
   </>;
 }
 
-export default function HomeFacts({ home, priorities, vocabulary, readOnly = false, editor = null, userId = null, onEditAll = null, showHeading = true, isCollaborative = false, matchShortcut = null }) {
+export default function HomeFacts({ home, priorities, vocabulary, readOnly = false, editor = null, userId = null, onEditAll = null, showHeading = true, isCollaborative = false, matchShortcut = null, matchOverview = null, priorityFields = [] }) {
   const isReadOnly = readOnly || !editor;
   const apartment = vocabulary.apartment;
   const available = homeFactsAvailability(priorities, { apartment });
   const { showsRentalFacts } = searchIntentCapabilities(priorities.searchType);
   const identity = homeIdentity(home, priorities);
+  const priorityIds = new Set(priorityFields);
   const failed = (field) => editor?.failed.includes(field) || false;
   const save = (patch) => editor.saveShared(patch);
   const record = countyRecordContext(home.listingImport);
   const listingType = listingSnapshotContext(home.listingImport)?.listingType || null;
-  const text = (field, label, { parse = parseText, ...rest } = {}) => <QuietInput id={`hf-${field}`} label={label} value={home[field]} readOnly={isReadOnly} failed={failed(field)} registerDraft={editor?.registerDraft} parse={parse} onCommit={(value) => save({ [field]: value })} className="is-boxed" {...rest} />;
-  const select = (field, label, choices, onCommit = (value) => save({ [field]: value })) => <SelectField id={`hf-${field}`} label={label} value={home[field]} choices={choices} readOnly={isReadOnly} failed={failed(field)} onCommit={onCommit} />;
+  const text = (field, label, { parse = parseText, ...rest } = {}) => <QuietInput id={`hf-${field}`} label={label} value={home[field]} readOnly={isReadOnly} failed={failed(field)} registerDraft={editor?.registerDraft} parse={parse} onCommit={(value) => save({ [field]: value })} className={`is-boxed${priorityIds.has(`hf-${field}`) ? ' is-priority-unknown' : ''}`} {...rest} />;
+  const select = (field, label, choices, onCommit = (value) => save({ [field]: value })) => <SelectField id={`hf-${field}`} label={label} value={home[field]} choices={choices} readOnly={isReadOnly} failed={failed(field)} priority={priorityIds.has(`hf-${field}`)} onCommit={onCommit} />;
   const { line2 } = splitAddressLines(home.address);
   const priceLabel = showsRentalFacts ? 'Monthly rent' : 'Asking price';
   const laundryKnownToDatabase = home.laundryLocation !== undefined;
   const utilitiesSummary = [home.yearBuilt, !showsRentalFacts && home.propertyTaxAnnual ? `${money(home.propertyTaxAnnual)}/yr` : null, home.heating || home.cooling ? 'Heating & cooling' : null].filter(Boolean).join(' · ');
-  const schoolSummary = [home.schoolDistrict, home.schoolsNotes ? 'details added' : null].filter(Boolean).join(' · ') || 'Unknown';
+  const schoolSummary = [home.schoolDistrict, home.schoolsNotes ? 'details added' : null].filter(Boolean).join(' · ') || 'District, schools & enrollment notes';
   const basement = basementFieldValue(home);
   const hoaKnownToDatabase = home.hasHoa !== undefined;
   // Phase 6: the dated listing summary (Details opens the sheet) and a quiet way
@@ -301,14 +307,62 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
             <QuietInput id="hf-lotSize" label="Lot size in acres" value={home.lotSize} readOnly={isReadOnly} failed={failed('lotSize')} registerDraft={editor?.registerDraft} format={formatLotSizeDisplay} edit={(value) => (isUnitlessLotSize(value) ? String(value).trim() : formatLotSizeDisplay(value))} parse={normalizeLotSizeInput} size={9} placeholder="— acres" onCommit={(lotSize) => save({ lotSize })} />
           </p>}
           <ListingLink home={home} readOnly={isReadOnly} editor={editor} />
-          <div className="flh-hf2-aside is-wide">{aside}</div>
+
           {home.suggestedBy && <span className="hh-provenance">Suggested by {home.suggestedBy}</span>}
         </div>
-        {/* Phones: the same aside spans the full width under the photo and identity,
-            so the summary, Details and the shortcut never squeeze into the narrow column. */}
+        {/* Dated listing context stays available once, below the property summary. */}
         <div className="flh-hf2-aside is-phone">{aside}</div>
 
-        <PhoneCollapse id={`hf-utilities-${home.id}`} title="Year, taxes & utilities" summary={utilitiesSummary || 'Unknown'} className="flh-hf2-secondary">
+
+      </section>
+
+      {matchOverview}
+
+      <section className="flh-hf2-facts" aria-labelledby="hf-title">
+        <header className={`flh-hf2-section-head ${showHeading ? '' : 'sr-only'}`}>
+          <h2 id="hf-title" className="flh-overlay-heading">Home Facts</h2>
+          <span>{isReadOnly ? 'From the listing and the buyers' : 'All optional'}</span>
+        </header>
+        {/* Phase 6: what the warm Unknown fields mean, said once. */}
+        {!isReadOnly && <p className="flh-hf2-legend">Unknown isn’t No. Terracotta outlines mark unanswered priorities. All details are optional.</p>}
+        {!isReadOnly && <OfferedFactsEntry home={home} onAdd={save} />}
+        <div className="flh-hf2-columns">
+          <div className="flh-hf2-column">
+            <Group id="hf-basic-title" title="Basic Details" defaultOpen summary={[propertyTypeLabel(home.propertyType), ...layoutValues(home)].filter(Boolean).join(' · ') || 'Type, layout & condition'}>
+              {!showsRentalFacts && <Row label="Estimated monthly payment" hint="your estimate" htmlFor="hf-estMonthly">{text('estMonthly', null, { parse: parseMoney, format: (value) => (value ? `${money(value)}/mo` : ''), edit: (value) => money(value), inputMode: 'numeric', placeholder: 'Add your estimate' })}</Row>}
+              {available.propertyType && <Row label="Property type" htmlFor="hf-propertyType">{select('propertyType', null, PROPERTY_TYPE_CHOICES)}</Row>}
+              {available.layout && <Row label="Home layout" htmlFor="hf-layout" hint={!layoutValues(home).length && record.stories ? `County records: ${record.stories} ${record.stories === 1 ? 'story' : 'stories'}` : null}><MultiSelectField priority={priorityIds.has('hf-layout')} id="hf-layout" label="Home layout" values={layoutValues(home)} choices={LAYOUT_FACT_CHOICES} readOnly={isReadOnly} failed={failed('homeLayout') || failed('primaryBedroomLocation')} onCommit={(next) => { const patch = layoutPatch(home, next); if (Object.keys(patch).length) save(patch); }} /></Row>}
+              {available.condition && <Row label="Home condition" htmlFor="hf-homeCondition" hint={!(home.homeCondition || []).length && listingType === 'New Construction' ? 'The listing called it New Construction' : null}><MultiSelectField priority={priorityIds.has('hf-homeCondition')} id="hf-homeCondition" label="Home condition" values={home.homeCondition} choices={CONDITION_FACT_CHOICES} readOnly={isReadOnly} failed={failed('homeCondition')} onCommit={(homeCondition) => save({ homeCondition })} /></Row>}
+              {/* An existing Match input with no other home here: shown when it's
+                  part of this search or already has a value. */}
+              {!apartment && (home.secondaryBedroomLocation || (priorities.secondaryBedroomLocation?.value && priorities.secondaryBedroomLocation.tier !== 'dontcare')) && <Row label="Secondary bedrooms" htmlFor="hf-secondaryBedroomLocation">{select('secondaryBedroomLocation', null, SECONDARY_BEDROOM_CHOICES, (value) => save({ secondaryBedroomLocation: value || '' }))}</Row>}
+              {/* Always offered for a home to buy: blank is Unknown, 0 is a confirmed $0 monthly fee
+                  (not proof there's no HOA). */}
+              {/* HOA status: the confirmed answer No HOA reads. A $0 fee alone never sets it. */}
+              {!showsRentalFacts && hoaKnownToDatabase && <Row label="HOA" htmlFor="hf-hasHoa"><SelectField priority={priorityIds.has('hf-hasHoa')} id="hf-hasHoa" value={hoaStatusChoice(home.hasHoa)} choices={HOA_STATUS_CHOICES} readOnly={isReadOnly} failed={failed('hasHoa')} onCommit={(choice) => save({ hasHoa: hoaStatusValue(choice) })} /></Row>}
+              {!showsRentalFacts && <Row label="HOA fee" hint={isReadOnly ? null : 'Enter 0 for a $0 monthly fee'} htmlFor="hf-hoaFeeMonthly">{text('hoaFeeMonthly', null, { parse: parseMoneyNumber, format: formatHoaFee, edit: editHoaFee, inputMode: 'numeric' })}</Row>}
+              {!showsRentalFacts && hoaConflict(home) && <p className="flh-hf2-note" role="note">The fee says there’s an HOA, but HOA is set to No. No HOA stays Unknown in Match until they agree.</p>}
+              {showsRentalFacts && home.availableOn && <Row label="Available on"><span className="flh-fact-text">{formatDateOnly(home.availableOn)}</span></Row>}
+              {showsRentalFacts && [['petsAllowed', 'Pets allowed'], ['utilitiesIncluded', 'Utilities included'], ['inUnitLaundry', 'In-unit laundry']].map(([field, label]) => (
+                home[field] == null ? null : <Row key={field} label={label}><span className="flh-fact-text">{formatTriState(home[field])}</span></Row>
+              ))}
+              {!isReadOnly && onEditAll && <button type="button" className="flh-hf2-more" onClick={onEditAll}>More {vocabulary.singularLower} details</button>}
+            </Group>
+
+            {/* One freeform School Details field (homes.schools_notes) beside the district.
+                Saved school names stay shown and editable; nothing is looked up or
+                inferred from the address. */}
+            {available.schools && <div className="flh-hf2-schools">
+              <Group id="hf-schools-title" title="Schools" summary={schoolSummary}>
+                <Row label="District" htmlFor="hf-schoolDistrict">{text('schoolDistrict')}</Row>
+                <div className="flh-hf-row is-stacked">
+                  <label className="flh-hf-row-label" htmlFor="hf-schoolsNotes">Details</label>
+                  <div className="flh-hf-row-control">{text('schoolsNotes', null, { parse: parseLegacyText, multiline: true, placeholder: isReadOnly ? 'Unknown' : 'Schools, bus routes, boundary or enrollment notes…' })}</div>
+                </div>
+                {[['elementarySchool', 'Elementary'], ['middleSchool', 'Middle'], ['highSchool', 'High']].filter(([field]) => home[field]).map(([field, label]) => <Row key={field} label={label} htmlFor={`hf-${field}`}>{text(field)}</Row>)}
+              </Group>
+            </div>}
+        <Group id="hf-utilities-title" title="Costs & Utilities" summary={utilitiesSummary || 'Year built, taxes, heating & cooling'}>
           <div className="flh-hf2-secondary-grid">
             {!showsRentalFacts && <>
               <div className="flh-hf2-mini"><label htmlFor="hf-propertyTaxAnnual">Annual taxes</label>{text('propertyTaxAnnual', null, { parse: parseMoneyNumber, format: (value) => (value ? `${money(value)}/yr` : ''), edit: (value) => money(value), inputMode: 'numeric', onCommit: (value) => save(propertyTaxPatch(home, value)) })}</div>
@@ -322,69 +376,23 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
               <datalist id="hf-cooling-options">{COOLING_SUGGESTIONS.map((value) => <option key={value} value={value} />)}</datalist>
             </>}
           </div>
-        </PhoneCollapse>
-      </section>
-
-      <section className="flh-hf2-facts" aria-labelledby="hf-title">
-        <header className={`flh-hf2-section-head ${showHeading ? '' : 'sr-only'}`}>
-          <h2 id="hf-title" className="flh-overlay-heading">Home Facts</h2>
-          <span>{isReadOnly ? 'From the listing and the buyers' : 'All optional'}</span>
-        </header>
-        {/* Phase 6: what the warm Unknown fields mean, said once. */}
-        {!isReadOnly && <p className="flh-hf2-legend">Unknown means FLH hasn’t found it yet. It never counts as No in your Match.</p>}
-        {!isReadOnly && <OfferedFactsEntry home={home} onAdd={save} />}
-        <div className="flh-hf2-columns">
-          <div className="flh-hf2-column">
-            <Group id="hf-basic-title" title="Basic Details">
-              {!showsRentalFacts && <Row label="Estimated monthly payment" hint="your estimate" htmlFor="hf-estMonthly">{text('estMonthly', null, { parse: parseMoney, format: (value) => (value ? `${money(value)}/mo` : ''), edit: (value) => money(value), inputMode: 'numeric', placeholder: 'Add your estimate' })}</Row>}
-              {available.propertyType && <Row label="Property type" htmlFor="hf-propertyType">{select('propertyType', null, PROPERTY_TYPE_CHOICES)}</Row>}
-              {available.layout && <Row label="Home layout" htmlFor="hf-layout" hint={!layoutValues(home).length && record.stories ? `County records: ${record.stories} ${record.stories === 1 ? 'story' : 'stories'}` : null}><MultiSelectField id="hf-layout" label="Home layout" values={layoutValues(home)} choices={LAYOUT_FACT_CHOICES} readOnly={isReadOnly} failed={failed('homeLayout') || failed('primaryBedroomLocation')} onCommit={(next) => { const patch = layoutPatch(home, next); if (Object.keys(patch).length) save(patch); }} /></Row>}
-              {available.condition && <Row label="Home condition" htmlFor="hf-homeCondition" hint={!(home.homeCondition || []).length && listingType === 'New Construction' ? 'The listing called it New Construction' : null}><MultiSelectField id="hf-homeCondition" label="Home condition" values={home.homeCondition} choices={CONDITION_FACT_CHOICES} readOnly={isReadOnly} failed={failed('homeCondition')} onCommit={(homeCondition) => save({ homeCondition })} /></Row>}
-              {/* An existing Match input with no other home here: shown when it's
-                  part of this search or already has a value. */}
-              {!apartment && (home.secondaryBedroomLocation || (priorities.secondaryBedroomLocation?.value && priorities.secondaryBedroomLocation.tier !== 'dontcare')) && <Row label="Secondary bedrooms" htmlFor="hf-secondaryBedroomLocation">{select('secondaryBedroomLocation', null, SECONDARY_BEDROOM_CHOICES, (value) => save({ secondaryBedroomLocation: value || '' }))}</Row>}
-              {/* Always offered for a home to buy: blank is Unknown, 0 is a confirmed $0 monthly fee
-                  (not proof there's no HOA). */}
-              {/* HOA status: the confirmed answer No HOA reads. A $0 fee alone never sets it. */}
-              {!showsRentalFacts && hoaKnownToDatabase && <Row label="HOA" htmlFor="hf-hasHoa"><SelectField id="hf-hasHoa" value={hoaStatusChoice(home.hasHoa)} choices={HOA_STATUS_CHOICES} readOnly={isReadOnly} failed={failed('hasHoa')} onCommit={(choice) => save({ hasHoa: hoaStatusValue(choice) })} /></Row>}
-              {!showsRentalFacts && <Row label="HOA fee" hint={isReadOnly ? null : 'Enter 0 for a $0 monthly fee'} htmlFor="hf-hoaFeeMonthly">{text('hoaFeeMonthly', null, { parse: parseMoneyNumber, format: formatHoaFee, edit: editHoaFee, inputMode: 'numeric' })}</Row>}
-              {!showsRentalFacts && hoaConflict(home) && <p className="flh-hf2-note" role="note">The fee says there’s an HOA, but HOA is set to No. No HOA stays Unknown in Match until they agree.</p>}
-              {showsRentalFacts && home.availableOn && <Row label="Available on"><span className="flh-fact-text">{formatDateOnly(home.availableOn)}</span></Row>}
-              {showsRentalFacts && [['petsAllowed', 'Pets allowed'], ['utilitiesIncluded', 'Utilities included'], ['inUnitLaundry', 'In-unit laundry']].map(([field, label]) => (
-                home[field] == null ? null : <Row key={field} label={label}><span className="flh-fact-text">{formatTriState(home[field])}</span></Row>
-              ))}
-              {!isReadOnly && onEditAll && <button type="button" className="flh-hf2-more" onClick={onEditAll}>More {vocabulary.singularLower} details</button>}
-            </Group>
-
-            {/* One freeform School Details field (homes.schools_notes) beside the district.
-                Saved school names stay shown and editable; nothing is looked up or
-                inferred from the address. */}
-            {available.schools && <PhoneCollapse id={`hf-schools-${home.id}`} title="School details" summary={schoolSummary} className="flh-hf2-schools">
-              <Group id="hf-schools-title" title="School Details">
-                <Row label="District" htmlFor="hf-schoolDistrict">{text('schoolDistrict')}</Row>
-                <div className="flh-hf-row is-stacked">
-                  <label className="flh-hf-row-label" htmlFor="hf-schoolsNotes">Details</label>
-                  <div className="flh-hf-row-control">{text('schoolsNotes', null, { parse: parseLegacyText, multiline: true, placeholder: isReadOnly ? 'Unknown' : 'Schools, bus routes, boundary or enrollment notes…' })}</div>
-                </div>
-                {[['elementarySchool', 'Elementary'], ['middleSchool', 'Middle'], ['highSchool', 'High']].filter(([field]) => home[field]).map(([field, label]) => <Row key={field} label={label} htmlFor={`hf-${field}`}>{text(field)}</Row>)}
-              </Group>
-            </PhoneCollapse>}
+        </Group>
           </div>
 
-          {(available.garage || available.basement || laundryKnownToDatabase || showNotes) && <div className="flh-hf2-column flh-hf2-column-side">
-            {available.garage && <Group id="hf-garage-title" title="Garage">
+          {(available.garage || available.basement || laundryKnownToDatabase) && <div className="flh-hf2-column flh-hf2-column-side">
+            {available.garage && <Group id="hf-garage-title" title="Garage" summary={[GARAGE_TYPE_CHOICES.find(([key]) => key === home.garageType)?.[1], home.garageSpaces && `${home.garageSpaces} spaces`].filter(Boolean).join(' · ') || 'Type & parking spaces'}>
               <Pair>
                 <PairField label="Type" htmlFor="hf-garageType">{select('garageType', null, GARAGE_TYPE_CHOICES, (value) => save(garagePatch(home, 'garageType', value)))}</PairField>
-                <PairField label="Spaces" htmlFor="hf-garageSpaces"><SelectField id="hf-garageSpaces" value={garageSpacesSelectValue(home.garageSpaces)} choices={GARAGE_SPACE_CHOICES} readOnly={isReadOnly} failed={failed('garageSpaces')} onCommit={(value) => save(garagePatch(home, 'garageSpaces', value))} /></PairField>
+                <PairField label="Spaces" htmlFor="hf-garageSpaces"><SelectField priority={priorityIds.has('hf-garageSpaces')} id="hf-garageSpaces" value={garageSpacesSelectValue(home.garageSpaces)} choices={GARAGE_SPACE_CHOICES} readOnly={isReadOnly} failed={failed('garageSpaces')} onCommit={(value) => save(garagePatch(home, 'garageSpaces', value))} /></PairField>
               </Pair>
             </Group>}
             {/* Basement: one description over the two facts Match reads
                 (basementDescriptionPatch). "Match reads" says what was understood. */}
-            {available.basement && <Group id="hf-basement-title" title="Basement">
+            {available.basement && <Group id="hf-basement-title" title="Basement" summary={basement.text || 'Style & condition'}>
               <div className="flh-hf-basement">
                 <QuietInput id="hf-basement" label="Basement description" value={basement.text} readOnly={isReadOnly} failed={failed('basementCondition') || failed('basementStyle') || failed('basementNotes')}
                   registerDraft={editor?.registerDraft} list="hf-basement-options" placeholder="Unknown — e.g. Finished Walkout" parse={(value) => value.trim()}
-                  onCommit={(value) => { const patch = basementDescriptionPatch(home, value); if (Object.keys(patch).length) save(patch); }} className="is-boxed" />
+                  onCommit={(value) => { const patch = basementDescriptionPatch(home, value); if (Object.keys(patch).length) save(patch); }} className={`is-boxed${priorityIds.has('hf-basement') ? ' is-priority-unknown' : ''}`} />
                 {!isReadOnly && <datalist id="hf-basement-options">{BASEMENT_SUGGESTIONS.map((value) => <option key={value} value={value} />)}</datalist>}
                 {(home.basementCondition || home.basementStyle) && <small className="flh-hf2-hint flh-hf-basement-reading">{basementMatchReading(home.basementCondition, home.basementStyle)}</small>}
                 {basement.source === 'earlier_note' && <small className="flh-hf2-hint">{basement.offer && !isReadOnly
@@ -397,22 +405,22 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
             </Group>}
             {/* Laundry, after Basement (moved from the photo summary). Main Floor answers the
                 Main Floor Laundry priority; no location is ever read as "No". */}
-            {laundryKnownToDatabase && !apartment && <Group id="hf-laundry-title" title="Laundry">
+            {laundryKnownToDatabase && !apartment && <Group id="hf-laundry-title" title="Laundry" summary={LAUNDRY_LOCATION_CHOICES.find(([key]) => key === home.laundryLocation)?.[1] || 'Laundry location'}>
               <Row label="Location" htmlFor="hf-laundryLocation" hint={!isReadOnly && home.laundryLocation === 'first_floor' ? 'Counts for Main Floor Laundry' : null}>{select('laundryLocation', null, LAUNDRY_LOCATION_CHOICES)}</Row>
             </Group>}
             {/* The shared notes / pros / cons (the same fields as Tour Feedback and
                 the Home Card previews), saved like every other fact here. */}
-            {showNotes && <section className="flh-hf-block flh-hf-notes" aria-labelledby="hf-notes-title">
-              <div className="flh-hf-notes-head">
-                <h3 id="hf-notes-title" className="flh-hf-block-title">{noteFields.some(({ key }) => key === 'notes') ? 'Pros, Cons & Notes' : 'Pros & Cons'}</h3>
-                {isCollaborative && !isReadOnly && <span className="flh-hf-notes-context">Shared with this search</span>}
-              </div>
-              {[...noteFields.filter(({ key }) => key !== 'notes'), ...noteFields.filter(({ key }) => key === 'notes')].map(({ key, label, marker, placeholder }) => <NoteTextField key={key} id={`hf-${key}`} label={label} marker={marker} placeholder={placeholder}
-                value={home[key]} readOnly={isReadOnly} failed={failed(key)} registerDraft={editor?.registerDraft} onCommit={(text) => save({ [key]: text })} />)}
-            </section>}
+
           </div>}
         </div>
       </section>
+      <div className="flh-hf-evaluation">
+            {showNotes && <Group id="hf-notes-title" title={noteFields.some(({ key }) => key === 'notes') ? 'Pros, Cons & Notes' : 'Pros & Cons'} summary={`${noteFields.reduce((count, { key }) => count + noteEntries(home[key]).length, 0)} saved impressions`}>
+              {isCollaborative && !isReadOnly && <p className="flh-hf-notes-context">Shared with this search</p>}
+              {[...noteFields.filter(({ key }) => key !== 'notes'), ...noteFields.filter(({ key }) => key === 'notes')].map(({ key, label, marker, placeholder }) => <NoteTextField key={key} id={`hf-${key}`} label={label} marker={marker} placeholder={placeholder}
+                value={home[key]} readOnly={isReadOnly} failed={failed(key)} registerDraft={editor?.registerDraft} onCommit={(text) => save({ [key]: text })} />)}
+            </Group>}
+      </div>
     </div>
   );
 }

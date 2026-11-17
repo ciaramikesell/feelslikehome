@@ -298,7 +298,7 @@ test('Home Facts keeps personal answers out and never offers edit controls to re
 });
 
 test('Home Facts: no imported-facts panel, no school disclaimer, no Edit or Save buttons', () => {
-  assert.doesNotMatch(facts, /All listing details|See imported details|<details/);
+  assert.doesNotMatch(facts, /All listing details|See imported details/);
   assert.doesNotMatch(facts + factsLib, /FLH doesn’t pull school information|school rating|GreatSchools|assigned to/i);
   assert.doesNotMatch(facts, /flh-hf-edit|EditorShell|>Save |Next: Match Criteria|From listing/);
 });

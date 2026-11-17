@@ -98,7 +98,7 @@ test('wiring: Save keeps the offers; Home Facts shows one row and a sheet, unche
   assert.match(entry, /From the listing · \{count\} detail\{count === 1 \? '' : 's'\} not added yet/);
   assert.match(entry, /<button type="button" className="flh-offered-review" onClick=\{\(\) => setOpen\(true\)\} aria-haspopup="dialog">Review<\/button>/);
   assert.match(entry, /if \(!count\) return null;/);
-  assert.doesNotMatch(facts, /<details/, 'Home Facts has no inline fold-out');
+  assert.doesNotMatch(facts.slice(facts.indexOf('function OfferedFactsEntry'), facts.indexOf('export default function')), /<details/, 'offered facts still use their review sheet');
   assert.match(facts, /\{!isReadOnly && <OfferedFactsEntry home=\{home\} onAdd=\{save\} \/>\}/, 'Realtors and read-only views never see it');
   const sheet = read('src/components/FactChecklist.jsx').match(/export function OfferedFactsSheet[\s\S]*?\n\}/)[0];
   assert.match(sheet, /<Sheet open=\{open && offered\.length > 0\}/);
