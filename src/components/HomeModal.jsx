@@ -489,11 +489,11 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
               collaboration.js), so they are labeled truthfully: private to you in a
               solo search, visible to everyone in a shared one. Your Yes/No/Unknown
               answers above are the part that stays yours. */}
-          <section className="hh-edit-home-card" data-step="match" aria-labelledby="shared-notes-heading">
+          {!adding && <section className="hh-edit-home-card" data-step="match" aria-labelledby="shared-notes-heading">
             <h2 id="shared-notes-heading" className="hh-serif">{isCollaborative ? 'Shared notes' : 'Your perspective'}</h2>
             <p className="hh-edit-context">{isCollaborative ? 'Pros, cons, and notes are visible to everyone in this search.' : 'Your impressions — not verified property facts.'}{isCollaborative && ' Your Yes / No / Unknown answers and Match stay your own.'}</p>
             <NoteListFields form={form} set={set} idPrefix="edit-home" />
-          </section>
+          </section>}
           {matchPerspectives.length > 0 && form.address.trim() && <section className="hh-edit-home-card hh-suggestion-match-preview" data-step="match" aria-label="Buyer Match preview"><h2 className="hh-serif">How this lines up</h2><p>Based only on currently known property facts. Unknown details are not counted as misses.</p>{matchPerspectives.map((perspective) => { const match = computeMatch(form, perspective.priorities); return <div key={perspective.userId}><b>{perspective.name}</b><span>{match?.pct == null ? 'Match needs more known facts' : `${match.pct}% Match`}</span><small>{match?.allSelected?.filter((item) => !item.evaluated).slice(0, 3).map((item) => `${item.label} — Unknown`).join(' · ')}</small></div>; })}</section>}
         </div>
       </div>
@@ -710,7 +710,7 @@ function ImportFoundCard({ form, set, importResult, lookupResult = null, importP
       <p className="flh-found-status">Saves it to My Homes. Everything below is optional — now or later.</p>
     </div>
     {/* Optional, below Save Home and collapsed: the Smart Paste area with its
-        reviews, then shared Notes / Pros / Cons. Neither is needed to save. */}
+        reviews. Personal evaluation comes after saving. */}
     <div className="flh-found-optional">
       <details className="hh-details flh-found-more" open={moreOpen} onToggle={(event) => setMoreOpen(event.currentTarget.open)}>
         <summary><ClipboardPaste size={16} aria-hidden="true" /> Add more from the listing <span>Optional{pending ? ` · ${pending} to review` : ''}</span><ChevronDown className="hh-accordion-chevron" size={18} aria-hidden="true" /></summary>
@@ -718,10 +718,7 @@ function ImportFoundCard({ form, set, importResult, lookupResult = null, importP
         <HomeFactReview review={factReview} />
         <DeferredAnswersNote answers={deferredAnswers} vocabulary={vocabulary} />
       </details>
-      <details className="hh-details flh-found-notes">
-        <summary>Add pros or cons <span>Optional · shared with this search</span><ChevronDown className="hh-accordion-chevron" size={18} aria-hidden="true" /></summary>
-        <NoteListFields form={form} set={set} idPrefix="add-home" />
-      </details>
+      <p className="flh-source-note">After saving, add pros and cons in Home Detail as you get to know the home.</p>
     </div>
   </section>;
 }
@@ -1425,7 +1422,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
       {pendingSwitch && <SwitchPropertyConfirm pending={pendingSwitch} vocabulary={vocabulary} onStartFresh={confirmSwitch} onKeep={keepCurrentProperty} />}
       {!pendingSwitch && switchNote && importPhase !== 'loading' && <p className="flh-switch-note" role="status">{switchNote}</p>}
       {quickAdd && <ImportFoundCard form={form} set={set} importResult={importResult} lookupResult={providerResult} importPhase={importPhase} importErrorMsg={importErrorMsg} priorities={priorities} vocabulary={vocabulary} saving={saving} saveErrorMsg={saveErrorMsg} onAdd={addImportedHome} factReview={factReview} deferredAnswers={deferredAnswers} paste={{ text: pasteText, setText: setPasteText, onRun: runAutofill, message: parseMsg }} photo={foundPhoto} />}
-      {isNativeApp() && !quickAdd && <aside className="flh-share-callout" aria-label="Add from the Share Sheet"><Share size={18} aria-hidden="true" /><div><strong>Faster from your listing app</strong><p>Tap Share on any listing, then choose Feels Like Home. It opens right here, ready to review.</p></div></aside>}
+      {isNativeApp() && !quickAdd && <aside className="flh-share-callout" aria-label="Add from the Share Sheet"><Share size={18} aria-hidden="true" /><div><strong>Faster from your listing app</strong><p>In your listing app, tap Share and look for Feels Like Home. If it isn’t available, copy the listing link and paste it above.</p></div></aside>}
       {!quickAdd && <details className="hh-details hh-manual-fallback">
         <summary><span className="hh-accordion-icon"><ClipboardPaste size={24} /></span><span>No link? Paste the listing details<small>Copy the listing description or property features and paste them here. We’ll fill in what we can. School details work too.</small></span><ChevronDown className="hh-accordion-chevron" size={20} /></summary>
         <textarea className="hh-textarea" value={pasteText} onChange={(event) => setPasteText(event.target.value)} placeholder="Paste listing details (optional)" />

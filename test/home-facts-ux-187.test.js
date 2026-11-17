@@ -167,7 +167,7 @@ test('Notes: the empty generic box is gone from Home Facts and Add / Edit Home; 
   assert.match(read('src/components/HomeModal.jsx'), /notes: appendSuggestionToNotes\(f\.notes, suggestion\)/);
   assert.match(read('src/components/TourFeedback.jsx'), /<label className="wide">Notes<textarea/);
   assert.match(read('src/lib/supabase/collaboration.js'), /'notes', 'pros', 'cons', 'latitude'/, 'still a shared field: nothing is dropped from saves');
-  assert.match(read('src/components/HomeModal.jsx'), /<summary>Add pros or cons <span>Optional · shared with this search<\/span>/);
+  assert.doesNotMatch(read('src/components/HomeModal.jsx'), /<summary>Add pros or cons/);
 });
 
 /* ------------------- Add / Edit Home editor uses the same path ------------------- */

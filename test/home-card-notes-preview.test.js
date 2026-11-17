@@ -98,9 +98,10 @@ test('preview styles: quiet link-like counts, focus ring, 44px touch targets, po
 
 /* --------------------------------- editing --------------------------------- */
 
-test('Add Home and Edit Home both edit Notes / Pros / Cons with the same light fields; Add keeps them optional and collapsed', () => {
+test('Edit Home keeps shared evaluation fields; initial Add Home defers evaluation', () => {
   assert.match(modal, /<NoteListFields form=\{form\} set=\{set\} idPrefix="edit-home" \/>/);
-  assert.match(modal, /<details className="hh-details flh-found-notes">[\s\S]*?<NoteListFields form=\{form\} set=\{set\} idPrefix="add-home" \/>[\s\S]*?<\/details>/);
+  assert.doesNotMatch(modal, /idPrefix="add-home"/);
+  assert.match(modal, /\{!adding && <section[^>]*aria-labelledby="shared-notes-heading"/, 'apartment/manual initial editors also defer evaluation');
   assert.doesNotMatch(modal, /<details className="hh-details flh-found-notes" open/);
   // Order on the fields matches the card; each says "one per line".
   assert.deepEqual([...fields.matchAll(/key: '(\w+)', label: '(\w+)'/g)].map((m) => m[2]), ['Notes', 'Pros', 'Cons']);

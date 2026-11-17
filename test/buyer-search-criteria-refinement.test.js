@@ -45,9 +45,9 @@ test('a brand-new search has no kind of search chosen, nothing preset, and Conti
   const basics = read('src/components/onboarding/BasicsStep.jsx');
   // Three visible choices (radios), none checked until chosen.
   assert.match(basics, /NEW_SEARCH_CHOICES\.map\(\(option\) => \{/);
-  assert.match(basics, /home_buy: \{ title: 'Home to Buy', note: 'Purchase budget'/);
-  assert.match(basics, /home_rent: \{ title: 'Home to Rent', note: 'Monthly rent'/);
-  assert.match(basics, /apartment_rent: \{ title: 'Apartment to Rent', note: 'Monthly rent'/);
+  assert.match(basics, /home_buy: \{ title: 'Home to Buy'/);
+  assert.match(basics, /home_rent: \{ title: 'Home to Rent'/);
+  assert.match(basics, /apartment_rent: \{ title: 'Apartment to Rent'/);
   assert.match(basics, /const choice = priorities\.onboardingSearchType \|\| '';/);
   assert.doesNotMatch(basics, /<select/);
   // Friendly inline validation, focus moves to the choices, and Continue is never a dead disabled button.

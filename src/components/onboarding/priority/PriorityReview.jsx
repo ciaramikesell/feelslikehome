@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+import ShareTutorial from '@/components/ShareTutorial';
 import { ArrowRight, Check, ChevronRight } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
 import { LEVEL_COPY } from '@/lib/searchProfile';
@@ -72,6 +74,7 @@ function LotLine({ lot, onOpen }) {
 }
 
 export default function PriorityReview({ header, priorities, sharedFor = null, skipped = [], onEdit, onOpenFeature, onFinish, finishing, finishError, celebrate = false }) {
+  const [tutorialOpen, setTutorialOpen] = useState(false);
   const basics = basicsSummary(priorities).filter((row) => row.key !== 'lot');
   const categories = reviewCategories(priorities);
   const others = otherChosenPriorities(priorities);
@@ -148,6 +151,12 @@ export default function PriorityReview({ header, priorities, sharedFor = null, s
         </Section>
       )}
 
+      {!sharedFor && <section className="flh-ob-first-import" aria-labelledby="first-import-title">
+        <h2 id="first-import-title" className="flh-ob-label">Now, bring your priorities to life.</h2>
+        <p className="flh-lead">Import a listing you’ve already found and see how it fits what matters to you. You can review its facts before saving.</p>
+        <button type="button" className="flh-text-action" onClick={() => setTutorialOpen(true)}>Using an iPhone? Practice sharing a listing</button>
+        {tutorialOpen && <ShareTutorial onClose={() => setTutorialOpen(false)} />}
+      </section>}
       {finishError && <p className="hh-save-error flh-ob-review-error" role="alert">{finishError}</p>}
       <nav className="flh-onboarding-actions flh-ob-review-actions" aria-label="Finish setup">
         {!sharedFor && <button type="button" className="flh-text-action flh-ob-later" disabled={finishing} onClick={() => onFinish('/search?welcome=1')}>Go to My Search</button>}

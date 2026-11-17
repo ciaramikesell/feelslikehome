@@ -160,10 +160,10 @@ for (const zoom of [1.5, 2]) {
   await page.getByRole('button', { name: 'More bedrooms' }).click();
   await page.getByRole('button', { name: /Continue/ }).click();
   // No geography screen (PR #185): Basics leads straight to the first category.
-  await page.getByRole('heading', { name: /Room for the way you live/ }).waitFor();
+  await page.getByRole('heading', { name: /Room for the way you live/i }).waitFor();
   check('progress counts ten question screens incl. the setup-path choice (no geography screen)', (await page.locator('.flh-ob-count').textContent()) === '4/10');
   await page.getByRole('button', { name: 'Skip' }).click();
-  await page.getByRole('heading', { name: /dream kitchen/, level: 1 }).waitFor();
+  await page.getByRole('heading', { name: /dream kitchen/i, level: 1 }).waitFor();
   check('nothing is preselected', (await page.locator('.flh-ob-pf-card.is-selected').count()) === 0);
 
   // Card → bottom sheet → level stays visible on the card.
@@ -182,10 +182,10 @@ for (const zoom of [1.5, 2]) {
   await page.getByRole('button', { name: 'Close' }).click();
   check('closing the sheet changes nothing', await page.getByRole('button', { name: /^Countertop Seating \(your own\): not chosen/ }).isVisible());
 
-  // Suggestion chip → card + sheet straight away.
-  await page.getByRole('button', { name: 'Kitchen Island' }).click();
+  // Promoted Kitchen Island card opens the same importance sheet.
+  await page.getByRole('button', { name: /^Kitchen Island: not chosen/ }).click();
   await page.getByRole('dialog', { name: 'Kitchen Island' }).getByRole('button', { name: /^Important/ }).click();
-  check('a suggestion becomes a card with its level', await page.getByRole('button', { name: /^Kitchen Island: Important/ }).isVisible());
+  check('the promoted card keeps its chosen level', await page.getByRole('button', { name: /^Kitchen Island: Important/ }).isVisible());
 
   // Add your own, then the same thing differently typed: one card.
   await page.getByRole('textbox', { name: 'Add your own' }).fill('  pot   filler ');
@@ -203,7 +203,7 @@ for (const zoom of [1.5, 2]) {
 
   // Back keeps answers.
   await page.getByRole('button', { name: 'Back', exact: true }).click();
-  await page.getByRole('heading', { name: /Room for the way you live/ }).waitFor();
+  await page.getByRole('heading', { name: /Room for the way you live/i }).waitFor();
   await page.getByRole('button', { name: /Continue/ }).click();
   check('Back and forward keep every answer', await page.getByRole('button', { name: /^Walk-in Pantry: Must Have/ }).isVisible() && await page.getByRole('button', { name: /^Kitchen Island: Important/ }).isVisible());
 
@@ -219,7 +219,7 @@ for (const zoom of [1.5, 2]) {
   await page.getByRole('button', { name: /Continue/ }).click();
   await page.getByRole('button', { name: 'Skip' }).click(); // living room
   await page.getByRole('button', { name: 'Skip' }).click(); // bath
-  await page.getByRole('heading', { name: /garage space/, level: 1 }).waitFor();
+  await page.getByRole('heading', { name: /garage space/i, level: 1 }).waitFor();
   await page.getByRole('button', { name: /^Important/ }).click();
   check('garage subtype appears once a garage matters', await page.getByRole('heading', { name: 'Which garage?' }).isVisible());
   const garageChoices = await page.locator('section[aria-labelledby="flh-ob-pf-garage-type"] .flh-ob-pf-card-title').allTextContents();
@@ -230,18 +230,18 @@ for (const zoom of [1.5, 2]) {
   check('garage Not important advances to the next screen automatically', await page.getByRole('heading', { name: /step outside/i, level: 1 }).isVisible());
   // Back: the earlier answer is shown and can be changed.
   await page.getByRole('button', { name: 'Back', exact: true }).click();
-  await page.getByRole('heading', { name: /garage space/, level: 1 }).waitFor();
+  await page.getByRole('heading', { name: /garage space/i, level: 1 }).waitFor();
   check('Back to the garage shows Not important chosen, with no subtype', await page.getByRole('button', { name: /^Not important/ }).getAttribute('aria-pressed') === 'true'
     && !(await page.getByRole('heading', { name: 'Which garage?' }).isVisible()));
   await shot(page, 'flow-garage-not-important-back-390');
   await page.getByRole('button', { name: /^Nice to Have/ }).click();
-  check('changing it back brings the subtype back', await page.getByRole('heading', { name: 'Which garage?' }).isVisible() && await page.getByRole('heading', { name: /garage space/, level: 1 }).isVisible());
+  check('changing it back brings the subtype back', await page.getByRole('heading', { name: 'Which garage?' }).isVisible() && await page.getByRole('heading', { name: /garage space/i, level: 1 }).isVisible());
   await page.getByRole('button', { name: /^Not important/ }).click();
   await page.getByRole('heading', { name: /step outside/i, level: 1 }).waitFor();
   await page.getByRole('textbox', { name: /Ideal lot size/ }).fill('0.5');
   await page.getByRole('button', { name: /Continue/ }).click();
   await page.getByRole('button', { name: 'Skip' }).click(); // neighborhood
-  await page.getByRole('heading', { name: /Your search is/ }).waitFor();
+  await page.getByRole('heading', { name: /Your search is/i }).waitFor();
 
   // Review: editable in place and per section.
   check('review shows skipped screens', await page.getByRole('region', { name: 'Living Room' }).getByText('Skipped—add anytime.').isVisible());
@@ -250,7 +250,7 @@ for (const zoom of [1.5, 2]) {
   await page.getByRole('dialog', { name: 'Kitchen Island' }).getByRole('button', { name: /^Must Have/ }).click();
   check('review edits importance in place', await page.getByRole('button', { name: /^Kitchen Island: Must Have/ }).isVisible());
   await page.getByRole('button', { name: 'Add: Bathroom' }).click();
-  await page.getByRole('heading', { name: /bathroom feel just right/, level: 1 }).waitFor();
+  await page.getByRole('heading', { name: /bathroom feel just right/i, level: 1 }).waitFor();
   await page.getByRole('button', { name: /^Soaking Tub/ }).click();
   await page.getByRole('dialog').getByRole('button', { name: /^Nice to Have/ }).click();
   await page.getByRole('button', { name: 'Back to review' }).click();
@@ -359,7 +359,7 @@ for (const zoom of [1.5, 2]) {
   await page.getByRole('heading', { name: /neighborhood/i, level: 1 }).waitFor();
   check('rent: Neighborhood is 8/8', (await count()) === '8/8');
   await page.getByRole('button', { name: 'Skip' }).click();
-  await page.getByRole('heading', { name: /Your search is/ }).waitFor();
+  await page.getByRole('heading', { name: /Your search is/i }).waitFor();
   const essentials = page.getByRole('region', { name: 'Rental Essentials' });
   check('review: pets answer and its provenance', await essentials.getByText('Pets moving with you:').isVisible() && await essentials.getByText('Because pets are moving with you').isVisible());
   check('review: Pet-Friendly listed once', (await page.getByRole('button', { name: /^Pet-Friendly:/ }).count()) === 1 && (await page.getByRole('region', { name: 'More of your priorities' }).count()) === 0);
@@ -403,16 +403,16 @@ for (const zoom of [1.5, 2]) {
   await page.getByRole('heading', { name: /moving-in question/i }).waitFor();
   check('apartment: no geography screen; Rental Essentials 4/6', (await count()) === '4/6');
   await page.getByRole('button', { name: 'Skip' }).click();
-  await page.getByRole('heading', { name: /front door/, level: 1 }).waitFor();
+  await page.getByRole('heading', { name: /front door/i, level: 1 }).waitFor();
   check('apartment: The Unit 5/6', (await count()) === '5/6');
   await page.getByRole('button', { name: 'Private Garage' }).click();
   check('apartment: Private Garage hint', await page.getByRole('dialog', { name: 'Private Garage' }).getByText('A garage for your unit only.').isVisible());
   await page.getByRole('dialog').getByRole('button', { name: /^Must Have/ }).click();
   await page.getByRole('button', { name: /Continue/ }).click();
-  await page.getByRole('heading', { name: /building and beyond/, level: 1 }).waitFor();
+  await page.getByRole('heading', { name: /building and beyond/i, level: 1 }).waitFor();
   check('apartment: The Property 6/6, Garage Parking card', (await count()) === '6/6' && await page.getByRole('button', { name: /^Garage Parking: not chosen/ }).isVisible());
   await page.getByRole('button', { name: /Continue/ }).click();
-  await page.getByRole('heading', { name: /Your search is/ }).waitFor();
+  await page.getByRole('heading', { name: /Your search is/i }).waitFor();
   check('apartment review: skipped pets question says so', await page.getByRole('region', { name: 'Rental Essentials' }).getByText('Skipped—add anytime.').isVisible());
   check('apartment review: no lot size anywhere', (await page.getByText(/lot size/i).count()) === 0);
   await page.getByRole('button', { name: /^Answer: Rental Essentials/ }).click();

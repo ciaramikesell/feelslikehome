@@ -95,10 +95,10 @@ export const PRIORITY_CATEGORIES = Object.freeze([
       f('features', 'Countertop Seating', { custom: true, art: 'countertop-seating', icon: 'Coffee' }),
       f('features', 'Stainless Steel Appliances', { art: 'stainless-appliances', icon: 'Refrigerator' }),
       f('features', 'Walk-in Pantry', { art: 'walk-in-pantry', icon: 'Package' }),
-    ]),
-    suggestions: Object.freeze([
       f('features', 'Eat-in Kitchen', { art: 'eat-in-kitchen', icon: 'Utensils' }),
       f('features', 'Kitchen Island', { art: 'kitchen-island', icon: 'ChefHat' }),
+    ]),
+    suggestions: Object.freeze([
       f('features', 'Formal Dining Room', { art: 'formal-dining', icon: 'UtensilsCrossed' }),
     ]),
   }),
@@ -122,11 +122,11 @@ export const PRIORITY_CATEGORIES = Object.freeze([
     features: Object.freeze([
       f('features', 'Double Vanity', { art: 'double-vanity', icon: 'Droplets' }),
       f('features', 'Soaking Tub', { art: 'soaking-tub', icon: 'Bath' }),
+      f('features', 'Separate Shower / Tub', { custom: true, art: 'separate-shower', icon: 'ShowerHead' }),
+      f('features', 'Linen Closet', { custom: true, art: 'linen-closet', icon: 'Layers' }),
     ]),
     suggestions: Object.freeze([
-      f('features', 'Separate Shower / Tub', { custom: true, art: 'separate-shower', icon: 'ShowerHead' }),
       f('features', 'Private Toilet', { custom: true, art: 'private-toilet', icon: 'DoorClosed' }),
-      f('features', 'Linen Closet', { custom: true, art: 'linen-closet', icon: 'Layers' }),
     ]),
   }),
   // Overall importance first (the existing exterior:Garage criterion), then the

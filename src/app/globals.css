@@ -3633,6 +3633,26 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
   .flh-reveal-confetti { display: none; }
 }
 
+/* First-use refinement: content can grow with text size; no fixed-height copy. */
+.flh-welcome-title { font-size: clamp(1.5rem, 7.5vw, 2rem); line-height: 1.15; overflow-wrap: break-word; }
+.flh-welcome-lede { font-size: 1.0625rem; line-height: 1.6; color: var(--ink); }
+.flh-welcome-lede strong { display: block; margin-bottom: .35em; font-weight: 650; }
+.flh-welcome-tour { align-self: stretch; justify-content: center; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper-raised); color: var(--brick-deep); font-size: .9375rem; line-height: 1.4; text-decoration: none; text-align: center; }
+.flh-welcome-secondary { flex-wrap: wrap; padding-block: 10px; }
+.afh-demo-link { width: 100%; min-height: 48px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; color: var(--brick-deep); background: var(--paper-raised); font: 600 1rem/1.4 var(--font-sans); cursor: pointer; }
+.afh-demo-link span { display: block; margin-top: 4px; color: var(--ink); font-size: .875rem; font-weight: 400; }
+.afh-name-row { grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr)); }
+.afh-name-row > div { min-width: 0; }
+.afh-name-row input { width: 100%; min-width: 0; }
+.flh-st-sample-options { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 14px; }
+.flh-st-sample-options button { flex: 1 1 8rem; min-height: 44px; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); font: 600 1rem/1.4 var(--font-sans); cursor: pointer; }
+.flh-st-sample-options button[aria-pressed="true"] { background: var(--brick-deep); color: white; border-color: var(--brick-deep); }
+.flh-st-sample-result { padding: 14px; border-radius: 12px; background: var(--paper-raised); }
+.flh-st-saved p, .flh-st-facts { font-size: 1rem; line-height: 1.6; }
+.flh-st.is-saved .flh-st-listing { display: none; }
+.flh-st.is-saved .flh-st-saved { position: relative; padding: 16px; }
+.flh-st-saved p { max-width: 100%; }
+
 /* ── Onboarding V2 shell (Phase 1) ───────────────────────────────────────────
    Frame only: background, columns, top bar, progress, type scale, step rhythm
    and the forward action. Step content keeps its existing styles. Every rule is
@@ -3738,6 +3758,15 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
   .flh-onboarding-root .flh-onboarding-actions { position: static; margin-top: 12px; padding: 0; background: none; }
   .flh-ob-cta { width: auto; min-width: 280px; gap: 32px; }
 }
+
+.flh-onboarding-root .flh-page-title.flh-editorial-heading { font-size: clamp(1.75rem, 7vw, 2.75rem); line-height: 1.15; overflow-wrap: break-word; }
+.flh-onboarding-root .flh-page-title.flh-editorial-heading > span, .flh-onboarding-root .flh-page-title.flh-editorial-heading > em { display: block; }
+.flh-onboarding-root .flh-page-title.flh-editorial-heading > span { color: var(--ink); }
+.flh-onboarding-root .flh-page-title.flh-editorial-heading > em { color: var(--brick-deep); font-style: normal; margin-top: .12em; }
+.flh-onboarding-root .flh-onboarding-header .flh-lead { font-size: 1.0625rem; line-height: 1.6; color: var(--ink); }
+.flh-ob-searchtype-track { gap: 10px; padding: 0; background: transparent; border-radius: 14px; }
+.flh-ob-searchtype-option { background: var(--flh-card, #fff); border: 1px solid var(--line); min-height: 56px; padding: 14px; }
+.flh-ob-searchtype-title { font-size: 1rem; line-height: 1.4; }
 
 /* ── Onboarding V2 — Step 1: The Basics (Phase 2A) ─────────────────────────────
    Measured from the approved Basics design (393pt frame): 20px card padding,
@@ -4509,4 +4538,3 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 
 .flh-onboarding-root .flh-ob-pf-review-source { flex-basis: 100%; color: var(--ink-soft); font: 500 12px/1.35 var(--font-sans); }
 .flh-onboarding-root .flh-ob-pf-review-lot { margin-top: 2px; }
-

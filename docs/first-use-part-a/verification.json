@@ -1,0 +1,13 @@
+{
+  "base_commit": "734ade38addb6218bd14f1954af5539cd3f691a2",
+  "runtime": {"node": "24.22.1", "postgresql": "17.11", "browser": "system Chromium via Playwright 1.56.1"},
+  "tests_with_postgres": {"total": 1657, "passed": 1655, "failed": 0, "skipped": 2, "skip_reason": "Sanitized live RentCast fixtures are not present"},
+  "production_build": "passed; temporary copy of the final source, compared against repository src",
+  "focused_browser": {"passed": 64, "failed": 0},
+  "v3_browser": {"passed": 564, "failed": 0},
+  "production_first_run": {"passed": 79, "failed": 0, "v3_flag_on_and_off": true},
+  "snapshot_tests_after_description_update": {"passed": 53, "failed": 0},
+  "screenshot_widths_css_px": [320, 375, 390, 430],
+  "large_text_percent": [150, 200],
+  "limitations": ["Browser bridge simulation is not physical iPhone verification", "Live RentCast, hosted Supabase email delivery and real native Share Extension handoff were not verified"]
+}

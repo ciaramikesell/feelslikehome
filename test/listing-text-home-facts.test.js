@@ -476,12 +476,12 @@ test('pasting never writes Notes / Pros / Cons; seller concessions stay out (doc
   assert.doesNotMatch(autofill, /\.(?:notes|pros|cons)\b|\b(?:notes|pros|cons)\s*:|appendSuggestionToNotes|appendAllSuggestions/, 'pasting leaves Notes / Pros / Cons as typed');
 });
 
-test('the found card keeps one order: Save Home first, then the optional paste, Home Facts, personal answers and Notes / Pros / Cons', () => {
+test('the found card keeps one order: Save Home first, then the optional paste, Home Facts, personal answers with evaluation after saving', () => {
   const modal = read('src/components/HomeModal.jsx');
   const card = modal.match(/function ImportFoundCard[\s\S]*?\n\}/)[0];
   const at = (needle) => card.indexOf(needle);
   // Add Home V3: the optional parts sit below Save Home, folded, so they never hide it.
-  const order = ["'Save Home'", 'className="hh-details flh-found-more"', '<ListingDetailsPaste', '<HomeFactReview', '<DeferredAnswersNote', 'className="hh-details flh-found-notes"', '<NoteListFields form={form} set={set} idPrefix="add-home" />'].map(at);
+  const order = ["'Save Home'", 'className="hh-details flh-found-more"', '<ListingDetailsPaste', '<HomeFactReview', '<DeferredAnswersNote'].map(at);
   // Personal answers are never reviewed on the card (Add Home V3 phase 2).
   assert.doesNotMatch(card, /<ListingAnswerReview/);
   assert.ok(order.every((index) => index > 0), `missing: ${order}`);

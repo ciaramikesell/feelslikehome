@@ -20,7 +20,7 @@ export const SHARE_TUTORIAL_STEPS = ['listing', 'sheet', 'saved'];
 const TITLES = {
   listing: 'Found a home you like? Tap Share.',
   sheet: 'Now tap Feels Like Home.',
-  saved: 'Saved to Feels Like Home.',
+  saved: 'A listing, seen through your priorities.',
 };
 
 // Fictional example listing. The photo is existing, approved FLH feature
@@ -44,6 +44,7 @@ const FOCUSABLE = 'button:not([disabled]), a[href], [tabindex]:not([tabindex="-1
 
 export default function ShareTutorial({ onClose }) {
   const [step, setStep] = useState('listing');
+  const [sample, setSample] = useState('island');
   const [hint, setHint] = useState(null); // null | 'other' | 'more'
   const dialogRef = useRef(null);
   const titleRef = useRef(null);
@@ -160,7 +161,7 @@ export default function ShareTutorial({ onClose }) {
               </div>
               <p className="flh-st-hint" role="status">
                 {hint === 'other' && 'Just for show here — look for Feels Like Home.'}
-                {hint === 'more' && 'In the real Share Sheet, More → Edit lets you add Feels Like Home to your Favorites so it’s always up front.'}
+                {hint === 'more' && 'If Feels Like Home is available, More → Edit lets you add it to Favorites. Otherwise, copy the listing link.'}
               </p>
             </section>
           )}
@@ -168,7 +169,13 @@ export default function ShareTutorial({ onClose }) {
           {step === 'saved' && (
             <section className="flh-st-saved" aria-label="Saved">
               <span className="flh-st-saved-check" aria-hidden="true"><Check size={30} strokeWidth={3} /></span>
-              <p>In the app, Add Home opens with the listing ready for you to review.</p>
+              <p>Import a listing, review its facts, then see what fits. Try a priority in this fictional example:</p>
+              <div className="flh-st-sample-options" role="group" aria-label="Example priorities">
+                <button type="button" aria-pressed={sample === 'island'} onClick={() => setSample('island')}>Kitchen Island</button>
+                <button type="button" aria-pressed={sample === 'tub'} onClick={() => setSample('tub')}>Soaking Tub</button>
+              </div>
+              <p className="flh-st-sample-result" role="status">{sample === 'island' ? 'Kitchen Island: confirmed in this example listing. A detail you can compare against your own priorities.' : 'Soaking Tub: unknown in this example listing. Missing information never counts against a home.'}</p>
+              <p>On iPhone, look for Feels Like Home in the listing’s Share Sheet. You can always copy the link and paste it into Add Home instead.</p>
             </section>
           )}
         </div>
@@ -176,9 +183,9 @@ export default function ShareTutorial({ onClose }) {
         {step === 'saved' && (
           <div className="flh-st-after">
             <ul className="flh-st-facts">
-              <li>Works from Safari and supported listing apps.</li>
+              <li>Practice only — no listing is imported or saved here.</li>
               <li>Its spot in the Share Sheet varies by app and iOS version.</li>
-              <li>Don&rsquo;t see it? Swipe the app row to <b>More</b>, tap <b>Edit</b>, and add Feels Like Home to <b>Favorites</b>.</li>
+              <li>Don&rsquo;t see it? Copy the listing link and paste it into Add Home.</li>
               <li>This is the app&rsquo;s share option — not an Add to Home Screen shortcut.</li>
             </ul>
             <div className="flh-st-done-row">

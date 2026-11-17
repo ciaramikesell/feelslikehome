@@ -6,6 +6,7 @@ import { ArrowRight, Plus, ShieldCheck, Sparkles } from 'lucide-react';
 import { BrandMark } from '@/components/ui';
 import { ChoiceChip, HelperRow, SectionCard } from '@/components/MobileSystem';
 import RankBoard from '@/components/RankBoard';
+import ShareTutorial from '@/components/ShareTutorial';
 import { normalizePriorities } from '@/lib/constants';
 import { ONBOARDING_SUGGESTIONS } from '@/lib/onboarding';
 import {
@@ -167,18 +168,21 @@ function RankStep({ priorities, patch, onFinish, finishing, progress, sharedFor 
 }
 
 function ReadyStep({ onAddHome, onViewSearch }) {
+  const [tutorialOpen, setTutorialOpen] = useState(false);
   return (
     <div className="flh-onboarding-step flh-ready">
       <span className="flh-ready-mark" aria-hidden="true"><BrandMark size={44} /></span>
-      <h1 className="flh-page-title">Your search is ready.</h1>
-      <p className="flh-lead">Now let’s see how your first home measures up.</p>
+      <h1 className="flh-page-title flh-editorial-heading"><span>You know what matters.</span><em>Let’s meet your first home.</em></h1>
+      <p className="flh-lead">Bring in a listing you’ve already found. We’ll help you see how it fits your priorities, one detail at a time.</p>
       <ul className="flh-reassurance">
         <li><Sparkles size={16} aria-hidden="true" /> Your Match stays personal—it’s measured against your priorities, not anyone else’s.</li>
         <li><ShieldCheck size={16} aria-hidden="true" /> Unknown information never counts against a home.</li>
       </ul>
       <div className="flh-ready-actions">
-        <button type="button" className="flh-button flh-button-primary" onClick={onAddHome}>Add your first home <ArrowRight size={16} aria-hidden="true" /></button>
+        <button type="button" className="flh-button flh-button-primary" onClick={onAddHome}>Import your first listing <ArrowRight size={16} aria-hidden="true" /></button>
         <button type="button" className="flh-button flh-button-outline" onClick={onViewSearch}>View My Search</button>
+        <button type="button" className="flh-text-action" onClick={() => setTutorialOpen(true)}>Using an iPhone? Practice sharing a listing</button>
+        {tutorialOpen && <ShareTutorial onClose={() => setTutorialOpen(false)} />}
       </div>
     </div>
   );
