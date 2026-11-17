@@ -109,7 +109,7 @@ test('the card is recognizable: address with location, price, essentials, and th
   assert.match(card, /<MapPin size=\{13\} aria-hidden="true" \/> \{line2\}/);
   assert.match(card, /foundHomePriceLine\(form, priorities\.searchType, importResult\.listing\?\.status\)/);
   assert.match(card, /const facts = foundHomeEssentials\(form\);/);
-  assert.match(modal, /\{src \? <img src=\{src\} alt="" \/> : <span className="flh-found-placeholder" aria-hidden="true"><House size=\{30\} \/><\/span>\}/);
+  assert.match(modal, /\{src \? <HomePhoto src=\{src\} alt="" \/> : <span className="flh-found-placeholder" aria-hidden="true"><House size=\{30\} \/><\/span>\}/);
   // The lookup's detail count stays truthful (lookup only) and lookup data is not dropped from the save.
   assert.match(card, /const count = found \? importedDetailCount\(lookupResult \|\| importResult\) : 0;/);
   assert.match(submit, /listingImport: listingImportSnapshot\(snapshotSource\)/);
@@ -132,7 +132,7 @@ test('a failed optional photo upload saves the home without it; the full editor 
   // A thrown upload (network) is caught like a reported one.
   assert.match(submit, /\} catch \(err\) \{\s*uploadError = err \|\| new Error\('upload failed'\);/);
   // The photo URL saved after a failure is whatever the home already had; the staged file is not claimed.
-  assert.match(submit, /let finalPhotoUrl = form\.photoUrl;/);
+  assert.match(submit, /let finalPhotoUrl = validatePhotoUrl\(form\.photoUrl\);/);
   assert.match(savedView, /summary\.photoFailed && <p className="flh-saved-photo-note" role="alert">The photo didn’t upload, so the \{vocabulary\.singularLower\} was saved without it\./);
 });
 

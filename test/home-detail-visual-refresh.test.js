@@ -117,7 +117,7 @@ test('regression guard: Property Facts are still built only from real, existing 
 
 test('no multi-image gallery/thumbnail infrastructure was built — the canonical data model only has a single photoUrl field', () => {
   assert.doesNotMatch(detail, /thumbnail|carousel|1 \/ \d|gallery/i);
-  assert.match(detail, /\{home\.photoUrl \? <img src=\{home\.photoUrl\}/);
+  assert.match(detail, /\{home\.photoUrl \? <HomePhoto src=\{home\.photoUrl\}/);
 });
 
 /* ------------------------------ participant-owned state: unchanged ------------------------------ */
@@ -194,7 +194,7 @@ test('category summaries count met, missing, and unknown independently', () => {
 });
 
 test('single canonical photo degrades gracefully without fake thumbnails or counts', () => {
-  assert.match(detail, /home\.photoUrl \? <img/);
+  assert.match(detail, /home\.photoUrl \? <HomePhoto/);
   assert.doesNotMatch(detail, /\+19|24 photos|school rating/i);
 });
 

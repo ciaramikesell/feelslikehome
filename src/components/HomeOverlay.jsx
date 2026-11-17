@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, ArrowDown, ArrowLeft, ArrowRight, Check, Loader2, NotebookText, X } from 'lucide-react';
 import HomeFacts from '@/components/HomeFacts';
+import { parsePhotoUrl } from '@/lib/photoFraming';
 import MatchCriteria, { FACT_LINKS, criterionName } from '@/components/MatchCriteria';
 import { recordListingAnswers, savedListingAnswers } from '@/lib/listingTextAnswers';
 import TourFeedback from '@/components/TourFeedback';
@@ -135,7 +136,20 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
     writePersonal: (snapshot) => saveHomePersonalState(createClient(), snapshot, userId, searchId),
     onBusyChange: (busy) => setBusy(serverHome.id, busy),
   });
-  const editor = useMemo(() => ({ saveShared: autosave.saveShared, registerDraft: autosave.registerDraft, failed: autosave.failed, settle: autosave.settle }), [autosave.saveShared, autosave.registerDraft, autosave.failed, autosave.settle]);
+  const savePhotoFrame = useCallback(async (photoUrl, expectedUrl) => {
+    if (!parsePhotoUrl(expectedUrl).editable || parsePhotoUrl(photoUrl).source !== parsePhotoUrl(expectedUrl).source) throw new Error('Only the existing uploaded photo can be positioned.');
+    if (!(await autosave.settle())) throw new Error('Finish pending changes first.');
+    if (homeRef.current.photoUrl !== expectedUrl) { const error = new Error('Photo changed.'); error.code = 'FLH_PHOTO_CHANGED'; throw error; }
+    setBusy(serverHome.id, true);
+    try {
+      // Reuse the existing column/version guarded write. A concurrent photo
+      // replacement or framing edit is a conflict, never resurrected/deleted.
+      await saveHomeSharedFields(createClient(), serverHome.id, { photoUrl }, { expected: { photoUrl: expectedUrl } });
+      applyLocal({ photoUrl });
+      await refreshMyHomes().catch(() => {});
+    } finally { setBusy(serverHome.id, false); }
+  }, [autosave.settle, applyLocal, serverHome.id, setBusy]);
+  const editor = useMemo(() => ({ saveShared: autosave.saveShared, savePhotoFrame, registerDraft: autosave.registerDraft, failed: autosave.failed, settle: autosave.settle }), [autosave.saveShared, savePhotoFrame, autosave.registerDraft, autosave.failed, autosave.settle]);
 
   // Match Reveal (docs/match-reveal.md). The baseline is this buyer's
   // completeness on the persisted home as read from the server — on open and on

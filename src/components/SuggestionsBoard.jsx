@@ -1,5 +1,7 @@
 'use client';
 
+import HomePhoto from '@/components/HomePhoto';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, Minus, X } from 'lucide-react';
@@ -43,7 +45,7 @@ function SuggestionCard({ suggestion, userId, priorities, past }) {
   };
 
   return <article className={`hh-suggestion-card${past ? ' is-past' : ''}`}>
-    <div className="hh-suggestion-photo">{home.photoUrl ? <img src={home.photoUrl} alt="" /> : <span>Home</span>}</div>
+    <div className="hh-suggestion-photo">{home.photoUrl ? <HomePhoto src={home.photoUrl} alt="" /> : <span>Home</span>}</div>
     <div className="hh-suggestion-body"><div><span className="hh-provenance">Suggested by {suggestion.suggestedByName}</span><h3>{identity.primary}</h3>{identity.supporting && <p>{identity.supporting}</p>}</div>
       <strong className="hh-suggestion-price">{formatHomePrice(home.price, priorities.searchType) || 'Price unknown'}</strong>
       <p className="hh-suggestion-facts">{[home.beds && `${home.beds} bd`,home.baths && `${home.baths} ba`,home.sqft && `${home.sqft} sq ft`].filter(Boolean).join(' · ') || 'Property details are still limited.'}</p>

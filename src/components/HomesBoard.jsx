@@ -1,5 +1,7 @@
 'use client';
 
+import HomePhoto from '@/components/HomePhoto';
+
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -89,10 +91,9 @@ function commuteRouteParts(destination, state) {
 // selectHomeCardCriteria, homeCardSnapshot, evaluateCommute); only the
 // presentation changed.
 function HomeCard({ home, priorities, commuteDestinations, mode, filterResult = null, onEdit, onOpen, onArchiveRequest, onWantToTour, onOpenPostTour, onRemoveFromTour, onRestore, onRequestDelete, floorPlans = null }) {
-  const [imgError, setImgError] = useState(false);
   const guidedPriorities = useFeatureFlag('guidedPriorities');
   const styleSummary = homeStyleSummary(home);
-  const showPhoto = home.photoUrl && !imgError;
+  const showPhoto = Boolean(home.photoUrl);
   const identity = homeIdentity(home, priorities);
   const vocabulary = homeVocabulary(priorities);
   // The home overlay over My Homes. From Want to Tour / Favorites / Archive,
@@ -154,7 +155,7 @@ function HomeCard({ home, priorities, commuteDestinations, mode, filterResult = 
           <Link href={homeHref} scroll={false} onClick={onOpen} className="hh-home-card-photo-link" aria-label={`Open ${identity.accessible} details`} tabIndex={-1}>
             {showPhoto ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={home.photoUrl} alt={`${identity.accessible} ${vocabulary.singularLower} photo`} onError={() => setImgError(true)} />
+              <HomePhoto src={home.photoUrl} alt={`${identity.accessible} ${vocabulary.singularLower} photo`} />
             ) : (
               <div className="hh-home-card-photo-fallback">
                 <HomeIcon size={34} color="rgba(46,38,33,0.22)" strokeWidth={1.5} aria-hidden="true" />

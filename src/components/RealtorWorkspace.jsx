@@ -1,5 +1,7 @@
 'use client';
 
+import HomePhoto from '@/components/HomePhoto';
+
 import { useState } from 'react';
 import Link from 'next/link';
 import { Heart, Footprints, Star, Archive, Users } from 'lucide-react';
@@ -58,7 +60,7 @@ function HomeCard({ home, people, states, priorities, searchId, floorPlans = nul
   const identity = homeIdentity(home, priorities);
   const match = computeMatch(home, priorities);
   return <article className="hh-realtor-home-card">
-    <Link href={`/people/${searchId}/homes/${home.id}`} className="hh-realtor-home-photo">{home.photoUrl ? <img src={home.photoUrl} alt="" /> : <span>Home</span>}</Link>
+    <Link href={`/people/${searchId}/homes/${home.id}`} className="hh-realtor-home-photo">{home.photoUrl ? <HomePhoto src={home.photoUrl} alt="" /> : <span>Home</span>}</Link>
     <div className="hh-realtor-home-body">
       <div className="hh-realtor-home-heading"><div><strong>{identity.primary}</strong>{identity.supporting && <small>{identity.supporting}</small>}</div>{match?.pct != null && <b style={{ color: matchColor(match.pct) }}>{match.pct}% Match</b>}</div>
       <div className="hh-realtor-price">{formatHomePrice(home.price, priorities.searchType) || 'Price unknown'}</div>
