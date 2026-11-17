@@ -52,7 +52,7 @@ test('bidirectional selection: marker click and rail row/place card click share 
 
 test('selected-home preview stays compact: unchanged truthful fields, no full Match snapshot, no property-intelligence blocks, no Realtor commentary', async () => {
   const map = await source('src/components/SavedHomesMap.jsx');
-  assert.match(map, /selected\.photoUrl \? <img src=\{selected\.photoUrl\} alt="" \/> : <div className="hh-map-preview-photo-fallback">/);
+  assert.match(map, /selected\.photoUrl \? <HomePhoto src=\{selected\.photoUrl\} alt="" \/> : <div className="hh-map-preview-photo-fallback">/);
   assert.match(map, /formatHomePrice\(selected\.price, priorities\.searchType\)/);
   assert.match(map, /selected\.beds && `\$\{selected\.beds\} beds`/);
   assert.doesNotMatch(map, /Garage|Basement|Schools|realtorContributions|realtor/i);

@@ -1,5 +1,8 @@
 'use client';
 
+import HomePhoto from '@/components/HomePhoto';
+import { parsePhotoUrl, samePhoto, validatePhotoUrl } from '@/lib/photoFraming';
+
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { X, Upload, Link2, Footprints, Archive as ArchiveIcon, ExternalLink, Check, Users, Search, ClipboardPaste, Camera, MessageSquareText, House, ChevronDown, ChevronLeft, Sparkles, ShieldCheck, Share, ArrowRight, Plus, MapPin, ListChecks } from 'lucide-react';
@@ -294,7 +297,7 @@ function HomeSummaryCard({ form, priorities, previewSrc }) {
   const facts = [form.beds && `${form.beds} bd`, form.baths && `${form.baths} ba`, form.sqft && `${Number(String(form.sqft).replace(/[^0-9.]/g, '')).toLocaleString()} sq ft`].filter(Boolean);
   return (
     <section className="flh-edit-summary" aria-label="This home">
-      <div className="flh-edit-summary-photo">{previewSrc ? <img src={previewSrc} alt="" /> : <House size={26} aria-hidden="true" />}</div>
+      <div className="flh-edit-summary-photo">{previewSrc ? <HomePhoto src={previewSrc} alt="" /> : <House size={26} aria-hidden="true" />}</div>
       <div className="flh-edit-summary-copy">
         <strong className="flh-edit-summary-price">{formatHomePrice(form.price, priorities.searchType) || 'Price unknown'}</strong>
         <span className="flh-edit-summary-address">{identity.primary}</span>
@@ -322,7 +325,7 @@ function DuplicateHomeView({ home, priorities, userId, isCollaborative, vocabula
         <button type="button" className="hh-btn hh-btn-ghost hh-edit-home-close" onClick={onClose} aria-label="Close add home"><X size={18} /></button>
       </header>
       <div className="flh-duplicate-card">
-        {home.photoUrl ? <img src={home.photoUrl} alt="" /> : <span className="flh-duplicate-photo" aria-hidden="true"><House size={22} /></span>}
+        {home.photoUrl ? <HomePhoto src={home.photoUrl} alt="" /> : <span className="flh-duplicate-photo" aria-hidden="true"><House size={22} /></span>}
         <div><strong>{identity.primary}</strong>{identity.supporting && <span>{identity.supporting}</span>}<span>{formatHomePrice(home.price, priorities.searchType) || 'Price unknown'}</span></div>
       </div>
       <ul className="flh-duplicate-notes">
@@ -429,13 +432,13 @@ function EditHomeEditor({ mode = 'edit', form, set, priorities, sharedFactAwaren
           <section className="hh-edit-home-card" data-step="review" aria-labelledby="home-photo-heading">
             <h2 id="home-photo-heading" className="hh-serif">Home photo</h2>
             <input ref={photoInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhotoFileChange} hidden />
-            {currentPreviewSrc ? <div className="hh-edit-photo-frame"><img src={currentPreviewSrc} alt="Current home" /></div> : <div className="hh-edit-photo-empty"><Upload size={22} aria-hidden="true" /><span>No photo added</span></div>}
+            {currentPreviewSrc ? <div className="hh-edit-photo-frame"><HomePhoto src={currentPreviewSrc} alt="Current home" /></div> : <div className="hh-edit-photo-empty"><Upload size={22} aria-hidden="true" /><span>No photo added</span></div>}
             <div className="hh-edit-photo-actions">
               <button type="button" className="hh-btn hh-btn-ghost" onClick={() => photoInputRef.current?.click()}>{currentPreviewSrc ? 'Change photo' : 'Upload photo'}</button>
               {!photoFile && <button type="button" className="hh-btn hh-btn-ghost" onClick={() => setShowPhotoUrlInput((value) => !value)}><Link2 size={14} /> Paste by URL</button>}
               {currentPreviewSrc && <button type="button" className="hh-btn hh-btn-danger" onClick={handleRemovePhoto}>Remove</button>}
             </div>
-            {!photoFile && showPhotoUrlInput && <div><label className="hh-label">Photo URL</label><input className="hh-input" type="url" value={form.photoUrl || ''} onChange={(e) => set('photoUrl', e.target.value)} /></div>}
+            {!photoFile && showPhotoUrlInput && <div><label className="hh-label" htmlFor="edit-home-photo-url">Photo URL</label><input id="edit-home-photo-url" className="hh-input" type="url" value={parsePhotoUrl(form.photoUrl).source || ''} onChange={(e) => set('photoUrl', e.target.value)} /></div>}
             {photoError && <p className="hh-edit-error" role="alert">{photoError}</p>}
           </section>
 
@@ -647,7 +650,7 @@ function DeferredAnswersNote({ answers, vocabulary }) {
 // never fetches or hotlinks a listing site's images.
 function FoundHomePhoto({ src, photo }) {
   return <div className={`flh-found-photo ${src ? 'has-photo' : 'is-placeholder'}`}>
-    {src ? <img src={src} alt="" /> : <span className="flh-found-placeholder" aria-hidden="true"><House size={30} /></span>}
+    {src ? <HomePhoto src={src} alt="" /> : <span className="flh-found-placeholder" aria-hidden="true"><House size={30} /></span>}
     <div className="flh-found-photo-actions">
       <input ref={photo.inputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={photo.onChange} hidden />
       <button type="button" className="flh-found-photo-btn" onClick={() => photo.inputRef.current?.click()}><Camera size={14} aria-hidden="true" /> {src ? 'Change photo' : 'Add photo'}</button>
@@ -758,7 +761,7 @@ function SavedHomeView({ summary, vocabulary, isCollaborative, onBackToHomes, on
         <p role="status">{summary.line1} is now in My Homes{isCollaborative ? ', shared with everyone in this search' : ''}.</p>
       </div>
       <div className="flh-saved-card">
-        <div className="flh-saved-photo">{summary.photoUrl ? <img src={summary.photoUrl} alt="" /> : <House size={24} aria-hidden="true" />}</div>
+        <div className="flh-saved-photo">{summary.photoUrl ? <HomePhoto src={summary.photoUrl} alt="" /> : <House size={24} aria-hidden="true" />}</div>
         <div className="flh-saved-copy">
           <b>{summary.line1}</b>
           {summary.line2 && <span>{summary.line2}</span>}
@@ -950,7 +953,9 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
     setPhotoError('');
     setSaveErrorMsg('');
     try {
-      let finalPhotoUrl = form.photoUrl;
+      let finalPhotoUrl = validatePhotoUrl(form.photoUrl);
+      if (photoFile && finalPhotoUrl === undefined) finalPhotoUrl = ''; // A validated new upload can replace an invalid old URL.
+      if (finalPhotoUrl === undefined) { setPhotoError('Use a valid http or https photo URL.'); return; }
       let photoFailed = false;
 
       if (photoFile) {
@@ -1005,7 +1010,7 @@ export default function HomeModal({ initial, priorities, sharedFactAwareness = {
       // Best-effort cleanup: if a photo we previously uploaded to our own bucket was
       // just replaced or removed, delete the old object so it doesn't linger as an
       // orphan. Never touches an externally-pasted Photo URL, and never blocks Save.
-      if (initial.photoUrl && initial.photoUrl !== finalPhotoUrl) {
+      if (initial.photoUrl && !samePhoto(initial.photoUrl, finalPhotoUrl)) {
         const oldPath = storagePathFromPublicUrl(initial.photoUrl);
         if (oldPath) {
           createClient().storage.from(PHOTO_BUCKET).remove([oldPath]).catch(() => {});

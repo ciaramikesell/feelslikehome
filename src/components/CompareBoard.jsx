@@ -1,5 +1,7 @@
 'use client';
 
+import HomePhoto from '@/components/HomePhoto';
+
 import { useState, useMemo, Fragment } from 'react';
 import Link from 'next/link';
 import { Columns, Star, Heart, Home as HomeIcon, Footprints } from 'lucide-react';
@@ -143,8 +145,7 @@ function CollaboratorState({ state }) {
 }
 
 function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective, searchType, priorities, basePath = '/homes', vocabulary, isCollaborative }) {
-  const [imgError, setImgError] = useState(false);
-  const showPhoto = home.photoUrl && !imgError;
+  const showPhoto = Boolean(home.photoUrl);
   const overallRating = home.ratings?.[TOUR_RATING_KEY] || 0;
 
   return (
@@ -152,7 +153,7 @@ function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective, searchTyp
       <div className="hh-compare-photo">
         {showPhoto ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={home.photoUrl} alt="" onError={() => setImgError(true)} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          <HomePhoto src={home.photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
         ) : (
           <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <HomeIcon size={26} color="var(--ink-soft)" style={{ opacity: 0.5 }} />
@@ -238,9 +239,8 @@ function HomeHeaderCard({ home, match, isFavorite, coBuyerPerspective, searchTyp
 // component itself has no opinion on trust, it just doesn't render a number
 // it wasn't told to trust.
 function PickerChip({ home, priorities, match, matchTrustworthy, isSelected, disabled, onToggle }) {
-  const [imgError, setImgError] = useState(false);
   const identity = homeIdentity(home, priorities);
-  const showPhoto = home.photoUrl && !imgError;
+  const showPhoto = Boolean(home.photoUrl);
   return (
     <button
       type="button"
@@ -252,7 +252,7 @@ function PickerChip({ home, priorities, match, matchTrustworthy, isSelected, dis
       <span className="hh-compare-picker-thumb">
         {showPhoto ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={home.photoUrl} alt="" onError={() => setImgError(true)} />
+          <HomePhoto src={home.photoUrl} alt="" />
         ) : (
           <HomeIcon size={13} color="var(--ink-soft)" style={{ opacity: 0.6 }} />
         )}

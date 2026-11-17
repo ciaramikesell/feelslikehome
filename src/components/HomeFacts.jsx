@@ -1,5 +1,9 @@
 'use client';
 
+import HomePhoto from '@/components/HomePhoto';
+import PhotoPositioner from '@/components/PhotoPositioner';
+import { parsePhotoUrl, validatePhotoUrl } from '@/lib/photoFraming';
+
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { ChevronDown, ArrowUpRight, House, Link2, Pencil, Upload } from 'lucide-react';
 import {
@@ -155,6 +159,7 @@ function NoteTextField({ id, label, marker, placeholder, value, readOnly, failed
 
 function PhotoControls({ home, readOnly, editor, userId, alt }) {
   const [urlOpen, setUrlOpen] = useState(false);
+  const [framing, setFraming] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [broken, setBroken] = useState(false);
@@ -183,7 +188,7 @@ function PhotoControls({ home, readOnly, editor, userId, alt }) {
   };
   const photo = home.photoUrl && !broken
     // eslint-disable-next-line @next/next/no-img-element
-    ? <img src={home.photoUrl} alt={alt} onError={() => setBroken(true)} />
+    ? <HomePhoto src={home.photoUrl} alt={alt} onError={() => setBroken(true)} />
     : <span className="flh-hf2-photo-empty"><House size={34} aria-hidden="true" /><small>{home.photoUrl ? 'Photo couldn’t load' : 'No photo yet'}</small></span>;
   return <div className="flh-hf2-photo-wrap">
     <div className="flh-hf2-photo">{photo}</div>
@@ -192,16 +197,18 @@ function PhotoControls({ home, readOnly, editor, userId, alt }) {
         <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={choose} aria-label="Upload property photo" hidden />
         <button type="button" className="flh-hf2-photo-action is-primary" onClick={() => fileRef.current?.click()} disabled={uploading}><Upload size={13} aria-hidden="true" /> {uploading ? 'Uploading…' : home.photoUrl ? 'Change photo' : 'Upload photo'}</button>
         <button type="button" className="flh-hf2-photo-action" aria-expanded={urlOpen} onClick={() => setUrlOpen((open) => !open)}><Link2 size={13} aria-hidden="true" /> Photo URL</button>
+        {parsePhotoUrl(home.photoUrl).editable && editor.savePhotoFrame && <button type="button" className="flh-hf2-photo-action" disabled={uploading || broken} onClick={() => setFraming(home.photoUrl)}>Position photo</button>}
         {home.photoUrl && <button type="button" className="flh-hf2-photo-action" onClick={() => editor.saveShared({ photoUrl: '' })}>Remove photo</button>}
       </div>
       {urlOpen && <div className="flh-hf2-photo-url">
-        <QuietInput id="hf-photo-url" label="Photo URL" labelHidden={false} value={home.photoUrl} placeholder="https://…" inputMode="url" registerDraft={editor.registerDraft} failed={editor.failed.includes('photoUrl')}
-          parse={(text) => { const url = text.trim(); if (!url) return ''; try { const parsed = new URL(url); return /^https?:$/.test(parsed.protocol) ? parsed.toString() : undefined; } catch { return undefined; } }}
+        <QuietInput id="hf-photo-url" label="Photo URL" labelHidden={false} value={parsePhotoUrl(home.photoUrl).source} placeholder="https://…" inputMode="url" registerDraft={editor.registerDraft} failed={editor.failed.includes('photoUrl')}
+          parse={validatePhotoUrl}
           onCommit={(photoUrl) => editor.saveShared({ photoUrl })} />
         <small>Use an image link you have the right to use. FLH never copies listing-site photos.</small>
       </div>}
       {error && <p className="hh-save-error" role="alert">{error}</p>}
     </div>}
+    {framing && <PhotoPositioner src={framing} onSave={editor.savePhotoFrame} onClose={() => setFraming(null)} />}
   </div>;
 }
 

@@ -1,5 +1,7 @@
 'use client';
 
+import HomePhoto from '@/components/HomePhoto';
+
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ChevronRight, ExternalLink, Heart, Footprints, Home as HomeIcon, ListChecks, MapPin, NotebookText, Pencil } from 'lucide-react';
@@ -177,7 +179,7 @@ export default function HomeDetail({ home: initialHome, priorities, commuteDesti
     <aside className="flh-workspace-nav">
       <button type="button" className="flh-workspace-back" onClick={back}><ArrowLeft size={16} aria-hidden="true" /> {backHref ? 'Back' : 'Back to My Homes'}</button>
       <div className="flh-workspace-identity">
-        <div className="flh-workspace-photo">{home.photoUrl ? <img src={home.photoUrl} alt="" /> : <HomeIcon size={22} aria-hidden="true" />}</div>
+        <div className="flh-workspace-photo">{home.photoUrl ? <HomePhoto src={home.photoUrl} alt="" /> : <HomeIcon size={22} aria-hidden="true" />}</div>
         <div><strong className="hh-serif">{identity.primary}</strong>{identity.supporting && <span>{identity.supporting}</span>}</div>
       </div>
       <nav aria-label={`${vocabulary.singular} sections`}>

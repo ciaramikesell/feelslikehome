@@ -81,7 +81,7 @@ test('nothing about floor plans inside Add/Edit Home, Match, Home Facts or the c
     assert.doesNotMatch(read(path), /FloorPlans|homeFloorPlans|floorPlanViewer|home_floor_plans/, path);
   }
   // The single cover photo on the card is untouched.
-  assert.match(card, /<img src=\{home\.photoUrl\} alt=\{`\$\{identity\.accessible\} \$\{vocabulary\.singularLower\} photo`\} onError=\{\(\) => setImgError\(true\)\} \/>/);
+  assert.match(card, /<HomePhoto src=\{home\.photoUrl\} alt=\{`\$\{identity\.accessible\} \$\{vocabulary\.singularLower\} photo`\} \/>/);
 });
 
 /* -------------------------------- card action -------------------------------- */

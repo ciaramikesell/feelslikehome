@@ -1,5 +1,7 @@
 'use client';
 
+import HomePhoto from '@/components/HomePhoto';
+
 import { useParams } from 'next/navigation';
 import { useHomesWorkspace } from '@/components/HomesWorkspace';
 import { homeIdentity } from '@/lib/homePresentation';
@@ -17,7 +19,7 @@ export default function HomeOverlayLoading() {
       <div className="flh-overlay-scroll">
         <div className="flh-hf2-header">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <div className="flh-hf2-photo-wrap"><div className="flh-hf2-photo">{home?.photoUrl ? <img src={home.photoUrl} alt="" /> : <span className="flh-skeleton" />}</div></div>
+          <div className="flh-hf2-photo-wrap"><div className="flh-hf2-photo">{home?.photoUrl ? <HomePhoto src={home.photoUrl} alt="" /> : <span className="flh-skeleton" />}</div></div>
           <div className="flh-hf2-identity"><span className="flh-skeleton is-line" /><span className="flh-skeleton is-line is-short" /></div>
         </div>
         <p className="sr-only" role="status">Loading home details…</p>

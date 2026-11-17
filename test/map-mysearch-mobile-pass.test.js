@@ -45,7 +45,7 @@ test('regression: the flex map frame does not inherit the base grid rule\'s alig
 });
 
 test('map preview: photo fallback, Match trust guard, and a Directions link are present', () => {
-  assert.match(savedHomesMap, /selected\.photoUrl \? <img src=\{selected\.photoUrl\} alt="" \/> : <div className="hh-map-preview-photo-fallback">/);
+  assert.match(savedHomesMap, /selected\.photoUrl \? <HomePhoto src=\{selected\.photoUrl\} alt="" \/> : <div className="hh-map-preview-photo-fallback">/);
   assert.match(savedHomesMap, /const matchTrustworthy = !match\?\.allSelected\?\.some\(\(c\) => c\.key === 'location:Commute'\);/);
   assert.match(savedHomesMap, /\{matchTrustworthy && match\?\.pct !== null && match\?\.pct !== undefined && <span className="hh-map-match">/);
   assert.match(savedHomesMap, /maps\.apple\.com\/\?daddr=\$\{encodeURIComponent\(selected\.address\)\}/);

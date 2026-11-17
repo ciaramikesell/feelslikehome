@@ -1,5 +1,7 @@
 'use client';
 
+import HomePhoto from '@/components/HomePhoto';
+
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Crosshair, Home, MapPin } from 'lucide-react';
@@ -153,7 +155,7 @@ export default function SavedHomesMap({ homes, destinations = [], collaboratorDe
           <span>{eligible.length || eligibleDestinations.length ? (mapState === 'loading' ? 'This should only take a moment.' : 'Your locations are still listed below.') : 'Check the saved addresses and try again.'}</span>
         </div>}
         {selected && <article className="hh-map-preview" aria-label={`Selected ${vocabulary.singularLower}: ${homeIdentity(selected, priorities).accessible}`}>
-          <div className="hh-map-preview-media" aria-hidden="true">{selected.photoUrl ? <img src={selected.photoUrl} alt="" /> : <div className="hh-map-preview-photo-fallback"><Home size={22} /></div>}</div>
+          <div className="hh-map-preview-media" aria-hidden="true">{selected.photoUrl ? <HomePhoto src={selected.photoUrl} alt="" /> : <div className="hh-map-preview-photo-fallback"><Home size={22} /></div>}</div>
           <div className="hh-map-preview-copy"><div className="hh-mono hh-map-preview-price">{formatHomePrice(selected.price, priorities.searchType) || 'Price not added'}</div><strong className="hh-address">{homeIdentity(selected, priorities).primary}</strong>{homeIdentity(selected, priorities).option && <small>{homeIdentity(selected, priorities).option}</small>}{homeIdentity(selected, priorities).supporting && <small>{homeIdentity(selected, priorities).supporting}</small>}
             <small className="hh-map-preview-facts">{[selected.beds && `${selected.beds} beds`, selected.baths && `${selected.baths} baths`, selected.sqft && `${selected.sqft} sq ft`].filter(Boolean).join(' · ')}</small>
             <div className="hh-map-preview-summary">

@@ -1,3 +1,5 @@
+import { photoStoragePath } from './photoFraming.js';
+
 // Home photo upload rules, shared by Edit Home and Home Facts. A chosen file is
 // only staged locally until Save; nothing is uploaded before then, so Cancel
 // never leaves an orphaned object in Storage.
@@ -26,8 +28,5 @@ export async function uploadHomePhoto(supabase, userId, file) {
 // Pure. The object path within PHOTO_BUCKET when this is one of our own public
 // Storage URLs, or null for a pasted external URL (which is never deleted).
 export function storagePathFromPublicUrl(url) {
-  if (!url) return null;
-  const marker = `/storage/v1/object/public/${PHOTO_BUCKET}/`;
-  const idx = url.indexOf(marker);
-  return idx === -1 ? null : url.slice(idx + marker.length);
+  return photoStoragePath(url);
 }

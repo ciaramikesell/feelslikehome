@@ -1,0 +1,278 @@
+[
+  {
+    "name": "Cancel changes no database field",
+    "ok": true
+  },
+  {
+    "name": "Cancel restores opener focus",
+    "ok": true
+  },
+  {
+    "name": "pointer drag changes framing preview",
+    "ok": true
+  },
+  {
+    "name": "touch drag changes framing preview",
+    "ok": true
+  },
+  {
+    "name": "framing save creates no storage upload/delete or listing import request",
+    "ok": true
+  },
+  {
+    "name": "no image request exposes FLH metadata",
+    "ok": true
+  },
+  {
+    "name": "framing retains original URL/fragment and all other home fields",
+    "ok": true
+  },
+  {
+    "name": "original image bytes are unchanged",
+    "ok": true
+  },
+  {
+    "name": "position survives refresh",
+    "ok": true
+  },
+  {
+    "name": "image element source contains no FLH metadata",
+    "ok": true
+  },
+  {
+    "name": "another shared-search user/device reads the same framing",
+    "ok": true
+  },
+  {
+    "name": "Realtor view shows framing without positioning controls",
+    "ok": true
+  },
+  {
+    "name": "stale framing save cannot overwrite a concurrent photo change",
+    "ok": true
+  },
+  {
+    "name": "failed position save keeps original and preview",
+    "ok": true
+  },
+  {
+    "name": "retry saves the same original object",
+    "ok": true
+  },
+  {
+    "name": "failed external image has stable fallback and no framing control",
+    "ok": true
+  },
+  {
+    "name": "future metadata centers without mutation or editing",
+    "ok": true
+  },
+  {
+    "name": "unsupported upload type is rejected without changing URL",
+    "ok": true
+  },
+  {
+    "name": "5MB validation remains unchanged",
+    "ok": true
+  },
+  {
+    "name": "failed upload retains the old framed photo",
+    "ok": true
+  },
+  {
+    "name": "replacement receives a new object and resets framing",
+    "ok": true
+  },
+  {
+    "name": "replacement cleanup contains no framing metadata",
+    "ok": true
+  },
+  {
+    "name": "remove clears the saved photo URL",
+    "ok": true
+  },
+  {
+    "name": "unsafe Photo URL cannot be saved",
+    "ok": true
+  },
+  {
+    "name": "valid Photo URL preserves original fragment",
+    "ok": true
+  },
+  {
+    "name": "full editor skips cleanup for a framing-only URL change",
+    "ok": true
+  },
+  {
+    "name": "full editor preserves original image bytes",
+    "ok": true
+  },
+  {
+    "name": "existing Realtor suggestion creation remains authorized",
+    "ok": true
+  },
+  {
+    "name": "suggestion photos use the same framing utility",
+    "ok": true
+  },
+  {
+    "name": "320: detail uses shared framing",
+    "ok": true
+  },
+  {
+    "name": "320: editor fits at 150% text",
+    "ok": true
+  },
+  {
+    "name": "320: editor fits at 200% text",
+    "ok": true
+  },
+  {
+    "name": "320: editor has no horizontal overflow",
+    "ok": true
+  },
+  {
+    "name": "320: keyboard/Escape cancel keeps saved frame",
+    "ok": true
+  },
+  {
+    "name": "320: cards use same frame",
+    "ok": true
+  },
+  {
+    "name": "320: comparison uses same frame",
+    "ok": true
+  },
+  {
+    "name": "320: read-only Realtor framing matches",
+    "ok": true
+  },
+  {
+    "name": "375: detail uses shared framing",
+    "ok": true
+  },
+  {
+    "name": "375: editor fits at 150% text",
+    "ok": true
+  },
+  {
+    "name": "375: editor fits at 200% text",
+    "ok": true
+  },
+  {
+    "name": "375: editor has no horizontal overflow",
+    "ok": true
+  },
+  {
+    "name": "375: keyboard/Escape cancel keeps saved frame",
+    "ok": true
+  },
+  {
+    "name": "375: cards use same frame",
+    "ok": true
+  },
+  {
+    "name": "375: comparison uses same frame",
+    "ok": true
+  },
+  {
+    "name": "375: read-only Realtor framing matches",
+    "ok": true
+  },
+  {
+    "name": "390: detail uses shared framing",
+    "ok": true
+  },
+  {
+    "name": "390: editor fits at 150% text",
+    "ok": true
+  },
+  {
+    "name": "390: editor fits at 200% text",
+    "ok": true
+  },
+  {
+    "name": "390: editor has no horizontal overflow",
+    "ok": true
+  },
+  {
+    "name": "390: keyboard/Escape cancel keeps saved frame",
+    "ok": true
+  },
+  {
+    "name": "390: cards use same frame",
+    "ok": true
+  },
+  {
+    "name": "390: comparison uses same frame",
+    "ok": true
+  },
+  {
+    "name": "390: read-only Realtor framing matches",
+    "ok": true
+  },
+  {
+    "name": "430: detail uses shared framing",
+    "ok": true
+  },
+  {
+    "name": "430: editor fits at 150% text",
+    "ok": true
+  },
+  {
+    "name": "430: editor fits at 200% text",
+    "ok": true
+  },
+  {
+    "name": "430: editor has no horizontal overflow",
+    "ok": true
+  },
+  {
+    "name": "430: keyboard/Escape cancel keeps saved frame",
+    "ok": true
+  },
+  {
+    "name": "430: cards use same frame",
+    "ok": true
+  },
+  {
+    "name": "430: comparison uses same frame",
+    "ok": true
+  },
+  {
+    "name": "430: read-only Realtor framing matches",
+    "ok": true
+  },
+  {
+    "name": "1280: detail uses shared framing",
+    "ok": true
+  },
+  {
+    "name": "1280: editor fits at 150% text",
+    "ok": true
+  },
+  {
+    "name": "1280: editor fits at 200% text",
+    "ok": true
+  },
+  {
+    "name": "1280: editor has no horizontal overflow",
+    "ok": true
+  },
+  {
+    "name": "1280: keyboard/Escape cancel keeps saved frame",
+    "ok": true
+  },
+  {
+    "name": "1280: cards use same frame",
+    "ok": true
+  },
+  {
+    "name": "1280: comparison uses same frame",
+    "ok": true
+  },
+  {
+    "name": "1280: read-only Realtor framing matches",
+    "ok": true
+  }
+]

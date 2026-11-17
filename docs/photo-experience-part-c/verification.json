@@ -1,0 +1,20 @@
+{
+  "productionBuild": "passed",
+  "unit": {
+    "passed": 1413,
+    "failed": 0,
+    "skipped": 253
+  },
+  "postgresql": {
+    "passed": 1664,
+    "failed": 0,
+    "skipped": 2,
+    "skipReason": "sanitized live RentCast fixtures unavailable"
+  },
+  "productionBrowser": {
+    "passed": 69,
+    "failed": 0
+  },
+  "hostedStorageAuthorization": "not verified; local Storage stand-in",
+  "physicalIOS": "founder QA required"
+}
