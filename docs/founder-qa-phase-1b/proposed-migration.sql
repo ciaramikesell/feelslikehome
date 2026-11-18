@@ -11,6 +11,16 @@ begin
      or not pg_catalog.has_table_privilege(current_user, 'auth.users', 'TRIGGER') then
     raise exception 'guest transfer migration role lacks required auth.users privileges';
   end if;
+  if not exists (
+    select 1 from pg_catalog.pg_roles as r
+    where r.rolname = 'flh_guest_writer' and r.rolcanlogin
+      and not (r.rolsuper or r.rolbypassrls or r.rolcreatedb or r.rolcreaterole
+               or r.rolreplication or r.rolinherit)
+      and not exists (select 1 from pg_catalog.pg_auth_members as m
+                      where m.member = r.oid or m.roleid = r.oid)
+  ) then
+    raise exception 'provision an isolated flh_guest_writer login first';
+  end if;
 end;
 $$;
 
@@ -64,7 +74,8 @@ revoke all on function flh_guest_transfer.capture_signup() from public, anon, au
 create trigger zz_flh_guest_transfer_capture_signup
 after insert on auth.users for each row execute function flh_guest_transfer.capture_signup();
 
-create function public.save_guest_onboarding_v1(
+create function flh_guest_transfer.save_guest_onboarding_v1(
+  p_user_id uuid,
   p_draft_id uuid,
   p_secret text,
   p_priorities jsonb,
@@ -74,7 +85,7 @@ returns text
 language plpgsql volatile security definer set search_path = ''
 as $$
 declare
-  caller uuid := auth.uid();
+  caller uuid := p_user_id;
   account auth.users%rowtype;
   attempt flh_guest_transfer.attempts%rowtype;
   profile public.profiles%rowtype;
@@ -84,7 +95,7 @@ declare
   saved_state jsonb;
   inserted uuid;
 begin
-  if caller is null or p_draft_id is null or p_secret is null
+  if session_user <> 'flh_guest_writer' or caller is null or p_draft_id is null or p_secret is null
      or p_secret !~ '^[0-9a-f]{64}$' then
     return 'unavailable';
   end if;
@@ -105,7 +116,7 @@ begin
   -- FOR UPDATE conflicts with FK KEY SHARE and serializes the eligibility
   -- checks with auth identity changes and new memberships of this caller.
   select u.* into account from auth.users as u where u.id = caller for update nowait;
-  if not found or account.is_anonymous or account.email_confirmed_at is null
+  if not found or account.is_anonymous is distinct from false or account.email_confirmed_at is null
      or account.email is null then
     return 'unavailable';
   end if;
@@ -168,8 +179,10 @@ exception when lock_not_available or deadlock_detected or serialization_failure 
 end;
 $$;
 
-revoke all on function public.save_guest_onboarding_v1(uuid, text, jsonb, jsonb)
+revoke all on function flh_guest_transfer.save_guest_onboarding_v1(uuid, uuid, text, jsonb, jsonb)
   from public, anon, authenticated, service_role;
-grant execute on function public.save_guest_onboarding_v1(uuid, text, jsonb, jsonb) to authenticated;
+grant usage on schema flh_guest_transfer to flh_guest_writer;
+grant execute on function flh_guest_transfer.save_guest_onboarding_v1(uuid, uuid, text, jsonb, jsonb)
+  to flh_guest_writer;
 
 commit;
