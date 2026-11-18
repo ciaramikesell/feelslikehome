@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
 const landing = fs.readFileSync('src/components/PublicLanding.jsx', 'utf8');
+const previews = fs.readFileSync('src/components/PublicFeaturePreviews.jsx', 'utf8');
 const root = fs.readFileSync('src/app/page.js', 'utf8');
 const signup = fs.readFileSync('src/app/auth/sign-up/page.js', 'utf8');
 const authForm = fs.readFileSync('src/components/auth/AuthForm.jsx', 'utf8');
@@ -32,15 +33,12 @@ test('mobile public navigation keeps every primary destination discoverable', ()
   assert.match(css, /\.pl-mobile-menu\{display:block/);
 });
 
-test('landing uses dedicated artwork and describes representative product data truthfully', () => {
+test('landing retains the approved cottage and Match illustration', () => {
   assert.match(landing, /\/images\/Warm Cottage\.png/);
-  assert.match(landing, /\/images\/FLH Example\.png/);
-  assert.doesNotMatch(landing, /landing-hero-home\.svg|landing-product-demo\.svg/);
+  assert.match(previews, /\/images\/FLH Example\.png/);
   assert.ok(fs.existsSync('public/images/Warm Cottage.png'));
   assert.ok(fs.existsSync('public/images/FLH Example.png'));
-  assert.match(landing, /Representative product illustration — not live listing data/);
-  assert.match(landing, /Unknown information stays Unknown/i);
-  assert.doesNotMatch(landing, /role="tablist"/);
+  assert.match(previews, /Illustrative examples/);
 });
 
 test('Realtor entry preserves intent without introducing an account role', () => {
@@ -58,46 +56,32 @@ test('landing includes responsive and reduced-motion-aware visual foundations', 
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
 });
 
-test('landing is limited to the four-step workflow, product proof, and consolidated collaboration', () => {
+test('the web hero keeps the requested desktop copy and signup-first CTA', () => {
+  assert.match(landing, /You’ve saved a lot<\/span>.*of options\.<\/span>.*Now find the one that/);
+  assert.match(landing, /Import the homes you've already saved\. See how they match what matters to you\. Then tour, compare, and choose together\./);
+  assert.match(landing, /href="\/auth\/sign-up">Create a free account/);
+  assert.doesNotMatch(landing, /\/guest|Real estate, reimagined|>See how it works</);
+});
+
+test('four feature buttons replace the walkthrough and separate demo section', () => {
   for (const title of ['Set Your Preferences', 'Bring Homes From Anywhere', 'Compare What Matters', 'Search Together']) {
-    assert.match(landing, new RegExp(`'${title}'`));
+    assert.ok(previews.includes(title));
   }
-  assert.doesNotMatch(landing, /\['0[1-4]',|pl-step-number/);
-  assert.equal((landing.match(/\[(ListChecks|HousePlus|Heart|Users),/g) || []).length, 4);
-  assert.doesNotMatch(landing, /pl-together|pl-philosophy|pl-final/);
-  assert.doesNotMatch(landing, /Same home\.|Ready to understand your shortlist|THE FEELS LIKE HOME PHILOSOPHY/);
+  assert.match(landing, /<PublicFeaturePreviews \/>/);
+  assert.match(previews, /id="how-it-works"[^>]*tabIndex=\{-1\}/);
+  assert.match(previews, /aria-pressed=\{active === id\}/);
+  assert.match(previews, /aria-controls="pl-feature-preview"/);
+  assert.match(previews, /selected \?\? hovered \?\? focused \?\? features\[0\]\.id/);
+  assert.doesNotMatch(landing + previews, /pl-demo|youtube|<iframe|role="slider"/i);
 });
 
-test('product proof is static, concise, and owns the philosophy statement exactly once', () => {
-  const philosophy = 'The right home isn’t the one that checks the most boxes. It’s the one that checks the boxes that matter to you.';
-  assert.equal(landing.split(philosophy).length - 1, 1);
-  assert.match(landing, /<figure className="pl-demo-art"><Image/);
-  assert.doesNotMatch(landing, /<button[^>]*className="pl-demo|<Link[^>]*className="pl-demo/);
-  for (const benefit of ['Personalized Match Scores', 'Side-by-side comparison', 'Commute times from places that matter most', 'Built for buyers, co-buyers, and Realtors']) assert.match(landing, new RegExp(benefit));
-});
-
-test('collaboration keeps co-buyer and Realtor participation distinct', () => {
+test('collaboration examples distinguish individual outcomes and Realtor suggestions', () => {
   assert.match(landing, /Searching with a co-buyer/);
   assert.match(landing, /Working with a Realtor/);
-  assert.match(landing, /Ciara <b>92% Match/);
-  assert.match(landing, /Andrew <b>84% Match/);
-  assert.match(landing, /Unknown information stays Unknown/);
+  assert.match(landing, /Campus Martius — 20 minutes/);
+  assert.match(landing, /Lake St\. Clair — 5 minutes/);
+  assert.match(landing, /Mismatch .*Finished Basement/);
+  assert.match(landing, /The listing says 3 beds but there is a flex room/);
   assert.match(landing, /Learn more for agents/);
-  assert.doesNotMatch(landing, /combined|blended household Match|compatibility score/i);
-});
-
-test('How it works pairs compact steps with an in-page, privacy-enhanced walkthrough video', () => {
-  assert.match(landing, /id="how-it-works"[^>]*tabIndex=\{-1\}/);
-  assert.match(landing, /src: 'https:\/\/www\.youtube-nocookie\.com\/embed\/1PGJdmPz21I\?rel=0&playsinline=1'/);
-  assert.doesNotMatch(landing, /autoplay=1/);
-  assert.match(landing, /title: 'Feels Like Home — How It Works'/);
-  assert.match(landing, /allow="[^"]*autoplay[^"]*encrypted-media[^"]*picture-in-picture[^"]*"/);
-  assert.match(landing, /allowFullScreen/);
-  assert.match(landing, /See Feels Like Home in action/);
-  assert.match(landing, /From saved listing to confident choice\./);
-  assert.match(landing, /3-minute walkthrough/);
-  assert.match(landing, /className="pl-button is-quiet" href="#how-it-works">See how it works</);
-  assert.match(css, /\.pl-video-frame\{[^}]*aspect-ratio:16\/9/);
-  assert.match(css, /grid-template-areas:'intro video' 'steps video'/);
-  assert.match(css, /grid-template-areas:'intro' 'video' 'steps'/);
+  assert.doesNotMatch(landing, /% Match|Unknown information stays Unknown|blended household Match/i);
 });
