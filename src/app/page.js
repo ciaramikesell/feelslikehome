@@ -4,6 +4,7 @@ import { getProfile } from '@/lib/supabase/data';
 import { hasRealtorRelationship } from '@/lib/supabase/collaboration';
 import { REALTOR_WORKSPACE_PATH, entersAsRealtor } from '@/lib/realtorEntry';
 import PublicLanding from '@/components/PublicLanding';
+import { guestOnboardingEnabled } from '@/lib/guest/config';
 import NativeWelcome from '@/components/NativeWelcome';
 
 export default async function RootPage() {
@@ -14,6 +15,7 @@ export default async function RootPage() {
   // <html data-flh-native> flag, see src/lib/platform.js), the unchanged
   // public homepage everywhere else. No redirect is involved, so deep links,
   // invitations and shared-listing URLs never pass through the welcome.
+  if (!user && guestOnboardingEnabled()) return <><NativeWelcome guest /><div className="flh-web-entry"><PublicLanding guest /></div></>;
   if (!user) return <><NativeWelcome /><div className="flh-web-entry"><PublicLanding /></div></>;
 
   const profile = await getProfile(supabase, user.id);

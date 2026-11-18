@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { guestOnboardingEnabled } from '@/lib/guest/config';
+import { GUEST_CONTINUE } from '@/lib/guest/draft';
 import { sanitizeRedirectPath } from '@/lib/safeRedirect';
 
 export async function GET(request) {
@@ -18,5 +20,8 @@ export async function GET(request) {
     }
   }
 
+  if (next === GUEST_CONTINUE && guestOnboardingEnabled()) {
+    return NextResponse.redirect(`${origin}${GUEST_CONTINUE}?verification=interrupted`);
+  }
   return NextResponse.redirect(`${origin}/auth/sign-in?error=auth-callback-failed`);
 }

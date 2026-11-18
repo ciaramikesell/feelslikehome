@@ -421,7 +421,8 @@ export default function PriorityFlow({
         priorities={priorities}
         patch={patch}
         header={<Header eyebrow={eyebrow(BASICS_TITLE[choice] || 'The Basics')} heading={['The basics of your ', BASICS_NOUN[choice] || 'home search']} lead={quickStart ? quickLead : (choice === 'home_buy' ? 'Your budget and the space you need. Skip anything you haven’t decided.' : 'Your monthly rent and the space you need. Skip anything you haven’t decided.')} />}
-        footer={footer(quickStart ? { label: sharedFor ? 'Save and see the homes' : 'Start saving homes' } : {})}
+        footer={footer(quickStart && review.guest ? { label: 'Save your personalized search' }
+          : quickStart ? { label: sharedFor ? 'Save and see the homes' : 'Start saving homes' } : {})}
       />
     );
   }

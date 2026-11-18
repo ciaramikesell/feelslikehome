@@ -18,8 +18,10 @@
     "@supabase/supabase-js": "^2.45.0",
     "lucide-react": "^1.0.0",
     "next": "^15.5.29",
+    "pg": "^8.23.1",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "server-only": "^0.0.1"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.2",

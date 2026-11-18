@@ -5,7 +5,9 @@ import { normalizePriorities } from '@/lib/constants';
 import { getCommuteDestinations, getSearchPeopleRows, needsSharedSearchSetup, resolveCollaboratorSearchContext, resolveOnboardingSearch, resolvePriorities } from '@/lib/supabase/collaboration';
 import { emptyPeople, peopleFromRows } from '@/lib/onboardingPeople';
 import { CURRENT_ONBOARDING_VERSION, beginOnboarding, onboardingStepsFor } from '@/lib/onboardingFlow';
+import { guestOnboardingEnabled } from '@/lib/guest/config';
 import { onboardingV3Enabled } from '@/lib/featureFlags';
+import GuardedOwnerOnboarding from '@/components/onboarding/GuardedOwnerOnboarding';
 import Onboarding from '@/components/onboarding/Onboarding';
 
 // Places That Matter (Step 2) are this person's own commute destinations on
@@ -100,5 +102,9 @@ export default async function OnboardingPage() {
   });
 
   const [places, people] = await Promise.all([initialPlacesFor(supabase, progress, search.id, user.id), initialPeopleFor(supabase, progress, search, role)]);
+  if (role === 'owner' && guestOnboardingEnabled()) {
+    return <GuardedOwnerOnboarding {...places} {...people} userId={user.id} searchId={search.id}
+      initialPriorities={normalizePriorities(priorities)} initialProgress={progress} appVersion={appVersion} />;
+  }
   return <Onboarding {...places} {...people} userId={user.id} searchId={search.id} initialPriorities={normalizePriorities(priorities)} initialProgress={progress} appVersion={appVersion} />;
 }

@@ -73,7 +73,7 @@ function LotLine({ lot, onOpen }) {
   );
 }
 
-export default function PriorityReview({ header, priorities, sharedFor = null, skipped = [], onEdit, onOpenFeature, onFinish, finishing, finishError, celebrate = false }) {
+export default function PriorityReview({ header, priorities, sharedFor = null, skipped = [], onEdit, onOpenFeature, onFinish, finishing, finishError, celebrate = false, guest = false }) {
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const basics = basicsSummary(priorities).filter((row) => row.key !== 'lot');
   const categories = reviewCategories(priorities);
@@ -159,9 +159,10 @@ export default function PriorityReview({ header, priorities, sharedFor = null, s
       </section>}
       {finishError && <p className="hh-save-error flh-ob-review-error" role="alert">{finishError}</p>}
       <nav className="flh-onboarding-actions flh-ob-review-actions" aria-label="Finish setup">
-        {!sharedFor && <button type="button" className="flh-text-action flh-ob-later" disabled={finishing} onClick={() => onFinish('/search?welcome=1')}>Go to My Search</button>}
+        {guest && <p className="flh-lead">Create your account to keep your priorities and start comparing homes.</p>}
+        {!sharedFor && !guest && <button type="button" className="flh-text-action flh-ob-later" disabled={finishing} onClick={() => onFinish('/search?welcome=1')}>Go to My Search</button>}
         <button type="button" className="flh-button flh-button-primary flh-ob-cta" disabled={finishing} aria-busy={finishing || undefined} onClick={() => onFinish(sharedFor ? '/homes' : '/homes?add=1')}>
-          <span>{sharedFor ? (finishing ? 'Saving your preferences…' : 'Save and see the homes') : (finishing ? 'Saving your search…' : firstPlace)}</span>
+          <span>{guest ? 'Save your personalized search' : sharedFor ? (finishing ? 'Saving your preferences…' : 'Save and see the homes') : (finishing ? 'Saving your search…' : firstPlace)}</span>
           <span className="flh-ob-cta-icon" aria-hidden="true"><ArrowRight size={20} strokeWidth={2.2} /></span>
         </button>
       </nav>

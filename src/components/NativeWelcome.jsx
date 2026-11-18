@@ -29,7 +29,7 @@ import ShareTutorial from '@/components/ShareTutorial';
 export const WELCOME_HERO_SRC = '/images/Warm Cottage.png';
 const WELCOME_HERO_SIZES = '(max-width: 900px) 100vw, 58vw';
 
-export default function NativeWelcome() {
+export default function NativeWelcome({ guest = false }) {
   const [tutorialOpen, setTutorialOpen] = useState(false);
 
   return (
@@ -48,7 +48,9 @@ export default function NativeWelcome() {
           See how it works
         </button>
         <div className="flh-welcome-actions">
-          <Link href="/auth/sign-up" className="flh-welcome-primary flh-press">Get Started <ArrowRight size={18} aria-hidden="true" /></Link>
+          {guest
+            ? <Link href="/guest" className="flh-welcome-primary flh-press">Get Started <ArrowRight size={18} aria-hidden="true" /></Link>
+            : <Link href="/auth/sign-up" className="flh-welcome-primary flh-press">Get Started <ArrowRight size={18} aria-hidden="true" /></Link>}
           <Link href="/auth/sign-in" className="flh-welcome-secondary flh-press">Already have an account? <b>Sign in</b></Link>
         </div>
       </div>
