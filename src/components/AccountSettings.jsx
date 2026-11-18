@@ -89,7 +89,7 @@ export default function AccountSettings({ userId, email, firstName, lastName, se
         <h2 id="account-help" className="flh-section-kicker"><CircleHelp size={14} aria-hidden="true" /> Help</h2>
         <p className="flh-account-copy">Save a home straight from Safari or a listing app with the Share button.</p>
         <div className="flh-account-help-actions">
-          <button type="button" className="hh-btn hh-btn-ghost flh-press" onClick={() => setShareTutorialOpen(true)}><Share size={15} aria-hidden="true" /> Practice sharing a home</button>
+          <button type="button" className="hh-btn hh-btn-ghost flh-press" onClick={(event) => { event.currentTarget.focus(); setShareTutorialOpen(true); }}><Share size={15} aria-hidden="true" /> Practice sharing a home</button>
         </div>
       </section>
       {shareTutorialOpen && <ShareTutorial onClose={() => setShareTutorialOpen(false)} />}

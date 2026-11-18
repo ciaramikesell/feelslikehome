@@ -113,7 +113,9 @@ test('the welcome reuses the exact desktop homepage hero photograph', () => {
 });
 
 test('the welcome has the approved copy and the existing auth paths', () => {
-  assert.match(welcome, /A little closer to home\./);
+  assert.doesNotMatch(welcome, /A little closer to home|Try a listing import/);
+  assert.match(welcome, /Import their listings, see how they match what matters to you\./);
+  assert.match(welcome, /See how it works/);
   assert.match(welcome, /Already found a few homes you love\?/);
   assert.match(welcome, /<Link href="\/auth\/sign-up"[^>]*>Get Started/);
   assert.match(welcome, /<Link href="\/auth\/sign-in"[^>]*>Already have an account\? <b>Sign in<\/b>/);
@@ -121,7 +123,7 @@ test('the welcome has the approved copy and the existing auth paths', () => {
 
 test('the share tutorial is optional from the welcome — never opened automatically', () => {
   assert.match(welcome, /useState\(false\)/);
-  assert.match(welcome, /onClick=\{\(\) => setTutorialOpen\(true\)\}/);
+  assert.match(welcome, /onClick=\{\(event\) => \{ event.currentTarget.focus\(\); setTutorialOpen\(true\); \}\}/);
   assert.doesNotMatch(welcome, /useEffect/);
 });
 
@@ -129,33 +131,35 @@ test('the share tutorial is optional from the welcome — never opened automatic
 
 test('the tutorial is an accessible, clearly simulated dialog with Skip and Back', () => {
   assert.match(tutorial, /role="dialog" aria-modal="true" aria-labelledby="flh-st-title"/);
-  assert.match(tutorial, /Practice run · a pretend Share Sheet/);
-  assert.match(tutorial, />Skip<\/button>/);
+  assert.match(tutorial, /Practice example/);
+  assert.match(tutorial, /'Close' : 'Skip'/);
   assert.match(tutorial, /<ChevronLeft[^>]*\/> Back<\/button>/);
   assert.match(tutorial, /event\.key === 'Escape'/);
   assert.match(tutorial, /titleRef\.current\?\.focus\(\)/);
   assert.match(tutorial, /restoreFocusRef/);
 });
 
-test('the person performs each step: tap Share, then tap Feels Like Home, then a success moment', () => {
-  assert.match(tutorial, /SHARE_TUTORIAL_STEPS = \['listing', 'sheet', 'saved'\]/);
+test('the person performs each step: tap Share, then tap Feels Like Home, then explore the example', () => {
+  assert.match(tutorial, /SHARE_TUTORIAL_STEPS = \['listing', 'sheet', 'result'\]/);
   assert.match(tutorial, /className=\{`flh-st-share[^`]*`\} onClick=\{tapShare\}/);
   assert.match(tutorial, /className="flh-st-app is-flh is-target flh-press" onClick=\{tapFlh\}/);
   assert.match(tutorial, /const tapShare = \(\) => \{ confirmHaptic\(\); setHint\(null\); setStep\('sheet'\); \};/);
-  assert.match(tutorial, /const tapFlh = \(\) => \{ confirmHaptic\(\); setHint\(null\); setStep\('saved'\); \};/);
-  assert.match(tutorial, /Practice again/);
+  assert.match(tutorial, /const tapFlh = \(\) => \{ confirmHaptic\(\); setHint\(null\); setStep\('result'\); \};/);
+  assert.match(tutorial, /Practice Again/);
 });
 
 test('the tutorial is replayable and stores nothing', () => {
   assert.doesNotMatch(tutorial, /localStorage|sessionStorage|document\.cookie|createClient|fetch\(/);
 });
 
-test('the tutorial explains the Share Extension accurately', () => {
-  assert.match(tutorial, /Practice only — no listing is imported or saved here\./);
-  assert.match(tutorial, /varies by app and iOS version/);
-  assert.match(tutorial, /Copy the listing link and paste it into Add Home/);
-  assert.match(tutorial, /not an Add to Home Screen shortcut/);
-  assert.match(tutorial, /copy the link and paste it into Add Home instead/);
+test('the final step compares confirmed and unknown facts in the practice example', () => {
+  assert.match(tutorial, /A listing, seen through your priorities\./);
+  assert.match(tutorial, /See which details match your priorities—and which ones you still need to check\./);
+  assert.match(tutorial, /aria-pressed=\{sample === 'island'\}.*>Kitchen Island/);
+  assert.match(tutorial, /aria-pressed=\{sample === 'tub'\}.*>Soaking Tub/);
+  assert.match(tutorial, /role="status">\s*\{sample === 'island' \? <><strong>Confirmed/);
+  assert.match(tutorial, /<strong>Unknown/);
+  assert.doesNotMatch(tutorial, /flh-st-facts|flh-st-saved-check|copy the listing link/i);
 });
 
 test('the example listing is fictional and uses existing FLH photography', () => {
@@ -178,7 +182,7 @@ test('haptics are native-only, plugin-checked, never throw, and fire only on rea
   assert.match(haptics, /\.catch\(\(\) => \{\}\)/);
   assert.doesNotMatch(haptics, /@capacitor\/core/);
   assert.doesNotMatch(welcome, /Haptic/); // no haptics on plain navigation (Get Started / Sign in)
-  assert.match(tutorial, /useEffect\(\(\) => \{ if \(step === 'saved'\) successHaptic\(\); \}, \[step\]\);/);
+  assert.doesNotMatch(tutorial, /successHaptic/);
 });
 
 test('motion is subtle, finite, and respects Reduce Motion', () => {
