@@ -33,11 +33,15 @@ test('mobile public navigation keeps every primary destination discoverable', ()
   assert.match(css, /\.pl-mobile-menu\{display:block/);
 });
 
-test('landing retains the approved cottage and Match illustration', () => {
+test('landing uses the approved cottage and four local preview illustrations', () => {
   assert.match(landing, /\/images\/Warm Cottage\.png/);
-  assert.match(previews, /\/images\/FLH Example\.png/);
+  assert.match(previews, /alt=\{previewAlt\[active\]\}/);
+  for (const panel of ['priorities', 'listings', 'compare', 'collaborate']) {
+    assert.ok(fs.existsSync(`public/images/homepage-previews/${panel}.webp`));
+  }
+  assert.match(css, /\.pl-preview-stage \{[^}]*aspect-ratio: 4 \/ 3/);
+  assert.match(previews, /without affiliation or direct integration/);
   assert.ok(fs.existsSync('public/images/Warm Cottage.png'));
-  assert.ok(fs.existsSync('public/images/FLH Example.png'));
   assert.match(previews, /Illustrative examples/);
 });
 

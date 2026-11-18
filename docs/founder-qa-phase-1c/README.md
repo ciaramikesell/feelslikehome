@@ -22,13 +22,15 @@ The comparisons use CSS viewport widths. The before capture preserves the old wa
 | Surface | Source |
 | --- | --- |
 | Hero and brand | Existing approved `public/images/Warm Cottage.png` and shared `BrandMark`. |
-| Set Your Preferences | HTML/CSS cards reflecting existing importance tiers. Local onboarding photos `home-office.webp`, `fenced-yard.webp`, and `soaking-tub.webp`. |
-| Bring Homes From Anywhere | Original HTML/CSS fictional listing cards using `front-porch.webp`, `mature-trees.webp`, and `garden-space.webp` from local onboarding assets. Portal names are plain text labels. |
-| Compare What Matters | Existing approved `public/images/FLH Example.png` in its original aspect ratio with illustrative Match scores. |
-| Search Together | Original HTML/CSS product composition with the local `front-porch.webp` photo, separate buyer rows, and a labeled Realtor suggestion. |
+| Set Your Preferences | Founder-supplied `warm_home_preferences_dashboard.png` → `priorities.webp`. |
+| Bring Homes From Anywhere | Founder-supplied `all_your_favorite_listings_together.png` → `listings.webp`. |
+| Compare What Matters | Founder-supplied `feels_like_home_match_gallery.png` → `compare.webp`. |
+| Search Together | Founder-supplied `feels_like_home_shared_search.png` → `collaborate.webp`. |
 | Collaboration examples | Original copy and HTML/CSS. The street address and commute examples are illustrative. Whitney's note and the specified commute times are founder copy. |
 
-Only the displayed panel loads its artwork. The initial preferences example is rendered into the page before hydration. The visuals use local assets, existing fonts, and the existing icon package.
+The full compositions are preserved at 1448 × 1086. Lossy WebP conversion reduced the four supplied PNGs from about 7.6 MiB to 650 KiB combined. The shared 4:3 frame reserves space before the active image loads. The after captures and all preview-state screenshots show the refined artwork.
+
+The illustrations depict existing FLH priority tiers, adding listing links, personal Match views, and shared searches with Realtor suggestions. Their navigation is conceptual. For example, `Blog` and a dedicated `Search Together` tab are absent from the buyer shell. The visible caption explains that navigation and details may differ and that the listing-site logos indicate neither affiliation nor direct integration. Addresses, prices, commute times, and Match percentages are illustrative.
 
 ## Founder review
 
@@ -37,7 +39,13 @@ Only the displayed panel loads its artwork. The initial preferences example is r
 - [ ] Review the approved Match image and the distinction between a shared shortlist, individual priorities, and Whitney's suggestion.
 - [ ] Check the navigation menu, logo, How it works, footer, and For Realtors links. Confirm mobile uses the dedicated account pages and desktop opens the existing forms.
 
-## Verification
+## Refined artwork verification
+
+- Production build passed. The standard suite reported **1,412 passed, 0 failed, 253 skipped**. The optional PostgreSQL and live fixture tests were skipped for this artwork-only revision.
+- Chromium decoded all four responsive images at 320, 375, 390, 430, 768, and 1440 px. The initial page requested only the default image. Both the frame and figure height stayed constant through all four selections at each width.
+- Touch selection worked at phone widths. Desktop and tablet verified hover and keyboard focus before selection, activation with Space, and selection persistence while hovering another feature. Images retain their full framing and use panel-specific alt text.
+
+## Original Phase 1C verification
 
 - Production build passed. The full suite on local PostgreSQL reported **1,663 passed, 0 failed, 2 skipped**. Both skips require sanitized live RentCast fixtures. All 44 focused homepage, authentication-entry, Realtor-entry, and native welcome checks passed after the final CSS adjustment.
 - Chromium checked all four preview states at every requested width. Desktop hover and focus changed the preview before selection. Space selected a feature, mouse movement left that selection in place, and touch taps changed it. Figure height stayed constant across all selections at each tested width.
