@@ -4,7 +4,7 @@ The proposed SQL was applied to disposable PostgreSQL 16.16 databases only. Cont
 
 ## PostgreSQL results
 
-The adversarial suite passed all 13 tests, with zero failures or skips.
+The adversarial suite passed all 13 tests, with zero failures or skips. The existing co-buyer journey, Realtor entry, Realtor-started searches, and onboarding-state suites passed 29 tests against the same local PostgreSQL cluster, with zero failures or skips.
 
 Reproduce the [adversarial suite](transfer-postgres.test.mjs) from the repository root with `psql` available. Use a dedicated throwaway cluster with `listen_addresses=''`. A Docker-backed `psql` wrapper must forward `PGOPTIONS` into the container so the repository fixture can load the historical schema snapshot.
 
