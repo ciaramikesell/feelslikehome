@@ -36,12 +36,12 @@ export function BrandMark({ size = 34 }) {
   );
 }
 
-export function Wordmark({ size = 27, className = 'hh-serif' }) {
+export function Wordmark({ size = 27, className = 'hh-serif', as: Tag = 'h1' }) {
   return (
-    <h1 className={className} style={{ fontSize: `var(--flh-wordmark-size, ${size}px)`, margin: 0, letterSpacing: '-0.015em' }}>
+    <Tag className={className} style={{ fontSize: `var(--flh-wordmark-size, ${size}px)`, margin: 0, letterSpacing: '-0.015em' }}>
       <span style={{ color: 'var(--ink)', fontWeight: 500 }}>Feels Like </span>
       <span style={{ color: 'var(--brick)', fontWeight: 700 }}>Home</span>
-    </h1>
+    </Tag>
   );
 }
 
