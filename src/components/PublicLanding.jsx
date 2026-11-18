@@ -23,7 +23,7 @@ const walkthroughVideo = {
   label: '3-minute walkthrough',
 };
 
-export default function PublicLanding() {
+export default function PublicLanding({ guest = false }) {
   // This entry preserves explicit Realtor intent and lands a new account in the
   // People workspace; it does not send agents through buyer onboarding.
   const realtorHref = '/for-realtors';
@@ -39,12 +39,12 @@ export default function PublicLanding() {
     <header className="pl-header">
       <Link className="pl-brand" href="/" aria-label="Feels Like Home home"><BrandMark size={44} /><span>Feels Like <b>Home</b></span></Link>
       <nav aria-label="Public navigation">
-        <div className="pl-nav-surface"><a href="#how-it-works">How it works</a><Link href={realtorHref}>For Realtors</Link><button type="button" className="pl-auth-trigger" onClick={(event) => openAuth('sign-in', event)} aria-expanded={authMode !== null}>Sign in</button></div><button type="button" className="pl-button is-small" onClick={(event) => openAuth('sign-up', event)} aria-expanded={authMode !== null}>Get started</button>
+        <div className="pl-nav-surface"><a href="#how-it-works">How it works</a><Link href={realtorHref}>For Realtors</Link><button type="button" className="pl-auth-trigger" onClick={(event) => openAuth('sign-in', event)} aria-expanded={authMode !== null}>Sign in</button></div>{guest ? <Link className="pl-button is-small" href="/guest">Get started</Link> : <button type="button" className="pl-button is-small" onClick={(event) => openAuth('sign-up', event)} aria-expanded={authMode !== null}>Get started</button>}
       </nav>
       <details className="pl-mobile-menu">
         <summary aria-label="Open navigation"><Menu size={20} aria-hidden="true" /><span>Menu</span></summary>
         <nav aria-label="Mobile public navigation">
-          <a href="#how-it-works">How it works</a><Link href={realtorHref}>For Realtors</Link><Link href="/auth/sign-in">Sign in</Link><Link className="pl-button is-small" href="/auth/sign-up">Get started</Link>
+          <a href="#how-it-works">How it works</a><Link href={realtorHref}>For Realtors</Link><Link href="/auth/sign-in">Sign in</Link>{guest ? <Link className="pl-button is-small" href="/guest">Get started</Link> : <Link className="pl-button is-small" href="/auth/sign-up">Get started</Link>}
         </nav>
       </details>
       {authMode && <LandingAuthPopover mode={authMode} onModeChange={setAuthMode} onClose={closeAuth} returnFocusRef={authTriggerRef} />}
@@ -56,7 +56,7 @@ export default function PublicLanding() {
           <p className="pl-eyebrow">Real estate, reimagined</p>
           <h1><span>You’ve saved a lot of options.</span><span>Now find the one that</span><em>Feels Like Home.</em></h1>
           <p className="pl-lede">Bring the homes you’re already considering into one place, compare them against what matters to you, and make your decision with confidence.</p>
-          <div className="pl-actions"><button type="button" className="pl-button pl-desktop-auth" onClick={(event) => openAuth('sign-up', event)}>Create a free account <ArrowRight size={17} aria-hidden="true" /></button><Link className="pl-button pl-mobile-auth" href="/auth/sign-up">Create a free account <ArrowRight size={17} aria-hidden="true" /></Link><a className="pl-button is-quiet" href="#how-it-works">See how it works</a></div>
+          <div className="pl-actions">{guest ? <Link className="pl-button pl-desktop-auth" href="/guest">Get started <ArrowRight size={17} aria-hidden="true" /></Link> : <button type="button" className="pl-button pl-desktop-auth" onClick={(event) => openAuth('sign-up', event)}>Create a free account <ArrowRight size={17} aria-hidden="true" /></button>}{guest ? <Link className="pl-button pl-mobile-auth" href="/guest">Get started <ArrowRight size={17} aria-hidden="true" /></Link> : <Link className="pl-button pl-mobile-auth" href="/auth/sign-up">Create a free account <ArrowRight size={17} aria-hidden="true" /></Link>}<a className="pl-button is-quiet" href="#how-it-works">See how it works</a></div>
           <p className="pl-renter-note">House, condo, or apartment — compare the places you’re actually considering.</p>
         </div>
         <figure className="pl-hero-visual"><Image src="/images/Warm Cottage.png" alt="A welcoming cottage with a front porch at golden hour" fill priority sizes="(max-width: 900px) 100vw, 58vw" /></figure>
@@ -88,6 +88,6 @@ export default function PublicLanding() {
         </div>
       </section>
     </main>
-    <footer className="pl-footer"><div className="pl-footer-brand"><Link className="pl-brand" href="/"><BrandMark size={27} /><span>Feels Like <b>Home</b></span></Link><p>Homes are personal. Choosing one should be, too.</p></div><nav aria-label="Footer navigation"><a href="#how-it-works">How it works</a><Link href={realtorHref}>For Realtors</Link><button type="button" className="pl-footer-auth pl-desktop-auth" onClick={(event) => openAuth('sign-in', event)}>Sign in</button><Link className="pl-mobile-auth" href="/auth/sign-in">Sign in</Link><button type="button" className="pl-footer-auth pl-desktop-auth" onClick={(event) => openAuth('sign-up', event)}>Get started</button><Link className="pl-mobile-auth" href="/auth/sign-up">Get started</Link></nav><small>© 2026 Feels Like Home</small></footer>
+    <footer className="pl-footer"><div className="pl-footer-brand"><Link className="pl-brand" href="/"><BrandMark size={27} /><span>Feels Like <b>Home</b></span></Link><p>Homes are personal. Choosing one should be, too.</p></div><nav aria-label="Footer navigation"><a href="#how-it-works">How it works</a><Link href={realtorHref}>For Realtors</Link><button type="button" className="pl-footer-auth pl-desktop-auth" onClick={(event) => openAuth('sign-in', event)}>Sign in</button><Link className="pl-mobile-auth" href="/auth/sign-in">Sign in</Link>{guest ? <Link className="pl-footer-auth pl-desktop-auth" href="/guest">Get started</Link> : <button type="button" className="pl-footer-auth pl-desktop-auth" onClick={(event) => openAuth('sign-up', event)}>Get started</button>}{guest ? <Link className="pl-mobile-auth" href="/guest">Get started</Link> : <Link className="pl-mobile-auth" href="/auth/sign-up">Get started</Link>}</nav><small>© 2026 Feels Like Home</small></footer>
   </div>;
 }

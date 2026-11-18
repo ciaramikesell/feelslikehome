@@ -448,6 +448,16 @@ export async function savePriorities(supabase, search, userId, priorities) {
   if (error) throw error;
 }
 
+// When guest transfer is enabled, serialize an owner's ordinary onboarding
+// against transfer. Shared-search setup still saves to its existing target.
+export async function saveIncompleteOnboardingPriorities(supabase, searchId, priorities = null, progress = null) {
+  const { data, error } = await supabase.rpc('save_incomplete_owner_onboarding', {
+    p_search_id: searchId, p_priorities: prioritiesForExplicitSave(priorities),
+    p_version: progress?.version ?? null, p_state: progress?.state ?? null,
+  });
+  if (error || !data) throw new Error('Onboarding has changed. Reload to continue.');
+}
+
 /* -------------------------- private commute data -------------------------- */
 
 function rowToCommuteDestination(row) {

@@ -1,4 +1,4 @@
--- REVIEW ONLY. Read-only catalog checks, after separate writer provisioning.
+-- REVIEW ONLY. Read-only catalog checks. Writer rows are empty before provisioning.
 begin read only;
 
 select current_user as migration_role,
@@ -47,9 +47,10 @@ select n.nspname, p.proname, pg_catalog.pg_get_function_identity_arguments(p.oid
   p.prorettype = 'pg_catalog.trigger'::regtype as trigger_only
 from pg_catalog.pg_proc as p
 join pg_catalog.pg_namespace as n on n.oid = p.pronamespace
+join pg_catalog.pg_roles as writer on writer.rolname = 'flh_guest_writer'
 where n.nspname in ('auth', 'public', 'storage', 'flh_guest_transfer') and p.prosecdef
-  and pg_catalog.has_schema_privilege('flh_guest_writer', n.oid, 'USAGE')
-  and pg_catalog.has_function_privilege('flh_guest_writer', p.oid, 'EXECUTE')
+  and pg_catalog.has_schema_privilege(writer.oid, n.oid, 'USAGE')
+  and pg_catalog.has_function_privilege(writer.oid, p.oid, 'EXECUTE')
 order by 1, 2, 3;
 
 commit;

@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
+import { guestOnboardingEnabled } from '@/lib/guest/config';
 
 export async function middleware(request) {
   // /dev/ holds development-only tools (the onboarding preview). Production
@@ -9,6 +10,11 @@ export async function middleware(request) {
     return process.env.NODE_ENV === 'production'
       ? new NextResponse('Not found', { status: 404 })
       : NextResponse.next();
+  }
+
+  if ((request.nextUrl.pathname === '/guest' || request.nextUrl.pathname.startsWith('/guest/')) &&
+      !guestOnboardingEnabled()) {
+    return new NextResponse('Not found', { status: 404 });
   }
 
   // Layouts (unlike page.js) never receive the current path/query as a prop —

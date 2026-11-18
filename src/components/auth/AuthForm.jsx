@@ -3,12 +3,13 @@
 import Link from 'next/link';
 import ShareTutorial from '@/components/ShareTutorial';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { PasswordField, Banner, Spinner } from '@/components/auth/AuthHelpers';
 import { createClient } from '@/lib/supabase/client';
+import { postGuestTransfer } from '@/lib/guest/client';
 import { REALTOR_WORKSPACE_PATH } from '@/lib/realtorEntry';
 
-export default function AuthForm({ initialMode = 'sign-in', redirectTo = '/', isRealtorEntry = false, inline = false, onModeChange }) {
+export default function AuthForm({ initialMode = 'sign-in', redirectTo = '/', isRealtorEntry = false, inline = false, onModeChange, guestDraftId = null }) {
   const router = useRouter();
   const [mode, setMode] = useState(initialMode);
   const [demoOpen, setDemoOpen] = useState(false);
@@ -17,6 +18,7 @@ export default function AuthForm({ initialMode = 'sign-in', redirectTo = '/', is
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const guestSignupPending = useRef(false);
   const [status, setStatus] = useState(null);
   const [error, setError] = useState('');
   const entryDestination = redirectTo === '/' && isRealtorEntry ? REALTOR_WORKSPACE_PATH : redirectTo;
@@ -41,6 +43,7 @@ export default function AuthForm({ initialMode = 'sign-in', redirectTo = '/', is
     }
     if (mode === 'sign-up' && password !== confirm) { setError("Passwords don't match."); return; }
     if (mode === 'sign-up' && password.length < 6) { setError('Password needs to be at least 6 characters.'); return; }
+    if (guestSignupPending.current) return;
     setStatus('loading');
     const supabase = createClient();
 
@@ -53,6 +56,40 @@ export default function AuthForm({ initialMode = 'sign-in', redirectTo = '/', is
       }
       router.push(redirectTo);
       router.refresh();
+      return;
+    }
+
+    if (guestDraftId) {
+      guestSignupPending.current = true;
+      try {
+        const prepare = { action: 'prepare', draftId: guestDraftId, email, replace: false };
+        let prepared = await postGuestTransfer(prepare);
+        if (prepared === 'different_email') {
+          if (!window.confirm('Start a new signup attempt for this email? Your answers will stay in this browser.')) {
+            setStatus(null);
+            return;
+          }
+          prepared = await postGuestTransfer({ ...prepare, replace: true });
+        }
+        const result = prepared === 'prepared' ? await postGuestTransfer({
+          action: 'signup', draftId: guestDraftId, email, password, firstName, lastName,
+        }) : prepared;
+        if (result === 'authenticated') {
+          router.push(entryDestination);
+          router.refresh();
+          return;
+        }
+        if (result === 'check_email') {
+          setStatus('check-email');
+          return;
+        }
+      } catch {
+        // The local draft and preparatory cookie can be reused when retrying.
+      } finally {
+        guestSignupPending.current = false;
+      }
+      setStatus(null);
+      setError('Could not create your account. Your answers are still here. Try again or sign in.');
       return;
     }
 
@@ -84,7 +121,7 @@ export default function AuthForm({ initialMode = 'sign-in', redirectTo = '/', is
   };
 
   if (status === 'check-email') {
-    return <div className="afh-form-stack"><h2 className="afh-serif">Check your email</h2><Banner kind="success">We sent a confirmation link to {email}. Click it to finish creating your account, then come back and sign in.</Banner><button type="button" className="afh-btn afh-btn-ghost" onClick={() => switchMode('sign-in')}>Back to sign in</button></div>;
+    return <div className="afh-form-stack"><h2 className="afh-serif">Check your email</h2><Banner kind="success">We sent a confirmation link to {email}. {guestDraftId ? 'Open it to verify your email. If it opens in a different browser, return here and sign in to save your answers.' : 'Click it to finish creating your account, then come back and sign in.'}</Banner><button type="button" className="afh-btn afh-btn-ghost" onClick={() => switchMode('sign-in')}>Back to sign in</button></div>;
   }
 
   const signIn = mode === 'sign-in';
@@ -94,7 +131,7 @@ export default function AuthForm({ initialMode = 'sign-in', redirectTo = '/', is
         <h2 className="afh-serif">{signIn ? (inline && !isRealtorEntry ? 'Welcome back.' : 'Sign in') : isRealtorEntry ? 'Create your Realtor account' : 'Create your account'}</h2>
         <p className="afh-form-intro">{signIn ? (inline && isRealtorEntry ? 'Welcome back.' : 'Pick up where you left off.') : isRealtorEntry && inline ? 'Help buyers organize what matters, understand their options, and make clearer decisions together.' : isRealtorEntry ? 'Set up a client search or join a buyer who invited you. Access to every search is connected to that client relationship—not a global account role.' : 'Create your account to start comparing homes.'}</p>
       </div>
-      {!signIn && !isRealtorEntry && <button type="button" className="afh-demo-link" onClick={() => setDemoOpen(true)}>Try a listing import before you join <span>No account needed</span></button>}
+      {!signIn && !isRealtorEntry && !guestDraftId && <button type="button" className="afh-demo-link" onClick={() => setDemoOpen(true)}>Try a listing import before you join <span>No account needed</span></button>}
       {demoOpen && <ShareTutorial onClose={() => setDemoOpen(false)} />}
       {!signIn && <div className="afh-name-row">
         <div><label className="afh-label" htmlFor={`${inline ? 'popover-' : ''}${mode}-first-name`}>First name</label><input autoFocus={inline} className="afh-input" id={`${inline ? 'popover-' : ''}${mode}-first-name`} type="text" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First" autoComplete="given-name" /></div>

@@ -1,6 +1,6 @@
 # Phase 1B protected transfer review
 
-The product decision is to reuse V3 and keep Places in My Search. This directory is outside the migrations path. The [proposed SQL](proposed-migration.sql) is the exact DDL and function body submitted for review. The separate [disable script](proposed-disable.sql) is the proposed database rollback after rollout. The SQL was rehearsed only in isolated local databases. See the [test evidence and remaining rollout checks](test-evidence.md).
+The product decision is to reuse V3 and keep Places in My Search. This directory is outside the migrations path. The [originally reviewed SQL](proposed-migration.sql) is retained for comparison. The [implementation migration](../../supabase/migrations/2026-11-18-guest-onboarding-transfer.sql) adds the owner autosave guard and is the SQL used by the current transfer tests. The separate [disable script](proposed-disable.sql) is the proposed database rollback after rollout. The SQL was rehearsed only in isolated local databases. See the [test evidence and remaining rollout checks](test-evidence.md).
 
 ## Signup binding
 

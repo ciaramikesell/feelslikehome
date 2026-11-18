@@ -191,7 +191,7 @@ function ReadyStep({ onAddHome, onViewSearch }) {
 // Every write onboarding makes, in one place. Real pages use these defaults;
 // the development-only preview (src/app/dev/onboarding) passes in-memory
 // stand-ins so it can never touch Supabase.
-const SUPABASE_SERVICES = Object.freeze({
+export const SUPABASE_SERVICES = Object.freeze({
   savePriorities: (searchId, userId, next) => savePriorities(createClient(), { id: searchId }, userId, next),
   saveProgress: (userId, progress) => saveOnboardingProgress(createClient(), userId, progress),
   completeOnboarding: (userId, progress) => completeOnboarding(createClient(), userId, progress),
@@ -215,7 +215,7 @@ const SUPABASE_SERVICES = Object.freeze({
 //                         onboarding state, never another search, never another
 //                         person's preferences. Ends on that search's Homes, and
 //                         can be left for the person's own search at any time.
-export default function Onboarding({ userId, searchId, initialPriorities, initialProgress, appVersion = null, mode = 'account', ownerName = null, ownedSearchId = null, initialPlaces = [], placesError = null, initialPeople = null, peopleError = null, services = SUPABASE_SERVICES }) {
+export default function Onboarding({ userId, searchId, initialPriorities, initialProgress, appVersion = null, mode = 'account', ownerName = null, ownedSearchId = null, initialPlaces = [], placesError = null, initialPeople = null, peopleError = null, onGuestFinish = null, services = SUPABASE_SERVICES }) {
   const sharedSetup = mode === 'shared_search_setup';
   const sharedFor = sharedSetup ? (ownerName ? `${/s$/i.test(ownerName) ? `${ownerName}’` : `${ownerName}’s`} search` : 'this shared search') : null;
   const router = useRouter();
@@ -287,12 +287,12 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
   useEffect(() => {
     if (sharedSetup) return;
     if (initialProgress.changed) persistProgress(initialProgress.state);
-    track(initialProgress.fresh ? ANALYTICS_EVENTS.ONBOARDING_STARTED : ANALYTICS_EVENTS.ONBOARDING_RESUMED, { ...eventContext, step, search_changed: initialProgress.searchChanged });
+    if (!onGuestFinish) track(initialProgress.fresh ? ANALYTICS_EVENTS.ONBOARDING_STARTED : ANALYTICS_EVENTS.ONBOARDING_RESUMED, { ...eventContext, step, search_changed: initialProgress.searchChanged });
     // Once per mount: this records how the session began, not each render.
   }, []);
 
   useEffect(() => {
-    if (!ready && !sharedSetup) track(ANALYTICS_EVENTS.ONBOARDING_STEP_VIEWED, { ...eventContext, step, position: progress.position, total: progress.total });
+    if (!ready && !sharedSetup && !onGuestFinish) track(ANALYTICS_EVENTS.ONBOARDING_STEP_VIEWED, { ...eventContext, step, position: progress.position, total: progress.total });
   }, [step, ready]);
 
   // Backgrounding (app switch, lock screen, tab hidden) is where an
@@ -327,7 +327,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
     } else {
       persistProgress(next);
     }
-    if (!sharedSetup) track(ANALYTICS_EVENTS.ONBOARDING_STEP_COMPLETED, { ...eventContext, step: fromStep });
+    if (!sharedSetup && !onGuestFinish) track(ANALYTICS_EVENTS.ONBOARDING_STEP_COMPLETED, { ...eventContext, step: fromStep });
     window.scrollTo?.({ top: 0 });
   };
   // Flow 4's Continue and Skip. Separate from goTo so the live flow is
@@ -342,7 +342,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
     // finishes setup and opens Add Home (or the pending deep-link destination).
     if (done && isQuickStartState(next)) {
       persistProgress(next);
-      if (!sharedSetup) track(ANALYTICS_EVENTS.ONBOARDING_STEP_COMPLETED, { ...eventContext, step: fromStep, ...(skip ? { reason: 'skipped' } : {}) });
+      if (!sharedSetup && !onGuestFinish) track(ANALYTICS_EVENTS.ONBOARDING_STEP_COMPLETED, { ...eventContext, step: fromStep, ...(skip ? { reason: 'skipped' } : {}) });
       // Shared-search setup ends on that search's Homes, exactly as before (finish() handles errors).
       return sharedSetup ? finish() : finishToDestination('/homes?add=1');
     }
@@ -356,7 +356,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
       if (!desktopBoard && next.step === 'review' && fromStep !== 'review') setArrivedAtReview(true);
       persistProgress(next);
     }
-    if (!sharedSetup) track(ANALYTICS_EVENTS.ONBOARDING_STEP_COMPLETED, { ...eventContext, step: boardMove ? BOARD_STEP : fromStep, ...(skip ? { reason: 'skipped' } : {}) });
+    if (!sharedSetup && !onGuestFinish) track(ANALYTICS_EVENTS.ONBOARDING_STEP_COMPLETED, { ...eventContext, step: boardMove ? BOARD_STEP : fromStep, ...(skip ? { reason: 'skipped' } : {}) });
     window.scrollTo?.({ top: 0 });
   };
   // The setup-path choice moves straight on: the choice decides which screens
@@ -399,6 +399,10 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
     setFinishing(true);
     try {
       await flush();
+      if (onGuestFinish) {
+        await onGuestFinish(priorities, progressRef.current);
+        return;
+      }
       await persistPriorities(priorities);
       if (!sharedSetup) {
         await services.completeOnboarding(userId, { version, state: completeOnboardingState(version, progressRef.current) });
@@ -482,7 +486,7 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
               onSkip={(from) => moveOn(from, { skip: true })}
               onBack={(from) => goBack(from)}
               onSearchType={(type) => persistProgress(setOnboardingSearchType(progressRef.current, type))}
-              review={{ skipped: progressState.skipped || [], onEdit: editFromReview, onFinish: finishToDestination, finishing, finishError, celebrate: arrivedAtReview }}
+              review={{ skipped: progressState.skipped || [], onEdit: editFromReview, onFinish: finishToDestination, finishing, finishError, celebrate: arrivedAtReview, guest: Boolean(onGuestFinish) }}
               board={desktopBoard}
               setupPath={progressState.answers?.setupPath || null}
               onSetupPath={chooseSetupPath}

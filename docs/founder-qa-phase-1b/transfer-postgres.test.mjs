@@ -115,7 +115,7 @@ before(() => {
   roleCreated = true;
   db = createTestDatabase();
   db.exec('alter table auth.users add column email_confirmed_at timestamptz, add column is_anonymous boolean not null default false;');
-  const migration = db.applyFile(`${dir}/proposed-migration.sql`);
+  const migration = db.applyFile('supabase/migrations/2026-11-18-guest-onboarding-transfer.sql');
   assert.deepEqual(migration, { ok: true, error: null });
 });
 
@@ -288,6 +288,20 @@ test('injected fault after priority insert rolls back priorities, profile and re
     db.exec('drop trigger flh_test_fail_receipt on flh_guest_transfer.attempts; drop function public.flh_test_fail_receipt();');
   }
   assert.equal(save(account), 'saved');
+});
+
+test('guarded owner autosave cannot overwrite a completed transfer', () => {
+  const account = createAccount();
+  const pending = createAccount();
+  const stale = { ...preferences, budget: { value: '1', tier: 'must' } };
+  const autosave = searchId => `select public.save_incomplete_owner_onboarding(
+    ${quote(searchId)}, ${json(stale)}, 4::smallint, null);`;
+  assert.equal(ok(roleSql(pending.id, autosave(pending.search))), 't');
+  assert.equal(save(pending), 'conflict');
+  assert.equal(save(account), 'saved');
+  assert.equal(ok(roleSql(account.id, autosave(account.search))), 'f');
+  assert.equal(ok(roleSql(pending.id, autosave(account.search))), 'f');
+  assert.deepEqual(details(account), [{ search_id: account.search, priorities: preferences }]);
 });
 
 test('disable SQL closes the only endpoint and preserves data and ordinary signup', () => {
