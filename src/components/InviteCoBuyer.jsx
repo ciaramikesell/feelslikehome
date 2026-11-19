@@ -102,7 +102,7 @@ export default function InviteCoBuyer({ searchId, userId, embedded = false, onCl
         <>
           <label className="hh-label" style={{ marginBottom: 6, display: 'block' }}>Invite link</label>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <input className="hh-input" readOnly value={inviteLink} style={{ width: '100%', fontSize: 12 }} onFocus={(e) => e.target.select()} />
+            <input className="hh-input hh-invite-link-input" readOnly value={inviteLink} onFocus={(e) => e.target.select()} />
             <button type="button" className="hh-btn hh-btn-ghost" style={{ fontSize: 12, flexShrink: 0 }} onClick={copy}>
               {copied ? 'Copied' : 'Copy link'}
             </button>
