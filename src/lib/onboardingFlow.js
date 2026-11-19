@@ -176,6 +176,7 @@ export function normalizeOnboardingState(raw) {
       ...(COLLABORATION_CHOICES.includes(answers.collaboration) ? { collaboration: answers.collaboration } : {}),
       ...(PRIORITY_SEARCH_TYPES.includes(answers.searchType) ? { searchType: answers.searchType } : {}),
       ...(SETUP_PATHS.includes(answers.setupPath) ? { setupPath: answers.setupPath } : {}),
+      ...(answers.returnToReview === true && knownKeys.has(input.step) && input.step !== 'review' ? { returnToReview: true } : {}),
     },
     // Screens left with Skip (flow 4). Also in `completed`, so resuming never
     // sends someone back to a screen they chose to skip; Review lists them.
@@ -270,6 +271,9 @@ export function beginOnboarding({ storedVersion = null, storedState = null, cont
   const collaboration = impliedCollaboration(state.answers.collaboration, context.role);
   if (collaboration) state.answers.collaboration = collaboration;
   state.step = resumeOnboardingStep(targetVersion, state);
+  if (searchChanged || targetVersion !== 4 || state.step !== currentStep || !onboardingStepsFor(targetVersion, state).includes('review')) {
+    delete state.answers.returnToReview;
+  }
 
   const changed = fresh || storedVersion !== targetVersion || JSON.stringify(normalizeOnboardingState(storedState)) !== JSON.stringify(state);
   return { version: targetVersion, state: changed ? { ...state, updatedAt: now } : state, fresh, resumed: !fresh, changed, searchChanged };
@@ -324,6 +328,10 @@ export function advanceOnboarding(version, rawState, fromStep, now = new Date().
   if (index === -1) return { state: { ...state, step: resumeOnboardingStep(version, state) }, done: false };
   const completed = state.completed.includes(fromStep) ? state.completed : [...state.completed, fromStep];
   const skipped = state.skipped.filter((key) => key !== fromStep);
+  if (version === 4 && state.answers.returnToReview && steps.includes('review')) {
+    const { returnToReview, ...answers } = state.answers;
+    return { state: { ...state, answers, completed, skipped, step: 'review', updatedAt: now }, done: false };
+  }
   const next = steps[index + 1] || null;
   return { state: { ...state, completed, skipped, step: next || fromStep, updatedAt: now }, done: !next };
 }

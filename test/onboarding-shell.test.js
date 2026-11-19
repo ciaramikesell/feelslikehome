@@ -18,7 +18,9 @@ test('every shell rule is scoped to onboarding', () => {
 });
 
 test('the shell avoids viewport-height layouts and fixed heights on content', () => {
-  assert.doesNotMatch(shellCss, /\d+vh|100dvh|position: fixed/);
+  const paneOverflow = /\.flh-onboarding-root \.flh-ob-live-priorities \{[^}]*max-height: calc\(100dvh - 48px\);/;
+  assert.match(shellCss, paneOverflow, 'the sticky desktop panel fits the viewport');
+  assert.doesNotMatch(shellCss.replace(paneOverflow, ''), /\d+vh|100dvh|position: fixed/);
   assert.doesNotMatch(shellCss, /(?<![-\w])height: (?!3px|42px|44px|28px)\d+px/);
 });
 

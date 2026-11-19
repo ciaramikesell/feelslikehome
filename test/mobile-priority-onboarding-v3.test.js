@@ -282,7 +282,7 @@ test('cards: text label always, decorative local images with lazy loading, respo
   assert.match(visual, /alt=""/);
   assert.match(visual, /loading=\{eager \? 'eager' : 'lazy'\}/);
   assert.match(visual, /srcSet=\{image\.srcSet\}/);
-  assert.match(visual, /sizes=\{image\.srcSet \? CARD_SIZES : undefined\}/);
+  assert.match(visual, /sizes=\{image\.srcSet \? sizes : undefined\}/);
   assert.match(visual, /onError=\{\(\) => setFailed\(true\)\}/);
   assert.doesNotMatch(visual, /https?:\/\//);
   assert.match(read('src/components/onboarding/priority/FeatureCard.jsx'), /aria-label=\{`\$\{feature\.text\}/);
