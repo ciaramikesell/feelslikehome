@@ -265,6 +265,18 @@ export const PRIORITY_CATEGORIES = Object.freeze([
   }),
 ]);
 
+// Home to Buy's mobile walkthrough uses this copy and the same catalog
+// identities as the base categories above.
+export const MOBILE_BUY_CATEGORY_PRESENTATION = Object.freeze({
+  layout: { eyebrow: 'Home Layout', heading: 'Room for the way you live' },
+  kitchen: { eyebrow: 'Kitchen', heading: 'Your dream kitchen' },
+  living: { eyebrow: 'Living Room', heading: 'Unwind & entertain', promote: ['built-in-shelving', 'large-windows'] },
+  bath: { eyebrow: 'Bathroom', heading: 'Your private oasis' },
+  garage: { eyebrow: 'Garage', heading: 'Let’s talk garage space' },
+  exterior: { eyebrow: 'Exterior & Property', heading: 'Let’s step outside', promote: ['pool', 'front-porch', 'mature-trees'], labels: { 'exterior:Patio / deck': 'Deck / Patio', 'exterior:Fenced yard': 'Fenced Yard' } },
+  neighborhood: { eyebrow: 'Location & Neighborhood', heading: 'What', accent: 'feels like home?', promote: ['cul-de-sac'], demote: 'location:No HOA' },
+});
+
 // Every screen step key, in order (used by the flow's tests to stay in sync).
 export const PRIORITY_CATEGORY_STEPS = Object.freeze(PRIORITY_CATEGORIES.map((category) => category.step));
 
@@ -366,7 +378,13 @@ function storedItems(priorities) {
 // to Buy is unchanged: it always uses the card's own label.
 export function storedFeatureLabel(raw, feature) {
   const priorities = normalizePriorities(raw);
-  if (feature.custom || !isRentalType(priorities.searchType)) return feature.label;
+  if (feature.custom) {
+    const items = priorities[feature.categoryKey]?.customItems || [];
+    return items.find((item) => item.label === feature.label)?.label
+      || items.find((item) => normalizeFeatureKey(item.label) === normalizeFeatureKey(feature.label))?.label
+      || feature.label;
+  }
+  if (!isRentalType(priorities.searchType)) return feature.label;
   const catState = priorities[feature.categoryKey] || {};
   const tiers = catState.tiers || {};
   const key = normalizeFeatureKey(feature.label);
@@ -392,12 +410,28 @@ const customFeature = (item, group) => Object.freeze({
   text: item.label, kind: item.kind || 'check', custom: true, art: null, icon: null, group, role: 'own',
 });
 
+// The photo flow changes which options start as cards. Keep Explore and
+// the desktop board on the base category and reuse the same feature identities.
+function mobileBuyCategory(category, { promote = [], demote, labels = {} }) {
+  const promoted = promote.map((art) => category.suggestions.find((feature) => feature.art === art));
+  const demoted = category.features.filter((feature) => feature.id === demote);
+  return {
+    ...category,
+    features: [...category.features.filter((feature) => feature.id !== demote), ...promoted]
+      .map((feature) => ({ ...feature, role: 'feature', text: labels[feature.id] || feature.text })),
+    suggestions: [...demoted, ...category.suggestions.filter((feature) => !promote.includes(feature.art))]
+      .map((feature) => ({ ...feature, role: 'suggestion' })),
+  };
+}
+
 // One screen: its cards (features, plus every suggestion or own item that has
 // been added) and the suggestion chips still available.
-export function categoryView(raw, key) {
+export function categoryView(raw, key, { mobileBuy = false } = {}) {
   const priorities = normalizePriorities(raw);
-  const category = priorityCategory(priorities, key);
-  if (!category) return null;
+  const baseCategory = priorityCategory(priorities, key);
+  if (!baseCategory) return null;
+  const presentation = mobileBuy && (searchExperienceKey(priorities) || 'home_buy') === 'home_buy' && MOBILE_BUY_CATEGORY_PRESENTATION[baseCategory.key];
+  const category = presentation ? mobileBuyCategory(baseCategory, presentation) : baseCategory;
   const stored = storedItems(priorities);
   const storedKeys = new Set(stored.map((item) => normalizeFeatureKey(idOf(item.categoryKey, item.label))));
   const exists = (feature) => storedKeys.has(normalizeFeatureKey(feature.id));
