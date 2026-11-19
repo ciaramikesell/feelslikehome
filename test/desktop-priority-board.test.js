@@ -335,15 +335,11 @@ test('board UI: drag, click and keyboard all use the canonical writes; previews 
   // Breakpoint: one explicit, tested constant; server render is always the phone flow.
   assert.equal(DESKTOP_BOARD_MIN_WIDTH, 1024);
   assert.equal(DESKTOP_BOARD_QUERY, '(min-width: 1024px)');
-  const hook = read('src/components/onboarding/priority/useDesktopBoard.js');
-  assert.match(hook, /const serverSnapshot = \(\) => false;/);
-  assert.match(hook, /matchMedia\(DESKTOP_BOARD_QUERY\)/);
   const flow = read('src/components/onboarding/priority/PriorityFlow.jsx');
-  assert.match(flow, /if \(board && isBoardStep\(step\)\)/, 'the board only replaces card categories, only on desktop');
+  assert.match(flow, /<LivePriorities priorities=\{priorities\} onOpen=\{picker.open\}/);
+  assert.doesNotMatch(flow, /<PriorityBoard|BoardGate/);
   const onboarding = read('src/components/onboarding/Onboarding.jsx');
-  assert.match(onboarding, /const desktopBoard = useDesktopBoard\(\) && priorityFlow;/, 'flows 1–3 never see the board');
-  assert.match(onboarding, /advanceBoard\(version, progressRef\.current, \{ skip \}\)/);
-  assert.match(onboarding, /retreatBoard\(version, progressRef\.current\)/);
+  assert.doesNotMatch(onboarding, /advanceBoard|retreatBoard|desktopProgress|useDesktopBoard/);
   // Board CSS is scoped to the onboarding root.
   const css = read('src/app/globals.css');
   const block = css.slice(css.indexOf('/* ── Desktop priority board'), css.indexOf('/* ── Mobile Priority Onboarding V3'));
@@ -414,20 +410,17 @@ test('pets after #184: the question stays its own desktop screen; Pet-Friendly u
   assert.deepEqual([chip.id, chip.text, chip.art], [PETS_FEATURE.id, 'Pet-Friendly', null], 'the pets photo is never shown on a ranked chip');
 });
 
-test('initial desktop load: server HTML carries a board placeholder shown only at ≥ 1024px before hydration', () => {
+test('guided categories render one category tree; the desktop panel is scoped to the breakpoint', () => {
   const flow = read('src/components/onboarding/priority/PriorityFlow.jsx');
-  assert.match(flow, /isBoardStep\(step\)\n\s+\? <BoardGate/);
-  assert.match(flow, /className="flh-onboarding-step flh-ob-board-pending" aria-hidden="true"/);
+  assert.match(flow, /className="flh-ob-guided-layout"/);
+  assert.match(flow, /<CategoryScreen/);
   const css = read('src/app/globals.css');
-  assert.match(css, /\.flh-onboarding-root \.flh-ob-board-gate \{ display: contents; \}/, 'phones: layout unchanged');
-  assert.match(css, /\.flh-onboarding-root \.flh-ob-board-pending, \.flh-onboarding-root \.flh-ob-step-board-label, \.flh-onboarding-root \.flh-ob-step-board-number \{ display: none; \}/);
-  const gate = css.slice(css.indexOf('.flh-onboarding-root .flh-ob-board-gate { display: contents; }'));
-  assert.match(gate, /@media \(min-width: 1024px\) \{\n\s+\.flh-onboarding-root \.flh-ob-board-gate > \.flh-ob-pf-step \{ display: none; \}\n\s+\.flh-onboarding-root \.flh-ob-board-gate > \.flh-ob-board-pending \{ display: grid; \}/);
-  assert.equal(String(DESKTOP_BOARD_MIN_WIDTH), gate.match(/@media \(min-width: (\d+)px\)/)[1], 'same breakpoint as the board');
-  const shell = read('src/components/onboarding/OnboardingShell.jsx');
-  assert.match(shell, /data-board=\{board\}/);
-  assert.match(read('src/components/onboarding/Onboarding.jsx'), /boardSteps=\{priorityFlow && !desktopBoard \? BOARD_CATEGORY_STEPS : null\}/, 'only the server / pre-hydration markup is marked');
+  const guided = css.slice(css.indexOf('/* One responsive category surface.'));
+  assert.match(guided, /\.flh-ob-live-priorities \{ display: none; \}/);
+  assert.equal(Number(guided.match(/@media \(min-width: (\d+)px\)/)[1]), DESKTOP_BOARD_MIN_WIDTH);
+  assert.match(guided, /grid-template-columns: minmax\(0, 5fr\) minmax\(0, 3fr\)/);
 });
+
 
 test('onboarding top bar at 150–200% zoom: wraps instead of overlapping, only at ≤ 300 CSS px', () => {
   const css = read('src/app/globals.css');

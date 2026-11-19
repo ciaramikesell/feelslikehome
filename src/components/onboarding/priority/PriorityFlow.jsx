@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Compass, Sparkles } from 'lucide-react';
 import { OnboardingAction } from '@/components/onboarding/OnboardingShell';
 import { BudgetField, SearchTypeControl, Stepper, UnitField } from '@/components/onboarding/BasicsStep';
-import PriorityBoard from '@/components/onboarding/priority/PriorityBoard';
-import { desktopProgress, isBoardStep } from '@/lib/priorityBoard';
+import LivePriorities from './LivePriorities';
 import { STEPPERS } from '@/lib/onboardingBasics';
+import { CARD_SIZES } from '@/lib/onboardingImages';
 import { basicsFieldsFor, LEVEL_COPY, PRIORITY_LEVELS } from '@/lib/searchProfile';
 import {
   GARAGE_TYPES, LOT_SIZE_FEATURE, MOBILE_BUY_CATEGORY_PRESENTATION, addOwnFeature, categoryView, featureLevel, garageImportance, garageType, lotSizeImportance,
@@ -28,6 +28,7 @@ import { selectionHaptic } from '@/lib/haptics';
 // Back · Skip · Continue. Category screens are one component driven by
 // src/lib/priorityCategories.js — no screen has its own implementation.
 
+const GUIDED_CARD_SIZES = `(min-width: 1224px) 340px, (min-width: 1024px) 28vw, ${CARD_SIZES}`;
 const BUY_CATEGORY_LEAD = 'Tap anything that matters to you. Skip the rest.';
 
 const SEARCH_TYPE_PHRASES = { home_buy: 'a home to buy', home_rent: 'a home to rent', apartment_rent: 'an apartment to rent' };
@@ -37,8 +38,8 @@ export function PriorityHeader({ eyebrow, heading, accent, lead }) {
     <header className="flh-onboarding-header">
       <p className="flh-eyebrow">{eyebrow}</p>
       {typeof heading === 'string'
-        ? <h1 className="flh-page-title flh-editorial-heading flh-buy-heading">{heading}{accent && <> <em>{accent}</em></>}</h1>
-        : <h1 className="flh-page-title flh-editorial-heading"><span>{heading[0]}</span><em>{heading[1].charAt(0).toUpperCase() + heading[1].slice(1)}</em></h1>}
+        ? <h1 tabIndex={-1} className="flh-page-title flh-editorial-heading flh-buy-heading">{heading}{accent && <> <em>{accent}</em></>}</h1>
+        : <h1 tabIndex={-1} className="flh-page-title flh-editorial-heading"><span>{heading[0]}</span><em>{heading[1].charAt(0).toUpperCase() + heading[1].slice(1)}</em></h1>}
       {lead && <p className="flh-lead">{lead}</p>}
     </header>
   );
@@ -49,12 +50,12 @@ export function PriorityFooter({ onBack, onSkip, onContinue, continueLabel = 'Co
   return (
     <nav className="flh-onboarding-actions flh-ob-pf-footer" aria-label="Step navigation">
       {onBack
-        ? <button type="button" className="flh-ob-pf-back" onClick={onBack} disabled={busy} aria-label="Back"><ArrowLeft size={18} strokeWidth={2.2} aria-hidden="true" /><span>Back</span></button>
+        ? <button type="button" className="flh-ob-pf-back" onClick={(event) => { if (event.detail < 2) onBack(); }} disabled={busy} aria-label="Back"><ArrowLeft size={18} strokeWidth={2.2} aria-hidden="true" /><span>Back</span></button>
         : <span aria-hidden="true" />}
       {onSkip
-        ? <button type="button" className="flh-text-action flh-ob-pf-skip" onClick={onSkip} disabled={busy}>Skip</button>
+        ? <button type="button" className="flh-text-action flh-ob-pf-skip" onClick={(event) => { if (event.detail < 2) onSkip(); }} disabled={busy}>Skip</button>
         : <span aria-hidden="true" />}
-      <OnboardingAction disabled={busy} onClick={onContinue}>{continueLabel}</OnboardingAction>
+      <OnboardingAction disabled={busy} onClick={(event) => { if (event.detail < 2) onContinue(); }}>{continueLabel}</OnboardingAction>
     </nav>
   );
 }
@@ -80,8 +81,21 @@ export function useImportancePicker(priorities, patch) {
   const [closing, setClosing] = useState(false);
   const [announcement, setAnnouncement] = useState('');
   const closeTimer = useRef(null);
+  const restoreFocus = useRef(null);
   useEffect(() => () => clearTimeout(closeTimer.current), []);
-  const open = (feature, note = null) => { clearTimeout(closeTimer.current); setClosing(false); setSheet({ feature, note }); };
+  useEffect(() => {
+    if (sheet || !restoreFocus.current) return undefined;
+    const restore = restoreFocus.current;
+    restoreFocus.current = null;
+    const frame = requestAnimationFrame(restore);
+    return () => cancelAnimationFrame(frame);
+  }, [sheet]);
+  const open = (feature, note = null, restore = null) => {
+    clearTimeout(closeTimer.current);
+    restoreFocus.current = restore;
+    setClosing(false);
+    setSheet({ feature, note });
+  };
   const close = () => {
     if (!animatesSheetClose()) { setSheet(null); return; }
     setClosing(true);
@@ -124,11 +138,11 @@ export function useImportancePicker(priorities, patch) {
   return { open, element };
 }
 
-function FeatureGrid({ cards, onOpen, label }) {
+function FeatureGrid({ cards, onOpen, label, sizes }) {
   if (!cards.length) return null;
   return (
     <ul className="flh-ob-pf-grid" aria-label={label}>
-      {cards.map((card, index) => <FeatureCard key={card.id} feature={card} onOpen={onOpen} eager={index < 4} />)}
+      {cards.map((card, index) => <FeatureCard key={card.id} feature={card} onOpen={onOpen} eager={index < 4} sizes={sizes} />)}
     </ul>
   );
 }
@@ -197,7 +211,7 @@ function LotSizeImportance({ priorities, onOpen }) {
   );
 }
 
-export function CategoryStep({ categoryKey, priorities, patch, header, footer, picker, mobileBuy = false, onAutoAdvance = null }) {
+export function CategoryStep({ categoryKey, priorities, patch, header, footer, picker, mobileBuy = false, pictureSizes, onAutoAdvance = null }) {
   const view = categoryView(priorities, categoryKey, { mobileBuy });
   const [notice, setNotice] = useState('');
   const [addError, setAddError] = useState('');
@@ -237,7 +251,7 @@ export function CategoryStep({ categoryKey, priorities, patch, header, footer, p
       {showFeatures && (
         <>
           {garage && view.cards.length > 0 && <h2 className="flh-ob-label flh-ob-pf-section-label">Garage details</h2>}
-          <FeatureGrid cards={view.cards} onOpen={(feature) => picker.open(feature)} label={category.title} />
+          <FeatureGrid cards={view.cards} onOpen={(feature) => picker.open(feature)} label={category.title} sizes={pictureSizes} />
           {category.key === 'exterior' && <YardConflictNote conflict={yardConflict(priorities)} onEdit={(feature) => picker.open(feature)} />}
           <AddOwnFeature title={category.title} suggestions={view.suggestions} onAdd={add} />
           {notice && <p className="sr-only" role="status">{notice}</p>}
@@ -254,7 +268,7 @@ export function CategoryStep({ categoryKey, priorities, patch, header, footer, p
 // category walkthrough — first-time onboarding (below) and Explore My
 // Priorities (src/components/explore/ExplorePriorities.jsx) — so Milestone 3's
 // polish lands in one place and reaches both.
-export function CategoryScreen({ category, priorities, patch, eyebrow, footer, onAutoAdvance = null, picker: sharedPicker = null, mobileBuy = false }) {
+export function CategoryScreen({ category, priorities, patch, eyebrow, footer, onAutoAdvance = null, picker: sharedPicker = null, mobileBuy = false, pictureSizes }) {
   const ownPicker = useImportancePicker(priorities, patch);
   const picker = sharedPicker || ownPicker;
   const presentation = mobileBuy ? MOBILE_BUY_CATEGORY_PRESENTATION[category.key] : null;
@@ -266,6 +280,7 @@ export function CategoryScreen({ category, priorities, patch, eyebrow, footer, o
         patch={patch}
         picker={picker}
         mobileBuy={mobileBuy}
+        pictureSizes={pictureSizes}
         header={<Header eyebrow={eyebrow} heading={presentation?.heading || category.heading} accent={presentation?.accent} lead={presentation ? BUY_CATEGORY_LEAD : category.lead} />}
         footer={footer}
         onAutoAdvance={category.key === 'garage' ? onAutoAdvance : null}
@@ -379,12 +394,12 @@ const SHARED_LABEL = (sharedFor, title) => `Your preferences for ${sharedFor} ·
 export default function PriorityFlow({
   step, progress, sharedFor = null, priorities, patch, editingFromReview = false, busy = false,
   onContinue, onSkip, onBack, onSearchType,
-  review, board = false,
+  review,
   setupPath = null, onSetupPath = null, quickStart = false,
 }) {
   const picker = useImportancePicker(priorities, patch);
   const choice = priorities.onboardingSearchType || 'home_buy';
-  const mobileBuy = !board && !quickStart && choice === 'home_buy';
+  const mobileBuy = !quickStart && choice === 'home_buy';
   const eyebrow = (title) => (sharedFor ? SHARED_LABEL(sharedFor, title) : `Step ${progress.position} of ${progress.total}${mobileBuy ? ' – ' : ' · '}${title}`);
   const first = progress.index === 0;
   const footer = ({ skip = true, validate = null, label } = {}) => (
@@ -448,58 +463,26 @@ export default function PriorityFlow({
       </>
     );
   }
-  // Desktop (docs/desktop-priority-board.md): every card category is one board.
-  if (board && isBoardStep(step)) {
-    return (
-      <PriorityBoard
-        priorities={priorities}
-        patch={patch}
-        header={<Header eyebrow={eyebrow('What matters most')} heading={['What matters ', 'most to you?']} lead="Drag the features that matter into the importance column that fits you." />}
-        footer={footer()}
-      />
-    );
-  }
   const category = priorityCategory(priorities, step);
   if (!category) return <p className="flh-ob-unbuilt" role="status">This step isn’t available for this search.</p>;
-  const categoryStep = (
-    <CategoryScreen
-      category={category}
-      priorities={priorities}
-      patch={patch}
-      picker={picker}
-      eyebrow={eyebrow(mobileBuy ? MOBILE_BUY_CATEGORY_PRESENTATION[category.key]?.eyebrow || category.title : category.title)}
-      mobileBuy={mobileBuy}
-      footer={footer()}
-      onAutoAdvance={() => onContinue(step)}
-    />
-  );
-  const boardProgress = desktopProgress([...progress.steps, 'review'], step);
   return (
     <>
-      {isBoardStep(step)
-        ? <BoardGate pendingEyebrow={sharedFor ? SHARED_LABEL(sharedFor, 'What matters most') : `Step ${boardProgress.position} of ${boardProgress.total} · What matters most`}>{categoryStep}</BoardGate>
-        : categoryStep}
+      <div className="flh-ob-guided-layout">
+        <CategoryScreen
+          key={category.key}
+          category={category}
+          priorities={priorities}
+          patch={patch}
+          picker={picker}
+          eyebrow={eyebrow(mobileBuy ? MOBILE_BUY_CATEGORY_PRESENTATION[category.key]?.eyebrow || category.title : category.title)}
+          mobileBuy={mobileBuy}
+          pictureSizes={GUIDED_CARD_SIZES}
+          footer={footer()}
+          onAutoAdvance={() => onContinue(step)}
+        />
+        <LivePriorities priorities={priorities} onOpen={picker.open} />
+      </div>
       {picker.element}
     </>
-  );
-}
-
-// Before hydration a desktop browser shows server HTML, which is always the
-// phone screen (the server can't know the width). For a board step that HTML
-// also carries a board-shaped placeholder; at ≥ 1024px, and only while this
-// gate is on screen (the board replaces it as soon as JavaScript runs), CSS
-// shows the placeholder instead of the photo cards, so the cards never flash.
-// Below 1024px the wrapper is display: contents and the placeholder is not
-// displayed: the phone screen is unchanged. Server and first client render are
-// identical, so there is no hydration mismatch. docs/desktop-priority-board.md.
-function BoardGate({ pendingEyebrow, children }) {
-  return (
-    <div className="flh-ob-board-gate">
-      {children}
-      <div className="flh-onboarding-step flh-ob-board-pending" aria-hidden="true">
-        <Header eyebrow={pendingEyebrow} heading={['What matters ', 'most to you?']} lead="Drag the features that matter into the importance column that fits you." />
-        <div className="flh-ob-board-pending-frame"><span /><span /><span /><span /></div>
-      </div>
-    </div>
   );
 }

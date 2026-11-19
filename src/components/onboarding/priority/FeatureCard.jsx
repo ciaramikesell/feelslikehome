@@ -12,7 +12,7 @@ import FeatureVisual from './FeatureVisual';
 // Milestone 3: when the level changes (never on first render), the badge and
 // check get one short spring (CSS, ~240ms) so the choice visibly lands. Keyed
 // on the level, so it plays once per change and never loops.
-export default function FeatureCard({ feature, onOpen, eager = false }) {
+export default function FeatureCard({ feature, onOpen, eager = false, sizes }) {
   const level = feature.level;
   const levelText = level ? LEVEL_COPY[level].heading : null;
   const previous = useRef(level);
@@ -34,7 +34,7 @@ export default function FeatureCard({ feature, onOpen, eager = false }) {
         aria-label={`${feature.text}${feature.custom ? ' (your own)' : ''}: ${levelText || 'not chosen'}. Choose importance${feature.hint ? `. ${feature.hint}` : ''}`}
         onClick={() => onOpen(feature)}
       >
-        <FeatureVisual feature={feature} eager={eager} />
+        <FeatureVisual feature={feature} eager={eager} sizes={sizes} />
         <span className="flh-ob-pf-card-body" aria-hidden="true">
           <span className="flh-ob-pf-card-title">{feature.text}</span>
           {feature.hint && <span className="flh-ob-pf-card-hint">{feature.hint}</span>}

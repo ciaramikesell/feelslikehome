@@ -119,8 +119,8 @@ test('progress: one slim segmented bar per category in Explore, as in onboarding
   assert.match(explore, /steps\.map\(\(key, index\) => <span key=\{key\} className=\{index < position \? 'is-done' : ''\} \/>\)/);
 });
 
-test('a small completion moment after the last category (not after edits from Review, not on the desktop board)', () => {
-  assert.match(onboarding, /if \(!desktopBoard && next\.step === 'review' && fromStep !== 'review'\) setArrivedAtReview\(true\);/);
+test('a small completion moment after the last category (not after edits from Review)', () => {
+  assert.match(onboarding, /if \(!wasEditing && next\.step === 'review' && fromStep !== 'review'\) setArrivedAtReview\(true\);/);
   assert.match(onboarding, /const editFromReview = \(targetStep\) => \{\n\s+setArrivedAtReview\(false\);/);
   assert.match(onboarding, /celebrate: arrivedAtReview/);
   assert.match(review, /\{celebrate \? 'Nicely done\. ' : ''\}/);

@@ -26,7 +26,7 @@ const ICONS = {
   Trees, Utensils, UtensilsCrossed, Warehouse, WashingMachine, Waves, Wrench, Sun,
 };
 
-export default function FeatureVisual({ feature, eager = false }) {
+export default function FeatureVisual({ feature, eager = false, sizes = CARD_SIZES }) {
   const image = cardImage(feature.art);
   const [failed, setFailed] = useState(false);
   const imgRef = useRef(null);
@@ -43,7 +43,7 @@ export default function FeatureVisual({ feature, eager = false }) {
           ref={imgRef}
           src={image.src}
           srcSet={image.srcSet}
-          sizes={image.srcSet ? CARD_SIZES : undefined}
+          sizes={image.srcSet ? sizes : undefined}
           alt=""
           width={400}
           height={300}

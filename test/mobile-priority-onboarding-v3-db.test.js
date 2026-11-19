@@ -20,7 +20,7 @@ const {
   saveHomePersonalAndShared, saveHomePersonalState,
 } = await import('../src/lib/supabase/collaboration.js');
 const { saveOnboardingProgress } = await import('../src/lib/supabase/data.js');
-const { beginOnboarding, skipOnboardingStep } = await import('../src/lib/onboardingFlow.js');
+const { advanceOnboarding, beginOnboarding, skipOnboardingStep } = await import('../src/lib/onboardingFlow.js');
 const { petsAutoMarker, petsMovingAnswer, setPetsMoving } = await import('../src/lib/rentalPets.js');
 
 const dbTest = (name, fn) => test(name, { skip: DB_TESTS_ENABLED ? false : DB_SKIP_REASON }, fn);
@@ -360,4 +360,28 @@ dbTest('mobile buyer promotions round-trip existing custom and catalog prioritie
   assert.equal(featureLevel(restored, pool), 'important');
   assert.deepEqual(restored.features.customItems.filter(({ group }) => group === 'living').map(({ label }) => label), ['Built in shelving']);
   assert.equal(restored.features.tiers['Kitchen Island'], 'must');
+});
+
+dbTest('a V3 Review edit resumes its exact category and returns to Review after a fresh profile read', async () => {
+  const owner = db.clientFor(ids.owner);
+  const search = { id: ids.search };
+  const context = { searchId: ids.search, role: 'owner' };
+  const before = await resolvePriorities(owner, search, ids.owner);
+  const { state } = beginOnboarding({ context, targetVersion: 4 });
+  const editing = {
+    ...state,
+    step: 'cat_living',
+    answers: { searchType: 'home_buy', setupPath: 'personalize', returnToReview: true },
+  };
+  assert.equal(await saveOnboardingProgress(owner, ids.owner, { version: 4, state: editing }), true);
+  const [profile] = db.admin(`select onboarding_version, onboarding_state from public.profiles where id = '${ids.owner}'`);
+  const resumed = beginOnboarding({
+    storedState: profile.onboarding_state, storedVersion: profile.onboarding_version, targetVersion: 4, context,
+  }).state;
+  assert.equal(resumed.step, 'cat_living');
+  assert.equal(resumed.answers.returnToReview, true);
+  const { state: reviewed } = advanceOnboarding(4, resumed, 'cat_living');
+  assert.equal(reviewed.step, 'review');
+  assert.equal(reviewed.answers.returnToReview, undefined);
+  assert.deepEqual(await resolvePriorities(owner, search, ids.owner), before);
 });

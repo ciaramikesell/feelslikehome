@@ -34,14 +34,10 @@ import WhatMattersStepV2 from '@/components/onboarding/WhatMattersStepV2';
 import RankStepV2 from '@/components/onboarding/RankStepV2';
 import ReviewStep from '@/components/onboarding/ReviewStep';
 import PriorityFlow from '@/components/onboarding/priority/PriorityFlow';
-import useDesktopBoard from '@/components/onboarding/priority/useDesktopBoard';
-import { BOARD_CATEGORY_STEPS, BOARD_STEP, BOARD_STEP_LABEL, advanceBoard, desktopProgress, isBoardStep, retreatBoard } from '@/lib/priorityBoard';
 
 // Screen labels for the flow-1 steps (src/lib/onboardingFlow.js owns order and branching).
 // Flow 1 is live; the approved six-step flow (3) is built and previewed step by step.
 const STEP_LABELS = {
-  // Flow 4 on desktop: the card categories shown as one board (src/lib/priorityBoard.js).
-  [BOARD_STEP]: BOARD_STEP_LABEL,
   basics: 'The Basics', what_matters: 'What Matters', rank: 'Rank Priorities',
   locations: 'Location', collaboration: 'Your People', priorities: 'What Matters', review: 'Review',
   // Flow 4 (Mobile Priority Onboarding V3).
@@ -254,12 +250,9 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
   // Mobile Priority Onboarding V3 (flow 4): category screens and an editable review.
   const priorityFlow = version === 4;
   const fullProgress = onboardingProgress(version, progressState, step);
-  // Flow 4 on desktop: the card categories are one board (src/lib/priorityBoard.js).
-  // Same document and same stored steps; only how they are presented differs.
-  const desktopBoard = useDesktopBoard() && priorityFlow;
-  const onBoard = desktopBoard && isBoardStep(step);
-  // Flow 4 counts the question screens; Review is the finish line, not a step.
-  const progress = desktopBoard ? desktopProgress(fullProgress.steps, step) : priorityFlow ? (() => {
+  const guidedCategory = priorityFlow && !isQuickStartState(progressState) && step?.startsWith('cat_');
+  // Review is the finish line, not a numbered step, at every viewport.
+  const progress = priorityFlow ? (() => {
     const steps = fullProgress.steps.filter((key) => key !== 'review');
     const index = step === 'review' ? steps.length - 1 : Math.max(0, steps.indexOf(step));
     return { index, position: step === 'review' ? steps.length : index + 1, total: steps.length, steps };
@@ -332,43 +325,34 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
   };
   // Flow 4's Continue and Skip. Separate from goTo so the live flow is
   // untouched. Skip changes no answer; it only records the screen as skipped.
-  const moveOn = async (fromStep, { skip = false } = {}) => {
-    await flush();
-    const boardMove = desktopBoard && isBoardStep(fromStep);
-    const { state: next, done } = boardMove
-      ? advanceBoard(version, progressRef.current, { skip })
-      : (skip ? skipOnboardingStep : advanceOnboarding)(version, progressRef.current, fromStep);
-    // Quick start (Milestone 2): Basics is the last screen, so leaving it
-    // finishes setup and opens Add Home (or the pending deep-link destination).
-    if (done && isQuickStartState(next)) {
+  const movingRef = useRef(false);
+  const moveOn = async (fromStep, { skip = false, path } = {}) => {
+    if (movingRef.current || progressRef.current.step !== fromStep) return;
+    movingRef.current = true;
+    try {
+      if (path) persistProgress(setOnboardingSetupPath(progressRef.current, path));
+      await flush();
+      const wasEditing = progressRef.current.answers.returnToReview;
+      const { state: next, done } = (skip ? skipOnboardingStep : advanceOnboarding)(version, progressRef.current, fromStep);
       persistProgress(next);
       if (!sharedSetup) track(ANALYTICS_EVENTS.ONBOARDING_STEP_COMPLETED, { ...eventContext, step: fromStep, ...(skip ? { reason: 'skipped' } : {}) });
-      // Shared-search setup ends on that search's Homes, exactly as before (finish() handles errors).
-      return sharedSetup ? finish() : finishToDestination('/homes?add=1');
+      // Quick start finishes from Basics, without visiting a category.
+      if (done && isQuickStartState(next)) {
+        await (sharedSetup ? finish() : finishToDestination('/homes?add=1'));
+        return;
+      }
+      if (!wasEditing && next.step === 'review' && fromStep !== 'review') setArrivedAtReview(true);
+      window.scrollTo?.({ top: 0 });
+    } finally {
+      movingRef.current = false;
     }
-    if (returnToReview) {
-      setReturnToReview(false);
-      persistProgress({ ...next, step: 'review' });
-    } else {
-      // Milestone 3: reaching Review by finishing the last category earns one
-      // small completion moment; returning to Review after an edit does not.
-      // (Phones and tablets; the desktop board's Review is unchanged.)
-      if (!desktopBoard && next.step === 'review' && fromStep !== 'review') setArrivedAtReview(true);
-      persistProgress(next);
-    }
-    if (!sharedSetup) track(ANALYTICS_EVENTS.ONBOARDING_STEP_COMPLETED, { ...eventContext, step: boardMove ? BOARD_STEP : fromStep, ...(skip ? { reason: 'skipped' } : {}) });
-    window.scrollTo?.({ top: 0 });
   };
-  // The setup-path choice moves straight on: the choice decides which screens
-  // follow, so it is recorded before the move is computed.
-  const chooseSetupPath = (path) => {
-    persistProgress(setOnboardingSetupPath(progressRef.current, path));
-    return moveOn('setup_path');
-  };
+  const chooseSetupPath = (path) => moveOn('setup_path', { path });
   // Going back never clears an answer: priorities stay saved, and the
   // screen re-renders from them.
   const goBack = (fromStep) => {
-    const back = desktopBoard && isBoardStep(fromStep) ? retreatBoard(version, progressRef.current) : retreatOnboarding(version, progressRef.current, fromStep);
+    if (priorityFlow && (movingRef.current || progressRef.current.step !== fromStep)) return;
+    const back = retreatOnboarding(version, progressRef.current, fromStep);
     persistProgress(back);
     window.scrollTo?.({ top: 0 });
   };
@@ -383,8 +367,14 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
   };
   const editFromReview = (targetStep) => {
     setArrivedAtReview(false);
-    setReturnToReview(true);
-    persistProgress({ ...progressRef.current, step: targetStep, updatedAt: new Date().toISOString() });
+    if (!priorityFlow) setReturnToReview(true);
+    const current = progressRef.current;
+    persistProgress({
+      ...current,
+      step: targetStep,
+      answers: priorityFlow ? { ...current.answers, returnToReview: true } : current.answers,
+      updatedAt: new Date().toISOString(),
+    });
     window.scrollTo?.({ top: 0 });
   };
   // Six-step flow: Review's actions save and complete onboarding through the
@@ -454,14 +444,14 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
   };
 
   return (
-    <div className={`hh-root flh-onboarding-root${onBoard && !ready ? ' flh-ob-board-wide' : ''}`}>
+    <div className={`hh-root flh-onboarding-root${guidedCategory && !ready ? ' flh-ob-guided-category' : ''}`}>
       <div className="flh-ob-layout">
-        <OnboardingRail progress={progress} labels={priorityFlow ? { ...STEP_LABELS, locations: LOCATION_LABEL_V4, basics: BASICS_LABEL_V4[priorities.onboardingSearchType] || STEP_LABELS.basics } : STEP_LABELS} complete={ready} sharedFor={sharedFor} boardSteps={priorityFlow && !desktopBoard ? BOARD_CATEGORY_STEPS : null} boardLabel={BOARD_STEP_LABEL} />
+        <OnboardingRail progress={progress} labels={priorityFlow ? { ...STEP_LABELS, locations: LOCATION_LABEL_V4, basics: BASICS_LABEL_V4[priorities.onboardingSearchType] || STEP_LABELS.basics } : STEP_LABELS} complete={ready || (priorityFlow && step === 'review')} sharedFor={sharedFor} />
         <main className="flh-onboarding">
           {/* Back returns to the previous step; nothing precedes the first one yet. */}
           {/* Flow 4 puts Back in its Back · Skip · Continue footer (Review keeps the top Back). */}
           {priorityFlow
-            ? <OnboardingTopBar progress={progress} showProgress={!ready} onBack={step === 'review' ? () => goBack(step) : null} />
+            ? <OnboardingTopBar progress={progress} showProgress={!ready && step !== 'review'} onBack={step === 'review' ? () => goBack(step) : null} />
             : <OnboardingTopBar progress={progress} showProgress={!ready} onBack={!ready && progress.index > 0 ? () => goBack(step) : null} />}
           {sharedSetup && ownedSearchId && (
             <p className="flh-shared-setup-exit">
@@ -477,13 +467,12 @@ export default function Onboarding({ userId, searchId, initialPriorities, initia
               priorities={priorities}
               patch={patch}
               busy={finishing}
-              editingFromReview={returnToReview}
+              editingFromReview={Boolean(progressState.answers.returnToReview)}
               onContinue={(from) => moveOn(from)}
               onSkip={(from) => moveOn(from, { skip: true })}
               onBack={(from) => goBack(from)}
               onSearchType={(type) => persistProgress(setOnboardingSearchType(progressRef.current, type))}
               review={{ skipped: progressState.skipped || [], onEdit: editFromReview, onFinish: finishToDestination, finishing, finishError, celebrate: arrivedAtReview }}
-              board={desktopBoard}
               setupPath={progressState.answers?.setupPath || null}
               onSetupPath={chooseSetupPath}
               quickStart={isQuickStartState(progressState)}

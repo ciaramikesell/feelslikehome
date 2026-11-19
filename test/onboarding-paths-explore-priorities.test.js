@@ -208,7 +208,7 @@ test('Explore writes only the participant’s own priorities through the My Sear
   assert.doesNotMatch(read('src/lib/explorePriorities.js').replace(/^\s*\/\/.*$/gm, ''), /onboarding_|profiles|supabase/);
   // Same category screens as onboarding.
   assert.match(explore, /<CategoryScreen/);
-  assert.match(read('src/components/onboarding/priority/PriorityFlow.jsx'), /<CategoryScreen\n\s+category=\{category\}/);
+  assert.match(read('src/components/onboarding/priority/PriorityFlow.jsx'), /<CategoryScreen\n\s+key=\{category\.key\}\n\s+category=\{category\}/);
   // Back, Skip and Done; Skip changes nothing.
   assert.match(explore, /onSkip=\{goNext\}/);
   assert.match(explore, /onBack=\{goBack\}/);
@@ -218,9 +218,9 @@ test('Explore writes only the participant’s own priorities through the My Sear
 test('quick start finishes onboarding through the existing services and opens Add Home (deep links first)', () => {
   const flow = read('src/components/onboarding/Onboarding.jsx');
   assert.match(flow, /if \(done && isQuickStartState\(next\)\) \{/);
-  assert.match(flow, /return sharedSetup \? finish\(\) : finishToDestination\('\/homes\?add=1'\);/);
+  assert.match(flow, /await \(sharedSetup \? finish\(\) : finishToDestination\('\/homes\?add=1'\)\);/);
   assert.match(flow, /leave\(pendingRedirect \|\| destination\);/, 'a pending deep link wins over Add Home');
-  assert.match(flow, /persistProgress\(setOnboardingSetupPath\(progressRef\.current, path\)\);\n\s+return moveOn\('setup_path'\);/);
+  assert.match(flow, /const chooseSetupPath = \(path\) => moveOn\('setup_path', \{ path \}\);/);
   const ui = read('src/components/onboarding/priority/PriorityFlow.jsx');
   assert.match(ui, /Let’s personalize your search/);
   assert.match(ui, /Walk through the features that matter to you, one room at a time\./);
