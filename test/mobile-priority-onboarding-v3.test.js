@@ -381,3 +381,40 @@ test('the importance picker offers the three levels and Not important as buttons
   assert.doesNotMatch(sheet, /type="radio"/, 'buttons, so arrow keys never change an answer');
   assert.match(read('src/components/Sheet.jsx'), /Escape/);
 });
+
+test('mobile buyer cards promote existing identities and move No HOA to suggestions', () => {
+  const options = { mobileBuy: true };
+  let priorities = fresh();
+  const expected = {
+    living: ['Fireplace', 'High Ceilings', 'Built-in Shelving', 'Large Windows'],
+    exterior: ['Deck / Patio', 'Fenced Yard', 'Privacy Fence', 'Pool', 'Front Porch', 'Mature Trees'],
+    neighborhood: ['Low-Traffic Street', 'Sidewalks', 'Tree-Lined Street', 'Cul-de-Sac'],
+  };
+  for (const [key, names] of Object.entries(expected)) {
+    const view = categoryView(priorities, key, options);
+    assert.deepEqual(view.cards.map((card) => card.text), names);
+    const old = categoryView(priorities, key).category;
+    const original = [...old.features, ...old.suggestions];
+    for (const card of view.cards) {
+      assert.ok(original.some((feature) => feature.id === card.id && feature.art === card.art));
+      assert.ok(!view.suggestions.some((feature) => feature.id === card.id));
+    }
+  }
+  const noHoa = categoryView(priorities, 'neighborhood', options).suggestions.find((feature) => feature.text === 'No HOA');
+  assert.equal(noHoa.id, 'location:No HOA');
+  priorities = setFeatureLevel(priorities, noHoa, 'important');
+  assert.equal(reviewCategories(priorities).find(({ key }) => key === 'neighborhood').chosen[0].id, noHoa.id);
+  const rent = fresh('home_rent');
+  assert.deepEqual(categoryView(rent, 'exterior', options), categoryView(rent, 'exterior'));
+});
+
+test('promoted custom card reads and updates a previously stored spelling without duplicating it', () => {
+  const options = { mobileBuy: true };
+  const priorities = addCriterion(fresh(), { categoryKey: 'features', label: 'Built in shelving', kind: 'check', custom: true }, 'must');
+  const card = categoryView(priorities, 'living', options).cards.find(({ text }) => text === 'Built-in Shelving');
+  assert.equal(card.level, 'must');
+  const updated = setFeatureLevel(priorities, card, 'nice');
+  assert.equal(featureLevel(updated, card), 'nice');
+  assert.deepEqual(updated.features.customItems.map(({ label }) => label), ['Built in shelving']);
+  assert.equal(featureLevel(setFeatureLevel(updated, card, 'none'), card), null);
+});

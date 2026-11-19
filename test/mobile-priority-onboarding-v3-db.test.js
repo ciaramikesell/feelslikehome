@@ -339,3 +339,25 @@ dbTest('Home to Rent lot-size importance and Review edits: JS = SQL for co-rente
   assert.deepEqual([lot(aRankedAgain.big).tier, lot(aRankedAgain.big).met, lot(aRankedAgain.small).met, lot(aRankedAgain.unknown).evaluated], ['important', true, false, false]);
   assert.equal(JSON.stringify(db.admin(`select priorities from public.search_member_priorities where search_id = '${search}' and user_id = '${b}'`)[0].priorities), bRow, 'B’s row still untouched');
 });
+
+dbTest('mobile buyer promotions round-trip existing custom and catalog priorities', async () => {
+  const owner = db.clientFor(ids.owner);
+  const search = { id: ids.search };
+  const options = { mobileBuy: true };
+  const original = setFeatureLevel(ownerPriorities(), {
+    categoryKey: 'features', label: 'Built in shelving', custom: true, group: 'living',
+  }, 'must');
+  await savePriorities(owner, search, ids.owner, original);
+  let saved = await resolvePriorities(owner, search, ids.owner);
+  const shelving = categoryView(saved, 'living', options).cards.find(({ text }) => text === 'Built-in Shelving');
+  const pool = categoryView(saved, 'exterior', options).cards.find(({ text }) => text === 'Pool');
+  assert.equal(shelving.level, 'must');
+  saved = setFeatureLevel(setFeatureLevel(saved, shelving, 'nice'), pool, 'important');
+  await savePriorities(owner, search, ids.owner, saved);
+
+  const restored = await resolvePriorities(db.clientFor(ids.owner), search, ids.owner);
+  assert.equal(featureLevel(restored, shelving), 'nice');
+  assert.equal(featureLevel(restored, pool), 'important');
+  assert.deepEqual(restored.features.customItems.filter(({ group }) => group === 'living').map(({ label }) => label), ['Built in shelving']);
+  assert.equal(restored.features.tiers['Kitchen Island'], 'must');
+});

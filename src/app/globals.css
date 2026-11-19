@@ -3941,6 +3941,8 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .flh-onboarding-root .flh-page-title.flh-editorial-heading > span, .flh-onboarding-root .flh-page-title.flh-editorial-heading > em { display: block; }
 .flh-onboarding-root .flh-page-title.flh-editorial-heading > span { color: var(--ink); }
 .flh-onboarding-root .flh-page-title.flh-editorial-heading > em { color: var(--brick-deep); font-style: normal; margin-top: .12em; }
+.flh-onboarding-root .flh-page-title.flh-buy-heading { color: #000; }
+.flh-onboarding-root .flh-page-title.flh-buy-heading > em { display: inline; margin: 0; }
 .flh-onboarding-root .flh-onboarding-header .flh-lead { font-size: 1.0625rem; line-height: 1.6; color: var(--ink); }
 .flh-ob-searchtype-track { gap: 10px; padding: 0; background: transparent; border-radius: 14px; }
 .flh-ob-searchtype-option { background: var(--flh-card, #fff); border: 1px solid var(--line); min-height: 56px; padding: 14px; }

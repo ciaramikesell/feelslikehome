@@ -9,7 +9,7 @@ import { desktopProgress, isBoardStep } from '@/lib/priorityBoard';
 import { STEPPERS } from '@/lib/onboardingBasics';
 import { basicsFieldsFor, LEVEL_COPY, PRIORITY_LEVELS } from '@/lib/searchProfile';
 import {
-  GARAGE_TYPES, LOT_SIZE_FEATURE, addOwnFeature, categoryView, featureLevel, garageImportance, garageType, lotSizeImportance,
+  GARAGE_TYPES, LOT_SIZE_FEATURE, MOBILE_BUY_CATEGORY_PRESENTATION, addOwnFeature, categoryView, featureLevel, garageImportance, garageType, lotSizeImportance,
   lotSizeRankable, lotSizeValue, priorityCategory, renameOwnFeature, setFeatureLevel, setGarageImportance, setGarageType,
   setLotSizeImportance, setLotSizeValue, switchMessage, switchPrioritySearchType,
 } from '@/lib/priorityCategories';
@@ -28,13 +28,17 @@ import { selectionHaptic } from '@/lib/haptics';
 // Back · Skip · Continue. Category screens are one component driven by
 // src/lib/priorityCategories.js — no screen has its own implementation.
 
+const BUY_CATEGORY_LEAD = 'Tap anything that matters to you. Skip the rest.';
+
 const SEARCH_TYPE_PHRASES = { home_buy: 'a home to buy', home_rent: 'a home to rent', apartment_rent: 'an apartment to rent' };
 
-export function PriorityHeader({ eyebrow, heading, lead }) {
+export function PriorityHeader({ eyebrow, heading, accent, lead }) {
   return (
     <header className="flh-onboarding-header">
       <p className="flh-eyebrow">{eyebrow}</p>
-      <h1 className="flh-page-title flh-editorial-heading"><span>{heading[0]}</span><em>{heading[1].charAt(0).toUpperCase() + heading[1].slice(1)}</em></h1>
+      {typeof heading === 'string'
+        ? <h1 className="flh-page-title flh-editorial-heading flh-buy-heading">{heading}{accent && <> <em>{accent}</em></>}</h1>
+        : <h1 className="flh-page-title flh-editorial-heading"><span>{heading[0]}</span><em>{heading[1].charAt(0).toUpperCase() + heading[1].slice(1)}</em></h1>}
       {lead && <p className="flh-lead">{lead}</p>}
     </header>
   );
@@ -193,8 +197,8 @@ function LotSizeImportance({ priorities, onOpen }) {
   );
 }
 
-export function CategoryStep({ categoryKey, priorities, patch, header, footer, picker, onAutoAdvance = null }) {
-  const view = categoryView(priorities, categoryKey);
+export function CategoryStep({ categoryKey, priorities, patch, header, footer, picker, mobileBuy = false, onAutoAdvance = null }) {
+  const view = categoryView(priorities, categoryKey, { mobileBuy });
   const [notice, setNotice] = useState('');
   const [addError, setAddError] = useState('');
   if (!view) return null;
@@ -250,9 +254,10 @@ export function CategoryStep({ categoryKey, priorities, patch, header, footer, p
 // category walkthrough — first-time onboarding (below) and Explore My
 // Priorities (src/components/explore/ExplorePriorities.jsx) — so Milestone 3's
 // polish lands in one place and reaches both.
-export function CategoryScreen({ category, priorities, patch, eyebrow, footer, onAutoAdvance = null, picker: sharedPicker = null }) {
+export function CategoryScreen({ category, priorities, patch, eyebrow, footer, onAutoAdvance = null, picker: sharedPicker = null, mobileBuy = false }) {
   const ownPicker = useImportancePicker(priorities, patch);
   const picker = sharedPicker || ownPicker;
+  const presentation = mobileBuy ? MOBILE_BUY_CATEGORY_PRESENTATION[category.key] : null;
   return (
     <>
       <CategoryStep
@@ -260,7 +265,8 @@ export function CategoryScreen({ category, priorities, patch, eyebrow, footer, o
         priorities={priorities}
         patch={patch}
         picker={picker}
-        header={<Header eyebrow={eyebrow} heading={category.heading} lead={category.lead} />}
+        mobileBuy={mobileBuy}
+        header={<Header eyebrow={eyebrow} heading={presentation?.heading || category.heading} accent={presentation?.accent} lead={presentation ? BUY_CATEGORY_LEAD : category.lead} />}
         footer={footer}
         onAutoAdvance={category.key === 'garage' ? onAutoAdvance : null}
       />
@@ -378,7 +384,8 @@ export default function PriorityFlow({
 }) {
   const picker = useImportancePicker(priorities, patch);
   const choice = priorities.onboardingSearchType || 'home_buy';
-  const eyebrow = (title) => (sharedFor ? SHARED_LABEL(sharedFor, title) : `Step ${progress.position} of ${progress.total} · ${title}`);
+  const mobileBuy = !board && !quickStart && choice === 'home_buy';
+  const eyebrow = (title) => (sharedFor ? SHARED_LABEL(sharedFor, title) : `Step ${progress.position} of ${progress.total}${mobileBuy ? ' – ' : ' · '}${title}`);
   const first = progress.index === 0;
   const footer = ({ skip = true, validate = null, label } = {}) => (
     <PriorityFooter
@@ -396,7 +403,7 @@ export default function PriorityFlow({
         priorities={priorities}
         patch={patch}
         onSearchType={onSearchType}
-        header={<Header eyebrow={eyebrow('The Basics')} heading={sharedFor ? ['What are you ', 'looking for?'] : ['The basics: ', 'what are you looking for?']} lead="This decides which questions follow. You can change it anytime." />}
+        header={<Header eyebrow={eyebrow('The Basics')} heading={mobileBuy ? 'What are you looking for?' : sharedFor ? ['What are you ', 'looking for?'] : ['The basics: ', 'what are you looking for?']} lead="This decides which questions follow. You can change it anytime." />}
         footerFor={(validate) => footer({ skip: false, validate })}
       />
     );
@@ -406,7 +413,7 @@ export default function PriorityFlow({
       <SetupPathStep
         setupPath={setupPath}
         onChoose={onSetupPath}
-        header={<Header eyebrow={eyebrow('Getting Started')} heading={['How would you like ', 'to start?']} lead="Either way it’s the same FLH, and you can change your mind anytime." />}
+        header={<Header eyebrow={eyebrow('Getting Started')} heading={mobileBuy ? 'How would you like to start?' : ['How would you like ', 'to start?']} lead="Either way it’s the same FLH, and you can change your mind anytime." />}
         onBack={first || editingFromReview ? null : () => onBack(step)}
         busy={busy}
       />
@@ -420,7 +427,7 @@ export default function PriorityFlow({
       <BasicsQuestions
         priorities={priorities}
         patch={patch}
-        header={<Header eyebrow={eyebrow(BASICS_TITLE[choice] || 'The Basics')} heading={['The basics of your ', BASICS_NOUN[choice] || 'home search']} lead={quickStart ? quickLead : (choice === 'home_buy' ? 'Your budget and the space you need. Skip anything you haven’t decided.' : 'Your monthly rent and the space you need. Skip anything you haven’t decided.')} />}
+        header={<Header eyebrow={eyebrow(BASICS_TITLE[choice] || 'The Basics')} heading={mobileBuy ? 'Your home search basics' : ['The basics of your ', BASICS_NOUN[choice] || 'home search']} lead={quickStart ? quickLead : (choice === 'home_buy' ? 'Your budget and the space you need. Skip anything you haven’t decided.' : 'Your monthly rent and the space you need. Skip anything you haven’t decided.')} />}
         footer={footer(quickStart ? { label: sharedFor ? 'Save and see the homes' : 'Start saving homes' } : {})}
       />
     );
@@ -460,7 +467,8 @@ export default function PriorityFlow({
       priorities={priorities}
       patch={patch}
       picker={picker}
-      eyebrow={eyebrow(category.title)}
+      eyebrow={eyebrow(mobileBuy ? MOBILE_BUY_CATEGORY_PRESENTATION[category.key]?.eyebrow || category.title : category.title)}
+      mobileBuy={mobileBuy}
       footer={footer()}
       onAutoAdvance={() => onContinue(step)}
     />
