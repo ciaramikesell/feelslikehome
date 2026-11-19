@@ -40,9 +40,9 @@ test('landing uses the approved cottage and four local preview illustrations', (
     assert.ok(fs.existsSync(`public/images/homepage-previews/${panel}.webp`));
   }
   assert.match(css, /\.pl-preview-stage \{[^}]*aspect-ratio: 4 \/ 3/);
-  assert.match(previews, /without affiliation or direct integration/);
+  assert.match(previews, /do not imply affiliation or direct integration/);
   assert.ok(fs.existsSync('public/images/Warm Cottage.png'));
-  assert.match(previews, /Illustrative examples/);
+  assert.match(previews, /Illustrative mockups/);
 });
 
 test('Realtor entry preserves intent without introducing an account role', () => {
@@ -61,14 +61,15 @@ test('landing includes responsive and reduced-motion-aware visual foundations', 
 });
 
 test('the web hero keeps the requested desktop copy and signup-first CTA', () => {
-  assert.match(landing, /You’ve saved a lot<\/span>.*of options\.<\/span>.*Now find the one that/);
-  assert.match(landing, /Import the homes you've already saved\. See how they match what matters to you\. Then tour, compare, and choose together\./);
+  assert.match(landing, /You’ve saved a lot of options\.<\/span>.*Now find the one that/);
+  assert.match(previews, /Import the homes you’ve already saved\. See how they match what matters to you\. Then tour, compare, and choose together\./);
+  assert.doesNotMatch(landing, /pl-lede/);
   assert.match(landing, /href="\/auth\/sign-up">Create a free account/);
   assert.doesNotMatch(landing, /\/guest|Real estate, reimagined|>See how it works</);
 });
 
 test('four feature buttons replace the walkthrough and separate demo section', () => {
-  for (const title of ['Set Your Preferences', 'Bring Homes From Anywhere', 'Compare What Matters', 'Search Together']) {
+  for (const title of ['Set Your Preferences', 'Import Homes from Anywhere', 'Compare What Matters', 'Search & Decide Together']) {
     assert.ok(previews.includes(title));
   }
   assert.match(landing, /<PublicFeaturePreviews \/>/);

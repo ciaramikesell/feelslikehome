@@ -5,17 +5,17 @@ import { useState } from 'react';
 import { Heart, HousePlus, ListChecks, Users } from 'lucide-react';
 
 const features = [
-  { id: 'priorities', Icon: ListChecks, title: 'Set Your Preferences', copy: 'Tell Feels Like Home what matters to you — and how important each priority is in your decision.' },
-  { id: 'listings', Icon: HousePlus, title: 'Bring Homes From Anywhere', copy: "Import the listings you're actually considering and keep every contender in one place." },
-  { id: 'compare', Icon: Heart, title: 'Compare What Matters', copy: 'Explore how each home fits your personalized criteria, and explore your options side by side.' },
-  { id: 'collaborate', Icon: Users, title: 'Search Together', copy: 'Add a co-buyer, invite your Realtor, and make decisions with clarity.' },
+  { id: 'priorities', Icon: ListChecks, title: 'Set Your Preferences', copy: 'Tell Feels Like Home what matters to you — and how important each priority is to your decision.' },
+  { id: 'listings', Icon: HousePlus, title: 'Import Homes from Anywhere', copy: 'Keep the listings you’ve found in one place, no matter where you discovered them.' },
+  { id: 'compare', Icon: Heart, title: 'Compare What Matters', copy: 'See how each home fits your priorities, with your personal Match clearly broken down.' },
+  { id: 'collaborate', Icon: Users, title: 'Search & Decide Together', copy: 'Compare your own priorities alongside your co-buyer’s, with suggestions from your Realtor.' },
 ];
 
 const previewAlt = {
   priorities: 'Example priorities: home office is Must Have, fenced yard is Important, and soaking tub is Nice to Have.',
   listings: 'Illustrated listing sources and a My Homes shortlist containing three fictional homes.',
   compare: 'Three fictional homes with sample Match scores of 92%, 87%, and 76%. The example breakdown marks five priorities as met and Pool as a mismatch.',
-  collaborate: 'Ciara and Andrew see separate priority and commute examples for a shared home, alongside a suggestion from their Realtor Whitney.',
+  collaborate: 'Illustrated shared home with Ciara’s fenced yard, home office and guest bedroom priorities, and Andrew’s garage, fenced yard and finished basement priorities.',
 };
 
 export default function PublicFeaturePreviews() {
@@ -28,11 +28,11 @@ export default function PublicFeaturePreviews() {
   return (
     <section className="pl-values" id="how-it-works" aria-labelledby="values-title" tabIndex={-1}>
       <header className="pl-values-intro">
-        <p className="pl-eyebrow">How it works</p>
-        <h2 className="pl-values-lead" id="values-title">Search anywhere.<br />Decide here.</h2>
+        <h2 className="pl-eyebrow" id="values-title">How it works</h2>
+        <p className="pl-values-lead">Import the homes you’ve already saved. See how they match what matters to you. Then tour, compare, and choose together.</p>
       </header>
       <ul className="pl-value-grid" aria-label="Feature previews">
-        {features.map(({ id, Icon, title, copy }) => (
+        {features.map(({ id, Icon, title }) => (
           <li key={id}>
             <button
               type="button"
@@ -53,22 +53,20 @@ export default function PublicFeaturePreviews() {
               onClick={() => setSelected(id)}
             >
               <span className="pl-step-icon"><Icon size={21} strokeWidth={1.75} aria-hidden="true" /></span>
-              <span className="pl-feature-text"><strong>{title}</strong><span>{copy}</span></span>
+              <span className="pl-feature-text"><strong>{title}</strong></span>
             </button>
           </li>
         ))}
       </ul>
       <figure className="pl-feature-preview" id="pl-feature-preview" aria-label={current.title}>
-        <div className="pl-mobile-feature-copy">
-          {features.map(({ id, copy }) => <p key={id} aria-hidden={active !== id}>{copy}</p>)}
-        </div>
         <span className="sr-only" role="status">{current.title} preview</span>
         <div className="pl-preview-stage">
           <Image src={`/images/homepage-previews/${active}.webp`} alt={previewAlt[active]} fill
-            sizes="(max-width: 640px) calc(100vw - 50px), (max-width: 900px) calc(100vw - 76px), 672px" />
+            loading="lazy" sizes="(max-width: 640px) calc(100vw - 50px), (max-width: 900px) calc(100vw - 76px), 640px" />
         </div>
-        <figcaption>Illustrative examples. Navigation and details may differ. Listing sites are shown for reference only, without affiliation or direct integration.</figcaption>
+        <figcaption>{features.map(({ id, copy }) => <p key={id} aria-hidden={active !== id}>{copy}</p>)}</figcaption>
       </figure>
+      <p className="pl-illustration-note">Illustrative mockups. Listing-source names do not imply affiliation or direct integration.</p>
     </section>
   );
 }

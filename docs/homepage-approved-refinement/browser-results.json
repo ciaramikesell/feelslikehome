@@ -1,0 +1,814 @@
+[
+  {
+    "name": "320: four label-only controls",
+    "ok": true
+  },
+  {
+    "name": "320: no hero description",
+    "ok": true
+  },
+  {
+    "name": "320: label 1",
+    "ok": true
+  },
+  {
+    "name": "320: selected 1 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "320: stable uncropped frame 1",
+    "ok": true
+  },
+  {
+    "name": "320: responsive column order 1",
+    "ok": true
+  },
+  {
+    "name": "320: label 2",
+    "ok": true
+  },
+  {
+    "name": "320: selected 2 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "320: stable uncropped frame 2",
+    "ok": true
+  },
+  {
+    "name": "320: responsive column order 2",
+    "ok": true
+  },
+  {
+    "name": "320: label 3",
+    "ok": true
+  },
+  {
+    "name": "320: selected 3 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "320: stable uncropped frame 3",
+    "ok": true
+  },
+  {
+    "name": "320: responsive column order 3",
+    "ok": true
+  },
+  {
+    "name": "320: label 4",
+    "ok": true
+  },
+  {
+    "name": "320: selected 4 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "320: stable uncropped frame 4",
+    "ok": true
+  },
+  {
+    "name": "320: responsive column order 4",
+    "ok": true
+  },
+  {
+    "name": "320: mobile signup destination",
+    "ok": true
+  },
+  {
+    "name": "320: mobile Realtor destination",
+    "ok": true
+  },
+  {
+    "name": "320: Realtor page navigation",
+    "ok": true
+  },
+  {
+    "name": "320: mobile signup routing",
+    "ok": true
+  },
+  {
+    "name": "320: no browser exceptions",
+    "ok": true
+  },
+  {
+    "name": "375: four label-only controls",
+    "ok": true
+  },
+  {
+    "name": "375: no hero description",
+    "ok": true
+  },
+  {
+    "name": "375: label 1",
+    "ok": true
+  },
+  {
+    "name": "375: selected 1 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "375: stable uncropped frame 1",
+    "ok": true
+  },
+  {
+    "name": "375: responsive column order 1",
+    "ok": true
+  },
+  {
+    "name": "375: label 2",
+    "ok": true
+  },
+  {
+    "name": "375: selected 2 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "375: stable uncropped frame 2",
+    "ok": true
+  },
+  {
+    "name": "375: responsive column order 2",
+    "ok": true
+  },
+  {
+    "name": "375: label 3",
+    "ok": true
+  },
+  {
+    "name": "375: selected 3 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "375: stable uncropped frame 3",
+    "ok": true
+  },
+  {
+    "name": "375: responsive column order 3",
+    "ok": true
+  },
+  {
+    "name": "375: label 4",
+    "ok": true
+  },
+  {
+    "name": "375: selected 4 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "375: stable uncropped frame 4",
+    "ok": true
+  },
+  {
+    "name": "375: responsive column order 4",
+    "ok": true
+  },
+  {
+    "name": "375: mobile signup destination",
+    "ok": true
+  },
+  {
+    "name": "375: mobile Realtor destination",
+    "ok": true
+  },
+  {
+    "name": "375: Realtor page navigation",
+    "ok": true
+  },
+  {
+    "name": "375: mobile signup routing",
+    "ok": true
+  },
+  {
+    "name": "375: no browser exceptions",
+    "ok": true
+  },
+  {
+    "name": "390: four label-only controls",
+    "ok": true
+  },
+  {
+    "name": "390: no hero description",
+    "ok": true
+  },
+  {
+    "name": "390: label 1",
+    "ok": true
+  },
+  {
+    "name": "390: selected 1 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "390: stable uncropped frame 1",
+    "ok": true
+  },
+  {
+    "name": "390: responsive column order 1",
+    "ok": true
+  },
+  {
+    "name": "390: label 2",
+    "ok": true
+  },
+  {
+    "name": "390: selected 2 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "390: stable uncropped frame 2",
+    "ok": true
+  },
+  {
+    "name": "390: responsive column order 2",
+    "ok": true
+  },
+  {
+    "name": "390: label 3",
+    "ok": true
+  },
+  {
+    "name": "390: selected 3 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "390: stable uncropped frame 3",
+    "ok": true
+  },
+  {
+    "name": "390: responsive column order 3",
+    "ok": true
+  },
+  {
+    "name": "390: label 4",
+    "ok": true
+  },
+  {
+    "name": "390: selected 4 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "390: stable uncropped frame 4",
+    "ok": true
+  },
+  {
+    "name": "390: responsive column order 4",
+    "ok": true
+  },
+  {
+    "name": "390: mobile signup destination",
+    "ok": true
+  },
+  {
+    "name": "390: mobile Realtor destination",
+    "ok": true
+  },
+  {
+    "name": "390: Realtor page navigation",
+    "ok": true
+  },
+  {
+    "name": "390: mobile signup routing",
+    "ok": true
+  },
+  {
+    "name": "390: no browser exceptions",
+    "ok": true
+  },
+  {
+    "name": "430: four label-only controls",
+    "ok": true
+  },
+  {
+    "name": "430: no hero description",
+    "ok": true
+  },
+  {
+    "name": "430: label 1",
+    "ok": true
+  },
+  {
+    "name": "430: selected 1 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "430: stable uncropped frame 1",
+    "ok": true
+  },
+  {
+    "name": "430: responsive column order 1",
+    "ok": true
+  },
+  {
+    "name": "430: label 2",
+    "ok": true
+  },
+  {
+    "name": "430: selected 2 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "430: stable uncropped frame 2",
+    "ok": true
+  },
+  {
+    "name": "430: responsive column order 2",
+    "ok": true
+  },
+  {
+    "name": "430: label 3",
+    "ok": true
+  },
+  {
+    "name": "430: selected 3 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "430: stable uncropped frame 3",
+    "ok": true
+  },
+  {
+    "name": "430: responsive column order 3",
+    "ok": true
+  },
+  {
+    "name": "430: label 4",
+    "ok": true
+  },
+  {
+    "name": "430: selected 4 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "430: stable uncropped frame 4",
+    "ok": true
+  },
+  {
+    "name": "430: responsive column order 4",
+    "ok": true
+  },
+  {
+    "name": "430: mobile signup destination",
+    "ok": true
+  },
+  {
+    "name": "430: mobile Realtor destination",
+    "ok": true
+  },
+  {
+    "name": "430: Realtor page navigation",
+    "ok": true
+  },
+  {
+    "name": "430: mobile signup routing",
+    "ok": true
+  },
+  {
+    "name": "430: no browser exceptions",
+    "ok": true
+  },
+  {
+    "name": "768: four label-only controls",
+    "ok": true
+  },
+  {
+    "name": "768: no hero description",
+    "ok": true
+  },
+  {
+    "name": "768: label 1",
+    "ok": true
+  },
+  {
+    "name": "768: selected 1 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "768: stable uncropped frame 1",
+    "ok": true
+  },
+  {
+    "name": "768: responsive column order 1",
+    "ok": true
+  },
+  {
+    "name": "768: label 2",
+    "ok": true
+  },
+  {
+    "name": "768: selected 2 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "768: stable uncropped frame 2",
+    "ok": true
+  },
+  {
+    "name": "768: responsive column order 2",
+    "ok": true
+  },
+  {
+    "name": "768: label 3",
+    "ok": true
+  },
+  {
+    "name": "768: selected 3 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "768: stable uncropped frame 3",
+    "ok": true
+  },
+  {
+    "name": "768: responsive column order 3",
+    "ok": true
+  },
+  {
+    "name": "768: label 4",
+    "ok": true
+  },
+  {
+    "name": "768: selected 4 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "768: stable uncropped frame 4",
+    "ok": true
+  },
+  {
+    "name": "768: responsive column order 4",
+    "ok": true
+  },
+  {
+    "name": "768: hover preview",
+    "ok": true
+  },
+  {
+    "name": "768: focus preview",
+    "ok": true
+  },
+  {
+    "name": "768: Enter selection persists across hover",
+    "ok": true
+  },
+  {
+    "name": "768: Space activates",
+    "ok": true
+  },
+  {
+    "name": "768: focus visible",
+    "ok": true
+  },
+  {
+    "name": "768: signup-first account dialog",
+    "ok": true
+  },
+  {
+    "name": "768: CTA focus restored",
+    "ok": true
+  },
+  {
+    "name": "768: Realtor page navigation",
+    "ok": true
+  },
+  {
+    "name": "768: no browser exceptions",
+    "ok": true
+  },
+  {
+    "name": "1024: four label-only controls",
+    "ok": true
+  },
+  {
+    "name": "1024: no hero description",
+    "ok": true
+  },
+  {
+    "name": "1024: desktop opening fits one tasteful line",
+    "ok": true
+  },
+  {
+    "name": "1024: label 1",
+    "ok": true
+  },
+  {
+    "name": "1024: selected 1 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "1024: stable uncropped frame 1",
+    "ok": true
+  },
+  {
+    "name": "1024: responsive column order 1",
+    "ok": true
+  },
+  {
+    "name": "1024: label 2",
+    "ok": true
+  },
+  {
+    "name": "1024: selected 2 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "1024: stable uncropped frame 2",
+    "ok": true
+  },
+  {
+    "name": "1024: responsive column order 2",
+    "ok": true
+  },
+  {
+    "name": "1024: label 3",
+    "ok": true
+  },
+  {
+    "name": "1024: selected 3 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "1024: stable uncropped frame 3",
+    "ok": true
+  },
+  {
+    "name": "1024: responsive column order 3",
+    "ok": true
+  },
+  {
+    "name": "1024: label 4",
+    "ok": true
+  },
+  {
+    "name": "1024: selected 4 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "1024: stable uncropped frame 4",
+    "ok": true
+  },
+  {
+    "name": "1024: responsive column order 4",
+    "ok": true
+  },
+  {
+    "name": "1024: hover preview",
+    "ok": true
+  },
+  {
+    "name": "1024: focus preview",
+    "ok": true
+  },
+  {
+    "name": "1024: Enter selection persists across hover",
+    "ok": true
+  },
+  {
+    "name": "1024: Space activates",
+    "ok": true
+  },
+  {
+    "name": "1024: focus visible",
+    "ok": true
+  },
+  {
+    "name": "1024: signup-first account dialog",
+    "ok": true
+  },
+  {
+    "name": "1024: CTA focus restored",
+    "ok": true
+  },
+  {
+    "name": "1024: Realtor page navigation",
+    "ok": true
+  },
+  {
+    "name": "1024: no browser exceptions",
+    "ok": true
+  },
+  {
+    "name": "1280: four label-only controls",
+    "ok": true
+  },
+  {
+    "name": "1280: no hero description",
+    "ok": true
+  },
+  {
+    "name": "1280: desktop opening fits one tasteful line",
+    "ok": true
+  },
+  {
+    "name": "1280: label 1",
+    "ok": true
+  },
+  {
+    "name": "1280: selected 1 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "1280: stable uncropped frame 1",
+    "ok": true
+  },
+  {
+    "name": "1280: responsive column order 1",
+    "ok": true
+  },
+  {
+    "name": "1280: label 2",
+    "ok": true
+  },
+  {
+    "name": "1280: selected 2 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "1280: stable uncropped frame 2",
+    "ok": true
+  },
+  {
+    "name": "1280: responsive column order 2",
+    "ok": true
+  },
+  {
+    "name": "1280: label 3",
+    "ok": true
+  },
+  {
+    "name": "1280: selected 3 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "1280: stable uncropped frame 3",
+    "ok": true
+  },
+  {
+    "name": "1280: responsive column order 3",
+    "ok": true
+  },
+  {
+    "name": "1280: label 4",
+    "ok": true
+  },
+  {
+    "name": "1280: selected 4 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "1280: stable uncropped frame 4",
+    "ok": true
+  },
+  {
+    "name": "1280: responsive column order 4",
+    "ok": true
+  },
+  {
+    "name": "1280: hover preview",
+    "ok": true
+  },
+  {
+    "name": "1280: focus preview",
+    "ok": true
+  },
+  {
+    "name": "1280: Enter selection persists across hover",
+    "ok": true
+  },
+  {
+    "name": "1280: Space activates",
+    "ok": true
+  },
+  {
+    "name": "1280: focus visible",
+    "ok": true
+  },
+  {
+    "name": "1280: signup-first account dialog",
+    "ok": true
+  },
+  {
+    "name": "1280: CTA focus restored",
+    "ok": true
+  },
+  {
+    "name": "1280: Realtor page navigation",
+    "ok": true
+  },
+  {
+    "name": "1280: no browser exceptions",
+    "ok": true
+  },
+  {
+    "name": "1440: four label-only controls",
+    "ok": true
+  },
+  {
+    "name": "1440: no hero description",
+    "ok": true
+  },
+  {
+    "name": "1440: desktop opening fits one tasteful line",
+    "ok": true
+  },
+  {
+    "name": "1440: label 1",
+    "ok": true
+  },
+  {
+    "name": "1440: selected 1 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "1440: stable uncropped frame 1",
+    "ok": true
+  },
+  {
+    "name": "1440: responsive column order 1",
+    "ok": true
+  },
+  {
+    "name": "1440: label 2",
+    "ok": true
+  },
+  {
+    "name": "1440: selected 2 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "1440: stable uncropped frame 2",
+    "ok": true
+  },
+  {
+    "name": "1440: responsive column order 2",
+    "ok": true
+  },
+  {
+    "name": "1440: label 3",
+    "ok": true
+  },
+  {
+    "name": "1440: selected 3 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "1440: stable uncropped frame 3",
+    "ok": true
+  },
+  {
+    "name": "1440: responsive column order 3",
+    "ok": true
+  },
+  {
+    "name": "1440: label 4",
+    "ok": true
+  },
+  {
+    "name": "1440: selected 4 and matching caption",
+    "ok": true
+  },
+  {
+    "name": "1440: stable uncropped frame 4",
+    "ok": true
+  },
+  {
+    "name": "1440: responsive column order 4",
+    "ok": true
+  },
+  {
+    "name": "1440: hover preview",
+    "ok": true
+  },
+  {
+    "name": "1440: focus preview",
+    "ok": true
+  },
+  {
+    "name": "1440: Enter selection persists across hover",
+    "ok": true
+  },
+  {
+    "name": "1440: Space activates",
+    "ok": true
+  },
+  {
+    "name": "1440: focus visible",
+    "ok": true
+  },
+  {
+    "name": "1440: signup-first account dialog",
+    "ok": true
+  },
+  {
+    "name": "1440: CTA focus restored",
+    "ok": true
+  },
+  {
+    "name": "1440: Realtor page navigation",
+    "ok": true
+  },
+  {
+    "name": "1440: no browser exceptions",
+    "ok": true
+  }
+]
