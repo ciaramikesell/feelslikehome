@@ -1,0 +1,402 @@
+[
+  {
+    "name": "320: restored centered #203 eyebrow",
+    "ok": true
+  },
+  {
+    "name": "320: illustrations and copy remain intact",
+    "ok": true
+  },
+  {
+    "name": "320: divider and single CTA retained",
+    "ok": true
+  },
+  {
+    "name": "320: mobile web enables carousel",
+    "ok": true
+  },
+  {
+    "name": "320: large slide with next peek",
+    "ok": true
+  },
+  {
+    "name": "320: accessible controls and starting state",
+    "ok": true
+  },
+  {
+    "name": "320: pagination 1 updates status",
+    "ok": true
+  },
+  {
+    "name": "320: pagination 2 updates status",
+    "ok": true
+  },
+  {
+    "name": "320: pagination 3 updates status",
+    "ok": true
+  },
+  {
+    "name": "320: pagination 4 updates status",
+    "ok": true
+  },
+  {
+    "name": "320: last next disabled",
+    "ok": true
+  },
+  {
+    "name": "320: arrow/Home/End keyboard navigation",
+    "ok": true
+  },
+  {
+    "name": "320: reduced-motion scroll is immediate",
+    "ok": true
+  },
+  {
+    "name": "320: no page overflow",
+    "ok": true
+  },
+  {
+    "name": "320: signup routing retained",
+    "ok": true
+  },
+  {
+    "name": "320: no runtime errors",
+    "ok": true
+  },
+  {
+    "name": "375: restored centered #203 eyebrow",
+    "ok": true
+  },
+  {
+    "name": "375: illustrations and copy remain intact",
+    "ok": true
+  },
+  {
+    "name": "375: divider and single CTA retained",
+    "ok": true
+  },
+  {
+    "name": "375: mobile web enables carousel",
+    "ok": true
+  },
+  {
+    "name": "375: large slide with next peek",
+    "ok": true
+  },
+  {
+    "name": "375: accessible controls and starting state",
+    "ok": true
+  },
+  {
+    "name": "375: pagination 1 updates status",
+    "ok": true
+  },
+  {
+    "name": "375: pagination 2 updates status",
+    "ok": true
+  },
+  {
+    "name": "375: pagination 3 updates status",
+    "ok": true
+  },
+  {
+    "name": "375: pagination 4 updates status",
+    "ok": true
+  },
+  {
+    "name": "375: last next disabled",
+    "ok": true
+  },
+  {
+    "name": "375: arrow/Home/End keyboard navigation",
+    "ok": true
+  },
+  {
+    "name": "375: reduced-motion scroll is immediate",
+    "ok": true
+  },
+  {
+    "name": "375: no page overflow",
+    "ok": true
+  },
+  {
+    "name": "375: signup routing retained",
+    "ok": true
+  },
+  {
+    "name": "375: no runtime errors",
+    "ok": true
+  },
+  {
+    "name": "390: restored centered #203 eyebrow",
+    "ok": true
+  },
+  {
+    "name": "390: illustrations and copy remain intact",
+    "ok": true
+  },
+  {
+    "name": "390: divider and single CTA retained",
+    "ok": true
+  },
+  {
+    "name": "390: mobile web enables carousel",
+    "ok": true
+  },
+  {
+    "name": "390: large slide with next peek",
+    "ok": true
+  },
+  {
+    "name": "390: accessible controls and starting state",
+    "ok": true
+  },
+  {
+    "name": "390: pagination 1 updates status",
+    "ok": true
+  },
+  {
+    "name": "390: pagination 2 updates status",
+    "ok": true
+  },
+  {
+    "name": "390: pagination 3 updates status",
+    "ok": true
+  },
+  {
+    "name": "390: pagination 4 updates status",
+    "ok": true
+  },
+  {
+    "name": "390: last next disabled",
+    "ok": true
+  },
+  {
+    "name": "390: arrow/Home/End keyboard navigation",
+    "ok": true
+  },
+  {
+    "name": "390: actual touch swipe advances",
+    "ok": true
+  },
+  {
+    "name": "390: reduced-motion scroll is immediate",
+    "ok": true
+  },
+  {
+    "name": "390: no page overflow",
+    "ok": true
+  },
+  {
+    "name": "390: signup routing retained",
+    "ok": true
+  },
+  {
+    "name": "390: no runtime errors",
+    "ok": true
+  },
+  {
+    "name": "430: restored centered #203 eyebrow",
+    "ok": true
+  },
+  {
+    "name": "430: illustrations and copy remain intact",
+    "ok": true
+  },
+  {
+    "name": "430: divider and single CTA retained",
+    "ok": true
+  },
+  {
+    "name": "430: mobile web enables carousel",
+    "ok": true
+  },
+  {
+    "name": "430: large slide with next peek",
+    "ok": true
+  },
+  {
+    "name": "430: accessible controls and starting state",
+    "ok": true
+  },
+  {
+    "name": "430: pagination 1 updates status",
+    "ok": true
+  },
+  {
+    "name": "430: pagination 2 updates status",
+    "ok": true
+  },
+  {
+    "name": "430: pagination 3 updates status",
+    "ok": true
+  },
+  {
+    "name": "430: pagination 4 updates status",
+    "ok": true
+  },
+  {
+    "name": "430: last next disabled",
+    "ok": true
+  },
+  {
+    "name": "430: arrow/Home/End keyboard navigation",
+    "ok": true
+  },
+  {
+    "name": "430: reduced-motion scroll is immediate",
+    "ok": true
+  },
+  {
+    "name": "430: no page overflow",
+    "ok": true
+  },
+  {
+    "name": "430: signup routing retained",
+    "ok": true
+  },
+  {
+    "name": "430: no runtime errors",
+    "ok": true
+  },
+  {
+    "name": "768: restored centered #203 eyebrow",
+    "ok": true
+  },
+  {
+    "name": "768: illustrations and copy remain intact",
+    "ok": true
+  },
+  {
+    "name": "768: divider and single CTA retained",
+    "ok": true
+  },
+  {
+    "name": "768: tablet/desktop grid unchanged",
+    "ok": true
+  },
+  {
+    "name": "768: no page overflow",
+    "ok": true
+  },
+  {
+    "name": "768: signup dialog retained",
+    "ok": true
+  },
+  {
+    "name": "768: no runtime errors",
+    "ok": true
+  },
+  {
+    "name": "1024: restored centered #203 eyebrow",
+    "ok": true
+  },
+  {
+    "name": "1024: illustrations and copy remain intact",
+    "ok": true
+  },
+  {
+    "name": "1024: divider and single CTA retained",
+    "ok": true
+  },
+  {
+    "name": "1024: tablet/desktop grid unchanged",
+    "ok": true
+  },
+  {
+    "name": "1024: no page overflow",
+    "ok": true
+  },
+  {
+    "name": "1024: signup dialog retained",
+    "ok": true
+  },
+  {
+    "name": "1024: no runtime errors",
+    "ok": true
+  },
+  {
+    "name": "1280: restored centered #203 eyebrow",
+    "ok": true
+  },
+  {
+    "name": "1280: illustrations and copy remain intact",
+    "ok": true
+  },
+  {
+    "name": "1280: divider and single CTA retained",
+    "ok": true
+  },
+  {
+    "name": "1280: tablet/desktop grid unchanged",
+    "ok": true
+  },
+  {
+    "name": "1280: no page overflow",
+    "ok": true
+  },
+  {
+    "name": "1280: signup dialog retained",
+    "ok": true
+  },
+  {
+    "name": "1280: no runtime errors",
+    "ok": true
+  },
+  {
+    "name": "1440: restored centered #203 eyebrow",
+    "ok": true
+  },
+  {
+    "name": "1440: illustrations and copy remain intact",
+    "ok": true
+  },
+  {
+    "name": "1440: divider and single CTA retained",
+    "ok": true
+  },
+  {
+    "name": "1440: tablet/desktop grid unchanged",
+    "ok": true
+  },
+  {
+    "name": "1440: no page overflow",
+    "ok": true
+  },
+  {
+    "name": "1440: signup dialog retained",
+    "ok": true
+  },
+  {
+    "name": "1440: no runtime errors",
+    "ok": true
+  },
+  {
+    "name": "iOS bridge: shared first-paint native flag detected",
+    "ok": true
+  },
+  {
+    "name": "iOS bridge: native welcome remains visible",
+    "ok": true
+  },
+  {
+    "name": "iOS bridge: mounted homepage never enables carousel",
+    "ok": true
+  },
+  {
+    "name": "iOS bridge: even exposed homepage keeps static stacked fallback",
+    "ok": true
+  },
+  {
+    "name": "late native flag: carousel and controls removed",
+    "ok": true
+  },
+  {
+    "name": "ordinary motion: smooth navigation settles on target",
+    "ok": true
+  },
+  {
+    "name": "resize: desktop/tablet switches back to mobile at first slide",
+    "ok": true
+  }
+]

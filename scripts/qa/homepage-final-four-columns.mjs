@@ -1,118 +1,120 @@
-// Local production QA. Requires a signed-out build and optional #203 baseline.
-// node scripts/qa/homepage-final-four-columns.mjs [afterUrl] [beforeUrl] [outDir]
+// PR #204 regression QA: production mobile website carousel and native exclusion.
+// node scripts/qa/homepage-final-four-columns.mjs [baseUrl] [outputDir]
 import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import assert from 'node:assert/strict';
-const [after = 'http://127.0.0.1:3141', before = 'http://127.0.0.1:3140', out = 'docs/homepage-final-four-columns'] = process.argv.slice(2);
-const dir = resolve(out);
+const base = process.argv[2] || 'http://127.0.0.1:3143';
+const dir = resolve(process.argv[3] || 'docs/homepage-final-four-columns/mobile-web-amendment');
 mkdirSync(`${dir}/screenshots`, { recursive: true });
+const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || '/usr/bin/chromium' });
 const results = [];
 function check(name, ok) { results.push({ name, ok }); assert.ok(ok, name); }
-const browser = await chromium.launch({ executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE || '/usr/bin/chromium' });
-const titles = ['Set Your Preferences', 'Import Homes from Anywhere', 'Compare What Matters', 'Search & Decide Together'];
-const captions = ['Decide what matters most to you.', 'Bring your saved listings together.', 'See how each home fits your priorities.', 'Make decisions with your co-buyer and Realtor.'];
-async function loaded(page) {
-  await page.evaluate(async () => {
-    const images = [...document.querySelectorAll('.pl-editorial-feature img')];
-    for (const img of images) { img.scrollIntoView(); await img.decode(); }
-    await document.fonts.ready;
-    window.scrollTo(0, 0);
-  });
+async function at(page, index) {
+  await page.waitForFunction(i => document.querySelector(`.pl-carousel-dots button:nth-child(${i + 1})`)?.getAttribute('aria-current') === 'true', index);
 }
-async function metadata(page) {
-  return page.evaluate(() => ({ title: document.title, meta: [...document.querySelectorAll('meta[name="description"],meta[property^="og:"],meta[name^="twitter:"],link[rel="canonical"]')].map(el => el.outerHTML) }));
+async function ready(page) {
+  await page.goto(base, { waitUntil: 'networkidle' });
+  await page.evaluate(() => document.fonts.ready);
 }
 try {
   for (const width of [320, 375, 390, 430, 768, 1024, 1280, 1440]) {
-    const mobile = width < 768;
-    const ctx = await browser.newContext({ viewport: { width, height: 900 }, deviceScaleFactor: 1, isMobile: mobile, hasTouch: mobile, reducedMotion: 'reduce' });
-    // Deterministic font fallback captures; production font declarations stay untouched.
-    await ctx.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
-    const page = await ctx.newPage();
+    const mobile = width < 640;
+    const context = await browser.newContext({ viewport: { width, height: 900 }, isMobile: mobile, hasTouch: mobile, reducedMotion: 'reduce', deviceScaleFactor: 1 });
+    await context.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+    const page = await context.newPage();
     const errors = [];
     page.on('pageerror', e => errors.push(e.message));
-    await page.addInitScript(() => {
-      window.__homepageShifts = [];
-      new PerformanceObserver(list => { for (const e of list.getEntries()) if (!e.hadRecentInput) window.__homepageShifts.push(e.value); }).observe({ type: 'layout-shift', buffered: true });
-    });
-    await page.goto(after, { waitUntil: 'networkidle' });
-    const initial = await page.locator('.pl-editorial-feature').evaluateAll(els => els.map(el => ({ height: el.offsetHeight, top: el.offsetTop })));
-    await loaded(page);
-    const final = await page.locator('.pl-editorial-feature').evaluateAll(els => els.map(el => ({ height: el.offsetHeight, top: el.offsetTop })));
-    check(`${width}: images reserve layout before loading`, JSON.stringify(initial) === JSON.stringify(final));
-    const layout = await page.evaluate(() => {
-      const grid = document.querySelector('.pl-editorial-grid');
-      const hero = document.querySelector('.pl-hero').getBoundingClientRect();
-      const opening = document.querySelector('.pl-hero-opening');
-      const range = document.createRange(); range.selectNodeContents(opening);
-      const rect = range.getBoundingClientRect();
-      return { columns: getComputedStyle(grid).gridTemplateColumns.split(' ').length, overflow: document.documentElement.scrollWidth > innerWidth,
-        lines: range.getClientRects().length, fits: rect.width <= opening.parentElement.clientWidth + 1, font: parseFloat(getComputedStyle(opening).fontSize), hero: hero.height / innerHeight,
-        shifts: window.__homepageShifts.reduce((a, b) => a + b, 0), heading: getComputedStyle(document.querySelector('#how-title')).textTransform };
-    });
-    check(`${width}: 4→2→1 grid`, layout.columns === (width >= 1200 ? 4 : width >= 640 ? 2 : 1));
-    check(`${width}: no overflow`, !layout.overflow);
-    check(`${width}: no layout shift`, layout.shifts < .01);
-    if (width >= 1024) {
-      check(`${width}: one-line desktop opening`, layout.lines === 1 && layout.fits && layout.font >= 25);
-      check(`${width}: taller hero around 80% viewport`, layout.hero >= .75 && layout.hero <= .85);
-    }
-    check(`${width}: centered meaningful heading`, await page.locator('#how-title').textContent() === 'How it works' && layout.heading === 'uppercase');
-    check(`${width}: four articles and no selectors or collaboration`, await page.locator('.pl-editorial-feature').count() === 4 && await page.locator('.pl-how button,.pl-collaboration,[aria-pressed]').count() === 0);
-    check(`${width}: one discreet note`, await page.locator('.pl-illustration-note').count() === 1);
-    check(`${width}: decorative divider hidden from AT`, await page.locator('.pl-section-divider').getAttribute('aria-hidden') === 'true');
-    for (let i = 0; i < 4; i++) {
-      const feature = page.locator('.pl-editorial-feature').nth(i);
-      check(`${width}: title/caption ${i + 1}`, await feature.locator('h3').innerText() === titles[i] && await feature.locator('p').innerText() === captions[i]);
-      const image = await feature.locator('img').evaluate(el => ({ loaded: el.complete && el.naturalWidth > 0, ratio: el.width / el.height, alt: el.alt, fit: getComputedStyle(el).objectFit, lazy: el.loading, border: getComputedStyle(el).borderWidth, shadow: getComputedStyle(el).boxShadow }));
-      check(`${width}: intact lazy illustration ${i + 1}`, image.loaded && Math.abs(image.ratio - 4 / 3) < .02 && image.alt.length > 30 && image.fit === 'contain' && image.lazy === 'lazy' && image.border === '0px' && image.shadow === 'none');
-    }
-    check(`${width}: approved fourth-image semantics`, await page.locator('.pl-editorial-feature img').nth(3).getAttribute('alt').then(s => s.includes('Finished Basement is outlined')));
-    await page.screenshot({ path: `${dir}/screenshots/after-${width}.png`, fullPage: true });
-    if (width === 390 || width === 1440) await page.locator('.pl-how').screenshot({ path: `${dir}/screenshots/editorial-${width}.png` });
-    const afterMeta = await metadata(page);
-    // Navigation/CTA retain existing desktop popover and mobile signup route.
+    await ready(page);
+    const section = page.locator('.pl-how');
+    const track = page.locator('.pl-editorial-grid');
+    const heading = await page.locator('#how-title').evaluate(el => { const s = getComputedStyle(el); return { font: s.fontSize, color: s.color, align: s.textAlign, spacing: s.letterSpacing, transform: s.textTransform }; });
+    check(`${width}: restored centered #203 eyebrow`, heading.font === '12px' && heading.color === 'rgb(152, 67, 41)' && heading.align === 'center' && heading.transform === 'uppercase');
+    check(`${width}: illustrations and copy remain intact`, await page.locator('.pl-editorial-feature').count() === 4 && await page.locator('.pl-editorial-feature img').nth(3).getAttribute('alt').then(s => s.includes('Finished Basement is outlined')));
+    check(`${width}: divider and single CTA retained`, await page.locator('.pl-section-divider').count() === 1 && await page.locator('.pl-hero .pl-button:visible').count() === 1);
     if (mobile) {
-      const cta = page.locator('.pl-hero .pl-mobile-auth');
-      check(`${width}: mobile signup href`, await cta.getAttribute('href') === '/auth/sign-up');
-      await cta.tap(); await page.waitForURL('**/auth/sign-up');
-      await page.locator('input[type="email"]').waitFor();
-      check(`${width}: signup form route`, await page.locator('input[type="email"]').isVisible());
-      await page.goto(after, { waitUntil: 'networkidle' });
-      await page.getByLabel('Open navigation').tap();
-      await page.getByRole('navigation', { name: 'Mobile public navigation' }).getByRole('link', { name: 'For Realtors' }).tap();
+      check(`${width}: mobile web enables carousel`, await section.getAttribute('data-web-carousel') === 'true' && await section.getAttribute('aria-roledescription') === 'carousel');
+      const geometry = await track.evaluate(el => ({ width: el.clientWidth, slide: el.children[0].clientWidth, step: el.children[1].offsetLeft - el.children[0].offsetLeft, overflow: getComputedStyle(el).overflowX }));
+      check(`${width}: large slide with next peek`, geometry.slide >= geometry.width * .8 && geometry.step < geometry.width && geometry.overflow === 'auto');
+      check(`${width}: accessible controls and starting state`, await page.locator('.pl-carousel-dots button').count() === 4 && await page.getByLabel('Previous feature', { exact: true }).isDisabled() && await track.getAttribute('tabindex') === '0');
+      await section.scrollIntoViewIfNeeded();
+      for (let i = 0; i < 4; i++) {
+        await page.locator('.pl-carousel-dots button').nth(i).tap(); await at(page, i);
+        await page.locator('.pl-editorial-feature img').nth(i).evaluate(el => el.decode());
+        check(`${width}: pagination ${i + 1} updates status`, (await page.getByRole('status').innerText()).startsWith(`Slide ${i + 1} of 4:`));
+        if (width === 390) await section.screenshot({ path: `${dir}/screenshots/slide-${i + 1}-390.png` });
+      }
+      check(`${width}: last next disabled`, await page.getByLabel('Next feature', { exact: true }).isDisabled());
+      await page.getByLabel('Previous feature', { exact: true }).tap(); await at(page, 2);
+      await track.focus(); await page.keyboard.press('Home'); await at(page, 0);
+      await page.keyboard.press('ArrowRight'); await at(page, 1);
+      await page.keyboard.press('End'); await at(page, 3);
+      await page.keyboard.press('ArrowLeft'); await at(page, 2);
+      check(`${width}: arrow/Home/End keyboard navigation`, await track.evaluate(el => el === document.activeElement));
+      await page.keyboard.press('Home'); await at(page, 0);
+      if (width === 390) {
+        const cdp = await context.newCDPSession(page);
+        const rect = await track.boundingBox();
+        const x = rect.x + rect.width * .85, y = rect.y + 90;
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+        for (let i = 1; i <= 8; i++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x - i * 32, y }] });
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        await at(page, 1);
+        check('390: actual touch swipe advances', (await page.getByRole('status').innerText()).startsWith('Slide 2'));
+        await page.locator('.pl-carousel-dots button').nth(0).tap(); await at(page, 0);
+      }
+      check(`${width}: reduced-motion scroll is immediate`, await track.evaluate(el => getComputedStyle(el).scrollBehavior === 'auto'));
     } else {
-      const cta = page.locator('.pl-hero .pl-desktop-auth');
-      await cta.focus(); await page.keyboard.press('Enter');
-      check(`${width}: signup-first dialog`, await page.getByRole('dialog', { name: 'Create account', exact: true }).isVisible());
-      await page.keyboard.press('Escape');
-      check(`${width}: CTA focus restored`, await cta.evaluate(el => el === document.activeElement));
-      await page.locator('.pl-nav-surface').getByRole('link', { name: 'For Realtors' }).click();
+      const columns = await track.evaluate(el => getComputedStyle(el).gridTemplateColumns.split(' ').length);
+      check(`${width}: tablet/desktop grid unchanged`, columns === (width >= 1200 ? 4 : 2) && await section.getAttribute('data-web-carousel') === null && await page.locator('.pl-carousel-navigation').count() === 0);
     }
-    await page.waitForURL('**/for-realtors'); await page.locator('.rl-root').waitFor();
-    check(`${width}: Realtor navigation`, await page.locator('.rl-root').isVisible());
-    if (width === 390 || width === 1440) {
-      await page.evaluate(() => document.fonts.ready);
-      await page.locator('.rl-root img').evaluateAll(async els => { for (const img of els) { img.scrollIntoView(); await img.decode(); } window.scrollTo(0, 0); });
-      const realtorAfter = await page.screenshot({ fullPage: true });
-      await page.goto(`${before}/for-realtors`, { waitUntil: 'domcontentloaded' });
-      await page.locator('.rl-root').waitFor();
-      await page.evaluate(() => document.fonts.ready);
-      await page.locator('.rl-root img').evaluateAll(async els => { for (const img of els) { img.scrollIntoView(); await img.decode(); } window.scrollTo(0, 0); });
-      const realtorBefore = await page.screenshot({ fullPage: true });
-      check(`${width}: standalone Realtor pixels unchanged`, Buffer.compare(realtorAfter, realtorBefore) === 0);
-      await page.goto(before, { waitUntil: 'domcontentloaded' });
-      await page.locator('.pl-preview-stage img').waitFor();
-      await page.locator('#how-it-works').scrollIntoViewIfNeeded();
-      await page.locator('.pl-preview-stage img').evaluate(el => el.decode());
-      await page.evaluate(() => window.scrollTo(0, 0));
-      await page.screenshot({ path: `${dir}/screenshots/before-${width}.png`, fullPage: true });
-      check(`${width}: social/link metadata unchanged`, JSON.stringify(afterMeta) === JSON.stringify(await metadata(page)));
+    check(`${width}: no page overflow`, await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: `${dir}/screenshots/website-${width}.png`, fullPage: true });
+    if (mobile) {
+      await page.locator('.pl-hero .pl-mobile-auth').tap(); await page.waitForURL('**/auth/sign-up'); await page.locator('input[type="email"]').waitFor();
+      check(`${width}: signup routing retained`, await page.locator('input[type="email"]').isVisible());
+    } else {
+      await page.locator('.pl-hero .pl-desktop-auth').click();
+      check(`${width}: signup dialog retained`, await page.getByRole('dialog', { name: 'Create account', exact: true }).isVisible());
     }
-    check(`${width}: no runtime exceptions`, errors.length === 0);
-    await ctx.close();
+    check(`${width}: no runtime errors`, !errors.length);
+    await context.close();
   }
+  // A real bridge-shaped runtime, not just a narrow viewport or fake user agent.
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  await context.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+  await context.addInitScript(() => { window.webkit = { messageHandlers: { bridge: { postMessage() {} } } }; });
+  const page = await context.newPage(); await ready(page);
+  check('iOS bridge: shared first-paint native flag detected', await page.locator('html').getAttribute('data-flh-native') === '');
+  check('iOS bridge: native welcome remains visible', await page.locator('.flh-welcome').isVisible() && !await page.locator('.flh-web-entry').isVisible());
+  check('iOS bridge: mounted homepage never enables carousel', await page.locator('.pl-how').getAttribute('data-web-carousel') === null && await page.locator('.pl-carousel-navigation').count() === 0);
+  await page.screenshot({ path: `${dir}/screenshots/native-welcome-390.png`, fullPage: true });
+  // Unhide only for the test: otherwise native welcome could mask an accidental
+  // carousel in the mounted marketing component. Production CSS is untouched.
+  await page.addStyleTag({ content: 'html[data-flh-native] .flh-web-entry { display: block !important; } .flh-welcome { display: none !important; }' });
+  check('iOS bridge: even exposed homepage keeps static stacked fallback', await page.locator('.pl-editorial-grid').evaluate(el => getComputedStyle(el).overflowX !== 'auto' && getComputedStyle(el).gridTemplateColumns.split(' ').length === 1));
+  await context.close();
+  const late = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  await late.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+  const latePage = await late.newPage(); await ready(latePage);
+  await latePage.locator('.pl-how[data-web-carousel="true"]').waitFor();
+  await latePage.evaluate(() => document.documentElement.setAttribute('data-flh-native', ''));
+  await latePage.waitForFunction(() => !document.querySelector('.pl-how').hasAttribute('data-web-carousel'));
+  check('late native flag: carousel and controls removed', await latePage.locator('.pl-carousel-navigation').count() === 0);
+  await late.close();
+  // Motion-enabled navigation and width changes use the same component.
+  const motion = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'no-preference' });
+  await motion.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+  const motionPage = await motion.newPage(); await ready(motionPage);
+  await motionPage.getByLabel('Next feature', { exact: true }).click(); await at(motionPage, 1);
+  check('ordinary motion: smooth navigation settles on target', true);
+  await motionPage.setViewportSize({ width: 768, height: 900 });
+  await motionPage.waitForFunction(() => !document.querySelector('.pl-how').hasAttribute('data-web-carousel'));
+  await motionPage.setViewportSize({ width: 390, height: 844 });
+  await at(motionPage, 0);
+  check('resize: desktop/tablet switches back to mobile at first slide', true);
+  await motion.close();
 } finally {
   await browser.close();
   writeFileSync(`${dir}/browser-results.json`, JSON.stringify(results, null, 2) + '\n');

@@ -1,5 +1,7 @@
 # Final four-column homepage — founder review
 
+**Latest #204 amendment:** [mobile-website carousel, restored eyebrow, native exclusion, current screenshots and verification](mobile-web-amendment/README.md). The before/after captures below record the initial four-column draft before this founder amendment.
+
 Base: latest main `94bfd86`, merged PR #203. Branch: `ux/homepage-final-four-columns`. The founder’s request authorizes the homepage simplification; the attached [CODEX_BRIEF.md](CODEX_BRIEF.md) supplied its detailed specification and was read in full before changes.
 
 ## Before → after

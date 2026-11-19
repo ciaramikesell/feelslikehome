@@ -1357,7 +1357,7 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .pl-section-divider { height: 1px; width: min(calc(100% - 48px), 1320px); margin: 0 auto; background: linear-gradient(90deg, transparent, #cfb4a0 25%, #cfb4a0 75%, transparent); }
 .pl-how { padding: clamp(44px, 5vw, 76px) 24px clamp(44px, 5vw, 72px); background: var(--peach); scroll-margin-top: 20px; }
 .pl-how:focus { outline: none; }
-.pl-how > h2 { margin: 0 0 clamp(28px, 3vw, 44px); text-align: center; font-size: clamp(1.5rem, 2.3vw, 2rem); font-weight: 600; line-height: 1.2; letter-spacing: .075em; text-transform: uppercase; }
+.pl-how > h2.pl-eyebrow { margin: 0 0 clamp(28px, 3vw, 44px); text-align: center; color: var(--brick-deep); font: 700 .75rem/1.3 var(--font-sans); letter-spacing: .14em; text-transform: uppercase; }
 .pl-editorial-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); column-gap: 32px; row-gap: 40px; max-width: 1440px; margin: 0 auto; }
 .pl-editorial-feature { min-width: 0; display: grid; grid-template-rows: auto auto 1fr; align-content: start; }
 .pl-editorial-feature > img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: contain; }
@@ -1389,6 +1389,25 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   .pl-editorial-grid { grid-template-columns: minmax(0, 1fr); gap: 38px; }
   .pl-editorial-feature > h3 { min-height: 0; margin-top: 18px; font-size: 1.5rem; }
   .pl-how > .pl-illustration-note { margin-top: 30px; text-align: left; }
+}
+/* Mobile website only. The bridge-driven native flag independently excludes
+   Capacitor even if this public component is mounted inside its hidden entry. */
+@media (max-width: 639px) {
+  html:not([data-flh-native]) .pl-how[data-web-carousel="true"] .pl-editorial-grid { grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: calc(100% - 40px); gap: 16px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; padding-bottom: 8px; }
+  html:not([data-flh-native]) .pl-how[data-web-carousel="true"] .pl-editorial-grid::-webkit-scrollbar { display: none; }
+  html:not([data-flh-native]) .pl-how[data-web-carousel="true"] .pl-editorial-feature { scroll-snap-align: start; }
+  .pl-editorial-grid:focus-visible { outline: 3px solid var(--brick-deep); outline-offset: 4px; }
+  html:not([data-flh-native]) .pl-carousel-navigation { display: flex; justify-content: center; align-items: center; gap: 4px; margin-top: 16px; }
+  .pl-carousel-navigation button { display: grid; place-items: center; min-width: 44px; min-height: 44px; padding: 0; border: 0; border-radius: 50%; color: var(--brick-deep); background: transparent; cursor: pointer; }
+  .pl-carousel-navigation button:disabled { opacity: .35; cursor: default; }
+  .pl-carousel-navigation button:focus-visible { outline: 2px solid var(--brick-deep); outline-offset: 1px; }
+  .pl-carousel-dots { display: flex; }
+  .pl-carousel-dots span { width: 6px; height: 6px; border: 1px solid var(--brick-deep); border-radius: 50%; }
+  .pl-carousel-dots [aria-current="true"] span { background: var(--brick-deep); }
+}
+html[data-flh-native] .pl-carousel-navigation { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  .pl-how .pl-editorial-grid { scroll-behavior: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
   .pl-button { transition: none; }

@@ -73,10 +73,11 @@ test('four borderless editorial features replace the slideshow and collaboration
   for (const copy of ['Decide what matters most to you.', 'Bring your saved listings together.', 'See how each home fits your priorities.', 'Make decisions with your co-buyer and Realtor.']) assert.ok(previews.includes(copy));
   assert.match(landing, /<PublicHomeFeatures \/>/);
   assert.match(previews, /id="how-it-works"[^>]*tabIndex=\{-1\}/);
-  assert.match(previews, /<h2 id="how-title">How it works<\/h2>/);
+  assert.match(previews, /<h2 className="pl-eyebrow" id="how-title">How it works<\/h2>/);
   assert.match(previews, /<article[^>]*aria-labelledby=/);
   assert.match(previews, /width=\{1448\} height=\{1086\} loading="lazy"/);
-  assert.doesNotMatch(previews, /useState|onPointer|onClick|aria-pressed|<button|slideshow|pagination/);
+  assert.doesNotMatch(previews, /aria-pressed|onPointerEnter/);
+  assert.match(previews, /narrow.matches && !isNativeApp\(\) && !root.hasAttribute\(NATIVE_SHELL_ATTRIBUTE\)/);
   assert.doesNotMatch(landing + previews, /Choosing a home doesn’t happen alone|pl-collaboration|youtube|<iframe/);
   assert.match(landing, /className="pl-section-divider" aria-hidden="true"/);
   assert.match(css, /repeat\(4, minmax\(0, 1fr\)\)/);
