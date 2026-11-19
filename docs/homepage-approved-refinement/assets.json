@@ -1,0 +1,30 @@
+[
+  {
+    "suppliedAsset": "01_set_your_preferences.png",
+    "sourceSHA256": "277dc12f82cb759ff92d5aeef4cdae4be00cc6948e0be963731371640829cd38",
+    "webAsset": "public/images/homepage-previews/priorities.webp",
+    "webSHA256": "e759b86184ac753416ceb1ac9bdca181c39e6a5d64ac8c0c25b3fc1df7c3b29e",
+    "bytes": 54478
+  },
+  {
+    "suppliedAsset": "02_import_homes_from_anywhere.png",
+    "sourceSHA256": "b3dbf03b86676b48c39e721c3c4e4ca9fae1f029b131d70b62daaf278d9a241e",
+    "webAsset": "public/images/homepage-previews/listings.webp",
+    "webSHA256": "7f26876f3bce2b5718bd44d3b01ae601ff8746a8d0086fdfe110e40384b107ab",
+    "bytes": 65926
+  },
+  {
+    "suppliedAsset": "03_compare_what_matters.png",
+    "sourceSHA256": "6ca959184cbe9bd6bcc544fafa110e7de0a57c1f45d17f3eef253cc1e351037d",
+    "webAsset": "public/images/homepage-previews/compare.webp",
+    "webSHA256": "69ed9245925febe4f173df51034945eeabedf7029c474e17caeb473e5abcd603",
+    "bytes": 53486
+  },
+  {
+    "suppliedAsset": "04_search_decide_together.png",
+    "sourceSHA256": "8e54b3dd3e56e8e26c2749d56ce834c775a46d93a8d132acfd0eedffdbba4972",
+    "webAsset": "public/images/homepage-previews/collaborate.webp",
+    "webSHA256": "149bc500d498d9836bfb342691cb13fbcc55d249f07fe63abfa968f34c6e3f55",
+    "bytes": 55862
+  }
+]
