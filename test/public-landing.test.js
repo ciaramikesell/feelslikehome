@@ -68,7 +68,7 @@ test('the web hero keeps the requested desktop copy and signup-first CTA', () =>
   assert.doesNotMatch(landing, /\/guest|Real estate, reimagined|>See how it works</);
 });
 
-test('four borderless editorial features replace the slideshow and collaboration section', () => {
+test('editorial sliding showcase keeps four concepts and original native fallback', () => {
   for (const title of ['Set Your Preferences', 'Import Homes from Anywhere', 'Compare What Matters', 'Search & Decide Together']) assert.ok(previews.includes(title));
   for (const copy of ['Decide what matters most to you.', 'Bring your saved listings together.', 'See how each home fits your priorities.', 'Make decisions with your co-buyer and Realtor.']) assert.ok(previews.includes(copy));
   assert.match(landing, /<PublicHomeFeatures \/>/);
@@ -77,7 +77,11 @@ test('four borderless editorial features replace the slideshow and collaboration
   assert.match(previews, /<article[^>]*aria-labelledby=/);
   assert.match(previews, /width=\{1448\} height=\{1086\} loading="lazy"/);
   assert.doesNotMatch(previews, /aria-pressed|onPointerEnter/);
-  assert.match(previews, /narrow.matches && !isNativeApp\(\) && !root.hasAttribute\(NATIVE_SHELL_ATTRIBUTE\)/);
+  assert.match(previews, /setWebShowcase\(!isNativeApp\(\) && !root.hasAttribute\(NATIVE_SHELL_ATTRIBUTE\)\)/);
+  assert.match(previews, /<PublicFeatureArtwork id=\{id\} alt=\{alt\}/);
+  assert.match(previews, /className="pl-native-feature-fallback"/);
+  assert.match(css, /grid-template-areas: 'copy art'/);
+  assert.match(css, /grid-template-areas: 'art' 'copy'/);
   assert.doesNotMatch(landing + previews, /Choosing a home doesn’t happen alone|pl-collaboration|youtube|<iframe/);
   assert.match(landing, /className="pl-section-divider" aria-hidden="true"/);
   assert.match(css, /repeat\(4, minmax\(0, 1fr\)\)/);
