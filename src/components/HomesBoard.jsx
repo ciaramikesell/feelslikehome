@@ -22,7 +22,7 @@ import HomeFiltersSheet from '@/components/HomeFiltersSheet';
 import { useHomesWorkspace } from '@/components/HomesWorkspace';
 import {
   EMPTY_FILTERS, SORT_MENU, activeFilterCount, activeFilterLabels, applyContenderFilters, currentUserWantsToTour,
-  singleFilterCounts, sortContenders,
+  singleFilterCounts, sortContenders, sortLabel,
 } from '@/lib/homesCollection';
 import {
   EMPTY_HOME_FILTERS, SHOW_CONFIRMED, SHOW_POSSIBLE, applyHomeFilters, filterableCriteria, possibleMatchNote,
@@ -377,6 +377,8 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
   const priorities = initialPriorities;
   const vocabulary = homeVocabulary(initialPriorities);
   const [query, setQuery] = useState('');
+  const [nativeSearchOpen, setNativeSearchOpen] = useState(false);
+  const nativeSearchButton = useRef(null);
   // Filters combine (AND). Each one keeps its existing meaning; see homesCollection.
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [sortBy, setSortBy] = useState('newest');
@@ -796,6 +798,21 @@ export default function HomesBoard({ mode, userId, searchId, initialHomes, initi
 
   return (
     <>
+      {mode === 'homes' && <section className="hh-native-homes-toolbar" aria-label="My Homes controls">
+        <div className="hh-native-homes-topline">
+          <div><h2>My {vocabulary.plural}</h2><p>{activeHomes.length} saved {activeHomes.length === 1 ? vocabulary.singularLower : vocabulary.pluralLower}</p></div>
+          {activeHomes.length > 0 && <div className="hh-native-homes-actions">
+            <button ref={nativeSearchButton} type="button" className="hh-btn hh-btn-ghost" aria-label={`Search your ${vocabulary.pluralLower}`} aria-expanded={nativeSearchOpen} aria-controls="native-homes-search" onClick={() => setNativeSearchOpen((open) => !open)}><Search size={21} aria-hidden="true" /></button>
+            <button type="button" className="hh-btn hh-btn-ghost" aria-label={refinement.active ? `Filter, ${refinement.conditions.length} active` : `Filter ${vocabulary.pluralLower}`} aria-haspopup="dialog" onClick={() => setFiltersOpen(true)}><SlidersHorizontal size={21} aria-hidden="true" />{refinement.active && <span className="sr-only">Active filters</span>}</button>
+            <button type="button" className="hh-btn hh-native-homes-add" onClick={() => openHomeModal(emptyHome())}><Plus size={21} aria-hidden="true" /><span>Add a {vocabulary.singular}</span></button>
+          </div>}
+        </div>
+        {activeHomes.length > 0 && <>
+          {nativeSearchOpen && <label className="hh-homes-search" id="native-homes-search"><Search size={18} aria-hidden="true" /><span className="sr-only">Search address, city, or feature</span><input autoFocus type="search" value={query} placeholder="Search address, city, or feature…" onChange={(event) => setQuery(event.target.value)} onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); setNativeSearchOpen(false); nativeSearchButton.current?.focus(); } }} /></label>}
+          <label className="hh-homes-sort"><span>Sort:</span><select value={sortBy} onChange={(event) => setSortBy(event.target.value)} aria-label={`Sort ${vocabulary.pluralLower}`}>{SORT_MENU.map((option) => <option key={option.key} value={option.key}>{sortLabel(option.key, { short: true })}</option>)}</select><ChevronDown size={15} aria-hidden="true" /></label>
+        </>}
+        <Link href="/archive" className="hh-native-archive">Archived ({archivedHomes.length}) →</Link>
+      </section>}
       {mode === 'homes' && (
         <section className="hh-homes-toolbar" aria-label={`Search, sort and filter ${vocabulary.pluralLower}`}>
           <div className="hh-homes-toolbar-row">

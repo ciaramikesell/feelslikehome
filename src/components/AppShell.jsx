@@ -293,7 +293,7 @@ export default function AppShell({ children, userEmail, userId, firstName = null
   };
 
   return (
-    <div className={`hh-root ${native ? 'hh-native' : ''} ${FOCUSED_MOBILE_ROUTES.includes(pathname) ? 'hh-focused-route' : ''}`}>
+    <div className={`hh-root ${native ? 'hh-native' : ''} ${pathname === '/homes' ? 'hh-homes-route' : ''} ${FOCUSED_MOBILE_ROUTES.includes(pathname) ? 'hh-focused-route' : ''}`}>
       <div className={`hh-app-frame ${pathname === '/map' ? 'hh-map-frame' : ''}`}>
         {/* Approved My Homes header (Phase 1): a quiet utility row, the centered
             editorial wordmark (no house mark), then the centered primary

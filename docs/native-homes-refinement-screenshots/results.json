@@ -1,0 +1,192 @@
+[
+  {
+    "name": "320: real native bridge, compact toolbar, no duplicate top navigation, no overflow",
+    "ok": true
+  },
+  {
+    "name": "320: first photo position",
+    "before": 556.296875,
+    "after": 286.59375,
+    "ok": true
+  },
+  {
+    "name": "320: search opens, filters results, Escape restores trigger focus",
+    "ok": true
+  },
+  {
+    "name": "320: sort and independent Filter retain existing behavior and focus trap",
+    "ok": true
+  },
+  {
+    "name": "320: labeled Add opens existing flow and closes",
+    "ok": true
+  },
+  {
+    "name": "320: Archive stays reachable",
+    "ok": true
+  },
+  {
+    "name": "320: card actions remain reachable above the bottom nav",
+    "ok": true
+  },
+  {
+    "name": "375: real native bridge, compact toolbar, no duplicate top navigation, no overflow",
+    "ok": true
+  },
+  {
+    "name": "375: first photo position",
+    "before": 505.296875,
+    "after": 286.59375,
+    "ok": true
+  },
+  {
+    "name": "375: search opens, filters results, Escape restores trigger focus",
+    "ok": true
+  },
+  {
+    "name": "375: sort and independent Filter retain existing behavior and focus trap",
+    "ok": true
+  },
+  {
+    "name": "375: labeled Add opens existing flow and closes",
+    "ok": true
+  },
+  {
+    "name": "375: Archive stays reachable",
+    "ok": true
+  },
+  {
+    "name": "375: card actions remain reachable above the bottom nav",
+    "ok": true
+  },
+  {
+    "name": "390: real native bridge, compact toolbar, no duplicate top navigation, no overflow",
+    "ok": true
+  },
+  {
+    "name": "390: first photo position",
+    "before": 505.296875,
+    "after": 287.25,
+    "ok": true
+  },
+  {
+    "name": "390: search opens, filters results, Escape restores trigger focus",
+    "ok": true
+  },
+  {
+    "name": "390: sort and independent Filter retain existing behavior and focus trap",
+    "ok": true
+  },
+  {
+    "name": "390: labeled Add opens existing flow and closes",
+    "ok": true
+  },
+  {
+    "name": "390: Archive stays reachable",
+    "ok": true
+  },
+  {
+    "name": "390: card actions remain reachable above the bottom nav",
+    "ok": true
+  },
+  {
+    "name": "430: real native bridge, compact toolbar, no duplicate top navigation, no overflow",
+    "ok": true
+  },
+  {
+    "name": "430: first photo position",
+    "before": 485.296875,
+    "after": 257.796875,
+    "ok": true
+  },
+  {
+    "name": "430: search opens, filters results, Escape restores trigger focus",
+    "ok": true
+  },
+  {
+    "name": "430: sort and independent Filter retain existing behavior and focus trap",
+    "ok": true
+  },
+  {
+    "name": "430: labeled Add opens existing flow and closes",
+    "ok": true
+  },
+  {
+    "name": "430: Archive stays reachable",
+    "ok": true
+  },
+  {
+    "name": "430: card actions remain reachable above the bottom nav",
+    "ok": true
+  },
+  {
+    "name": "native card opens Home Details and Close returns to the same list",
+    "ok": true
+  },
+  {
+    "name": "native card archives and restores through existing authorized actions",
+    "ok": true
+  },
+  {
+    "name": "390: screenshot pixel comparison",
+    "uiDifferences": 0,
+    "photoDifferences": 0,
+    "maxPhotoDelta": 0,
+    "ok": true
+  },
+  {
+    "name": "390: ordinary website UI pixels unchanged from main",
+    "ok": true
+  },
+  {
+    "name": "1440: screenshot pixel comparison",
+    "uiDifferences": 0,
+    "photoDifferences": 55,
+    "maxPhotoDelta": 10,
+    "ok": true
+  },
+  {
+    "name": "1440: ordinary website UI pixels unchanged from main",
+    "ok": true
+  },
+  {
+    "name": "320: empty search has approved message, one Add, no meaningless filters/sort",
+    "ok": true
+  },
+  {
+    "name": "375: empty search has approved message, one Add, no meaningless filters/sort",
+    "ok": true
+  },
+  {
+    "name": "390: empty search has approved message, one Add, no meaningless filters/sort",
+    "ok": true
+  },
+  {
+    "name": "430: empty search has approved message, one Add, no meaningless filters/sort",
+    "ok": true
+  },
+  {
+    "name": "co-buyer switches from own empty search to shared homes without permission changes",
+    "ok": true
+  },
+  {
+    "name": "bottom Homes: existing destination preserved",
+    "ok": true
+  },
+  {
+    "name": "bottom Tour: existing destination preserved",
+    "ok": true
+  },
+  {
+    "name": "bottom Compare: existing destination preserved",
+    "ok": true
+  },
+  {
+    "name": "bottom Map: existing destination preserved",
+    "ok": true
+  },
+  {
+    "name": "bottom Search: existing destination preserved",
+    "ok": true
+  }
+]
