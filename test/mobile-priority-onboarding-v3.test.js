@@ -274,7 +274,7 @@ test('one category component drives every category screen; Home type, layout and
   assert.match(flow, /<PriorityFooter/);
   assert.match(read('src/components/onboarding/Onboarding.jsx'), /onSkip=\{\(from\) => moveOn\(from, \{ skip: true \}\)\}/);
   // Home Add / Home Facts keep their home type, layout and condition questions.
-  assert.match(read('src/components/HomeFacts.jsx') + read('src/components/FactFields.jsx'), /homeLayout|Layout/);
+  assert.match(read('src/components/MatchFactEditors.jsx') + read('src/components/FactFields.jsx'), /homeLayout|Layout/);
 });
 
 test('cards: text label always, decorative local images with lazy loading, responsive sizes and a fallback; no remote images', () => {

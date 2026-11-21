@@ -5,13 +5,13 @@ import PhotoPositioner from '@/components/PhotoPositioner';
 import { parsePhotoUrl, validatePhotoUrl } from '@/lib/photoFraming';
 
 import { Fragment, useEffect, useRef, useState } from 'react';
-import { ChevronDown, ArrowUpRight, House, Link2, Pencil, Upload } from 'lucide-react';
+import { ArrowUpRight, House, Link2, Pencil, Upload } from 'lucide-react';
 import {
-  BASEMENT_SUGGESTIONS, CONDITION_FACT_CHOICES, COOLING_SUGGESTIONS, GARAGE_SPACE_CHOICES,
-  GARAGE_TYPE_CHOICES, HEATING_SUGGESTIONS, HOA_STATUS_CHOICES, LAUNDRY_LOCATION_CHOICES, LAYOUT_FACT_CHOICES, PROPERTY_TYPE_CHOICES,
+  BASEMENT_SUGGESTIONS, GARAGE_SPACE_CHOICES,
+  GARAGE_TYPE_CHOICES, LAUNDRY_LOCATION_CHOICES,
   basementDescriptionPatch, basementFieldValue, basementMatchReading, describeBasement, editHoaFee, formatHoaFee, garagePatch, garageSpacesSelectValue,
-  hoaConflict, hoaStatusChoice, hoaStatusValue, homeFactsAvailability, layoutPatch, layoutValues,
-  listingSays, normalizeLotSizeInput, parseTaxYear, propertyTaxPatch, propertyTypeLabel, TAX_YEAR_INVALID_MESSAGE,
+  hoaConflict, homeFactsAvailability,
+  normalizeLotSizeInput,
 } from '@/lib/homeFacts';
 import { photoFileError, PHOTO_BUCKET, storagePathFromPublicUrl, uploadHomePhoto } from '@/lib/homePhoto';
 import { digitsOnly, formatCurrencyDisplay, formatDateOnly, formatLotSizeDisplay, formatTriState, noteEntries, splitAddressLines } from '@/lib/homeDisplay';
@@ -24,7 +24,7 @@ import { countyRecordContext, formatShortDate, listingContextSummary, listingSna
 import Sheet from '@/components/Sheet';
 import { OfferedFactsSheet } from '@/components/FactChecklist';
 import { createClient } from '@/lib/supabase/client';
-import { MultiSelectField, QuietInput, SelectField } from '@/components/FactFields';
+import { QuietInput, SelectField } from '@/components/FactFields';
 import { NOTE_LIST_FIELDS, noteListHint } from '@/components/NoteListFields';
 
 // Home Facts — everything FLH knows about the property, directly editable.
@@ -89,15 +89,11 @@ function Row({ label, htmlFor, hint, children }) {
   </div>;
 }
 
-function Group({ id, title, summary = 'Not added yet', defaultOpen = false, children }) {
-  const [open, setOpen] = useState(defaultOpen);
-  return <details className="flh-hf-block flh-facts-group" open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>
-    <summary aria-labelledby={id}>
-      <span><h3 id={id} className="flh-hf-block-title">{title}</h3><small>{summary}</small></span>
-      <ChevronDown size={18} aria-hidden="true" />
-    </summary>
+function Group({ id, title, children }) {
+  return <section className="flh-hf-block flh-facts-group" aria-labelledby={id}>
+    <h3 id={id} className="flh-hf-block-title">{title}</h3>
     <div className="flh-facts-group-body">{children}</div>
-  </details>;
+  </section>;
 }
 
 // Two separate facts side by side under one heading (Garage: Type · Spaces;
@@ -253,16 +249,12 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
   const failed = (field) => editor?.failed.includes(field) || false;
   const save = (patch) => editor.saveShared(patch);
   const record = countyRecordContext(home.listingImport);
-  const listingType = listingSnapshotContext(home.listingImport)?.listingType || null;
   const text = (field, label, { parse = parseText, ...rest } = {}) => <QuietInput id={`hf-${field}`} label={label} value={home[field]} readOnly={isReadOnly} failed={failed(field)} registerDraft={editor?.registerDraft} parse={parse} onCommit={(value) => save({ [field]: value })} className={`is-boxed${priorityIds.has(`hf-${field}`) ? ' is-priority-unknown' : ''}`} {...rest} />;
   const select = (field, label, choices, onCommit = (value) => save({ [field]: value })) => <SelectField id={`hf-${field}`} label={label} value={home[field]} choices={choices} readOnly={isReadOnly} failed={failed(field)} priority={priorityIds.has(`hf-${field}`)} onCommit={onCommit} />;
   const { line2 } = splitAddressLines(home.address);
   const priceLabel = showsRentalFacts ? 'Monthly rent' : 'Asking price';
   const laundryKnownToDatabase = home.laundryLocation !== undefined;
-  const utilitiesSummary = [home.yearBuilt, !showsRentalFacts && home.propertyTaxAnnual ? `${money(home.propertyTaxAnnual)}/yr` : null, home.heating || home.cooling ? 'Heating & cooling' : null].filter(Boolean).join(' · ');
-  const schoolSummary = [home.schoolDistrict, home.schoolsNotes ? 'details added' : null].filter(Boolean).join(' · ') || 'District, schools & enrollment notes';
   const basement = basementFieldValue(home);
-  const hoaKnownToDatabase = home.hasHoa !== undefined;
   // Phase 6: the dated listing summary (Details opens the sheet) and a quiet way
   // down to Your Match (HomeOverlay). Rendered in the identity column on wider
   // screens and full width on phones (CSS shows one of the two).
@@ -313,6 +305,12 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
                 number with no unit opens as the bare number; saving it confirms acres. */}
             <QuietInput id="hf-lotSize" label="Lot size in acres" value={home.lotSize} readOnly={isReadOnly} failed={failed('lotSize')} registerDraft={editor?.registerDraft} format={formatLotSizeDisplay} edit={(value) => (isUnitlessLotSize(value) ? String(value).trim() : formatLotSizeDisplay(value))} parse={normalizeLotSizeInput} size={9} placeholder="— acres" onCommit={(lotSize) => save({ lotSize })} />
           </p>}
+          {(home.yearBuilt || (!showsRentalFacts && home.propertyTaxAnnual != null)) && <p className="flh-hf2-history">
+            {home.yearBuilt ? `Built ${home.yearBuilt}` : ''}
+            {home.yearBuilt && !showsRentalFacts && home.propertyTaxAnnual != null ? ' · ' : ''}
+            {!showsRentalFacts && home.propertyTaxAnnual != null ? `Taxes ${money(home.propertyTaxAnnual)}/yr${home.propertyTaxYear ? ` (${home.propertyTaxYear})` : ''}` : ''}
+          </p>}
+          {matchOverview}
           <ListingLink home={home} readOnly={isReadOnly} editor={editor} />
 
           {home.suggestedBy && <span className="hh-provenance">Suggested by {home.suggestedBy}</span>}
@@ -323,31 +321,26 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
 
       </section>
 
-      {matchOverview}
 
       <section className="flh-hf2-facts" aria-labelledby="hf-title">
         <header className={`flh-hf2-section-head ${showHeading ? '' : 'sr-only'}`}>
           <h2 id="hf-title" className="flh-overlay-heading">Home Facts</h2>
-          <span>{isReadOnly ? 'From the listing and the buyers' : 'All optional'}</span>
+          <span>{isReadOnly ? 'From the listing and the buyers' : 'Add or update key details to keep your Match accurate.'}</span>
         </header>
         {/* Phase 6: what the warm Unknown fields mean, said once. */}
         {!isReadOnly && <p className="flh-hf2-legend">Unknown isn’t No. Terracotta outlines mark unanswered priorities. All details are optional.</p>}
         {!isReadOnly && <OfferedFactsEntry home={home} onAdd={save} />}
         <div className="flh-hf2-columns">
           <div className="flh-hf2-column">
-            <Group id="hf-basic-title" title="Basic Details" defaultOpen summary={[propertyTypeLabel(home.propertyType), ...layoutValues(home)].filter(Boolean).join(' · ') || 'Type, layout & condition'}>
+            <Group id="hf-basic-title" title="Basic Details">
               {!showsRentalFacts && <Row label="Estimated monthly payment" hint="your estimate" htmlFor="hf-estMonthly">{text('estMonthly', null, { parse: parseMoney, format: (value) => (value ? `${money(value)}/mo` : ''), edit: (value) => money(value), inputMode: 'numeric', placeholder: 'Add your estimate' })}</Row>}
-              {available.propertyType && <Row label="Property type" htmlFor="hf-propertyType">{select('propertyType', null, PROPERTY_TYPE_CHOICES)}</Row>}
-              {available.layout && <Row label="Home layout" htmlFor="hf-layout" hint={!layoutValues(home).length && record.stories ? `County records: ${record.stories} ${record.stories === 1 ? 'story' : 'stories'}` : null}><MultiSelectField priority={priorityIds.has('hf-layout')} id="hf-layout" label="Home layout" values={layoutValues(home)} choices={LAYOUT_FACT_CHOICES} readOnly={isReadOnly} failed={failed('homeLayout') || failed('primaryBedroomLocation')} onCommit={(next) => { const patch = layoutPatch(home, next); if (Object.keys(patch).length) save(patch); }} /></Row>}
-              {available.condition && <Row label="Home condition" htmlFor="hf-homeCondition" hint={!(home.homeCondition || []).length && listingType === 'New Construction' ? 'The listing called it New Construction' : null}><MultiSelectField priority={priorityIds.has('hf-homeCondition')} id="hf-homeCondition" label="Home condition" values={home.homeCondition} choices={CONDITION_FACT_CHOICES} readOnly={isReadOnly} failed={failed('homeCondition')} onCommit={(homeCondition) => save({ homeCondition })} /></Row>}
               {/* An existing Match input with no other home here: shown when it's
                   part of this search or already has a value. */}
               {!apartment && (home.secondaryBedroomLocation || (priorities.secondaryBedroomLocation?.value && priorities.secondaryBedroomLocation.tier !== 'dontcare')) && <Row label="Secondary bedrooms" htmlFor="hf-secondaryBedroomLocation">{select('secondaryBedroomLocation', null, SECONDARY_BEDROOM_CHOICES, (value) => save({ secondaryBedroomLocation: value || '' }))}</Row>}
               {/* Always offered for a home to buy: blank is Unknown, 0 is a confirmed $0 monthly fee
                   (not proof there's no HOA). */}
-              {/* HOA status: the confirmed answer No HOA reads. A $0 fee alone never sets it. */}
-              {!showsRentalFacts && hoaKnownToDatabase && <Row label="HOA" htmlFor="hf-hasHoa"><SelectField priority={priorityIds.has('hf-hasHoa')} id="hf-hasHoa" value={hoaStatusChoice(home.hasHoa)} choices={HOA_STATUS_CHOICES} readOnly={isReadOnly} failed={failed('hasHoa')} onCommit={(choice) => save({ hasHoa: hoaStatusValue(choice) })} /></Row>}
-              {!showsRentalFacts && <Row label="HOA fee" hint={isReadOnly ? null : 'Enter 0 for a $0 monthly fee'} htmlFor="hf-hoaFeeMonthly">{text('hoaFeeMonthly', null, { parse: parseMoneyNumber, format: formatHoaFee, edit: editHoaFee, inputMode: 'numeric' })}</Row>}
+              {/* Stored HOA status still feeds Match; the fee never infers it. */}
+              {!showsRentalFacts && <Row label="HOA fee / month" hint={isReadOnly ? null : 'Enter 0 for a $0 monthly fee'} htmlFor="hf-hoaFeeMonthly">{text('hoaFeeMonthly', null, { parse: parseMoneyNumber, format: formatHoaFee, edit: editHoaFee, inputMode: 'numeric' })}</Row>}
               {!showsRentalFacts && hoaConflict(home) && <p className="flh-hf2-note" role="note">The fee says there’s an HOA, but HOA is set to No. No HOA stays Unknown in Match until they agree.</p>}
               {showsRentalFacts && home.availableOn && <Row label="Available on"><span className="flh-fact-text">{formatDateOnly(home.availableOn)}</span></Row>}
               {showsRentalFacts && [['petsAllowed', 'Pets allowed'], ['utilitiesIncluded', 'Utilities included'], ['inUnitLaundry', 'In-unit laundry']].map(([field, label]) => (
@@ -357,33 +350,17 @@ export default function HomeFacts({ home, priorities, vocabulary, readOnly = fal
             </Group>
 
             {/* One freeform School Details field (homes.schools_notes) beside the district.
-                Saved school names stay shown and editable; nothing is looked up or
-                inferred from the address. */}
+                Legacy school-name columns stay stored, but are never substituted
+                into these two fields after clearing or refresh. No lookup. */}
             {available.schools && <div className="flh-hf2-schools">
-              <Group id="hf-schools-title" title="Schools" summary={schoolSummary}>
+              <Group id="hf-schools-title" title="Schools">
                 <Row label="District" htmlFor="hf-schoolDistrict">{text('schoolDistrict')}</Row>
                 <div className="flh-hf-row is-stacked">
-                  <label className="flh-hf-row-label" htmlFor="hf-schoolsNotes">Details</label>
+                  <label className="flh-hf-row-label" htmlFor="hf-schoolsNotes">Notes</label>
                   <div className="flh-hf-row-control">{text('schoolsNotes', null, { parse: parseLegacyText, multiline: true, placeholder: isReadOnly ? 'Unknown' : 'Schools, bus routes, boundary or enrollment notes…' })}</div>
                 </div>
-                {[['elementarySchool', 'Elementary'], ['middleSchool', 'Middle'], ['highSchool', 'High']].filter(([field]) => home[field]).map(([field, label]) => <Row key={field} label={label} htmlFor={`hf-${field}`}>{text(field)}</Row>)}
               </Group>
             </div>}
-        <Group id="hf-utilities-title" title="Costs & Utilities" summary={utilitiesSummary || 'Year built, taxes, heating & cooling'}>
-          <div className="flh-hf2-secondary-grid">
-            {!showsRentalFacts && <>
-              <div className="flh-hf2-mini"><label htmlFor="hf-propertyTaxAnnual">Annual taxes</label>{text('propertyTaxAnnual', null, { parse: parseMoneyNumber, format: (value) => (value ? `${money(value)}/yr` : ''), edit: (value) => money(value), inputMode: 'numeric', onCommit: (value) => save(propertyTaxPatch(home, value)) })}</div>
-              <div className="flh-hf2-mini"><label htmlFor="hf-propertyTaxYear">Tax year</label>{text('propertyTaxYear', null, { parse: parseTaxYear, invalidMessage: TAX_YEAR_INVALID_MESSAGE, inputMode: 'numeric', size: 4 })}</div>
-            </>}
-            <div className="flh-hf2-mini"><label htmlFor="hf-yearBuilt">Year built</label>{text('yearBuilt', null, { parse: parseLegacyText, inputMode: 'numeric', placeholder: 'Unknown' })}</div>
-            {!apartment && <>
-              <div className="flh-hf2-mini is-wide"><label htmlFor="hf-heating">Heating</label>{text('heating', null, { list: 'hf-heating-options' })}{!home.heating && listingSays(home, 'heating') && <small className="flh-hf2-hint">{listingSays(home, 'heating')}</small>}</div>
-              <div className="flh-hf2-mini is-wide"><label htmlFor="hf-cooling">Cooling</label>{text('cooling', null, { list: 'hf-cooling-options' })}{!home.cooling && listingSays(home, 'cooling') && <small className="flh-hf2-hint">{listingSays(home, 'cooling')}</small>}</div>
-              <datalist id="hf-heating-options">{HEATING_SUGGESTIONS.map((value) => <option key={value} value={value} />)}</datalist>
-              <datalist id="hf-cooling-options">{COOLING_SUGGESTIONS.map((value) => <option key={value} value={value} />)}</datalist>
-            </>}
-          </div>
-        </Group>
           </div>
 
           {(available.garage || available.basement || laundryKnownToDatabase) && <div className="flh-hf2-column flh-hf2-column-side">

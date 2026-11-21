@@ -132,25 +132,23 @@ test('Laundry: after Basement in Home Facts, Main Floor answers Main Floor Laund
 
 /* ----------------------------------- HOA ----------------------------------- */
 
-test('HOA status: a separate, explicit control; a $0 fee never sets it; a disagreement is said, not resolved', () => {
+test('HOA status stays stored evidence; routine facts offer only the monthly fee', () => {
   assert.deepEqual(HOA_STATUS_CHOICES, [['yes', 'Has an HOA'], ['no', 'No HOA']]);
   assert.deepEqual([hoaStatusChoice(true), hoaStatusChoice(false), hoaStatusChoice(null), hoaStatusChoice(undefined)], ['yes', 'no', '', '']);
   assert.deepEqual([hoaStatusValue('yes'), hoaStatusValue('no'), hoaStatusValue(''), hoaStatusValue(null)], [true, false, null, null]);
   assert.equal(hoaConflict({ hasHoa: false, hoaFeeMonthly: 125 }), true);
   for (const home of [{ hasHoa: false, hoaFeeMonthly: 0 }, { hasHoa: true, hoaFeeMonthly: 0 }, { hasHoa: null, hoaFeeMonthly: 125 }, { hasHoa: false, hoaFeeMonthly: null }]) assert.equal(hoaConflict(home), false);
-  assert.match(facts, /hoaKnownToDatabase && <Row label="HOA" htmlFor="hf-hasHoa"><SelectField[^>]*id="hf-hasHoa" value=\{hoaStatusChoice\(home\.hasHoa\)\}/);
-  assert.match(facts, /onCommit=\{\(choice\) => save\(\{ hasHoa: hoaStatusValue\(choice\) \}\)\}/);
   // The fee control and its "$0 is not No HOA" wording are unchanged.
-  assert.match(facts, /<Row label="HOA fee" hint=\{isReadOnly \? null : 'Enter 0 for a \$0 monthly fee'\}/);
+  assert.match(facts, /<Row label="HOA fee \/ month" hint=\{isReadOnly \? null : 'Enter 0 for a \$0 monthly fee'\}/);
 });
 
 /* --------------------------------- Schools --------------------------------- */
 
-test('School Details: one freeform field beside the district; saved school names stay; nothing is looked up', () => {
+test('School Details: one freeform field beside the district; saved school names are hidden without deletion; nothing is looked up', () => {
   const schools = facts.match(/<Group id="hf-schools-title" title="Schools"[^>]*>([\s\S]*?)<\/Group>/)[1];
   assert.match(schools, /<Row label="District" htmlFor="hf-schoolDistrict">\{text\('schoolDistrict'\)\}<\/Row>/);
   assert.match(schools, /text\('schoolsNotes', null, \{ parse: parseLegacyText, multiline: true/);
-  assert.match(schools, /\[\['elementarySchool', 'Elementary'\], \['middleSchool', 'Middle'\], \['highSchool', 'High'\]\]\.filter\(\(\[field\]\) => home\[field\]\)/);
+  assert.doesNotMatch(schools, /elementarySchool|middleSchool|highSchool/);
   assert.doesNotMatch(facts + read('src/lib/homeFacts.js'), /boundary lookup|fetch\(|geocode/i);
 });
 

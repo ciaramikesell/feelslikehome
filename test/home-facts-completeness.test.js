@@ -44,7 +44,7 @@ test('HOA fee: Unknown, a confirmed $0 and an amount read differently', () => {
 
 test('HOA fee is always offered for a home to buy, including when Unknown, and never for a rental', () => {
   assert.doesNotMatch(homeFactsSource, /home\.hoaFeeMonthly != null &&/, 'no longer hidden when empty');
-  assert.match(homeFactsSource, /\{!showsRentalFacts && <Row label="HOA fee" hint=\{isReadOnly \? null : 'Enter 0 for a \$0 monthly fee'\} htmlFor="hf-hoaFeeMonthly">/, 'the $0 hint is for editors only');
+  assert.match(homeFactsSource, /\{!showsRentalFacts && <Row label="HOA fee \/ month" hint=\{isReadOnly \? null : 'Enter 0 for a \$0 monthly fee'\} htmlFor="hf-hoaFeeMonthly">/, 'the $0 hint is for editors only');
   assert.doesNotMatch(homeFactsSource, /no HOA['’]/i, 'nothing claims "no HOA" from a $0 fee');
   assert.match(homeFactsSource, /text\('hoaFeeMonthly', null, \{ parse: parseMoneyNumber, format: formatHoaFee, edit: editHoaFee/);
 });
@@ -104,11 +104,10 @@ test('a year a person entered is theirs; setting the listing amount back brings 
   assert.deepEqual(propertyTaxPatch({ propertyTaxAnnual: 3000, propertyTaxYear: 2024, listingImport: null }, 3100), { propertyTaxAnnual: 3100 });
 });
 
-test('Home Facts edits the tax year beside the amount, and the amount routes through propertyTaxPatch', () => {
-  assert.match(homeFactsSource, /<label htmlFor="hf-propertyTaxAnnual">Annual taxes<\/label>/);
-  assert.match(homeFactsSource, /onCommit: \(value\) => save\(propertyTaxPatch\(home, value\)\)/);
-  assert.match(homeFactsSource, /<label htmlFor="hf-propertyTaxYear">Tax year<\/label>\{text\('propertyTaxYear', null, \{ parse: parseTaxYear, invalidMessage: TAX_YEAR_INVALID_MESSAGE/);
-  assert.doesNotMatch(homeFactsSource, /annualTaxesLabel/);
+test('Home Facts displays saved tax metadata in the overview without tax editing controls', () => {
+  assert.match(homeFactsSource, /Taxes \$\{money\(home\.propertyTaxAnnual\)\}\/yr/);
+  assert.match(homeFactsSource, /home\.propertyTaxYear/);
+  assert.doesNotMatch(homeFactsSource, /id="hf-propertyTaxAnnual"|id="hf-propertyTaxYear"|hf-utilities-title/);
 });
 
 /* -------------------------------- Townhome -------------------------------- */

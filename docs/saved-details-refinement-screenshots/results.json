@@ -1,0 +1,162 @@
+[
+  {
+    "name": "before populated 390: no horizontal overflow or runtime errors",
+    "ok": true
+  },
+  {
+    "name": "after populated 390: no horizontal overflow or runtime errors",
+    "ok": true
+  },
+  {
+    "name": "populated 390: open facts, removed controls absent, one summary in identity",
+    "ok": true
+  },
+  {
+    "name": "before missing 390: no horizontal overflow or runtime errors",
+    "ok": true
+  },
+  {
+    "name": "after missing 390: no horizontal overflow or runtime errors",
+    "ok": true
+  },
+  {
+    "name": "missing 390: open facts, removed controls absent, one summary in identity",
+    "ok": true
+  },
+  {
+    "name": "before populated 768: no horizontal overflow or runtime errors",
+    "ok": true
+  },
+  {
+    "name": "after populated 768: no horizontal overflow or runtime errors",
+    "ok": true
+  },
+  {
+    "name": "populated 768: open facts, removed controls absent, one summary in identity",
+    "ok": true
+  },
+  {
+    "name": "before missing 768: no horizontal overflow or runtime errors",
+    "ok": true
+  },
+  {
+    "name": "after missing 768: no horizontal overflow or runtime errors",
+    "ok": true
+  },
+  {
+    "name": "missing 768: open facts, removed controls absent, one summary in identity",
+    "ok": true
+  },
+  {
+    "name": "before populated 1024: no horizontal overflow or runtime errors",
+    "ok": true
+  },
+  {
+    "name": "after populated 1024: no horizontal overflow or runtime errors",
+    "ok": true
+  },
+  {
+    "name": "populated 1024: open facts, removed controls absent, one summary in identity",
+    "ok": true
+  },
+  {
+    "name": "before missing 1024: no horizontal overflow or runtime errors",
+    "ok": true
+  },
+  {
+    "name": "after missing 1024: no horizontal overflow or runtime errors",
+    "ok": true
+  },
+  {
+    "name": "missing 1024: open facts, removed controls absent, one summary in identity",
+    "ok": true
+  },
+  {
+    "name": "before populated 1440: no horizontal overflow or runtime errors",
+    "ok": true
+  },
+  {
+    "name": "after populated 1440: no horizontal overflow or runtime errors",
+    "ok": true
+  },
+  {
+    "name": "populated 1440: open facts, removed controls absent, one summary in identity",
+    "ok": true
+  },
+  {
+    "name": "before missing 1440: no horizontal overflow or runtime errors",
+    "ok": true
+  },
+  {
+    "name": "after missing 1440: no horizontal overflow or runtime errors",
+    "ok": true
+  },
+  {
+    "name": "missing 1440: open facts, removed controls absent, one summary in identity",
+    "ok": true
+  },
+  {
+    "name": "estMonthly: edit, persist and reload",
+    "ok": true
+  },
+  {
+    "name": "hoaFeeMonthly: edit, persist and reload",
+    "ok": true
+  },
+  {
+    "name": "schoolDistrict: edit, persist and reload",
+    "ok": true
+  },
+  {
+    "name": "schoolsNotes: edit, persist and reload",
+    "ok": true
+  },
+  {
+    "name": "basement: edit, persist and reload",
+    "ok": true
+  },
+  {
+    "name": "pros: edit, persist and reload",
+    "ok": true
+  },
+  {
+    "name": "cons: edit, persist and reload",
+    "ok": true
+  },
+  {
+    "name": "garageType: select persists after refresh",
+    "ok": true
+  },
+  {
+    "name": "garageSpaces: select persists after refresh",
+    "ok": true
+  },
+  {
+    "name": "laundryLocation: select persists after refresh",
+    "ok": true
+  },
+  {
+    "name": "hidden evidence and legacy school names survive every retained-field edit unchanged",
+    "ok": true
+  },
+  {
+    "name": "View Match Details scrolls and transfers keyboard focus",
+    "ok": true
+  },
+  {
+    "name": "ranked property type remains editable in Match Breakdown through the shared fact writer",
+    "ok": true
+  },
+  {
+    "name": "legacy section=match URL reaches and focuses Match Breakdown",
+    "ok": true
+  },
+  {
+    "name": "coBuyer: authorized view loads with existing permission boundaries",
+    "ok": true
+  },
+  {
+    "name": "realtor: authorized view loads with existing permission boundaries",
+    "ok": true
+  }
+]
