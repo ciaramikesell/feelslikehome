@@ -1,0 +1,26 @@
+[
+  {
+    "approvedAsset": "public/images/homepage-previews/priorities.webp",
+    "sha256": "2869b91122afe324c6a36188f963bfc5d67473af9431cfec20674c9d5f64a4dc",
+    "unchangedFrom": "b93cd87",
+    "rendering": "Original photo pixels in CSS clipping windows; HTML labels and semantic cards"
+  },
+  {
+    "approvedAsset": "public/images/homepage-previews/listings.webp",
+    "sha256": "bf8486c20160d663a0c5b8c2c3434f88fd63a89ad7d26987ba75e9fc8a677f1a",
+    "unchangedFrom": "b93cd87",
+    "rendering": "Original photo pixels in CSS clipping windows; HTML labels and semantic cards"
+  },
+  {
+    "approvedAsset": "public/images/homepage-previews/compare.webp",
+    "sha256": "60cf73bf71c696ce189d4f04923704391ed299f593db2c73b7bacd5b49c9e7e3",
+    "unchangedFrom": "b93cd87",
+    "rendering": "Original photo pixels in CSS clipping windows; HTML labels and semantic cards"
+  },
+  {
+    "approvedAsset": "public/images/homepage-previews/collaborate.webp",
+    "sha256": "66a4953ef6617112e0c0567f373fa18d2b61c9f1336a0e7e379128a7a6901e80",
+    "unchangedFrom": "b93cd87",
+    "rendering": "Original photo pixels in CSS clipping windows; HTML labels and semantic cards"
+  }
+]

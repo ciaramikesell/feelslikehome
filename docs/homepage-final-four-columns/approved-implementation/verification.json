@@ -1,0 +1,44 @@
+{
+  "base": "3bc8460cb9bc57eb41080bc6a0505df1ed282fcb",
+  "branch": "ux/homepage-final-four-columns",
+  "pr": 204,
+  "approvalComment": "https://github.com/ciaramikesell/feelslikehome/pull/204#issuecomment-7060535763",
+  "productionBuild": "passed",
+  "focused": {
+    "passed": 48,
+    "failed": 0
+  },
+  "unitOnly": {
+    "passed": 1418,
+    "failed": 0,
+    "skipped": 255
+  },
+  "postgresqlEnabled": {
+    "passed": 1671,
+    "failed": 0,
+    "skipped": 2,
+    "skipReason": "optional sanitized live RentCast fixtures unavailable"
+  },
+  "browser": {
+    "assertionsPassed": 446,
+    "failed": 0,
+    "frameworkObservations": 2,
+    "widths": [
+      320,
+      375,
+      390,
+      430,
+      768,
+      1024,
+      1280,
+      1440
+    ],
+    "fonts": "actual approved Source Serif 4 and Plus Jakarta Sans, test-routed from prototype"
+  },
+  "nativeBridgeRegression": {
+    "passed": 61,
+    "failed": 0
+  },
+  "noJavaScriptScope": "Component fallback verified after completing the existing Next SSR stream wrapper; full dynamic-page no-JS support is not claimed.",
+  "mergeOrDeploymentCommand": "none"
+}

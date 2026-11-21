@@ -1,0 +1,714 @@
+[
+  {
+    "name": "320: images reserve layout before loading",
+    "ok": true
+  },
+  {
+    "name": "320: 4→2→1 grid",
+    "ok": true
+  },
+  {
+    "name": "320: no overflow",
+    "ok": true
+  },
+  {
+    "name": "320: no layout shift",
+    "ok": true
+  },
+  {
+    "name": "320: centered meaningful heading",
+    "ok": true
+  },
+  {
+    "name": "320: four articles and no selectors or collaboration",
+    "ok": true
+  },
+  {
+    "name": "320: one discreet note",
+    "ok": true
+  },
+  {
+    "name": "320: decorative divider hidden from AT",
+    "ok": true
+  },
+  {
+    "name": "320: title/caption 1",
+    "ok": true
+  },
+  {
+    "name": "320: intact lazy illustration 1",
+    "ok": true
+  },
+  {
+    "name": "320: title/caption 2",
+    "ok": true
+  },
+  {
+    "name": "320: intact lazy illustration 2",
+    "ok": true
+  },
+  {
+    "name": "320: title/caption 3",
+    "ok": true
+  },
+  {
+    "name": "320: intact lazy illustration 3",
+    "ok": true
+  },
+  {
+    "name": "320: title/caption 4",
+    "ok": true
+  },
+  {
+    "name": "320: intact lazy illustration 4",
+    "ok": true
+  },
+  {
+    "name": "320: approved fourth-image semantics",
+    "ok": true
+  },
+  {
+    "name": "320: mobile signup href",
+    "ok": true
+  },
+  {
+    "name": "320: signup form route",
+    "ok": true
+  },
+  {
+    "name": "320: Realtor navigation",
+    "ok": true
+  },
+  {
+    "name": "320: no runtime exceptions",
+    "ok": true
+  },
+  {
+    "name": "375: images reserve layout before loading",
+    "ok": true
+  },
+  {
+    "name": "375: 4→2→1 grid",
+    "ok": true
+  },
+  {
+    "name": "375: no overflow",
+    "ok": true
+  },
+  {
+    "name": "375: no layout shift",
+    "ok": true
+  },
+  {
+    "name": "375: centered meaningful heading",
+    "ok": true
+  },
+  {
+    "name": "375: four articles and no selectors or collaboration",
+    "ok": true
+  },
+  {
+    "name": "375: one discreet note",
+    "ok": true
+  },
+  {
+    "name": "375: decorative divider hidden from AT",
+    "ok": true
+  },
+  {
+    "name": "375: title/caption 1",
+    "ok": true
+  },
+  {
+    "name": "375: intact lazy illustration 1",
+    "ok": true
+  },
+  {
+    "name": "375: title/caption 2",
+    "ok": true
+  },
+  {
+    "name": "375: intact lazy illustration 2",
+    "ok": true
+  },
+  {
+    "name": "375: title/caption 3",
+    "ok": true
+  },
+  {
+    "name": "375: intact lazy illustration 3",
+    "ok": true
+  },
+  {
+    "name": "375: title/caption 4",
+    "ok": true
+  },
+  {
+    "name": "375: intact lazy illustration 4",
+    "ok": true
+  },
+  {
+    "name": "375: approved fourth-image semantics",
+    "ok": true
+  },
+  {
+    "name": "375: mobile signup href",
+    "ok": true
+  },
+  {
+    "name": "375: signup form route",
+    "ok": true
+  },
+  {
+    "name": "375: Realtor navigation",
+    "ok": true
+  },
+  {
+    "name": "375: no runtime exceptions",
+    "ok": true
+  },
+  {
+    "name": "390: images reserve layout before loading",
+    "ok": true
+  },
+  {
+    "name": "390: 4→2→1 grid",
+    "ok": true
+  },
+  {
+    "name": "390: no overflow",
+    "ok": true
+  },
+  {
+    "name": "390: no layout shift",
+    "ok": true
+  },
+  {
+    "name": "390: centered meaningful heading",
+    "ok": true
+  },
+  {
+    "name": "390: four articles and no selectors or collaboration",
+    "ok": true
+  },
+  {
+    "name": "390: one discreet note",
+    "ok": true
+  },
+  {
+    "name": "390: decorative divider hidden from AT",
+    "ok": true
+  },
+  {
+    "name": "390: title/caption 1",
+    "ok": true
+  },
+  {
+    "name": "390: intact lazy illustration 1",
+    "ok": true
+  },
+  {
+    "name": "390: title/caption 2",
+    "ok": true
+  },
+  {
+    "name": "390: intact lazy illustration 2",
+    "ok": true
+  },
+  {
+    "name": "390: title/caption 3",
+    "ok": true
+  },
+  {
+    "name": "390: intact lazy illustration 3",
+    "ok": true
+  },
+  {
+    "name": "390: title/caption 4",
+    "ok": true
+  },
+  {
+    "name": "390: intact lazy illustration 4",
+    "ok": true
+  },
+  {
+    "name": "390: approved fourth-image semantics",
+    "ok": true
+  },
+  {
+    "name": "390: mobile signup href",
+    "ok": true
+  },
+  {
+    "name": "390: signup form route",
+    "ok": true
+  },
+  {
+    "name": "390: Realtor navigation",
+    "ok": true
+  },
+  {
+    "name": "390: standalone Realtor pixels unchanged",
+    "ok": true
+  },
+  {
+    "name": "390: social/link metadata unchanged",
+    "ok": true
+  },
+  {
+    "name": "390: no runtime exceptions",
+    "ok": true
+  },
+  {
+    "name": "430: images reserve layout before loading",
+    "ok": true
+  },
+  {
+    "name": "430: 4→2→1 grid",
+    "ok": true
+  },
+  {
+    "name": "430: no overflow",
+    "ok": true
+  },
+  {
+    "name": "430: no layout shift",
+    "ok": true
+  },
+  {
+    "name": "430: centered meaningful heading",
+    "ok": true
+  },
+  {
+    "name": "430: four articles and no selectors or collaboration",
+    "ok": true
+  },
+  {
+    "name": "430: one discreet note",
+    "ok": true
+  },
+  {
+    "name": "430: decorative divider hidden from AT",
+    "ok": true
+  },
+  {
+    "name": "430: title/caption 1",
+    "ok": true
+  },
+  {
+    "name": "430: intact lazy illustration 1",
+    "ok": true
+  },
+  {
+    "name": "430: title/caption 2",
+    "ok": true
+  },
+  {
+    "name": "430: intact lazy illustration 2",
+    "ok": true
+  },
+  {
+    "name": "430: title/caption 3",
+    "ok": true
+  },
+  {
+    "name": "430: intact lazy illustration 3",
+    "ok": true
+  },
+  {
+    "name": "430: title/caption 4",
+    "ok": true
+  },
+  {
+    "name": "430: intact lazy illustration 4",
+    "ok": true
+  },
+  {
+    "name": "430: approved fourth-image semantics",
+    "ok": true
+  },
+  {
+    "name": "430: mobile signup href",
+    "ok": true
+  },
+  {
+    "name": "430: signup form route",
+    "ok": true
+  },
+  {
+    "name": "430: Realtor navigation",
+    "ok": true
+  },
+  {
+    "name": "430: no runtime exceptions",
+    "ok": true
+  },
+  {
+    "name": "768: images reserve layout before loading",
+    "ok": true
+  },
+  {
+    "name": "768: 4→2→1 grid",
+    "ok": true
+  },
+  {
+    "name": "768: no overflow",
+    "ok": true
+  },
+  {
+    "name": "768: no layout shift",
+    "ok": true
+  },
+  {
+    "name": "768: centered meaningful heading",
+    "ok": true
+  },
+  {
+    "name": "768: four articles and no selectors or collaboration",
+    "ok": true
+  },
+  {
+    "name": "768: one discreet note",
+    "ok": true
+  },
+  {
+    "name": "768: decorative divider hidden from AT",
+    "ok": true
+  },
+  {
+    "name": "768: title/caption 1",
+    "ok": true
+  },
+  {
+    "name": "768: intact lazy illustration 1",
+    "ok": true
+  },
+  {
+    "name": "768: title/caption 2",
+    "ok": true
+  },
+  {
+    "name": "768: intact lazy illustration 2",
+    "ok": true
+  },
+  {
+    "name": "768: title/caption 3",
+    "ok": true
+  },
+  {
+    "name": "768: intact lazy illustration 3",
+    "ok": true
+  },
+  {
+    "name": "768: title/caption 4",
+    "ok": true
+  },
+  {
+    "name": "768: intact lazy illustration 4",
+    "ok": true
+  },
+  {
+    "name": "768: approved fourth-image semantics",
+    "ok": true
+  },
+  {
+    "name": "768: signup-first dialog",
+    "ok": true
+  },
+  {
+    "name": "768: CTA focus restored",
+    "ok": true
+  },
+  {
+    "name": "768: Realtor navigation",
+    "ok": true
+  },
+  {
+    "name": "768: no runtime exceptions",
+    "ok": true
+  },
+  {
+    "name": "1024: images reserve layout before loading",
+    "ok": true
+  },
+  {
+    "name": "1024: 4→2→1 grid",
+    "ok": true
+  },
+  {
+    "name": "1024: no overflow",
+    "ok": true
+  },
+  {
+    "name": "1024: no layout shift",
+    "ok": true
+  },
+  {
+    "name": "1024: one-line desktop opening",
+    "ok": true
+  },
+  {
+    "name": "1024: taller hero around 80% viewport",
+    "ok": true
+  },
+  {
+    "name": "1024: centered meaningful heading",
+    "ok": true
+  },
+  {
+    "name": "1024: four articles and no selectors or collaboration",
+    "ok": true
+  },
+  {
+    "name": "1024: one discreet note",
+    "ok": true
+  },
+  {
+    "name": "1024: decorative divider hidden from AT",
+    "ok": true
+  },
+  {
+    "name": "1024: title/caption 1",
+    "ok": true
+  },
+  {
+    "name": "1024: intact lazy illustration 1",
+    "ok": true
+  },
+  {
+    "name": "1024: title/caption 2",
+    "ok": true
+  },
+  {
+    "name": "1024: intact lazy illustration 2",
+    "ok": true
+  },
+  {
+    "name": "1024: title/caption 3",
+    "ok": true
+  },
+  {
+    "name": "1024: intact lazy illustration 3",
+    "ok": true
+  },
+  {
+    "name": "1024: title/caption 4",
+    "ok": true
+  },
+  {
+    "name": "1024: intact lazy illustration 4",
+    "ok": true
+  },
+  {
+    "name": "1024: approved fourth-image semantics",
+    "ok": true
+  },
+  {
+    "name": "1024: signup-first dialog",
+    "ok": true
+  },
+  {
+    "name": "1024: CTA focus restored",
+    "ok": true
+  },
+  {
+    "name": "1024: Realtor navigation",
+    "ok": true
+  },
+  {
+    "name": "1024: no runtime exceptions",
+    "ok": true
+  },
+  {
+    "name": "1280: images reserve layout before loading",
+    "ok": true
+  },
+  {
+    "name": "1280: 4→2→1 grid",
+    "ok": true
+  },
+  {
+    "name": "1280: no overflow",
+    "ok": true
+  },
+  {
+    "name": "1280: no layout shift",
+    "ok": true
+  },
+  {
+    "name": "1280: one-line desktop opening",
+    "ok": true
+  },
+  {
+    "name": "1280: taller hero around 80% viewport",
+    "ok": true
+  },
+  {
+    "name": "1280: centered meaningful heading",
+    "ok": true
+  },
+  {
+    "name": "1280: four articles and no selectors or collaboration",
+    "ok": true
+  },
+  {
+    "name": "1280: one discreet note",
+    "ok": true
+  },
+  {
+    "name": "1280: decorative divider hidden from AT",
+    "ok": true
+  },
+  {
+    "name": "1280: title/caption 1",
+    "ok": true
+  },
+  {
+    "name": "1280: intact lazy illustration 1",
+    "ok": true
+  },
+  {
+    "name": "1280: title/caption 2",
+    "ok": true
+  },
+  {
+    "name": "1280: intact lazy illustration 2",
+    "ok": true
+  },
+  {
+    "name": "1280: title/caption 3",
+    "ok": true
+  },
+  {
+    "name": "1280: intact lazy illustration 3",
+    "ok": true
+  },
+  {
+    "name": "1280: title/caption 4",
+    "ok": true
+  },
+  {
+    "name": "1280: intact lazy illustration 4",
+    "ok": true
+  },
+  {
+    "name": "1280: approved fourth-image semantics",
+    "ok": true
+  },
+  {
+    "name": "1280: signup-first dialog",
+    "ok": true
+  },
+  {
+    "name": "1280: CTA focus restored",
+    "ok": true
+  },
+  {
+    "name": "1280: Realtor navigation",
+    "ok": true
+  },
+  {
+    "name": "1280: no runtime exceptions",
+    "ok": true
+  },
+  {
+    "name": "1440: images reserve layout before loading",
+    "ok": true
+  },
+  {
+    "name": "1440: 4→2→1 grid",
+    "ok": true
+  },
+  {
+    "name": "1440: no overflow",
+    "ok": true
+  },
+  {
+    "name": "1440: no layout shift",
+    "ok": true
+  },
+  {
+    "name": "1440: one-line desktop opening",
+    "ok": true
+  },
+  {
+    "name": "1440: taller hero around 80% viewport",
+    "ok": true
+  },
+  {
+    "name": "1440: centered meaningful heading",
+    "ok": true
+  },
+  {
+    "name": "1440: four articles and no selectors or collaboration",
+    "ok": true
+  },
+  {
+    "name": "1440: one discreet note",
+    "ok": true
+  },
+  {
+    "name": "1440: decorative divider hidden from AT",
+    "ok": true
+  },
+  {
+    "name": "1440: title/caption 1",
+    "ok": true
+  },
+  {
+    "name": "1440: intact lazy illustration 1",
+    "ok": true
+  },
+  {
+    "name": "1440: title/caption 2",
+    "ok": true
+  },
+  {
+    "name": "1440: intact lazy illustration 2",
+    "ok": true
+  },
+  {
+    "name": "1440: title/caption 3",
+    "ok": true
+  },
+  {
+    "name": "1440: intact lazy illustration 3",
+    "ok": true
+  },
+  {
+    "name": "1440: title/caption 4",
+    "ok": true
+  },
+  {
+    "name": "1440: intact lazy illustration 4",
+    "ok": true
+  },
+  {
+    "name": "1440: approved fourth-image semantics",
+    "ok": true
+  },
+  {
+    "name": "1440: signup-first dialog",
+    "ok": true
+  },
+  {
+    "name": "1440: CTA focus restored",
+    "ok": true
+  },
+  {
+    "name": "1440: Realtor navigation",
+    "ok": true
+  },
+  {
+    "name": "1440: standalone Realtor pixels unchanged",
+    "ok": true
+  },
+  {
+    "name": "1440: social/link metadata unchanged",
+    "ok": true
+  },
+  {
+    "name": "1440: no runtime exceptions",
+    "ok": true
+  }
+]
