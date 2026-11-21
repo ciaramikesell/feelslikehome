@@ -1,6 +1,6 @@
 # Final four-column homepage — founder review
 
-**Latest #204 design:** [editorial sliding showcase, accurate DOM artwork, native exclusion and current verification](editorial-showcase/README.md). Earlier four-column/mobile-only records below are historical drafts.
+**Latest #204 implementation:** [founder-approved prototype applied to all four slides, finishing adjustments, final screenshots and verification](approved-implementation/README.md). Earlier design records below are historical.
 
 Base: latest main `94bfd86`, merged PR #203. Branch: `ux/homepage-final-four-columns`. The founder’s request authorizes the homepage simplification; the attached [CODEX_BRIEF.md](CODEX_BRIEF.md) supplied its detailed specification and was read in full before changes.
 

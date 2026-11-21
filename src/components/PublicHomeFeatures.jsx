@@ -88,7 +88,7 @@ export default function PublicHomeFeatures() {
 
   return <section className="pl-how" id="how-it-works" aria-labelledby="how-title" tabIndex={-1}>
     <h2 className="pl-eyebrow" id="how-title">How it works</h2>
-    <noscript><style>{`.pl-showcase-track{display:block;overflow:visible}.pl-showcase-slide{margin-bottom:40px}.pl-showcase-navigation{display:none}`}</style></noscript>
+    <noscript><style>{`.pl-showcase-track{display:block;overflow:visible}.pl-showcase-slide{display:grid;grid-template-columns:minmax(0,1fr);margin-bottom:40px}.pl-showcase-copy{display:none}.pl-showcase-fallback-copy{display:block}.pl-feature-showcase{display:block}.pl-showcase-navigation{display:none}`}</style></noscript>
     <div className="pl-feature-showcase" role="region" aria-label="Feels Like Home features"
       aria-roledescription={webShowcase ? 'carousel' : undefined} data-web-showcase={webShowcase ? 'true' : undefined}>
       <div className="pl-showcase-track" id="pl-how-slides" ref={trackRef} onScroll={onScroll} onKeyDown={onKeyDown}
@@ -98,19 +98,24 @@ export default function PublicHomeFeatures() {
           aria-roledescription={webShowcase ? 'slide' : undefined} aria-label={webShowcase ? `${index + 1} of ${features.length}: ${title}` : undefined}
           aria-hidden={webShowcase && active !== index ? 'true' : undefined}>
           <div className="pl-showcase-art"><PublicFeatureArtwork id={id} alt={alt} /></div>
-          <div className="pl-showcase-copy"><h3 id={`showcase-${id}`}>{title}</h3><p>{copy}</p></div>
+          <div className="pl-showcase-fallback-copy"><h3 id={`showcase-${id}`}>{title}</h3><p>{copy}</p></div>
         </article>)}
       </div>
-      <div className="pl-showcase-navigation" aria-label="Feature slide navigation">
-        {webShowcase && <>
-          <span className="pl-showcase-count" aria-hidden="true">{String(active + 1).padStart(2, '0')}<span>/04</span></span>
-          <button type="button" className="pl-showcase-arrow" aria-label="Previous feature" aria-controls="pl-how-slides" disabled={active === 0} onClick={() => goTo(active - 1)}><ArrowLeft size={18} aria-hidden="true" /></button>
-          <div className="pl-showcase-dots">{features.map(({ id, title }, index) => <button key={id} type="button"
-            aria-label={`Go to slide ${index + 1}: ${title}`} aria-controls="pl-how-slides" aria-current={active === index ? 'true' : undefined}
-            onClick={() => goTo(index)}><span aria-hidden="true" /></button>)}</div>
-          <button type="button" className="pl-showcase-arrow" aria-label="Next feature" aria-controls="pl-how-slides" disabled={active === features.length - 1} onClick={() => goTo(active + 1)}><ArrowRight size={18} aria-hidden="true" /></button>
-          <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">Slide {active + 1} of {features.length}: {features[active].title}</p>
-        </>}
+      <div className="pl-showcase-copy">
+        <h3>{features[active].title}</h3><p>{features[active].copy}</p>
+        <div className="pl-showcase-navigation" aria-label="Feature slide navigation">
+          {webShowcase && <>
+            <div className="pl-showcase-controls">
+              <button type="button" className="pl-showcase-arrow is-previous" aria-label="Previous feature" aria-controls="pl-how-slides" disabled={active === 0} onClick={() => goTo(active - 1)}><ArrowLeft size={17} aria-hidden="true" /><span>Previous</span></button>
+              <button type="button" className="pl-showcase-arrow is-next" aria-label="Next feature" aria-controls="pl-how-slides" disabled={active === features.length - 1} onClick={() => goTo(active + 1)}><span>Next</span><ArrowRight size={17} aria-hidden="true" /></button>
+            </div>
+            <span className="pl-showcase-count" aria-hidden="true"><b>{String(active + 1).padStart(2, '0')}</b><span>/04</span></span>
+            <div className="pl-showcase-dots">{features.map(({ id, title }, index) => <button key={id} type="button"
+              aria-label={`Go to slide ${index + 1}: ${title}`} aria-controls="pl-how-slides" aria-current={active === index ? 'true' : undefined}
+              onClick={() => goTo(index)}><span aria-hidden="true" /></button>)}</div>
+            <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">Slide {active + 1} of {features.length}: {features[active].title}</p>
+          </>}
+        </div>
       </div>
     </div>
     {/* Preserve the installed shell's original static assets and presentation,
