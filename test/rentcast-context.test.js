@@ -178,8 +178,6 @@ test('existing and buyer values are never overwritten: context adds no field', (
 
 test('wiring: Home Facts shows dated context and hints only for Unknown fields; the found card shows a non-standard type', () => {
   const facts = read('src/components/HomeFacts.jsx');
-  assert.match(facts, /hint=\{!layoutValues\(home\)\.length && record\.stories \?/);
-  assert.match(facts, /hint=\{!\(home\.homeCondition \|\| \[\]\)\.length && listingType === 'New Construction' \? 'The listing called it New Construction' : null\}/);
   assert.match(facts, /\{!home\.basementStyle && !home\.basementCondition && record\.foundation && <p className="flh-hf2-note">County records: \{record\.foundation\} foundation\. Not proof of a basement’s style or condition\.<\/p>\}/);
   assert.match(facts, /Subdivision: \{record\.subdivision\} · county records/);
   assert.doesNotMatch(facts.slice(facts.indexOf('function ListingContext'), facts.indexOf('function Row')), /<details/, 'listing context stays in its review sheet');

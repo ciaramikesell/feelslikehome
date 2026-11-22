@@ -3835,6 +3835,29 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .afh-name-row > div { min-width: 0; }
 .afh-name-row input { width: 100%; min-width: 0; }
 
+/* Saved Home Details: one property overview, open editorial fact sections. */
+.flh-hf2-header { align-items: start; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); }
+.flh-hf2-photo { aspect-ratio: 1.65; }
+.flh-hf2-identity .flh-match-overview { margin: 20px 0 12px; padding: 20px; }
+.flh-hf2-history { color: var(--ink-soft); margin: 8px 0; line-height: 1.5; }
+.flh-facts-group { padding: 18px; border: 1px solid var(--line); border-radius: 12px; margin-bottom: 12px; }
+.flh-facts-group > .flh-hf-block-title, .flh-hf2 .flh-hf2-schools .flh-hf-block-title { font: 700 .8rem/1.4 var(--font-ui); letter-spacing: .065em; text-transform: uppercase; color: var(--brick-deep); margin: 0 0 12px; }
+.flh-facts-group-body { padding: 0; }
+.flh-hf2-columns { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 18px; }
+.flh-hf2-column:first-child { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
+.flh-hf2-column:first-child > .flh-facts-group { height: 100%; box-sizing: border-box; }
+.flh-hf2-schools { min-width: 0; }
+.flh-hf2 .flh-hf-row { display: block; }
+.flh-hf2 .flh-hf-row-label { display: block; margin-bottom: 6px; }
+.flh-hf2 .flh-hf-row-control { width: 100%; }
+@media (max-width: 1000px) { .flh-hf2-columns { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .flh-hf2-column:first-child { display: block; } }
+@media (max-width: 700px) { .flh-hf2-header { display: flex; flex-direction: column; } .flh-hf2-photo-wrap, .flh-hf2-identity { width: 100%; } .flh-hf2-columns { display: block; } .flh-facts-group { padding: 16px; } }
+
+.flh-match-facts { display: flex; flex-wrap: wrap; gap: 16px; margin: 20px 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; }
+.flh-match-facts > p { flex-basis: 100%; margin: 0; color: var(--ink-soft); font-size: .875rem; }
+.flh-match-facts > div { flex: 1 1 220px; min-width: 0; }
+.flh-match-facts label { display: block; margin-bottom: 6px; }
+
 /* ── Onboarding V2 shell (Phase 1) ───────────────────────────────────────────
    Frame only: background, columns, top bar, progress, type scale, step rhythm
    and the forward action. Step content keeps its existing styles. Every rule is

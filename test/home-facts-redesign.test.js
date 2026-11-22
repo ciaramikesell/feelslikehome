@@ -25,7 +25,7 @@ const { createFinding, mergeImportFields } = await import('../src/lib/importDoma
 const { answerableCriteriaKeys, criterionAnswer } = await import('../src/lib/matchCriteria.js');
 const { formatCardBasement, homeCardSnapshot } = await import('../src/lib/homeCardPresentation.js');
 const {
-  acceptInvitation, createInvitation, getHomesForUser, saveHomePersonalAndShared, saveHomePersonalState,
+  acceptInvitation, createInvitation, getHomesForUser, saveHomePersonalAndShared, saveHomePersonalState, saveHomeSharedFields,
 } = await import('../src/lib/supabase/collaboration.js');
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -484,4 +484,33 @@ dbTest('production path: preflight on a pre-migration database, then the migrati
   } finally {
     legacy.drop();
   }
+});
+
+
+dbTest('simplified facts: clearing schools and editing retained fields never rewrites hidden evidence or personal answers', async () => {
+  const added = await saveHomePersonalAndShared(db.clientFor(ids.owner), {
+    ...emptyHome(), address: '1 Evidence Ln', cooling: 'Central', heating: 'Forced air',
+    propertyType: 'house', homeLayout: ['Ranch'], homeCondition: ['Move-In Ready'], hasHoa: false,
+    elementarySchool: 'Legacy Elementary', middleSchool: 'Legacy Middle', highSchool: 'Legacy High',
+    schoolDistrict: 'Old District', schoolsNotes: 'Old notes', yearBuilt: '1949', propertyTaxAnnual: 3194, propertyTaxYear: 2023,
+    listingImport: SNAPSHOT, checks: { 'features:Central air': 'no' },
+  }, ids.owner, ids.search);
+  await saveHomeSharedFields(db.clientFor(ids.coBuyer), added.id, {
+    schoolDistrict: '', schoolsNotes: '', estMonthly: '2031', hoaFeeMonthly: 0,
+    garageType: 'attached', garageSpaces: '2', basementCondition: 'finished', basementStyle: 'traditional',
+    laundryLocation: 'basement', pros: 'Sunny kitchen', cons: 'Busy road',
+  });
+  const fresh = await viewOf(ids.owner, added.id);
+  for (const key of ['cooling', 'heating', 'propertyType', 'homeLayout', 'homeCondition', 'hasHoa', 'elementarySchool', 'middleSchool', 'highSchool', 'yearBuilt', 'propertyTaxAnnual', 'propertyTaxYear', 'listingImport']) {
+    assert.deepEqual(fresh[key], added[key], key);
+  }
+  assert.ok(!fresh.schoolDistrict && !fresh.schoolsNotes, 'cleared fields never fall back to legacy names or import snapshot');
+  assert.equal(fresh.pros, 'Sunny kitchen');
+  assert.equal(fresh.cons, 'Busy road');
+  const priorities = addCriterion(buy(), { categoryKey: 'features', label: 'Central air', kind: 'check' }, 'must');
+  const ownerAir = computeMatch(fresh, priorities).allSelected.find(({ key }) => key === 'features:Central air');
+  assert.equal(ownerAir.met, false, 'explicit own No wins over imported central cooling');
+  const co = await viewOf(ids.coBuyer, added.id);
+  const coAir = computeMatch(co, priorities).allSelected.find(({ key }) => key === 'features:Central air');
+  assert.equal(coAir.met, true, 'shared evidence still feeds the other buyer without copying the owner answer');
 });

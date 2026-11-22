@@ -151,7 +151,6 @@ test('wiring: listing context keeps its review sheet; the full context and prove
   assert.match(facts, /\{lines\.map\(\(line\) => <p key=\{line\}>\{line\}<\/p>\)\}/);
   assert.match(facts, /Unknown isn’t No\./);
   // Unknown-only hints and every edit path are untouched.
-  assert.match(facts, /hint=\{!layoutValues\(home\)\.length && record\.stories \?/);
   assert.match(facts, /\{!isReadOnly && matchShortcut\}/);
 });
 

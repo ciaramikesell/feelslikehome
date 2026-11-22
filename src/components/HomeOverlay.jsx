@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, ArrowDown, ArrowLeft, ArrowRight, Check, Loader2, NotebookText, X } from 'lucide-react';
 import HomeFacts from '@/components/HomeFacts';
+import MatchFactEditors from '@/components/MatchFactEditors';
 import { parsePhotoUrl } from '@/lib/photoFraming';
 import MatchCriteria, { FACT_LINKS, criterionName } from '@/components/MatchCriteria';
 import { recordListingAnswers, savedListingAnswers } from '@/lib/listingTextAnswers';
@@ -324,7 +325,7 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
   // ?section=match (older links) lands on Your Match, then the URL settles on
   // the overlay's own address; ?added= from older Add Home builds is dropped.
   useEffect(() => {
-    if (section === 'match') requestAnimationFrame(() => matchRef.current?.scrollIntoView({ block: 'start' }));
+    if (section === 'match') requestAnimationFrame(goToMatch);
     const url = new URL(window.location.href);
     if (url.searchParams.has('added') || url.searchParams.get('section') === 'match' || url.searchParams.get('section') === 'facts') {
       url.searchParams.delete('added');
@@ -340,8 +341,14 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
   // well below the first screen), and one next step inside it. Neither answers
   // anything: they only bring the buyer to the control.
   const goToMatch = () => {
-    matchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    matchRef.current?.focus({ preventScroll: true });
+    const target = matchRef.current;
+    const scroller = scrollRef.current;
+    if (!target || !scroller) return;
+    // Scroll only this dialog: scrollIntoView can also move the locked page
+    // behind it, leaving the heading above the visible scroll surface.
+    const top = scroller.scrollTop + target.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+    scroller.scrollTo({ top, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+    target.focus({ preventScroll: true });
   };
   const answerNext = () => {
     const next = progress?.next;
@@ -360,8 +367,8 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
     {unansweredMust > 0 && <p className="flh-match-overview-open"><strong>{unansweredMust} unanswered Must-Have{unansweredMust === 1 ? '' : 's'}</strong> · not yet confirmed</p>}
     {summary?.mustClause && (!unansweredMust || mustStatus.missed > 0) && <p>{summary.mustClause}.</p>}
     <div className="flh-match-overview-actions">
-      {match && <button type="button" className="flh-match-jump" onClick={goToMatch}>See Match details <ArrowDown size={14} aria-hidden="true" /></button>}
-      {progress?.next && <button type="button" className="flh-match-next" onClick={answerNext}>Review: <b>{criterionName(progress.next)}</b> <ArrowRight size={14} aria-hidden="true" /></button>}
+      {match && <button type="button" className="flh-match-jump" onClick={goToMatch}>View Match Details <ArrowDown size={14} aria-hidden="true" /></button>}
+
     </div>
   </section>;
 
@@ -394,8 +401,8 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
 
           <section className="flh-overlay-match" aria-labelledby="flh-match-title" ref={matchRef} tabIndex={-1}>
             <header className="flh-hf2-section-head">
-              <h2 id="flh-match-title" className="flh-overlay-heading">Your Match</h2>
-              {match?.pct != null && <span className={`flh-match-pill is-${match.pct >= 80 ? 'high' : match.pct >= 60 ? 'mid' : 'low'}`}>{match.pct}% Match</span>}
+              <h2 id="flh-match-title" className="flh-overlay-heading">Match Breakdown</h2>
+
             </header>
             <p className="flh-overlay-match-lead">{progressLine || 'Unknown isn’t No. Fact-based results update from Home Facts.'}</p>
             {progress?.next && <button type="button" className="flh-match-next" onClick={answerNext}>
@@ -404,6 +411,7 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
             {summary?.mustClause && <p className="flh-overlay-match-context">{summary.mustClause}.{summary.importantSentence ? ` ${summary.importantSentence}` : ''}</p>}
             {coBuyerPerspective?.match?.pct != null && <p className="flh-overlay-match-context">Your co-buyer’s Match: <strong>{coBuyerPerspective.match.pct}%</strong>, from their own priorities and answers.</p>}
             {isCollaborative && <p className="flh-overlay-match-lead">Your answers here are yours alone. Home Facts are shared with everyone in this search.</p>}
+            <MatchFactEditors home={home} match={match} editor={editor} />
             {match ? <MatchCriteria home={home} priorities={priorities} match={match} onAnswer={answerCriterion} onOpenFact={openFact} tourHref={tourHref} listingAnswers={listingAnswers} openByTier={openCountByTier(progress)} revealRequest={revealRequest} />
               : guidedPriorities
                 // Milestone 2 (FLH_ONBOARDING_V3): point to the walkthrough. Flag off: unchanged.
@@ -442,7 +450,7 @@ export default function HomeOverlay({ serverHome, coBuyerPerspective = null, rea
         onClose={() => setFullEditor(false)} onWantToTour={() => autosave.savePersonal({ status: 'Want to Tour' })} onArchiveRequest={(target) => { setFullEditor(false); setArchiveTarget(target); }} />}
       {revealOpen && match?.pct != null && <MatchReveal match={match} completeness={matchCompleteness(match)}
         onClose={() => setRevealOpen(false)}
-        onOpenBreakdown={() => { setRevealOpen(false); requestAnimationFrame(() => { matchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); matchRef.current?.focus({ preventScroll: true }); }); }} />}
+        onOpenBreakdown={() => { setRevealOpen(false); requestAnimationFrame(goToMatch); }} />}
     </div>
   </div>;
 }

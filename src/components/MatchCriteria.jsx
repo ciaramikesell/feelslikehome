@@ -106,7 +106,8 @@ const answerText = (value) => (value === true ? 'Yes' : value === 'no' ? 'No' : 
 // is shown with it, so the reason is visible without opening the fact.
 function FactNote({ resolved, detail = null, onOpenFact }) {
   const [field, short] = resolved.link;
-  const go = onOpenFact ? <button type="button" className="flh-mc2-source" onClick={() => onOpenFact(field)}>{short} <ArrowUpRight size={11} aria-hidden="true" /><span className="sr-only"> — go to this fact in Home Facts</span></button> : <span>{short}</span>;
+  // Hidden evidence remains scored, but must not link to a removed editor.
+  const go = onOpenFact && !['hf-hasHoa', 'hf-cooling'].includes(field) ? <button type="button" className="flh-mc2-source" onClick={() => onOpenFact(field)}>{short} <ArrowUpRight size={11} aria-hidden="true" /><span className="sr-only"> — go to this fact in Home Facts</span></button> : <span>{short}</span>;
   const why = detail && detail !== 'Yes' && detail !== 'No' ? <> · {detail}</> : null;
   if (resolved.source === 'home_facts') return <small className="flh-mc2-from">From Home Facts: <b className={`is-${resolved.value === true ? 'met' : 'missed'}`}>{answerText(resolved.value)}</b>{why} · {go}</small>;
   if (resolved.source === 'answer' && resolved.fact !== undefined && resolved.fact !== resolved.value) return <small className="flh-mc2-from">Your answer · Home Facts: {answerText(resolved.fact)} {go}</small>;
