@@ -13,11 +13,11 @@ const homes = [
   { crop: [533, 227, 389, 425], score: 87, tone: 'gold' },
   { crop: [979, 227, 400, 425], score: 76, tone: 'peach' },
 ];
-function SourcePhoto({ source, crop }) {
+export function SourcePhoto({ source, crop }) {
   const [x, y, width, height] = crop;
   return <div className="pl-source-photo" style={{ aspectRatio: `${width} / ${height}` }}>
     <Image src={`/images/homepage-previews/${source}.webp`} alt="" width={1448} height={1086} loading="lazy"
-      sizes="(max-width: 767px) 110vw, 1448px"
+      sizes="1448px"
       style={{ width: `${1448 / width * 100}%`, left: `${-x / width * 100}%`, top: `${-y / height * 100}%` }} />
   </div>;
 }

@@ -35,14 +35,14 @@ test('mobile public navigation keeps every primary destination discoverable', ()
 
 test('landing uses the approved cottage and four local preview illustrations', () => {
   assert.match(landing, /\/images\/Warm Cottage\.png/);
-  assert.match(previews, /alt=\{alt\}/);
+  assert.match(previews, /<PublicFeatureArtwork id=\{id\} alt=\{alt\} \/>/);
   for (const panel of ['priorities', 'listings', 'compare', 'collaborate']) {
     assert.ok(fs.existsSync(`public/images/homepage-previews/${panel}.webp`));
+    assert.match(previews, new RegExp(`id: '${panel}'`));
   }
-  assert.match(css, /\.pl-editorial-feature > img \{[^}]*aspect-ratio: 4 \/ 3/);
   assert.match(previews, /do not imply affiliation or direct integration/);
-  assert.ok(fs.existsSync('public/images/Warm Cottage.png'));
   assert.match(previews, /Illustrative mockups/);
+  assert.ok(fs.existsSync('public/images/Warm Cottage.png'));
 });
 
 test('Realtor entry preserves intent without introducing an account role', () => {
@@ -68,23 +68,30 @@ test('the web hero keeps the requested desktop copy and signup-first CTA', () =>
   assert.doesNotMatch(landing, /\/guest|Real estate, reimagined|>See how it works</);
 });
 
-test('editorial sliding showcase keeps four concepts and original native fallback', () => {
-  for (const title of ['Set Your Preferences', 'Import Homes from Anywhere', 'Compare What Matters', 'Search & Decide Together']) assert.ok(previews.includes(title));
-  for (const copy of ['Decide what matters most to you.', 'Bring your saved listings together.', 'See how each home fits your priorities.', 'Make decisions with your co-buyer and Realtor.']) assert.ok(previews.includes(copy));
+test('How It Works is one large tabbed story with four concepts and a short page', () => {
+  for (const title of ['Rank what matters', 'Save homes from anywhere', 'See your personal Match', 'Decide together']) assert.ok(previews.includes(title));
+  assert.match(previews, /unknown isn’t no/);
+  assert.match(previews, /Everyone keeps their own priorities and their own Match/);
+  assert.doesNotMatch(landing + previews, /combined|household Match|dream home|perfect match|AI-powered|we find|finds listings/i);
   assert.match(landing, /<PublicHomeFeatures \/>/);
   assert.match(previews, /id="how-it-works"[^>]*tabIndex=\{-1\}/);
-  assert.match(previews, /<h2 className="pl-eyebrow" id="how-title">How it works<\/h2>/);
-  assert.match(previews, /<article[^>]*aria-labelledby=/);
-  assert.match(previews, /width=\{1448\} height=\{1086\} loading="lazy"/);
-  assert.doesNotMatch(previews, /aria-pressed|onPointerEnter/);
-  assert.match(previews, /setWebShowcase\(!isNativeApp\(\) && !root.hasAttribute\(NATIVE_SHELL_ATTRIBUTE\)\)/);
-  assert.match(previews, /<PublicFeatureArtwork id=\{id\} alt=\{alt\}/);
-  assert.match(previews, /className="pl-native-feature-fallback"/);
-  assert.match(css, /grid-template-areas: 'copy art'/);
-  assert.match(css, /grid-template-areas: 'art' 'copy'/);
-  assert.doesNotMatch(landing + previews, /Choosing a home doesn’t happen alone|pl-collaboration|youtube|<iframe/);
-  assert.match(landing, /className="pl-section-divider" aria-hidden="true"/);
-  assert.match(css, /repeat\(4, minmax\(0, 1fr\)\)/);
-  assert.match(css, /max-width: 1199px[^}]+repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(css, /min-height: clamp\(640px, 80svh, 920px\)/);
+  assert.match(previews, /role="tablist"/);
+  assert.match(previews, /role="tab"/);
+  assert.match(previews, /role="tabpanel"/);
+  assert.match(previews, /aria-selected=\{active === index\}/);
+  assert.match(previews, /tabIndex=\{active === index \? 0 : -1\}/);
+  assert.match(previews, /hidden=\{active !== index\}/);
+  assert.doesNotMatch(previews, /setInterval|setTimeout|autoplay/i);
+  assert.match(previews, /<noscript><style>/);
+  // Page stays short: hero, one showcase, one closing invitation, footer.
+  assert.equal((landing.match(/<section /g) || []).length, 2);
+  assert.match(landing, /className="pl-closing"/);
+  assert.match(landing, /Your shortlist deserves/);
+  assert.doesNotMatch(landing + previews, /youtube|<iframe/);
+});
+
+test('hero note shows unknown facts as unknown, never as mismatches', () => {
+  assert.match(landing, /label: 'Garage', state: 'Not listed yet', met: false/);
+  assert.match(landing, /Unknown isn’t no\./);
+  assert.match(css, /\.pl-hero-note li\.is-unknown small \{[^}]*background: #f1ebe4/);
 });
