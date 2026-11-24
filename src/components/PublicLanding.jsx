@@ -59,13 +59,13 @@ export default function PublicLanding() {
       <section className="pl-hero" aria-labelledby="hero-title">
         <div className="pl-hero-copy">
           <h1 id="hero-title"><span className="pl-hero-opening">You’ve saved a lot of options.</span>{' '}<span>Now find the one that</span>{' '}<em>Feels Like Home.</em></h1>
-          <p className="pl-hero-sub">Rank what matters to you, bring in the homes you’ve found anywhere, and see how well each one fits.</p>
+          <p className="pl-hero-sub">Save the homes you love, see how they match what matters, and decide together.</p>
           <div className="pl-actions"><button type="button" className="pl-button pl-desktop-auth" onClick={(event) => openAuth('sign-up', event)}>Create a free account <ArrowRight size={18} aria-hidden="true" /></button><Link className="pl-button pl-mobile-auth" href="/auth/sign-up">Create a free account <ArrowRight size={18} aria-hidden="true" /></Link></div>
         </div>
         <figure className="pl-hero-visual"><Image src="/images/Warm Cottage.png" alt="A welcoming cottage with a front porch at golden hour" fill priority sizes="(max-width: 900px) 100vw, 58vw" />
           <figcaption className="pl-hero-note">
             <span className="sr-only">Illustrative example: the front porch and mature trees match your priorities. The garage isn’t listed yet, and unknown isn’t no.</span>
-            <span className="pl-hero-note-kicker" aria-hidden="true">How this one fits you</span>
+            <span className="pl-hero-note-head" aria-hidden="true"><span className="pl-hero-note-kicker">How this one fits you</span><span className="pl-hero-note-tag">Example</span></span>
             <ul aria-hidden="true">{heroNote.map(({ label, state, met }) => <li key={label} className={met ? 'is-met' : 'is-unknown'}>
               <Heart size={16} fill={met ? 'currentColor' : 'none'} strokeWidth={met ? 0 : 2} /><span>{label}</span><small>{state}</small>
             </li>)}</ul>

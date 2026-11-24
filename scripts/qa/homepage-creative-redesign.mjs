@@ -23,7 +23,7 @@ async function settle(page) {
   await page.waitForTimeout(900);
 }
 
-for (const width of [1440, 1024, 768, 390, 320]) {
+for (const width of [1440, 1024, 768, 390, 375, 320]) {
   const page = await browser.newPage({ viewport: { width, height: width > 900 ? 900 : 844 }, deviceScaleFactor: 2 });
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
@@ -47,6 +47,17 @@ for (const width of [1440, 1024, 768, 390, 320]) {
   check(`${width}: approved cottage hero photograph renders`, metrics.heroPhoto);
   check(`${width}: no live copy below 10.5px`, metrics.smallText.length === 0, metrics.smallText);
   check(`${width}: step tabs are at least 44px touch targets`, metrics.tabs.every(([w, h]) => w >= 44 && h >= 44), metrics.tabs);
+  if (width <= 640) {
+    const nav = await page.evaluate(() => ({
+      labels: [...document.querySelectorAll('.pl-step-short')].map(l => ({ size: parseFloat(getComputedStyle(l).fontSize), fits: l.scrollWidth <= l.parentElement.parentElement.clientWidth })),
+      gap: parseFloat(getComputedStyle(document.querySelector('.pl-steps')).gap),
+      noteHeadOneLine: document.querySelector('.pl-hero-note-kicker').getClientRects().length === 1 && document.querySelector('.pl-hero-note-kicker').getBoundingClientRect().height < 16,
+      exampleTag: document.querySelector('.pl-hero-note-tag')?.textContent,
+    }));
+    check(`${width}: mobile step labels are at least 12px and fit their tab`, nav.labels.every(l => l.size >= 12 && l.fits), nav.labels);
+    check(`${width}: step tabs keep spacing between targets`, nav.gap >= 4, nav.gap);
+    check(`${width}: hero card shows Example tag on one header line`, nav.exampleTag === 'Example' && nav.noteHeadOneLine, nav);
+  }
   check(`${width}: no console or page errors`, errors.length === 0, errors);
   results.push({ name: `${width}: page height`, ok: true, detail: metrics.height });
 

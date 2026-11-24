@@ -93,5 +93,7 @@ test('How It Works is one large tabbed story with four concepts and a short page
 test('hero note shows unknown facts as unknown, never as mismatches', () => {
   assert.match(landing, /label: 'Garage', state: 'Not listed yet', met: false/);
   assert.match(landing, /Unknown isn’t no\./);
+  assert.match(landing, /<span className="pl-hero-note-tag">Example<\/span>/);
+  assert.match(landing, /Save the homes you love, see how they match what matters, and decide together\./);
   assert.match(css, /\.pl-hero-note li\.is-unknown small \{[^}]*background: #f1ebe4/);
 });

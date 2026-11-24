@@ -1361,7 +1361,9 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
 .pl-hero-visual { position: relative; z-index: 1; min-height: clamp(660px, 90svh, 900px); margin: 0; overflow: hidden; border-bottom-left-radius: clamp(120px, 15vw, 260px); box-shadow: 0 40px 80px -60px rgba(79,48,31,.55); }
 .pl-hero-visual img { object-fit: cover; object-position: 54% center; }
 .pl-hero-note { position: absolute; z-index: 2; right: clamp(20px, 3vw, 48px); bottom: clamp(24px, 4vw, 56px); width: 272px; padding: 16px 18px 14px; border: 1px solid rgba(255,255,255,.7); border-radius: 20px; background: rgba(255,251,245,.94); box-shadow: 0 24px 48px -26px rgba(46,38,33,.55); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: var(--ink); animation: pl-rise .7s .35s cubic-bezier(.2,.7,.2,1) both; }
-.pl-hero-note-kicker { display: block; margin-bottom: 10px; color: var(--brick-deep); font: 700 11px/1.2 var(--font-sans); letter-spacing: .12em; text-transform: uppercase; }
+.pl-hero-note-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.pl-hero-note-tag { padding: 3px 7px; border: 1px solid #e3d3c3; border-radius: 999px; color: #6b5d52; font: 600 11px/1 var(--font-sans); letter-spacing: .02em; }
+.pl-hero-note-kicker { display: block; color: var(--brick-deep); font: 700 11px/1.2 var(--font-sans); letter-spacing: .12em; text-transform: uppercase; }
 .pl-hero-note ul { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .pl-hero-note li { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: 9px; font: 600 15.5px/1.2 var(--font-public-serif); }
 .pl-hero-note li svg { color: var(--brick); }
@@ -1515,8 +1517,10 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   .pl-hero-sub { font-size: 1.02rem; }
   .pl-actions .pl-button { width: 100%; justify-content: space-between; }
   .pl-hero-visual { width: calc(100% - 32px); aspect-ratio: 1 / .9; border-radius: 24px 24px 24px 64px; }
-  .pl-hero-note { right: 12px; bottom: -56px; width: min(236px, calc(100% - 24px)); padding: 12px 14px 11px; border-radius: 16px; }
-  .pl-hero-note-kicker { margin-bottom: 8px; font-size: 10.5px; }
+  .pl-hero-note { right: 12px; bottom: -56px; width: min(252px, calc(100% - 24px)); padding: 12px 14px 11px; border-radius: 16px; }
+  .pl-hero-note-head { gap: 6px; margin-bottom: 8px; }
+  .pl-hero-note-kicker { font-size: 10.5px; letter-spacing: .08em; white-space: nowrap; }
+  .pl-hero-note-tag { padding: 3px 6px; }
   .pl-hero-note ul { gap: 6px; }
   .pl-hero-note li { gap: 7px; font-size: 14px; }
   .pl-hero-note li small { padding: 3px 7px; font-size: 10.5px; }
@@ -1529,7 +1533,7 @@ table.hh-table tr:hover td { background: rgba(193,89,47,0.035); }
   .pl-step { gap: 5px; padding: 9px 2px 8px; border-radius: 12px; }
   .pl-step-number { width: 28px; height: 28px; font-size: 12px; }
   .pl-step-title { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
-  .pl-step-short { display: block; font: 700 clamp(10.5px, 3.2vw, 12.5px)/1.1 var(--font-sans); letter-spacing: -.005em; }
+  .pl-step-short { display: block; font: 700 12px/1.15 var(--font-sans); letter-spacing: -.01em; }
   .pl-stage { padding: 22px 16px 20px; border-radius: 24px; }
   .pl-stage-art { aspect-ratio: 1 / .64; }
   .pl-stage-detail { min-height: 8.6em; margin-top: 16px; padding: 0 4px; }
