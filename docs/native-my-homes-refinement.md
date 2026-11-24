@@ -36,6 +36,20 @@ First-photo position in the populated QA search:
 
 All browser QA uses the disposable Supabase HTTP stand-in backed by real PostgreSQL authorization, not Production. Screenshot data is QA-only and the photo is the existing FLH cottage asset. Genuine FLH fonts are served locally to the QA browser because Google Fonts is blocked here; production font loading remains unchanged.
 
+## Re-verification after merging `main` (PR #207)
+
+`main` `b614605` (#207 homepage redesign) was merged into this branch with a normal merge commit. No rebase, no force-push, no conflicts. #207 only changes public-landing (`.pl-*`) styles/components and homepage QA. Its `native-welcome-qa.mjs` change matched this branch's byte for byte. The native My Homes rules are still gated by `html[data-flh-native] .hh-homes-route` under 700px.
+
+- Production build: passed.
+- Full `npm test` with local PostgreSQL 16: **1,671 passed, 0 failed, 2 skipped** (the same optional live RentCast fixture tests). The count rose because #207 added tests.
+- `native-homes-refinement.mjs` against new `main` as the baseline: **44/44**. All screenshots were regenerated at 320/375/390/430px. The first photo still moves up from 556/505/505/485px to 287/287/287/258px.
+- The ordinary website against new `main`: **0 differing pixels** at 390 and 1440px in the harness. A supplementary full-page check also found 0 differing pixels at 320/375/430px. No native flag and no native toolbar appeared in an ordinary browser.
+- Native welcome/tutorial/deep-link/bridge-detection harness: **61/61**.
+- Supplementary safe-area check, which is not committed: with a simulated 34px bottom inset, the bottom nav stays pinned to the viewport bottom and the last card clears it at 320–430px. Chromium reports `env()` insets as 0, so this only applies the existing rules with 34px substituted. It is not a device result.
+- QA fix: the Archived capture now waits for the archived card before the screenshot, so it no longer captures the loading splash. It also confirms the count returns to "1 saved home" after Restore.
+
+Note for review: native styling is limited to My Homes. "Archived" opens the existing `/archive` page, which keeps the standard app header and top tabs.
+
 ## Founder / physical TestFlight QA
 
 - [ ] On the installed app, check compact header and first card at the phone's normal text size and with larger accessibility text.

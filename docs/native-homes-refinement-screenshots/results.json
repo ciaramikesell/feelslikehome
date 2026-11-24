@@ -141,8 +141,8 @@
   {
     "name": "1440: screenshot pixel comparison",
     "uiDifferences": 0,
-    "photoDifferences": 55,
-    "maxPhotoDelta": 10,
+    "photoDifferences": 0,
+    "maxPhotoDelta": 0,
     "ok": true
   },
   {

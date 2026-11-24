@@ -65,7 +65,7 @@ try {
   });
   await check('native card archives and restores through existing authorized actions',async()=>{
    await p.getByRole('button',{name:'Archive',exact:true}).click();await p.getByRole('button',{name:'Archive home',exact:true}).click();await p.locator('.hh-native-homes-toolbar').getByText('0 saved homes',{exact:true}).waitFor();
-   await p.locator('.hh-native-archive').click();await p.waitForURL('**/archive');await shot(p,'after-native-390-archived');await p.getByRole('button',{name:/Restore/}).click();await p.goto(`${base}/homes`);await p.locator('.hh-home-card').first().waitFor();
+   await p.locator('.hh-native-archive').click();await p.waitForURL('**/archive');const restore=p.getByRole('button',{name:/Restore/}).first();await restore.waitFor();await shot(p,'after-native-390-archived');await restore.click();await p.goto(`${base}/homes`);await p.locator('.hh-home-card').first().waitFor();await p.locator('.hh-native-homes-toolbar').getByText('1 saved home',{exact:true}).waitFor();
   });
   await c.close();
  }

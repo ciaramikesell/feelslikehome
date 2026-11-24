@@ -1,5 +1,7 @@
 # Native My Homes founder screenshots
 
+Regenerated after merging `main` `b614605` (PR #207). "Before" is current `main`; "After" is this branch.
+
 | Width | Before | Refined native My Homes | Empty search | Search open |
 |---|---|---|---|---|
 | 320 | [Before](before-native-320-populated.png) | [After](after-native-320-populated.png) | [Empty](after-native-320-empty.png) | [Search](after-native-320-search-open.png) |
