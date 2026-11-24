@@ -1,0 +1,46 @@
+[
+  {
+    "suppliedFile": "01_set_preferences.png",
+    "sourceSHA256": "1156a9db4fcae41e6c482c227d74e8c75bde8cab6b9dbc7a26f6f0d6c91642ea",
+    "webAsset": "public/images/homepage-previews/priorities.webp",
+    "webSHA256": "2869b91122afe324c6a36188f963bfc5d67473af9431cfec20674c9d5f64a4dc",
+    "dimensions": [
+      1448,
+      1086
+    ],
+    "bytes": 192504
+  },
+  {
+    "suppliedFile": "02_import_homes.png",
+    "sourceSHA256": "6a4e6d20fadc0df231b2d6082ffe5509ecc054a21154a6f5717e4655deab7922",
+    "webAsset": "public/images/homepage-previews/listings.webp",
+    "webSHA256": "bf8486c20160d663a0c5b8c2c3434f88fd63a89ad7d26987ba75e9fc8a677f1a",
+    "dimensions": [
+      1448,
+      1086
+    ],
+    "bytes": 141384
+  },
+  {
+    "suppliedFile": "03_compare_what_matters.png",
+    "sourceSHA256": "98a3d5489b544cefd72bf49a7cb5ff097c4cb39e67466fde2af3e7c8adc8d1c3",
+    "webAsset": "public/images/homepage-previews/compare.webp",
+    "webSHA256": "60cf73bf71c696ce189d4f04923704391ed299f593db2c73b7bacd5b49c9e7e3",
+    "dimensions": [
+      1448,
+      1086
+    ],
+    "bytes": 258050
+  },
+  {
+    "suppliedFile": "04_search_decide_together_APPROVED.png",
+    "sourceSHA256": "a8387827b4baad8eea88005ae547ba553fe26fa6be289e3ba3b7922ea6fd8190",
+    "webAsset": "public/images/homepage-previews/collaborate.webp",
+    "webSHA256": "66a4953ef6617112e0c0567f373fa18d2b61c9f1336a0e7e379128a7a6901e80",
+    "dimensions": [
+      1448,
+      1086
+    ],
+    "bytes": 252428
+  }
+]

@@ -1,0 +1,760 @@
+[
+  {
+    "name": "1440: no horizontal overflow",
+    "ok": true,
+    "detail": 0
+  },
+  {
+    "name": "1440: approved cottage hero photograph renders",
+    "ok": true
+  },
+  {
+    "name": "1440: no live copy below 10.5px",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "name": "1440: step tabs are at least 44px touch targets",
+    "ok": true,
+    "detail": [
+      [
+        390,
+        155
+      ],
+      [
+        390,
+        80
+      ],
+      [
+        390,
+        80
+      ],
+      [
+        390,
+        80
+      ]
+    ]
+  },
+  {
+    "name": "1440: no console or page errors",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "name": "1440: page height",
+    "ok": true,
+    "detail": 2575
+  },
+  {
+    "name": "1440: step 1 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 0,
+      "visible": [
+        "pl-step-panel-priorities"
+      ]
+    }
+  },
+  {
+    "name": "1440: step 2 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 1,
+      "visible": [
+        "pl-step-panel-listings"
+      ]
+    }
+  },
+  {
+    "name": "1440: step 3 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 2,
+      "visible": [
+        "pl-step-panel-compare"
+      ]
+    }
+  },
+  {
+    "name": "1440: step 4 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 3,
+      "visible": [
+        "pl-step-panel-collaborate"
+      ]
+    }
+  },
+  {
+    "name": "1024: no horizontal overflow",
+    "ok": true,
+    "detail": 0
+  },
+  {
+    "name": "1024: approved cottage hero photograph renders",
+    "ok": true
+  },
+  {
+    "name": "1024: no live copy below 10.5px",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "name": "1024: step tabs are at least 44px touch targets",
+    "ok": true,
+    "detail": [
+      [
+        330,
+        151
+      ],
+      [
+        330,
+        92
+      ],
+      [
+        330,
+        80
+      ],
+      [
+        330,
+        80
+      ]
+    ]
+  },
+  {
+    "name": "1024: no console or page errors",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "name": "1024: page height",
+    "ok": true,
+    "detail": 2209
+  },
+  {
+    "name": "1024: step 1 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 0,
+      "visible": [
+        "pl-step-panel-priorities"
+      ]
+    }
+  },
+  {
+    "name": "1024: step 2 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 1,
+      "visible": [
+        "pl-step-panel-listings"
+      ]
+    }
+  },
+  {
+    "name": "1024: step 3 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 2,
+      "visible": [
+        "pl-step-panel-compare"
+      ]
+    }
+  },
+  {
+    "name": "1024: step 4 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 3,
+      "visible": [
+        "pl-step-panel-collaborate"
+      ]
+    }
+  },
+  {
+    "name": "768: no horizontal overflow",
+    "ok": true,
+    "detail": 0
+  },
+  {
+    "name": "768: approved cottage hero photograph renders",
+    "ok": true
+  },
+  {
+    "name": "768: no live copy below 10.5px",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "name": "768: step tabs are at least 44px touch targets",
+    "ok": true,
+    "detail": [
+      [
+        172,
+        104
+      ],
+      [
+        172,
+        104
+      ],
+      [
+        172,
+        104
+      ],
+      [
+        172,
+        104
+      ]
+    ]
+  },
+  {
+    "name": "768: no console or page errors",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "name": "768: page height",
+    "ok": true,
+    "detail": 2795
+  },
+  {
+    "name": "768: step 1 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 0,
+      "visible": [
+        "pl-step-panel-priorities"
+      ]
+    }
+  },
+  {
+    "name": "768: step 2 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 1,
+      "visible": [
+        "pl-step-panel-listings"
+      ]
+    }
+  },
+  {
+    "name": "768: step 3 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 2,
+      "visible": [
+        "pl-step-panel-compare"
+      ]
+    }
+  },
+  {
+    "name": "768: step 4 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 3,
+      "visible": [
+        "pl-step-panel-collaborate"
+      ]
+    }
+  },
+  {
+    "name": "390: no horizontal overflow",
+    "ok": true,
+    "detail": 0
+  },
+  {
+    "name": "390: approved cottage hero photograph renders",
+    "ok": true
+  },
+  {
+    "name": "390: no live copy below 10.5px",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "name": "390: step tabs are at least 44px touch targets",
+    "ok": true,
+    "detail": [
+      [
+        84,
+        66
+      ],
+      [
+        84,
+        66
+      ],
+      [
+        84,
+        66
+      ],
+      [
+        84,
+        66
+      ]
+    ]
+  },
+  {
+    "name": "390: mobile step labels are at least 12px and fit their tab",
+    "ok": true,
+    "detail": [
+      {
+        "size": 12,
+        "fits": true
+      },
+      {
+        "size": 12,
+        "fits": true
+      },
+      {
+        "size": 12,
+        "fits": true
+      },
+      {
+        "size": 12,
+        "fits": true
+      }
+    ]
+  },
+  {
+    "name": "390: step tabs keep spacing between targets",
+    "ok": true,
+    "detail": 4
+  },
+  {
+    "name": "390: hero card shows Example tag on one header line",
+    "ok": true,
+    "detail": {
+      "labels": [
+        {
+          "size": 12,
+          "fits": true
+        },
+        {
+          "size": 12,
+          "fits": true
+        },
+        {
+          "size": 12,
+          "fits": true
+        },
+        {
+          "size": 12,
+          "fits": true
+        }
+      ],
+      "gap": 4,
+      "noteHeadOneLine": true,
+      "exampleTag": "Example"
+    }
+  },
+  {
+    "name": "390: no console or page errors",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "name": "390: page height",
+    "ok": true,
+    "detail": 2353
+  },
+  {
+    "name": "390: step 1 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 0,
+      "visible": [
+        "pl-step-panel-priorities"
+      ]
+    }
+  },
+  {
+    "name": "390: step 2 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 1,
+      "visible": [
+        "pl-step-panel-listings"
+      ]
+    }
+  },
+  {
+    "name": "390: step 3 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 2,
+      "visible": [
+        "pl-step-panel-compare"
+      ]
+    }
+  },
+  {
+    "name": "390: step 4 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 3,
+      "visible": [
+        "pl-step-panel-collaborate"
+      ]
+    }
+  },
+  {
+    "name": "375: no horizontal overflow",
+    "ok": true,
+    "detail": 0
+  },
+  {
+    "name": "375: approved cottage hero photograph renders",
+    "ok": true
+  },
+  {
+    "name": "375: no live copy below 10.5px",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "name": "375: step tabs are at least 44px touch targets",
+    "ok": true,
+    "detail": [
+      [
+        80,
+        66
+      ],
+      [
+        80,
+        66
+      ],
+      [
+        80,
+        66
+      ],
+      [
+        80,
+        66
+      ]
+    ]
+  },
+  {
+    "name": "375: mobile step labels are at least 12px and fit their tab",
+    "ok": true,
+    "detail": [
+      {
+        "size": 12,
+        "fits": true
+      },
+      {
+        "size": 12,
+        "fits": true
+      },
+      {
+        "size": 12,
+        "fits": true
+      },
+      {
+        "size": 12,
+        "fits": true
+      }
+    ]
+  },
+  {
+    "name": "375: step tabs keep spacing between targets",
+    "ok": true,
+    "detail": 4
+  },
+  {
+    "name": "375: hero card shows Example tag on one header line",
+    "ok": true,
+    "detail": {
+      "labels": [
+        {
+          "size": 12,
+          "fits": true
+        },
+        {
+          "size": 12,
+          "fits": true
+        },
+        {
+          "size": 12,
+          "fits": true
+        },
+        {
+          "size": 12,
+          "fits": true
+        }
+      ],
+      "gap": 4,
+      "noteHeadOneLine": true,
+      "exampleTag": "Example"
+    }
+  },
+  {
+    "name": "375: no console or page errors",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "name": "375: page height",
+    "ok": true,
+    "detail": 2313
+  },
+  {
+    "name": "375: step 1 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 0,
+      "visible": [
+        "pl-step-panel-priorities"
+      ]
+    }
+  },
+  {
+    "name": "375: step 2 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 1,
+      "visible": [
+        "pl-step-panel-listings"
+      ]
+    }
+  },
+  {
+    "name": "375: step 3 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 2,
+      "visible": [
+        "pl-step-panel-compare"
+      ]
+    }
+  },
+  {
+    "name": "375: step 4 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 3,
+      "visible": [
+        "pl-step-panel-collaborate"
+      ]
+    }
+  },
+  {
+    "name": "320: no horizontal overflow",
+    "ok": true,
+    "detail": 0
+  },
+  {
+    "name": "320: approved cottage hero photograph renders",
+    "ok": true
+  },
+  {
+    "name": "320: no live copy below 10.5px",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "name": "320: step tabs are at least 44px touch targets",
+    "ok": true,
+    "detail": [
+      [
+        67,
+        66
+      ],
+      [
+        67,
+        66
+      ],
+      [
+        67,
+        66
+      ],
+      [
+        67,
+        66
+      ]
+    ]
+  },
+  {
+    "name": "320: mobile step labels are at least 12px and fit their tab",
+    "ok": true,
+    "detail": [
+      {
+        "size": 12,
+        "fits": true
+      },
+      {
+        "size": 12,
+        "fits": true
+      },
+      {
+        "size": 12,
+        "fits": true
+      },
+      {
+        "size": 12,
+        "fits": true
+      }
+    ]
+  },
+  {
+    "name": "320: step tabs keep spacing between targets",
+    "ok": true,
+    "detail": 4
+  },
+  {
+    "name": "320: hero card shows Example tag on one header line",
+    "ok": true,
+    "detail": {
+      "labels": [
+        {
+          "size": 12,
+          "fits": true
+        },
+        {
+          "size": 12,
+          "fits": true
+        },
+        {
+          "size": 12,
+          "fits": true
+        },
+        {
+          "size": 12,
+          "fits": true
+        }
+      ],
+      "gap": 4,
+      "noteHeadOneLine": true,
+      "exampleTag": "Example"
+    }
+  },
+  {
+    "name": "320: no console or page errors",
+    "ok": true,
+    "detail": []
+  },
+  {
+    "name": "320: page height",
+    "ok": true,
+    "detail": 2324
+  },
+  {
+    "name": "320: step 1 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 0,
+      "visible": [
+        "pl-step-panel-priorities"
+      ]
+    }
+  },
+  {
+    "name": "320: step 2 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 1,
+      "visible": [
+        "pl-step-panel-listings"
+      ]
+    }
+  },
+  {
+    "name": "320: step 3 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 2,
+      "visible": [
+        "pl-step-panel-compare"
+      ]
+    }
+  },
+  {
+    "name": "320: step 4 selects one tab and one panel",
+    "ok": true,
+    "detail": {
+      "selected": 3,
+      "visible": [
+        "pl-step-panel-collaborate"
+      ]
+    }
+  },
+  {
+    "name": "keyboard arrows, Home and End move focus and selection",
+    "ok": true,
+    "detail": [
+      1,
+      2,
+      3,
+      0,
+      3,
+      0
+    ]
+  },
+  {
+    "name": "only the selected tab is in the tab order",
+    "ok": true,
+    "detail": [
+      0,
+      -1,
+      -1,
+      -1
+    ]
+  },
+  {
+    "name": "focused tab shows a visible focus ring",
+    "ok": true,
+    "detail": "solid"
+  },
+  {
+    "name": "Tab leaves the tablist instead of cycling through every step",
+    "ok": true,
+    "detail": "pl-button is-light pl-desktop-auth"
+  },
+  {
+    "name": "touch swipe left on the stage advances to step 2",
+    "ok": true,
+    "detail": 1
+  },
+  {
+    "name": "reduced motion disables panel, note and step motion",
+    "ok": true,
+    "detail": {
+      "panel": "none",
+      "note": "none",
+      "step": "0s"
+    }
+  },
+  {
+    "name": "native bridge hides the public homepage and shows the native welcome",
+    "ok": true,
+    "detail": {
+      "flag": true,
+      "web": "none",
+      "welcome": true
+    }
+  },
+  {
+    "name": "Realtor route linked",
+    "ok": true
+  },
+  {
+    "name": "hero CTA opens the account panel",
+    "ok": true
+  },
+  {
+    "name": "closing CTA scrolls to the account panel and focuses its first field",
+    "ok": true,
+    "detail": {
+      "open": true,
+      "y": 0,
+      "focus": "INPUT"
+    }
+  },
+  {
+    "name": "mobile CTA links to sign-up",
+    "ok": true
+  },
+  {
+    "name": "mobile menu exposes sign in and get started",
+    "ok": true
+  }
+]

@@ -1,0 +1,8 @@
+{
+  "base": "3bc8460cb9bc57eb41080bc6a0505df1ed282fcb",
+  "protectedHomepageCSSUnchanged": true,
+  "protectedCSSSHA256": "233cc890538342328370910ede6159ebf32febba48a3c44c8acfd5223d7f9bdd",
+  "approvedPrototype": "/workspace/prototypes/flh-homepage-layout/",
+  "approvalComment": "https://github.com/ciaramikesell/feelslikehome/pull/204#issuecomment-7060535763",
+  "protectedCSSRuleLines": 39
+}

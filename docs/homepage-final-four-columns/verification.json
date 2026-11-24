@@ -1,0 +1,38 @@
+{
+  "base": "94bfd86",
+  "productionBuild": "passed",
+  "focused": {
+    "pass": 43,
+    "fail": 0
+  },
+  "unit": {
+    "pass": 1413,
+    "fail": 0,
+    "skip": 255
+  },
+  "postgresql": {
+    "pass": 1666,
+    "fail": 0,
+    "skip": 2,
+    "skipReason": "optional sanitized live RentCast fixtures unavailable"
+  },
+  "browser": {
+    "pass": 178,
+    "fail": 0,
+    "widths": [
+      320,
+      375,
+      390,
+      430,
+      768,
+      1024,
+      1280,
+      1440
+    ]
+  },
+  "baselineComparisons": {
+    "realtorPixels": "identical at 390 and 1440",
+    "socialAndLinkMetadata": "unchanged"
+  },
+  "deployment": "not requested or performed"
+}

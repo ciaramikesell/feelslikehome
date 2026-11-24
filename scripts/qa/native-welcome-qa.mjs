@@ -81,7 +81,7 @@ async function context({ native = false, lateBridge = false, viewport = sizes.w3
   // post-hydration check must then repair the flag and warn.
   if (lateBridge) await ctx.addInitScript(`new MutationObserver((records, observer) => { if (!document.body) return; observer.disconnect(); (function install() { ${NATIVE_INIT} })(); }).observe(document, { childList: true, subtree: true });`);
   await ctx.addInitScript(FRAME_SAMPLER);
-  if (signedIn) await ctx.addCookies([{ name: 'sb-localhost-auth-token', value: `base64-${Buffer.from(JSON.stringify(signedIn.session)).toString('base64url')}`, domain: 'localhost', path: '/' }]);
+  if (signedIn) await ctx.addCookies([{ name: `sb-${new URL(process.env.NEXT_PUBLIC_SUPABASE_URL || info.url).hostname.split('.')[0]}-auth-token`, value: `base64-${Buffer.from(JSON.stringify(signedIn.session)).toString('base64url')}`, domain: new URL(base).hostname, path: '/' }]);
   ctx.on('page', (page) => page.on('console', (m) => { if (m.type() === 'error' && !IGNORED.test(m.text())) consoleErrors.push(m.text()); }));
   return ctx;
 }
@@ -266,7 +266,7 @@ const sharedPath = `/homes?url=${encodeURIComponent(listing)}`;
   const ctx = await context({ native: true });
   const page = await ctx.newPage();
   await page.goto(`${base}/`, { waitUntil: 'networkidle' });
-  const trigger = page.getByRole('button', { name: /See how saving a home works/ });
+  const trigger = page.getByRole('button', { name: /See how it works/ });
   await trigger.click();
   const dialog = page.getByRole('dialog');
   check('tutorial: opens as a dialog from the welcome', await dialog.isVisible());
@@ -277,22 +277,24 @@ const sharedPath = `/homes?url=${encodeURIComponent(listing)}`;
   await page.waitForTimeout(500);
   await shot(page, 'tutorial-2-share-sheet-390');
   await page.getByRole('button', { name: 'Message' }).click();
-  check('tutorial: a wrong tile gives a gentle hint, not a dead end', /look for Feels Like Home/.test(await page.locator('.flh-st-hint').innerText()));
+  check('tutorial: a wrong tile gives a gentle hint, not a dead end', /Choose Feels Like Home/.test(await page.locator('.flh-st-hint').innerText()));
   await page.getByRole('button', { name: 'More' }).click();
-  check('tutorial: More explains More → Edit → Favorites', /More → Edit/.test(await page.locator('.flh-st-hint').innerText()));
+  check('tutorial: More points to the Feels Like Home tile', /first tile/.test(await page.locator('.flh-st-hint').innerText()));
   await shot(page, 'tutorial-2b-more-hint-390');
   await page.getByRole('button', { name: /Back/ }).click();
   check('tutorial: Back returns to the listing step', await page.getByRole('button', { name: 'Share', exact: true }).isVisible() && !(await isVisible(page, '.flh-st-sheet')));
   await page.getByRole('button', { name: 'Share', exact: true }).click();
   await page.getByRole('button', { name: 'Feels Like Home' }).click();
-  await page.waitForSelector('.flh-st-saved');
+  await page.waitForSelector('.flh-st-result');
   await page.waitForTimeout(700);
   await shot(page, 'tutorial-3-saved-390');
   await page.locator('.flh-st').evaluate((el) => el.scrollTo(0, el.scrollHeight));
   await shot(page, 'tutorial-3b-good-to-know-390');
   const calls = await page.evaluate(() => window.__nativeCalls.filter((c) => c.plugin === 'Haptics').map((c) => `${c.method}${c.options?.style ? `:${c.options.style}` : ''}${c.options?.type ? `:${c.options.type}` : ''}`));
-  check('haptics: light impact on each highlighted tap, selection on other tiles, success once', JSON.stringify(calls) === JSON.stringify(['impact:LIGHT', 'selectionChanged', 'selectionChanged', 'impact:LIGHT', 'impact:LIGHT', 'notification:SUCCESS']), calls.join(', '));
-  await page.getByRole('button', { name: 'Practice again' }).click();
+  check('haptics: light impact on highlighted taps, selection on other tiles', JSON.stringify(calls) === JSON.stringify(['impact:LIGHT', 'selectionChanged', 'selectionChanged', 'impact:LIGHT', 'impact:LIGHT']), calls.join(', '));
+  await page.getByRole('button', { name: 'Soaking Tub', exact: true }).click();
+  check('tutorial: example keeps missing details Unknown', /Unknown/.test(await page.locator('.flh-st-sample-result').innerText()));
+  await page.getByRole('button', { name: 'Practice Again', exact: true }).click();
   check('tutorial: Practice again replays from step 1', await page.getByRole('button', { name: 'Share', exact: true }).isVisible());
   await page.getByRole('button', { name: 'Skip' }).click();
   check('tutorial: Skip closes it, back on the welcome', !(await dialog.count()) && await isVisible(page, '.flh-welcome'));
@@ -301,7 +303,7 @@ const sharedPath = `/homes?url=${encodeURIComponent(listing)}`;
   await page.keyboard.press('Escape');
   check('tutorial: Escape closes it', !(await dialog.count()));
   const haptics = await page.evaluate(() => window.__nativeCalls.filter((c) => c.plugin === 'Haptics').length);
-  check('haptics: none on opening/closing the tutorial or on navigation', haptics === 6, `${haptics} haptic calls in total`);
+  check('haptics: none on opening/closing the tutorial or on navigation', haptics === 5, `${haptics} haptic calls in total`);
   await ctx.close();
 }
 {
@@ -309,34 +311,34 @@ const sharedPath = `/homes?url=${encodeURIComponent(listing)}`;
   const ctx = await context({ native: true });
   const page = await ctx.newPage();
   await page.goto(`${base}/`, { waitUntil: 'networkidle' });
-  await page.getByRole('button', { name: /See how saving a home works/ }).focus();
+  await page.getByRole('button', { name: /See how it works/ }).focus();
   await page.keyboard.press('Enter');
   const reach = async (name) => { for (let i = 0; i < 20; i += 1) { await page.keyboard.press('Tab'); if (await page.evaluate((n) => (document.activeElement?.innerText || document.activeElement?.getAttribute('aria-label') || '').trim() === n, name)) return true; } return false; };
   check('keyboard: Tab reaches Share', await reach('Share'));
   await page.keyboard.press('Enter');
   check('keyboard: Tab reaches Feels Like Home', await reach('Feels Like Home'));
   await page.keyboard.press('Enter');
-  check('keyboard: reaches the saved step and Done', await page.locator('.flh-st-saved').isVisible() && await reach('Done'));
+  check('keyboard: reaches the saved step and Done', await page.locator('.flh-st-result').isVisible() && await reach('Done'));
   let trapped = true;
   for (let i = 0; i < 12; i += 1) { await page.keyboard.press('Tab'); if (!(await page.evaluate(() => !!document.activeElement?.closest('[role="dialog"]')))) trapped = false; }
   check('keyboard: focus stays inside the dialog', trapped);
   const tree = await page.locator('[role="dialog"]').ariaSnapshot();
   writeFileSync(join(outDir, 'tutorial-saved-aria.txt'), tree);
-  check('screen reader: the saved step exposes heading, facts and Done', /heading "Saved to Feels Like Home\."/.test(tree) && /button "Done"/.test(tree));
+  check('screen reader: the result exposes its heading, example and Done', /heading "A listing, seen through your priorities\."/.test(tree) && /button "Done"/.test(tree));
   await ctx.close();
 }
 {
   const ctx = await context({ native: true, reducedMotion: 'reduce' });
   const page = await ctx.newPage();
   await page.goto(`${base}/`, { waitUntil: 'networkidle' });
-  await page.getByRole('button', { name: /See how saving a home works/ }).click();
+  await page.getByRole('button', { name: /See how it works/ }).click();
   const beckon = await page.locator('.flh-st-share').evaluate((el) => getComputedStyle(el).animationDuration);
   await page.getByRole('button', { name: 'Share', exact: true }).click();
   const sheet = await page.locator('.flh-st-sheet').evaluate((el) => getComputedStyle(el).animationDuration);
   const press = await page.locator('.flh-st-app.is-flh').evaluate((el) => getComputedStyle(el).transitionDuration);
   check('Reduce Motion: highlight, sheet slide and press spring are effectively off', [beckon, sheet, press].every((d) => parseFloat(d) < 0.001), `${beckon} / ${sheet} / ${press}`);
   await page.getByRole('button', { name: 'Feels Like Home' }).click();
-  check('Reduce Motion: tutorial still completes', await page.locator('.flh-st-saved').isVisible());
+  check('Reduce Motion: tutorial still completes', await page.locator('.flh-st-result').isVisible());
   await shot(page, 'tutorial-reduced-motion-saved-390');
   await ctx.close();
 }
@@ -344,7 +346,7 @@ for (const [key, viewport] of [['320', sizes.w320], ['430', sizes.w430]]) {
   const ctx = await context({ native: true, viewport });
   const page = await ctx.newPage();
   await page.goto(`${base}/`, { waitUntil: 'networkidle' });
-  await page.getByRole('button', { name: /See how saving a home works/ }).click();
+  await page.getByRole('button', { name: /See how it works/ }).click();
   await shot(page, `tutorial-1-tap-share-${key}`);
   await page.getByRole('button', { name: 'Share', exact: true }).click();
   await page.waitForTimeout(500);

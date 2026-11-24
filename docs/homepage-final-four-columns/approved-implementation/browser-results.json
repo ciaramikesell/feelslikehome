@@ -1,0 +1,1798 @@
+[
+  {
+    "name": "320: actual prototype fonts loaded",
+    "ok": true
+  },
+  {
+    "name": "320: small centered terracotta heading",
+    "ok": true
+  },
+  {
+    "name": "320: web showcase active and native fallback hidden",
+    "ok": true
+  },
+  {
+    "name": "320: divider and single CTA retained",
+    "ok": true
+  },
+  {
+    "name": "320: accessible navigation",
+    "ok": true
+  },
+  {
+    "name": "320: preserved feature 1 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "320: editorial placement 1",
+    "ok": true
+  },
+  {
+    "name": "320: only active slide exposed to AT 1",
+    "ok": true
+  },
+  {
+    "name": "320: numbered progress 1",
+    "ok": true
+  },
+  {
+    "name": "320: slide 1 status",
+    "ok": true
+  },
+  {
+    "name": "320: navigation directly below slide 1 copy",
+    "ok": true
+  },
+  {
+    "name": "320: mobile controls and count share a row 1",
+    "ok": true
+  },
+  {
+    "name": "320: slide 1 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "320: stable slide frame 1",
+    "ok": true
+  },
+  {
+    "name": "320: preserved feature 2 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "320: editorial placement 2",
+    "ok": true
+  },
+  {
+    "name": "320: only active slide exposed to AT 2",
+    "ok": true
+  },
+  {
+    "name": "320: numbered progress 2",
+    "ok": true
+  },
+  {
+    "name": "320: slide 2 status",
+    "ok": true
+  },
+  {
+    "name": "320: navigation directly below slide 2 copy",
+    "ok": true
+  },
+  {
+    "name": "320: mobile controls and count share a row 2",
+    "ok": true
+  },
+  {
+    "name": "320: slide 2 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "320: listing-source labels stay inside their tiles",
+    "ok": true
+  },
+  {
+    "name": "320: stable slide frame 2",
+    "ok": true
+  },
+  {
+    "name": "320: preserved feature 3 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "320: editorial placement 3",
+    "ok": true
+  },
+  {
+    "name": "320: only active slide exposed to AT 3",
+    "ok": true
+  },
+  {
+    "name": "320: numbered progress 3",
+    "ok": true
+  },
+  {
+    "name": "320: slide 3 status",
+    "ok": true
+  },
+  {
+    "name": "320: navigation directly below slide 3 copy",
+    "ok": true
+  },
+  {
+    "name": "320: mobile controls and count share a row 3",
+    "ok": true
+  },
+  {
+    "name": "320: slide 3 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "320: stable slide frame 3",
+    "ok": true
+  },
+  {
+    "name": "320: preserved feature 4 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "320: editorial placement 4",
+    "ok": true
+  },
+  {
+    "name": "320: only active slide exposed to AT 4",
+    "ok": true
+  },
+  {
+    "name": "320: numbered progress 4",
+    "ok": true
+  },
+  {
+    "name": "320: slide 4 status",
+    "ok": true
+  },
+  {
+    "name": "320: navigation directly below slide 4 copy",
+    "ok": true
+  },
+  {
+    "name": "320: mobile controls and count share a row 4",
+    "ok": true
+  },
+  {
+    "name": "320: slide 4 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "320: stable slide frame 4",
+    "ok": true
+  },
+  {
+    "name": "320: accurate distinct participants and source photos",
+    "ok": true
+  },
+  {
+    "name": "320: transparent composition canvas",
+    "ok": true
+  },
+  {
+    "name": "320: navigation targets fit viewport and meet 44px",
+    "ok": true
+  },
+  {
+    "name": "320: no outer frame and muted compact disclaimer",
+    "ok": true
+  },
+  {
+    "name": "320: last next disabled",
+    "ok": true
+  },
+  {
+    "name": "320: focus stays on stationary navigation after slide changes",
+    "ok": true
+  },
+  {
+    "name": "320: arrow/Home/End keyboard navigation",
+    "ok": true
+  },
+  {
+    "name": "320: keyboard focus is visibly outlined",
+    "ok": true
+  },
+  {
+    "name": "320: reduced motion is immediate",
+    "ok": true
+  },
+  {
+    "name": "320: no page overflow",
+    "ok": true
+  },
+  {
+    "name": "320: signup routing retained",
+    "ok": true
+  },
+  {
+    "name": "320: Realtor route retained",
+    "ok": true
+  },
+  {
+    "name": "320: no runtime errors",
+    "ok": true
+  },
+  {
+    "name": "375: actual prototype fonts loaded",
+    "ok": true
+  },
+  {
+    "name": "375: small centered terracotta heading",
+    "ok": true
+  },
+  {
+    "name": "375: web showcase active and native fallback hidden",
+    "ok": true
+  },
+  {
+    "name": "375: divider and single CTA retained",
+    "ok": true
+  },
+  {
+    "name": "375: accessible navigation",
+    "ok": true
+  },
+  {
+    "name": "375: preserved feature 1 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "375: editorial placement 1",
+    "ok": true
+  },
+  {
+    "name": "375: only active slide exposed to AT 1",
+    "ok": true
+  },
+  {
+    "name": "375: numbered progress 1",
+    "ok": true
+  },
+  {
+    "name": "375: slide 1 status",
+    "ok": true
+  },
+  {
+    "name": "375: navigation directly below slide 1 copy",
+    "ok": true
+  },
+  {
+    "name": "375: mobile controls and count share a row 1",
+    "ok": true
+  },
+  {
+    "name": "375: slide 1 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "375: stable slide frame 1",
+    "ok": true
+  },
+  {
+    "name": "375: preserved feature 2 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "375: editorial placement 2",
+    "ok": true
+  },
+  {
+    "name": "375: only active slide exposed to AT 2",
+    "ok": true
+  },
+  {
+    "name": "375: numbered progress 2",
+    "ok": true
+  },
+  {
+    "name": "375: slide 2 status",
+    "ok": true
+  },
+  {
+    "name": "375: navigation directly below slide 2 copy",
+    "ok": true
+  },
+  {
+    "name": "375: mobile controls and count share a row 2",
+    "ok": true
+  },
+  {
+    "name": "375: slide 2 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "375: listing-source labels stay inside their tiles",
+    "ok": true
+  },
+  {
+    "name": "375: stable slide frame 2",
+    "ok": true
+  },
+  {
+    "name": "375: preserved feature 3 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "375: editorial placement 3",
+    "ok": true
+  },
+  {
+    "name": "375: only active slide exposed to AT 3",
+    "ok": true
+  },
+  {
+    "name": "375: numbered progress 3",
+    "ok": true
+  },
+  {
+    "name": "375: slide 3 status",
+    "ok": true
+  },
+  {
+    "name": "375: navigation directly below slide 3 copy",
+    "ok": true
+  },
+  {
+    "name": "375: mobile controls and count share a row 3",
+    "ok": true
+  },
+  {
+    "name": "375: slide 3 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "375: stable slide frame 3",
+    "ok": true
+  },
+  {
+    "name": "375: preserved feature 4 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "375: editorial placement 4",
+    "ok": true
+  },
+  {
+    "name": "375: only active slide exposed to AT 4",
+    "ok": true
+  },
+  {
+    "name": "375: numbered progress 4",
+    "ok": true
+  },
+  {
+    "name": "375: slide 4 status",
+    "ok": true
+  },
+  {
+    "name": "375: navigation directly below slide 4 copy",
+    "ok": true
+  },
+  {
+    "name": "375: mobile controls and count share a row 4",
+    "ok": true
+  },
+  {
+    "name": "375: slide 4 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "375: stable slide frame 4",
+    "ok": true
+  },
+  {
+    "name": "375: accurate distinct participants and source photos",
+    "ok": true
+  },
+  {
+    "name": "375: transparent composition canvas",
+    "ok": true
+  },
+  {
+    "name": "375: navigation targets fit viewport and meet 44px",
+    "ok": true
+  },
+  {
+    "name": "375: no outer frame and muted compact disclaimer",
+    "ok": true
+  },
+  {
+    "name": "375: last next disabled",
+    "ok": true
+  },
+  {
+    "name": "375: focus stays on stationary navigation after slide changes",
+    "ok": true
+  },
+  {
+    "name": "375: arrow/Home/End keyboard navigation",
+    "ok": true
+  },
+  {
+    "name": "375: keyboard focus is visibly outlined",
+    "ok": true
+  },
+  {
+    "name": "375: reduced motion is immediate",
+    "ok": true
+  },
+  {
+    "name": "375: no page overflow",
+    "ok": true
+  },
+  {
+    "name": "375: signup routing retained",
+    "ok": true
+  },
+  {
+    "name": "375: Realtor route retained",
+    "ok": true
+  },
+  {
+    "name": "375: no runtime errors",
+    "ok": true
+  },
+  {
+    "name": "390: actual prototype fonts loaded",
+    "ok": true
+  },
+  {
+    "name": "390: small centered terracotta heading",
+    "ok": true
+  },
+  {
+    "name": "390: web showcase active and native fallback hidden",
+    "ok": true
+  },
+  {
+    "name": "390: divider and single CTA retained",
+    "ok": true
+  },
+  {
+    "name": "390: accessible navigation",
+    "ok": true
+  },
+  {
+    "name": "390: preserved feature 1 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "390: editorial placement 1",
+    "ok": true
+  },
+  {
+    "name": "390: only active slide exposed to AT 1",
+    "ok": true
+  },
+  {
+    "name": "390: numbered progress 1",
+    "ok": true
+  },
+  {
+    "name": "390: slide 1 status",
+    "ok": true
+  },
+  {
+    "name": "390: navigation directly below slide 1 copy",
+    "ok": true
+  },
+  {
+    "name": "390: mobile controls and count share a row 1",
+    "ok": true
+  },
+  {
+    "name": "390: slide 1 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "390: stable slide frame 1",
+    "ok": true
+  },
+  {
+    "name": "390: preserved feature 2 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "390: editorial placement 2",
+    "ok": true
+  },
+  {
+    "name": "390: only active slide exposed to AT 2",
+    "ok": true
+  },
+  {
+    "name": "390: numbered progress 2",
+    "ok": true
+  },
+  {
+    "name": "390: slide 2 status",
+    "ok": true
+  },
+  {
+    "name": "390: navigation directly below slide 2 copy",
+    "ok": true
+  },
+  {
+    "name": "390: mobile controls and count share a row 2",
+    "ok": true
+  },
+  {
+    "name": "390: slide 2 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "390: listing-source labels stay inside their tiles",
+    "ok": true
+  },
+  {
+    "name": "390: stable slide frame 2",
+    "ok": true
+  },
+  {
+    "name": "390: preserved feature 3 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "390: editorial placement 3",
+    "ok": true
+  },
+  {
+    "name": "390: only active slide exposed to AT 3",
+    "ok": true
+  },
+  {
+    "name": "390: numbered progress 3",
+    "ok": true
+  },
+  {
+    "name": "390: slide 3 status",
+    "ok": true
+  },
+  {
+    "name": "390: navigation directly below slide 3 copy",
+    "ok": true
+  },
+  {
+    "name": "390: mobile controls and count share a row 3",
+    "ok": true
+  },
+  {
+    "name": "390: slide 3 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "390: stable slide frame 3",
+    "ok": true
+  },
+  {
+    "name": "390: preserved feature 4 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "390: editorial placement 4",
+    "ok": true
+  },
+  {
+    "name": "390: only active slide exposed to AT 4",
+    "ok": true
+  },
+  {
+    "name": "390: numbered progress 4",
+    "ok": true
+  },
+  {
+    "name": "390: slide 4 status",
+    "ok": true
+  },
+  {
+    "name": "390: navigation directly below slide 4 copy",
+    "ok": true
+  },
+  {
+    "name": "390: mobile controls and count share a row 4",
+    "ok": true
+  },
+  {
+    "name": "390: slide 4 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "390: stable slide frame 4",
+    "ok": true
+  },
+  {
+    "name": "390: accurate distinct participants and source photos",
+    "ok": true
+  },
+  {
+    "name": "390: transparent composition canvas",
+    "ok": true
+  },
+  {
+    "name": "390: navigation targets fit viewport and meet 44px",
+    "ok": true
+  },
+  {
+    "name": "390: no outer frame and muted compact disclaimer",
+    "ok": true
+  },
+  {
+    "name": "390: last next disabled",
+    "ok": true
+  },
+  {
+    "name": "390: focus stays on stationary navigation after slide changes",
+    "ok": true
+  },
+  {
+    "name": "390: arrow/Home/End keyboard navigation",
+    "ok": true
+  },
+  {
+    "name": "390: keyboard focus is visibly outlined",
+    "ok": true
+  },
+  {
+    "name": "390: actual touch swipe advances",
+    "ok": true
+  },
+  {
+    "name": "390: reduced motion is immediate",
+    "ok": true
+  },
+  {
+    "name": "390: no page overflow",
+    "ok": true
+  },
+  {
+    "name": "390: signup routing retained",
+    "ok": true
+  },
+  {
+    "name": "390: Realtor route retained",
+    "ok": true
+  },
+  {
+    "name": "390: no runtime errors",
+    "ok": true
+  },
+  {
+    "name": "430: actual prototype fonts loaded",
+    "ok": true
+  },
+  {
+    "name": "430: small centered terracotta heading",
+    "ok": true
+  },
+  {
+    "name": "430: web showcase active and native fallback hidden",
+    "ok": true
+  },
+  {
+    "name": "430: divider and single CTA retained",
+    "ok": true
+  },
+  {
+    "name": "430: accessible navigation",
+    "ok": true
+  },
+  {
+    "name": "430: preserved feature 1 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "430: editorial placement 1",
+    "ok": true
+  },
+  {
+    "name": "430: only active slide exposed to AT 1",
+    "ok": true
+  },
+  {
+    "name": "430: numbered progress 1",
+    "ok": true
+  },
+  {
+    "name": "430: slide 1 status",
+    "ok": true
+  },
+  {
+    "name": "430: navigation directly below slide 1 copy",
+    "ok": true
+  },
+  {
+    "name": "430: mobile controls and count share a row 1",
+    "ok": true
+  },
+  {
+    "name": "430: slide 1 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "430: stable slide frame 1",
+    "ok": true
+  },
+  {
+    "name": "430: preserved feature 2 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "430: editorial placement 2",
+    "ok": true
+  },
+  {
+    "name": "430: only active slide exposed to AT 2",
+    "ok": true
+  },
+  {
+    "name": "430: numbered progress 2",
+    "ok": true
+  },
+  {
+    "name": "430: slide 2 status",
+    "ok": true
+  },
+  {
+    "name": "430: navigation directly below slide 2 copy",
+    "ok": true
+  },
+  {
+    "name": "430: mobile controls and count share a row 2",
+    "ok": true
+  },
+  {
+    "name": "430: slide 2 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "430: listing-source labels stay inside their tiles",
+    "ok": true
+  },
+  {
+    "name": "430: stable slide frame 2",
+    "ok": true
+  },
+  {
+    "name": "430: preserved feature 3 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "430: editorial placement 3",
+    "ok": true
+  },
+  {
+    "name": "430: only active slide exposed to AT 3",
+    "ok": true
+  },
+  {
+    "name": "430: numbered progress 3",
+    "ok": true
+  },
+  {
+    "name": "430: slide 3 status",
+    "ok": true
+  },
+  {
+    "name": "430: navigation directly below slide 3 copy",
+    "ok": true
+  },
+  {
+    "name": "430: mobile controls and count share a row 3",
+    "ok": true
+  },
+  {
+    "name": "430: slide 3 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "430: stable slide frame 3",
+    "ok": true
+  },
+  {
+    "name": "430: preserved feature 4 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "430: editorial placement 4",
+    "ok": true
+  },
+  {
+    "name": "430: only active slide exposed to AT 4",
+    "ok": true
+  },
+  {
+    "name": "430: numbered progress 4",
+    "ok": true
+  },
+  {
+    "name": "430: slide 4 status",
+    "ok": true
+  },
+  {
+    "name": "430: navigation directly below slide 4 copy",
+    "ok": true
+  },
+  {
+    "name": "430: mobile controls and count share a row 4",
+    "ok": true
+  },
+  {
+    "name": "430: slide 4 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "430: stable slide frame 4",
+    "ok": true
+  },
+  {
+    "name": "430: accurate distinct participants and source photos",
+    "ok": true
+  },
+  {
+    "name": "430: transparent composition canvas",
+    "ok": true
+  },
+  {
+    "name": "430: navigation targets fit viewport and meet 44px",
+    "ok": true
+  },
+  {
+    "name": "430: no outer frame and muted compact disclaimer",
+    "ok": true
+  },
+  {
+    "name": "430: last next disabled",
+    "ok": true
+  },
+  {
+    "name": "430: focus stays on stationary navigation after slide changes",
+    "ok": true
+  },
+  {
+    "name": "430: arrow/Home/End keyboard navigation",
+    "ok": true
+  },
+  {
+    "name": "430: keyboard focus is visibly outlined",
+    "ok": true
+  },
+  {
+    "name": "430: reduced motion is immediate",
+    "ok": true
+  },
+  {
+    "name": "430: no page overflow",
+    "ok": true
+  },
+  {
+    "name": "430: signup routing retained",
+    "ok": true
+  },
+  {
+    "name": "430: Realtor route retained",
+    "ok": true
+  },
+  {
+    "name": "430: no runtime errors",
+    "ok": true
+  },
+  {
+    "name": "768: actual prototype fonts loaded",
+    "ok": true
+  },
+  {
+    "name": "768: small centered terracotta heading",
+    "ok": true
+  },
+  {
+    "name": "768: web showcase active and native fallback hidden",
+    "ok": true
+  },
+  {
+    "name": "768: divider and single CTA retained",
+    "ok": true
+  },
+  {
+    "name": "768: accessible navigation",
+    "ok": true
+  },
+  {
+    "name": "768: preserved feature 1 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "768: editorial placement 1",
+    "ok": true
+  },
+  {
+    "name": "768: only active slide exposed to AT 1",
+    "ok": true
+  },
+  {
+    "name": "768: numbered progress 1",
+    "ok": true
+  },
+  {
+    "name": "768: slide 1 status",
+    "ok": true
+  },
+  {
+    "name": "768: navigation directly below slide 1 copy",
+    "ok": true
+  },
+  {
+    "name": "768: slide 1 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "768: stable slide frame 1",
+    "ok": true
+  },
+  {
+    "name": "768: preserved feature 2 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "768: editorial placement 2",
+    "ok": true
+  },
+  {
+    "name": "768: only active slide exposed to AT 2",
+    "ok": true
+  },
+  {
+    "name": "768: numbered progress 2",
+    "ok": true
+  },
+  {
+    "name": "768: slide 2 status",
+    "ok": true
+  },
+  {
+    "name": "768: navigation directly below slide 2 copy",
+    "ok": true
+  },
+  {
+    "name": "768: slide 2 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "768: listing-source labels stay inside their tiles",
+    "ok": true
+  },
+  {
+    "name": "768: stable slide frame 2",
+    "ok": true
+  },
+  {
+    "name": "768: preserved feature 3 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "768: editorial placement 3",
+    "ok": true
+  },
+  {
+    "name": "768: only active slide exposed to AT 3",
+    "ok": true
+  },
+  {
+    "name": "768: numbered progress 3",
+    "ok": true
+  },
+  {
+    "name": "768: slide 3 status",
+    "ok": true
+  },
+  {
+    "name": "768: navigation directly below slide 3 copy",
+    "ok": true
+  },
+  {
+    "name": "768: slide 3 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "768: stable slide frame 3",
+    "ok": true
+  },
+  {
+    "name": "768: preserved feature 4 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "768: editorial placement 4",
+    "ok": true
+  },
+  {
+    "name": "768: only active slide exposed to AT 4",
+    "ok": true
+  },
+  {
+    "name": "768: numbered progress 4",
+    "ok": true
+  },
+  {
+    "name": "768: slide 4 status",
+    "ok": true
+  },
+  {
+    "name": "768: navigation directly below slide 4 copy",
+    "ok": true
+  },
+  {
+    "name": "768: slide 4 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "768: stable slide frame 4",
+    "ok": true
+  },
+  {
+    "name": "768: accurate distinct participants and source photos",
+    "ok": true
+  },
+  {
+    "name": "768: transparent composition canvas",
+    "ok": true
+  },
+  {
+    "name": "768: navigation targets fit viewport and meet 44px",
+    "ok": true
+  },
+  {
+    "name": "768: no outer frame and muted compact disclaimer",
+    "ok": true
+  },
+  {
+    "name": "768: last next disabled",
+    "ok": true
+  },
+  {
+    "name": "768: focus stays on stationary navigation after slide changes",
+    "ok": true
+  },
+  {
+    "name": "768: arrow/Home/End keyboard navigation",
+    "ok": true
+  },
+  {
+    "name": "768: keyboard focus is visibly outlined",
+    "ok": true
+  },
+  {
+    "name": "768: reduced motion is immediate",
+    "ok": true
+  },
+  {
+    "name": "768: no page overflow",
+    "ok": true
+  },
+  {
+    "name": "768: signup dialog retained",
+    "ok": true
+  },
+  {
+    "name": "768: Realtor route retained",
+    "ok": true
+  },
+  {
+    "name": "768: no runtime errors",
+    "ok": true
+  },
+  {
+    "name": "1024: actual prototype fonts loaded",
+    "ok": true
+  },
+  {
+    "name": "1024: small centered terracotta heading",
+    "ok": true
+  },
+  {
+    "name": "1024: web showcase active and native fallback hidden",
+    "ok": true
+  },
+  {
+    "name": "1024: divider and single CTA retained",
+    "ok": true
+  },
+  {
+    "name": "1024: accessible navigation",
+    "ok": true
+  },
+  {
+    "name": "1024: preserved feature 1 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "1024: editorial placement 1",
+    "ok": true
+  },
+  {
+    "name": "1024: only active slide exposed to AT 1",
+    "ok": true
+  },
+  {
+    "name": "1024: numbered progress 1",
+    "ok": true
+  },
+  {
+    "name": "1024: slide 1 status",
+    "ok": true
+  },
+  {
+    "name": "1024: navigation directly below slide 1 copy",
+    "ok": true
+  },
+  {
+    "name": "1024: slide 1 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "1024: stable slide frame 1",
+    "ok": true
+  },
+  {
+    "name": "1024: preserved feature 2 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "1024: editorial placement 2",
+    "ok": true
+  },
+  {
+    "name": "1024: only active slide exposed to AT 2",
+    "ok": true
+  },
+  {
+    "name": "1024: numbered progress 2",
+    "ok": true
+  },
+  {
+    "name": "1024: slide 2 status",
+    "ok": true
+  },
+  {
+    "name": "1024: navigation directly below slide 2 copy",
+    "ok": true
+  },
+  {
+    "name": "1024: slide 2 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "1024: listing-source labels stay inside their tiles",
+    "ok": true
+  },
+  {
+    "name": "1024: stable slide frame 2",
+    "ok": true
+  },
+  {
+    "name": "1024: preserved feature 3 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "1024: editorial placement 3",
+    "ok": true
+  },
+  {
+    "name": "1024: only active slide exposed to AT 3",
+    "ok": true
+  },
+  {
+    "name": "1024: numbered progress 3",
+    "ok": true
+  },
+  {
+    "name": "1024: slide 3 status",
+    "ok": true
+  },
+  {
+    "name": "1024: navigation directly below slide 3 copy",
+    "ok": true
+  },
+  {
+    "name": "1024: slide 3 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "1024: stable slide frame 3",
+    "ok": true
+  },
+  {
+    "name": "1024: preserved feature 4 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "1024: editorial placement 4",
+    "ok": true
+  },
+  {
+    "name": "1024: only active slide exposed to AT 4",
+    "ok": true
+  },
+  {
+    "name": "1024: numbered progress 4",
+    "ok": true
+  },
+  {
+    "name": "1024: slide 4 status",
+    "ok": true
+  },
+  {
+    "name": "1024: navigation directly below slide 4 copy",
+    "ok": true
+  },
+  {
+    "name": "1024: slide 4 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "1024: stable slide frame 4",
+    "ok": true
+  },
+  {
+    "name": "1024: accurate distinct participants and source photos",
+    "ok": true
+  },
+  {
+    "name": "1024: transparent composition canvas",
+    "ok": true
+  },
+  {
+    "name": "1024: navigation targets fit viewport and meet 44px",
+    "ok": true
+  },
+  {
+    "name": "1024: no outer frame and muted compact disclaimer",
+    "ok": true
+  },
+  {
+    "name": "1024: last next disabled",
+    "ok": true
+  },
+  {
+    "name": "1024: focus stays on stationary navigation after slide changes",
+    "ok": true
+  },
+  {
+    "name": "1024: arrow/Home/End keyboard navigation",
+    "ok": true
+  },
+  {
+    "name": "1024: keyboard focus is visibly outlined",
+    "ok": true
+  },
+  {
+    "name": "1024: reduced motion is immediate",
+    "ok": true
+  },
+  {
+    "name": "1024: no page overflow",
+    "ok": true
+  },
+  {
+    "name": "1024: tall hero retained",
+    "ok": true
+  },
+  {
+    "name": "1024: one-line opening retained",
+    "ok": true
+  },
+  {
+    "name": "1024: signup dialog retained",
+    "ok": true
+  },
+  {
+    "name": "1024: Realtor route retained",
+    "ok": true
+  },
+  {
+    "name": "1024: no runtime errors",
+    "ok": true
+  },
+  {
+    "name": "1280: actual prototype fonts loaded",
+    "ok": true
+  },
+  {
+    "name": "1280: small centered terracotta heading",
+    "ok": true
+  },
+  {
+    "name": "1280: web showcase active and native fallback hidden",
+    "ok": true
+  },
+  {
+    "name": "1280: divider and single CTA retained",
+    "ok": true
+  },
+  {
+    "name": "1280: accessible navigation",
+    "ok": true
+  },
+  {
+    "name": "1280: preserved feature 1 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "1280: editorial placement 1",
+    "ok": true
+  },
+  {
+    "name": "1280: only active slide exposed to AT 1",
+    "ok": true
+  },
+  {
+    "name": "1280: numbered progress 1",
+    "ok": true
+  },
+  {
+    "name": "1280: slide 1 status",
+    "ok": true
+  },
+  {
+    "name": "1280: navigation directly below slide 1 copy",
+    "ok": true
+  },
+  {
+    "name": "1280: slide 1 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "1280: stable slide frame 1",
+    "ok": true
+  },
+  {
+    "name": "1280: preserved feature 2 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "1280: editorial placement 2",
+    "ok": true
+  },
+  {
+    "name": "1280: only active slide exposed to AT 2",
+    "ok": true
+  },
+  {
+    "name": "1280: numbered progress 2",
+    "ok": true
+  },
+  {
+    "name": "1280: slide 2 status",
+    "ok": true
+  },
+  {
+    "name": "1280: navigation directly below slide 2 copy",
+    "ok": true
+  },
+  {
+    "name": "1280: slide 2 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "1280: listing-source labels stay inside their tiles",
+    "ok": true
+  },
+  {
+    "name": "1280: stable slide frame 2",
+    "ok": true
+  },
+  {
+    "name": "1280: preserved feature 3 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "1280: editorial placement 3",
+    "ok": true
+  },
+  {
+    "name": "1280: only active slide exposed to AT 3",
+    "ok": true
+  },
+  {
+    "name": "1280: numbered progress 3",
+    "ok": true
+  },
+  {
+    "name": "1280: slide 3 status",
+    "ok": true
+  },
+  {
+    "name": "1280: navigation directly below slide 3 copy",
+    "ok": true
+  },
+  {
+    "name": "1280: slide 3 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "1280: stable slide frame 3",
+    "ok": true
+  },
+  {
+    "name": "1280: preserved feature 4 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "1280: editorial placement 4",
+    "ok": true
+  },
+  {
+    "name": "1280: only active slide exposed to AT 4",
+    "ok": true
+  },
+  {
+    "name": "1280: numbered progress 4",
+    "ok": true
+  },
+  {
+    "name": "1280: slide 4 status",
+    "ok": true
+  },
+  {
+    "name": "1280: navigation directly below slide 4 copy",
+    "ok": true
+  },
+  {
+    "name": "1280: slide 4 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "1280: stable slide frame 4",
+    "ok": true
+  },
+  {
+    "name": "1280: accurate distinct participants and source photos",
+    "ok": true
+  },
+  {
+    "name": "1280: transparent composition canvas",
+    "ok": true
+  },
+  {
+    "name": "1280: navigation targets fit viewport and meet 44px",
+    "ok": true
+  },
+  {
+    "name": "1280: no outer frame and muted compact disclaimer",
+    "ok": true
+  },
+  {
+    "name": "1280: last next disabled",
+    "ok": true
+  },
+  {
+    "name": "1280: focus stays on stationary navigation after slide changes",
+    "ok": true
+  },
+  {
+    "name": "1280: arrow/Home/End keyboard navigation",
+    "ok": true
+  },
+  {
+    "name": "1280: keyboard focus is visibly outlined",
+    "ok": true
+  },
+  {
+    "name": "1280: reduced motion is immediate",
+    "ok": true
+  },
+  {
+    "name": "1280: no page overflow",
+    "ok": true
+  },
+  {
+    "name": "1280: tall hero retained",
+    "ok": true
+  },
+  {
+    "name": "1280: one-line opening retained",
+    "ok": true
+  },
+  {
+    "name": "1280: signup dialog retained",
+    "ok": true
+  },
+  {
+    "name": "1280: Realtor route retained",
+    "ok": true
+  },
+  {
+    "name": "1280: no runtime errors",
+    "ok": true
+  },
+  {
+    "name": "1440: actual prototype fonts loaded",
+    "ok": true
+  },
+  {
+    "name": "1440: small centered terracotta heading",
+    "ok": true
+  },
+  {
+    "name": "1440: web showcase active and native fallback hidden",
+    "ok": true
+  },
+  {
+    "name": "1440: divider and single CTA retained",
+    "ok": true
+  },
+  {
+    "name": "1440: accessible navigation",
+    "ok": true
+  },
+  {
+    "name": "1440: preserved feature 1 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "1440: editorial placement 1",
+    "ok": true
+  },
+  {
+    "name": "1440: only active slide exposed to AT 1",
+    "ok": true
+  },
+  {
+    "name": "1440: numbered progress 1",
+    "ok": true
+  },
+  {
+    "name": "1440: slide 1 status",
+    "ok": true
+  },
+  {
+    "name": "1440: navigation directly below slide 1 copy",
+    "ok": true
+  },
+  {
+    "name": "1440: slide 1 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "1440: stable slide frame 1",
+    "ok": true
+  },
+  {
+    "name": "1440: preserved feature 2 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "1440: editorial placement 2",
+    "ok": true
+  },
+  {
+    "name": "1440: only active slide exposed to AT 2",
+    "ok": true
+  },
+  {
+    "name": "1440: numbered progress 2",
+    "ok": true
+  },
+  {
+    "name": "1440: slide 2 status",
+    "ok": true
+  },
+  {
+    "name": "1440: navigation directly below slide 2 copy",
+    "ok": true
+  },
+  {
+    "name": "1440: slide 2 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "1440: listing-source labels stay inside their tiles",
+    "ok": true
+  },
+  {
+    "name": "1440: stable slide frame 2",
+    "ok": true
+  },
+  {
+    "name": "1440: preserved feature 3 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "1440: editorial placement 3",
+    "ok": true
+  },
+  {
+    "name": "1440: only active slide exposed to AT 3",
+    "ok": true
+  },
+  {
+    "name": "1440: numbered progress 3",
+    "ok": true
+  },
+  {
+    "name": "1440: slide 3 status",
+    "ok": true
+  },
+  {
+    "name": "1440: navigation directly below slide 3 copy",
+    "ok": true
+  },
+  {
+    "name": "1440: slide 3 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "1440: stable slide frame 3",
+    "ok": true
+  },
+  {
+    "name": "1440: preserved feature 4 copy and loaded composition",
+    "ok": true
+  },
+  {
+    "name": "1440: editorial placement 4",
+    "ok": true
+  },
+  {
+    "name": "1440: only active slide exposed to AT 4",
+    "ok": true
+  },
+  {
+    "name": "1440: numbered progress 4",
+    "ok": true
+  },
+  {
+    "name": "1440: slide 4 status",
+    "ok": true
+  },
+  {
+    "name": "1440: navigation directly below slide 4 copy",
+    "ok": true
+  },
+  {
+    "name": "1440: slide 4 card labels are not overlapped or clipped",
+    "ok": true
+  },
+  {
+    "name": "1440: stable slide frame 4",
+    "ok": true
+  },
+  {
+    "name": "1440: accurate distinct participants and source photos",
+    "ok": true
+  },
+  {
+    "name": "1440: transparent composition canvas",
+    "ok": true
+  },
+  {
+    "name": "1440: navigation targets fit viewport and meet 44px",
+    "ok": true
+  },
+  {
+    "name": "1440: no outer frame and muted compact disclaimer",
+    "ok": true
+  },
+  {
+    "name": "1440: last next disabled",
+    "ok": true
+  },
+  {
+    "name": "1440: focus stays on stationary navigation after slide changes",
+    "ok": true
+  },
+  {
+    "name": "1440: arrow/Home/End keyboard navigation",
+    "ok": true
+  },
+  {
+    "name": "1440: keyboard focus is visibly outlined",
+    "ok": true
+  },
+  {
+    "name": "1440: reduced motion is immediate",
+    "ok": true
+  },
+  {
+    "name": "1440: no page overflow",
+    "ok": true
+  },
+  {
+    "name": "1440: tall hero retained",
+    "ok": true
+  },
+  {
+    "name": "1440: one-line opening retained",
+    "ok": true
+  },
+  {
+    "name": "1440: signup dialog retained",
+    "ok": true
+  },
+  {
+    "name": "1440: Realtor route retained",
+    "ok": true
+  },
+  {
+    "name": "1440: no runtime errors",
+    "ok": true
+  },
+  {
+    "name": "390: no-JS framework wrapper requires JavaScript",
+    "ok": true,
+    "observed": true,
+    "scope": "Component fallback is tested after completing the existing Next SSR stream wrapper."
+  },
+  {
+    "name": "390: no-JS component fallback shows all four features without horizontal track",
+    "ok": true
+  },
+  {
+    "name": "1440: no-JS framework wrapper requires JavaScript",
+    "ok": true,
+    "observed": true,
+    "scope": "Component fallback is tested after completing the existing Next SSR stream wrapper."
+  },
+  {
+    "name": "1440: no-JS component fallback shows all four features without horizontal track",
+    "ok": true
+  },
+  {
+    "name": "390 iOS bridge: shared native flag detected",
+    "ok": true
+  },
+  {
+    "name": "390 iOS bridge: welcome unchanged and marketing hidden",
+    "ok": true
+  },
+  {
+    "name": "390 iOS bridge: no website showcase state or controls",
+    "ok": true
+  },
+  {
+    "name": "390 iOS bridge: even test-exposed marketing uses original static fallback",
+    "ok": true
+  },
+  {
+    "name": "390 iOS bridge: original illustrations retained",
+    "ok": true
+  },
+  {
+    "name": "1280 iOS bridge: shared native flag detected",
+    "ok": true
+  },
+  {
+    "name": "1280 iOS bridge: welcome unchanged and marketing hidden",
+    "ok": true
+  },
+  {
+    "name": "1280 iOS bridge: no website showcase state or controls",
+    "ok": true
+  },
+  {
+    "name": "1280 iOS bridge: even test-exposed marketing uses original static fallback",
+    "ok": true
+  },
+  {
+    "name": "1280 iOS bridge: original illustrations retained",
+    "ok": true
+  },
+  {
+    "name": "late native flag: website interaction removed and fallback restored",
+    "ok": true
+  },
+  {
+    "name": "ordinary motion: smooth desktop navigation settles",
+    "ok": true
+  },
+  {
+    "name": "resize: feature selection retained between desktop and mobile",
+    "ok": true
+  }
+]

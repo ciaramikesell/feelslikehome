@@ -1,0 +1,42 @@
+{
+  "branch": "ux/homepage-final-four-columns",
+  "amendsPR": 204,
+  "designDecision": "https://github.com/ciaramikesell/feelslikehome/pull/204#issuecomment-7041478606",
+  "productionBuild": "passed",
+  "focused": {
+    "pass": 48,
+    "fail": 0
+  },
+  "unit": {
+    "pass": 1418,
+    "fail": 0,
+    "skip": 255
+  },
+  "postgresql": {
+    "pass": 1671,
+    "fail": 0,
+    "skip": 2,
+    "skipReason": "optional sanitized live RentCast fixtures unavailable"
+  },
+  "showcaseBrowser": {
+    "pass": 326,
+    "fail": 0,
+    "widths": [
+      320,
+      375,
+      390,
+      430,
+      768,
+      1024,
+      1280,
+      1440
+    ]
+  },
+  "fullNativeBridgeBrowser": {
+    "pass": 61,
+    "fail": 0
+  },
+  "assets": "Original approved files unchanged. Original photo clipping windows and accurate HTML composition; no generated bitmap shipped.",
+  "physicalDevice": "founder QA",
+  "mergeReadinessOrDeployment": "no action performed"
+}
