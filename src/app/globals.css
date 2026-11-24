@@ -3957,6 +3957,48 @@ body:has(.rl-root) { --flh-status-bar-bg: #f8f4ec; }
 .afh-name-row > div { min-width: 0; }
 .afh-name-row input { width: 100%; min-width: 0; }
 
+/* Native My Homes only. The pre-paint marker uses the canonical Capacitor
+   bridge detection in platform.js; phone browsers never receive this flag. */
+.hh-native-homes-toolbar { display: none; }
+@media (max-width: 700px) {
+html[data-flh-native] .hh-homes-route .hh-tabs,
+html[data-flh-native] .hh-homes-route .hh-homes-toolbar-row,
+html[data-flh-native] .hh-homes-route .hh-brand-tagline,
+html[data-flh-native] .hh-homes-route .hh-shell-action-primary,
+html[data-flh-native] .hh-homes-route .hh-utility-group-end { display: none; }
+html[data-flh-native] .hh-homes-route .hh-app-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 0; }
+html[data-flh-native] .hh-homes-route .hh-brand-lockup { order: -1; padding: 0; margin: 0; text-align: left; }
+html[data-flh-native] .hh-homes-route .hh-brand-wordmark { font-size: clamp(1.3rem, 5.5vw, 1.8rem); }
+html[data-flh-native] .hh-homes-route .hh-utility-nav { padding: 0; margin: 0; border: 0; }
+html[data-flh-native] .hh-homes-route .hh-utility-group { flex-wrap: wrap; gap: 6px; }
+html[data-flh-native] .hh-homes-route .hh-collaboration-pill { font-size: .75rem; }
+html[data-flh-native] .hh-homes-route .hh-native-homes-toolbar { display: block; margin: 8px 0 16px; }
+html[data-flh-native] .hh-homes-route .hh-homes-toolbar { padding: 0; margin: 0; border: 0; }
+html[data-flh-native] .hh-homes-route .hh-native-homes-topline { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+html[data-flh-native] .hh-homes-route .hh-native-homes-topline h2 { font: 600 2rem/1.15 var(--font-serif); margin: 0; }
+html[data-flh-native] .hh-homes-route .hh-native-homes-topline p { font-size: .875rem; color: var(--ink-soft); margin: 4px 0 0; }
+html[data-flh-native] .hh-homes-route .hh-native-homes-actions { display: flex; gap: 8px; }
+html[data-flh-native] .hh-homes-route .hh-native-homes-actions button { min-width: 44px; min-height: 44px; padding: 10px; }
+html[data-flh-native] .hh-homes-route .hh-native-homes-add { gap: 6px; }
+html[data-flh-native] .hh-homes-route .hh-native-homes-toolbar .hh-homes-search { margin: 12px 0; width: 100%; }
+html[data-flh-native] .hh-homes-route .hh-native-homes-toolbar .hh-homes-sort { display: inline-flex; width: auto; min-height: 44px; margin: 12px 12px 0 0; gap: 6px; }
+html[data-flh-native] .hh-homes-route .hh-native-archive { display: inline-flex; align-items: center; min-height: 44px; font-size: .8125rem; color: var(--ink-soft); }
+html[data-flh-native] .hh-homes-route .hh-home-card-surface { display: flex; flex-direction: column; }
+html[data-flh-native] .hh-homes-route .hh-home-card-photo { order: -1; aspect-ratio: 1.65; }
+html[data-flh-native] .hh-homes-route .hh-homes-empty { margin-top: 12px; }
+@media (max-width: 359px) { html[data-flh-native] .hh-homes-route .hh-native-homes-topline { align-items: start; } html[data-flh-native] .hh-homes-route .hh-native-homes-actions { width: 100%; } html[data-flh-native] .hh-homes-route .hh-native-homes-add { flex: 1; } }
+
+html[data-flh-native] .hh-homes-route .hh-native-homes-toolbar .hh-homes-sort { max-width: 58%; margin-top: 8px; padding: 0 8px; }
+html[data-flh-native] .hh-homes-route .hh-native-homes-toolbar .hh-homes-sort select { min-width: 0; width: auto; padding: 0 26px 0 0; font-size: max(14px, var(--flh-field-font-floor)); }
+html[data-flh-native] .hh-homes-route .hh-home-card-surface { padding: 0; overflow: hidden; border-radius: 18px; }
+html[data-flh-native] .hh-homes-route .hh-home-card-photo { margin-top: 0; border-radius: 0; }
+html[data-flh-native] .hh-homes-route .hh-card-identity { padding: 16px 16px 0; text-align: left; }
+html[data-flh-native] .hh-homes-route .hh-home-card-body { padding: 0 16px 16px; }
+html[data-flh-native] .hh-homes-route .hh-card-identity .hh-address { font-family: var(--font-serif); font-size: 1.5rem; }
+html[data-flh-native] .hh-homes-route .hh-collaboration-pill { display: inline-flex; }
+
+}
+
 /* ── Onboarding V2 shell (Phase 1) ───────────────────────────────────────────
    Frame only: background, columns, top bar, progress, type scale, step rhythm
    and the forward action. Step content keeps its existing styles. Every rule is
